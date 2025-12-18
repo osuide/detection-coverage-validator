@@ -51,9 +51,14 @@ class User(Base):
     mfa_secret: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     mfa_backup_codes: Mapped[Optional[List[str]]] = mapped_column(JSONB, nullable=True)
 
-    # OAuth
+    # OAuth (legacy)
     oauth_provider: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     oauth_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+
+    # Cognito SSO
+    cognito_sub: Mapped[Optional[str]] = mapped_column(String(255), unique=True, nullable=True)
+    cognito_username: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    identity_provider: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # cognito, google, azure, okta
 
     # Profile
     avatar_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
@@ -88,9 +93,11 @@ class User(Base):
         foreign_keys="[OrganizationMember.user_id]"
     )
     sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")
+    federated_identities = relationship("FederatedIdentity", back_populates="user", cascade="all, delete-orphan")
 
     __table_args__ = (
         Index("ix_users_oauth", "oauth_provider", "oauth_id"),
+        Index("ix_users_cognito_sub", "cognito_sub"),
     )
 
     def __repr__(self) -> str:
@@ -146,6 +153,10 @@ class Organization(Base):
     cloud_accounts = relationship("CloudAccount", back_populates="organization")
     api_keys = relationship("APIKey", back_populates="organization", cascade="all, delete-orphan")
     audit_logs = relationship("AuditLog", back_populates="organization", cascade="all, delete-orphan")
+    subscription = relationship("Subscription", back_populates="organization", uselist=False, cascade="all, delete-orphan")
+    invoices = relationship("Invoice", back_populates="organization", cascade="all, delete-orphan")
+    security_settings = relationship("OrganizationSecuritySettings", back_populates="organization", uselist=False, cascade="all, delete-orphan")
+    verified_domains_rel = relationship("VerifiedDomain", back_populates="organization", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<Organization {self.name} ({self.slug})>"
@@ -323,6 +334,39 @@ class APIKey(Base):
 
     def __repr__(self) -> str:
         return f"<APIKey {self.name} ({self.key_prefix}...)>"
+
+
+class FederatedIdentity(Base):
+    """Federated identity linking (SSO providers)."""
+
+    __tablename__ = "federated_identities"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+
+    provider: Mapped[str] = mapped_column(String(50), nullable=False)  # google, azure, okta
+    provider_user_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    provider_email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+
+    linked_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    user = relationship("User", back_populates="federated_identities")
+
+    __table_args__ = (
+        Index("ix_federated_identities_user", "user_id"),
+        Index("ix_federated_identities_provider", "provider", "provider_user_id", unique=True),
+    )
+
+    def __repr__(self) -> str:
+        return f"<FederatedIdentity {self.provider} user={self.user_id}>"
 
 
 class AuditLogAction(str, enum.Enum):
