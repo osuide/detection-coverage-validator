@@ -442,7 +442,7 @@ export default function Landing() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
             {/* Free Tier */}
             <div className="relative bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 rounded-2xl p-8">
               <div className="mb-6">
@@ -513,7 +513,7 @@ export default function Landing() {
                 </li>
                 <li className="flex items-start space-x-3">
                   <CheckCircle className="h-5 w-5 text-white mt-0.5 flex-shrink-0" />
-                  <span className="text-white">Forever data retention</span>
+                  <span className="text-white">Organization discovery</span>
                 </li>
                 <li className="flex items-start space-x-3">
                   <CheckCircle className="h-5 w-5 text-white mt-0.5 flex-shrink-0" />
@@ -521,11 +521,7 @@ export default function Landing() {
                 </li>
                 <li className="flex items-start space-x-3">
                   <CheckCircle className="h-5 w-5 text-white mt-0.5 flex-shrink-0" />
-                  <span className="text-white">Scheduled scans</span>
-                </li>
-                <li className="flex items-start space-x-3">
-                  <CheckCircle className="h-5 w-5 text-white mt-0.5 flex-shrink-0" />
-                  <span className="text-white">Smart alerts</span>
+                  <span className="text-white">Scheduled scans & alerts</span>
                 </li>
                 <li className="flex items-start space-x-3">
                   <CheckCircle className="h-5 w-5 text-white mt-0.5 flex-shrink-0" />
@@ -533,7 +529,7 @@ export default function Landing() {
                 </li>
                 <li className="flex items-start space-x-3">
                   <Download className="h-5 w-5 text-white mt-0.5 flex-shrink-0" />
-                  <span className="text-white">Additional accounts: $9/mo each</span>
+                  <span className="text-white">+$9/mo per extra account</span>
                 </li>
               </ul>
 
@@ -543,6 +539,96 @@ export default function Landing() {
               >
                 Get Started
               </Link>
+            </div>
+
+            {/* Enterprise Tier */}
+            <div className="relative bg-gradient-to-br from-slate-900 to-slate-950 border border-purple-500/50 rounded-2xl p-8">
+              <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-1 rounded-full text-sm font-semibold">
+                For Large Orgs
+              </div>
+
+              <div className="mb-6">
+                <h3 className="text-2xl font-bold text-white mb-2">Enterprise</h3>
+                <div className="flex items-baseline">
+                  <span className="text-5xl font-bold text-white">$499</span>
+                  <span className="text-gray-400 ml-2">/month</span>
+                </div>
+                <p className="text-gray-400 text-sm mt-1">+ volume pricing for accounts</p>
+              </div>
+
+              <ul className="space-y-4 mb-8">
+                <li className="flex items-start space-x-3">
+                  <CheckCircle className="h-5 w-5 text-purple-400 mt-0.5 flex-shrink-0" />
+                  <span className="text-gray-300">10 accounts included</span>
+                </li>
+                <li className="flex items-start space-x-3">
+                  <CheckCircle className="h-5 w-5 text-purple-400 mt-0.5 flex-shrink-0" />
+                  <span className="text-gray-300">Unlimited org-wide scanning</span>
+                </li>
+                <li className="flex items-start space-x-3">
+                  <CheckCircle className="h-5 w-5 text-purple-400 mt-0.5 flex-shrink-0" />
+                  <span className="text-gray-300">SSO / SAML integration</span>
+                </li>
+                <li className="flex items-start space-x-3">
+                  <CheckCircle className="h-5 w-5 text-purple-400 mt-0.5 flex-shrink-0" />
+                  <span className="text-gray-300">Dedicated support & SLA</span>
+                </li>
+                <li className="flex items-start space-x-3">
+                  <CheckCircle className="h-5 w-5 text-purple-400 mt-0.5 flex-shrink-0" />
+                  <span className="text-gray-300">Custom integrations</span>
+                </li>
+                <li className="flex items-start space-x-3">
+                  <TrendingUp className="h-5 w-5 text-purple-400 mt-0.5 flex-shrink-0" />
+                  <span className="text-gray-300">Volume pricing from $2/acct</span>
+                </li>
+              </ul>
+
+              <Link
+                to="/signup"
+                className="block w-full text-center border border-purple-500 text-purple-400 px-6 py-3 rounded-xl font-semibold hover:bg-purple-600/10 transition-all"
+              >
+                Contact Sales
+              </Link>
+            </div>
+          </div>
+
+          {/* Volume Pricing Table */}
+          <div className="mt-16 max-w-3xl mx-auto">
+            <h3 className="text-2xl font-bold text-white text-center mb-8">Enterprise Volume Pricing</h3>
+            <div className="bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 rounded-2xl p-6">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-slate-700">
+                    <th className="text-left text-gray-400 py-3 font-medium">Accounts</th>
+                    <th className="text-right text-gray-400 py-3 font-medium">Price per Account</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800">
+                  <tr>
+                    <td className="text-white py-3">1-10</td>
+                    <td className="text-green-400 text-right py-3">Included in base</td>
+                  </tr>
+                  <tr>
+                    <td className="text-white py-3">11-50</td>
+                    <td className="text-white text-right py-3">$8/month</td>
+                  </tr>
+                  <tr>
+                    <td className="text-white py-3">51-200</td>
+                    <td className="text-white text-right py-3">$5/month</td>
+                  </tr>
+                  <tr>
+                    <td className="text-white py-3">201-1,000</td>
+                    <td className="text-white text-right py-3">$3/month</td>
+                  </tr>
+                  <tr>
+                    <td className="text-white py-3">1,000+</td>
+                    <td className="text-cyan-400 text-right py-3">$2/month</td>
+                  </tr>
+                </tbody>
+              </table>
+              <p className="text-gray-500 text-sm mt-4 text-center">
+                Example: 2,000 accounts = $499 + (40×$8) + (150×$5) + (800×$3) + (1000×$2) = $5,969/month
+              </p>
             </div>
           </div>
         </div>

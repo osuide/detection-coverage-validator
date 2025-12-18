@@ -15,6 +15,18 @@ psycopg2-binary==2.9.9
 boto3==1.34.25
 botocore==1.34.25
 
+# GCP
+google-auth==2.27.0
+google-cloud-logging==3.9.0
+google-cloud-monitoring==2.19.0
+google-api-python-client==2.116.0
+
+# Google SecOps (Chronicle SIEM) - requires Python 3.10+
+secops==0.3.0
+
+# Encryption
+cryptography==42.0.1
+
 # Caching
 redis==5.0.1
 aioredis==2.0.1

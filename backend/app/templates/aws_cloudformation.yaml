@@ -1,0 +1,179 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: |
+  A13E Detection Coverage Validator - Cross-Account IAM Role
+
+  This template creates an IAM role with the minimum permissions required
+  for A13E to scan your security detection configurations. The role follows
+  AWS best practices for cross-account access.
+
+  What this role CAN access:
+  - CloudWatch metric filters and alarms (detection rules)
+  - EventBridge rules (event-driven detections)
+  - GuardDuty detector configuration
+  - Security Hub enabled standards
+  - AWS Config rules
+  - CloudTrail configuration
+  - Lambda function configurations
+
+  What this role CANNOT access:
+  - Log data contents
+  - S3 bucket contents
+  - Database data
+  - Secrets or credentials
+  - Any write operations
+
+Parameters:
+  A13ETrustAccountId:
+    Type: String
+    Default: '123456789012'  # Replace with actual A13E AWS account ID
+    Description: The AWS Account ID of A13E's scanning infrastructure
+    AllowedPattern: '^\d{12}$'
+    ConstraintDescription: Must be a 12-digit AWS Account ID
+
+  ExternalId:
+    Type: String
+    Description: |
+      External ID provided by A13E to prevent confused deputy attacks.
+      Get this value from your A13E dashboard when adding a cloud account.
+    AllowedPattern: '^a13e-[a-f0-9]{32}$'
+    ConstraintDescription: Must be a valid A13E external ID (format: a13e-{32 hex chars})
+
+  RoleName:
+    Type: String
+    Default: 'A13E-DetectionScanner'
+    Description: Name for the IAM role
+    AllowedPattern: '^[a-zA-Z0-9+=,.@_-]{1,64}$'
+
+Resources:
+  A13EDetectionScannerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref RoleName
+      Description: |
+        Cross-account role for A13E Detection Coverage Validator.
+        Grants read-only access to security detection configurations.
+      MaxSessionDuration: 3600  # 1 hour max session
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${A13ETrustAccountId}:root'
+            Action: 'sts:AssumeRole'
+            Condition:
+              StringEquals:
+                'sts:ExternalId': !Ref ExternalId
+      Tags:
+        - Key: Application
+          Value: A13E
+        - Key: Purpose
+          Value: DetectionCoverageScanning
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  A13EDetectionScannerPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: A13E-DetectionScanner-Policy
+      Roles:
+        - !Ref A13EDetectionScannerRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          # CloudWatch Logs - Read metric filters (detection rules)
+          - Sid: CloudWatchLogsAccess
+            Effect: Allow
+            Action:
+              - logs:DescribeLogGroups
+              - logs:DescribeMetricFilters
+              - logs:DescribeSubscriptionFilters
+            Resource: '*'
+
+          # CloudWatch Alarms - Read alerting configurations
+          - Sid: CloudWatchAlarmsAccess
+            Effect: Allow
+            Action:
+              - cloudwatch:DescribeAlarms
+              - cloudwatch:DescribeAlarmsForMetric
+            Resource: '*'
+
+          # EventBridge - Read event rules
+          - Sid: EventBridgeAccess
+            Effect: Allow
+            Action:
+              - events:ListRules
+              - events:DescribeRule
+              - events:ListTargetsByRule
+            Resource: '*'
+
+          # GuardDuty - Read detector configuration
+          - Sid: GuardDutyAccess
+            Effect: Allow
+            Action:
+              - guardduty:ListDetectors
+              - guardduty:GetDetector
+              - guardduty:ListFindings
+              - guardduty:GetFindings
+            Resource: '*'
+
+          # Security Hub - Read enabled standards
+          - Sid: SecurityHubAccess
+            Effect: Allow
+            Action:
+              - securityhub:DescribeHub
+              - securityhub:GetEnabledStandards
+              - securityhub:DescribeStandardsControls
+            Resource: '*'
+
+          # AWS Config - Read compliance rules
+          - Sid: ConfigAccess
+            Effect: Allow
+            Action:
+              - config:DescribeConfigRules
+              - config:DescribeComplianceByConfigRule
+            Resource: '*'
+
+          # CloudTrail - Read trail configuration
+          - Sid: CloudTrailAccess
+            Effect: Allow
+            Action:
+              - cloudtrail:DescribeTrails
+              - cloudtrail:GetTrailStatus
+              - cloudtrail:GetEventSelectors
+            Resource: '*'
+
+          # Lambda - Read function configurations
+          - Sid: LambdaAccess
+            Effect: Allow
+            Action:
+              - lambda:ListFunctions
+              - lambda:ListEventSourceMappings
+              - lambda:GetFunction
+              - lambda:GetFunctionConfiguration
+            Resource: '*'
+
+Outputs:
+  RoleArn:
+    Description: |
+      ARN of the A13E scanner role. Copy this value and paste it into
+      your A13E dashboard when configuring the cloud account connection.
+    Value: !GetAtt A13EDetectionScannerRole.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-RoleArn'
+
+  ExternalId:
+    Description: The External ID configured for this role
+    Value: !Ref ExternalId
+
+  RoleName:
+    Description: Name of the created IAM role
+    Value: !Ref RoleName
+
+  SetupInstructions:
+    Description: Next steps
+    Value: |
+      1. Copy the RoleArn output value
+      2. Go to A13E Dashboard > Cloud Accounts
+      3. Click "Connect AWS Account"
+      4. Paste the Role ARN
+      5. Click "Validate Connection"

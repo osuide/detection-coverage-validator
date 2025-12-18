@@ -1,14 +1,16 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Cloud, Plus, Trash2, Play, RefreshCw } from 'lucide-react'
-import { accountsApi, scansApi, CloudAccount } from '../services/api'
+import { Cloud, Plus, Trash2, Play, RefreshCw, Link, CheckCircle2, AlertTriangle, Settings } from 'lucide-react'
+import { accountsApi, scansApi, credentialsApi, CloudAccount } from '../services/api'
+import CredentialWizard from '../components/CredentialWizard'
 
 export default function Accounts() {
   const queryClient = useQueryClient()
   const [showForm, setShowForm] = useState(false)
+  const [connectingAccount, setConnectingAccount] = useState<CloudAccount | null>(null)
   const [formData, setFormData] = useState({
     name: '',
-    provider: 'aws' as const,
+    provider: 'aws' as 'aws' | 'gcp',
     account_id: '',
     regions: ['us-east-1'],
   })
@@ -23,7 +25,7 @@ export default function Accounts() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accounts'] })
       setShowForm(false)
-      setFormData({ name: '', provider: 'aws', account_id: '', regions: ['us-east-1'] })
+      setFormData({ name: '', provider: 'aws' as 'aws' | 'gcp', account_id: '', regions: ['us-east-1'] })
     },
   })
 
@@ -85,7 +87,7 @@ export default function Accounts() {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="My AWS Account"
+                  placeholder={formData.provider === 'gcp' ? 'My GCP Project' : 'My AWS Account'}
                   required
                 />
               </div>
@@ -95,24 +97,24 @@ export default function Accounts() {
                 </label>
                 <select
                   value={formData.provider}
-                  onChange={(e) => setFormData({ ...formData, provider: e.target.value as 'aws' })}
+                  onChange={(e) => setFormData({ ...formData, provider: e.target.value as 'aws' | 'gcp' })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="aws">AWS</option>
-                  <option value="gcp" disabled>GCP (Coming Soon)</option>
+                  <option value="gcp">GCP</option>
                 </select>
               </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Account ID
+                {formData.provider === 'gcp' ? 'Project ID' : 'Account ID'}
               </label>
               <input
                 type="text"
                 value={formData.account_id}
                 onChange={(e) => setFormData({ ...formData, account_id: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="123456789012"
+                placeholder={formData.provider === 'gcp' ? 'my-gcp-project-id' : '123456789012'}
                 required
               />
             </div>
@@ -146,56 +148,214 @@ export default function Accounts() {
       ) : (
         <div className="space-y-4">
           {accounts.map((account) => (
-            <div key={account.id} className="card">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <div className="p-2 bg-orange-100 rounded-lg">
-                    <Cloud className="h-6 w-6 text-orange-600" />
-                  </div>
-                  <div className="ml-4">
-                    <h3 className="font-semibold text-gray-900">{account.name}</h3>
-                    <p className="text-sm text-gray-500">
-                      {account.provider.toUpperCase()} • {account.account_id}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className={`px-2 py-1 text-xs rounded-full ${
-                    account.is_active
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-gray-100 text-gray-800'
-                  }`}>
-                    {account.is_active ? 'Active' : 'Inactive'}
-                  </span>
-                  <button
-                    onClick={() => scanMutation.mutate(account.id)}
-                    disabled={scanMutation.isPending}
-                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
-                    title="Run Scan"
-                  >
-                    {scanMutation.isPending ? (
-                      <RefreshCw className="h-5 w-5 animate-spin" />
-                    ) : (
-                      <Play className="h-5 w-5" />
-                    )}
-                  </button>
-                  <button
-                    onClick={() => deleteMutation.mutate(account.id)}
-                    disabled={deleteMutation.isPending}
-                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                    title="Delete"
-                  >
-                    <Trash2 className="h-5 w-5" />
-                  </button>
-                </div>
-              </div>
-              {account.last_scan_at && (
-                <p className="mt-2 text-sm text-gray-500">
-                  Last scanned: {new Date(account.last_scan_at).toLocaleString()}
-                </p>
-              )}
-            </div>
+            <AccountCard
+              key={account.id}
+              account={account}
+              onConnect={() => setConnectingAccount(account)}
+              onScan={() => scanMutation.mutate(account.id)}
+              onDelete={() => deleteMutation.mutate(account.id)}
+              isScanPending={scanMutation.isPending}
+              isDeletePending={deleteMutation.isPending}
+            />
           ))}
+        </div>
+      )}
+
+      {/* Credential Connection Wizard */}
+      {connectingAccount && (
+        <CredentialWizard
+          cloudAccountId={connectingAccount.id}
+          provider={connectingAccount.provider}
+          accountName={connectingAccount.name}
+          onClose={() => setConnectingAccount(null)}
+          onSuccess={() => {
+            setConnectingAccount(null)
+            queryClient.invalidateQueries({ queryKey: ['accounts'] })
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+// Account Card Component with credential status
+function AccountCard({
+  account,
+  onConnect,
+  onScan,
+  onDelete,
+  isScanPending,
+  isDeletePending,
+}: {
+  account: CloudAccount
+  onConnect: () => void
+  onScan: () => void
+  onDelete: () => void
+  isScanPending: boolean
+  isDeletePending: boolean
+}) {
+  // Fetch credential status for this account
+  const { data: credential, isLoading: credentialLoading } = useQuery({
+    queryKey: ['credentials', account.id],
+    queryFn: () => credentialsApi.getCredential(account.id),
+    retry: false,
+    staleTime: 30000,
+  })
+
+  const getCredentialStatusBadge = () => {
+    if (credentialLoading) {
+      return (
+        <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-600">
+          Loading...
+        </span>
+      )
+    }
+
+    if (!credential) {
+      return (
+        <span className="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800 flex items-center">
+          <AlertTriangle className="w-3 h-3 mr-1" />
+          Not Connected
+        </span>
+      )
+    }
+
+    switch (credential.status) {
+      case 'valid':
+        return (
+          <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800 flex items-center">
+            <CheckCircle2 className="w-3 h-3 mr-1" />
+            Connected
+          </span>
+        )
+      case 'pending':
+        return (
+          <span className="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800 flex items-center">
+            <AlertTriangle className="w-3 h-3 mr-1" />
+            Pending Validation
+          </span>
+        )
+      case 'invalid':
+      case 'expired':
+      case 'permission_error':
+        return (
+          <span className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800 flex items-center">
+            <AlertTriangle className="w-3 h-3 mr-1" />
+            {credential.status === 'expired' ? 'Expired' : 'Connection Error'}
+          </span>
+        )
+      default:
+        return null
+    }
+  }
+
+  const providerColor = account.provider === 'gcp'
+    ? 'bg-blue-100 text-blue-600'
+    : 'bg-orange-100 text-orange-600'
+
+  return (
+    <div className="card">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center">
+          <div className={`p-2 rounded-lg ${providerColor}`}>
+            <Cloud className="h-6 w-6" />
+          </div>
+          <div className="ml-4">
+            <div className="flex items-center space-x-2">
+              <h3 className="font-semibold text-gray-900">{account.name}</h3>
+              {getCredentialStatusBadge()}
+            </div>
+            <p className="text-sm text-gray-500">
+              {account.provider.toUpperCase()} • {account.account_id}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center space-x-2">
+          <span className={`px-2 py-1 text-xs rounded-full ${
+            account.is_active
+              ? 'bg-green-100 text-green-800'
+              : 'bg-gray-100 text-gray-800'
+          }`}>
+            {account.is_active ? 'Active' : 'Inactive'}
+          </span>
+
+          {/* Connect/Configure Button */}
+          {!credential || credential.status !== 'valid' ? (
+            <button
+              onClick={onConnect}
+              className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg"
+              title="Connect Account"
+            >
+              <Link className="h-5 w-5" />
+            </button>
+          ) : (
+            <button
+              onClick={onConnect}
+              className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg"
+              title="Configure Connection"
+            >
+              <Settings className="h-5 w-5" />
+            </button>
+          )}
+
+          {/* Scan Button - only enabled if connected */}
+          <button
+            onClick={onScan}
+            disabled={isScanPending || !credential || credential.status !== 'valid'}
+            className={`p-2 rounded-lg ${
+              credential?.status === 'valid'
+                ? 'text-blue-600 hover:bg-blue-50'
+                : 'text-gray-400 cursor-not-allowed'
+            }`}
+            title={credential?.status === 'valid' ? 'Run Scan' : 'Connect account first'}
+          >
+            {isScanPending ? (
+              <RefreshCw className="h-5 w-5 animate-spin" />
+            ) : (
+              <Play className="h-5 w-5" />
+            )}
+          </button>
+
+          <button
+            onClick={onDelete}
+            disabled={isDeletePending}
+            className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+            title="Delete"
+          >
+            <Trash2 className="h-5 w-5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Additional info row */}
+      <div className="mt-3 flex items-center justify-between text-sm text-gray-500">
+        <div className="flex items-center space-x-4">
+          {account.last_scan_at && (
+            <span>Last scanned: {new Date(account.last_scan_at).toLocaleString()}</span>
+          )}
+          {credential?.credential_type && (
+            <span className="text-xs bg-gray-100 px-2 py-0.5 rounded">
+              {credential.credential_type === 'aws_iam_role' ? 'IAM Role' :
+               credential.credential_type === 'gcp_workload_identity' ? 'Workload Identity' :
+               'Service Account Key'}
+            </span>
+          )}
+        </div>
+        {credential?.last_validated_at && (
+          <span className="text-xs">
+            Validated: {new Date(credential.last_validated_at).toLocaleDateString()}
+          </span>
+        )}
+      </div>
+
+      {/* Warning for missing permissions */}
+      {credential?.missing_permissions && credential.missing_permissions.length > 0 && (
+        <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <p className="text-sm text-yellow-800">
+            <AlertTriangle className="w-4 h-4 inline mr-1" />
+            Missing {credential.missing_permissions.length} permission(s).
+            <button onClick={onConnect} className="underline ml-1">Update credentials</button>
+          </p>
         </div>
       )}
     </div>

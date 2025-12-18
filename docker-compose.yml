@@ -43,6 +43,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/dcv
       REDIS_URL: redis://redis:6379/0
       DEBUG: "true"
+      A13E_DEV_MODE: "true"  # Skip real AWS/GCP API calls for local testing
       AWS_SHARED_CREDENTIALS_FILE: /home/appuser/.aws/credentials
       AWS_CONFIG_FILE: /home/appuser/.aws/config
     ports:

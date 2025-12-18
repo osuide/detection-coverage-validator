@@ -57,6 +57,13 @@ class Settings(BaseSettings):
     stripe_price_id_subscriber: Optional[str] = None
     stripe_price_id_additional_account: Optional[str] = None
 
+    # Cloud Credentials Encryption
+    # Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+    credential_encryption_key: Optional[str] = None
+
+    # A13E Cloud Infrastructure (for cross-account access)
+    a13e_aws_account_id: str = "123456789012"  # A13E's AWS account for AssumeRole trust
+
     # Email (optional - for sending invites, password resets, etc.)
     smtp_host: Optional[str] = None
     smtp_port: int = 587

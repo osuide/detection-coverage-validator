@@ -81,11 +81,38 @@ class PricingResponse(BaseModel):
     """Pricing info response."""
     subscriber_monthly_cents: int
     subscriber_monthly_dollars: float
-    additional_account_monthly_cents: int
-    additional_account_monthly_dollars: float
+    enterprise_monthly_cents: int
+    enterprise_monthly_dollars: float
+    additional_account_subscriber_cents: int
+    additional_account_subscriber_dollars: float
     free_tier_accounts: int
     subscriber_tier_accounts: int
+    enterprise_included_accounts: int
     free_scan_retention_days: int
+    volume_tiers: list[dict]
+
+
+class PricingCalculatorRequest(BaseModel):
+    """Request to calculate pricing for a number of accounts."""
+    account_count: int = Field(ge=1, le=10000)
+    tier: str = Field(pattern="^(free_scan|subscriber|enterprise)$")
+
+
+class PricingCalculatorResponse(BaseModel):
+    """Calculated pricing response."""
+    tier: str
+    account_count: int
+    included_accounts: int
+    additional_accounts: int
+    base_cost_cents: int
+    base_cost_dollars: float
+    additional_cost_cents: int
+    additional_cost_dollars: float
+    total_cost_cents: int
+    total_cost_dollars: float
+    breakdown: list[dict]
+    recommended_tier: Optional[str] = None
+    savings_vs_current: Optional[int] = None
 
 
 # Endpoints
@@ -102,16 +129,102 @@ async def get_subscription(
 @router.get("/pricing", response_model=PricingResponse)
 async def get_pricing():
     """Get pricing info (public endpoint within authenticated context)."""
-    from app.models.billing import STRIPE_PRICES, TIER_LIMITS, AccountTier
+    from app.models.billing import STRIPE_PRICES, TIER_LIMITS, ACCOUNT_VOLUME_TIERS, AccountTier
+
+    # Format volume tiers for response
+    volume_tiers = []
+    prev_max = 0
+    for max_accounts, price_cents in ACCOUNT_VOLUME_TIERS:
+        if max_accounts == 0:
+            continue
+        tier_info = {
+            'min_accounts': prev_max + 1,
+            'max_accounts': max_accounts if max_accounts else 'unlimited',
+            'price_per_account_cents': price_cents,
+            'price_per_account_dollars': price_cents / 100 if price_cents else 0,
+        }
+        if max_accounts is None:
+            tier_info['label'] = f'{prev_max + 1}+ accounts'
+        elif price_cents == 0:
+            tier_info['label'] = f'1-{max_accounts} accounts (included)'
+        else:
+            tier_info['label'] = f'{prev_max + 1}-{max_accounts} accounts'
+        volume_tiers.append(tier_info)
+        prev_max = max_accounts if max_accounts else prev_max
 
     return PricingResponse(
         subscriber_monthly_cents=STRIPE_PRICES['subscriber_monthly'],
         subscriber_monthly_dollars=STRIPE_PRICES['subscriber_monthly'] / 100,
-        additional_account_monthly_cents=STRIPE_PRICES['additional_account_monthly'],
-        additional_account_monthly_dollars=STRIPE_PRICES['additional_account_monthly'] / 100,
-        free_tier_accounts=TIER_LIMITS[AccountTier.FREE_SCAN]['cloud_accounts'],
-        subscriber_tier_accounts=TIER_LIMITS[AccountTier.SUBSCRIBER]['cloud_accounts'],
+        enterprise_monthly_cents=STRIPE_PRICES['enterprise_monthly'],
+        enterprise_monthly_dollars=STRIPE_PRICES['enterprise_monthly'] / 100,
+        additional_account_subscriber_cents=STRIPE_PRICES['additional_account_subscriber'],
+        additional_account_subscriber_dollars=STRIPE_PRICES['additional_account_subscriber'] / 100,
+        free_tier_accounts=TIER_LIMITS[AccountTier.FREE_SCAN]['included_accounts'],
+        subscriber_tier_accounts=TIER_LIMITS[AccountTier.SUBSCRIBER]['included_accounts'],
+        enterprise_included_accounts=TIER_LIMITS[AccountTier.ENTERPRISE]['included_accounts'],
         free_scan_retention_days=TIER_LIMITS[AccountTier.FREE_SCAN]['results_retention_days'],
+        volume_tiers=volume_tiers,
+    )
+
+
+@router.post("/pricing/calculate", response_model=PricingCalculatorResponse)
+async def calculate_pricing(body: PricingCalculatorRequest):
+    """Calculate pricing for a given number of accounts and tier."""
+    from app.models.billing import AccountTier, calculate_account_cost
+
+    tier_map = {
+        'free_scan': AccountTier.FREE_SCAN,
+        'subscriber': AccountTier.SUBSCRIBER,
+        'enterprise': AccountTier.ENTERPRISE,
+    }
+    tier = tier_map.get(body.tier)
+    if not tier:
+        raise HTTPException(status_code=400, detail="Invalid tier")
+
+    try:
+        result = calculate_account_cost(body.account_count, tier)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    # Format breakdown for response
+    breakdown = [
+        {
+            'description': item[0],
+            'quantity': item[1],
+            'unit_price_cents': item[2],
+            'subtotal_cents': item[3],
+        }
+        for item in result['breakdown']
+    ]
+
+    # Calculate recommended tier if applicable
+    recommended_tier = None
+    savings = None
+
+    if body.account_count > 1 and tier == AccountTier.FREE_SCAN:
+        recommended_tier = 'subscriber'
+    elif body.account_count > 3 and tier == AccountTier.SUBSCRIBER:
+        # Compare subscriber vs enterprise cost
+        sub_cost = calculate_account_cost(body.account_count, AccountTier.SUBSCRIBER)
+        ent_cost = calculate_account_cost(body.account_count, AccountTier.ENTERPRISE)
+        if ent_cost['total_cost_cents'] < sub_cost['total_cost_cents']:
+            recommended_tier = 'enterprise'
+            savings = sub_cost['total_cost_cents'] - ent_cost['total_cost_cents']
+
+    return PricingCalculatorResponse(
+        tier=body.tier,
+        account_count=body.account_count,
+        included_accounts=result['included_accounts'],
+        additional_accounts=result['additional_accounts'],
+        base_cost_cents=result['base_cost_cents'],
+        base_cost_dollars=result['base_cost_cents'] / 100,
+        additional_cost_cents=result['additional_cost_cents'],
+        additional_cost_dollars=result['additional_cost_cents'] / 100,
+        total_cost_cents=result['total_cost_cents'],
+        total_cost_dollars=result['total_cost_cents'] / 100,
+        breakdown=breakdown,
+        recommended_tier=recommended_tier,
+        savings_vs_current=savings,
     )
 
 

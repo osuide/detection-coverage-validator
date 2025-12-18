@@ -7,6 +7,15 @@ const api = axios.create({
   },
 })
 
+// Add auth token interceptor
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('dcv_access_token')
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
+
 // Types
 export interface CloudAccount {
   id: string
@@ -140,6 +149,84 @@ export const coverageApi = {
   calculate: (accountId: string) => api.post<CoverageData>(`/coverage/${accountId}/calculate`).then(r => r.data),
   getTechniques: (accountId: string) =>
     api.get<{ techniques: TechniqueCoverage[] }>(`/coverage/${accountId}/techniques`).then(r => r.data.techniques),
+}
+
+// Credential types
+export interface SetupInstructions {
+  provider: string
+  external_id: string | null
+  iam_policy: object | null
+  custom_role: object | null
+  required_permissions: Array<{
+    action?: string
+    permission?: string
+    service: string
+    purpose: string
+  }>
+  not_requested: string[]
+  cloudformation_template_url: string | null
+  terraform_module_url: string | null
+  gcloud_commands: string[] | null
+  manual_steps: string[]
+}
+
+export interface CloudCredential {
+  id: string
+  cloud_account_id: string
+  credential_type: string
+  status: 'pending' | 'valid' | 'invalid' | 'expired' | 'permission_error'
+  status_message: string | null
+  last_validated_at: string | null
+  granted_permissions: string[] | null
+  missing_permissions: string[] | null
+  aws_role_arn: string | null
+  aws_external_id: string | null
+  gcp_project_id: string | null
+  gcp_service_account_email: string | null
+}
+
+export interface ValidationResult {
+  status: string
+  message: string
+  granted_permissions: string[]
+  missing_permissions: string[]
+}
+
+export const credentialsApi = {
+  getSetupInstructions: (accountId: string) =>
+    api.get<SetupInstructions>(`/credentials/setup/${accountId}`).then(r => r.data),
+
+  getCredential: (accountId: string) =>
+    api.get<CloudCredential>(`/credentials/${accountId}`).then(r => r.data),
+
+  createAWSCredential: (data: { cloud_account_id: string; role_arn: string }) =>
+    api.post<CloudCredential>('/credentials/aws', data).then(r => r.data),
+
+  createGCPCredential: (data: {
+    cloud_account_id: string
+    credential_type: 'gcp_workload_identity' | 'gcp_service_account_key'
+    service_account_email?: string
+    service_account_key?: string
+  }) => api.post<CloudCredential>('/credentials/gcp', data).then(r => r.data),
+
+  validate: (accountId: string) =>
+    api.post<ValidationResult>(`/credentials/validate/${accountId}`).then(r => r.data),
+
+  delete: (accountId: string) =>
+    api.delete(`/credentials/${accountId}`),
+
+  // Template downloads
+  getAWSCloudFormationTemplate: () =>
+    api.get<string>('/credentials/templates/aws/cloudformation', { responseType: 'text' }).then(r => r.data),
+
+  getAWSTerraformTemplate: () =>
+    api.get<string>('/credentials/templates/aws/terraform', { responseType: 'text' }).then(r => r.data),
+
+  getGCPTerraformTemplate: () =>
+    api.get<string>('/credentials/templates/gcp/terraform', { responseType: 'text' }).then(r => r.data),
+
+  getGCPSetupScript: () =>
+    api.get<string>('/credentials/templates/gcp/setup-script', { responseType: 'text' }).then(r => r.data),
 }
 
 export default api

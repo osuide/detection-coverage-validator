@@ -32,8 +32,10 @@ class SubscriptionStatus(str, enum.Enum):
 TIER_LIMITS = {
     AccountTier.FREE_SCAN: {
         'cloud_accounts': 1,
+        'included_accounts': 1,
         'scans_allowed': 1,
         'results_retention_days': 7,
+        'org_discovery': False,
         'features': {
             'coverage_heatmap': True,
             'gap_list': True,
@@ -42,12 +44,15 @@ TIER_LIMITS = {
             'scheduled_scans': False,
             'alerts': False,
             'api_access': False,
+            'org_scanning': False,
         }
     },
     AccountTier.SUBSCRIBER: {
-        'cloud_accounts': 3,
+        'cloud_accounts': 3,  # Base included accounts
+        'included_accounts': 3,
         'scans_allowed': -1,  # Unlimited
         'results_retention_days': -1,  # Forever
+        'org_discovery': True,
         'features': {
             'coverage_heatmap': True,
             'gap_list': True,
@@ -57,26 +62,157 @@ TIER_LIMITS = {
             'alerts': True,
             'api_access': True,
             'code_analysis': True,  # Opt-in feature requiring consent
+            'org_scanning': True,
         }
     },
     AccountTier.ENTERPRISE: {
-        'cloud_accounts': -1,  # Unlimited
+        'cloud_accounts': -1,  # Unlimited base (usage-based pricing applies)
+        'included_accounts': 10,  # 10 accounts included in base price
         'scans_allowed': -1,
         'results_retention_days': -1,
+        'org_discovery': True,
         'features': {
             'all': True,
             'sso': True,
             'sla': True,
             'code_analysis': True,  # Opt-in feature requiring consent
+            'org_scanning': True,
+            'unlimited_accounts': True,
         }
     }
 }
 
+# Tiered volume pricing for additional accounts (in cents per account per month)
+# Enterprise tier uses volume-based pricing for accounts beyond included amount
+ACCOUNT_VOLUME_TIERS = [
+    # (max_accounts, price_per_account_cents)
+    # Accounts 1-10: included in Enterprise base
+    (10, 0),        # First 10 included in base price
+    (50, 800),      # Accounts 11-50: $8/account/month
+    (200, 500),     # Accounts 51-200: $5/account/month
+    (1000, 300),    # Accounts 201-1000: $3/account/month
+    (None, 200),    # Accounts 1000+: $2/account/month
+]
+
 # Stripe pricing (in cents)
 STRIPE_PRICES = {
-    'subscriber_monthly': 2900,  # $29.00
-    'additional_account_monthly': 900,  # $9.00
+    'subscriber_monthly': 2900,      # $29.00/month base
+    'enterprise_monthly': 49900,     # $499.00/month base (includes 10 accounts)
+    'additional_account_subscriber': 900,  # $9.00/account for Subscriber tier overage
 }
+
+
+def calculate_account_cost(account_count: int, tier: AccountTier) -> dict:
+    """
+    Calculate monthly cost for a given number of accounts.
+
+    Returns dict with:
+        - base_cost_cents: Base subscription cost
+        - additional_accounts: Number of accounts beyond included
+        - additional_cost_cents: Cost for additional accounts
+        - total_cost_cents: Total monthly cost
+        - breakdown: List of (tier_name, count, unit_price, subtotal)
+    """
+    if tier == AccountTier.FREE_SCAN:
+        if account_count > 1:
+            raise ValueError("Free tier only allows 1 account. Upgrade to Subscriber.")
+        return {
+            'base_cost_cents': 0,
+            'included_accounts': 1,
+            'additional_accounts': 0,
+            'additional_cost_cents': 0,
+            'total_cost_cents': 0,
+            'breakdown': [('Free Tier', 1, 0, 0)],
+        }
+
+    elif tier == AccountTier.SUBSCRIBER:
+        included = TIER_LIMITS[AccountTier.SUBSCRIBER]['included_accounts']
+        base_cost = STRIPE_PRICES['subscriber_monthly']
+
+        if account_count <= included:
+            return {
+                'base_cost_cents': base_cost,
+                'included_accounts': included,
+                'additional_accounts': 0,
+                'additional_cost_cents': 0,
+                'total_cost_cents': base_cost,
+                'breakdown': [
+                    ('Subscriber Base (3 accounts)', 1, base_cost, base_cost),
+                ],
+            }
+        else:
+            additional = account_count - included
+            additional_cost = additional * STRIPE_PRICES['additional_account_subscriber']
+            return {
+                'base_cost_cents': base_cost,
+                'included_accounts': included,
+                'additional_accounts': additional,
+                'additional_cost_cents': additional_cost,
+                'total_cost_cents': base_cost + additional_cost,
+                'breakdown': [
+                    ('Subscriber Base (3 accounts)', 1, base_cost, base_cost),
+                    (f'Additional Accounts ({additional})', additional,
+                     STRIPE_PRICES['additional_account_subscriber'], additional_cost),
+                ],
+            }
+
+    elif tier == AccountTier.ENTERPRISE:
+        base_cost = STRIPE_PRICES['enterprise_monthly']
+        included = TIER_LIMITS[AccountTier.ENTERPRISE]['included_accounts']
+
+        if account_count <= included:
+            return {
+                'base_cost_cents': base_cost,
+                'included_accounts': included,
+                'additional_accounts': 0,
+                'additional_cost_cents': 0,
+                'total_cost_cents': base_cost,
+                'breakdown': [
+                    ('Enterprise Base (10 accounts)', 1, base_cost, base_cost),
+                ],
+            }
+
+        # Calculate volume-tiered pricing for accounts beyond included
+        breakdown = [('Enterprise Base (10 accounts)', 1, base_cost, base_cost)]
+        remaining = account_count - included
+        additional_cost = 0
+        current_count = included
+
+        for max_accounts, price_cents in ACCOUNT_VOLUME_TIERS:
+            if max_accounts == 0 or remaining <= 0:
+                continue
+            if max_accounts is None:
+                # Unlimited tier - all remaining accounts
+                tier_count = remaining
+                tier_name = f'Accounts {current_count + 1}+ @ $0.02/ea'
+            else:
+                tier_count = min(remaining, max_accounts - current_count)
+                if tier_count <= 0:
+                    current_count = max_accounts
+                    continue
+                tier_name = f'Accounts {current_count + 1}-{current_count + tier_count} @ ${price_cents/100:.2f}/ea'
+
+            if price_cents > 0 and tier_count > 0:
+                tier_cost = tier_count * price_cents
+                additional_cost += tier_cost
+                breakdown.append((tier_name, tier_count, price_cents, tier_cost))
+
+            remaining -= tier_count
+            current_count += tier_count
+
+            if remaining <= 0:
+                break
+
+        return {
+            'base_cost_cents': base_cost,
+            'included_accounts': included,
+            'additional_accounts': account_count - included,
+            'additional_cost_cents': additional_cost,
+            'total_cost_cents': base_cost + additional_cost,
+            'breakdown': breakdown,
+        }
+
+    raise ValueError(f"Unknown tier: {tier}")
 
 
 class Subscription(Base):

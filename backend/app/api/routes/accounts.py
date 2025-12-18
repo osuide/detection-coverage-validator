@@ -73,14 +73,17 @@ async def create_account(
 
     Requires admin or owner role.
     """
-    # Check for duplicate account_id
+    # Check for duplicate account_id within the same organization
     existing = await db.execute(
-        select(CloudAccount).where(CloudAccount.account_id == account_in.account_id)
+        select(CloudAccount).where(
+            CloudAccount.account_id == account_in.account_id,
+            CloudAccount.organization_id == auth.organization_id,
+        )
     )
     if existing.scalar_one_or_none():
         raise HTTPException(
             status_code=400,
-            detail=f"Account with ID {account_in.account_id} already exists",
+            detail=f"Account with ID {account_in.account_id} already exists in your organization",
         )
 
     account = CloudAccount(
