@@ -22,7 +22,7 @@ import {
   X
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
-import A13ELogo, { A13EIcon } from '../components/A13ELogo'
+import A13ELogo from '../components/A13ELogo'
 
 export default function Landing() {
   const { isAuthenticated } = useAuth()

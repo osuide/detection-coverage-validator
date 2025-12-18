@@ -5,7 +5,7 @@ from typing import Optional, List
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy import select, and_, desc
 from sqlalchemy.ext.asyncio import AsyncSession

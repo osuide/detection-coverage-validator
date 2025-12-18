@@ -15,8 +15,6 @@ from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.security import AuthContext, get_auth_context, require_role
 from app.models.user import (
-    User,
-    Organization,
     OrganizationMember,
     UserRole,
     MembershipStatus,

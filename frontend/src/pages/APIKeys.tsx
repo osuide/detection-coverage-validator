@@ -5,11 +5,7 @@ import {
   Copy,
   Check,
   AlertTriangle,
-  Clock,
-  Globe,
   Trash2,
-  Eye,
-  EyeOff,
   X,
 } from 'lucide-react'
 import { clsx } from 'clsx'

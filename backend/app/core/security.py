@@ -1,6 +1,6 @@
 """Security middleware and dependencies for RBAC."""
 
-from typing import Optional, List, Callable
+from typing import Optional, Callable
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, Request, status

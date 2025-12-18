@@ -54,13 +54,14 @@ export default function Dashboard() {
 
   const firstAccount = accounts?.[0]
 
-  const { data: coverage, isLoading: coverageLoading } = useQuery({
+  const { data: coverage } = useQuery({
     queryKey: ['coverage', firstAccount?.id],
     queryFn: () => coverageApi.get(firstAccount!.id),
     enabled: !!firstAccount,
   })
 
-  const { data: scans } = useQuery({
+  // Scans query available for future use (e.g., showing latest scan info)
+  useQuery({
     queryKey: ['scans'],
     queryFn: () => scansApi.list(),
   })
@@ -70,8 +71,6 @@ export default function Dashboard() {
     queryFn: () => detectionsApi.list({ cloud_account_id: firstAccount?.id, limit: 500 }),
     enabled: !!firstAccount,
   })
-
-  const latestScan = scans?.[0]
 
   // Calculate detection source counts
   const sourceCounts = (detectionsData?.items ?? []).reduce((acc, d) => {

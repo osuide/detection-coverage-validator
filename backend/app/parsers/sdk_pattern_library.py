@@ -5,7 +5,6 @@ detection coverage assessment from code analysis.
 """
 
 from dataclasses import dataclass, field
-from typing import Optional
 
 
 @dataclass

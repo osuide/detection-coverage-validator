@@ -8,7 +8,7 @@ from uuid import UUID
 
 import structlog
 from reportlab.lib import colors
-from reportlab.lib.pagesizes import letter, A4
+from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.platypus import (
@@ -26,7 +26,7 @@ from app.models.cloud_account import CloudAccount
 from app.models.coverage import CoverageSnapshot
 from app.models.detection import Detection, DetectionStatus
 from app.models.mapping import DetectionMapping
-from app.models.mitre import Tactic, Technique
+from app.models.mitre import Technique
 from app.core.config import get_settings
 
 logger = structlog.get_logger()

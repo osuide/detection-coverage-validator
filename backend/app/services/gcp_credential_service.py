@@ -9,12 +9,9 @@ Security Best Practices:
 """
 
 import json
-from datetime import datetime, timezone
 from typing import Optional
-from uuid import UUID
 
 from google.auth import impersonated_credentials
-from google.auth.transport.requests import Request
 from google.oauth2 import service_account
 from google.cloud import logging_v2
 from google.cloud import monitoring_v3
@@ -39,7 +36,6 @@ from app.models.cloud_credential import (
     CloudCredential,
     CredentialStatus,
     CredentialType,
-    GCP_REQUIRED_PERMISSIONS,
 )
 
 logger = structlog.get_logger()
@@ -484,31 +480,31 @@ class GCPCredentialService:
         ]
 
         commands = [
-            f"# Set project",
+            "# Set project",
             f"gcloud config set project {project_id}",
-            f"",
-            f"# Enable required APIs",
-            f"gcloud services enable logging.googleapis.com monitoring.googleapis.com securitycenter.googleapis.com eventarc.googleapis.com cloudfunctions.googleapis.com run.googleapis.com iam.googleapis.com chronicle.googleapis.com",
-            f"",
-            f"# Create custom role",
+            "",
+            "# Enable required APIs",
+            "gcloud services enable logging.googleapis.com monitoring.googleapis.com securitycenter.googleapis.com eventarc.googleapis.com cloudfunctions.googleapis.com run.googleapis.com iam.googleapis.com chronicle.googleapis.com",
+            "",
+            "# Create custom role",
             f"gcloud iam roles create a13e_detection_scanner --project={project_id} \\",
-            f"  --title='A13E Detection Scanner' \\",
-            f"  --description='Minimum permissions for A13E to scan security detection configurations' \\",
+            "  --title='A13E Detection Scanner' \\",
+            "  --description='Minimum permissions for A13E to scan security detection configurations' \\",
             f"  --permissions={','.join(permissions)}",
-            f"",
-            f"# Create service account",
-            f"gcloud iam service-accounts create a13e-scanner \\",
-            f"  --display-name='A13E Detection Scanner' \\",
-            f"  --description='Service account for A13E Detection Coverage Validator'",
-            f"",
-            f"# Bind role to service account",
+            "",
+            "# Create service account",
+            "gcloud iam service-accounts create a13e-scanner \\",
+            "  --display-name='A13E Detection Scanner' \\",
+            "  --description='Service account for A13E Detection Coverage Validator'",
+            "",
+            "# Bind role to service account",
             f"gcloud projects add-iam-policy-binding {project_id} \\",
             f"  --member='serviceAccount:{sa_email}' \\",
             f"  --role='projects/{project_id}/roles/a13e_detection_scanner'",
-            f"",
-            f"# NOTE: If using Google SecOps (Chronicle SIEM), you may also need",
-            f"# to grant the Chronicle API Editor or Chronicle API Admin role",
-            f"# depending on your Chronicle instance configuration.",
+            "",
+            "# NOTE: If using Google SecOps (Chronicle SIEM), you may also need",
+            "# to grant the Chronicle API Editor or Chronicle API Admin role",
+            "# depending on your Chronicle instance configuration.",
         ]
 
         return commands

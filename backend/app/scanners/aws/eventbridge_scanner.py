@@ -3,7 +3,6 @@
 import json
 from typing import Any, Optional
 
-import boto3
 from botocore.exceptions import ClientError
 
 from app.models.detection import DetectionType, DetectionStatus

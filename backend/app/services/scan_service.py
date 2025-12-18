@@ -9,8 +9,8 @@ import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from app.models.cloud_account import CloudAccount, CloudProvider
-from app.models.detection import Detection, DetectionType, DetectionStatus
+from app.models.cloud_account import CloudAccount
+from app.models.detection import Detection, DetectionStatus
 from app.models.mapping import DetectionMapping, MappingSource
 from app.models.scan import Scan, ScanStatus
 from app.scanners.aws.cloudwatch_scanner import CloudWatchLogsInsightsScanner

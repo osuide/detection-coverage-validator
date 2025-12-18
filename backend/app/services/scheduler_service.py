@@ -9,10 +9,10 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.jobstores.memory import MemoryJobStore
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 
 from app.core.config import get_settings
-from app.models.schedule import ScanSchedule, ScheduleFrequency
+from app.models.schedule import ScanSchedule
 from app.models.scan import Scan, ScanStatus
 from app.services.scan_service import ScanService
 

@@ -13,8 +13,12 @@ from app.core.database import Base, get_db
 from app.core.config import Settings
 
 
-# Test settings
-TEST_DATABASE_URL = "postgresql+asyncpg://postgres:postgres@localhost:5432/dcv_test"
+# Test settings - use postgres hostname when running in Docker, localhost otherwise
+import os
+TEST_DATABASE_URL = os.environ.get(
+    "TEST_DATABASE_URL",
+    "postgresql+asyncpg://postgres:postgres@postgres:5432/dcv_test"
+)
 
 
 @pytest.fixture(scope="session")

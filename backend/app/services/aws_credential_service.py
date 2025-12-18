@@ -8,11 +8,7 @@ Security Best Practices:
 5. Validates permissions before accepting connection
 """
 
-import json
 import os
-from datetime import datetime, timezone
-from typing import Optional
-from uuid import UUID
 
 import boto3
 from botocore.exceptions import ClientError, NoCredentialsError
@@ -22,7 +18,6 @@ from app.models.cloud_credential import (
     CloudCredential,
     CredentialStatus,
     CredentialType,
-    AWS_REQUIRED_PERMISSIONS,
 )
 
 logger = structlog.get_logger()
@@ -108,7 +103,7 @@ class AWSCredentialService:
                 )
             elif error_code == 'MalformedPolicyDocument':
                 raise ValueError(
-                    f"The role's trust policy is malformed. Please re-create the role using our CloudFormation template."
+                    "The role's trust policy is malformed. Please re-create the role using our CloudFormation template."
                 )
             else:
                 raise ValueError(f"Failed to assume role: {error_message}")
@@ -407,7 +402,7 @@ class AWSCredentialService:
 
         params = [
             f"templateURL={template_url}",
-            f"stackName=A13E-DetectionScanner",
+            "stackName=A13E-DetectionScanner",
             f"param_ExternalId={external_id}",
             f"param_A13ETrustAccountId={self.A13E_AWS_ACCOUNT_ID}",
         ]

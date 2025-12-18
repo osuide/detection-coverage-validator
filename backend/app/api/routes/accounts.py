@@ -5,8 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_
-from sqlalchemy.orm import selectinload
+from sqlalchemy import select, and_
 
 from app.core.database import get_db
 from app.core.security import (
@@ -14,7 +13,6 @@ from app.core.security import (
     get_auth_context,
     get_auth_context_optional,
     require_role,
-    require_scope,
 )
 from app.models.cloud_account import CloudAccount
 from app.models.user import UserRole

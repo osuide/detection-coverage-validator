@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Optional
 import enum
 
-from sqlalchemy import String, DateTime, Enum as SQLEnum, Text, ForeignKey, Integer
+from sqlalchemy import String, DateTime, Enum as SQLEnum, Text, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 

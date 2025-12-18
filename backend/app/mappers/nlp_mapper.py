@@ -6,10 +6,9 @@ Uses sentence transformers (all-MiniLM-L6-v2) for lightweight, CPU-friendly embe
 
 import hashlib
 import json
-import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 import numpy as np
 import structlog
@@ -56,14 +55,14 @@ class MITREEmbeddingsCache:
     def cache_file(self) -> Path:
         """Path to the embeddings cache file."""
         cache_key = f"{self.mitre_version}_{self.model_name}"
-        cache_hash = hashlib.md5(cache_key.encode()).hexdigest()[:8]
+        cache_hash = hashlib.sha256(cache_key.encode()).hexdigest()[:8]
         return self.cache_dir / f"mitre_embeddings_{cache_hash}.npz"
 
     @property
     def metadata_file(self) -> Path:
         """Path to the technique metadata file."""
         cache_key = f"{self.mitre_version}_{self.model_name}"
-        cache_hash = hashlib.md5(cache_key.encode()).hexdigest()[:8]
+        cache_hash = hashlib.sha256(cache_key.encode()).hexdigest()[:8]
         return self.cache_dir / f"mitre_metadata_{cache_hash}.json"
 
     def load_or_compute(self, techniques: list[dict]) -> tuple[dict[str, np.ndarray], dict[str, dict]]:

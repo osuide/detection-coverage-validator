@@ -4,7 +4,6 @@ import {
   Clock,
   Key,
   Globe,
-  Lock,
   Plus,
   Trash2,
   CheckCircle,

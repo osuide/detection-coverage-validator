@@ -1,6 +1,6 @@
 """Staleness validator for detection health monitoring."""
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any, Optional
 
 from app.validators.base_validator import (

@@ -178,7 +178,7 @@ class AuthService:
 
         # Check if account is locked
         if user.locked_until and user.locked_until > datetime.now(timezone.utc):
-            return None, f"Account locked. Try again later."
+            return None, "Account locked. Try again later."
 
         # Check if account is active
         if not user.is_active:

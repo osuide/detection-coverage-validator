@@ -5,7 +5,6 @@ Based on MITRE ATT&CK v14.1 Cloud Matrix.
 """
 
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { X, ExternalLink, Shield, MapPin, Clock, AlertCircle, Activity, Zap, CheckCircle, Lock, AlertTriangle, Database } from 'lucide-react'
+import { X, ExternalLink, Shield, MapPin, Clock, AlertCircle, Activity, Zap, CheckCircle, Lock, Database } from 'lucide-react'
 import { detectionsApi, Detection } from '../services/api'
 
 interface DetectionDetailModalProps {

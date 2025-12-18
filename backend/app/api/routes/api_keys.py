@@ -16,7 +16,6 @@ from app.core.database import get_db
 from app.core.security import AuthContext, get_auth_context, require_role
 from app.models.user import (
     APIKey,
-    User,
     UserRole,
     AuditLog,
     AuditLogAction,

@@ -11,7 +11,6 @@ from typing import Any, Optional
 
 import structlog
 
-from app.models.detection import DetectionType
 from app.models.detection_mapping import MappingSource
 from app.scanners.base import RawDetection
 

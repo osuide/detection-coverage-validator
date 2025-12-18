@@ -2,7 +2,7 @@
 
 import re
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Optional
 import structlog
 
 from app.mappers.indicator_library import (

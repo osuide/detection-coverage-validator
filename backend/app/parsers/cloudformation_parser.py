@@ -16,7 +16,7 @@ IMPORTANT: This parser only runs when:
 import json
 import re
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Optional
 
 import structlog
 import yaml

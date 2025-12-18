@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from cryptography.fernet import Fernet
-from sqlalchemy import Boolean, DateTime, Enum as SQLEnum, ForeignKey, String, Text
+from sqlalchemy import DateTime, Enum as SQLEnum, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 

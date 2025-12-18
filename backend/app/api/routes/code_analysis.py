@@ -19,7 +19,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.security import AuthContext, get_auth_context
-from app.models.user import User, Organization
 from app.models.cloud_account import CloudAccount
 from app.models.code_analysis import (
     CodeAnalysisConsent,

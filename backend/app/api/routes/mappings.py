@@ -10,7 +10,6 @@ from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
 from app.models.mapping import DetectionMapping, MappingSource
-from app.models.detection import Detection
 from app.models.mitre import Technique, Tactic
 from app.schemas.mapping import (
     MappingResponse,

@@ -1,7 +1,6 @@
 """Authentication API endpoints."""
 
 import re
-from datetime import datetime, timedelta, timezone
 from typing import Optional
 from uuid import UUID
 
@@ -13,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.security import AuthContext, get_auth_context
-from app.models.user import User, Organization, OrganizationMember, UserRole, MembershipStatus
+from app.models.user import User, Organization, MembershipStatus
 from app.schemas.auth import (
     LoginRequest,
     LoginResponse,

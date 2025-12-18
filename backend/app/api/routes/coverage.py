@@ -1,6 +1,5 @@
 """Coverage endpoints."""
 
-from typing import Optional
 from uuid import UUID
 from datetime import datetime, timedelta
 

@@ -1,7 +1,6 @@
 """Coverage calculator following 06-ANALYSIS-AGENT.md design."""
 
 from dataclasses import dataclass
-from typing import Optional
 from uuid import UUID
 import structlog
 
@@ -11,7 +10,7 @@ from sqlalchemy.orm import selectinload
 
 from app.models.detection import Detection, DetectionStatus
 from app.models.mapping import DetectionMapping
-from app.models.mitre import Technique, Tactic
+from app.models.mitre import Technique
 from app.core.config import get_settings
 
 logger = structlog.get_logger()

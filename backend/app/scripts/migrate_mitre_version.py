@@ -390,30 +390,30 @@ class MITREMigration:
     def generate_report_markdown(self, report: MigrationReport) -> str:
         """Generate a markdown report of the migration."""
         lines = [
-            f"# MITRE ATT&CK Migration Report",
-            f"",
+            "# MITRE ATT&CK Migration Report",
+            "",
             f"**Migration Date:** {report.migration_date.strftime('%Y-%m-%d %H:%M:%S')}",
             f"**From Version:** {report.old_version}",
             f"**To Version:** {report.new_version}",
-            f"",
-            f"## Summary",
-            f"",
-            f"| Change Type | Count |",
-            f"|-------------|-------|",
+            "",
+            "## Summary",
+            "",
+            "| Change Type | Count |",
+            "|-------------|-------|",
             f"| New Techniques | {len(report.added_techniques)} |",
             f"| Deprecated Techniques | {len(report.deprecated_techniques)} |",
             f"| Renamed Techniques | {len(report.renamed_techniques)} |",
             f"| Updated Techniques | {len(report.updated_techniques)} |",
             f"| Affected Mappings | {len(report.affected_mappings)} |",
-            f"",
+            "",
         ]
 
         if report.added_techniques:
             lines.extend([
-                f"## New Techniques",
-                f"",
-                f"These techniques need detection coverage assessment:",
-                f"",
+                "## New Techniques",
+                "",
+                "These techniques need detection coverage assessment:",
+                "",
             ])
             for t in report.added_techniques:
                 lines.append(f"- **{t.technique_id}**: {t.new_name} ({t.new_tactic})")
@@ -421,10 +421,10 @@ class MITREMigration:
 
         if report.deprecated_techniques:
             lines.extend([
-                f"## Deprecated Techniques",
-                f"",
-                f"Existing mappings to these techniques should be reviewed:",
-                f"",
+                "## Deprecated Techniques",
+                "",
+                "Existing mappings to these techniques should be reviewed:",
+                "",
             ])
             for t in report.deprecated_techniques:
                 lines.append(f"- **{t.technique_id}**: {t.old_name}")
@@ -432,8 +432,8 @@ class MITREMigration:
 
         if report.renamed_techniques:
             lines.extend([
-                f"## Renamed/Reorganized Techniques",
-                f"",
+                "## Renamed/Reorganized Techniques",
+                "",
             ])
             for t in report.renamed_techniques:
                 lines.append(f"- **{t.technique_id}**: {t.old_name} -> {t.new_name}")
@@ -441,10 +441,10 @@ class MITREMigration:
 
         if report.affected_mappings:
             lines.extend([
-                f"## Affected Mappings",
-                f"",
-                f"The following detection mappings reference deprecated techniques:",
-                f"",
+                "## Affected Mappings",
+                "",
+                "The following detection mappings reference deprecated techniques:",
+                "",
             ])
             for m in report.affected_mappings[:20]:  # Limit to 20
                 lines.append(f"- Detection `{m['detection_id']}` -> `{m['technique_id']}`")
@@ -453,12 +453,12 @@ class MITREMigration:
             lines.append("")
 
         lines.extend([
-            f"## Next Steps",
-            f"",
-            f"1. Review new techniques for applicable detections",
-            f"2. Update mappings referencing deprecated techniques",
-            f"3. Recalculate coverage for affected accounts",
-            f"4. Generate new gap analysis",
+            "## Next Steps",
+            "",
+            "1. Review new techniques for applicable detections",
+            "2. Update mappings referencing deprecated techniques",
+            "3. Recalculate coverage for affected accounts",
+            "4. Generate new gap analysis",
         ])
 
         return "\n".join(lines)

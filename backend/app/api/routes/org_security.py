@@ -14,7 +14,7 @@ import structlog
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.security import AuthContext, require_role
-from app.models.user import User, Organization, AuditLog, AuditLogAction, UserRole
+from app.models.user import AuditLog, AuditLogAction, UserRole
 from app.models.security import OrganizationSecuritySettings, VerifiedDomain
 
 logger = structlog.get_logger()
@@ -329,7 +329,7 @@ async def verify_domain(
         return {
             "verified": False,
             "verification_method": "dns_cname",
-            "instructions": f"Add a CNAME record pointing to: dcv-verify.detectioncoverage.io",
+            "instructions": "Add a CNAME record pointing to: dcv-verify.detectioncoverage.io",
             "record_type": "CNAME",
             "record_name": f"{domain.verification_token}.{domain.domain}",
             "record_value": "dcv-verify.detectioncoverage.io",

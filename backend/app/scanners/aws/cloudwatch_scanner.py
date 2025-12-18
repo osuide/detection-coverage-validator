@@ -1,9 +1,7 @@
 """CloudWatch Logs Insights query scanner following 04-PARSER-AGENT.md design."""
 
-import asyncio
 from typing import Any, Optional
 
-import boto3
 from botocore.exceptions import ClientError
 
 from app.models.detection import DetectionType

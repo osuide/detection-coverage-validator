@@ -11,13 +11,11 @@ IMPORTANT: This parser only runs when:
 The parser NEVER executes user code - it only performs static analysis.
 """
 
-import ast
-import base64
 import io
 import re
 import zipfile
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Optional
 
 import structlog
 from botocore.exceptions import ClientError
@@ -483,7 +481,7 @@ class LambdaCodeParser:
         # v2: client.methodName(...)
         for service in services:
             method_pattern = re.compile(
-                rf"(\w+)\.(\w+)\s*\(",
+                r"(\w+)\.(\w+)\s*\(",
                 re.IGNORECASE
             )
 

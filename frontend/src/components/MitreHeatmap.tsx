@@ -57,11 +57,8 @@ export default function MitreHeatmap({ techniques, onTechniqueClick }: MitreHeat
     techniquesByTactic[tactic.id] = techniques.filter(t => t.tactic_id === tactic.id)
   })
 
-  // Find max techniques per column for grid layout
-  const maxTechniquesPerTactic = Math.max(
-    ...Object.values(techniquesByTactic).map(t => t.length),
-    1
-  )
+  // Note: maxTechniquesPerTactic can be used for grid layout if needed
+  // Currently using flexible layout that adapts to content
 
   const handleCellClick = (technique: TechniqueCell) => {
     setSelectedTechnique(technique)

@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from typing import Optional, List
 
 from sqlalchemy import String, DateTime, Boolean, Text, Integer, ForeignKey, Index, Enum as SQLEnum
-from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base

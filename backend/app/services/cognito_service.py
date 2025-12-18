@@ -7,7 +7,6 @@ import secrets
 from typing import Optional, Dict, Any, Tuple
 from datetime import datetime, timezone
 from jose import jwt, jwk, JWTError
-from jose.utils import base64url_decode
 import structlog
 
 from app.core.config import get_settings

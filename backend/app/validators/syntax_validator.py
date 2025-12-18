@@ -1,7 +1,6 @@
 """Syntax validator for detection queries and patterns."""
 
 import json
-import re
 from typing import Any, Optional
 
 from app.models.detection import DetectionType
