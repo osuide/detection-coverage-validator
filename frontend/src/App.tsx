@@ -11,6 +11,7 @@ import Login from './pages/Login'
 import Signup from './pages/Signup'
 import TeamManagement from './pages/TeamManagement'
 import APIKeys from './pages/APIKeys'
+import AuditLogs from './pages/AuditLogs'
 
 function App() {
   return (
@@ -35,6 +36,7 @@ function App() {
                   <Route path="/gaps" element={<Gaps />} />
                   <Route path="/settings/team" element={<TeamManagement />} />
                   <Route path="/settings/api-keys" element={<APIKeys />} />
+                  <Route path="/settings/audit-logs" element={<AuditLogs />} />
                 </Routes>
               </Layout>
             </ProtectedRoute>

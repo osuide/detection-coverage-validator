@@ -13,6 +13,7 @@ import {
   ChevronDown,
   Users,
   Key,
+  FileText,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { useAuth } from '../contexts/AuthContext'
@@ -105,6 +106,18 @@ export default function Layout({ children }: LayoutProps) {
           >
             <Key className="h-5 w-5 mr-3" />
             API Keys
+          </Link>
+          <Link
+            to="/settings/audit-logs"
+            className={clsx(
+              'flex items-center px-6 py-3 text-sm font-medium transition-colors',
+              location.pathname === '/settings/audit-logs'
+                ? 'bg-slate-800 text-white'
+                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+            )}
+          >
+            <FileText className="h-5 w-5 mr-3" />
+            Audit Logs
           </Link>
           <Link
             to="/settings"
