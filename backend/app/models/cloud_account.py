@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import String, DateTime, Enum as SQLEnum, Text
+from sqlalchemy import String, DateTime, Enum as SQLEnum, Text, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 import enum
@@ -26,6 +26,9 @@ class CloudAccount(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    organization_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=True, index=True
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     provider: Mapped[CloudProvider] = mapped_column(
@@ -50,6 +53,7 @@ class CloudAccount(Base):
     )
 
     # Relationships
+    organization = relationship("Organization", back_populates="cloud_accounts")
     detections = relationship("Detection", back_populates="cloud_account")
     scans = relationship("Scan", back_populates="cloud_account")
     schedules = relationship("ScanSchedule", back_populates="cloud_account")

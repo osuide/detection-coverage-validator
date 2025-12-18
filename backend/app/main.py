@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import structlog
 
 from app.core.config import get_settings
-from app.api.routes import accounts, scans, detections, coverage, mappings, health, schedules, alerts, reports
+from app.api.routes import accounts, scans, detections, coverage, mappings, health, schedules, alerts, reports, auth, teams
 from app.services.scheduler_service import scheduler_service
 
 settings = get_settings()
@@ -50,6 +50,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(health.router, tags=["Health"])
+app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
 app.include_router(accounts.router, prefix="/api/v1/accounts", tags=["Cloud Accounts"])
 app.include_router(scans.router, prefix="/api/v1/scans", tags=["Scans"])
 app.include_router(detections.router, prefix="/api/v1/detections", tags=["Detections"])
@@ -58,6 +59,7 @@ app.include_router(mappings.router, prefix="/api/v1/mappings", tags=["Mappings"]
 app.include_router(schedules.router, prefix="/api/v1/schedules", tags=["Schedules"])
 app.include_router(alerts.router, prefix="/api/v1/alerts", tags=["Alerts"])
 app.include_router(reports.router, prefix="/api/v1/reports", tags=["Reports"])
+app.include_router(teams.router, prefix="/api/v1/teams", tags=["Team Management"])
 
 
 @app.get("/")

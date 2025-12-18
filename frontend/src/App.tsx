@@ -1,23 +1,45 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
+import { AuthProvider } from './contexts/AuthContext'
 import Layout from './components/Layout'
+import ProtectedRoute from './components/ProtectedRoute'
 import Dashboard from './pages/Dashboard'
 import Accounts from './pages/Accounts'
 import Detections from './pages/Detections'
 import Coverage from './pages/Coverage'
 import Gaps from './pages/Gaps'
+import Login from './pages/Login'
+import Signup from './pages/Signup'
+import TeamManagement from './pages/TeamManagement'
 
 function App() {
   return (
-    <Layout>
+    <AuthProvider>
       <Routes>
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/accounts" element={<Accounts />} />
-        <Route path="/detections" element={<Detections />} />
-        <Route path="/coverage" element={<Coverage />} />
-        <Route path="/gaps" element={<Gaps />} />
+        {/* Public routes */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+
+        {/* Protected routes */}
+        <Route
+          path="/*"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <Routes>
+                  <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/accounts" element={<Accounts />} />
+                  <Route path="/detections" element={<Detections />} />
+                  <Route path="/coverage" element={<Coverage />} />
+                  <Route path="/gaps" element={<Gaps />} />
+                  <Route path="/settings/team" element={<TeamManagement />} />
+                </Routes>
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
       </Routes>
-    </Layout>
+    </AuthProvider>
   )
 }
 

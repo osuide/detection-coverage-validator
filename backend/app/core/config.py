@@ -28,9 +28,29 @@ class Settings(BaseSettings):
     aws_access_key_id: Optional[str] = None
     aws_secret_access_key: Optional[str] = None
 
-    # Security
+    # Security & Auth
     secret_key: str = "change-me-in-production"
     access_token_expire_minutes: int = 30
+    refresh_token_expire_days: int = 7
+    password_reset_expire_hours: int = 24
+    email_verification_expire_hours: int = 48
+    invite_expire_days: int = 7
+    max_login_attempts: int = 5
+    lockout_duration_minutes: int = 30
+
+    # CORS
+    cors_origins: str = "http://localhost:3000,http://localhost:3001"
+
+    # OAuth (optional)
+    google_client_id: Optional[str] = None
+    google_client_secret: Optional[str] = None
+
+    # Email (optional - for sending invites, password resets, etc.)
+    smtp_host: Optional[str] = None
+    smtp_port: int = 587
+    smtp_username: Optional[str] = None
+    smtp_password: Optional[str] = None
+    smtp_from_email: str = "noreply@detectioncoverage.io"
 
     # Coverage Thresholds
     confidence_threshold_covered: float = 0.6
