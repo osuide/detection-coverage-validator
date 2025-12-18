@@ -52,6 +52,8 @@ class CloudAccount(Base):
     # Relationships
     detections = relationship("Detection", back_populates="cloud_account")
     scans = relationship("Scan", back_populates="cloud_account")
+    schedules = relationship("ScanSchedule", back_populates="cloud_account")
+    alerts = relationship("AlertConfig", back_populates="cloud_account")
 
     def __repr__(self) -> str:
         return f"<CloudAccount {self.name} ({self.provider.value}:{self.account_id})>"

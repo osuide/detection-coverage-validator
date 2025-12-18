@@ -31,6 +31,13 @@ python-multipart==0.0.6
 python-dotenv==1.0.0
 structlog==24.1.0
 
+# Scheduling
+apscheduler==3.10.4
+
+# Reporting
+reportlab==4.0.9
+weasyprint==60.2
+
 # Testing
 pytest==7.4.4
 pytest-asyncio==0.23.3

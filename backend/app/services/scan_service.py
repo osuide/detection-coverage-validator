@@ -21,6 +21,7 @@ from app.scanners.aws.securityhub_scanner import SecurityHubScanner
 from app.scanners.base import RawDetection
 from app.mappers.pattern_mapper import PatternMapper
 from app.services.coverage_service import CoverageService
+from app.services.notification_service import trigger_scan_alerts
 
 logger = structlog.get_logger()
 
@@ -99,7 +100,19 @@ class ScanService:
             await self.db.commit()
 
             coverage_service = CoverageService(self.db)
-            await coverage_service.calculate_coverage(account.id, scan.id)
+            coverage_snapshot = await coverage_service.calculate_coverage(account.id, scan.id)
+
+            # Trigger alerts based on scan results
+            try:
+                await trigger_scan_alerts(
+                    self.db, account.id, scan.id, coverage_snapshot
+                )
+            except Exception as alert_error:
+                self.logger.warning(
+                    "alert_trigger_failed",
+                    scan_id=str(scan_id),
+                    error=str(alert_error),
+                )
 
             # Update scan results
             scan.status = ScanStatus.COMPLETED

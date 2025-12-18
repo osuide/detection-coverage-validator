@@ -420,7 +420,7 @@ The design is complete when:
 | Option A: UI/UX | ✅ Complete | Heatmap, modals, filtering |
 | Option B: Detection Sources | ✅ Complete | GuardDuty, Config, SecurityHub |
 | Option C: Mapping Intelligence | ✅ Complete | 168 techniques, vendor mappings |
-| Option D: Operational Features | 🔄 Next | Scheduled scans, alerts, reports |
+| Option D: Operational Features | ✅ Complete | Scheduled scans, alerts, reports |
 
 ### Key Metrics
 - **MITRE Techniques:** 168 (complete IaaS Cloud Matrix)
@@ -428,25 +428,35 @@ The design is complete when:
 - **Tactics Covered:** 14 (all Enterprise tactics)
 - **Default Region:** eu-west-2 (London)
 
-### Next Step: Option D - Operational Features
-Implement the following:
+### Option D Implementation Details (Completed 2024-12-18)
 
-**D.1: Scheduled Scans**
-- Add cron-based scan scheduling (daily/weekly/custom)
-- Use Celery or APScheduler for task scheduling
-- Store schedule config per cloud account
+**D.1: Scheduled Scans** ✅
+- APScheduler-based cron scheduling (hourly/daily/weekly/monthly/custom)
+- Schedule configuration stored per cloud account
+- API endpoints: `/api/v1/schedules`
+- Model: `ScanSchedule` with frequency, timezone, cooldown support
+- Auto-loads schedules on startup, calculates next_run_at
 
-**D.2: Alerts & Notifications**
-- Coverage threshold alerts (email/webhook)
-- Scan completion notifications
-- Gap detection alerts
-- Stale detection warnings
+**D.2: Alerts & Notifications** ✅
+- Alert types: coverage_threshold, gap_detected, scan_completed, scan_failed
+- Notification channels: webhook, Slack, email (SMTP pending)
+- Cooldown support to prevent alert spam
+- Alert history tracking with resolution status
+- API endpoints: `/api/v1/alerts`, `/api/v1/alerts/history`
+- Auto-triggers on scan completion
 
-**D.3: Reports**
-- PDF/CSV export of coverage reports
-- Executive summary generation
-- Trend analysis reports
-- Gap remediation recommendations
+**D.3: Reports** ✅
+- CSV exports: coverage, gaps, detections
+- PDF reports with ReportLab: executive summary, gap analysis, detection details
+- API endpoints: `/api/v1/reports/{type}/csv`, `/api/v1/reports/executive/pdf`
+
+### Next Steps: Phase 2 - Enhanced Coverage
+Ready to proceed with:
+- GCP service parsing
+- NLP-based mapping
+- Detection health validation
+- Multi-account support
+- Historical drift detection
 
 ## Next Steps
 

@@ -1,0 +1,256 @@
+"""Schedule management endpoints."""
+
+from typing import Optional
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+
+from app.core.database import get_db
+from app.models.schedule import ScanSchedule
+from app.models.cloud_account import CloudAccount
+from app.schemas.schedule import (
+    ScheduleCreate,
+    ScheduleUpdate,
+    ScheduleResponse,
+    ScheduleListResponse,
+    ScheduleStatusResponse,
+)
+from app.services.scheduler_service import scheduler_service
+
+router = APIRouter()
+
+
+@router.get("", response_model=ScheduleListResponse)
+async def list_schedules(
+    cloud_account_id: Optional[UUID] = None,
+    is_active: Optional[bool] = None,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+):
+    """List scan schedules."""
+    query = select(ScanSchedule)
+    count_query = select(ScanSchedule)
+
+    if cloud_account_id:
+        query = query.where(ScanSchedule.cloud_account_id == cloud_account_id)
+        count_query = count_query.where(ScanSchedule.cloud_account_id == cloud_account_id)
+
+    if is_active is not None:
+        query = query.where(ScanSchedule.is_active == is_active)
+        count_query = count_query.where(ScanSchedule.is_active == is_active)
+
+    # Get total count
+    total_result = await db.execute(count_query)
+    total = len(total_result.scalars().all())
+
+    # Get paginated results
+    query = query.offset(skip).limit(limit).order_by(ScanSchedule.created_at.desc())
+    result = await db.execute(query)
+    schedules = result.scalars().all()
+
+    return ScheduleListResponse(
+        items=schedules,
+        total=total,
+        page=skip // limit + 1,
+        page_size=limit,
+    )
+
+
+@router.post("", response_model=ScheduleResponse, status_code=201)
+async def create_schedule(
+    schedule_in: ScheduleCreate,
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a new scan schedule."""
+    # Verify cloud account exists
+    result = await db.execute(
+        select(CloudAccount).where(CloudAccount.id == schedule_in.cloud_account_id)
+    )
+    account = result.scalar_one_or_none()
+    if not account:
+        raise HTTPException(status_code=404, detail="Cloud account not found")
+
+    # Create schedule
+    schedule = ScanSchedule(
+        cloud_account_id=schedule_in.cloud_account_id,
+        name=schedule_in.name,
+        description=schedule_in.description,
+        frequency=schedule_in.frequency,
+        cron_expression=schedule_in.cron_expression,
+        day_of_week=schedule_in.day_of_week,
+        day_of_month=schedule_in.day_of_month,
+        hour=schedule_in.hour,
+        minute=schedule_in.minute,
+        timezone=schedule_in.timezone,
+        regions=schedule_in.regions or account.regions or ["eu-west-2"],
+        detection_types=schedule_in.detection_types,
+        is_active=True,
+    )
+    db.add(schedule)
+    await db.flush()
+    await db.refresh(schedule)
+
+    # Add to scheduler
+    await scheduler_service.add_schedule(schedule)
+    await db.commit()
+
+    return schedule
+
+
+@router.get("/{schedule_id}", response_model=ScheduleResponse)
+async def get_schedule(
+    schedule_id: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get a specific schedule."""
+    result = await db.execute(
+        select(ScanSchedule).where(ScanSchedule.id == schedule_id)
+    )
+    schedule = result.scalar_one_or_none()
+    if not schedule:
+        raise HTTPException(status_code=404, detail="Schedule not found")
+    return schedule
+
+
+@router.get("/{schedule_id}/status", response_model=ScheduleStatusResponse)
+async def get_schedule_status(
+    schedule_id: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get schedule status including job information."""
+    result = await db.execute(
+        select(ScanSchedule).where(ScanSchedule.id == schedule_id)
+    )
+    schedule = result.scalar_one_or_none()
+    if not schedule:
+        raise HTTPException(status_code=404, detail="Schedule not found")
+
+    job_status = scheduler_service.get_job_status(schedule_id)
+
+    return ScheduleStatusResponse(
+        schedule=schedule,
+        job_status=job_status,
+    )
+
+
+@router.put("/{schedule_id}", response_model=ScheduleResponse)
+async def update_schedule(
+    schedule_id: UUID,
+    schedule_in: ScheduleUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    """Update a schedule."""
+    result = await db.execute(
+        select(ScanSchedule).where(ScanSchedule.id == schedule_id)
+    )
+    schedule = result.scalar_one_or_none()
+    if not schedule:
+        raise HTTPException(status_code=404, detail="Schedule not found")
+
+    # Update fields
+    update_data = schedule_in.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(schedule, field, value)
+
+    await db.flush()
+
+    # Update scheduler
+    await scheduler_service.update_schedule(schedule)
+    await db.commit()
+    await db.refresh(schedule)
+
+    return schedule
+
+
+@router.delete("/{schedule_id}", status_code=204)
+async def delete_schedule(
+    schedule_id: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete a schedule."""
+    result = await db.execute(
+        select(ScanSchedule).where(ScanSchedule.id == schedule_id)
+    )
+    schedule = result.scalar_one_or_none()
+    if not schedule:
+        raise HTTPException(status_code=404, detail="Schedule not found")
+
+    # Remove from scheduler
+    await scheduler_service.remove_schedule(schedule_id)
+
+    # Delete from database
+    await db.delete(schedule)
+    await db.commit()
+
+
+@router.post("/{schedule_id}/activate", response_model=ScheduleResponse)
+async def activate_schedule(
+    schedule_id: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Activate a schedule."""
+    result = await db.execute(
+        select(ScanSchedule).where(ScanSchedule.id == schedule_id)
+    )
+    schedule = result.scalar_one_or_none()
+    if not schedule:
+        raise HTTPException(status_code=404, detail="Schedule not found")
+
+    schedule.is_active = True
+    await db.flush()
+
+    # Add to scheduler
+    await scheduler_service.add_schedule(schedule)
+    await db.commit()
+    await db.refresh(schedule)
+
+    return schedule
+
+
+@router.post("/{schedule_id}/deactivate", response_model=ScheduleResponse)
+async def deactivate_schedule(
+    schedule_id: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Deactivate a schedule."""
+    result = await db.execute(
+        select(ScanSchedule).where(ScanSchedule.id == schedule_id)
+    )
+    schedule = result.scalar_one_or_none()
+    if not schedule:
+        raise HTTPException(status_code=404, detail="Schedule not found")
+
+    schedule.is_active = False
+    schedule.next_run_at = None
+    await db.flush()
+
+    # Remove from scheduler
+    await scheduler_service.remove_schedule(schedule_id)
+    await db.commit()
+    await db.refresh(schedule)
+
+    return schedule
+
+
+@router.post("/{schedule_id}/run-now", response_model=ScheduleResponse)
+async def run_schedule_now(
+    schedule_id: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Trigger an immediate run of a schedule."""
+    result = await db.execute(
+        select(ScanSchedule).where(ScanSchedule.id == schedule_id)
+    )
+    schedule = result.scalar_one_or_none()
+    if not schedule:
+        raise HTTPException(status_code=404, detail="Schedule not found")
+
+    # Execute immediately
+    await scheduler_service._execute_scheduled_scan(schedule_id)
+
+    # Refresh schedule
+    await db.refresh(schedule)
+    return schedule
