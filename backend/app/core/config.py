@@ -41,9 +41,21 @@ class Settings(BaseSettings):
     # CORS
     cors_origins: str = "http://localhost:3000,http://localhost:3001"
 
-    # OAuth (optional)
+    # AWS Cognito
+    cognito_user_pool_id: Optional[str] = None
+    cognito_client_id: Optional[str] = None
+    cognito_domain: Optional[str] = None  # e.g., "dcv-dev-abc123"
+
+    # OAuth (optional - for direct OAuth without Cognito)
     google_client_id: Optional[str] = None
     google_client_secret: Optional[str] = None
+
+    # Stripe
+    stripe_secret_key: Optional[str] = None
+    stripe_publishable_key: Optional[str] = None
+    stripe_webhook_secret: Optional[str] = None
+    stripe_price_id_subscriber: Optional[str] = None
+    stripe_price_id_additional_account: Optional[str] = None
 
     # Email (optional - for sending invites, password resets, etc.)
     smtp_host: Optional[str] = None

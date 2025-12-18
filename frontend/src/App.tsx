@@ -13,6 +13,7 @@ import TeamManagement from './pages/TeamManagement'
 import APIKeys from './pages/APIKeys'
 import AuditLogs from './pages/AuditLogs'
 import Profile from './pages/Profile'
+import AuthCallback from './pages/AuthCallback'
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
         {/* Public routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/auth/callback" element={<AuthCallback />} />
 
         {/* Protected routes */}
         <Route
