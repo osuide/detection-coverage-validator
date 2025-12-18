@@ -45,10 +45,12 @@ class Detection(Base):
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     detection_type: Mapped[DetectionType] = mapped_column(
-        SQLEnum(DetectionType), nullable=False, index=True
+        SQLEnum(DetectionType, values_callable=lambda x: [e.value for e in x]),
+        nullable=False, index=True
     )
     status: Mapped[DetectionStatus] = mapped_column(
-        SQLEnum(DetectionStatus), default=DetectionStatus.UNKNOWN
+        SQLEnum(DetectionStatus, values_callable=lambda x: [e.value for e in x]),
+        default=DetectionStatus.UNKNOWN
     )
     source_arn: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     region: Mapped[str] = mapped_column(String(64), nullable=False)

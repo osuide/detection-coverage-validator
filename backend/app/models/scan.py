@@ -34,7 +34,8 @@ class Scan(Base):
         UUID(as_uuid=True), ForeignKey("cloud_accounts.id"), nullable=False
     )
     status: Mapped[ScanStatus] = mapped_column(
-        SQLEnum(ScanStatus), default=ScanStatus.PENDING
+        SQLEnum(ScanStatus, values_callable=lambda x: [e.value for e in x]),
+        default=ScanStatus.PENDING
     )
 
     # Scan configuration

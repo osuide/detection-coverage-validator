@@ -29,7 +29,8 @@ class CloudAccount(Base):
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     provider: Mapped[CloudProvider] = mapped_column(
-        SQLEnum(CloudProvider), nullable=False
+        SQLEnum(CloudProvider, values_callable=lambda x: [e.value for e in x]),
+        nullable=False
     )
     account_id: Mapped[str] = mapped_column(
         String(64), nullable=False, unique=True, index=True

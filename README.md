@@ -110,7 +110,7 @@ Environment variables:
 |----------|-------------|---------|
 | `DATABASE_URL` | PostgreSQL connection string | - |
 | `REDIS_URL` | Redis connection string | - |
-| `AWS_REGION` | Default AWS region | us-east-1 |
+| `AWS_REGION` | Default AWS region | eu-west-2 |
 | `CONFIDENCE_THRESHOLD_COVERED` | Threshold for "covered" | 0.6 |
 | `CONFIDENCE_THRESHOLD_PARTIAL` | Threshold for "partial" | 0.4 |
 

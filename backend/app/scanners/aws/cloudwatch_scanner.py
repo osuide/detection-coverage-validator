@@ -58,15 +58,26 @@ class CloudWatchLogsInsightsScanner(BaseScanner):
         # Create regional client
         client = self.session.client("logs", region_name=region)
 
-        # Get saved queries with pagination
-        paginator = client.get_paginator("describe_query_definitions")
-
         try:
-            for page in paginator.paginate():
-                for query_def in page.get("queryDefinitions", []):
+            # describe_query_definitions doesn't support pagination
+            # Use nextToken manually if needed
+            next_token = None
+            while True:
+                kwargs = {}
+                if next_token:
+                    kwargs["nextToken"] = next_token
+
+                response = client.describe_query_definitions(**kwargs)
+
+                for query_def in response.get("queryDefinitions", []):
                     detection = self._parse_query_definition(query_def, region)
                     if detection:
                         detections.append(detection)
+
+                next_token = response.get("nextToken")
+                if not next_token:
+                    break
+
         except ClientError as e:
             if e.response["Error"]["Code"] == "AccessDeniedException":
                 self.logger.warning("access_denied", region=region)

@@ -17,6 +17,7 @@ from app.scanners.aws.cloudwatch_scanner import CloudWatchLogsInsightsScanner
 from app.scanners.aws.eventbridge_scanner import EventBridgeScanner
 from app.scanners.base import RawDetection
 from app.mappers.pattern_mapper import PatternMapper
+from app.services.coverage_service import CoverageService
 
 logger = structlog.get_logger()
 
@@ -88,6 +89,14 @@ class ScanService:
             await self.db.commit()
 
             await self._map_detections(account.id)
+
+            # Calculate coverage snapshot
+            scan.current_step = "Calculating coverage"
+            scan.progress_percent = 90
+            await self.db.commit()
+
+            coverage_service = CoverageService(self.db)
+            await coverage_service.calculate_coverage(account.id, scan.id)
 
             # Update scan results
             scan.status = ScanStatus.COMPLETED
