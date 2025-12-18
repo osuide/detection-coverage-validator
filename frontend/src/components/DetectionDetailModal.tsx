@@ -1,10 +1,58 @@
 import { useQuery } from '@tanstack/react-query'
-import { X, ExternalLink, Shield, MapPin, Clock, AlertCircle } from 'lucide-react'
+import { X, ExternalLink, Shield, MapPin, Clock, AlertCircle, Activity, Zap, CheckCircle, Lock, AlertTriangle, Database } from 'lucide-react'
 import { detectionsApi, Detection } from '../services/api'
 
 interface DetectionDetailModalProps {
   detection: Detection
   onClose: () => void
+}
+
+const detectionTypeConfig: Record<string, { label: string; icon: React.ElementType; color: string; bgColor: string; description: string }> = {
+  'cloudwatch_logs_insights': {
+    label: 'CloudWatch Logs Insights',
+    icon: Activity,
+    color: 'text-orange-700',
+    bgColor: 'bg-orange-100',
+    description: 'Query-based detection using CloudWatch Logs Insights'
+  },
+  'eventbridge_rule': {
+    label: 'EventBridge Rule',
+    icon: Zap,
+    color: 'text-purple-700',
+    bgColor: 'bg-purple-100',
+    description: 'Event-driven detection using EventBridge rules'
+  },
+  'guardduty_finding': {
+    label: 'GuardDuty Finding',
+    icon: Shield,
+    color: 'text-red-700',
+    bgColor: 'bg-red-100',
+    description: 'AWS managed threat detection from GuardDuty'
+  },
+  'config_rule': {
+    label: 'AWS Config Rule',
+    icon: CheckCircle,
+    color: 'text-green-700',
+    bgColor: 'bg-green-100',
+    description: 'Compliance-based detection using AWS Config'
+  },
+  'security_hub': {
+    label: 'Security Hub',
+    icon: Lock,
+    color: 'text-blue-700',
+    bgColor: 'bg-blue-100',
+    description: 'Aggregated security findings from Security Hub'
+  }
+}
+
+function getTypeConfig(type: string) {
+  return detectionTypeConfig[type] || {
+    label: type.replace(/_/g, ' '),
+    icon: Database,
+    color: 'text-gray-700',
+    bgColor: 'bg-gray-100',
+    description: 'Detection source'
+  }
 }
 
 function ConfidenceBadge({ confidence }: { confidence: number }) {
@@ -51,7 +99,18 @@ export default function DetectionDetailModal({ detection, onClose }: DetectionDe
           <div className="flex items-center justify-between p-4 border-b">
             <div>
               <h2 className="text-lg font-semibold text-gray-900">{detection.name}</h2>
-              <p className="text-sm text-gray-500">{detection.detection_type.replace(/_/g, ' ')}</p>
+              <div className="flex items-center mt-1">
+                {(() => {
+                  const config = getTypeConfig(detection.detection_type)
+                  const TypeIcon = config.icon
+                  return (
+                    <span className={`inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full ${config.bgColor} ${config.color}`}>
+                      <TypeIcon className="h-3 w-3 mr-1" />
+                      {config.label}
+                    </span>
+                  )
+                })()}
+              </div>
             </div>
             <button
               onClick={onClose}

@@ -15,6 +15,9 @@ from app.models.mapping import DetectionMapping, MappingSource
 from app.models.scan import Scan, ScanStatus
 from app.scanners.aws.cloudwatch_scanner import CloudWatchLogsInsightsScanner
 from app.scanners.aws.eventbridge_scanner import EventBridgeScanner
+from app.scanners.aws.guardduty_scanner import GuardDutyScanner
+from app.scanners.aws.config_scanner import ConfigRulesScanner
+from app.scanners.aws.securityhub_scanner import SecurityHubScanner
 from app.scanners.base import RawDetection
 from app.mappers.pattern_mapper import PatternMapper
 from app.services.coverage_service import CoverageService
@@ -157,6 +160,12 @@ class ScanService:
             scanners.append(CloudWatchLogsInsightsScanner(session))
         if not detection_types or "eventbridge_rule" in detection_types:
             scanners.append(EventBridgeScanner(session))
+        if not detection_types or "guardduty_finding" in detection_types:
+            scanners.append(GuardDutyScanner(session))
+        if not detection_types or "config_rule" in detection_types:
+            scanners.append(ConfigRulesScanner(session))
+        if not detection_types or "security_hub" in detection_types:
+            scanners.append(SecurityHubScanner(session))
 
         # Run scanners
         for scanner in scanners:

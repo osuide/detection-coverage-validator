@@ -1,11 +1,61 @@
 import { useQuery } from '@tanstack/react-query'
-import { Shield, Search, Filter, ChevronDown, Eye } from 'lucide-react'
+import { Shield, Search, Filter, ChevronDown, Eye, Activity, Zap, CheckCircle, Lock, AlertTriangle } from 'lucide-react'
 import { detectionsApi, Detection } from '../services/api'
 import { useState } from 'react'
 import DetectionDetailModal from '../components/DetectionDetailModal'
 
 type SortField = 'name' | 'detection_type' | 'region' | 'status' | 'mapping_count' | 'discovered_at'
 type SortDirection = 'asc' | 'desc'
+
+const detectionTypeConfig: Record<string, { label: string; icon: React.ElementType; color: string; bgColor: string }> = {
+  'cloudwatch_logs_insights': {
+    label: 'CloudWatch Logs',
+    icon: Activity,
+    color: 'text-orange-700',
+    bgColor: 'bg-orange-100'
+  },
+  'eventbridge_rule': {
+    label: 'EventBridge',
+    icon: Zap,
+    color: 'text-purple-700',
+    bgColor: 'bg-purple-100'
+  },
+  'guardduty_finding': {
+    label: 'GuardDuty',
+    icon: Shield,
+    color: 'text-red-700',
+    bgColor: 'bg-red-100'
+  },
+  'config_rule': {
+    label: 'Config Rule',
+    icon: CheckCircle,
+    color: 'text-green-700',
+    bgColor: 'bg-green-100'
+  },
+  'security_hub': {
+    label: 'Security Hub',
+    icon: Lock,
+    color: 'text-blue-700',
+    bgColor: 'bg-blue-100'
+  }
+}
+
+function DetectionTypeBadge({ type }: { type: string }) {
+  const config = detectionTypeConfig[type] || {
+    label: type.replace(/_/g, ' '),
+    icon: AlertTriangle,
+    color: 'text-gray-700',
+    bgColor: 'bg-gray-100'
+  }
+  const Icon = config.icon
+
+  return (
+    <span className={`inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full ${config.bgColor} ${config.color}`}>
+      <Icon className="h-3 w-3 mr-1" />
+      {config.label}
+    </span>
+  )
+}
 
 export default function Detections() {
   const [search, setSearch] = useState('')
@@ -121,7 +171,9 @@ export default function Detections() {
           >
             <option value="">All Types</option>
             {detectionTypes.map(type => (
-              <option key={type} value={type}>{type.replace(/_/g, ' ')}</option>
+              <option key={type} value={type}>
+                {detectionTypeConfig[type]?.label || type.replace(/_/g, ' ')}
+              </option>
             ))}
           </select>
 
@@ -195,9 +247,7 @@ export default function Detections() {
                       <div className="font-medium text-gray-900">{detection.name}</div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
-                        {detection.detection_type.replace(/_/g, ' ')}
-                      </span>
+                      <DetectionTypeBadge type={detection.detection_type} />
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">
                       {detection.region}

@@ -5,11 +5,46 @@ import {
   CheckCircle,
   Clock,
   Cloud,
-  Activity
+  Activity,
+  Zap,
+  Lock
 } from 'lucide-react'
-import { accountsApi, coverageApi, scansApi, CloudAccount } from '../services/api'
+import { accountsApi, coverageApi, scansApi, detectionsApi } from '../services/api'
 import CoverageGauge from '../components/CoverageGauge'
 import TacticHeatmap from '../components/TacticHeatmap'
+
+const detectionSourceConfig: Record<string, { label: string; icon: React.ElementType; color: string; bgColor: string }> = {
+  'cloudwatch_logs_insights': {
+    label: 'CloudWatch Logs',
+    icon: Activity,
+    color: 'text-orange-600',
+    bgColor: 'bg-orange-100'
+  },
+  'eventbridge_rule': {
+    label: 'EventBridge',
+    icon: Zap,
+    color: 'text-purple-600',
+    bgColor: 'bg-purple-100'
+  },
+  'guardduty_finding': {
+    label: 'GuardDuty',
+    icon: Shield,
+    color: 'text-red-600',
+    bgColor: 'bg-red-100'
+  },
+  'config_rule': {
+    label: 'Config Rules',
+    icon: CheckCircle,
+    color: 'text-green-600',
+    bgColor: 'bg-green-100'
+  },
+  'security_hub': {
+    label: 'Security Hub',
+    icon: Lock,
+    color: 'text-blue-600',
+    bgColor: 'bg-blue-100'
+  }
+}
 
 export default function Dashboard() {
   const { data: accounts, isLoading: accountsLoading } = useQuery({
@@ -30,7 +65,19 @@ export default function Dashboard() {
     queryFn: () => scansApi.list(),
   })
 
+  const { data: detectionsData } = useQuery({
+    queryKey: ['detections', firstAccount?.id],
+    queryFn: () => detectionsApi.list({ cloud_account_id: firstAccount?.id, limit: 500 }),
+    enabled: !!firstAccount,
+  })
+
   const latestScan = scans?.[0]
+
+  // Calculate detection source counts
+  const sourceCounts = (detectionsData?.items ?? []).reduce((acc, d) => {
+    acc[d.detection_type] = (acc[d.detection_type] || 0) + 1
+    return acc
+  }, {} as Record<string, number>)
 
   if (accountsLoading) {
     return (
@@ -146,6 +193,36 @@ export default function Dashboard() {
               No coverage data available
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Detection Sources */}
+      <div className="card mb-8">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Detection Sources</h3>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          {Object.entries(detectionSourceConfig).map(([type, config]) => {
+            const count = sourceCounts[type] || 0
+            const Icon = config.icon
+            return (
+              <div
+                key={type}
+                className={`p-4 rounded-lg ${count > 0 ? config.bgColor : 'bg-gray-50'} transition-colors`}
+              >
+                <div className="flex items-center space-x-2">
+                  <Icon className={`h-5 w-5 ${count > 0 ? config.color : 'text-gray-400'}`} />
+                  <span className={`text-sm font-medium ${count > 0 ? 'text-gray-900' : 'text-gray-400'}`}>
+                    {config.label}
+                  </span>
+                </div>
+                <p className={`text-2xl font-bold mt-2 ${count > 0 ? 'text-gray-900' : 'text-gray-300'}`}>
+                  {count}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {count > 0 ? 'detections' : 'not configured'}
+                </p>
+              </div>
+            )
+          })}
         </div>
       </div>
 
