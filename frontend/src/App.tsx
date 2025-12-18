@@ -15,6 +15,7 @@ import AuditLogs from './pages/AuditLogs'
 import Profile from './pages/Profile'
 import AuthCallback from './pages/AuthCallback'
 import OrgSecurity from './pages/OrgSecurity'
+import Billing from './pages/Billing'
 
 function App() {
   return (
@@ -43,6 +44,7 @@ function App() {
                   <Route path="/settings/audit-logs" element={<AuditLogs />} />
                   <Route path="/settings/profile" element={<Profile />} />
                   <Route path="/settings/security" element={<OrgSecurity />} />
+                  <Route path="/settings/billing" element={<Billing />} />
                 </Routes>
               </Layout>
             </ProtectedRoute>

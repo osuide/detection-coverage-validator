@@ -15,6 +15,7 @@ import {
   Key,
   FileText,
   Lock,
+  CreditCard,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { useAuth } from '../contexts/AuthContext'
@@ -131,6 +132,18 @@ export default function Layout({ children }: LayoutProps) {
           >
             <Lock className="h-5 w-5 mr-3" />
             Security
+          </Link>
+          <Link
+            to="/settings/billing"
+            className={clsx(
+              'flex items-center px-6 py-3 text-sm font-medium transition-colors',
+              location.pathname === '/settings/billing'
+                ? 'bg-slate-800 text-white'
+                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+            )}
+          >
+            <CreditCard className="h-5 w-5 mr-3" />
+            Billing
           </Link>
           <Link
             to="/settings"
