@@ -15,12 +15,20 @@ from app.core.database import Base
 class DetectionType(str, enum.Enum):
     """Types of detections."""
 
+    # AWS Detection Types
     CLOUDWATCH_LOGS_INSIGHTS = "cloudwatch_logs_insights"
     EVENTBRIDGE_RULE = "eventbridge_rule"
     GUARDDUTY_FINDING = "guardduty_finding"
     CONFIG_RULE = "config_rule"
     CUSTOM_LAMBDA = "custom_lambda"
     SECURITY_HUB = "security_hub"
+
+    # GCP Detection Types
+    GCP_CLOUD_LOGGING = "gcp_cloud_logging"
+    GCP_SECURITY_COMMAND_CENTER = "gcp_security_command_center"
+    GCP_EVENTARC = "gcp_eventarc"
+    GCP_CLOUD_MONITORING = "gcp_cloud_monitoring"
+    GCP_CLOUD_FUNCTION = "gcp_cloud_function"
 
 
 class DetectionStatus(str, enum.Enum):
@@ -29,6 +37,15 @@ class DetectionStatus(str, enum.Enum):
     ACTIVE = "active"
     DISABLED = "disabled"
     ERROR = "error"
+    UNKNOWN = "unknown"
+
+
+class HealthStatus(str, enum.Enum):
+    """Detection health status."""
+
+    HEALTHY = "healthy"
+    DEGRADED = "degraded"
+    BROKEN = "broken"
     UNKNOWN = "unknown"
 
 
@@ -64,11 +81,19 @@ class Detection(Base):
     log_groups: Mapped[Optional[list]] = mapped_column(JSONB, nullable=True)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
-    # Health metrics
+    # Health metrics (Phase 3)
     last_triggered_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
     health_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    health_status: Mapped[HealthStatus] = mapped_column(
+        SQLEnum(HealthStatus, values_callable=lambda x: [e.value for e in x]),
+        default=HealthStatus.UNKNOWN
+    )
+    health_issues: Mapped[Optional[list]] = mapped_column(JSONB, nullable=True)
+    last_validated_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # Metadata
     discovered_at: Mapped[datetime] = mapped_column(
@@ -77,7 +102,7 @@ class Detection(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
     )
-    is_managed: Mapped[bool] = mapped_column(default=False)  # GuardDuty, etc.
+    is_managed: Mapped[bool] = mapped_column(default=False)  # GuardDuty, SCC, etc.
 
     # Relationships
     cloud_account = relationship("CloudAccount", back_populates="detections")

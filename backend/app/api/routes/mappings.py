@@ -127,8 +127,8 @@ async def list_techniques(
             description=t.description,
             tactic_id=t.tactic.tactic_id if t.tactic else "",
             tactic_name=t.tactic.name if t.tactic else "",
-            platforms=t.platforms,
-            data_sources=t.data_sources,
+            platforms=t.platforms or [],
+            data_sources=t.data_sources or [],
             is_subtechnique=t.is_subtechnique,
             parent_technique_id=None,  # Would need to join parent
         )

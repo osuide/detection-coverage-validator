@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import structlog
 
 from app.core.config import get_settings
-from app.api.routes import accounts, scans, detections, coverage, mappings, health, schedules, alerts, reports, auth, teams, api_keys, audit, cognito, org_security, billing
+from app.api.routes import accounts, scans, detections, coverage, mappings, health, schedules, alerts, reports, auth, teams, api_keys, audit, cognito, org_security, billing, code_analysis
 from app.services.scheduler_service import scheduler_service
 
 settings = get_settings()
@@ -65,6 +65,7 @@ app.include_router(audit.router, prefix="/api/v1/audit-logs", tags=["Audit Logs"
 app.include_router(cognito.router, prefix="/api/v1/auth/cognito", tags=["Cognito SSO"])
 app.include_router(org_security.router, prefix="/api/v1/org", tags=["Organization Security"])
 app.include_router(billing.router, prefix="/api/v1/billing", tags=["Billing"])
+app.include_router(code_analysis.router, prefix="/api/v1/code-analysis", tags=["Code Analysis"])
 
 
 @app.get("/")

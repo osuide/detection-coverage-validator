@@ -49,8 +49,8 @@ class TechniqueResponse(BaseModel):
     description: Optional[str] = None
     tactic_id: str
     tactic_name: str
-    platforms: list[str]
-    data_sources: list[str]
+    platforms: list[str] = []
+    data_sources: list[str] = []
     is_subtechnique: bool
     parent_technique_id: Optional[str] = None
     detection_count: int = 0

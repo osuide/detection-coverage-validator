@@ -1,6 +1,7 @@
 import { useState, FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import A13ELogo from '../components/A13ELogo'
 
 export default function Signup() {
   const [email, setEmail] = useState('')
@@ -69,13 +70,13 @@ export default function Signup() {
       <div className="max-w-md w-full space-y-8">
         <div>
           <div className="flex justify-center">
-            <div className="text-4xl">&#x1f6e1;</div>
+            <A13ELogo size="lg" showTagline />
           </div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-white">
+          <h2 className="mt-8 text-center text-3xl font-extrabold text-white">
             Create your account
           </h2>
           <p className="mt-2 text-center text-sm text-gray-400">
-            Start analyzing your detection coverage
+            Start analyzing your detection coverage today
           </p>
         </div>
 

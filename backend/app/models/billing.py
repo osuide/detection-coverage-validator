@@ -56,6 +56,7 @@ TIER_LIMITS = {
             'scheduled_scans': True,
             'alerts': True,
             'api_access': True,
+            'code_analysis': True,  # Opt-in feature requiring consent
         }
     },
     AccountTier.ENTERPRISE: {
@@ -66,6 +67,7 @@ TIER_LIMITS = {
             'all': True,
             'sso': True,
             'sla': True,
+            'code_analysis': True,  # Opt-in feature requiring consent
         }
     }
 }

@@ -16,12 +16,14 @@ import Profile from './pages/Profile'
 import AuthCallback from './pages/AuthCallback'
 import OrgSecurity from './pages/OrgSecurity'
 import Billing from './pages/Billing'
+import Landing from './pages/Landing'
 
 function App() {
   return (
     <AuthProvider>
       <Routes>
         {/* Public routes */}
+        <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
@@ -33,12 +35,12 @@ function App() {
             <ProtectedRoute>
               <Layout>
                 <Routes>
-                  <Route path="/" element={<Navigate to="/dashboard" replace />} />
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/accounts" element={<Accounts />} />
                   <Route path="/detections" element={<Detections />} />
                   <Route path="/coverage" element={<Coverage />} />
                   <Route path="/gaps" element={<Gaps />} />
+                  <Route path="/settings" element={<Navigate to="/settings/profile" replace />} />
                   <Route path="/settings/team" element={<TeamManagement />} />
                   <Route path="/settings/api-keys" element={<APIKeys />} />
                   <Route path="/settings/audit-logs" element={<AuditLogs />} />

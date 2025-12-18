@@ -2,6 +2,7 @@ import { useState, useEffect, FormEvent } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { cognitoApi, CognitoConfig } from '../services/cognitoApi'
+import A13ELogo from '../components/A13ELogo'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -70,13 +71,13 @@ export default function Login() {
       <div className="max-w-md w-full space-y-8">
         <div>
           <div className="flex justify-center">
-            <div className="text-4xl">&#x1f6e1;</div>
+            <A13ELogo size="lg" showTagline />
           </div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-white">
-            Detection Coverage Validator
+          <h2 className="mt-8 text-center text-3xl font-extrabold text-white">
+            Sign in
           </h2>
           <p className="mt-2 text-center text-sm text-gray-400">
-            Sign in to your account
+            Access your detection coverage dashboard
           </p>
         </div>
 

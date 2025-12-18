@@ -3,7 +3,6 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
   Cloud,
-  Shield,
   BarChart3,
   AlertTriangle,
   Settings,
@@ -11,14 +10,17 @@ import {
   User,
   Building,
   ChevronDown,
+  ChevronRight,
   Users,
   Key,
   FileText,
   Lock,
   CreditCard,
+  Shield,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { useAuth } from '../contexts/AuthContext'
+import A13ELogo from './A13ELogo'
 
 interface LayoutProps {
   children: ReactNode
@@ -32,24 +34,36 @@ const navigation = [
   { name: 'Gaps', href: '/gaps', icon: AlertTriangle },
 ]
 
+const settingsNavigation = [
+  { name: 'Team', href: '/settings/team', icon: Users },
+  { name: 'Security', href: '/settings/security', icon: Lock },
+  { name: 'Billing', href: '/settings/billing', icon: CreditCard },
+  { name: 'API Keys', href: '/settings/api-keys', icon: Key },
+  { name: 'Audit Logs', href: '/settings/audit-logs', icon: FileText },
+]
+
 export default function Layout({ children }: LayoutProps) {
   const location = useLocation()
   const navigate = useNavigate()
   const { user, organization, logout } = useAuth()
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const [showSettingsMenu, setShowSettingsMenu] = useState(
+    location.pathname.startsWith('/settings')
+  )
 
   const handleLogout = async () => {
     await logout()
     navigate('/login')
   }
 
+  const isSettingsActive = location.pathname.startsWith('/settings')
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Sidebar */}
-      <div className="fixed inset-y-0 left-0 w-64 bg-slate-900">
+      <div className="fixed inset-y-0 left-0 w-64 bg-slate-900 flex flex-col">
         <div className="flex h-16 items-center justify-center border-b border-slate-800">
-          <Shield className="h-8 w-8 text-blue-400" />
-          <span className="ml-2 text-lg font-semibold text-white">DCV</span>
+          <A13ELogo size="sm" showTagline={false} />
         </div>
 
         {/* Organization info */}
@@ -62,7 +76,8 @@ export default function Layout({ children }: LayoutProps) {
           </div>
         )}
 
-        <nav className="mt-4 px-3">
+        {/* Main navigation */}
+        <nav className="mt-4 px-3 flex-1">
           {navigation.map((item) => {
             const isActive = location.pathname === item.href
             return (
@@ -81,79 +96,56 @@ export default function Layout({ children }: LayoutProps) {
               </Link>
             )
           })}
+
+          {/* Settings dropdown */}
+          <div className="mt-4">
+            <button
+              onClick={() => setShowSettingsMenu(!showSettingsMenu)}
+              className={clsx(
+                'w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                isSettingsActive
+                  ? 'bg-slate-800 text-white'
+                  : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+              )}
+            >
+              <div className="flex items-center">
+                <Settings className="h-5 w-5 mr-3" />
+                Settings
+              </div>
+              {showSettingsMenu ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4" />
+              )}
+            </button>
+
+            {showSettingsMenu && (
+              <div className="mt-1 ml-4 space-y-1">
+                {settingsNavigation.map((item) => {
+                  const isActive = location.pathname === item.href
+                  return (
+                    <Link
+                      key={item.name}
+                      to={item.href}
+                      className={clsx(
+                        'flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                        isActive
+                          ? 'bg-slate-700 text-white'
+                          : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                      )}
+                    >
+                      <item.icon className="h-4 w-4 mr-3" />
+                      {item.name}
+                    </Link>
+                  )
+                })}
+              </div>
+            )}
+          </div>
         </nav>
 
         {/* User section at bottom */}
-        <div className="absolute bottom-0 left-0 right-0 border-t border-slate-800">
-          <Link
-            to="/settings/team"
-            className={clsx(
-              'flex items-center px-6 py-3 text-sm font-medium transition-colors',
-              location.pathname === '/settings/team'
-                ? 'bg-slate-800 text-white'
-                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-            )}
-          >
-            <Users className="h-5 w-5 mr-3" />
-            Team
-          </Link>
-          <Link
-            to="/settings/api-keys"
-            className={clsx(
-              'flex items-center px-6 py-3 text-sm font-medium transition-colors',
-              location.pathname === '/settings/api-keys'
-                ? 'bg-slate-800 text-white'
-                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-            )}
-          >
-            <Key className="h-5 w-5 mr-3" />
-            API Keys
-          </Link>
-          <Link
-            to="/settings/audit-logs"
-            className={clsx(
-              'flex items-center px-6 py-3 text-sm font-medium transition-colors',
-              location.pathname === '/settings/audit-logs'
-                ? 'bg-slate-800 text-white'
-                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-            )}
-          >
-            <FileText className="h-5 w-5 mr-3" />
-            Audit Logs
-          </Link>
-          <Link
-            to="/settings/security"
-            className={clsx(
-              'flex items-center px-6 py-3 text-sm font-medium transition-colors',
-              location.pathname === '/settings/security'
-                ? 'bg-slate-800 text-white'
-                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-            )}
-          >
-            <Lock className="h-5 w-5 mr-3" />
-            Security
-          </Link>
-          <Link
-            to="/settings/billing"
-            className={clsx(
-              'flex items-center px-6 py-3 text-sm font-medium transition-colors',
-              location.pathname === '/settings/billing'
-                ? 'bg-slate-800 text-white'
-                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-            )}
-          >
-            <CreditCard className="h-5 w-5 mr-3" />
-            Billing
-          </Link>
-          <Link
-            to="/settings"
-            className="flex items-center px-6 py-3 text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
-          >
-            <Settings className="h-5 w-5 mr-3" />
-            Settings
-          </Link>
-
-          {/* User dropdown */}
+        <div className="border-t border-slate-800">
           <div className="relative">
             <button
               onClick={() => setShowUserMenu(!showUserMenu)}
