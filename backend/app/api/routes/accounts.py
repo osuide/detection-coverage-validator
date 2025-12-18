@@ -1,0 +1,114 @@
+"""Cloud account endpoints."""
+
+from typing import Optional
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func
+from sqlalchemy.orm import selectinload
+
+from app.core.database import get_db
+from app.models.cloud_account import CloudAccount
+from app.schemas.cloud_account import (
+    CloudAccountCreate,
+    CloudAccountUpdate,
+    CloudAccountResponse,
+)
+
+router = APIRouter()
+
+
+@router.get("", response_model=list[CloudAccountResponse])
+async def list_accounts(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
+    is_active: Optional[bool] = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """List all cloud accounts."""
+    query = select(CloudAccount)
+    if is_active is not None:
+        query = query.where(CloudAccount.is_active == is_active)
+    query = query.offset(skip).limit(limit).order_by(CloudAccount.created_at.desc())
+
+    result = await db.execute(query)
+    accounts = result.scalars().all()
+    return accounts
+
+
+@router.post("", response_model=CloudAccountResponse, status_code=201)
+async def create_account(
+    account_in: CloudAccountCreate,
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a new cloud account."""
+    # Check for duplicate account_id
+    existing = await db.execute(
+        select(CloudAccount).where(CloudAccount.account_id == account_in.account_id)
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(
+            status_code=400,
+            detail=f"Account with ID {account_in.account_id} already exists",
+        )
+
+    account = CloudAccount(**account_in.model_dump())
+    db.add(account)
+    await db.flush()
+    await db.refresh(account)
+    return account
+
+
+@router.get("/{account_id}", response_model=CloudAccountResponse)
+async def get_account(
+    account_id: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get a specific cloud account."""
+    result = await db.execute(
+        select(CloudAccount).where(CloudAccount.id == account_id)
+    )
+    account = result.scalar_one_or_none()
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+    return account
+
+
+@router.patch("/{account_id}", response_model=CloudAccountResponse)
+async def update_account(
+    account_id: UUID,
+    account_in: CloudAccountUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    """Update a cloud account."""
+    result = await db.execute(
+        select(CloudAccount).where(CloudAccount.id == account_id)
+    )
+    account = result.scalar_one_or_none()
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    update_data = account_in.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(account, field, value)
+
+    await db.flush()
+    await db.refresh(account)
+    return account
+
+
+@router.delete("/{account_id}", status_code=204)
+async def delete_account(
+    account_id: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete a cloud account."""
+    result = await db.execute(
+        select(CloudAccount).where(CloudAccount.id == account_id)
+    )
+    account = result.scalar_one_or_none()
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    await db.delete(account)

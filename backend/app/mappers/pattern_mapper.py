@@ -1,0 +1,299 @@
+"""Pattern-based MITRE ATT&CK mapper following 05-MAPPING-AGENT.md design."""
+
+import re
+from dataclasses import dataclass
+from typing import Any, Optional
+import structlog
+
+from app.mappers.indicator_library import (
+    TECHNIQUE_INDICATORS,
+    TECHNIQUE_BY_ID,
+    CLOUDTRAIL_EVENT_TO_TECHNIQUES,
+    TechniqueIndicator,
+)
+from app.scanners.base import RawDetection
+from app.models.detection import DetectionType
+
+logger = structlog.get_logger()
+
+
+@dataclass
+class MappingResult:
+    """Result of mapping a detection to a MITRE technique."""
+
+    technique_id: str
+    technique_name: str
+    tactic_id: str
+    tactic_name: str
+    confidence: float
+    matched_indicators: list[str]
+    rationale: str
+
+
+class PatternMapper:
+    """Pattern-based mapper for MITRE ATT&CK techniques.
+
+    Uses the indicator library to match detections to techniques based on:
+    1. CloudTrail event names in EventBridge rules
+    2. Keywords in detection names and descriptions
+    3. AWS service references
+    4. Log group patterns for CloudWatch queries
+    """
+
+    def __init__(self):
+        self.logger = logger.bind(mapper="PatternMapper")
+        self.indicators = TECHNIQUE_INDICATORS
+
+    def map_detection(
+        self,
+        detection: RawDetection,
+        min_confidence: float = 0.4,
+    ) -> list[MappingResult]:
+        """Map a detection to MITRE techniques.
+
+        Args:
+            detection: The raw detection to map
+            min_confidence: Minimum confidence threshold
+
+        Returns:
+            List of MappingResult objects sorted by confidence descending
+        """
+        results = []
+
+        for indicator in self.indicators:
+            confidence, matched, rationale = self._calculate_match(
+                detection, indicator
+            )
+
+            if confidence >= min_confidence:
+                results.append(
+                    MappingResult(
+                        technique_id=indicator.technique_id,
+                        technique_name=indicator.technique_name,
+                        tactic_id=indicator.tactic_id,
+                        tactic_name=indicator.tactic_name,
+                        confidence=confidence,
+                        matched_indicators=matched,
+                        rationale=rationale,
+                    )
+                )
+
+        # Sort by confidence descending
+        results.sort(key=lambda x: x.confidence, reverse=True)
+
+        self.logger.debug(
+            "mapping_complete",
+            detection=detection.name,
+            mappings=len(results),
+        )
+
+        return results
+
+    def _calculate_match(
+        self,
+        detection: RawDetection,
+        indicator: TechniqueIndicator,
+    ) -> tuple[float, list[str], str]:
+        """Calculate match score between a detection and technique indicator.
+
+        Returns:
+            Tuple of (confidence, matched_indicators, rationale)
+        """
+        matched = []
+        score_components = []
+
+        # 1. CloudTrail event matching (highest weight for EventBridge rules)
+        if detection.detection_type == DetectionType.EVENTBRIDGE_RULE:
+            event_score, event_matches = self._match_cloudtrail_events(
+                detection, indicator
+            )
+            if event_matches:
+                matched.extend(event_matches)
+                score_components.append(("cloudtrail_events", event_score, 0.4))
+
+        # 2. Keyword matching in name and description
+        keyword_score, keyword_matches = self._match_keywords(detection, indicator)
+        if keyword_matches:
+            matched.extend(keyword_matches)
+            score_components.append(("keywords", keyword_score, 0.25))
+
+        # 3. AWS service matching
+        service_score, service_matches = self._match_services(detection, indicator)
+        if service_matches:
+            matched.extend(service_matches)
+            score_components.append(("aws_services", service_score, 0.2))
+
+        # 4. Log pattern matching (for CloudWatch queries)
+        if detection.detection_type == DetectionType.CLOUDWATCH_LOGS_INSIGHTS:
+            pattern_score, pattern_matches = self._match_log_patterns(
+                detection, indicator
+            )
+            if pattern_matches:
+                matched.extend(pattern_matches)
+                score_components.append(("log_patterns", pattern_score, 0.15))
+
+        # Calculate weighted confidence
+        if not score_components:
+            return 0.0, [], ""
+
+        total_weight = sum(weight for _, _, weight in score_components)
+        weighted_score = sum(
+            score * weight for _, score, weight in score_components
+        ) / total_weight
+
+        # Apply base confidence modifier
+        final_confidence = min(
+            weighted_score * indicator.base_confidence / 0.7,
+            0.95,  # Cap at 0.95 for pattern matching
+        )
+
+        # Build rationale
+        rationale_parts = []
+        for component_name, score, _ in score_components:
+            if score > 0:
+                rationale_parts.append(f"{component_name}: {score:.2f}")
+        rationale = f"Pattern match ({', '.join(rationale_parts)})"
+
+        return round(final_confidence, 3), matched, rationale
+
+    def _match_cloudtrail_events(
+        self,
+        detection: RawDetection,
+        indicator: TechniqueIndicator,
+    ) -> tuple[float, list[str]]:
+        """Match CloudTrail events in EventBridge event patterns."""
+        if not detection.event_pattern or not indicator.cloudtrail_events:
+            return 0.0, []
+
+        matched = []
+        event_pattern = detection.event_pattern
+
+        # Extract event names from pattern
+        detail = event_pattern.get("detail", {})
+        event_names = detail.get("eventName", [])
+        if isinstance(event_names, str):
+            event_names = [event_names]
+
+        # Also check source
+        sources = event_pattern.get("source", [])
+        if isinstance(sources, str):
+            sources = [sources]
+
+        # Match against indicator events
+        for event in indicator.cloudtrail_events:
+            if event in event_names:
+                matched.append(f"event:{event}")
+
+        # Score based on match ratio
+        if not matched:
+            return 0.0, []
+
+        score = len(matched) / min(len(indicator.cloudtrail_events), 3)
+        return min(score, 1.0), matched
+
+    def _match_keywords(
+        self,
+        detection: RawDetection,
+        indicator: TechniqueIndicator,
+    ) -> tuple[float, list[str]]:
+        """Match keywords in detection name and description."""
+        if not indicator.keywords:
+            return 0.0, []
+
+        matched = []
+        search_text = f"{detection.name} {detection.description or ''}".lower()
+
+        for keyword in indicator.keywords:
+            if keyword.lower() in search_text:
+                matched.append(f"keyword:{keyword}")
+
+        if not matched:
+            return 0.0, []
+
+        # Score based on match ratio (cap at 3 matches for full score)
+        score = len(matched) / min(len(indicator.keywords), 3)
+        return min(score, 1.0), matched
+
+    def _match_services(
+        self,
+        detection: RawDetection,
+        indicator: TechniqueIndicator,
+    ) -> tuple[float, list[str]]:
+        """Match AWS services referenced in the detection."""
+        if not indicator.aws_services:
+            return 0.0, []
+
+        matched = []
+
+        # Check event pattern for service references
+        services_found = set()
+
+        if detection.event_pattern:
+            sources = detection.event_pattern.get("source", [])
+            for source in sources:
+                if source.startswith("aws."):
+                    services_found.add(source.replace("aws.", ""))
+
+            detail = detection.event_pattern.get("detail", {})
+            event_sources = detail.get("eventSource", [])
+            if isinstance(event_sources, str):
+                event_sources = [event_sources]
+            for es in event_sources:
+                service = es.replace(".amazonaws.com", "")
+                services_found.add(service)
+
+        # Check log groups
+        if detection.log_groups:
+            for lg in detection.log_groups:
+                for service in indicator.aws_services:
+                    if service in lg.lower():
+                        services_found.add(service)
+
+        # Match against indicator services
+        for service in indicator.aws_services:
+            if service in services_found:
+                matched.append(f"service:{service}")
+
+        if not matched:
+            return 0.0, []
+
+        score = len(matched) / len(indicator.aws_services)
+        return min(score, 1.0), matched
+
+    def _match_log_patterns(
+        self,
+        detection: RawDetection,
+        indicator: TechniqueIndicator,
+    ) -> tuple[float, list[str]]:
+        """Match log patterns in CloudWatch queries."""
+        if not indicator.log_patterns or not detection.query_pattern:
+            return 0.0, []
+
+        matched = []
+        query = detection.query_pattern.lower()
+
+        for pattern in indicator.log_patterns:
+            try:
+                if re.search(pattern, query, re.IGNORECASE):
+                    matched.append(f"pattern:{pattern}")
+            except re.error:
+                # Invalid regex, skip
+                pass
+
+        if not matched:
+            return 0.0, []
+
+        score = len(matched) / len(indicator.log_patterns)
+        return min(score, 1.0), matched
+
+    def get_all_techniques(self) -> list[TechniqueIndicator]:
+        """Get all technique indicators for gap analysis."""
+        return self.indicators
+
+    def get_technique(self, technique_id: str) -> Optional[TechniqueIndicator]:
+        """Get a specific technique indicator by ID."""
+        return TECHNIQUE_BY_ID.get(technique_id)
+
+    def get_techniques_for_event(self, event_name: str) -> list[str]:
+        """Get technique IDs that map to a CloudTrail event."""
+        return CLOUDTRAIL_EVENT_TO_TECHNIQUES.get(event_name, [])
