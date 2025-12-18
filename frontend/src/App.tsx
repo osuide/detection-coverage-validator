@@ -14,6 +14,7 @@ import APIKeys from './pages/APIKeys'
 import AuditLogs from './pages/AuditLogs'
 import Profile from './pages/Profile'
 import AuthCallback from './pages/AuthCallback'
+import OrgSecurity from './pages/OrgSecurity'
 
 function App() {
   return (
@@ -41,6 +42,7 @@ function App() {
                   <Route path="/settings/api-keys" element={<APIKeys />} />
                   <Route path="/settings/audit-logs" element={<AuditLogs />} />
                   <Route path="/settings/profile" element={<Profile />} />
+                  <Route path="/settings/security" element={<OrgSecurity />} />
                 </Routes>
               </Layout>
             </ProtectedRoute>

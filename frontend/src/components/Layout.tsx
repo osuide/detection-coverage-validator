@@ -14,6 +14,7 @@ import {
   Users,
   Key,
   FileText,
+  Lock,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { useAuth } from '../contexts/AuthContext'
@@ -118,6 +119,18 @@ export default function Layout({ children }: LayoutProps) {
           >
             <FileText className="h-5 w-5 mr-3" />
             Audit Logs
+          </Link>
+          <Link
+            to="/settings/security"
+            className={clsx(
+              'flex items-center px-6 py-3 text-sm font-medium transition-colors',
+              location.pathname === '/settings/security'
+                ? 'bg-slate-800 text-white'
+                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+            )}
+          >
+            <Lock className="h-5 w-5 mr-3" />
+            Security
           </Link>
           <Link
             to="/settings"
