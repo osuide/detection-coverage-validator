@@ -104,9 +104,35 @@ export const scansApi = {
   get: (id: string) => api.get<Scan>(`/scans/${id}`).then(r => r.data),
 }
 
+export interface DetectionMapping {
+  id: string
+  technique_id: string
+  technique_name: string
+  confidence: number
+  mapping_source: string
+  rationale: string
+  matched_indicators: string[] | null
+  created_at: string | null
+}
+
+export interface DetectionDetail extends Detection {
+  source_arn: string
+  query_pattern: string | null
+  event_pattern: object | null
+  log_groups: string[] | null
+  description: string | null
+  health_score: number | null
+  is_managed: boolean
+}
+
 export const detectionsApi = {
   list: (params?: { cloud_account_id?: string; page?: number; limit?: number }) =>
     api.get<{ items: Detection[]; total: number }>('/detections', { params }).then(r => r.data),
+  get: (id: string) => api.get<DetectionDetail>(`/detections/${id}`).then(r => r.data),
+  getMappings: (id: string) =>
+    api.get<{ detection_id: string; detection_name: string; mappings: DetectionMapping[] }>(
+      `/detections/${id}/mappings`
+    ).then(r => r.data),
 }
 
 export const coverageApi = {

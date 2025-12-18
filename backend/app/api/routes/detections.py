@@ -135,6 +135,48 @@ async def get_detection(
     )
 
 
+@router.get("/{detection_id}/mappings")
+async def get_detection_mappings(
+    detection_id: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get technique mappings for a detection."""
+    # Verify detection exists
+    result = await db.execute(
+        select(Detection).where(Detection.id == detection_id)
+    )
+    detection = result.scalar_one_or_none()
+    if not detection:
+        raise HTTPException(status_code=404, detail="Detection not found")
+
+    # Get mappings with technique details
+    mappings_result = await db.execute(
+        select(DetectionMapping, Technique)
+        .join(Technique, DetectionMapping.technique_id == Technique.id)
+        .where(DetectionMapping.detection_id == detection_id)
+        .order_by(DetectionMapping.confidence.desc())
+    )
+    mappings = mappings_result.all()
+
+    return {
+        "detection_id": str(detection_id),
+        "detection_name": detection.name,
+        "mappings": [
+            {
+                "id": str(m.id),
+                "technique_id": t.technique_id,
+                "technique_name": t.name,
+                "confidence": round(m.confidence, 2),
+                "mapping_source": m.mapping_source.value if m.mapping_source else "unknown",
+                "rationale": m.rationale,
+                "matched_indicators": m.matched_indicators,
+                "created_at": m.created_at.isoformat() if m.created_at else None,
+            }
+            for m, t in mappings
+        ]
+    }
+
+
 @router.delete("/{detection_id}", status_code=204)
 async def delete_detection(
     detection_id: UUID,
