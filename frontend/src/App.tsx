@@ -12,6 +12,7 @@ import Signup from './pages/Signup'
 import TeamManagement from './pages/TeamManagement'
 import APIKeys from './pages/APIKeys'
 import AuditLogs from './pages/AuditLogs'
+import Profile from './pages/Profile'
 
 function App() {
   return (
@@ -37,6 +38,7 @@ function App() {
                   <Route path="/settings/team" element={<TeamManagement />} />
                   <Route path="/settings/api-keys" element={<APIKeys />} />
                   <Route path="/settings/audit-logs" element={<AuditLogs />} />
+                  <Route path="/settings/profile" element={<Profile />} />
                 </Routes>
               </Layout>
             </ProtectedRoute>
