@@ -276,7 +276,7 @@ class APIKey(Base):
 
     # Key details
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    key_prefix: Mapped[str] = mapped_column(String(12), nullable=False)  # e.g., "dcv_live_"
+    key_prefix: Mapped[str] = mapped_column(String(32), nullable=False)  # e.g., "dcv_live_abc123"
     key_hash: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
 
     # Permissions

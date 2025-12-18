@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import structlog
 
 from app.core.config import get_settings
-from app.api.routes import accounts, scans, detections, coverage, mappings, health, schedules, alerts, reports, auth, teams
+from app.api.routes import accounts, scans, detections, coverage, mappings, health, schedules, alerts, reports, auth, teams, api_keys
 from app.services.scheduler_service import scheduler_service
 
 settings = get_settings()
@@ -60,6 +60,7 @@ app.include_router(schedules.router, prefix="/api/v1/schedules", tags=["Schedule
 app.include_router(alerts.router, prefix="/api/v1/alerts", tags=["Alerts"])
 app.include_router(reports.router, prefix="/api/v1/reports", tags=["Reports"])
 app.include_router(teams.router, prefix="/api/v1/teams", tags=["Team Management"])
+app.include_router(api_keys.router, prefix="/api/v1/api-keys", tags=["API Keys"])
 
 
 @app.get("/")

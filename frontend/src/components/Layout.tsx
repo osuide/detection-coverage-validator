@@ -12,6 +12,7 @@ import {
   Building,
   ChevronDown,
   Users,
+  Key,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { useAuth } from '../contexts/AuthContext'
@@ -92,6 +93,18 @@ export default function Layout({ children }: LayoutProps) {
           >
             <Users className="h-5 w-5 mr-3" />
             Team
+          </Link>
+          <Link
+            to="/settings/api-keys"
+            className={clsx(
+              'flex items-center px-6 py-3 text-sm font-medium transition-colors',
+              location.pathname === '/settings/api-keys'
+                ? 'bg-slate-800 text-white'
+                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+            )}
+          >
+            <Key className="h-5 w-5 mr-3" />
+            API Keys
           </Link>
           <Link
             to="/settings"

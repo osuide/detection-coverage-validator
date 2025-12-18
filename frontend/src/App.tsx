@@ -10,6 +10,7 @@ import Gaps from './pages/Gaps'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
 import TeamManagement from './pages/TeamManagement'
+import APIKeys from './pages/APIKeys'
 
 function App() {
   return (
@@ -33,6 +34,7 @@ function App() {
                   <Route path="/coverage" element={<Coverage />} />
                   <Route path="/gaps" element={<Gaps />} />
                   <Route path="/settings/team" element={<TeamManagement />} />
+                  <Route path="/settings/api-keys" element={<APIKeys />} />
                 </Routes>
               </Layout>
             </ProtectedRoute>
