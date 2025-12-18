@@ -10,6 +10,7 @@ interface AuthState {
 }
 
 interface AuthContextType extends AuthState {
+  token: string | null  // Alias for accessToken for convenience
   login: (email: string, password: string) => Promise<LoginResponse>
   signup: (email: string, password: string, fullName: string, organizationName: string) => Promise<SignupResponse>
   logout: () => Promise<void>
@@ -201,6 +202,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{
         ...state,
+        token: state.accessToken,  // Alias for convenience
         login,
         signup,
         logout,

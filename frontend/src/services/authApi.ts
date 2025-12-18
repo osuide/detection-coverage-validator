@@ -17,6 +17,7 @@ export interface User {
   email_verified: boolean
   mfa_enabled: boolean
   created_at: string
+  role?: 'owner' | 'admin' | 'member' | 'viewer'  // User's role in current org context
 }
 
 export interface Organization {
