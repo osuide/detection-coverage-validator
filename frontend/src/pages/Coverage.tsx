@@ -1,10 +1,16 @@
 import { useQuery } from '@tanstack/react-query'
-import { BarChart3, RefreshCw } from 'lucide-react'
+import { BarChart3, RefreshCw, Grid3X3, List } from 'lucide-react'
+import { useState } from 'react'
 import { accountsApi, coverageApi } from '../services/api'
 import TacticHeatmap from '../components/TacticHeatmap'
 import CoverageGauge from '../components/CoverageGauge'
+import MitreHeatmap from '../components/MitreHeatmap'
+
+type ViewMode = 'heatmap' | 'tactics'
 
 export default function Coverage() {
+  const [viewMode, setViewMode] = useState<ViewMode>('heatmap')
+
   const { data: accounts } = useQuery({
     queryKey: ['accounts'],
     queryFn: accountsApi.list,
@@ -15,6 +21,12 @@ export default function Coverage() {
   const { data: coverage, isLoading, refetch } = useQuery({
     queryKey: ['coverage', firstAccount?.id],
     queryFn: () => coverageApi.get(firstAccount!.id),
+    enabled: !!firstAccount,
+  })
+
+  const { data: techniques, isLoading: techniquesLoading } = useQuery({
+    queryKey: ['techniques', firstAccount?.id],
+    queryFn: () => coverageApi.getTechniques(firstAccount!.id),
     enabled: !!firstAccount,
   })
 
@@ -44,16 +56,43 @@ export default function Coverage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">MITRE ATT&CK Coverage</h1>
           <p className="text-gray-600">
-            Version {coverage.mitre_version} • Last updated {new Date(coverage.created_at).toLocaleString()}
+            Version {coverage.mitre_version} - Last updated {new Date(coverage.created_at).toLocaleString()}
           </p>
         </div>
-        <button
-          onClick={() => refetch()}
-          className="btn-secondary flex items-center"
-        >
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Refresh
-        </button>
+        <div className="flex items-center space-x-2">
+          {/* View Mode Toggle */}
+          <div className="flex bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => setViewMode('heatmap')}
+              className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                viewMode === 'heatmap'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <Grid3X3 className="h-4 w-4 mr-1.5" />
+              Heatmap
+            </button>
+            <button
+              onClick={() => setViewMode('tactics')}
+              className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                viewMode === 'tactics'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <List className="h-4 w-4 mr-1.5" />
+              Tactics
+            </button>
+          </div>
+          <button
+            onClick={() => refetch()}
+            className="btn-secondary flex items-center"
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </button>
+        </div>
       </div>
 
       {/* Summary Cards */}
@@ -77,7 +116,7 @@ export default function Coverage() {
       </div>
 
       {/* Main Coverage View */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <div className="card">
           <h3 className="text-lg font-semibold text-gray-900 mb-6">Overall Score</h3>
           <CoverageGauge
@@ -96,19 +135,38 @@ export default function Coverage() {
           </div>
         </div>
 
-        <div className="card lg:col-span-2">
-          <h3 className="text-lg font-semibold text-gray-900 mb-6">Coverage by Tactic</h3>
-          <TacticHeatmap tactics={coverage.tactic_coverage} />
+        <div className="card lg:col-span-3">
+          {viewMode === 'heatmap' ? (
+            <>
+              <h3 className="text-lg font-semibold text-gray-900 mb-6">MITRE ATT&CK Technique Heatmap</h3>
+              {techniquesLoading ? (
+                <div className="flex items-center justify-center h-64">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+              ) : techniques && techniques.length > 0 ? (
+                <MitreHeatmap techniques={techniques} />
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  No technique data available
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <h3 className="text-lg font-semibold text-gray-900 mb-6">Coverage by Tactic</h3>
+              <TacticHeatmap tactics={coverage.tactic_coverage} />
+            </>
+          )}
         </div>
       </div>
 
       {/* Legend */}
       <div className="mt-6 card">
         <h4 className="text-sm font-medium text-gray-700 mb-3">Coverage Legend</h4>
-        <div className="flex space-x-6">
+        <div className="flex flex-wrap gap-6">
           <div className="flex items-center">
             <div className="w-4 h-4 bg-green-500 rounded mr-2"></div>
-            <span className="text-sm text-gray-600">Covered (≥60% confidence)</span>
+            <span className="text-sm text-gray-600">Covered (&ge;60% confidence)</span>
           </div>
           <div className="flex items-center">
             <div className="w-4 h-4 bg-yellow-500 rounded mr-2"></div>

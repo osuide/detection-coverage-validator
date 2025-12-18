@@ -19,6 +19,10 @@ from app.schemas.coverage import (
     CoverageHistoryItem,
 )
 from app.services.coverage_service import CoverageService
+from app.models.mitre import Technique, Tactic
+from app.models.mapping import DetectionMapping
+from app.models.detection import Detection, DetectionStatus
+from sqlalchemy import func
 
 router = APIRouter()
 
@@ -155,6 +159,73 @@ async def get_coverage_history(
         trend=trend,
         change_percent=change if len(history) >= 2 else 0.0,
     )
+
+
+@router.get("/{cloud_account_id}/techniques")
+async def get_technique_coverage(
+    cloud_account_id: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get per-technique coverage details for heatmap visualization."""
+    # Verify account exists
+    account_result = await db.execute(
+        select(CloudAccount).where(CloudAccount.id == cloud_account_id)
+    )
+    if not account_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Cloud account not found")
+
+    # Get all techniques with their tactics
+    techniques_result = await db.execute(
+        select(Technique, Tactic)
+        .join(Tactic, Technique.tactic_id == Tactic.id)
+    )
+    techniques_with_tactics = techniques_result.all()
+
+    # Get detections for this account
+    detections_result = await db.execute(
+        select(Detection.id)
+        .where(Detection.cloud_account_id == cloud_account_id)
+        .where(Detection.status == DetectionStatus.ACTIVE)
+    )
+    detection_ids = [d[0] for d in detections_result.all()]
+
+    # Get mappings for these detections grouped by technique
+    technique_coverage = []
+
+    for technique, tactic in techniques_with_tactics:
+        # Count mappings for this technique
+        if detection_ids:
+            mappings_result = await db.execute(
+                select(func.count(DetectionMapping.id), func.max(DetectionMapping.confidence))
+                .where(DetectionMapping.technique_id == technique.id)
+                .where(DetectionMapping.detection_id.in_(detection_ids))
+            )
+            mapping_row = mappings_result.first()
+            detection_count = mapping_row[0] if mapping_row else 0
+            max_confidence = mapping_row[1] if mapping_row and mapping_row[1] else 0.0
+        else:
+            detection_count = 0
+            max_confidence = 0.0
+
+        # Determine status based on confidence threshold
+        if max_confidence >= 0.6:
+            status = "covered"
+        elif max_confidence >= 0.4:
+            status = "partial"
+        else:
+            status = "uncovered"
+
+        technique_coverage.append({
+            "technique_id": technique.technique_id,
+            "technique_name": technique.name,
+            "tactic_id": tactic.tactic_id,
+            "tactic_name": tactic.name,
+            "detection_count": detection_count,
+            "max_confidence": round(max_confidence, 2) if max_confidence else 0.0,
+            "status": status,
+        })
+
+    return {"techniques": technique_coverage}
 
 
 @router.post("/{cloud_account_id}/calculate", response_model=CoverageResponse)

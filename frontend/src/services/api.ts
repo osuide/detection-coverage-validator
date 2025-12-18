@@ -78,6 +78,16 @@ export interface Scan {
   created_at: string
 }
 
+export interface TechniqueCoverage {
+  technique_id: string
+  technique_name: string
+  tactic_id: string
+  tactic_name: string
+  detection_count: number
+  max_confidence: number
+  status: 'covered' | 'partial' | 'uncovered'
+}
+
 // API functions
 export const accountsApi = {
   list: () => api.get<CloudAccount[]>('/accounts').then(r => r.data),
@@ -102,6 +112,8 @@ export const detectionsApi = {
 export const coverageApi = {
   get: (accountId: string) => api.get<CoverageData>(`/coverage/${accountId}`).then(r => r.data),
   calculate: (accountId: string) => api.post<CoverageData>(`/coverage/${accountId}/calculate`).then(r => r.data),
+  getTechniques: (accountId: string) =>
+    api.get<{ techniques: TechniqueCoverage[] }>(`/coverage/${accountId}/techniques`).then(r => r.data.techniques),
 }
 
 export default api
