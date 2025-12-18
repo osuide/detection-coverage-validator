@@ -58,6 +58,73 @@ RECON_TECHNIQUES = [
         base_confidence=0.65,
         priority=3,
     ),
+    TechniqueIndicator(
+        technique_id="T1595.001",
+        technique_name="Active Scanning: Scanning IP Blocks",
+        tactic_id="TA0043",
+        tactic_name="Reconnaissance",
+        cloudtrail_events=[],
+        keywords=["port scan", "probe", "scan", "reconnaissance"],
+        aws_services=["vpc", "ec2"],
+        log_patterns=[r"port.*scan", r"probe", r"recon"],
+        base_confidence=0.7,
+        priority=2,
+    ),
+]
+
+# Execution - TA0002
+EXECUTION_TECHNIQUES = [
+    TechniqueIndicator(
+        technique_id="T1059.009",
+        technique_name="Command and Scripting Interpreter: Cloud API",
+        tactic_id="TA0002",
+        tactic_name="Execution",
+        cloudtrail_events=[
+            "Invoke",
+            "InvokeFunction",
+            "StartExecution",
+            "SendCommand",
+            "RunInstances",
+        ],
+        keywords=["execute", "invoke", "command", "lambda", "step function", "ssm"],
+        aws_services=["lambda", "stepfunctions", "ssm", "ec2"],
+        log_patterns=[r"invoke", r"execute", r"command"],
+        base_confidence=0.7,
+        priority=2,
+    ),
+    TechniqueIndicator(
+        technique_id="T1204.003",
+        technique_name="User Execution: Malicious Image",
+        tactic_id="TA0002",
+        tactic_name="Execution",
+        cloudtrail_events=[
+            "RunInstances",
+            "CreateFunction",
+            "UpdateFunctionCode",
+        ],
+        keywords=["container", "image", "malicious", "ecr", "ami"],
+        aws_services=["ec2", "ecr", "lambda"],
+        log_patterns=[r"container", r"image", r"ami"],
+        base_confidence=0.65,
+        priority=2,
+    ),
+    TechniqueIndicator(
+        technique_id="T1648",
+        technique_name="Serverless Execution",
+        tactic_id="TA0002",
+        tactic_name="Execution",
+        cloudtrail_events=[
+            "CreateFunction",
+            "UpdateFunctionCode",
+            "InvokeFunction",
+            "CreateEventSourceMapping",
+        ],
+        keywords=["lambda", "serverless", "function", "invoke"],
+        aws_services=["lambda", "apigateway"],
+        log_patterns=[r"lambda", r"serverless", r"function"],
+        base_confidence=0.75,
+        priority=2,
+    ),
 ]
 
 # Initial Access - TA0001
@@ -109,6 +176,42 @@ INITIAL_ACCESS_TECHNIQUES = [
 
 # Persistence - TA0003
 PERSISTENCE_TECHNIQUES = [
+    TechniqueIndicator(
+        technique_id="T1098",
+        technique_name="Account Manipulation",
+        tactic_id="TA0003",
+        tactic_name="Persistence",
+        cloudtrail_events=[
+            "CreateAccessKey",
+            "DeleteAccessKey",
+            "UpdateAccessKey",
+            "CreateLoginProfile",
+            "UpdateLoginProfile",
+            "DeleteLoginProfile",
+            "AttachUserPolicy",
+            "DetachUserPolicy",
+            "AddUserToGroup",
+            "RemoveUserFromGroup",
+            "PutUserPolicy",
+            "DeleteUserPolicy",
+            "EnableMFADevice",
+            "DeactivateMFADevice",
+        ],
+        keywords=[
+            "account",
+            "manipulation",
+            "modify",
+            "change",
+            "policy",
+            "permission",
+            "user",
+            "mfa",
+        ],
+        aws_services=["iam"],
+        log_patterns=[r"account", r"manipulat", r"modify.*user", r"change.*policy"],
+        base_confidence=0.8,
+        priority=1,
+    ),
     TechniqueIndicator(
         technique_id="T1098.001",
         technique_name="Account Manipulation: Additional Cloud Credentials",
@@ -455,6 +558,7 @@ IMPACT_TECHNIQUES = [
 # Combine all technique indicators
 TECHNIQUE_INDICATORS: list[TechniqueIndicator] = [
     *RECON_TECHNIQUES,
+    *EXECUTION_TECHNIQUES,
     *INITIAL_ACCESS_TECHNIQUES,
     *PERSISTENCE_TECHNIQUES,
     *PRIVILEGE_ESCALATION_TECHNIQUES,

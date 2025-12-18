@@ -11,6 +11,7 @@ from app.mappers.indicator_library import (
     CLOUDTRAIL_EVENT_TO_TECHNIQUES,
     TechniqueIndicator,
 )
+from app.mappers.guardduty_mappings import get_mitre_mappings_for_finding
 from app.scanners.base import RawDetection
 from app.models.detection import DetectionType
 
@@ -60,7 +61,18 @@ class PatternMapper:
         """
         results = []
 
+        # Check for vendor-specific mappings (GuardDuty, SecurityHub)
+        vendor_results = self._get_vendor_mappings(detection)
+        if vendor_results:
+            results.extend(vendor_results)
+
+        # Also run pattern-based mapping for additional coverage
         for indicator in self.indicators:
+            # Skip if we already have a high-confidence vendor mapping for this technique
+            existing_ids = {r.technique_id for r in results if r.confidence >= 0.8}
+            if indicator.technique_id in existing_ids:
+                continue
+
             confidence, matched, rationale = self._calculate_match(
                 detection, indicator
             )
@@ -88,6 +100,116 @@ class PatternMapper:
         )
 
         return results
+
+    def _get_vendor_mappings(self, detection: RawDetection) -> list[MappingResult]:
+        """Get vendor-specific MITRE mappings for managed detection services."""
+        results = []
+
+        # GuardDuty vendor mappings
+        if detection.detection_type == DetectionType.GUARDDUTY_FINDING:
+            raw_config = detection.raw_config or {}
+            finding_types = raw_config.get("finding_types", [])
+
+            for finding_type in finding_types:
+                mappings = get_mitre_mappings_for_finding(finding_type)
+                for technique_id, confidence in mappings:
+                    indicator = TECHNIQUE_BY_ID.get(technique_id)
+                    if indicator:
+                        results.append(
+                            MappingResult(
+                                technique_id=technique_id,
+                                technique_name=indicator.technique_name,
+                                tactic_id=indicator.tactic_id,
+                                tactic_name=indicator.tactic_name,
+                                confidence=confidence,
+                                matched_indicators=[f"guardduty:{finding_type}"],
+                                rationale=f"GuardDuty vendor mapping for {finding_type}",
+                            )
+                        )
+
+        # Security Hub mappings based on standard controls
+        elif detection.detection_type == DetectionType.SECURITY_HUB:
+            raw_config = detection.raw_config or {}
+            standard_name = raw_config.get("standard_name", "")
+
+            # Map Security Hub standards to general techniques
+            if "foundational" in standard_name.lower() or "best-practices" in standard_name.lower():
+                # AWS Foundational Best Practices covers multiple defense areas
+                for tech_id in ["T1562.008", "T1078.004", "T1098"]:
+                    indicator = TECHNIQUE_BY_ID.get(tech_id)
+                    if indicator:
+                        results.append(
+                            MappingResult(
+                                technique_id=tech_id,
+                                technique_name=indicator.technique_name,
+                                tactic_id=indicator.tactic_id,
+                                tactic_name=indicator.tactic_name,
+                                confidence=0.7,
+                                matched_indicators=[f"securityhub:{standard_name}"],
+                                rationale=f"Security Hub {standard_name} standard coverage",
+                            )
+                        )
+
+            elif "cis" in standard_name.lower():
+                # CIS benchmarks focus on hardening
+                for tech_id in ["T1562.008", "T1078.004", "T1098", "T1552.005"]:
+                    indicator = TECHNIQUE_BY_ID.get(tech_id)
+                    if indicator:
+                        results.append(
+                            MappingResult(
+                                technique_id=tech_id,
+                                technique_name=indicator.technique_name,
+                                tactic_id=indicator.tactic_id,
+                                tactic_name=indicator.tactic_name,
+                                confidence=0.75,
+                                matched_indicators=[f"securityhub:{standard_name}"],
+                                rationale=f"Security Hub {standard_name} standard coverage",
+                            )
+                        )
+
+        # Config Rule mappings
+        elif detection.detection_type == DetectionType.CONFIG_RULE:
+            raw_config = detection.raw_config or {}
+            source_identifier = raw_config.get("source_identifier", "")
+
+            # Map common Config Rules to techniques
+            config_rule_mappings = {
+                "IAM_": [("T1098", 0.7), ("T1078.004", 0.65)],
+                "CLOUDTRAIL": [("T1562.008", 0.8)],
+                "S3_BUCKET_PUBLIC": [("T1537", 0.75)],
+                "S3_BUCKET_LOGGING": [("T1562.008", 0.7)],
+                "ENCRYPTED": [("T1486", 0.6)],
+                "ACCESS_KEY": [("T1098.001", 0.75)],
+                "MFA": [("T1078.004", 0.7)],
+                "ROOT": [("T1078.004", 0.8)],
+                "VPC_": [("T1562.007", 0.65)],
+                "SECURITY_GROUP": [("T1562.007", 0.65)],
+            }
+
+            for prefix, mappings in config_rule_mappings.items():
+                if prefix in source_identifier.upper():
+                    for technique_id, confidence in mappings:
+                        indicator = TECHNIQUE_BY_ID.get(technique_id)
+                        if indicator:
+                            results.append(
+                                MappingResult(
+                                    technique_id=technique_id,
+                                    technique_name=indicator.technique_name,
+                                    tactic_id=indicator.tactic_id,
+                                    tactic_name=indicator.tactic_name,
+                                    confidence=confidence,
+                                    matched_indicators=[f"config:{source_identifier}"],
+                                    rationale=f"AWS Config Rule {source_identifier} coverage",
+                                )
+                            )
+
+        # Deduplicate by technique_id, keeping highest confidence
+        seen = {}
+        for r in results:
+            if r.technique_id not in seen or r.confidence > seen[r.technique_id].confidence:
+                seen[r.technique_id] = r
+
+        return list(seen.values())
 
     def _calculate_match(
         self,
