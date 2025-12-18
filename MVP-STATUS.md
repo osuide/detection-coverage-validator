@@ -2,14 +2,71 @@
 
 **Date:** 2025-12-18
 **Version:** 0.1.0-alpha
+**Current Phase:** Phase 0 - MVP Launch
 
 ## Executive Summary
 
 This document tracks the implementation status against the Detection Coverage Validator formal problem model and master orchestrator plan.
 
+> **IMPORTANT:** See `ROADMAP.md` for the complete phased implementation plan.
+> Phase 0 must be 100% complete before starting Phase 1.
+
 ---
 
-## Phase 1: Foundation - COMPLETE ✅
+## Phase 0 Checklist (CURRENT FOCUS) 🔴
+
+| # | Task | Status | Priority | Effort |
+|---|------|--------|----------|--------|
+| 1 | Stripe Integration | ⏳ TODO | CRITICAL | 2-3 hrs |
+| 2 | Staging Environment | ⏳ TODO | CRITICAL | 4-6 hrs |
+| 3 | Real AWS Scanning | ⏳ TODO | CRITICAL | 2-3 hrs |
+| 4 | OAuth Providers | ⏳ TODO | HIGH | 2-3 hrs |
+| 5 | Email Service | ⏳ TODO | HIGH | 2 hrs |
+| 6 | Basic Tests | ⏳ TODO | MEDIUM | 4-6 hrs |
+
+**Total Estimated Effort:** 16-23 hours
+
+---
+
+## Environment Strategy
+
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│   LOCAL DEV     │     │    STAGING      │     │   PRODUCTION    │
+│                 │     │                 │     │                 │
+│ docker-compose  │ --> │  AWS (scaled)   │ --> │  AWS (full)     │
+│ localhost:8000  │     │  staging.a13e   │     │  app.a13e.io    │
+│ localhost:3000  │     │                 │     │                 │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+     DEV MODE              REAL AWS               REAL AWS
+     Mock scanning         Real scanning          Real scanning
+     No Stripe             Stripe TEST mode       Stripe LIVE mode
+```
+
+### Staging Environment (Required Before Production)
+| Component | Specification | Est. Cost |
+|-----------|--------------|-----------|
+| Frontend | S3 + CloudFront | ~$5/mo |
+| Backend | ECS Fargate (1 task) | ~$30/mo |
+| Database | RDS PostgreSQL (db.t3.micro) | ~$15/mo |
+| Cache | ElastiCache Redis (cache.t3.micro) | ~$15/mo |
+| Domain/SSL | Route 53 + ACM | ~$1/mo |
+| **Total** | | **~$66/mo** |
+
+### Production Environment (After Staging Validated)
+| Component | Specification | Est. Cost |
+|-----------|--------------|-----------|
+| Frontend | S3 + CloudFront | ~$10/mo |
+| Backend | ECS Fargate (2+ tasks, auto-scale) | ~$100/mo |
+| Database | RDS PostgreSQL (db.t3.small, Multi-AZ) | ~$50/mo |
+| Cache | ElastiCache Redis (cache.t3.small) | ~$30/mo |
+| Domain/SSL | Route 53 + ACM | ~$1/mo |
+| Monitoring | CloudWatch + alerts | ~$20/mo |
+| **Total** | | **~$211/mo** |
+
+---
+
+## Previously Completed (Foundation) ✅
 
 ### 1.1 Data Model (01-DATA-MODEL-AGENT) ✅
 | Entity | Status | Notes |

@@ -6,6 +6,59 @@ A multi-cloud security detection coverage analysis system that provides visibili
 
 ---
 
+## Implementation Phases (Added 2025-12-18)
+
+> **IMPORTANT:** This section maps the problem model to implementation phases.
+> See `ROADMAP.md` for detailed implementation plan.
+
+### Phase 0: MVP Launch (CURRENT FOCUS)
+**Goal:** Revenue-generating product with core value
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| AWS Scanning (CloudWatch, EventBridge, GuardDuty) | ✅ Done | Pattern-based mapping |
+| MITRE Mapping (Pattern Matching) | ✅ Done | 80%+ coverage |
+| Coverage Calculation | ✅ Done | Per-tactic/technique |
+| Gap Identification | ✅ Done | Risk prioritization |
+| Basic Dashboard | ✅ Done | Heatmap, metrics |
+| **Stripe Integration** | ⏳ TODO | CRITICAL |
+| **Staging Environment** | ⏳ TODO | CRITICAL |
+| **Real AWS Scanning** | ⏳ TODO | Remove dev mode |
+| OAuth Login | ⏳ TODO | Google, GitHub |
+| Email Service | ⏳ TODO | Password reset |
+
+### Phase 1: Post-Launch (After revenue)
+| Feature | Model Section | Notes |
+|---------|---------------|-------|
+| Detection Validation | Section 3D (ValidateDetection) | Syntax + Semantic |
+| Scheduled Scans | Section 3A (ScanAccount) | Background jobs |
+| Drift Detection | Section 3C (IdentifyDrift) | Historical comparison |
+| GCP Full Support | Section 1A (DetectionService) | Currently partial |
+
+### Phase 2: Advanced (1-2 months)
+| Feature | Model Section | Notes |
+|---------|---------------|-------|
+| NLP-Based Mapping | Section 3B (AutoMapDetections) | For custom code |
+| Detection Recommendations | Section 3E (RecommendDetection) | Actionable gaps |
+| MITRE Navigator Export | Section 3C (CalculateCoverage) | JSON export |
+
+### Phase 3: Enterprise (3-6 months)
+| Feature | Model Section | Notes |
+|---------|---------------|-------|
+| IaC Generation | Section 3E (GenerateIaC) | Terraform/CFN |
+| ML-Based Mapping | Section 3B (AutoMapDetections) | Classification model |
+| API Deprecation Monitoring | Section 3D (MonitorAPIDeprecations) | Proactive health |
+| SIEM Integration | N/A - new requirement | Splunk, Elastic |
+
+### Deferred Indefinitely
+| Feature | Reason |
+|---------|--------|
+| Azure Support | Focus on AWS/GCP first |
+| Custom Compliance Frameworks | Enterprise feature |
+| White-labeling | Enterprise feature |
+
+---
+
 ## 1. ENTITIES (Core Domain Objects)
 
 ### A. Cloud Environment Entities
