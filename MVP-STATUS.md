@@ -17,7 +17,7 @@ This document tracks the implementation status against the Detection Coverage Va
 
 | # | Task | Status | Priority | Effort |
 |---|------|--------|----------|--------|
-| 1 | Stripe Integration | ⏳ TODO | CRITICAL | 2-3 hrs |
+| 1 | Stripe Integration | ✅ DONE | CRITICAL | 2-3 hrs |
 | 2 | Staging Environment | ⏳ TODO | CRITICAL | 4-6 hrs |
 | 3 | Real AWS Scanning | ⏳ TODO | CRITICAL | 2-3 hrs |
 | 4 | OAuth Providers | ⏳ TODO | HIGH | 2-3 hrs |
@@ -25,6 +25,19 @@ This document tracks the implementation status against the Detection Coverage Va
 | 6 | Basic Tests | ⏳ TODO | MEDIUM | 4-6 hrs |
 
 **Total Estimated Effort:** 16-23 hours
+
+### Stripe Integration Details (Completed 2025-12-18)
+- Products created in Stripe Dashboard:
+  - A13E Subscriber: $29/mo (price_1SfnCFAB6j5KiVeU3vDWa7BR)
+  - A13E Enterprise: $499/mo (price_1SfnEYAB6j5KiVeUSz0GddjY)
+  - Additional Account: $9/mo (price_1SfnQRAB6j5KiVeUc8KSiSGT)
+- Stripe CLI configured for local webhook testing
+- Environment variables configured in docker-compose.yml
+
+### Auth/RBAC Fixes (Completed 2025-12-18)
+- Fixed role population in all auth endpoints
+- GET /me, PATCH /me, POST /login/mfa now return user.role
+- Created docs/AUTHN-AUTHZ-FLOW.md with complete auth documentation
 
 ---
 

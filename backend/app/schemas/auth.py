@@ -160,6 +160,7 @@ class UserResponse(BaseModel):
     email_verified: bool
     mfa_enabled: bool
     created_at: datetime
+    role: Optional[str] = None  # User's role in current org context (populated at runtime)
 
     class Config:
         from_attributes = True

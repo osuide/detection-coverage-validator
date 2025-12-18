@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.database import get_db
+from app.core.security import AuthContext, get_auth_context
 from app.models.user import User, Organization, OrganizationMember, UserRole, MembershipStatus
 from app.schemas.auth import (
     LoginRequest,
@@ -154,6 +155,13 @@ async def login(
     organizations = await auth_service.get_user_organizations(user.id)
     org = organizations[0] if organizations else None
 
+    # Get user's role in the organization
+    user_role = None
+    if org:
+        membership = await auth_service.get_user_membership(user.id, org.id)
+        if membership:
+            user_role = membership.role.value
+
     # Create session
     access_token, refresh_token = await auth_service.create_session(
         user=user,
@@ -162,11 +170,15 @@ async def login(
         user_agent=user_agent,
     )
 
+    # Create user response with role
+    user_response = UserResponse.model_validate(user)
+    user_response.role = user_role
+
     return LoginResponse(
         access_token=access_token,
         refresh_token=refresh_token,
         expires_in=settings.access_token_expire_minutes * 60,
-        user=UserResponse.model_validate(user),
+        user=user_response,
         organization=OrganizationResponse.model_validate(org) if org else None,
         requires_mfa=False,
     )
@@ -221,6 +233,13 @@ async def verify_mfa(
     organizations = await auth_service.get_user_organizations(user.id)
     org = organizations[0] if organizations else None
 
+    # Get user's role in the organization
+    user_role = None
+    if org:
+        membership = await auth_service.get_user_membership(user.id, org.id)
+        if membership:
+            user_role = membership.role.value
+
     # Create session
     access_token, refresh_token = await auth_service.create_session(
         user=user,
@@ -229,11 +248,15 @@ async def verify_mfa(
         user_agent=user_agent,
     )
 
+    # Create user response with role
+    user_response = UserResponse.model_validate(user)
+    user_response.role = user_role
+
     return LoginResponse(
         access_token=access_token,
         refresh_token=refresh_token,
         expires_in=settings.access_token_expire_minutes * 60,
-        user=UserResponse.model_validate(user),
+        user=user_response,
         organization=OrganizationResponse.model_validate(org) if org else None,
         requires_mfa=False,
     )
@@ -291,8 +314,12 @@ async def signup(
         user_agent=user_agent,
     )
 
+    # User who signed up is always the owner
+    user_response = UserResponse.model_validate(user)
+    user_response.role = "owner"
+
     return SignupResponse(
-        user=UserResponse.model_validate(user),
+        user=user_response,
         organization=OrganizationResponse.model_validate(org),
         access_token=access_token,
         refresh_token=refresh_token,
@@ -398,27 +425,46 @@ async def reset_password(
 
 @router.get("/me", response_model=UserResponse)
 async def get_me(
-    current_user: User = Depends(get_current_user),
+    auth: AuthContext = Depends(get_auth_context),
 ):
     """Get current user profile."""
-    return UserResponse.model_validate(current_user)
+    if not auth.user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+        )
+    user_response = UserResponse.model_validate(auth.user)
+    # Populate role from membership context
+    if auth.membership:
+        user_response.role = auth.membership.role.value
+    return user_response
 
 
 @router.patch("/me", response_model=UserResponse)
 async def update_me(
     body: UserUpdateRequest,
-    current_user: User = Depends(get_current_user),
+    auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
     """Update current user profile."""
-    if body.full_name is not None:
-        current_user.full_name = body.full_name
-    if body.timezone is not None:
-        current_user.timezone = body.timezone
-    if body.avatar_url is not None:
-        current_user.avatar_url = body.avatar_url
+    if not auth.user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+        )
 
-    return UserResponse.model_validate(current_user)
+    if body.full_name is not None:
+        auth.user.full_name = body.full_name
+    if body.timezone is not None:
+        auth.user.timezone = body.timezone
+    if body.avatar_url is not None:
+        auth.user.avatar_url = body.avatar_url
+
+    user_response = UserResponse.model_validate(auth.user)
+    # Populate role from membership context
+    if auth.membership:
+        user_response.role = auth.membership.role.value
+    return user_response
 
 
 @router.post("/me/change-password", status_code=status.HTTP_204_NO_CONTENT)

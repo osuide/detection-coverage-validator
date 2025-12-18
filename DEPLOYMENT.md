@@ -12,6 +12,11 @@ This document tracks critical configuration changes required when deploying A13E
 | `DEBUG` | `true` | `false` | Disable debug mode |
 | `DATABASE_URL` | Local PostgreSQL | RDS endpoint | Use secrets manager |
 | `JWT_SECRET` | Dev value | **Strong random secret** | Generate with `openssl rand -hex 32` |
+| `STRIPE_SECRET_KEY` | `sk_test_...` | `sk_live_...` | Use secrets manager |
+| `STRIPE_WEBHOOK_SECRET` | `whsec_...` (local) | `whsec_...` (production) | Different for each environment |
+| `STRIPE_PRICE_ID_SUBSCRIBER` | Test price ID | Live price ID | Must match Stripe Dashboard |
+| `STRIPE_PRICE_ID_ENTERPRISE` | Test price ID | Live price ID | Must match Stripe Dashboard |
+| `STRIPE_PRICE_ID_ADDITIONAL_ACCOUNT` | Test price ID | Live price ID | Must match Stripe Dashboard |
 
 ---
 
@@ -86,6 +91,29 @@ Similar to AWS, GCP credential validation is mocked in dev mode.
 
 ---
 
+## Stripe Billing (CRITICAL)
+
+### Development Setup
+1. Use Stripe **test mode** keys (`sk_test_...`, `pk_test_...`)
+2. Use Stripe CLI to forward webhooks: `stripe listen --forward-to localhost:8000/api/v1/billing/webhook`
+3. Test cards: `4242424242424242` (success), `4000000000000002` (decline)
+
+### Production Setup
+1. Switch to Stripe **live mode** keys (`sk_live_...`, `pk_live_...`)
+2. Create webhook endpoint in Stripe Dashboard pointing to `https://api.a13e.io/api/v1/billing/webhook`
+3. Configure events: `checkout.session.completed`, `customer.subscription.*`, `invoice.paid`, `invoice.payment_failed`
+4. Store live webhook secret in secrets manager
+
+### Price IDs
+Create products in both test and live mode with same structure:
+- Subscriber: $29/month (3 accounts included)
+- Enterprise: $499/month (10 accounts included)
+- Additional Account: $9/month per account
+
+**Important:** Test and live price IDs are different. Update env vars when switching modes.
+
+---
+
 ## Security Checklist
 
 - [ ] `A13E_DEV_MODE` removed from production
@@ -96,6 +124,8 @@ Similar to AWS, GCP credential validation is mocked in dev mode.
 - [ ] Rate limiting enabled
 - [ ] Audit logging enabled
 - [ ] Encryption keys rotated
+- [ ] Stripe live mode keys configured
+- [ ] Stripe webhook endpoint verified
 
 ---
 

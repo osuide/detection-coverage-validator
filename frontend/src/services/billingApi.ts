@@ -28,11 +28,21 @@ export interface Subscription {
 export interface Pricing {
   subscriber_monthly_cents: number
   subscriber_monthly_dollars: number
-  additional_account_monthly_cents: number
-  additional_account_monthly_dollars: number
+  enterprise_monthly_cents: number
+  enterprise_monthly_dollars: number
+  additional_account_subscriber_cents: number
+  additional_account_subscriber_dollars: number
   free_tier_accounts: number
   subscriber_tier_accounts: number
+  enterprise_included_accounts: number
   free_scan_retention_days: number
+  volume_tiers: Array<{
+    min_accounts: number
+    max_accounts: number | string
+    price_per_account_cents: number
+    price_per_account_dollars: number
+    label: string
+  }>
 }
 
 export interface Invoice {

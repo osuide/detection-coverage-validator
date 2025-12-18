@@ -55,6 +55,7 @@ class Settings(BaseSettings):
     stripe_publishable_key: Optional[str] = None
     stripe_webhook_secret: Optional[str] = None
     stripe_price_id_subscriber: Optional[str] = None
+    stripe_price_id_enterprise: Optional[str] = None
     stripe_price_id_additional_account: Optional[str] = None
 
     # Cloud Credentials Encryption

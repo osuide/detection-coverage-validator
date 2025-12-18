@@ -125,7 +125,7 @@ class StripeService:
                             "name": "Additional Cloud Account",
                             "description": "Add more cloud accounts to your subscription",
                         },
-                        "unit_amount": STRIPE_PRICES['additional_account_monthly'],
+                        "unit_amount": STRIPE_PRICES['additional_account_subscriber'],
                         "recurring": {"interval": "month"},
                     },
                     "quantity": additional_accounts,

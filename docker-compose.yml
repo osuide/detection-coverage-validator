@@ -46,6 +46,13 @@ services:
       A13E_DEV_MODE: "true"  # Skip real AWS/GCP API calls for local testing
       AWS_SHARED_CREDENTIALS_FILE: /home/appuser/.aws/credentials
       AWS_CONFIG_FILE: /home/appuser/.aws/config
+      # Stripe Configuration - Set these in .env file or environment
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      STRIPE_PRICE_ID_SUBSCRIBER: ${STRIPE_PRICE_ID_SUBSCRIBER:-}
+      STRIPE_PRICE_ID_ENTERPRISE: ${STRIPE_PRICE_ID_ENTERPRISE:-}
+      STRIPE_PRICE_ID_ADDITIONAL_ACCOUNT: ${STRIPE_PRICE_ID_ADDITIONAL_ACCOUNT:-}
     ports:
       - "8000:8000"
     volumes:

@@ -256,7 +256,7 @@ export default function Billing() {
 
               <div className="mt-4">
                 <label className="block text-sm font-medium text-blue-100 mb-1">
-                  Additional accounts (+${pricing.additional_account_monthly_dollars}/mo each)
+                  Additional accounts (+${pricing.additional_account_subscriber_dollars}/mo each)
                 </label>
                 <select
                   value={additionalAccounts}
@@ -272,7 +272,7 @@ export default function Billing() {
               </div>
 
               <p className="mt-4 text-lg font-medium">
-                Total: ${(pricing.subscriber_monthly_dollars + additionalAccounts * pricing.additional_account_monthly_dollars).toFixed(2)}/mo
+                Total: ${(pricing.subscriber_monthly_dollars + additionalAccounts * pricing.additional_account_subscriber_dollars).toFixed(2)}/mo
               </p>
             </div>
 
