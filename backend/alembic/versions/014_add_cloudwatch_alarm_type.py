@@ -1,14 +1,14 @@
 """Add cloudwatch_alarm detection type.
 
-Revision ID: 014_add_cloudwatch_alarm_type
-Revises: 013_add_platform_settings
+Revision ID: 014
+Revises: 013
 Create Date: 2025-12-19
 """
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = '014_add_cloudwatch_alarm_type'
-down_revision = '013_add_platform_settings'
+revision = '014'
+down_revision = '013'
 branch_labels = None
 depends_on = None
 
