@@ -39,4 +39,29 @@ output "cognito_domain_url" {
   value       = "https://${aws_cognito_user_pool_domain.main.domain}.auth.${data.aws_region.current.name}.amazoncognito.com"
 }
 
+output "enabled_providers" {
+  description = "List of enabled identity providers"
+  value = concat(
+    ["COGNITO"],
+    var.enable_google_idp ? ["Google"] : [],
+    var.enable_github_idp ? ["GitHub"] : [],
+    var.enable_microsoft_idp ? ["Microsoft"] : []
+  )
+}
+
+output "issuer" {
+  description = "Cognito issuer URL for JWT verification"
+  value       = "https://cognito-idp.${data.aws_region.current.name}.amazonaws.com/${aws_cognito_user_pool.main.id}"
+}
+
+output "authorization_endpoint" {
+  description = "OAuth authorization endpoint"
+  value       = "https://${aws_cognito_user_pool_domain.main.domain}.auth.${data.aws_region.current.name}.amazoncognito.com/oauth2/authorize"
+}
+
+output "token_endpoint" {
+  description = "OAuth token endpoint"
+  value       = "https://${aws_cognito_user_pool_domain.main.domain}.auth.${data.aws_region.current.name}.amazoncognito.com/oauth2/token"
+}
+
 data "aws_region" "current" {}

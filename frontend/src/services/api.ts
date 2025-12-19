@@ -3,8 +3,11 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios'
 const TOKEN_KEY = 'dcv_access_token'
 const REFRESH_TOKEN_KEY = 'dcv_refresh_token'
 
+// Use environment variable for API base URL (production uses full URL, dev uses proxy)
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
+
 const api = axios.create({
-  baseURL: '/api/v1',
+  baseURL: `${API_BASE_URL}/api/v1`,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -71,7 +74,7 @@ api.interceptors.response.use(
 
       try {
         // Call refresh endpoint directly to avoid circular dependency
-        const response = await axios.post('/api/v1/auth/refresh', {
+        const response = await axios.post(`${API_BASE_URL}/api/v1/auth/refresh`, {
           refresh_token: refreshToken,
         })
 

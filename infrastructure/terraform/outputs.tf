@@ -1,11 +1,11 @@
 output "api_endpoint" {
-  description = "API Gateway endpoint URL"
-  value       = module.api.api_endpoint
+  description = "Backend API endpoint URL"
+  value       = module.backend.api_endpoint
 }
 
 output "frontend_url" {
-  description = "CloudFront distribution URL"
-  value       = module.frontend.cloudfront_url
+  description = "Frontend URL"
+  value       = var.domain_name != "" ? "https://${var.subdomain != "" ? "${var.subdomain}.${var.domain_name}" : var.domain_name}" : module.frontend.cloudfront_url
 }
 
 output "database_endpoint" {
@@ -21,6 +21,53 @@ output "redis_endpoint" {
 }
 
 output "ecr_repository_url" {
-  description = "ECR repository URL for scanner image"
+  description = "ECR repository URL for backend image"
   value       = module.ecr.repository_url
+}
+
+output "alb_dns_name" {
+  description = "Application Load Balancer DNS name"
+  value       = module.backend.alb_dns_name
+}
+
+output "cloudfront_distribution_id" {
+  description = "CloudFront distribution ID for cache invalidation"
+  value       = module.frontend.cloudfront_distribution_id
+}
+
+output "s3_bucket_name" {
+  description = "S3 bucket name for frontend deployment"
+  value       = module.frontend.s3_bucket_name
+}
+
+output "ecs_cluster_arn" {
+  description = "ECS cluster ARN"
+  value       = module.backend.ecs_cluster_arn
+}
+
+output "ecs_service_name" {
+  description = "ECS service name for deployment"
+  value       = module.backend.ecs_service_name
+}
+
+# Cognito outputs (only when enabled)
+output "cognito_user_pool_id" {
+  description = "Cognito User Pool ID"
+  value       = var.enable_cognito ? module.cognito[0].user_pool_id : null
+}
+
+output "cognito_web_client_id" {
+  description = "Cognito Web Client ID (for frontend)"
+  value       = var.enable_cognito ? module.cognito[0].web_client_id : null
+}
+
+output "cognito_domain_url" {
+  description = "Cognito OAuth domain URL"
+  value       = var.enable_cognito ? module.cognito[0].cognito_domain_url : null
+}
+
+output "cognito_enabled_providers" {
+  description = "List of enabled OAuth providers"
+  value       = var.enable_cognito ? module.cognito[0].enabled_providers : []
+  sensitive   = true
 }

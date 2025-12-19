@@ -119,8 +119,16 @@ resource "aws_cognito_user_pool_client" "web" {
   # Supported identity providers
   supported_identity_providers = concat(
     ["COGNITO"],
-    var.enable_google_idp ? ["Google"] : []
+    var.enable_google_idp ? ["Google"] : [],
+    var.enable_github_idp ? ["GitHub"] : [],
+    var.enable_microsoft_idp ? ["Microsoft"] : []
   )
+
+  depends_on = [
+    aws_cognito_identity_provider.google,
+    aws_cognito_identity_provider.github,
+    aws_cognito_identity_provider.microsoft,
+  ]
 
   # Token validity
   access_token_validity  = 1  # hours
@@ -180,6 +188,61 @@ resource "aws_cognito_identity_provider" "google" {
     client_id        = var.google_client_id
     client_secret    = var.google_client_secret
     authorize_scopes = "openid email profile"
+  }
+
+  attribute_mapping = {
+    email    = "email"
+    name     = "name"
+    username = "sub"
+  }
+}
+
+# GitHub Identity Provider (optional) - Uses OIDC
+resource "aws_cognito_identity_provider" "github" {
+  count = var.enable_github_idp ? 1 : 0
+
+  user_pool_id  = aws_cognito_user_pool.main.id
+  provider_name = "GitHub"
+  provider_type = "OIDC"
+
+  provider_details = {
+    client_id                     = var.github_client_id
+    client_secret                 = var.github_client_secret
+    authorize_scopes              = "openid read:user user:email"
+    attributes_request_method     = "GET"
+    oidc_issuer                   = "https://github.com"
+    authorize_url                 = "https://github.com/login/oauth/authorize"
+    token_url                     = "https://github.com/login/oauth/access_token"
+    attributes_url                = "https://api.github.com/user"
+    jwks_uri                      = "https://token.actions.githubusercontent.com/.well-known/jwks"
+  }
+
+  attribute_mapping = {
+    email    = "email"
+    name     = "name"
+    username = "sub"
+    picture  = "avatar_url"
+  }
+}
+
+# Microsoft/Azure AD Identity Provider (optional) - Uses OIDC
+resource "aws_cognito_identity_provider" "microsoft" {
+  count = var.enable_microsoft_idp ? 1 : 0
+
+  user_pool_id  = aws_cognito_user_pool.main.id
+  provider_name = "Microsoft"
+  provider_type = "OIDC"
+
+  provider_details = {
+    client_id                     = var.microsoft_client_id
+    client_secret                 = var.microsoft_client_secret
+    authorize_scopes              = "openid email profile"
+    attributes_request_method     = "GET"
+    oidc_issuer                   = "https://login.microsoftonline.com/${var.microsoft_tenant_id}/v2.0"
+    authorize_url                 = "https://login.microsoftonline.com/${var.microsoft_tenant_id}/oauth2/v2.0/authorize"
+    token_url                     = "https://login.microsoftonline.com/${var.microsoft_tenant_id}/oauth2/v2.0/token"
+    attributes_url                = "https://graph.microsoft.com/oidc/userinfo"
+    jwks_uri                      = "https://login.microsoftonline.com/${var.microsoft_tenant_id}/discovery/v2.0/keys"
   }
 
   attribute_mapping = {

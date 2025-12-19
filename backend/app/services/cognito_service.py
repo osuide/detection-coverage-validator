@@ -53,19 +53,27 @@ class CognitoService:
         return f"{self.issuer}/.well-known/jwks.json"
 
     @property
+    def base_url(self) -> str:
+        """Get the Cognito hosted UI base URL."""
+        # Handle both full URL and domain-only formats
+        if self.domain and self.domain.startswith("https://"):
+            return self.domain
+        return f"https://{self.domain}.auth.{self.region}.amazoncognito.com"
+
+    @property
     def authorization_url(self) -> str:
         """Get the OAuth authorization URL."""
-        return f"https://{self.domain}.auth.{self.region}.amazoncognito.com/oauth2/authorize"
+        return f"{self.base_url}/oauth2/authorize"
 
     @property
     def token_url(self) -> str:
         """Get the OAuth token URL."""
-        return f"https://{self.domain}.auth.{self.region}.amazoncognito.com/oauth2/token"
+        return f"{self.base_url}/oauth2/token"
 
     @property
     def userinfo_url(self) -> str:
         """Get the userinfo URL."""
-        return f"https://{self.domain}.auth.{self.region}.amazoncognito.com/oauth2/userInfo"
+        return f"{self.base_url}/oauth2/userInfo"
 
     async def get_jwks(self) -> Dict:
         """Fetch and cache JWKS from Cognito."""

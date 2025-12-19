@@ -46,9 +46,13 @@ class Settings(BaseSettings):
     cognito_client_id: Optional[str] = None
     cognito_domain: Optional[str] = None  # e.g., "dcv-dev-abc123"
 
-    # OAuth (optional - for direct OAuth without Cognito)
+    # OAuth Providers (used by Cognito identity providers)
     google_client_id: Optional[str] = None
     google_client_secret: Optional[str] = None
+    github_client_id: Optional[str] = None
+    github_client_secret: Optional[str] = None
+    microsoft_client_id: Optional[str] = None
+    microsoft_client_secret: Optional[str] = None
 
     # Stripe
     stripe_secret_key: Optional[str] = None

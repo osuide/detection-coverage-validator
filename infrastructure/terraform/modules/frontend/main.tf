@@ -1,3 +1,15 @@
+# Frontend Module - S3 + CloudFront
+# Serves the React frontend with optional custom domain
+
+terraform {
+  required_providers {
+    aws = {
+      source                = "hashicorp/aws"
+      configuration_aliases = [aws, aws.us_east_1]
+    }
+  }
+}
+
 variable "environment" {
   type = string
 }
@@ -7,17 +19,39 @@ variable "domain_name" {
   default = ""
 }
 
-# S3 Bucket for static assets
-resource "aws_s3_bucket" "frontend" {
-  bucket = "dcv-${var.environment}-frontend-${random_id.bucket_suffix.hex}"
+variable "certificate_arn" {
+  type    = string
+  default = ""
+}
 
-  tags = {
-    Name = "dcv-${var.environment}-frontend"
-  }
+variable "api_endpoint" {
+  type        = string
+  description = "Backend API endpoint URL"
+}
+
+variable "lambda_edge_arn" {
+  type        = string
+  description = "Lambda@Edge function ARN for security headers"
+  default     = ""
+}
+
+variable "waf_acl_arn" {
+  type        = string
+  description = "WAF Web ACL ARN for CloudFront"
+  default     = ""
 }
 
 resource "random_id" "bucket_suffix" {
   byte_length = 4
+}
+
+# S3 Bucket for static assets
+resource "aws_s3_bucket" "frontend" {
+  bucket = "a13e-${var.environment}-frontend-${random_id.bucket_suffix.hex}"
+
+  tags = {
+    Name = "a13e-${var.environment}-frontend"
+  }
 }
 
 resource "aws_s3_bucket_public_access_block" "frontend" {
@@ -36,24 +70,34 @@ resource "aws_s3_bucket_versioning" "frontend" {
   }
 }
 
-# CloudFront Origin Access Identity
-resource "aws_cloudfront_origin_access_identity" "frontend" {
-  comment = "OAI for dcv-${var.environment} frontend"
+# CloudFront Origin Access Control (modern replacement for OAI)
+resource "aws_cloudfront_origin_access_control" "frontend" {
+  name                              = "a13e-${var.environment}-frontend-oac"
+  description                       = "OAC for a13e ${var.environment} frontend"
+  origin_access_control_origin_type = "s3"
+  signing_behavior                  = "always"
+  signing_protocol                  = "sigv4"
 }
 
-# S3 Bucket Policy for CloudFront
+# S3 Bucket Policy for CloudFront OAC
 resource "aws_s3_bucket_policy" "frontend" {
   bucket = aws_s3_bucket.frontend.id
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid    = "AllowCloudFrontServicePrincipal"
       Effect = "Allow"
       Principal = {
-        AWS = aws_cloudfront_origin_access_identity.frontend.iam_arn
+        Service = "cloudfront.amazonaws.com"
       }
       Action   = "s3:GetObject"
       Resource = "${aws_s3_bucket.frontend.arn}/*"
+      Condition = {
+        StringEquals = {
+          "AWS:SourceArn" = aws_cloudfront_distribution.frontend.arn
+        }
+      }
     }]
   })
 }
@@ -64,14 +108,14 @@ resource "aws_cloudfront_distribution" "frontend" {
   is_ipv6_enabled     = true
   default_root_object = "index.html"
   price_class         = "PriceClass_100"
+  aliases             = var.domain_name != "" ? [var.domain_name] : []
+  comment             = "a13e ${var.environment} frontend"
+  web_acl_id          = var.waf_acl_arn != "" ? var.waf_acl_arn : null
 
   origin {
-    domain_name = aws_s3_bucket.frontend.bucket_regional_domain_name
-    origin_id   = "S3-${aws_s3_bucket.frontend.id}"
-
-    s3_origin_config {
-      origin_access_identity = aws_cloudfront_origin_access_identity.frontend.cloudfront_access_identity_path
-    }
+    domain_name              = aws_s3_bucket.frontend.bucket_regional_domain_name
+    origin_id                = "S3-${aws_s3_bucket.frontend.id}"
+    origin_access_control_id = aws_cloudfront_origin_access_control.frontend.id
   }
 
   default_cache_behavior {
@@ -91,6 +135,16 @@ resource "aws_cloudfront_distribution" "frontend" {
     min_ttl     = 0
     default_ttl = 3600
     max_ttl     = 86400
+
+    # Lambda@Edge for security headers (origin-response)
+    dynamic "lambda_function_association" {
+      for_each = var.lambda_edge_arn != "" ? [1] : []
+      content {
+        event_type   = "origin-response"
+        lambda_arn   = var.lambda_edge_arn
+        include_body = false
+      }
+    }
   }
 
   # SPA routing - return index.html for 404s
@@ -113,16 +167,23 @@ resource "aws_cloudfront_distribution" "frontend" {
   }
 
   viewer_certificate {
-    cloudfront_default_certificate = true
+    cloudfront_default_certificate = var.certificate_arn == ""
+    acm_certificate_arn            = var.certificate_arn != "" ? var.certificate_arn : null
+    ssl_support_method             = var.certificate_arn != "" ? "sni-only" : null
+    minimum_protocol_version       = var.certificate_arn != "" ? "TLSv1.2_2021" : null
   }
 
   tags = {
-    Name = "dcv-${var.environment}-frontend"
+    Name = "a13e-${var.environment}-frontend"
   }
 }
 
 output "cloudfront_url" {
   value = "https://${aws_cloudfront_distribution.frontend.domain_name}"
+}
+
+output "cloudfront_domain_name" {
+  value = aws_cloudfront_distribution.frontend.domain_name
 }
 
 output "cloudfront_distribution_id" {
@@ -131,4 +192,8 @@ output "cloudfront_distribution_id" {
 
 output "s3_bucket_name" {
   value = aws_s3_bucket.frontend.bucket
+}
+
+output "s3_bucket_arn" {
+  value = aws_s3_bucket.frontend.arn
 }

@@ -58,7 +58,7 @@ resource "aws_db_subnet_group" "main" {
 resource "aws_db_instance" "main" {
   identifier     = "dcv-${var.environment}-db"
   engine         = "postgres"
-  engine_version = "15.4"
+  engine_version = "15.15"
   instance_class = var.db_instance_class
 
   allocated_storage     = 20

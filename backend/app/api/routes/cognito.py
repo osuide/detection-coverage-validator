@@ -68,6 +68,10 @@ async def get_cognito_config():
     providers = ["COGNITO"]
     if settings.google_client_id:
         providers.append("Google")
+    if settings.github_client_id:
+        providers.append("GitHub")
+    if settings.microsoft_client_id:
+        providers.append("Microsoft")
 
     return CognitoConfigResponse(
         configured=True,
@@ -92,12 +96,19 @@ async def initiate_sso(
             detail="SSO is not configured"
         )
 
-    # Validate provider
-    valid_providers = ["google", "cognito"]
-    if provider.lower() not in valid_providers:
+    # Validate provider and map to Cognito identity provider name
+    provider_mapping = {
+        "cognito": None,  # Native Cognito login
+        "google": "Google",
+        "github": "GitHub",
+        "microsoft": "Microsoft",
+    }
+
+    provider_lower = provider.lower()
+    if provider_lower not in provider_mapping:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid provider. Must be one of: {valid_providers}"
+            detail=f"Invalid provider. Must be one of: {list(provider_mapping.keys())}"
         )
 
     # Generate state for CSRF protection
@@ -107,9 +118,7 @@ async def initiate_sso(
     code_verifier, code_challenge = generate_pkce()
 
     # Build authorization URL with PKCE
-    identity_provider = None
-    if provider.lower() == "google":
-        identity_provider = "Google"
+    identity_provider = provider_mapping[provider_lower]
 
     auth_url = cognito_service.build_authorization_url(
         redirect_uri=redirect_uri,
