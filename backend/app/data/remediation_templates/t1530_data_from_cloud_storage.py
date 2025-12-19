@@ -99,33 +99,116 @@ TEMPLATE = RemediationTemplate(
                     "Policy:S3/BucketAnonymousAccessGranted"
                 ],
                 cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
-Description: GuardDuty S3 Protection for T1530 detection
+Description: GuardDuty + email alerts for S3 data theft
+
+Parameters:
+  AlertEmail:
+    Type: String
 
 Resources:
+  # Step 1: Enable GuardDuty with S3 protection
   GuardDutyDetector:
     Type: AWS::GuardDuty::Detector
     Properties:
       Enable: true
-      FindingPublishingFrequency: FIFTEEN_MINUTES
       DataSources:
         S3Logs:
           Enable: true
-      Tags:
-        - Key: Purpose
-          Value: T1530-Detection''',
-                terraform_template='''resource "aws_guardduty_detector" "main" {
-  enable                       = true
-  finding_publishing_frequency = "FIFTEEN_MINUTES"
 
+  # Step 2: Create SNS topic for alerts
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      Subscription:
+        - Protocol: email
+          Endpoint: !Ref AlertEmail
+
+  # Step 3: Route S3 findings to email
+  S3FindingsRule:
+    Type: AWS::Events::Rule
+    Properties:
+      EventPattern:
+        source: [aws.guardduty]
+        detail:
+          type:
+            - prefix: "Exfiltration:S3"
+            - prefix: "UnauthorizedAccess:S3"
+            - prefix: "Discovery:S3"
+            - prefix: "Policy:S3"
+      Targets:
+        - Id: Email
+          Arn: !Ref AlertTopic
+
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: [!Ref AlertTopic]
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic''',
+                terraform_template='''# GuardDuty + email alerts for S3 data theft
+
+variable "alert_email" {
+  type = string
+}
+
+# Step 1: Enable GuardDuty with S3 protection
+resource "aws_guardduty_detector" "main" {
+  enable = true
   datasources {
     s3_logs {
       enable = true
     }
   }
+}
 
-  tags = {
-    Purpose = "T1530-Detection"
-  }
+# Step 2: Create SNS topic for alerts
+resource "aws_sns_topic" "alerts" {
+  name = "guardduty-s3-alerts"
+}
+
+resource "aws_sns_topic_subscription" "email" {
+  topic_arn = aws_sns_topic.alerts.arn
+  protocol  = "email"
+  endpoint  = var.alert_email
+}
+
+# Step 3: Route S3 findings to email
+resource "aws_cloudwatch_event_rule" "s3_findings" {
+  name = "guardduty-s3-alerts"
+  event_pattern = jsonencode({
+    source = ["aws.guardduty"]
+    detail = {
+      type = [
+        { prefix = "Exfiltration:S3" },
+        { prefix = "UnauthorizedAccess:S3" },
+        { prefix = "Discovery:S3" },
+        { prefix = "Policy:S3" }
+      ]
+    }
+  })
+}
+
+resource "aws_cloudwatch_event_target" "sns" {
+  rule = aws_cloudwatch_event_rule.s3_findings.name
+  arn  = aws_sns_topic.alerts.arn
+}
+
+resource "aws_sns_topic_policy" "allow_eventbridge" {
+  arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+    }]
+  })
 }''',
                 alert_severity="high",
                 alert_title="GuardDuty: Suspicious S3 Access Detected",

@@ -96,24 +96,104 @@ TEMPLATE = RemediationTemplate(
                     "DefenseEvasion:IAMUser/AnomalousBehavior"
                 ],
                 cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
-Description: GuardDuty configuration for T1562.001 detection
+Description: GuardDuty + email alerts for security tool tampering
+
+Parameters:
+  AlertEmail:
+    Type: String
 
 Resources:
+  # Step 1: Enable GuardDuty (detects security tool tampering)
   GuardDutyDetector:
     Type: AWS::GuardDuty::Detector
     Properties:
       Enable: true
-      FindingPublishingFrequency: FIFTEEN_MINUTES
-      Tags:
-        - Key: Purpose
-          Value: T1562.001-Detection''',
-                terraform_template='''resource "aws_guardduty_detector" "main" {
-  enable                       = true
-  finding_publishing_frequency = "FIFTEEN_MINUTES"
 
-  tags = {
-    Purpose = "T1562.001-Detection"
-  }
+  # Step 2: Create SNS topic for alerts
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      Subscription:
+        - Protocol: email
+          Endpoint: !Ref AlertEmail
+
+  # Step 3: Route stealth/evasion findings to email
+  StealthFindingsRule:
+    Type: AWS::Events::Rule
+    Properties:
+      EventPattern:
+        source: [aws.guardduty]
+        detail:
+          type:
+            - prefix: "Stealth:IAMUser"
+            - prefix: "DefenseEvasion:IAMUser"
+      Targets:
+        - Id: Email
+          Arn: !Ref AlertTopic
+
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: [!Ref AlertTopic]
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic''',
+                terraform_template='''# GuardDuty + email alerts for security tool tampering
+
+variable "alert_email" {
+  type = string
+}
+
+# Step 1: Enable GuardDuty (detects security tool tampering)
+resource "aws_guardduty_detector" "main" {
+  enable = true
+}
+
+# Step 2: Create SNS topic for alerts
+resource "aws_sns_topic" "alerts" {
+  name = "guardduty-stealth-alerts"
+}
+
+resource "aws_sns_topic_subscription" "email" {
+  topic_arn = aws_sns_topic.alerts.arn
+  protocol  = "email"
+  endpoint  = var.alert_email
+}
+
+# Step 3: Route stealth/evasion findings to email
+resource "aws_cloudwatch_event_rule" "stealth_findings" {
+  name = "guardduty-stealth-alerts"
+  event_pattern = jsonencode({
+    source = ["aws.guardduty"]
+    detail = {
+      type = [
+        { prefix = "Stealth:IAMUser" },
+        { prefix = "DefenseEvasion:IAMUser" }
+      ]
+    }
+  })
+}
+
+resource "aws_cloudwatch_event_target" "sns" {
+  rule = aws_cloudwatch_event_rule.stealth_findings.name
+  arn  = aws_sns_topic.alerts.arn
+}
+
+resource "aws_sns_topic_policy" "allow_eventbridge" {
+  arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+    }]
+  })
 }''',
                 alert_severity="critical",
                 alert_title="GuardDuty: Security Tool Tampering Detected",

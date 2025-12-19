@@ -89,17 +89,107 @@ TEMPLATE = RemediationTemplate(
                     "InitialAccess:IAMUser/AnomalousBehavior"
                 ],
                 cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
-Description: Enable GuardDuty for brute force detection
+Description: GuardDuty + email alerts for brute force attacks
+
+Parameters:
+  AlertEmail:
+    Type: String
 
 Resources:
+  # Step 1: Enable GuardDuty (detects SSH/RDP brute force automatically)
   GuardDutyDetector:
     Type: AWS::GuardDuty::Detector
     Properties:
       Enable: true
-      FindingPublishingFrequency: FIFTEEN_MINUTES
-      Tags:
-        - Key: Purpose
-          Value: T1110-Detection''',
+
+  # Step 2: Create SNS topic for alerts
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      Subscription:
+        - Protocol: email
+          Endpoint: !Ref AlertEmail
+
+  # Step 3: Route brute force findings to email
+  BruteForceFindingsRule:
+    Type: AWS::Events::Rule
+    Properties:
+      EventPattern:
+        source: [aws.guardduty]
+        detail:
+          type:
+            - prefix: "UnauthorizedAccess:EC2/SSHBruteForce"
+            - prefix: "UnauthorizedAccess:EC2/RDPBruteForce"
+            - prefix: "CredentialAccess:IAMUser"
+      Targets:
+        - Id: Email
+          Arn: !Ref AlertTopic
+
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: [!Ref AlertTopic]
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic''',
+                terraform_template='''# GuardDuty + email alerts for brute force attacks
+
+variable "alert_email" {
+  type = string
+}
+
+# Step 1: Enable GuardDuty (detects SSH/RDP brute force automatically)
+resource "aws_guardduty_detector" "main" {
+  enable = true
+}
+
+# Step 2: Create SNS topic for alerts
+resource "aws_sns_topic" "alerts" {
+  name = "guardduty-bruteforce-alerts"
+}
+
+resource "aws_sns_topic_subscription" "email" {
+  topic_arn = aws_sns_topic.alerts.arn
+  protocol  = "email"
+  endpoint  = var.alert_email
+}
+
+# Step 3: Route brute force findings to email
+resource "aws_cloudwatch_event_rule" "brute_force" {
+  name = "guardduty-bruteforce-alerts"
+  event_pattern = jsonencode({
+    source = ["aws.guardduty"]
+    detail = {
+      type = [
+        { prefix = "UnauthorizedAccess:EC2/SSHBruteForce" },
+        { prefix = "UnauthorizedAccess:EC2/RDPBruteForce" },
+        { prefix = "CredentialAccess:IAMUser" }
+      ]
+    }
+  })
+}
+
+resource "aws_cloudwatch_event_target" "sns" {
+  rule = aws_cloudwatch_event_rule.brute_force.name
+  arn  = aws_sns_topic.alerts.arn
+}
+
+resource "aws_sns_topic_policy" "allow_eventbridge" {
+  arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+    }]
+  })
+}''',
                 alert_severity="high",
                 alert_title="GuardDuty: Brute Force Attack Detected",
                 alert_description_template=(
@@ -152,42 +242,93 @@ Resources:
 | filter failed_attempts >= 5
 | sort time_window desc''',
                 cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
-Description: Failed login monitoring for brute force detection
+Description: Alert on 5+ failed console logins in 5 minutes
 
 Parameters:
   CloudTrailLogGroup:
     Type: String
-  SNSTopicArn:
+  AlertEmail:
     Type: String
-  FailedLoginThreshold:
-    Type: Number
-    Default: 5
 
 Resources:
-  FailedLoginMetricFilter:
+  # Step 1: Create alert topic
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      Subscription:
+        - Protocol: email
+          Endpoint: !Ref AlertEmail
+
+  # Step 2: Count failed logins
+  FailedLoginFilter:
     Type: AWS::Logs::MetricFilter
     Properties:
       LogGroupName: !Ref CloudTrailLogGroup
       FilterPattern: '{ $.eventName = "ConsoleLogin" && $.responseElements.ConsoleLogin = "Failure" }'
       MetricTransformations:
-        - MetricName: FailedConsoleLogins
-          MetricNamespace: Security/T1110
+        - MetricName: FailedLogins
+          MetricNamespace: Security
           MetricValue: "1"
 
+  # Step 3: Alert when threshold exceeded
   FailedLoginAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      AlarmName: T1110-ExcessiveFailedLogins
-      AlarmDescription: Multiple failed console login attempts detected
-      MetricName: FailedConsoleLogins
-      Namespace: Security/T1110
+      AlarmName: BruteForce-FailedLogins
+      MetricName: FailedLogins
+      Namespace: Security
       Statistic: Sum
       Period: 300
-      EvaluationPeriods: 1
-      Threshold: !Ref FailedLoginThreshold
+      Threshold: 5
       ComparisonOperator: GreaterThanOrEqualToThreshold
-      AlarmActions:
-        - !Ref SNSTopicArn''',
+      EvaluationPeriods: 1
+      AlarmActions: [!Ref AlertTopic]''',
+                terraform_template='''# Alert on 5+ failed console logins in 5 minutes
+
+variable "cloudtrail_log_group" {
+  type = string
+}
+
+variable "alert_email" {
+  type = string
+}
+
+# Step 1: Create alert topic
+resource "aws_sns_topic" "alerts" {
+  name = "failed-login-alerts"
+}
+
+resource "aws_sns_topic_subscription" "email" {
+  topic_arn = aws_sns_topic.alerts.arn
+  protocol  = "email"
+  endpoint  = var.alert_email
+}
+
+# Step 2: Count failed logins
+resource "aws_cloudwatch_log_metric_filter" "failed_logins" {
+  name           = "failed-console-logins"
+  log_group_name = var.cloudtrail_log_group
+  pattern        = "{ $.eventName = \"ConsoleLogin\" && $.responseElements.ConsoleLogin = \"Failure\" }"
+
+  metric_transformation {
+    name      = "FailedLogins"
+    namespace = "Security"
+    value     = "1"
+  }
+}
+
+# Step 3: Alert when threshold exceeded
+resource "aws_cloudwatch_metric_alarm" "failed_logins" {
+  alarm_name          = "BruteForce-FailedLogins"
+  metric_name         = "FailedLogins"
+  namespace           = "Security"
+  statistic           = "Sum"
+  period              = 300
+  threshold           = 5
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = 1
+  alarm_actions       = [aws_sns_topic.alerts.arn]
+}''',
                 alert_severity="high",
                 alert_title="Excessive Failed Login Attempts",
                 alert_description_template=(
