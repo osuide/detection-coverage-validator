@@ -10,6 +10,12 @@ interface TechniqueCell {
   status: 'covered' | 'partial' | 'uncovered'
 }
 
+interface TooltipState {
+  technique: TechniqueCell
+  x: number
+  y: number
+}
+
 interface MitreHeatmapProps {
   techniques: TechniqueCell[]
   onTechniqueClick?: (techniqueId: string) => void
@@ -50,6 +56,7 @@ function getCellColor(status: string, detectionCount: number): string {
 
 export default function MitreHeatmap({ techniques, onTechniqueClick }: MitreHeatmapProps) {
   const [selectedTechnique, setSelectedTechnique] = useState<TechniqueCell | null>(null)
+  const [tooltip, setTooltip] = useState<TooltipState | null>(null)
 
   // Group techniques by tactic
   const techniquesByTactic: Record<string, TechniqueCell[]> = {}
@@ -63,6 +70,19 @@ export default function MitreHeatmap({ techniques, onTechniqueClick }: MitreHeat
   const handleCellClick = (technique: TechniqueCell) => {
     setSelectedTechnique(technique)
     onTechniqueClick?.(technique.technique_id)
+  }
+
+  const handleMouseEnter = (technique: TechniqueCell, event: React.MouseEvent) => {
+    const rect = event.currentTarget.getBoundingClientRect()
+    setTooltip({
+      technique,
+      x: rect.left + rect.width / 2,
+      y: rect.top - 10,
+    })
+  }
+
+  const handleMouseLeave = () => {
+    setTooltip(null)
   }
 
   return (
@@ -107,12 +127,13 @@ export default function MitreHeatmap({ techniques, onTechniqueClick }: MitreHeat
                       <button
                         key={technique.technique_id}
                         onClick={() => handleCellClick(technique)}
+                        onMouseEnter={(e) => handleMouseEnter(technique, e)}
+                        onMouseLeave={handleMouseLeave}
                         className={`w-full p-2 rounded text-xs font-medium text-center transition-colors cursor-pointer ${getCellColor(technique.status, technique.detection_count)} ${
                           selectedTechnique?.technique_id === technique.technique_id
                             ? 'ring-2 ring-blue-500 ring-offset-1'
                             : ''
                         }`}
-                        title={`${technique.technique_id}: ${technique.technique_name}`}
                       >
                         <div className="truncate text-gray-800">
                           {technique.technique_id}
@@ -130,6 +151,52 @@ export default function MitreHeatmap({ techniques, onTechniqueClick }: MitreHeat
           })}
         </div>
       </div>
+
+      {/* Hover Tooltip */}
+      {tooltip && (
+        <div
+          className="fixed z-50 bg-gray-900 text-white rounded-lg shadow-xl p-3 text-sm pointer-events-none transform -translate-x-1/2 -translate-y-full"
+          style={{
+            left: tooltip.x,
+            top: tooltip.y,
+          }}
+        >
+          <div className="font-semibold text-cyan-300 mb-1">
+            {tooltip.technique.technique_id}
+          </div>
+          <div className="text-gray-100 mb-2">
+            {tooltip.technique.technique_name}
+          </div>
+          <div className="space-y-1 text-xs">
+            <div className="flex justify-between gap-4">
+              <span className="text-gray-400">Confidence:</span>
+              <span className="font-medium">
+                {tooltip.technique.max_confidence > 0
+                  ? `${(tooltip.technique.max_confidence * 100).toFixed(0)}%`
+                  : 'N/A'}
+              </span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span className="text-gray-400">Detections:</span>
+              <span className="font-medium">{tooltip.technique.detection_count}</span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span className="text-gray-400">Status:</span>
+              <span className={`font-medium capitalize ${
+                tooltip.technique.status === 'covered' ? 'text-green-400' :
+                tooltip.technique.status === 'partial' ? 'text-yellow-400' :
+                'text-gray-400'
+              }`}>
+                {tooltip.technique.status}
+              </span>
+            </div>
+          </div>
+          {/* Tooltip arrow */}
+          <div className="absolute left-1/2 bottom-0 transform -translate-x-1/2 translate-y-full">
+            <div className="border-8 border-transparent border-t-gray-900"></div>
+          </div>
+        </div>
+      )}
 
       {/* Selected Technique Detail */}
       {selectedTechnique && (

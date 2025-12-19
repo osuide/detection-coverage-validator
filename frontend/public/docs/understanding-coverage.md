@@ -121,7 +121,9 @@ Hover over any cell to see:
 - Technique name (e.g., "Valid Accounts")
 - Confidence score (e.g., 75%)
 - Number of detections mapped
-- Associated detection names
+- Coverage status (Covered, Partial, or Uncovered)
+
+Click a cell to view the technique in detail, including a link to the official MITRE ATT&CK documentation.
 
 ### Navigating the Heatmap
 
