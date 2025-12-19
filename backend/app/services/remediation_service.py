@@ -6,14 +6,12 @@ context-aware recommendations for addressing MITRE ATT&CK coverage gaps.
 """
 
 from typing import Optional, List, Dict, Any
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 
 from app.data.remediation_templates import (
     get_template,
     get_all_templates,
     get_templates_by_tactic,
-    RemediationTemplate,
-    DetectionStrategy,
 )
 
 
@@ -322,7 +320,6 @@ class RemediationService:
             Implementation plan with phases and estimated outcomes
         """
         all_strategies = []
-        total_coverage_improvement = 0
 
         for technique_id in technique_ids:
             template = get_template(technique_id)
