@@ -211,6 +211,7 @@ export interface TechniqueCoverage {
   detection_count: number
   max_confidence: number
   status: 'covered' | 'partial' | 'uncovered'
+  detection_names: string[]
 }
 
 // API functions

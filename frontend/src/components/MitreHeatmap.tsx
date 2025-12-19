@@ -8,6 +8,7 @@ interface TechniqueCell {
   detection_count: number
   max_confidence: number
   status: 'covered' | 'partial' | 'uncovered'
+  detection_names?: string[]
 }
 
 interface TooltipState {
@@ -155,7 +156,7 @@ export default function MitreHeatmap({ techniques, onTechniqueClick }: MitreHeat
       {/* Hover Tooltip */}
       {tooltip && (
         <div
-          className="fixed z-50 bg-gray-900 text-white rounded-lg shadow-xl p-3 text-sm pointer-events-none transform -translate-x-1/2 -translate-y-full"
+          className="fixed z-50 bg-gray-900 text-white rounded-lg shadow-xl p-3 text-sm pointer-events-none transform -translate-x-1/2 -translate-y-full max-w-xs"
           style={{
             left: tooltip.x,
             top: tooltip.y,
@@ -191,6 +192,25 @@ export default function MitreHeatmap({ techniques, onTechniqueClick }: MitreHeat
               </span>
             </div>
           </div>
+          {/* Detection names list */}
+          {tooltip.technique.detection_names && tooltip.technique.detection_names.length > 0 && (
+            <div className="mt-2 pt-2 border-t border-gray-700">
+              <div className="text-xs text-gray-400 mb-1">Mapped Detections:</div>
+              <ul className="text-xs space-y-0.5 max-h-24 overflow-y-auto">
+                {tooltip.technique.detection_names.slice(0, 5).map((name, idx) => (
+                  <li key={idx} className="text-gray-200 truncate flex items-start gap-1">
+                    <span className="text-green-400 flex-shrink-0">•</span>
+                    <span className="truncate">{name}</span>
+                  </li>
+                ))}
+                {tooltip.technique.detection_names.length > 5 && (
+                  <li className="text-gray-400 italic">
+                    +{tooltip.technique.detection_names.length - 5} more...
+                  </li>
+                )}
+              </ul>
+            </div>
+          )}
           {/* Tooltip arrow */}
           <div className="absolute left-1/2 bottom-0 transform -translate-x-1/2 translate-y-full">
             <div className="border-8 border-transparent border-t-gray-900"></div>
@@ -202,7 +222,7 @@ export default function MitreHeatmap({ techniques, onTechniqueClick }: MitreHeat
       {selectedTechnique && (
         <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
           <div className="flex items-start justify-between">
-            <div>
+            <div className="flex-1">
               <h4 className="font-semibold text-gray-900">
                 {selectedTechnique.technique_id} - {selectedTechnique.technique_name}
               </h4>
@@ -217,12 +237,26 @@ export default function MitreHeatmap({ techniques, onTechniqueClick }: MitreHeat
                   <span className="text-red-600">No detections covering this technique</span>
                 )}
               </p>
+              {/* Detection names list */}
+              {selectedTechnique.detection_names && selectedTechnique.detection_names.length > 0 && (
+                <div className="mt-3">
+                  <p className="text-xs font-medium text-gray-500 mb-1">Mapped Detections:</p>
+                  <ul className="text-sm space-y-1">
+                    {selectedTechnique.detection_names.map((name, idx) => (
+                      <li key={idx} className="text-gray-700 flex items-start gap-2">
+                        <span className="text-green-600 flex-shrink-0">✓</span>
+                        <span>{name}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
             <a
               href={`https://attack.mitre.org/techniques/${selectedTechnique.technique_id.replace('.', '/')}/`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center text-sm text-blue-600 hover:text-blue-700"
+              className="flex items-center text-sm text-blue-600 hover:text-blue-700 flex-shrink-0 ml-4"
             >
               View in MITRE
               <ExternalLink className="h-4 w-4 ml-1" />

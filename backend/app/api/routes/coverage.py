@@ -224,19 +224,26 @@ async def get_technique_coverage(
     technique_coverage = []
 
     for technique, tactic in techniques_with_tactics:
-        # Count mappings for this technique
+        # Get mappings with detection names for this technique
+        detection_names = []
+        detection_count = 0
+        max_confidence = 0.0
+
         if detection_ids:
+            # Get mappings with detection info
             mappings_result = await db.execute(
-                select(func.count(DetectionMapping.id), func.max(DetectionMapping.confidence))
+                select(DetectionMapping, Detection.name)
+                .join(Detection, DetectionMapping.detection_id == Detection.id)
                 .where(DetectionMapping.technique_id == technique.id)
                 .where(DetectionMapping.detection_id.in_(detection_ids))
+                .order_by(DetectionMapping.confidence.desc())
             )
-            mapping_row = mappings_result.first()
-            detection_count = mapping_row[0] if mapping_row else 0
-            max_confidence = mapping_row[1] if mapping_row and mapping_row[1] else 0.0
-        else:
-            detection_count = 0
-            max_confidence = 0.0
+            mappings = mappings_result.all()
+
+            detection_count = len(mappings)
+            if mappings:
+                max_confidence = mappings[0][0].confidence  # First one has highest confidence
+                detection_names = [m[1] for m in mappings]  # Detection names
 
         # Determine status based on confidence threshold
         if max_confidence >= 0.6:
@@ -254,6 +261,7 @@ async def get_technique_coverage(
             "detection_count": detection_count,
             "max_confidence": round(max_confidence, 2) if max_confidence else 0.0,
             "status": status,
+            "detection_names": detection_names,
         })
 
     return {"techniques": technique_coverage}

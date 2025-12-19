@@ -122,8 +122,11 @@ Hover over any cell to see:
 - Confidence score (e.g., 75%)
 - Number of detections mapped
 - Coverage status (Covered, Partial, or Uncovered)
+- List of mapped detection names (up to 5 shown in tooltip)
 
-Click a cell to view the technique in detail, including a link to the official MITRE ATT&CK documentation.
+Click a cell to view the full technique detail panel, which shows:
+- Complete list of all mapped detections
+- Link to the official MITRE ATT&CK documentation
 
 ### Navigating the Heatmap
 
