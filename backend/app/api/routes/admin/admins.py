@@ -3,6 +3,7 @@
 from typing import Optional
 from uuid import UUID
 
+import bcrypt
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import select, func, and_
@@ -242,8 +243,12 @@ async def change_admin_password(
             detail="Admin user not found"
         )
 
-    auth_service = get_admin_auth_service(db)
-    target_admin.password_hash = auth_service._hash_password(body.password)
+    # Hash the new password using bcrypt
+    password_hash = bcrypt.hashpw(
+        body.password.encode(),
+        bcrypt.gensalt(rounds=12)
+    ).decode()
+    target_admin.password_hash = password_hash
     await db.commit()
 
     return {"message": "Password changed successfully"}

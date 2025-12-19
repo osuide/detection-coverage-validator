@@ -172,3 +172,88 @@ async def delete_mapping(
         raise HTTPException(status_code=404, detail="Mapping not found")
 
     await db.delete(mapping)
+
+
+@router.post("/remap-all")
+async def remap_all_detections(
+    cloud_account_id: Optional[UUID] = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """Re-map all detections to MITRE techniques.
+
+    Use this after seeding MITRE data or to refresh mappings.
+    """
+    from app.models.detection import Detection, DetectionStatus
+    from app.scanners.base import RawDetection
+    from app.mappers.pattern_mapper import PatternMapper
+
+    mapper = PatternMapper()
+
+    # Get detections
+    query = select(Detection).where(Detection.status == DetectionStatus.ACTIVE)
+    if cloud_account_id:
+        query = query.where(Detection.cloud_account_id == cloud_account_id)
+
+    result = await db.execute(query)
+    detections = result.scalars().all()
+
+    stats = {"total": len(detections), "mapped": 0, "mappings_created": 0}
+
+    for detection in detections:
+        # Delete existing mappings for this detection
+        await db.execute(
+            select(DetectionMapping).where(DetectionMapping.detection_id == detection.id)
+        )
+        existing = await db.execute(
+            select(DetectionMapping).where(DetectionMapping.detection_id == detection.id)
+        )
+        for old_mapping in existing.scalars().all():
+            await db.delete(old_mapping)
+
+        # Create RawDetection for mapper
+        raw = RawDetection(
+            name=detection.name,
+            detection_type=detection.detection_type,
+            source_arn=detection.source_arn or "",
+            region=detection.region,
+            raw_config=detection.raw_config,
+            query_pattern=detection.query_pattern,
+            event_pattern=detection.event_pattern,
+            log_groups=detection.log_groups,
+            description=detection.description,
+        )
+
+        # Get mappings from pattern mapper
+        mappings = mapper.map_detection(raw, min_confidence=0.4)
+
+        if mappings:
+            stats["mapped"] += 1
+
+        # Create mapping records
+        for mapping in mappings:
+            # Look up technique in DB
+            tech_result = await db.execute(
+                select(Technique).where(Technique.technique_id == mapping.technique_id)
+            )
+            technique = tech_result.scalar_one_or_none()
+
+            if technique:
+                dm = DetectionMapping(
+                    detection_id=detection.id,
+                    technique_id=technique.id,
+                    confidence=mapping.confidence,
+                    mapping_source=MappingSource.PATTERN_MATCH,
+                    rationale=mapping.rationale,
+                    matched_indicators=mapping.matched_indicators,
+                )
+                db.add(dm)
+                stats["mappings_created"] += 1
+
+    await db.commit()
+
+    return {
+        "message": "Re-mapping complete",
+        "detections_processed": stats["total"],
+        "detections_with_mappings": stats["mapped"],
+        "total_mappings_created": stats["mappings_created"],
+    }

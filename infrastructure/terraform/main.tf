@@ -235,3 +235,14 @@ module "cognito" {
   microsoft_client_secret = var.microsoft_client_secret
   microsoft_tenant_id     = var.microsoft_tenant_id
 }
+
+# SES Email Service
+# Note: SES is configured manually via AWS CLI for now
+# To enable Terraform-managed SES, run `terraform init` then set enable_ses = true
+# module "ses" {
+#   count  = var.enable_ses && var.domain_name != "" ? 1 : 0
+#   source = "./modules/ses"
+#
+#   domain      = var.domain_name
+#   environment = var.environment
+# }

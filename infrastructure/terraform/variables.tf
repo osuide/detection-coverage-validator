@@ -141,3 +141,13 @@ variable "microsoft_tenant_id" {
   type        = string
   default     = "common"
 }
+
+# ============================================================================
+# Email (SES) Configuration
+# ============================================================================
+
+variable "enable_ses" {
+  description = "Enable AWS SES for email sending (password reset, team invites)"
+  type        = bool
+  default     = false
+}

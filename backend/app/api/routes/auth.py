@@ -386,13 +386,22 @@ async def forgot_password(
 
     Always returns 204 to prevent email enumeration.
     """
+    from app.services.email_service import get_email_service
+
     auth_service = AuthService(db)
     token = await auth_service.initiate_password_reset(body.email)
 
     if token:
-        # TODO: Send email with reset link
-        # In development, log the token
-        logger.info("Password reset token generated", email=body.email, token=token)
+        # Send password reset email
+        email_service = get_email_service()
+        email_sent = email_service.send_password_reset_email(
+            to_email=body.email,
+            reset_token=token,
+        )
+        if not email_sent:
+            logger.warning("password_reset_email_failed", email=body.email)
+        else:
+            logger.info("password_reset_email_sent", email=body.email)
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

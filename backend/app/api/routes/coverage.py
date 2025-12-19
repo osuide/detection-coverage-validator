@@ -14,6 +14,7 @@ from app.schemas.coverage import (
     CoverageResponse,
     TacticCoverage,
     GapItem,
+    RecommendedStrategyItem,
     CoverageHistoryResponse,
     CoverageHistoryItem,
 )
@@ -69,9 +70,25 @@ async def get_coverage(
             )
         )
 
-    # Transform top_gaps
+    # Transform top_gaps with enhanced remediation data
     gap_list = []
     for gap in snapshot.top_gaps:
+        # Build recommended strategies list
+        strategies = []
+        for s in gap.get("recommended_strategies", []):
+            strategies.append(RecommendedStrategyItem(
+                strategy_id=s.get("strategy_id", ""),
+                name=s.get("name", ""),
+                detection_type=s.get("detection_type", ""),
+                aws_service=s.get("aws_service", ""),
+                implementation_effort=s.get("implementation_effort", ""),
+                estimated_time=s.get("estimated_time", ""),
+                detection_coverage=s.get("detection_coverage", ""),
+                has_query=s.get("has_query", False),
+                has_cloudformation=s.get("has_cloudformation", False),
+                has_terraform=s.get("has_terraform", False),
+            ))
+
         gap_list.append(
             GapItem(
                 technique_id=gap.get("technique_id", ""),
@@ -81,6 +98,16 @@ async def get_coverage(
                 priority=gap.get("priority", "medium"),
                 reason=gap.get("reason", ""),
                 data_sources=gap.get("data_sources", []),
+                recommended_detections=gap.get("recommended_detections", []),
+                # Enhanced template data
+                has_template=gap.get("has_template", False),
+                severity_score=gap.get("severity_score"),
+                threat_actors=gap.get("threat_actors", []),
+                business_impact=gap.get("business_impact", []),
+                quick_win_strategy=gap.get("quick_win_strategy"),
+                total_effort_hours=gap.get("total_effort_hours"),
+                mitre_url=gap.get("mitre_url"),
+                recommended_strategies=strategies,
             )
         )
 
@@ -258,8 +285,25 @@ async def calculate_coverage(
             )
         )
 
+    # Transform gaps with enhanced remediation data
     gap_list = []
     for gap in snapshot.top_gaps:
+        # Build recommended strategies list
+        strategies = []
+        for s in gap.get("recommended_strategies", []):
+            strategies.append(RecommendedStrategyItem(
+                strategy_id=s.get("strategy_id", ""),
+                name=s.get("name", ""),
+                detection_type=s.get("detection_type", ""),
+                aws_service=s.get("aws_service", ""),
+                implementation_effort=s.get("implementation_effort", ""),
+                estimated_time=s.get("estimated_time", ""),
+                detection_coverage=s.get("detection_coverage", ""),
+                has_query=s.get("has_query", False),
+                has_cloudformation=s.get("has_cloudformation", False),
+                has_terraform=s.get("has_terraform", False),
+            ))
+
         gap_list.append(
             GapItem(
                 technique_id=gap.get("technique_id", ""),
@@ -269,6 +313,16 @@ async def calculate_coverage(
                 priority=gap.get("priority", "medium"),
                 reason=gap.get("reason", ""),
                 data_sources=gap.get("data_sources", []),
+                recommended_detections=gap.get("recommended_detections", []),
+                # Enhanced template data
+                has_template=gap.get("has_template", False),
+                severity_score=gap.get("severity_score"),
+                threat_actors=gap.get("threat_actors", []),
+                business_impact=gap.get("business_impact", []),
+                quick_win_strategy=gap.get("quick_win_strategy"),
+                total_effort_hours=gap.get("total_effort_hours"),
+                mitre_url=gap.get("mitre_url"),
+                recommended_strategies=strategies,
             )
         )
 

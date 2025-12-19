@@ -1,6 +1,7 @@
 """Coverage schemas."""
 
 from datetime import datetime
+from typing import Optional, List
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -18,8 +19,23 @@ class TacticCoverage(BaseModel):
     percent: float
 
 
+class RecommendedStrategyItem(BaseModel):
+    """A recommended detection strategy."""
+
+    strategy_id: str
+    name: str
+    detection_type: str
+    aws_service: str
+    implementation_effort: str
+    estimated_time: str
+    detection_coverage: str
+    has_query: bool = False
+    has_cloudformation: bool = False
+    has_terraform: bool = False
+
+
 class GapItem(BaseModel):
-    """A coverage gap item."""
+    """A coverage gap item with remediation guidance."""
 
     technique_id: str
     technique_name: str
@@ -28,6 +44,17 @@ class GapItem(BaseModel):
     priority: str  # "critical", "high", "medium", "low"
     reason: str
     data_sources: list[str] = []
+    recommended_detections: list[str] = []
+
+    # Enhanced remediation data from templates
+    has_template: bool = False
+    severity_score: Optional[int] = None
+    threat_actors: List[str] = []
+    business_impact: List[str] = []
+    quick_win_strategy: Optional[str] = None
+    total_effort_hours: Optional[float] = None
+    mitre_url: Optional[str] = None
+    recommended_strategies: List[RecommendedStrategyItem] = []
 
 
 class CoverageResponse(BaseModel):

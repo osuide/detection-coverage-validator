@@ -285,13 +285,26 @@ async def invite_member(
 
     await db.commit()
 
-    # TODO: Send invite email in background
-    # background_tasks.add_task(send_invite_email, body.email, invite_token, body.message)
+    # Send invite email in background
+    from app.services.email_service import get_email_service
+
+    def send_invite_email_task():
+        email_service = get_email_service()
+        email_service.send_team_invite_email(
+            to_email=body.email,
+            invite_token=invite_token,
+            org_name=auth.organization.name,
+            role=body.role.value,
+            message=body.message,
+            inviter_name=auth.user.full_name,
+        )
+
+    background_tasks.add_task(send_invite_email_task)
+
     logger.info(
-        "Invite created",
+        "invite_created",
         email=body.email,
         org_id=str(auth.organization_id),
-        invite_token=invite_token,  # Log token in dev
     )
 
     return InviteResponse(

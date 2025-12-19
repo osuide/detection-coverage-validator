@@ -411,3 +411,98 @@ async def seed_default_settings(
     count = await service.seed_default_settings(admin)
 
     return {"message": f"Seeded {count} default settings"}
+
+
+@router.post("/seed-mitre")
+async def seed_mitre_data(
+    admin: AdminUser = Depends(require_permission("settings:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Seed MITRE ATT&CK tactics and techniques.
+
+    Populates the database with MITRE ATT&CK framework data.
+    Requires super_admin role.
+    """
+    if admin.role != AdminRole.SUPER_ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only super_admin can seed MITRE data"
+        )
+
+    from app.scripts.seed_mitre import TACTICS, TECHNIQUES
+    from app.models.mitre import Tactic, Technique
+    from sqlalchemy import select
+    from uuid import uuid4
+    from datetime import datetime, timezone
+
+    now = datetime.now(timezone.utc)
+
+    # Get existing tactics
+    existing_tactics_result = await db.execute(select(Tactic))
+    existing_tactics = {t.tactic_id: t for t in existing_tactics_result.scalars().all()}
+
+    # Insert missing tactics
+    tactics_added = 0
+    for tactic_id, name, short_name, display_order in TACTICS:
+        if tactic_id not in existing_tactics:
+            tactic = Tactic(
+                id=uuid4(),
+                tactic_id=tactic_id,
+                name=name,
+                short_name=short_name,
+                display_order=display_order,
+                mitre_version="14.1",
+                created_at=now,
+            )
+            db.add(tactic)
+            existing_tactics[tactic_id] = tactic
+            tactics_added += 1
+
+    await db.flush()
+
+    # Get existing techniques
+    existing_techniques_result = await db.execute(select(Technique))
+    existing_techniques = {t.technique_id: t for t in existing_techniques_result.scalars().all()}
+
+    # Insert missing techniques
+    techniques_added = 0
+    for technique_id, name, tactic_id, description in TECHNIQUES:
+        if technique_id not in existing_techniques:
+            tactic = existing_tactics.get(tactic_id)
+            if not tactic:
+                continue
+
+            is_subtechnique = "." in technique_id
+            parent_id = None
+            if is_subtechnique:
+                parent_tech_id = technique_id.split(".")[0]
+                parent = existing_techniques.get(parent_tech_id)
+                if parent:
+                    parent_id = parent.id
+
+            technique = Technique(
+                id=uuid4(),
+                technique_id=technique_id,
+                name=name,
+                description=description,
+                tactic_id=tactic.id,
+                parent_technique_id=parent_id,
+                platforms=["AWS", "Azure", "GCP", "IaaS"],
+                mitre_version="14.1",
+                is_subtechnique=is_subtechnique,
+                created_at=now,
+                updated_at=now,
+            )
+            db.add(technique)
+            existing_techniques[technique_id] = technique
+            techniques_added += 1
+
+    await db.commit()
+
+    return {
+        "message": f"Seeded MITRE data",
+        "tactics_added": tactics_added,
+        "techniques_added": techniques_added,
+        "total_tactics": len(existing_tactics),
+        "total_techniques": len(existing_techniques),
+    }

@@ -411,11 +411,17 @@ resource "aws_iam_role_policy" "ecs_task" {
         Resource = "*"
       },
       {
+        Sid    = "AssumeCustomerScannerRoles"
         Effect = "Allow"
         Action = [
           "sts:AssumeRole"
         ]
-        Resource = "arn:aws:iam::*:role/A13EScannerRole"
+        Resource = "arn:aws:iam::*:role/*"
+        Condition = {
+          StringLike = {
+            "sts:ExternalId" = "a13e-*"
+          }
+        }
       },
       {
         Effect = "Allow"
@@ -431,6 +437,15 @@ resource "aws_iam_role_policy" "ecs_task" {
           "guardduty:ListFindings",
           "config:DescribeConfigRules",
           "sts:GetCallerIdentity"
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "SESSendEmail"
+        Effect = "Allow"
+        Action = [
+          "ses:SendEmail",
+          "ses:SendRawEmail"
         ]
         Resource = "*"
       }
@@ -484,7 +499,13 @@ resource "aws_ecs_task_definition" "backend" {
     var.google_client_id != "" ? [{ name = "GOOGLE_CLIENT_ID", value = var.google_client_id }] : [],
     var.github_client_id != "" ? [{ name = "GITHUB_CLIENT_ID", value = var.github_client_id }] : [],
     var.github_client_secret != "" ? [{ name = "GITHUB_CLIENT_SECRET", value = var.github_client_secret }] : [],
-    var.microsoft_client_id != "" ? [{ name = "MICROSOFT_CLIENT_ID", value = var.microsoft_client_id }] : [])
+    var.microsoft_client_id != "" ? [{ name = "MICROSOFT_CLIENT_ID", value = var.microsoft_client_id }] : [],
+    # SES Email configuration
+    [
+      { name = "SES_ENABLED", value = "true" },
+      { name = "SES_FROM_EMAIL", value = "noreply@a13e.com" },
+      { name = "APP_URL", value = var.frontend_url }
+    ])
 
     logConfiguration = {
       logDriver = "awslogs"

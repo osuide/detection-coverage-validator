@@ -1,18 +1,35 @@
 """Gap analyzer following 06-ANALYSIS-AGENT.md design."""
 
-from dataclasses import dataclass
-from typing import Optional
+from dataclasses import dataclass, field
+from typing import Optional, List, Dict, Any
 import structlog
 
 from app.analyzers.coverage_calculator import TechniqueCoverageInfo
 from app.mappers.indicator_library import TECHNIQUE_BY_ID, TechniqueIndicator
+from app.data.remediation_templates import get_template
 
 logger = structlog.get_logger()
 
 
 @dataclass
+class RecommendedStrategy:
+    """A recommended detection strategy from the template library."""
+
+    strategy_id: str
+    name: str
+    detection_type: str
+    aws_service: str
+    implementation_effort: str
+    estimated_time: str
+    detection_coverage: str
+    has_query: bool = False
+    has_cloudformation: bool = False
+    has_terraform: bool = False
+
+
+@dataclass
 class Gap:
-    """A coverage gap."""
+    """A coverage gap with remediation guidance."""
 
     technique_id: str
     technique_name: str
@@ -22,6 +39,16 @@ class Gap:
     reason: str
     data_sources: list[str]
     recommended_detections: list[str]
+
+    # Enhanced remediation data from templates
+    has_template: bool = False
+    severity_score: Optional[int] = None
+    threat_actors: List[str] = field(default_factory=list)
+    business_impact: List[str] = field(default_factory=list)
+    recommended_strategies: List[RecommendedStrategy] = field(default_factory=list)
+    quick_win_strategy: Optional[str] = None
+    total_effort_hours: Optional[float] = None
+    mitre_url: Optional[str] = None
 
 
 class GapAnalyzer:
@@ -72,21 +99,59 @@ class GapAnalyzer:
                 priority = self._calculate_priority(tech)
                 indicator = TECHNIQUE_BY_ID.get(tech.technique_id)
 
+                # Get remediation template if available
+                template = get_template(tech.technique_id)
+
                 gap = Gap(
                     technique_id=tech.technique_id,
                     technique_name=tech.technique_name,
                     tactic_id=tech.tactic_id,
                     tactic_name=tech.tactic_name,
                     priority=priority,
-                    reason=self._generate_reason(tech, indicator),
+                    reason=self._generate_reason(tech, indicator, template),
                     data_sources=self._get_data_sources(indicator),
-                    recommended_detections=self._get_recommendations(indicator),
+                    recommended_detections=self._get_recommendations(indicator, template),
                 )
+
+                # Enrich with template data if available
+                if template:
+                    gap.has_template = True
+                    gap.severity_score = template.threat_context.severity_score
+                    gap.threat_actors = template.threat_context.known_threat_actors
+                    gap.business_impact = template.threat_context.business_impact
+                    gap.total_effort_hours = template.total_effort_hours
+                    gap.mitre_url = template.mitre_url
+
+                    # Add recommended strategies
+                    for strategy in template.detection_strategies:
+                        rec_strategy = RecommendedStrategy(
+                            strategy_id=strategy.strategy_id,
+                            name=strategy.name,
+                            detection_type=strategy.detection_type.value,
+                            aws_service=strategy.aws_service,
+                            implementation_effort=strategy.implementation_effort.value,
+                            estimated_time=strategy.implementation_time,
+                            detection_coverage=strategy.detection_coverage,
+                            has_query=strategy.implementation.query is not None,
+                            has_cloudformation=strategy.implementation.cloudformation_template is not None,
+                            has_terraform=strategy.implementation.terraform_template is not None,
+                        )
+                        gap.recommended_strategies.append(rec_strategy)
+
+                    # Set quick win (first low-effort strategy)
+                    for strategy in template.detection_strategies:
+                        if strategy.implementation_effort.value == "low":
+                            gap.quick_win_strategy = strategy.strategy_id
+                            break
+
                 gaps.append(gap)
 
-        # Sort by priority (critical first)
+        # Sort by priority (critical first), then by severity score if available
         priority_order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
-        gaps.sort(key=lambda g: priority_order.get(g.priority, 99))
+        gaps.sort(key=lambda g: (
+            priority_order.get(g.priority, 99),
+            -(g.severity_score or 0)  # Higher severity first
+        ))
 
         return gaps[:limit]
 
@@ -117,9 +182,14 @@ class GapAnalyzer:
         self,
         tech: TechniqueCoverageInfo,
         indicator: Optional[TechniqueIndicator],
+        template=None,
     ) -> str:
         """Generate a human-readable reason for why this gap matters."""
         reasons = []
+
+        # Use template's severity reasoning if available
+        if template and template.threat_context.severity_reasoning:
+            return template.threat_context.severity_reasoning
 
         if tech.tactic_id in ["TA0001", "TA0003"]:
             reasons.append("Critical for detecting initial compromise and persistence")
@@ -128,13 +198,17 @@ class GapAnalyzer:
         elif tech.tactic_id in ["TA0005"]:
             reasons.append("Adversaries commonly use this to evade detection")
         elif tech.tactic_id in ["TA0040", "TA0010"]:
-            reasons.append("Last line of defense before impact/data loss")
+            reasons.append("Last line of defence before impact/data loss")
 
         if indicator and indicator.priority == 1:
             reasons.append("High prevalence in cloud attacks")
 
+        if template and template.threat_context.known_threat_actors:
+            actors = template.threat_context.known_threat_actors[:2]
+            reasons.append(f"Used by {', '.join(actors)}")
+
         if not reasons:
-            reasons.append("Recommended coverage for defense in depth")
+            reasons.append("Recommended coverage for defence in depth")
 
         return "; ".join(reasons)
 
@@ -165,12 +239,23 @@ class GapAnalyzer:
     def _get_recommendations(
         self,
         indicator: Optional[TechniqueIndicator],
+        template=None,
     ) -> list[str]:
         """Get recommended detection approaches."""
+        recommendations = []
+
+        # If we have a template, use its strategies as recommendations
+        if template and template.detection_strategies:
+            for strategy in template.detection_strategies[:3]:  # Top 3 strategies
+                effort = strategy.implementation_effort.value
+                recommendations.append(
+                    f"{strategy.name} ({effort} effort, {strategy.implementation_time})"
+                )
+            return recommendations
+
+        # Fallback to indicator-based recommendations
         if not indicator:
             return []
-
-        recommendations = []
 
         if indicator.cloudtrail_events:
             events = indicator.cloudtrail_events[:3]  # Top 3
