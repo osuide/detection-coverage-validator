@@ -286,13 +286,16 @@ class ScanService:
         """Process raw detections into database records."""
         stats = {"found": len(raw_detections), "new": 0, "updated": 0}
 
+        # Clean up any duplicate detections first (keep oldest by id)
+        await self._cleanup_duplicate_detections(cloud_account_id)
+
         for raw in raw_detections:
             # Check if detection already exists
             existing = await self.db.execute(
                 select(Detection).where(
                     Detection.cloud_account_id == cloud_account_id,
                     Detection.source_arn == raw.source_arn,
-                )
+                ).limit(1)
             )
             detection = existing.scalar_one_or_none()
 
@@ -329,6 +332,53 @@ class ScanService:
 
         await self.db.flush()
         return stats
+
+    async def _cleanup_duplicate_detections(self, cloud_account_id: UUID) -> None:
+        """Remove duplicate detections keeping only the oldest one per source_arn."""
+        from sqlalchemy import func
+
+        # Find source_arns with duplicates
+        subq = (
+            select(Detection.source_arn)
+            .where(Detection.cloud_account_id == cloud_account_id)
+            .group_by(Detection.source_arn)
+            .having(func.count(Detection.id) > 1)
+        )
+        result = await self.db.execute(subq)
+        duplicate_arns = [row[0] for row in result.all()]
+
+        if not duplicate_arns:
+            return
+
+        self.logger.info(
+            "cleaning_duplicate_detections",
+            account_id=str(cloud_account_id),
+            duplicate_count=len(duplicate_arns),
+        )
+
+        for arn in duplicate_arns:
+            # Get all detections for this ARN, ordered by created_at
+            dups = await self.db.execute(
+                select(Detection)
+                .where(
+                    Detection.cloud_account_id == cloud_account_id,
+                    Detection.source_arn == arn,
+                )
+                .order_by(Detection.created_at)
+            )
+            detections = list(dups.scalars().all())
+
+            # Keep the first (oldest), delete the rest
+            for dup in detections[1:]:
+                # Delete mappings for this detection first
+                await self.db.execute(
+                    delete(DetectionMapping).where(
+                        DetectionMapping.detection_id == dup.id
+                    )
+                )
+                await self.db.delete(dup)
+
+        await self.db.flush()
 
     async def _map_detections(self, cloud_account_id: UUID) -> None:
         """Map all detections to MITRE techniques."""
