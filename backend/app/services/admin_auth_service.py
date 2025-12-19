@@ -368,8 +368,8 @@ class AdminAuthService:
 
         if not allowlist:
             # If no allowlist configured, deny by default in production
-            # Allow in dev mode
-            if settings.environment == "development":
+            # Allow in dev and staging modes
+            if settings.environment in ("development", "staging"):
                 return True
             return False
 
