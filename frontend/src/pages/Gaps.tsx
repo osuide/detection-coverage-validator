@@ -18,6 +18,7 @@ export default function Gaps() {
   const [tacticFilter, setTacticFilter] = useState('')
   const [priorityFilter, setPriorityFilter] = useState('')
   const [expandedGaps, setExpandedGaps] = useState<Set<string>>(new Set())
+  const [showLowPriority, setShowLowPriority] = useState(false)
 
   const { data: accounts } = useQuery({
     queryKey: ['accounts'],
@@ -39,6 +40,11 @@ export default function Gaps() {
     g.technique_name.toLowerCase().includes(search.toLowerCase()) ||
     g.technique_id.toLowerCase().includes(search.toLowerCase())
   )
+
+  // Hide low priority by default unless explicitly shown or filtered
+  if (!showLowPriority && !priorityFilter) {
+    gaps = gaps.filter(g => g.priority !== 'low')
+  }
 
   if (tacticFilter) {
     gaps = gaps.filter(g => g.tactic_id === tacticFilter)
@@ -178,6 +184,21 @@ export default function Gaps() {
               Clear filters
             </button>
           )}
+
+          {/* Low priority toggle */}
+          {!priorityFilter && lowGaps.length > 0 && (
+            <label className="flex items-center space-x-2 cursor-pointer ml-2">
+              <input
+                type="checkbox"
+                checked={showLowPriority}
+                onChange={(e) => setShowLowPriority(e.target.checked)}
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-sm text-gray-600">
+                Show low priority ({lowGaps.length})
+              </span>
+            </label>
+          )}
         </div>
 
         <div className="flex items-center space-x-2 ml-auto">
@@ -199,7 +220,10 @@ export default function Gaps() {
 
       {/* Results count */}
       <p className="text-sm text-gray-500 mb-4">
-        Showing {gaps.length} of {allGaps.length} gaps
+        Showing {gaps.length} {!showLowPriority && !priorityFilter && lowGaps.length > 0 ? 'actionable' : ''} gaps
+        {!showLowPriority && !priorityFilter && lowGaps.length > 0 && (
+          <span className="text-gray-400"> ({lowGaps.length} low priority hidden)</span>
+        )}
       </p>
 
       {/* Gap List */}
