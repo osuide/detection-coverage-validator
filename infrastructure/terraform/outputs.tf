@@ -45,9 +45,29 @@ output "ecs_cluster_arn" {
   value       = module.backend.ecs_cluster_arn
 }
 
+output "ecs_cluster_name" {
+  description = "ECS cluster name"
+  value       = module.backend.ecs_cluster_name
+}
+
 output "ecs_service_name" {
   description = "ECS service name for deployment"
   value       = module.backend.ecs_service_name
+}
+
+output "vpc_private_subnets" {
+  description = "Private subnet IDs for ECS tasks"
+  value       = module.vpc.private_subnet_ids
+}
+
+output "vpc_public_subnets" {
+  description = "Public subnet IDs"
+  value       = module.vpc.public_subnet_ids
+}
+
+output "ecs_security_group_id" {
+  description = "ECS tasks security group ID"
+  value       = module.backend.ecs_security_group_id
 }
 
 # Cognito outputs (only when enabled)

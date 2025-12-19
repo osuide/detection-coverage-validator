@@ -8,7 +8,7 @@ on:
       environment:
         description: 'Environment to deploy to'
         required: true
-        default: 'dev'
+        default: 'staging'
         type: choice
         options:
           - dev
@@ -16,13 +16,19 @@ on:
           - prod
 
 env:
-  AWS_REGION: us-east-1
+  AWS_REGION: eu-west-2
 
 jobs:
   deploy-infrastructure:
     name: Deploy Infrastructure
     runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.environment || 'dev' }}
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+    outputs:
+      ecr_repository_url: ${{ steps.tf-outputs.outputs.ecr_repository_url }}
+      ecs_cluster_name: ${{ steps.tf-outputs.outputs.ecs_cluster_name }}
+      ecs_service_name: ${{ steps.tf-outputs.outputs.ecs_service_name }}
+      vpc_private_subnets: ${{ steps.tf-outputs.outputs.vpc_private_subnets }}
+      ecs_security_group: ${{ steps.tf-outputs.outputs.ecs_security_group }}
 
     steps:
       - uses: actions/checkout@v4
@@ -38,6 +44,7 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.5.0
+          terraform_wrapper: false
 
       - name: Terraform Init
         working-directory: ./infrastructure/terraform
@@ -45,18 +52,46 @@ jobs:
 
       - name: Terraform Plan
         working-directory: ./infrastructure/terraform
-        run: terraform plan -var="environment=${{ github.event.inputs.environment || 'dev' }}" -out=tfplan
+        env:
+          TF_VAR_google_client_id: ${{ secrets.GOOGLE_CLIENT_ID }}
+          TF_VAR_google_client_secret: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          TF_VAR_github_client_id: ${{ secrets.GITHUB_OAUTH_CLIENT_ID }}
+          TF_VAR_github_client_secret: ${{ secrets.GITHUB_OAUTH_CLIENT_SECRET }}
+          TF_VAR_microsoft_client_id: ${{ secrets.MICROSOFT_CLIENT_ID }}
+          TF_VAR_microsoft_client_secret: ${{ secrets.MICROSOFT_CLIENT_SECRET }}
+          TF_VAR_stripe_secret_key: ${{ secrets.STRIPE_SECRET_KEY }}
+          TF_VAR_stripe_webhook_secret: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+        run: terraform plan -var-file="${{ github.event.inputs.environment || 'staging' }}.tfvars" -out=tfplan
 
       - name: Terraform Apply
         if: github.ref == 'refs/heads/main'
         working-directory: ./infrastructure/terraform
+        env:
+          TF_VAR_google_client_id: ${{ secrets.GOOGLE_CLIENT_ID }}
+          TF_VAR_google_client_secret: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          TF_VAR_github_client_id: ${{ secrets.GITHUB_OAUTH_CLIENT_ID }}
+          TF_VAR_github_client_secret: ${{ secrets.GITHUB_OAUTH_CLIENT_SECRET }}
+          TF_VAR_microsoft_client_id: ${{ secrets.MICROSOFT_CLIENT_ID }}
+          TF_VAR_microsoft_client_secret: ${{ secrets.MICROSOFT_CLIENT_SECRET }}
+          TF_VAR_stripe_secret_key: ${{ secrets.STRIPE_SECRET_KEY }}
+          TF_VAR_stripe_webhook_secret: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
         run: terraform apply -auto-approve tfplan
+
+      - name: Get Terraform Outputs
+        id: tf-outputs
+        working-directory: ./infrastructure/terraform
+        run: |
+          echo "ecr_repository_url=$(terraform output -raw ecr_repository_url)" >> $GITHUB_OUTPUT
+          echo "ecs_cluster_name=$(terraform output -raw ecs_cluster_name)" >> $GITHUB_OUTPUT
+          echo "ecs_service_name=$(terraform output -raw ecs_service_name)" >> $GITHUB_OUTPUT
+          echo "vpc_private_subnets=$(terraform output -json vpc_private_subnets | jq -c '.')" >> $GITHUB_OUTPUT
+          echo "ecs_security_group=$(terraform output -raw ecs_security_group_id)" >> $GITHUB_OUTPUT
 
   deploy-backend:
     name: Deploy Backend
     needs: deploy-infrastructure
     runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.environment || 'dev' }}
+    environment: ${{ github.event.inputs.environment || 'staging' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -72,10 +107,10 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build and push scanner image
+      - name: Build and push backend image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: dcv-${{ github.event.inputs.environment || 'dev' }}-scanner
+          ECR_REPOSITORY: a13e-${{ github.event.inputs.environment || 'staging' }}-backend
           IMAGE_TAG: ${{ github.sha }}
         working-directory: ./backend
         run: |
@@ -84,11 +119,72 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
+      - name: Run Database Migrations
+        env:
+          ECS_CLUSTER: a13e-${{ github.event.inputs.environment || 'staging' }}-backend
+          ECS_TASK_DEFINITION: a13e-${{ github.event.inputs.environment || 'staging' }}-backend
+          SUBNETS: ${{ needs.deploy-infrastructure.outputs.vpc_private_subnets }}
+          SECURITY_GROUP: ${{ needs.deploy-infrastructure.outputs.ecs_security_group }}
+        run: |
+          # Get subnet IDs as comma-separated list
+          SUBNET_LIST=$(echo $SUBNETS | jq -r 'join(",")')
+
+          echo "Running database migrations..."
+          TASK_ARN=$(aws ecs run-task \
+            --cluster $ECS_CLUSTER \
+            --task-definition $ECS_TASK_DEFINITION \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[$SUBNET_LIST],securityGroups=[$SECURITY_GROUP],assignPublicIp=ENABLED}" \
+            --overrides '{
+              "containerOverrides": [{
+                "name": "backend",
+                "command": ["alembic", "upgrade", "head"]
+              }]
+            }' \
+            --query 'tasks[0].taskArn' \
+            --output text)
+
+          echo "Migration task started: $TASK_ARN"
+
+          # Wait for migration to complete
+          echo "Waiting for migration to complete..."
+          aws ecs wait tasks-stopped --cluster $ECS_CLUSTER --tasks $TASK_ARN
+
+          # Check exit code
+          EXIT_CODE=$(aws ecs describe-tasks --cluster $ECS_CLUSTER --tasks $TASK_ARN \
+            --query 'tasks[0].containers[0].exitCode' --output text)
+
+          if [ "$EXIT_CODE" != "0" ]; then
+            echo "Migration failed with exit code: $EXIT_CODE"
+            aws ecs describe-tasks --cluster $ECS_CLUSTER --tasks $TASK_ARN
+            exit 1
+          fi
+
+          echo "Migrations completed successfully!"
+
+      - name: Force ECS Service Redeployment
+        env:
+          ECS_CLUSTER: a13e-${{ github.event.inputs.environment || 'staging' }}-backend
+          ECS_SERVICE: a13e-${{ github.event.inputs.environment || 'staging' }}-backend
+        run: |
+          echo "Triggering ECS service redeployment..."
+          aws ecs update-service \
+            --cluster $ECS_CLUSTER \
+            --service $ECS_SERVICE \
+            --force-new-deployment
+
+          echo "Waiting for deployment to stabilize..."
+          aws ecs wait services-stable \
+            --cluster $ECS_CLUSTER \
+            --services $ECS_SERVICE
+
+          echo "Backend deployment completed successfully!"
+
   deploy-frontend:
     name: Deploy Frontend
     needs: deploy-infrastructure
     runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.environment || 'dev' }}
+    environment: ${{ github.event.inputs.environment || 'staging' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -96,7 +192,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
@@ -108,6 +204,10 @@ jobs:
         working-directory: ./frontend
         env:
           VITE_API_URL: ${{ secrets.API_URL }}
+          VITE_COGNITO_USER_POOL_ID: ${{ secrets.COGNITO_USER_POOL_ID }}
+          VITE_COGNITO_CLIENT_ID: ${{ secrets.COGNITO_CLIENT_ID }}
+          VITE_COGNITO_DOMAIN: ${{ secrets.COGNITO_DOMAIN }}
+          VITE_STRIPE_PUBLISHABLE_KEY: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
         run: npm run build
 
       - name: Configure AWS credentials
@@ -125,3 +225,31 @@ jobs:
       - name: Invalidate CloudFront
         run: |
           aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
+
+  verify-deployment:
+    name: Verify Deployment
+    needs: [deploy-backend, deploy-frontend]
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+
+    steps:
+      - name: Wait for services to stabilize
+        run: sleep 30
+
+      - name: Health Check
+        run: |
+          API_URL="${{ secrets.API_URL }}"
+          echo "Checking health endpoint: $API_URL/health"
+
+          for i in {1..5}; do
+            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$API_URL/health" || echo "000")
+            if [ "$HTTP_STATUS" = "200" ]; then
+              echo "Health check passed!"
+              exit 0
+            fi
+            echo "Attempt $i: HTTP $HTTP_STATUS - retrying in 10s..."
+            sleep 10
+          done
+
+          echo "Health check failed after 5 attempts"
+          exit 1
