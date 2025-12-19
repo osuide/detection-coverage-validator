@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Shield, AlertCircle, Loader2 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { cognitoApi } from '../services/cognitoApi'
+import { githubApi } from '../services/githubApi'
 
 export default function AuthCallback() {
   const [searchParams] = useSearchParams()
@@ -29,33 +30,45 @@ export default function AuthCallback() {
         return
       }
 
-      // Validate state (CSRF protection)
+      // Get stored OAuth info
       const storedState = sessionStorage.getItem('oauth_state')
+      const storedProvider = sessionStorage.getItem('oauth_provider') || 'cognito'
       const storedCodeVerifier = sessionStorage.getItem('oauth_code_verifier')
 
+      // Validate state (CSRF protection)
       if (state && storedState && state !== storedState) {
         setError('Invalid state parameter. Please try again.')
         return
       }
 
-      if (!storedCodeVerifier) {
-        setError('Missing PKCE code verifier. Please try again.')
-        return
-      }
-
       // Clear stored values
       sessionStorage.removeItem('oauth_state')
+      sessionStorage.removeItem('oauth_provider')
       sessionStorage.removeItem('oauth_code_verifier')
 
       try {
         const redirectUri = `${window.location.origin}/auth/callback`
-        const response = await cognitoApi.exchangeToken(code, redirectUri, storedCodeVerifier, state || undefined)
 
-        // Store tokens via auth context
-        // The login function expects email/password, so we need to handle this differently
-        // Store tokens directly in localStorage
-        localStorage.setItem('access_token', response.access_token)
-        localStorage.setItem('refresh_token', response.refresh_token)
+        if (storedProvider === 'github') {
+          // Direct GitHub OAuth
+          const response = await githubApi.exchangeToken(code, redirectUri, state || '')
+
+          // Store tokens using the same keys as AuthContext
+          localStorage.setItem('dcv_access_token', response.access_token)
+          localStorage.setItem('dcv_refresh_token', response.refresh_token)
+        } else {
+          // Cognito OAuth (Google, Microsoft)
+          if (!storedCodeVerifier) {
+            setError('Missing PKCE code verifier. Please try again.')
+            return
+          }
+
+          const response = await cognitoApi.exchangeToken(code, redirectUri, storedCodeVerifier, state || undefined)
+
+          // Store tokens using the same keys as AuthContext
+          localStorage.setItem('dcv_access_token', response.access_token)
+          localStorage.setItem('dcv_refresh_token', response.refresh_token)
+        }
 
         // Navigate to dashboard and force reload to pick up new auth state
         window.location.href = '/dashboard'

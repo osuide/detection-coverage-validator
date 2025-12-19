@@ -228,8 +228,16 @@ class Subscription(Base):
     stripe_subscription_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
     # Tier and status
-    tier: Mapped[AccountTier] = mapped_column(Enum(AccountTier, name='account_tier', create_type=False), nullable=False, default=AccountTier.FREE_SCAN)
-    status: Mapped[SubscriptionStatus] = mapped_column(Enum(SubscriptionStatus, name='subscription_status', create_type=False), nullable=False, default=SubscriptionStatus.ACTIVE)
+    tier: Mapped[AccountTier] = mapped_column(
+        Enum(AccountTier, name='account_tier', create_type=False, values_callable=lambda e: [x.value for x in e]),
+        nullable=False,
+        default=AccountTier.FREE_SCAN
+    )
+    status: Mapped[SubscriptionStatus] = mapped_column(
+        Enum(SubscriptionStatus, name='subscription_status', create_type=False, values_callable=lambda e: [x.value for x in e]),
+        nullable=False,
+        default=SubscriptionStatus.ACTIVE
+    )
 
     # Free scan tracking
     free_scan_used: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

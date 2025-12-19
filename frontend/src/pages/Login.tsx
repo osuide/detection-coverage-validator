@@ -2,6 +2,7 @@ import { useState, useEffect, FormEvent } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { cognitoApi, CognitoConfig } from '../services/cognitoApi'
+import { githubApi, GitHubConfig } from '../services/githubApi'
 import A13ELogo from '../components/A13ELogo'
 
 export default function Login() {
@@ -10,6 +11,7 @@ export default function Login() {
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [ssoConfig, setSsoConfig] = useState<CognitoConfig | null>(null)
+  const [githubConfig, setGithubConfig] = useState<GitHubConfig | null>(null)
   const [ssoLoading, setSsoLoading] = useState<string | null>(null)
 
   const { login } = useAuth()
@@ -19,9 +21,14 @@ export default function Login() {
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard'
 
   useEffect(() => {
-    cognitoApi.getConfig()
-      .then(setSsoConfig)
-      .catch(() => setSsoConfig({ configured: false, providers: [] }))
+    // Load both Cognito and GitHub configs
+    Promise.all([
+      cognitoApi.getConfig().catch(() => ({ configured: false, providers: [] })),
+      githubApi.getConfig().catch(() => ({ enabled: false, client_id: null })),
+    ]).then(([cognito, github]) => {
+      setSsoConfig(cognito)
+      setGithubConfig(github)
+    })
   }, [])
 
   const handleSsoLogin = async (provider: string) => {
@@ -35,9 +42,28 @@ export default function Login() {
       // Store PKCE code_verifier and state for callback
       sessionStorage.setItem('oauth_state', response.state)
       sessionStorage.setItem('oauth_code_verifier', response.code_verifier)
+      sessionStorage.setItem('oauth_provider', 'cognito')
       window.location.href = response.authorization_url
     } catch {
       setError('Failed to initiate SSO. Please try again.')
+      setSsoLoading(null)
+    }
+  }
+
+  const handleGitHubLogin = async () => {
+    if (ssoLoading) return
+    setSsoLoading('github')
+    setError('')
+
+    try {
+      const redirectUri = `${window.location.origin}/auth/callback`
+      const response = await githubApi.authorize(redirectUri)
+      // Store state and provider for callback
+      sessionStorage.setItem('oauth_state', response.state)
+      sessionStorage.setItem('oauth_provider', 'github')
+      window.location.href = response.authorization_url
+    } catch {
+      setError('Failed to initiate GitHub login. Please try again.')
       setSsoLoading(null)
     }
   }
@@ -206,11 +232,11 @@ export default function Login() {
                   </button>
                 )}
 
-                {/* GitHub */}
-                {ssoConfig.providers.includes('GitHub') && (
+                {/* GitHub - uses direct OAuth, not Cognito */}
+                {githubConfig?.enabled && (
                   <button
                     type="button"
-                    onClick={() => handleSsoLogin('github')}
+                    onClick={handleGitHubLogin}
                     disabled={!!ssoLoading}
                     className="w-full inline-flex justify-center items-center py-2.5 px-4 border border-gray-700 rounded-md bg-gray-800 text-sm font-medium text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >

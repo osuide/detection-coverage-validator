@@ -130,6 +130,13 @@ variable "github_client_id" {
   sensitive   = true
 }
 
+variable "github_client_secret" {
+  type        = string
+  description = "GitHub OAuth Client Secret"
+  default     = ""
+  sensitive   = true
+}
+
 variable "microsoft_client_id" {
   type        = string
   description = "Microsoft OAuth Client ID"
@@ -476,6 +483,7 @@ resource "aws_ecs_task_definition" "backend" {
     # OAuth provider client IDs (for backend to know which providers are enabled)
     var.google_client_id != "" ? [{ name = "GOOGLE_CLIENT_ID", value = var.google_client_id }] : [],
     var.github_client_id != "" ? [{ name = "GITHUB_CLIENT_ID", value = var.github_client_id }] : [],
+    var.github_client_secret != "" ? [{ name = "GITHUB_CLIENT_SECRET", value = var.github_client_secret }] : [],
     var.microsoft_client_id != "" ? [{ name = "MICROSOFT_CLIENT_ID", value = var.microsoft_client_id }] : [])
 
     logConfiguration = {
@@ -510,9 +518,11 @@ resource "aws_ecs_service" "backend" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    subnets          = var.private_subnet_ids
+    # Using public subnets with public IPs to allow outbound internet access
+    # (required for Cognito OAuth token exchange - no VPC endpoint available)
+    subnets          = var.public_subnet_ids
     security_groups  = [aws_security_group.ecs.id]
-    assign_public_ip = false
+    assign_public_ip = true
   }
 
   load_balancer {

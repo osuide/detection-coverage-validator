@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { cognitoApi, CognitoConfig } from '../services/cognitoApi'
+import { githubApi, GitHubConfig } from '../services/githubApi'
 
 interface SocialLoginButtonsProps {
   onError?: (error: string) => void
@@ -7,45 +8,66 @@ interface SocialLoginButtonsProps {
 }
 
 export default function SocialLoginButtons({ onError, mode = 'login' }: SocialLoginButtonsProps) {
-  const [config, setConfig] = useState<CognitoConfig | null>(null)
+  const [cognitoConfig, setCognitoConfig] = useState<CognitoConfig | null>(null)
+  const [githubConfig, setGithubConfig] = useState<GitHubConfig | null>(null)
   const [loading, setLoading] = useState<string | null>(null)
 
   useEffect(() => {
-    cognitoApi.getConfig()
-      .then(setConfig)
-      .catch(() => {
-        // SSO not configured - don't show buttons
-        setConfig({ configured: false, providers: [] })
-      })
+    // Load both Cognito and GitHub configs
+    Promise.all([
+      cognitoApi.getConfig().catch(() => ({ configured: false, providers: [] })),
+      githubApi.getConfig().catch(() => ({ enabled: false, client_id: null })),
+    ]).then(([cognito, github]) => {
+      setCognitoConfig(cognito)
+      setGithubConfig(github)
+    })
   }, [])
 
-  const handleSocialLogin = async (provider: string) => {
+  const handleGoogleLogin = async () => {
     if (loading) return
 
-    setLoading(provider)
+    setLoading('google')
     try {
       const redirectUri = `${window.location.origin}/auth/callback`
-      const response = await cognitoApi.initiateSso(provider, redirectUri)
+      const response = await cognitoApi.initiateSso('google', redirectUri)
 
-      // Store state for CSRF validation
+      // Store state and provider for callback handling
       sessionStorage.setItem('oauth_state', response.state)
+      sessionStorage.setItem('oauth_provider', 'cognito')
 
       // Redirect to provider
       window.location.href = response.authorization_url
     } catch (err) {
-      onError?.('Failed to initiate SSO. Please try again.')
+      onError?.('Failed to initiate Google SSO. Please try again.')
       setLoading(null)
     }
   }
 
-  // Don't render if SSO is not configured
-  if (!config?.configured) {
-    return null
+  const handleGitHubLogin = async () => {
+    if (loading) return
+
+    setLoading('github')
+    try {
+      const redirectUri = `${window.location.origin}/auth/callback`
+      const response = await githubApi.authorize(redirectUri)
+
+      // Store state and provider for callback handling
+      sessionStorage.setItem('oauth_state', response.state)
+      sessionStorage.setItem('oauth_provider', 'github')
+
+      // Redirect to GitHub
+      window.location.href = response.authorization_url
+    } catch (err) {
+      onError?.('Failed to initiate GitHub login. Please try again.')
+      setLoading(null)
+    }
   }
 
-  const hasGoogle = config.providers.includes('Google')
+  const hasGoogle = cognitoConfig?.configured && cognitoConfig.providers.includes('Google')
+  const hasGithub = githubConfig?.enabled
 
-  if (!hasGoogle) {
+  // Don't render if no SSO providers are available
+  if (!hasGoogle && !hasGithub) {
     return null
   }
 
@@ -64,7 +86,7 @@ export default function SocialLoginButtons({ onError, mode = 'login' }: SocialLo
         {hasGoogle && (
           <button
             type="button"
-            onClick={() => handleSocialLogin('google')}
+            onClick={handleGoogleLogin}
             disabled={!!loading}
             className="w-full inline-flex justify-center items-center py-2.5 px-4 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
@@ -94,6 +116,29 @@ export default function SocialLoginButtons({ onError, mode = 'login' }: SocialLo
                   />
                 </svg>
                 {mode === 'signup' ? 'Sign up with Google' : 'Continue with Google'}
+              </>
+            )}
+          </button>
+        )}
+
+        {hasGithub && (
+          <button
+            type="button"
+            onClick={handleGitHubLogin}
+            disabled={!!loading}
+            className="w-full inline-flex justify-center items-center py-2.5 px-4 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {loading === 'github' ? (
+              <svg className="animate-spin h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            ) : (
+              <>
+                <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
+                </svg>
+                {mode === 'signup' ? 'Sign up with GitHub' : 'Continue with GitHub'}
               </>
             )}
           </button>

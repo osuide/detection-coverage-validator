@@ -105,8 +105,15 @@ class CognitoService:
             logger.error("get_signing_key_failed", error=str(e))
             return None
 
-    async def verify_token(self, token: str) -> Optional[Dict[str, Any]]:
-        """Verify a Cognito JWT token and return claims."""
+    async def verify_token(
+        self, token: str, access_token: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """Verify a Cognito JWT token and return claims.
+
+        Args:
+            token: The ID token to verify
+            access_token: Optional access token for at_hash validation
+        """
         try:
             jwks = await self.get_jwks()
             signing_key = self._get_signing_key(token, jwks)
@@ -115,13 +122,14 @@ class CognitoService:
                 logger.warning("signing_key_not_found")
                 return None
 
-            # Verify the token
+            # Verify the token - pass access_token for at_hash validation
             claims = jwt.decode(
                 token,
                 signing_key,
                 algorithms=["RS256"],
                 audience=self.client_id,
                 issuer=self.issuer,
+                access_token=access_token,
             )
 
             # Check token expiration
@@ -158,21 +166,35 @@ class CognitoService:
             if code_verifier:
                 data["code_verifier"] = code_verifier
 
-            async with httpx.AsyncClient() as client:
+            logger.info("token_exchange_starting", token_url=self.token_url, redirect_uri=redirect_uri, client_id=self.client_id)
+
+            async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.post(
                     self.token_url,
                     data=data,
                     headers={"Content-Type": "application/x-www-form-urlencoded"},
                 )
 
+                logger.info("token_exchange_response", status=response.status_code)
+
                 if response.status_code != 200:
                     logger.error("token_exchange_failed", status=response.status_code, body=response.text)
                     return None
 
-                return response.json()
+                try:
+                    return response.json()
+                except Exception as json_error:
+                    logger.error("token_exchange_json_parse_error", error=str(json_error), body=response.text[:500])
+                    return None
 
+        except httpx.HTTPStatusError as e:
+            logger.error("token_exchange_http_error", error=str(e), status_code=e.response.status_code if e.response else None)
+            return None
+        except httpx.RequestError as e:
+            logger.error("token_exchange_request_error", error=str(e), error_type=type(e).__name__)
+            return None
         except Exception as e:
-            logger.error("token_exchange_error", error=str(e))
+            logger.error("token_exchange_error", error=str(e), error_type=type(e).__name__, token_url=self.token_url)
             return None
 
     async def get_user_info(self, access_token: str) -> Optional[Dict[str, Any]]:

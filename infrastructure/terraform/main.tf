@@ -166,9 +166,10 @@ module "backend" {
   frontend_url         = var.domain_name != "" ? (var.subdomain != "" ? "https://${var.subdomain}.${var.domain_name}" : "https://${var.domain_name}") : "http://localhost:3001"
 
   # OAuth provider client IDs (for backend to know which providers are enabled)
-  google_client_id    = var.google_client_id
-  github_client_id    = var.github_client_id
-  microsoft_client_id = var.microsoft_client_id
+  google_client_id     = var.google_client_id
+  github_client_id     = var.github_client_id
+  github_client_secret = var.github_client_secret
+  microsoft_client_id  = var.microsoft_client_id
 }
 
 # Frontend (S3 + CloudFront)

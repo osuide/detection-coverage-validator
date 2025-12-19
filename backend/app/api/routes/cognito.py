@@ -162,13 +162,14 @@ async def exchange_cognito_token(
 
     # Verify the ID token
     id_token = tokens.get("id_token")
+    access_token = tokens.get("access_token")
     if not id_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="No ID token received"
         )
 
-    claims = await cognito_service.verify_token(id_token)
+    claims = await cognito_service.verify_token(id_token, access_token=access_token)
     if not claims:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
