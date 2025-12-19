@@ -27,7 +27,7 @@ jobs:
       ecr_repository_url: ${{ steps.tf-outputs.outputs.ecr_repository_url }}
       ecs_cluster_name: ${{ steps.tf-outputs.outputs.ecs_cluster_name }}
       ecs_service_name: ${{ steps.tf-outputs.outputs.ecs_service_name }}
-      vpc_private_subnets: ${{ steps.tf-outputs.outputs.vpc_private_subnets }}
+      vpc_public_subnets: ${{ steps.tf-outputs.outputs.vpc_public_subnets }}
       ecs_security_group: ${{ steps.tf-outputs.outputs.ecs_security_group }}
 
     steps:
@@ -84,7 +84,7 @@ jobs:
           echo "ecr_repository_url=$(terraform output -raw ecr_repository_url)" >> $GITHUB_OUTPUT
           echo "ecs_cluster_name=$(terraform output -raw ecs_cluster_name)" >> $GITHUB_OUTPUT
           echo "ecs_service_name=$(terraform output -raw ecs_service_name)" >> $GITHUB_OUTPUT
-          echo "vpc_private_subnets=$(terraform output -json vpc_private_subnets | jq -c '.')" >> $GITHUB_OUTPUT
+          echo "vpc_public_subnets=$(terraform output -json vpc_public_subnets | jq -c '.')" >> $GITHUB_OUTPUT
           echo "ecs_security_group=$(terraform output -raw ecs_security_group_id)" >> $GITHUB_OUTPUT
 
   deploy-backend:
@@ -123,10 +123,10 @@ jobs:
         env:
           ECS_CLUSTER: a13e-${{ github.event.inputs.environment || 'staging' }}-backend
           ECS_TASK_DEFINITION: a13e-${{ github.event.inputs.environment || 'staging' }}-backend
-          SUBNETS: ${{ needs.deploy-infrastructure.outputs.vpc_private_subnets }}
+          SUBNETS: ${{ needs.deploy-infrastructure.outputs.vpc_public_subnets }}
           SECURITY_GROUP: ${{ needs.deploy-infrastructure.outputs.ecs_security_group }}
         run: |
-          # Get subnet IDs as comma-separated list
+          # Get subnet IDs as comma-separated list (using public subnets for internet access)
           SUBNET_LIST=$(echo $SUBNETS | jq -r 'join(",")')
 
           echo "Running database migrations..."
