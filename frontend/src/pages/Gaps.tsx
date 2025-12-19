@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
-import { AlertTriangle, ExternalLink, ChevronDown, ChevronUp, Filter, Search } from 'lucide-react'
-import { accountsApi, coverageApi, Gap } from '../services/api'
+import { AlertTriangle, ExternalLink, ChevronDown, ChevronUp, Filter, Search, Clock, Zap, Shield, Users } from 'lucide-react'
+import { accountsApi, coverageApi, Gap, RecommendedStrategy } from '../services/api'
 import { useState } from 'react'
 
 const priorityStyles = {
@@ -282,6 +282,39 @@ function GapCard({
       {/* Expanded content */}
       {isExpanded && (
         <div className="mt-4 pt-4 border-t border-gray-100">
+          {/* Threat Context - if template available */}
+          {gap.has_template && (
+            <div className="mb-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+              {gap.severity_score && (
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <div className="flex items-center text-gray-500 text-xs mb-1">
+                    <Shield className="h-3 w-3 mr-1" />
+                    Severity
+                  </div>
+                  <p className="text-lg font-semibold text-gray-900">{gap.severity_score}/10</p>
+                </div>
+              )}
+              {gap.total_effort_hours && (
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <div className="flex items-center text-gray-500 text-xs mb-1">
+                    <Clock className="h-3 w-3 mr-1" />
+                    Total Effort
+                  </div>
+                  <p className="text-lg font-semibold text-gray-900">{gap.total_effort_hours}h</p>
+                </div>
+              )}
+              {gap.threat_actors && gap.threat_actors.length > 0 && (
+                <div className="bg-gray-50 rounded-lg p-3 col-span-2">
+                  <div className="flex items-center text-gray-500 text-xs mb-1">
+                    <Users className="h-3 w-3 mr-1" />
+                    Known Threat Actors
+                  </div>
+                  <p className="text-sm font-medium text-gray-900">{gap.threat_actors.slice(0, 3).join(', ')}</p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Reason */}
           <div className="mb-4">
             <h4 className="text-sm font-medium text-gray-700 mb-2">Why this is a gap</h4>
@@ -290,8 +323,23 @@ function GapCard({
             </p>
           </div>
 
+          {/* Business Impact */}
+          {gap.business_impact && gap.business_impact.length > 0 && (
+            <div className="mb-4">
+              <h4 className="text-sm font-medium text-gray-700 mb-2">Business Impact</h4>
+              <ul className="text-sm text-gray-600 bg-red-50 rounded-lg p-3 space-y-1">
+                {gap.business_impact.map((impact, idx) => (
+                  <li key={idx} className="flex items-start">
+                    <span className="text-red-500 mr-2">•</span>
+                    {impact}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {/* Data Sources */}
-          {gap.data_sources.length > 0 && (
+          {gap.data_sources && gap.data_sources.length > 0 && (
             <div className="mb-4">
               <h4 className="text-sm font-medium text-gray-700 mb-2">Recommended Data Sources</h4>
               <div className="flex flex-wrap gap-2">
@@ -307,31 +355,69 @@ function GapCard({
             </div>
           )}
 
-          {/* Remediation Suggestions */}
-          <div className="mb-4">
-            <h4 className="text-sm font-medium text-gray-700 mb-2">Remediation Suggestions</h4>
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <ul className="text-sm text-green-800 space-y-2">
-                <li className="flex items-start">
-                  <span className="mr-2">1.</span>
-                  <span>Create EventBridge rule monitoring relevant CloudTrail events</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="mr-2">2.</span>
-                  <span>Set up CloudWatch Logs Insights query for log-based detection</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="mr-2">3.</span>
-                  <span>Consider enabling AWS GuardDuty for managed threat detection</span>
-                </li>
-              </ul>
+          {/* Recommended Strategies from Template */}
+          {gap.recommended_strategies && gap.recommended_strategies.length > 0 ? (
+            <div className="mb-4">
+              <h4 className="text-sm font-medium text-gray-700 mb-2">
+                Recommended Detection Strategies
+                {gap.quick_win_strategy && (
+                  <span className="ml-2 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                    <Zap className="h-3 w-3 inline mr-1" />
+                    Quick win available
+                  </span>
+                )}
+              </h4>
+              <div className="space-y-3">
+                {gap.recommended_strategies.map((strategy, idx) => (
+                  <StrategyCard
+                    key={strategy.strategy_id}
+                    strategy={strategy}
+                    isQuickWin={strategy.strategy_id === gap.quick_win_strategy}
+                    index={idx + 1}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
+          ) : gap.recommended_detections && gap.recommended_detections.length > 0 ? (
+            <div className="mb-4">
+              <h4 className="text-sm font-medium text-gray-700 mb-2">Remediation Suggestions</h4>
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <ul className="text-sm text-green-800 space-y-2">
+                  {gap.recommended_detections.map((detection, idx) => (
+                    <li key={idx} className="flex items-start">
+                      <span className="mr-2">{idx + 1}.</span>
+                      <span>{detection}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          ) : (
+            <div className="mb-4">
+              <h4 className="text-sm font-medium text-gray-700 mb-2">Remediation Suggestions</h4>
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <ul className="text-sm text-green-800 space-y-2">
+                  <li className="flex items-start">
+                    <span className="mr-2">1.</span>
+                    <span>Create EventBridge rule monitoring relevant CloudTrail events</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="mr-2">2.</span>
+                    <span>Set up CloudWatch Logs Insights query for log-based detection</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="mr-2">3.</span>
+                    <span>Consider enabling AWS GuardDuty for managed threat detection</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex items-center space-x-3">
             <a
-              href={mitreUrl}
+              href={gap.mitre_url || mitreUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="btn-primary text-sm"
@@ -344,6 +430,76 @@ function GapCard({
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+const effortColors: Record<string, string> = {
+  low: 'bg-green-100 text-green-700',
+  medium: 'bg-yellow-100 text-yellow-700',
+  high: 'bg-orange-100 text-orange-700',
+}
+
+function StrategyCard({
+  strategy,
+  isQuickWin,
+  index
+}: {
+  strategy: RecommendedStrategy
+  isQuickWin: boolean
+  index: number
+}) {
+  return (
+    <div className={`border rounded-lg p-4 ${isQuickWin ? 'border-green-300 bg-green-50' : 'border-gray-200 bg-white'}`}>
+      <div className="flex items-start justify-between">
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-gray-500">#{index}</span>
+            <h5 className="font-medium text-gray-900">{strategy.name}</h5>
+            {isQuickWin && (
+              <span className="text-xs bg-green-200 text-green-800 px-2 py-0.5 rounded-full flex items-center">
+                <Zap className="h-3 w-3 mr-1" />
+                Quick Win
+              </span>
+            )}
+          </div>
+          <p className="text-sm text-gray-500 mt-1">
+            {strategy.detection_type} via {strategy.aws_service}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-3 text-xs">
+        <span className={`px-2 py-1 rounded ${effortColors[strategy.implementation_effort] || 'bg-gray-100 text-gray-700'}`}>
+          {strategy.implementation_effort} effort
+        </span>
+        <span className="text-gray-500 flex items-center">
+          <Clock className="h-3 w-3 mr-1" />
+          {strategy.estimated_time}
+        </span>
+        <span className="text-gray-500">
+          Coverage: {strategy.detection_coverage}
+        </span>
+      </div>
+
+      {/* Available artefacts */}
+      <div className="mt-3 flex flex-wrap gap-2">
+        {strategy.has_query && (
+          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+            Query Available
+          </span>
+        )}
+        {strategy.has_cloudformation && (
+          <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">
+            CloudFormation
+          </span>
+        )}
+        {strategy.has_terraform && (
+          <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded">
+            Terraform
+          </span>
+        )}
+      </div>
     </div>
   )
 }

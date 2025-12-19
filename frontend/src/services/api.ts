@@ -137,6 +137,19 @@ export interface TacticCoverage {
   percent: number
 }
 
+export interface RecommendedStrategy {
+  strategy_id: string
+  name: string
+  detection_type: string
+  aws_service: string
+  implementation_effort: string
+  estimated_time: string
+  detection_coverage: string
+  has_query: boolean
+  has_cloudformation: boolean
+  has_terraform: boolean
+}
+
 export interface Gap {
   technique_id: string
   technique_name: string
@@ -145,6 +158,16 @@ export interface Gap {
   priority: 'critical' | 'high' | 'medium' | 'low'
   reason: string
   data_sources: string[]
+  recommended_detections: string[]
+  // Enhanced remediation data
+  has_template: boolean
+  severity_score: number | null
+  threat_actors: string[]
+  business_impact: string[]
+  quick_win_strategy: string | null
+  total_effort_hours: number | null
+  mitre_url: string | null
+  recommended_strategies: RecommendedStrategy[]
 }
 
 export interface CoverageData {
