@@ -73,10 +73,10 @@ export function DocsPage() {
       {/* Main content - no flex, full width */}
       <div>
         {/* Header */}
-        <header className="mb-12">
-          <h1 className="text-4xl font-bold text-white mb-5">{doc.title}</h1>
-          <p className="text-xl text-slate-200 leading-relaxed mb-5">{doc.description}</p>
-          <div className="flex items-center gap-4 text-sm text-slate-400">
+        <header className="mb-14">
+          <h1 className="text-4xl font-bold text-white mb-6">{doc.title}</h1>
+          <p className="text-xl text-white leading-relaxed mb-6">{doc.description}</p>
+          <div className="flex items-center gap-4 text-sm text-gray-300">
             <span className="flex items-center gap-1.5">
               <Clock className="h-4 w-4" />
               {doc.readTime} read
@@ -98,27 +98,27 @@ export function DocsPage() {
           <article className="prose prose-invert prose-lg max-w-none
             prose-headings:scroll-mt-24
             prose-headings:font-bold
-            prose-h1:text-3xl prose-h1:mb-8 prose-h1:pb-4 prose-h1:border-b prose-h1:border-slate-700 prose-h1:text-white
-            prose-h2:text-2xl prose-h2:mt-14 prose-h2:mb-6 prose-h2:text-white prose-h2:font-semibold
-            prose-h3:text-xl prose-h3:mt-10 prose-h3:mb-5 prose-h3:text-white prose-h3:font-semibold
-            prose-h4:text-lg prose-h4:mt-8 prose-h4:mb-4 prose-h4:text-slate-100
-            prose-p:text-slate-50 prose-p:leading-[1.8] prose-p:text-[17px] prose-p:mb-6
-            prose-a:text-cyan-400 prose-a:no-underline prose-a:font-medium hover:prose-a:text-cyan-300 hover:prose-a:underline
+            prose-h1:text-3xl prose-h1:mb-10 prose-h1:pb-5 prose-h1:border-b prose-h1:border-slate-600 prose-h1:text-white
+            prose-h2:text-2xl prose-h2:mt-16 prose-h2:mb-8 prose-h2:text-white prose-h2:font-semibold prose-h2:pt-4
+            prose-h3:text-xl prose-h3:mt-12 prose-h3:mb-6 prose-h3:text-white prose-h3:font-semibold
+            prose-h4:text-lg prose-h4:mt-10 prose-h4:mb-5 prose-h4:text-white
+            prose-p:text-white prose-p:leading-[1.9] prose-p:text-[17px] prose-p:mb-7
+            prose-a:text-cyan-300 prose-a:underline prose-a:decoration-cyan-400/60 prose-a:underline-offset-4 prose-a:font-medium prose-a:transition-colors hover:prose-a:text-cyan-200 hover:prose-a:decoration-cyan-300
             prose-strong:text-white prose-strong:font-semibold
-            prose-code:text-cyan-300 prose-code:bg-slate-700/80 prose-code:px-2 prose-code:py-1 prose-code:rounded-md prose-code:font-mono prose-code:text-[15px]
+            prose-code:text-amber-300 prose-code:bg-slate-800 prose-code:px-2 prose-code:py-1 prose-code:rounded-md prose-code:font-mono prose-code:text-[15px] prose-code:border prose-code:border-slate-600
             prose-code:before:content-none prose-code:after:content-none
             prose-pre:bg-transparent prose-pre:p-0 prose-pre:m-0
-            prose-ul:text-slate-50 prose-ol:text-slate-50 prose-ul:my-6 prose-ol:my-6
-            prose-li:marker:text-cyan-400 prose-li:mb-3 prose-li:leading-[1.8]
-            prose-blockquote:border-l-4 prose-blockquote:border-cyan-400 prose-blockquote:bg-slate-800/50 prose-blockquote:py-4 prose-blockquote:px-6 prose-blockquote:rounded-r-xl prose-blockquote:text-slate-100 prose-blockquote:not-italic prose-blockquote:my-8
-            prose-hr:border-slate-700 prose-hr:my-10
-            prose-img:rounded-xl prose-img:shadow-lg prose-img:border prose-img:border-slate-700
-            prose-table:text-base prose-table:w-full prose-table:my-8
-            prose-thead:bg-slate-700/80 prose-thead:text-white
-            prose-th:p-4 prose-th:text-left prose-th:font-semibold
-            prose-tbody:text-slate-50
-            prose-tr:border-b prose-tr:border-slate-600/50
-            prose-td:p-4 prose-td:leading-relaxed
+            prose-ul:text-white prose-ol:text-white prose-ul:my-7 prose-ol:my-7 prose-ul:space-y-3 prose-ol:space-y-3
+            prose-li:marker:text-cyan-400 prose-li:mb-4 prose-li:leading-[1.9] prose-li:pl-2
+            prose-blockquote:border-l-4 prose-blockquote:border-cyan-400 prose-blockquote:bg-slate-800/70 prose-blockquote:py-5 prose-blockquote:px-7 prose-blockquote:rounded-r-xl prose-blockquote:text-white prose-blockquote:not-italic prose-blockquote:my-10 prose-blockquote:shadow-lg
+            prose-hr:border-slate-600 prose-hr:my-12
+            prose-img:rounded-xl prose-img:shadow-lg prose-img:border prose-img:border-slate-600
+            prose-table:text-base prose-table:w-full prose-table:my-10
+            prose-thead:bg-slate-700 prose-thead:text-white
+            prose-th:p-5 prose-th:text-left prose-th:font-semibold prose-th:text-white
+            prose-tbody:text-white
+            prose-tr:border-b prose-tr:border-slate-600
+            prose-td:p-5 prose-td:leading-relaxed
           ">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}

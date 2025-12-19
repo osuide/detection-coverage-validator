@@ -42,7 +42,7 @@ export function DocsIndex() {
           <h1 className="text-5xl font-bold text-white mb-6">
             A13E Documentation
           </h1>
-          <p className="text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-xl text-white max-w-2xl mx-auto leading-relaxed">
             Everything you need to get started with the A13E Detection Coverage Validator.
             Analyse your cloud security posture using the MITRE ATT&CK framework.
           </p>
@@ -114,7 +114,7 @@ export function DocsIndex() {
                   <h3 className="font-semibold text-white group-hover:text-blue-400 mb-2 transition-colors">
                     {doc.title}
                   </h3>
-                  <p className="text-sm text-gray-400 mb-3 line-clamp-2">{doc.description}</p>
+                  <p className="text-sm text-white mb-3 line-clamp-2">{doc.description}</p>
                   <span className="text-xs text-gray-500 flex items-center gap-1.5">
                     <Clock className="h-3 w-3" />
                     {doc.readTime} read
@@ -130,7 +130,7 @@ export function DocsIndex() {
       {/* Support */}
       <div className="mt-16 p-8 bg-slate-800/30 border border-slate-700 rounded-2xl text-center">
         <h3 className="font-semibold text-white text-lg mb-2">Need help?</h3>
-        <p className="text-gray-400 mb-6">
+        <p className="text-white mb-6">
           Can't find what you're looking for? Our support team is here to help.
         </p>
         <a

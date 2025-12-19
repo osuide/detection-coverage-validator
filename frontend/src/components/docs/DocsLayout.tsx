@@ -130,7 +130,7 @@ export function DocsLayout({ children }: DocsLayoutProps) {
             <div>
               <Link
                 to="/"
-                className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors group"
+                className="flex items-center gap-2 text-sm text-gray-300 hover:text-white transition-colors group"
               >
                 <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
                 Back to A13E
@@ -156,7 +156,7 @@ export function DocsLayout({ children }: DocsLayoutProps) {
                             flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all
                             ${isActive
                               ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-semibold shadow-lg shadow-blue-500/25'
-                              : 'text-gray-400 hover:bg-slate-800 hover:text-white'
+                              : 'text-gray-200 hover:bg-slate-800 hover:text-white'
                             }
                           `}
                         >
@@ -179,7 +179,7 @@ export function DocsLayout({ children }: DocsLayoutProps) {
                 <li>
                   <a
                     href="mailto:support@a13e.io"
-                    className="flex items-center gap-3 px-3 py-2.5 text-sm text-gray-400 hover:bg-slate-800 hover:text-white rounded-lg transition-colors"
+                    className="flex items-center gap-3 px-3 py-2.5 text-sm text-gray-200 hover:bg-slate-800 hover:text-white rounded-lg transition-colors"
                   >
                     <Mail className="h-4 w-4" />
                     Contact Support
@@ -190,7 +190,7 @@ export function DocsLayout({ children }: DocsLayoutProps) {
                     href="https://attack.mitre.org/"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-3 px-3 py-2.5 text-sm text-gray-400 hover:bg-slate-800 hover:text-white rounded-lg transition-colors"
+                    className="flex items-center gap-3 px-3 py-2.5 text-sm text-gray-200 hover:bg-slate-800 hover:text-white rounded-lg transition-colors"
                   >
                     <ExternalLink className="h-4 w-4" />
                     MITRE ATT&CK
@@ -211,7 +211,7 @@ export function DocsLayout({ children }: DocsLayoutProps) {
 
         {/* Main content */}
         <main className="flex-1 min-w-0">
-          <div className="max-w-5xl px-8 sm:px-12 lg:px-16 py-12">
+          <div className="max-w-4xl px-8 sm:px-12 lg:px-20 py-16">
             {children}
           </div>
         </main>
