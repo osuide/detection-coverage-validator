@@ -195,9 +195,15 @@ resource "aws_cognito_identity_provider" "google" {
     name     = "name"
     username = "sub"
   }
+
+  # Prevent concurrent modifications to Cognito user pool
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 # GitHub Identity Provider (optional) - Uses OIDC
+# depends_on ensures sequential operations to prevent Cognito concurrent modification errors
 resource "aws_cognito_identity_provider" "github" {
   count = var.enable_github_idp ? 1 : 0
 
@@ -223,9 +229,18 @@ resource "aws_cognito_identity_provider" "github" {
     username = "sub"
     picture  = "avatar_url"
   }
+
+  # Prevent concurrent modifications to Cognito user pool
+  lifecycle {
+    create_before_destroy = true
+  }
+
+  # Chain dependencies to force sequential processing
+  depends_on = [aws_cognito_identity_provider.google]
 }
 
 # Microsoft/Azure AD Identity Provider (optional) - Uses OIDC
+# depends_on ensures sequential operations to prevent Cognito concurrent modification errors
 resource "aws_cognito_identity_provider" "microsoft" {
   count = var.enable_microsoft_idp ? 1 : 0
 
@@ -250,6 +265,14 @@ resource "aws_cognito_identity_provider" "microsoft" {
     name     = "name"
     username = "sub"
   }
+
+  # Prevent concurrent modifications to Cognito user pool
+  lifecycle {
+    create_before_destroy = true
+  }
+
+  # Chain dependencies to force sequential processing
+  depends_on = [aws_cognito_identity_provider.github]
 }
 
 # Resource Server (for API scopes)
