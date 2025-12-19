@@ -191,6 +191,42 @@ export function DocsPage() {
                       </h4>
                     );
                   },
+                  // Custom link renderer to transform .md links to /docs/ routes
+                  a: ({ href, children, ...props }) => {
+                    // Transform relative .md links to /docs/ routes
+                    let transformedHref = href || '';
+                    if (transformedHref.startsWith('./') && transformedHref.endsWith('.md')) {
+                      // Extract filename without extension: ./connecting-aws-accounts.md -> connecting-aws-accounts
+                      const filename = transformedHref.slice(2, -3);
+                      // Map filenames to slugs
+                      const slugMap: Record<string, string> = {
+                        'getting-started': 'getting-started',
+                        'connecting-aws-accounts': 'connecting-aws',
+                        'running-scans': 'running-scans',
+                        'understanding-coverage': 'understanding-coverage',
+                        'team-management': 'team-management',
+                        'billing-subscription': 'billing',
+                      };
+                      const slug = slugMap[filename] || filename;
+                      transformedHref = `/docs/${slug}`;
+                    }
+
+                    // Use React Router Link for internal links
+                    if (transformedHref.startsWith('/docs/') || transformedHref.startsWith('#')) {
+                      return (
+                        <Link to={transformedHref} {...props}>
+                          {children}
+                        </Link>
+                      );
+                    }
+
+                    // External links open in new tab
+                    return (
+                      <a href={transformedHref} target="_blank" rel="noopener noreferrer" {...props}>
+                        {children}
+                      </a>
+                    );
+                  },
                   // Enhanced table wrapper
                   table: ({ children, ...props }) => (
                     <div className="overflow-x-auto rounded-xl border border-slate-700 my-6">
