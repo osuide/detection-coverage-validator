@@ -344,7 +344,30 @@ For systematic development, invoke agents in this order:
 7. UI-DESIGN-AGENT        → User interfaces
    ↓
 8. TESTING-AGENT          → Test strategy
+   ↓
+9. AUTH-AGENT             → Authentication & authorisation
+   ↓
+10. SECURITY-THREATS-AGENT → Remediation intelligence (NEW)
 ```
+
+### Phase 7: Remediation Intelligence (NEW)
+
+**Before proceeding, reason through:**
+- What makes generic remediation advice unhelpful?
+- How do real attackers use each MITRE technique?
+- What detection strategies exist for each technique?
+- How to prioritise recommendations by effort vs impact?
+
+**Action:** Invoke `10-SECURITY-THREATS-AGENT.md`
+
+**Validation Criteria:**
+- [ ] Tier 1 critical techniques have complete templates
+- [ ] Templates include real, tested detection logic
+- [ ] Threat context includes recent APT campaigns
+- [ ] Implementation artefacts (CloudFormation, Terraform) are valid
+- [ ] Chain-of-thought reasoning is documented for each technique
+
+**Output:** Remediation template library, threat context database, enhanced gap API
 
 **Parallel Work Possible After Step 3:**
 - Parser, Mapper, Analysis agents can work concurrently once architecture is set

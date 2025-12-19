@@ -100,26 +100,26 @@ export function DocsPage() {
             <article className="prose prose-invert max-w-none
               prose-headings:scroll-mt-24
               prose-headings:font-bold
-              prose-h1:text-3xl prose-h1:mb-8 prose-h1:pb-4 prose-h1:border-b prose-h1:border-slate-800 prose-h1:text-white
-              prose-h2:text-2xl prose-h2:mt-12 prose-h2:mb-6 prose-h2:text-blue-400
-              prose-h3:text-xl prose-h3:mt-8 prose-h3:mb-4 prose-h3:text-cyan-400
-              prose-h4:text-lg prose-h4:mt-6 prose-h4:mb-3 prose-h4:text-gray-200
-              prose-p:text-gray-300 prose-p:leading-relaxed
+              prose-h1:text-3xl prose-h1:mb-8 prose-h1:pb-4 prose-h1:border-b prose-h1:border-slate-700 prose-h1:text-white
+              prose-h2:text-2xl prose-h2:mt-12 prose-h2:mb-6 prose-h2:text-blue-300
+              prose-h3:text-xl prose-h3:mt-8 prose-h3:mb-4 prose-h3:text-cyan-300
+              prose-h4:text-lg prose-h4:mt-6 prose-h4:mb-3 prose-h4:text-gray-100
+              prose-p:text-gray-200 prose-p:leading-relaxed
               prose-a:text-blue-400 prose-a:no-underline prose-a:font-medium hover:prose-a:text-blue-300 hover:prose-a:underline
               prose-strong:text-white prose-strong:font-semibold
-              prose-code:text-cyan-400 prose-code:bg-slate-800 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:font-mono prose-code:text-sm
+              prose-code:text-cyan-300 prose-code:bg-slate-700 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:font-mono prose-code:text-sm
               prose-code:before:content-none prose-code:after:content-none
               prose-pre:bg-transparent prose-pre:p-0 prose-pre:m-0
-              prose-ul:text-gray-300 prose-ol:text-gray-300
+              prose-ul:text-gray-200 prose-ol:text-gray-200
               prose-li:marker:text-blue-400
-              prose-blockquote:border-l-4 prose-blockquote:border-blue-500 prose-blockquote:bg-slate-800/50 prose-blockquote:py-1 prose-blockquote:px-4 prose-blockquote:rounded-r-lg prose-blockquote:text-gray-300 prose-blockquote:not-italic
-              prose-hr:border-slate-800
-              prose-img:rounded-xl prose-img:shadow-lg prose-img:border prose-img:border-slate-800
+              prose-blockquote:border-l-4 prose-blockquote:border-blue-400 prose-blockquote:bg-slate-800/70 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:rounded-r-lg prose-blockquote:text-gray-200 prose-blockquote:not-italic
+              prose-hr:border-slate-700
+              prose-img:rounded-xl prose-img:shadow-lg prose-img:border prose-img:border-slate-700
               prose-table:text-sm prose-table:w-full
-              prose-thead:bg-slate-800 prose-thead:text-white
+              prose-thead:bg-slate-700 prose-thead:text-white
               prose-th:p-3 prose-th:text-left prose-th:font-semibold
-              prose-tbody:text-gray-300
-              prose-tr:border-b prose-tr:border-slate-700
+              prose-tbody:text-gray-200
+              prose-tr:border-b prose-tr:border-slate-600
               prose-td:p-3
             ">
               <ReactMarkdown

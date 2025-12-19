@@ -70,8 +70,8 @@ export function TableOfContents({ content }: TableOfContentsProps) {
                 href={`#${heading.id}`}
                 className={`block py-1 transition-colors border-l-2 -ml-px pl-3 ${
                   activeId === heading.id
-                    ? 'border-blue-500 text-blue-400 font-medium'
-                    : 'border-transparent text-gray-500 hover:text-gray-300 hover:border-slate-600'
+                    ? 'border-blue-400 text-blue-300 font-medium'
+                    : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-slate-500'
                 }`}
               >
                 {heading.text}
