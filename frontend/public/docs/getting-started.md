@@ -1,6 +1,6 @@
 # Getting Started with A13E Detection Coverage Validator
 
-Welcome to A13E! This guide will help you get started with analyzing your cloud security detection coverage using the MITRE ATT&CK framework.
+Welcome to A13E! This guide will help you get started with analysing your cloud security detection coverage using the MITRE ATT&CK framework.
 
 ## Table of Contents
 
@@ -16,7 +16,7 @@ A13E Detection Coverage Validator helps security teams understand and improve th
 
 - **Scanning** your AWS and GCP cloud accounts for existing security detections
 - **Mapping** those detections to the MITRE ATT&CK framework
-- **Analyzing** coverage gaps and providing prioritized recommendations
+- **Analysing** coverage gaps and providing prioritised recommendations
 - **Tracking** coverage improvements over time
 
 ## Creating Your Account
@@ -33,7 +33,7 @@ A13E Detection Coverage Validator helps security teams understand and improve th
      - Contains at least one uppercase letter (A-Z)
      - Contains at least one number (0-9)
      - Contains at least one special character (@$!%*?&)
-   - **Organization Name**: Your company or team name
+   - **Organisation Name**: Your company or team name
 3. Check the box to accept the Terms of Service and Privacy Policy
 4. Click **Create Account**
 
@@ -53,7 +53,7 @@ A13E supports SSO for faster, more secure authentication:
 3. Grant permissions to access your basic profile
 4. Complete your profile if this is your first login
 
-> **Note**: When signing up with SSO, you'll be prompted to create or join an organization on your first login.
+> **Note**: When signing up with SSO, you'll be prompted to create or join an organisation on your first login.
 
 ## Signing In
 
@@ -66,7 +66,7 @@ A13E supports SSO for faster, more secure authentication:
 
 ### Multi-Factor Authentication (MFA)
 
-If your organization has MFA enabled:
+If your organisation has MFA enabled:
 
 1. Enter your email and password as usual
 2. You'll be redirected to the MFA verification page
@@ -96,7 +96,7 @@ Four metric cards display your current coverage status:
 - **Gaps**: Techniques with little to no coverage (<40% confidence)
 - **Detections**: Total number of security detections discovered across your accounts
 
-### Coverage Visualization
+### Coverage Visualisation
 
 #### Overall Coverage Gauge
 Shows your overall detection coverage percentage and average confidence score. This gives you a quick snapshot of your security posture.
@@ -118,7 +118,7 @@ Displays coverage across the 14 MITRE ATT&CK tactics:
 - Reconnaissance
 - Resource Development
 
-Colors indicate coverage level:
+Colours indicate coverage level:
 - **Green**: Well covered (≥60% confidence)
 - **Yellow**: Partially covered (40-60% confidence)
 - **Gray**: Uncovered or minimal coverage (<40% confidence)
@@ -186,7 +186,7 @@ Once the scan completes:
 - **Dashboard**: View overall coverage metrics and top gaps
 - **Coverage**: Explore the detailed MITRE ATT&CK heatmap
 - **Detections**: Review all discovered security detections
-- **Gaps**: Analyze prioritized coverage gaps with remediation guidance
+- **Gaps**: Analyse prioritised coverage gaps with remediation guidance
 
 ### 5. Invite Your Team
 
@@ -204,11 +204,11 @@ Once the scan completes:
 The main navigation menu includes:
 
 - **Dashboard**: Overview of coverage and key metrics
-- **Coverage**: Detailed MITRE ATT&CK heatmap visualization
+- **Coverage**: Detailed MITRE ATT&CK heatmap visualisation
 - **Detections**: List of all discovered security detections
-- **Gaps**: Prioritized coverage gap analysis
+- **Gaps**: Prioritised coverage gap analysis
 - **Accounts**: Manage cloud accounts and run scans
-- **Settings**: Organization, team, billing, and security settings
+- **Settings**: Organisation, team, billing, and security settings
 
 ## Getting Help
 

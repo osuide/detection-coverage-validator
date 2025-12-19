@@ -1,13 +1,13 @@
 # Understanding MITRE ATT&CK Coverage
 
-This guide explains how A13E analyzes your security detection coverage using the MITRE ATT&CK framework.
+This guide explains how A13E analyses your security detection coverage using the MITRE ATT&CK framework.
 
 ## TL;DR
 
 - **Coverage is calculated** by mapping your detections to MITRE ATT&CK techniques and assigning confidence scores (0-100%). Techniques with ≥60% confidence are considered "Covered"
-- **The heatmap visualizes** your coverage across 14 attack tactics (columns) and hundreds of techniques (rows), with color-coded cells showing detection strength from dark green (excellent) to dark gray (none)
+- **The heatmap visualises** your coverage across 14 attack tactics (columns) and hundreds of techniques (rows), with colour-coded cells showing detection strength from dark green (excellent) to dark grey (none)
 - **Confidence scores** are weighted by detection specificity (40%), quality (30%), and completeness (30%). Multiple detections for one technique use the highest confidence score
-- **Industry benchmark**: Most organizations achieve 45-75% coverage depending on maturity. Focus first on Critical priority gaps in Initial Access and Persistence tactics for quick security wins
+- **Industry benchmark**: Most organisations achieve 45-75% coverage depending on maturity. Focus first on Critical priority gaps in Initial Access and Persistence tactics for quick security wins
 
 ## Table of Contents
 
@@ -26,7 +26,7 @@ This guide explains how A13E analyzes your security detection coverage using the
 
 ### Framework Structure
 
-The ATT&CK framework is organized into:
+The ATT&CK framework is organised into:
 
 1. **Tactics**: The "why" - adversary's tactical goals (e.g., gaining access, stealing data)
 2. **Techniques**: The "how" - methods to achieve those goals (e.g., phishing, credential dumping)
@@ -37,8 +37,8 @@ The ATT&CK framework is organized into:
 
 Using ATT&CK for detection coverage helps you:
 
-- **Standardize**: Common language across security teams
-- **Prioritize**: Focus on high-risk techniques based on threat intelligence
+- **Standardise**: Common language across security teams
+- **Prioritise**: Focus on high-risk techniques based on threat intelligence
 - **Measure**: Quantify and track detection coverage improvements
 - **Communicate**: Report security posture to executives and stakeholders
 
@@ -62,15 +62,15 @@ For each MITRE ATT&CK technique:
 1. **Detection Mapping**: A13E maps your discovered detections to ATT&CK techniques
 2. **Confidence Scoring**: Assigns confidence scores (0-100%) based on detection quality
 3. **Aggregation**: Combines multiple detections for the same technique
-4. **Classification**: Categorizes as Covered, Partial, or Uncovered
+4. **Classification**: Categorises as Covered, Partial, or Uncovered
 
 ### Coverage Categories
 
-| Category | Confidence Range | Color | Meaning |
-|----------|------------------|-------|---------|
+| Category | Confidence Range | Colour | Meaning |
+|----------|------------------|--------|---------|
 | **Covered** | ≥60% | Green | Strong detection capability |
 | **Partial** | 40-59% | Yellow | Moderate detection, improvements possible |
-| **Uncovered** | <40% | Gray | Little to no detection coverage |
+| **Uncovered** | <40% | Grey | Little to no detection coverage |
 
 ### Overall Coverage Percentage
 
@@ -108,12 +108,12 @@ The MITRE ATT&CK heatmap provides a visual representation of your coverage.
 - **Rows**: Individual techniques within each tactic
 - **Cells**: Each cell represents one technique
 
-**Colors**:
+**Colours**:
 - **Dark Green**: High coverage (80-100% confidence)
 - **Light Green**: Good coverage (60-79% confidence)
 - **Yellow**: Partial coverage (40-59% confidence)
-- **Light Gray**: Minimal coverage (20-39% confidence)
-- **Dark Gray**: No coverage (<20% confidence)
+- **Light Grey**: Minimal coverage (20-39% confidence)
+- **Dark Grey**: No coverage (<20% confidence)
 
 **Cell Information**:
 Hover over any cell to see:
@@ -142,7 +142,7 @@ Hover over any cell to see:
 ### View Modes
 
 #### Heatmap View
-Full MITRE ATT&CK matrix with color-coded coverage.
+Full MITRE ATT&CK matrix with colour-coded coverage.
 
 **Best for**:
 - Executive presentations
@@ -221,23 +221,23 @@ The 14 MITRE ATT&CK tactics represent stages of an attack. Here's what to expect
 | **4. Execution** (TA0002) | Running malicious code | Lambda functions, malicious containers, SSM commands | 50-70% |
 | **5. Persistence** (TA0003) | Maintaining access over time | Backdoor IAM users, modified metadata, malicious Lambda layers | 70-85% |
 | **6. Privilege Escalation** (TA0004) | Gaining higher-level permissions | IAM privilege escalation, overly permissive policies | 65-80% |
-| **7. Defense Evasion** (TA0005) | Avoiding detection and security controls | Disabling CloudTrail, deleting security resources | 55-75% |
+| **7. Defence Evasion** (TA0005) | Avoiding detection and security controls | Disabling CloudTrail, deleting security resources | 55-75% |
 | **8. Credential Access** (TA0006) | Stealing credentials and secrets | Accessing Secrets Manager, credential dumping | 60-75% |
 | **9. Discovery** (TA0007) | Learning about the environment | Listing S3 buckets, enumerating IAM, describing instances | 40-60% |
 | **10. Lateral Movement** (TA0008) | Moving through the environment | Cross-account role assumption, VPC peering pivots | 50-65% |
 | **11. Collection** (TA0009) | Gathering data of interest | Downloading S3 objects, exporting database snapshots | 45-65% |
-| **12. Command and Control** (TA0011) | Communicating with compromised systems | Known C2 IPs, DNS tunneling, unauthorized VPN | 60-80% |
+| **12. Command and Control** (TA0011) | Communicating with compromised systems | Known C2 IPs, DNS tunneling, unauthorised VPN | 60-80% |
 | **13. Exfiltration** (TA0010) | Stealing data from the environment | Unusual S3 transfers, snapshot sharing, large exports | 50-70% |
 | **14. Impact** (TA0040) | Disrupting availability or integrity | Deleting S3 buckets, ransomware encryption, terminating instances | 60-80% |
 
 **Why Coverage Varies**:
 - **Low coverage** (Reconnaissance, Resource Development): Often happens outside your environment or involves passive activities
-- **High coverage** (Initial Access, Persistence): Most organizations monitor authentication and IAM changes
+- **High coverage** (Initial Access, Persistence): Most organisations monitor authentication and IAM changes
 - **Medium coverage** (Discovery, Collection): Depends on how comprehensively you log read-only operations
 
 ## Gap Analysis
 
-Understanding and prioritizing coverage gaps.
+Understanding and prioritising coverage gaps.
 
 ### What is a Gap?
 
@@ -368,7 +368,7 @@ Whether the detection covers all variations of the technique.
 
 **Industry Averages** (based on A13E customer data):
 
-| Organization Size | Average Coverage | Detections Count |
+| Organisation Size | Average Coverage | Detections Count |
 |-------------------|------------------|------------------|
 | **Small** (<500 employees) | 45-55% | 50-150 |
 | **Medium** (500-2000) | 55-65% | 150-300 |
@@ -379,7 +379,7 @@ Whether the detection covers all variations of the technique.
 
 - **<40% Coverage**: Foundational - Focus on critical tactics
 - **40-60% Coverage**: Developing - Expand across tactics
-- **60-75% Coverage**: Mature - Fine-tune and optimize
+- **60-75% Coverage**: Mature - Fine-tune and optimise
 - **>75% Coverage**: Advanced - Focus on exotic/advanced techniques
 
 ### Setting Goals
@@ -398,7 +398,7 @@ Whether the detection covers all variations of the technique.
 
 **Year 3**:
 - Achieve 75-85% overall coverage
-- Optimize false positives and alert fatigue
+- Optimise false positives and alert fatigue
 - Focus on advanced and cloud-specific techniques
 
 ### Coverage Improvement Strategy
@@ -418,7 +418,7 @@ Whether the detection covers all variations of the technique.
 - Add detections for under-covered tactics
 - Tune existing detections for better confidence
 
-**4. Optimize (Months 7-12)**:
+**4. Optimise (Months 7-12)**:
 - Reduce false positives
 - Improve detection confidence scores
 - Automate response workflows

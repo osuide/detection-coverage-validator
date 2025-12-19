@@ -1,6 +1,6 @@
 # Running Scans
 
-Learn how to scan your cloud accounts for security detections and analyze MITRE ATT&CK coverage.
+Learn how to scan your cloud accounts for security detections and analyse MITRE ATT&CK coverage.
 
 ## Table of Contents
 
@@ -166,7 +166,7 @@ After each scan, A13E calculates:
 
 ## Detection Types
 
-A13E discovers and analyzes various types of security detections:
+A13E discovers and analyses various types of security detections:
 
 ### 1. GuardDuty Findings
 
@@ -265,7 +265,7 @@ Automate regular scans to track coverage over time.
 | Frequency | Best For |
 |-----------|----------|
 | **Daily** | Production environments, active detection development |
-| **Weekly** | Standard monitoring, most organizations |
+| **Weekly** | Standard monitoring, most organisations |
 | **Monthly** | Quarterly reviews, stable environments |
 
 ### Managing Schedules

@@ -115,7 +115,7 @@ For infrastructure-as-code workflows:
 
 ## Method 3: Manual IAM Setup
 
-For organizations with strict change control processes:
+For organisations with strict change control processes:
 
 1. Follow the initial account setup from Method 1 (Steps 1-2)
 2. In AWS Console, create an IAM policy:
@@ -165,7 +165,7 @@ When A13E adds new features requiring additional permissions:
 
 ## Multi-Account Setup
 
-**For AWS Organizations**: Use CloudFormation StackSets to deploy the IAM role to multiple accounts simultaneously. Upload the A13E template to StackSets and target your desired accounts or OUs.
+**For AWS Organisations**: Use CloudFormation StackSets to deploy the IAM role to multiple accounts simultaneously. Upload the A13E template to StackSets and target your desired accounts or OUs.
 
 **For separate accounts**: Add each account individually in A13E and complete the connection process. Coverage analysis will aggregate results across all connected accounts.
 

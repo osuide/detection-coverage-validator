@@ -4,7 +4,7 @@ Understand A13E's subscription plans, billing, and how to manage your account.
 
 ## Subscription Plans
 
-A13E offers three subscription tiers to meet different organization needs.
+A13E offers three subscription tiers to meet different organisation needs.
 
 ### Free Scan
 
@@ -47,7 +47,7 @@ Ideal for small to medium security teams with 1-10 cloud accounts.
 
 **Price**: Starting at $499/month
 
-For large organizations (100+ accounts) with compliance and advanced support needs.
+For large organisations (100+ accounts) with compliance and advanced support needs.
 
 **Everything in Subscriber, plus**:
 - Unlimited cloud accounts
@@ -57,7 +57,7 @@ For large organizations (100+ accounts) with compliance and advanced support nee
 - Dedicated customer success manager
 - 24/7 phone and chat support
 - 99.9% uptime SLA
-- Custom security controls and multi-org management
+- Custom security controls and multi-organisation management
 
 Contact sales@a13e.io or click **Contact Sales** in the app.
 
@@ -118,7 +118,7 @@ Contact sales@a13e.io or click **Contact Sales** in the app.
 3. Click **Subscribe Now** and enter payment details
 4. Complete checkout (powered by Stripe)
 
-You're immediately upgraded with unlimited scans, data retention, and all Subscriber features. First month is prorated.
+You're immediately upgraded with unlimited scans, data retention, and all Subscriber features. First month is pro-rated.
 
 **Important**: Data deleted after 7 days cannot be recovered. Upgrade before expiration to retain scan results.
 
@@ -132,7 +132,7 @@ Contact sales@a13e.io or click **Contact Sales** in Settings → Billing. Ideal 
 
 ### Adding Accounts (Subscriber)
 
-Go to **Accounts** → **Add Account**. If adding beyond your 3 included accounts, billing increases by $9/month (prorated for first month).
+Go to **Accounts** → **Add Account**. If adding beyond your 3 included accounts, billing increases by $9/month (pro-rated for first month).
 
 ### Removing Accounts
 
@@ -140,7 +140,7 @@ Click **Delete** on account card. Billing adjusts on next invoice if over includ
 
 ## Payment Methods
 
-**Accepted**: Credit/debit cards (Visa, Mastercard, Amex, Discover) via Stripe. ACH available for US organizations. Enterprise customers can pay via wire transfer (annual only).
+**Accepted**: Credit/debit cards (Visa, Mastercard, Amex, Discover) via Stripe. ACH available for US organisations. Enterprise customers can pay via wire transfer (annual only).
 
 ### Managing Payment
 
@@ -166,13 +166,13 @@ Each invoice includes invoice number, billing period, line items (base fee, addi
 
 ### Canceling Subscription
 
-Organization Owners can cancel via Settings → Billing → **Manage Billing** → **Cancel Subscription**. Choose to cancel at end of billing period (recommended) or immediately.
+Organisation Owners can cancel via Settings → Billing → **Manage Billing** → **Cancel Subscription**. Choose to cancel at end of billing period (recommended) or immediately.
 
 **What happens**: Scheduled scans, API access, and team invitations stop immediately. After 90 days, all data is permanently deleted.
 
 **Before canceling**: Export your data at Settings → Data Export (CSV/JSON format).
 
-**Refunds**: No refunds for monthly plans. Annual plans get prorated refunds within 30 days.
+**Refunds**: No refunds for monthly plans. Annual plans get pro-rated refunds within 30 days.
 
 **Reactivation**: Within 90 days, reactivate at Settings → Billing to restore all data. After 90 days, data is permanently deleted.
 
@@ -188,10 +188,10 @@ A: Each AWS account or GCP project = 1 cloud account. Multi-region scanning incl
 A: Free Scan: 1 user. Subscriber and Enterprise: unlimited users at no extra cost.
 
 **Q: What happens after my 7-day Free Scan?**
-A: Scan data is permanently deleted. Upgrade before expiration to retain results. Free Scan is one-time per organization.
+A: Scan data is permanently deleted. Upgrade before expiration to retain results. Free Scan is one-time per organisation.
 
 **Q: Can I upgrade mid-month?**
-A: Yes. You're charged a prorated amount for the remainder of the month, then full monthly price.
+A: Yes. You're charged a pro-rated amount for the remainder of the month, then full monthly price.
 
 **Q: Do you charge sales tax?**
 A: Yes, based on billing address. US customers pay sales tax, EU customers may have VAT added.
