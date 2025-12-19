@@ -150,9 +150,11 @@ from .t1578_001_create_snapshot import TEMPLATE as T1578_001
 from .t1526_cloud_service_discovery import TEMPLATE as T1526
 from .t1619_cloud_storage_object_discovery import TEMPLATE as T1619
 from .t1578_002_create_cloud_instance import TEMPLATE as T1578_002
+from .t1578_003_delete_cloud_instance import TEMPLATE as T1578_003
 from .t1535_unused_cloud_regions import TEMPLATE as T1535
 from .t1621_mfa_request_generation import TEMPLATE as T1621
 from .t1496_001_compute_hijacking import TEMPLATE as T1496_001
+from .t1496_002_bandwidth_hijacking import TEMPLATE as T1496_002
 from .t1555_006_cloud_secrets import TEMPLATE as T1555_006
 from .t1648_serverless_execution import TEMPLATE as T1648
 from .t1651_cloud_admin_command import TEMPLATE as T1651
@@ -181,6 +183,7 @@ from .t1059_009_cloud_api import TEMPLATE as T1059_009
 from .t1538_cloud_service_dashboard import TEMPLATE as T1538
 from .t1556_modify_auth_process import TEMPLATE as T1556
 from .t1556_006_mfa_modification import TEMPLATE as T1556_006
+from .t1556_009_conditional_access_policies import TEMPLATE as T1556_009
 from .t1609_container_admin_command import TEMPLATE as T1609
 from .t1610_deploy_container import TEMPLATE as T1610
 from .t1611_escape_to_host import TEMPLATE as T1611
@@ -192,6 +195,7 @@ from .t1557_002_arp_poisoning import TEMPLATE as T1557_002
 from .t1003_credential_dumping import TEMPLATE as T1003
 from .t1195_003_compromise_hardware import TEMPLATE as T1195_003
 from .t1199_trusted_relationship import TEMPLATE as T1199
+from .t1200_hardware_additions import TEMPLATE as T1200
 from .t1048_exfil_alt_protocol import TEMPLATE as T1048
 from .t1105_ingress_tool_transfer import TEMPLATE as T1105
 from .t1518_software_discovery import TEMPLATE as T1518
@@ -199,6 +203,8 @@ from .t1057_process_discovery import TEMPLATE as T1057
 from .t1027_obfuscated_files import TEMPLATE as T1027
 from .t1070_indicator_removal import TEMPLATE as T1070
 from .t1071_application_layer_protocol import TEMPLATE as T1071
+from .t1071_004_dns import TEMPLATE as T1071_004
+from .t1072_software_deployment_tools import TEMPLATE as T1072
 from .t1007_system_service_discovery import TEMPLATE as T1007
 from .t1033_system_owner_discovery import TEMPLATE as T1033
 from .t1134_access_token_manipulation import TEMPLATE as T1134
@@ -288,12 +294,14 @@ from .t1202_indirect_command_exec import TEMPLATE as T1202
 from .t1204_user_execution import TEMPLATE as T1204
 from .t1212_exploitation_credential_access import TEMPLATE as T1212
 from .t1213_data_info_repositories import TEMPLATE as T1213
+from .t1213_003_code_repositories import TEMPLATE as T1213_003
 from .t1220_xsl_script_processing import TEMPLATE as T1220
 from .t1480_execution_guardrails import TEMPLATE as T1480
 from .t1490_inhibit_system_recovery import TEMPLATE as T1490
 from .t1491_002_external_defacement import TEMPLATE as T1491_002
 from .t1498_network_dos import TEMPLATE as T1498
 from .t1499_endpoint_dos import TEMPLATE as T1499
+from .t1499_004_application_exploitation import TEMPLATE as T1499_004
 from .t1529_system_shutdown_reboot import TEMPLATE as T1529
 from .t1534_internal_spearphishing import TEMPLATE as T1534
 from .t1539_steal_web_session_cookie import TEMPLATE as T1539
@@ -319,6 +327,75 @@ from .t1574_hijack_execution_flow import TEMPLATE as T1574
 from .t1578_modify_cloud_compute import TEMPLATE as T1578
 from .t1614_system_location_discovery import TEMPLATE as T1614
 from .t1622_debugger_evasion import TEMPLATE as T1622
+from .t1666_modify_cloud_resource_hierarchy import TEMPLATE as T1666
+from .t1027_006_html_smuggling import TEMPLATE as T1027_006
+from .t1608_stage_capabilities import TEMPLATE as T1608
+
+# New template imports - batch 2
+from .t1021_008_direct_cloud_vm_connections import TEMPLATE as T1021_008
+from .t1048_001_exfil_symmetric_encrypted import TEMPLATE as T1048_001
+from .t1068_exploitation_for_privilege_escalation import TEMPLATE as T1068
+from .t1071_001_web_protocols import TEMPLATE as T1071_001
+from .t1071_003_mail_protocols import TEMPLATE as T1071_003
+from .t1074_002_remote_data_staging import TEMPLATE as T1074_002
+from .t1090_003_multi_hop_proxy import TEMPLATE as T1090_003
+from .t1098_006_additional_container_cluster_roles import TEMPLATE as T1098_006
+from .t1102_002_bidirectional_communication import TEMPLATE as T1102_002
+from .t1110_001_password_guessing import TEMPLATE as T1110_001
+from .t1110_003_password_spraying import TEMPLATE as T1110_003
+from .t1110_004_credential_stuffing import TEMPLATE as T1110_004
+from .t1135_network_share_discovery import TEMPLATE as T1135
+from .t1201_password_policy_discovery import TEMPLATE as T1201
+from .t1204_001_malicious_link import TEMPLATE as T1204_001
+from .t1204_002_malicious_file import TEMPLATE as T1204_002
+from .t1211_exploitation_for_defense_evasion import TEMPLATE as T1211
+from .t1213_006_databases import TEMPLATE as T1213_006
+from .t1485_001_cloud_storage_deletion import TEMPLATE as T1485_001
+from .t1496_resource_hijacking import TEMPLATE as T1496
+from .t1498_001_direct_network_flood import TEMPLATE as T1498_001
+from .t1498_002_reflection_amplification import TEMPLATE as T1498_002
+from .t1499_002_service_exhaustion_flood import TEMPLATE as T1499_002
+from .t1499_003_application_exhaustion_flood import TEMPLATE as T1499_003
+from .t1518_001_security_software_discovery import TEMPLATE as T1518_001
+from .t1546_008_accessibility_features import TEMPLATE as T1546_008
+from .t1548_005_temporary_elevated_cloud_access import TEMPLATE as T1548_005
+from .t1552_007_container_api import TEMPLATE as T1552_007
+from .t1556_007_hybrid_identity import TEMPLATE as T1556_007
+from .t1562_007_disable_cloud_firewall import TEMPLATE as T1562_007
+from .t1566_001_spearphishing_attachment import TEMPLATE as T1566_001
+from .t1566_002_spearphishing_link import TEMPLATE as T1566_002
+from .t1568_002_domain_generation_algorithms import TEMPLATE as T1568_002
+from .t1578_003_delete_cloud_instance import TEMPLATE as T1578_003
+from .t1578_004_revert_cloud_instance import TEMPLATE as T1578_004
+from .t1578_005_modify_cloud_compute_config import TEMPLATE as T1578_005
+from .t1583_006_web_services import TEMPLATE as T1583_006
+from .t1583_acquire_infrastructure import TEMPLATE as T1583
+from .t1584_compromise_infrastructure import TEMPLATE as T1584
+from .t1585_establish_accounts import TEMPLATE as T1585
+from .t1586_003_cloud_accounts import TEMPLATE as T1586_003
+from .t1586_compromise_accounts import TEMPLATE as T1586
+from .t1587_develop_capabilities import TEMPLATE as T1587
+from .t1588_002_tool import TEMPLATE as T1588_002
+from .t1588_obtain_capabilities import TEMPLATE as T1588
+from .t1589_gather_victim_identity import TEMPLATE as T1589
+from .t1590_gather_victim_network_info import TEMPLATE as T1590
+from .t1591_gather_victim_org_info import TEMPLATE as T1591
+from .t1592_gather_victim_host_info import TEMPLATE as T1592
+from .t1593_search_open_websites import TEMPLATE as T1593
+from .t1594_search_victim_owned_websites import TEMPLATE as T1594
+from .t1595_001_scanning_ip_blocks import TEMPLATE as T1595_001
+from .t1595_002_vulnerability_scanning import TEMPLATE as T1595_002
+from .t1595_003_wordlist_scanning import TEMPLATE as T1595_003
+from .t1595_active_scanning import TEMPLATE as T1595
+from .t1596_search_open_technical_databases import TEMPLATE as T1596
+from .t1597_search_closed_sources import TEMPLATE as T1597
+from .t1598_phishing_for_information import TEMPLATE as T1598
+from .t1606_001_web_cookies import TEMPLATE as T1606_001
+from .t1606_002_saml_tokens import TEMPLATE as T1606_002
+from .t1620_reflective_code_loading import TEMPLATE as T1620
+from .t1654_log_enumeration import TEMPLATE as T1654
+from .t1667_email_bombing import TEMPLATE as T1667
+from .t1680_local_storage_discovery import TEMPLATE as T1680
 
 # Template registry
 TEMPLATES: Dict[str, RemediationTemplate] = {
@@ -349,6 +426,7 @@ TEMPLATES: Dict[str, RemediationTemplate] = {
     "T1535": T1535,
     "T1621": T1621,
     "T1496.001": T1496_001,
+    "T1496.002": T1496_002,
     "T1555.006": T1555_006,
     "T1648": T1648,
     "T1651": T1651,
@@ -381,6 +459,7 @@ TEMPLATES: Dict[str, RemediationTemplate] = {
     "T1538": T1538,
     "T1556": T1556,
     "T1556.006": T1556_006,
+    "T1556.009": T1556_009,
     "T1609": T1609,
     "T1610": T1610,
     "T1611": T1611,
@@ -391,6 +470,7 @@ TEMPLATES: Dict[str, RemediationTemplate] = {
     "T1195": T1195,
     "T1195.003": T1195_003,
     "T1199": T1199,
+    "T1200": T1200,
     "T1557": T1557,
     "T1557.002": T1557_002,
     "T1048": T1048,
@@ -399,7 +479,10 @@ TEMPLATES: Dict[str, RemediationTemplate] = {
     "T1057": T1057,
     "T1070": T1070,
     "T1027": T1027,
+    "T1027.006": T1027_006,
     "T1071": T1071,
+    "T1071.004": T1071_004,
+    "T1072": T1072,
     "T1007": T1007,
     "T1033": T1033,
     "T1134": T1134,
@@ -481,12 +564,14 @@ TEMPLATES: Dict[str, RemediationTemplate] = {
     "T1204": T1204,
     "T1212": T1212,
     "T1213": T1213,
+    "T1213.003": T1213_003,
     "T1220": T1220,
     "T1480": T1480,
     "T1490": T1490,
     "T1491.002": T1491_002,
     "T1498": T1498,
     "T1499": T1499,
+    "T1499.004": T1499_004,
     "T1529": T1529,
     "T1534": T1534,
     "T1539": T1539,
@@ -510,8 +595,75 @@ TEMPLATES: Dict[str, RemediationTemplate] = {
     "T1571": T1571,
     "T1574": T1574,
     "T1578": T1578,
+    "T1608": T1608,
     "T1614": T1614,
     "T1622": T1622,
+    "T1666": T1666,
+    # Batch 2 additions
+    "T1021.008": T1021_008,
+    "T1048.001": T1048_001,
+    "T1068": T1068,
+    "T1071.001": T1071_001,
+    "T1071.003": T1071_003,
+    "T1074.002": T1074_002,
+    "T1090.003": T1090_003,
+    "T1098.006": T1098_006,
+    "T1102.002": T1102_002,
+    "T1110.001": T1110_001,
+    "T1110.003": T1110_003,
+    "T1110.004": T1110_004,
+    "T1135": T1135,
+    "T1201": T1201,
+    "T1204.001": T1204_001,
+    "T1204.002": T1204_002,
+    "T1211": T1211,
+    "T1213.006": T1213_006,
+    "T1485.001": T1485_001,
+    "T1496": T1496,
+    "T1498.001": T1498_001,
+    "T1498.002": T1498_002,
+    "T1499.002": T1499_002,
+    "T1499.003": T1499_003,
+    "T1518.001": T1518_001,
+    "T1546.008": T1546_008,
+    "T1548.005": T1548_005,
+    "T1552.007": T1552_007,
+    "T1556.007": T1556_007,
+    "T1562.007": T1562_007,
+    "T1566.001": T1566_001,
+    "T1566.002": T1566_002,
+    "T1568.002": T1568_002,
+    "T1578.003": T1578_003,
+    "T1578.004": T1578_004,
+    "T1578.005": T1578_005,
+    "T1583": T1583,
+    "T1583.006": T1583_006,
+    "T1584": T1584,
+    "T1585": T1585,
+    "T1586": T1586,
+    "T1586.003": T1586_003,
+    "T1587": T1587,
+    "T1588": T1588,
+    "T1588.002": T1588_002,
+    "T1589": T1589,
+    "T1590": T1590,
+    "T1591": T1591,
+    "T1592": T1592,
+    "T1593": T1593,
+    "T1594": T1594,
+    "T1595": T1595,
+    "T1595.001": T1595_001,
+    "T1595.002": T1595_002,
+    "T1595.003": T1595_003,
+    "T1596": T1596,
+    "T1597": T1597,
+    "T1598": T1598,
+    "T1606.001": T1606_001,
+    "T1606.002": T1606_002,
+    "T1620": T1620,
+    "T1654": T1654,
+    "T1667": T1667,
+    "T1680": T1680,
 }
 
 # Parent technique mappings (for sub-techniques)
@@ -533,6 +685,7 @@ PARENT_MAPPINGS = {
     "T1496.001": "T1496",
     "T1555.006": "T1555",
     "T1556.006": "T1556",
+    "T1556.009": "T1556",
     "T1204.003": "T1204",
     "T1114.003": "T1114",
     "T1021.007": "T1021",
@@ -547,6 +700,7 @@ PARENT_MAPPINGS = {
     "T1567.003": "T1567",
     "T1550.002": "T1550",
     "T1550.003": "T1550",
+    "T1213.003": "T1213",
     # Additional parent mappings
     "T1048.002": "T1048",
     "T1048.003": "T1048",
@@ -557,6 +711,48 @@ PARENT_MAPPINGS = {
     "T1557.001": "T1557",
     "T1557.003": "T1557",
     "T1567.004": "T1567",
+    "T1027.006": "T1027",
+    # Batch 2 parent mappings
+    "T1021.008": "T1021",
+    "T1048.001": "T1048",
+    "T1071.001": "T1071",
+    "T1071.003": "T1071",
+    "T1074.002": "T1074",
+    "T1090.003": "T1090",
+    "T1098.006": "T1098",
+    "T1102.002": "T1102",
+    "T1110.001": "T1110",
+    "T1110.003": "T1110",
+    "T1110.004": "T1110",
+    "T1204.001": "T1204",
+    "T1204.002": "T1204",
+    "T1213.006": "T1213",
+    "T1485.001": "T1485",
+    "T1498.001": "T1498",
+    "T1498.002": "T1498",
+    "T1499.002": "T1499",
+    "T1499.003": "T1499",
+    "T1518.001": "T1518",
+    "T1546.008": "T1546",
+    "T1548.005": "T1548",
+    "T1552.007": "T1552",
+    "T1556.007": "T1556",
+    "T1562.007": "T1562",
+    "T1566.001": "T1566",
+    "T1566.002": "T1566",
+    "T1568.002": "T1568",
+    "T1578.003": "T1578",
+    "T1578.004": "T1578",
+    "T1578.005": "T1578",
+    "T1583.006": "T1583",
+    "T1586.003": "T1586",
+    "T1588.002": "T1588",
+    "T1595.001": "T1595",
+    "T1595.002": "T1595",
+    "T1595.003": "T1595",
+    "T1606.001": "T1606",
+    "T1606.002": "T1606",
+    "T1496.002": "T1496",
 }
 
 
