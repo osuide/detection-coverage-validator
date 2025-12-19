@@ -8,12 +8,18 @@ from enum import Enum
 
 
 class DetectionType(str, Enum):
+    # AWS
     GUARDDUTY = "guardduty"
     CLOUDWATCH_QUERY = "cloudwatch_query"
     EVENTBRIDGE_RULE = "eventbridge_rule"
     CONFIG_RULE = "config_rule"
     SECURITY_HUB = "security_hub"
     CUSTOM_LAMBDA = "custom_lambda"
+    # GCP
+    SECURITY_COMMAND_CENTER = "security_command_center"
+    CLOUD_LOGGING_QUERY = "cloud_logging_query"
+    EVENTARC = "eventarc"
+    CLOUD_FUNCTIONS = "cloud_functions"
 
 
 class EffortLevel(str, Enum):
@@ -58,17 +64,29 @@ class ThreatContext:
 @dataclass
 class DetectionImplementation:
     """Actual implementation artefacts for a detection."""
-    query: Optional[str] = None
+    # Queries
+    query: Optional[str] = None  # AWS CloudWatch Logs Insights
+    gcp_logging_query: Optional[str] = None  # GCP Cloud Logging
+    # AWS-specific
     event_pattern: Optional[Dict[str, Any]] = None
     guardduty_finding_types: Optional[List[str]] = None
     config_rule_identifier: Optional[str] = None
     cloudformation_template: Optional[str] = None
-    terraform_template: Optional[str] = None
+    # GCP-specific
+    scc_finding_categories: Optional[List[str]] = None  # Security Command Center
+    gcp_terraform_template: Optional[str] = None
+    # Shared
+    terraform_template: Optional[str] = None  # AWS Terraform (legacy field)
     alert_severity: str = "medium"
     alert_title: str = ""
     alert_description_template: str = ""
     investigation_steps: List[str] = field(default_factory=list)
     containment_actions: List[str] = field(default_factory=list)
+
+
+class CloudProvider(str, Enum):
+    AWS = "aws"
+    GCP = "gcp"
 
 
 @dataclass
@@ -78,7 +96,7 @@ class DetectionStrategy:
     name: str
     description: str
     detection_type: DetectionType
-    aws_service: str
+    aws_service: str  # Keep for backwards compatibility
     implementation: DetectionImplementation
     estimated_false_positive_rate: FalsePositiveRate
     false_positive_tuning: str
@@ -88,6 +106,8 @@ class DetectionStrategy:
     implementation_time: str
     estimated_monthly_cost: str
     prerequisites: List[str] = field(default_factory=list)
+    cloud_provider: CloudProvider = CloudProvider.AWS  # Default to AWS
+    gcp_service: Optional[str] = None  # e.g., "security_command_center", "cloud_logging"
 
 
 @dataclass

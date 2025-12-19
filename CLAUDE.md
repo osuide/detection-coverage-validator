@@ -28,11 +28,21 @@ Common UK English spellings to use:
 
 ## Project Context
 
-This is an AWS security detection coverage validator that:
-- Scans AWS environments for existing security detections
+This is a **multi-cloud security detection coverage validator** that:
+- Scans **AWS and GCP** environments for existing security detections
 - Maps detections to MITRE ATT&CK framework
 - Identifies coverage gaps and provides remediation guidance
-- Provides technique-specific detection strategies
+- Provides technique-specific detection strategies with IaC templates
+
+**Cloud Support**: AWS & GCP are included in all subscription plans.
+
+## Remediation Template Requirements
+
+Every MITRE ATT&CK technique template should provide:
+- **AWS**: CloudFormation + Terraform templates
+- **GCP**: Terraform templates (primary IaC for GCP)
+- Both in simplified 3-step format with clear comments
+- CloudWatch/Cloud Logging queries where applicable
 
 ## Key Components
 
