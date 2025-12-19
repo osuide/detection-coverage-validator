@@ -17,6 +17,7 @@ class DetectionType(str, enum.Enum):
 
     # AWS Detection Types
     CLOUDWATCH_LOGS_INSIGHTS = "cloudwatch_logs_insights"
+    CLOUDWATCH_ALARM = "cloudwatch_alarm"
     EVENTBRIDGE_RULE = "eventbridge_rule"
     GUARDDUTY_FINDING = "guardduty_finding"
     CONFIG_RULE = "config_rule"

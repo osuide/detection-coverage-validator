@@ -1,11 +1,24 @@
 """CloudWatch Logs Insights query scanner following 04-PARSER-AGENT.md design."""
 
+import json
+from datetime import datetime
 from typing import Any, Optional
 
 from botocore.exceptions import ClientError
 
 from app.models.detection import DetectionType
 from app.scanners.base import BaseScanner, RawDetection
+
+
+def _serialize_for_json(obj: Any) -> Any:
+    """Recursively convert datetime objects to ISO format strings for JSON serialization."""
+    if isinstance(obj, datetime):
+        return obj.isoformat()
+    elif isinstance(obj, dict):
+        return {k: _serialize_for_json(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [_serialize_for_json(item) for item in obj]
+    return obj
 
 
 class CloudWatchLogsInsightsScanner(BaseScanner):
@@ -132,7 +145,7 @@ class CloudWatchMetricAlarmScanner(BaseScanner):
 
     @property
     def detection_type(self) -> DetectionType:
-        return DetectionType.CLOUDWATCH_LOGS_INSIGHTS  # Reuse for now
+        return DetectionType.CLOUDWATCH_ALARM
 
     async def scan(
         self,
@@ -161,11 +174,10 @@ class CloudWatchMetricAlarmScanner(BaseScanner):
 
         for page in paginator.paginate(AlarmTypes=["MetricAlarm"]):
             for alarm in page.get("MetricAlarms", []):
-                # Filter for security-relevant alarms
-                if self._is_security_relevant(alarm):
-                    detection = self._parse_alarm(alarm, region)
-                    if detection:
-                        detections.append(detection)
+                # Include all alarms - MITRE mapping will determine security relevance
+                detection = self._parse_alarm(alarm, region)
+                if detection:
+                    detections.append(detection)
 
         return detections
 
@@ -199,11 +211,13 @@ class CloudWatchMetricAlarmScanner(BaseScanner):
 
     def _parse_alarm(self, alarm: dict, region: str) -> Optional[RawDetection]:
         """Parse a CloudWatch alarm."""
+        # Serialize datetime objects in raw_config for JSON storage
+        serialized_alarm = _serialize_for_json(alarm)
         return RawDetection(
             name=alarm.get("AlarmName", ""),
-            detection_type=DetectionType.CLOUDWATCH_LOGS_INSIGHTS,
+            detection_type=DetectionType.CLOUDWATCH_ALARM,
             source_arn=alarm.get("AlarmArn", ""),
             region=region,
-            raw_config=alarm,
+            raw_config=serialized_alarm,
             description=alarm.get("AlarmDescription"),
         )
