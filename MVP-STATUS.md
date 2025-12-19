@@ -21,12 +21,14 @@ This document tracks the implementation status against the Detection Coverage Va
 | 2 | Code Quality & Linting | ✅ DONE | HIGH | - |
 | 3 | Security Vulnerabilities | ✅ DONE | CRITICAL | - |
 | 4 | Staging Environment | ✅ DONE | CRITICAL | - |
-| 5 | Real AWS Scanning | ⏳ TODO | CRITICAL | 2-3 hrs |
+| 5 | Real AWS Scanning | ✅ DONE | CRITICAL | - |
 | 6 | OAuth Providers | ✅ DONE | HIGH | - |
 | 7 | Email Service | ⏳ TODO | HIGH | 2 hrs |
 | 8 | Basic Tests | ⚠️ PARTIAL | MEDIUM | 2-3 hrs |
+| 9 | **Admin Management Portal** | ⏳ TODO | CRITICAL | 4-6 hrs |
+| 10 | **Metrics & Monitoring Dashboard** | ⏳ TODO | HIGH | 3-4 hrs |
 
-**Progress:** 6/8 complete, 1 partial (~81%)
+**Progress:** 7/10 complete, 1 partial (~75%)
 
 ### Stripe Integration (Completed 2025-12-18)
 - Products created in Stripe Test Mode (Osuide Inc account):
@@ -51,6 +53,24 @@ This document tracks the implementation status against the Detection Coverage Va
   - Lambda@Edge for security headers (CSP)
   - WAF for web application firewall
 - **Cost estimate:** ~$66/month
+
+### Real AWS Scanning (Completed 2025-12-19)
+- **A13E AWS Account ID:** `123080274263` (configured in code)
+- **Cross-account access:** STS AssumeRole with External ID
+- **Scanners implemented:**
+  - CloudWatch Logs Insights (metric filters, subscription filters)
+  - CloudWatch Alarms (security-related alarms)
+  - EventBridge Rules (event-driven detections)
+  - GuardDuty (threat detection categories)
+  - Security Hub (compliance standards, insights)
+  - AWS Config Rules (compliance rules)
+  - Lambda (custom detection functions)
+- **Customer templates created:**
+  - `backend/templates/aws_cloudformation.yaml` - One-click CloudFormation
+  - `backend/templates/terraform/aws/main.tf` - Terraform module
+- **DEV_MODE behavior:**
+  - When `A13E_DEV_MODE=true`: Uses mock data, no real AWS calls
+  - When `A13E_DEV_MODE=false`: Assumes IAM role, scans real account
 
 ### OAuth/SSO Providers (Completed 2025-12-19)
 - **Google SSO:** ✅ Working via AWS Cognito
@@ -91,6 +111,44 @@ Fixed 16 Dependabot alerts:
 - TypeScript: 0 errors ✅
 - ESLint: 0 errors ✅
 - Frontend build: Success ✅
+
+### Admin Management Portal (TODO) 🔴
+**Document:** `docs/ADMIN-PORTAL-DESIGN.md`
+**Priority:** CRITICAL - Required before production
+
+The admin portal provides platform operators with:
+- Organization and user management
+- System health and metrics monitoring
+- Security incident detection and response
+- Billing and subscription oversight
+- Complete audit trail of admin actions
+
+**Security Design (Non-Negotiable):**
+- Separate subdomain: `admin.a13e.io`
+- IP allowlist enforcement (VPN/office IPs only)
+- Hardware MFA required (WebAuthn/FIDO2 preferred)
+- Role-based access (super_admin, platform_admin, security_admin, support_admin, billing_admin, readonly_admin)
+- Immutable audit logs with hash chain integrity
+- Re-authentication for sensitive actions
+- Approval workflow for destructive operations
+
+**Implementation Phases:**
+| Phase | Tasks | Effort |
+|-------|-------|--------|
+| 1. Security Foundation | Auth, MFA, IP allowlist, audit logging | 4-6 hrs |
+| 2. Core Features | Org/user management, suspend/unsuspend | 3-4 hrs |
+| 3. Advanced Features | Impersonation, incidents, billing | 3-4 hrs |
+| 4. Frontend | Admin SPA with all views | 4-6 hrs |
+| 5. Infrastructure | Separate CloudFront, WAF, S3 | 2-3 hrs |
+| **Total** | | **16-23 hrs** |
+
+### Metrics & Monitoring Dashboard (TODO) 🟡
+**Included in Admin Portal design**
+- Infrastructure health (ECS, RDS, Redis, S3)
+- API performance (latency, error rates, top endpoints)
+- Business metrics (MRR, churn, growth)
+- Security metrics (failed logins, suspicious activity)
+- Real-time alerts and notifications
 
 ---
 
@@ -317,25 +375,29 @@ Fixed 16 Dependabot alerts:
 ## Recommended Next Steps for Production Launch
 
 ### Phase A: Critical (Must Have) 🔴
-1. **Real AWS Scanning** - Core value proposition
+1. **Admin Management Portal** - Platform operations capability
+   - See `docs/ADMIN-PORTAL-DESIGN.md` for complete design
+   - Security-first approach with IP allowlist + hardware MFA
+   - Estimated: 16-23 hours
+2. **Real AWS Scanning** - Core value proposition
    - Disable `A13E_DEV_MODE` in staging
    - Configure IAM role for cross-account scanning
    - Test with a real AWS account
 
 ### Phase B: Important (Should Have) 🟡
-2. **Email Service** - Password reset, team invites
+3. **Email Service** - Password reset, team invites
    - Set up AWS SES or SendGrid
    - Configure email templates
-3. **Production Deployment** - Mirror staging to production
+4. **Production Deployment** - Mirror staging to production
    - Create production Terraform workspace
    - Configure production domain (app.a13e.io)
    - Switch Stripe to live mode
 
 ### Phase C: Nice to Have (Can Wait) 🟢
-4. **Microsoft SSO** - Complete MPN publisher verification
-5. **GCP Scanning** - Currently AWS-focused
-6. **Advanced Features** - Detection recommendations, IaC generation
-7. **Full Test Coverage** - Can add iteratively
+5. **Microsoft SSO** - Complete MPN publisher verification
+6. **GCP Scanning** - Currently AWS-focused
+7. **Advanced Features** - Detection recommendations, IaC generation
+8. **Full Test Coverage** - Can add iteratively
 
 ---
 
@@ -384,22 +446,33 @@ Fixed 16 Dependabot alerts:
       - GitHub SSO via direct OAuth
       - Microsoft disabled (requires MPN verification)
 
-4. [ ] Enable Real Scanning (2-3 hours)
-      - Configure IAM role for cross-account scanning
-      - Disable A13E_DEV_MODE in staging
-      - Test with real AWS account
+4. [x] Enable Real Scanning (DONE 2025-12-19)
+      - ✅ Updated A13E AWS Account ID (123080274263)
+      - ✅ Fixed ScanService to use stored credentials
+      - ✅ Created CloudFormation template for customers
+      - ✅ Created Terraform module for customers
+      - ✅ Exported all scanner modules
+      - Note: Set A13E_DEV_MODE=false to enable in staging
 
-5. [ ] Configure Email Service (2 hours)
+5. [ ] Build Admin Management Portal (16-23 hours) 🔴 CRITICAL
+      - See docs/ADMIN-PORTAL-DESIGN.md for full design
+      - Phase 1: Security foundation (auth, MFA, IP allowlist)
+      - Phase 2: Core features (org/user management)
+      - Phase 3: Advanced features (impersonation, incidents)
+      - Phase 4: Frontend (admin SPA)
+      - Phase 5: Infrastructure (separate CloudFront/WAF)
+
+6. [ ] Configure Email Service (2 hours)
       - Set up AWS SES or SendGrid
       - Configure password reset flow
       - Configure team invite emails
 
-6. [ ] Production Deployment (2-3 hours)
+7. [ ] Production Deployment (2-3 hours)
       - Create production Terraform workspace
       - Configure production domain
       - Switch Stripe to live mode
 
-7. [ ] Launch Beta! 🚀
+8. [ ] Launch Beta! 🚀
 ```
 
 ---

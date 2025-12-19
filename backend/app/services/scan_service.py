@@ -1,5 +1,6 @@
 """Scan orchestration service."""
 
+import os
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
@@ -10,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.models.cloud_account import CloudAccount
+from app.models.cloud_credential import CloudCredential, CredentialType, CredentialStatus
 from app.models.detection import Detection, DetectionStatus
 from app.models.mapping import DetectionMapping, MappingSource
 from app.models.scan import Scan, ScanStatus
@@ -22,8 +24,12 @@ from app.scanners.base import RawDetection
 from app.mappers.pattern_mapper import PatternMapper
 from app.services.coverage_service import CoverageService
 from app.services.notification_service import trigger_scan_alerts
+from app.services.aws_credential_service import aws_credential_service
 
 logger = structlog.get_logger()
+
+# Development mode - skip real AWS calls
+DEV_MODE = os.environ.get("A13E_DEV_MODE", "false").lower() == "true"
 
 
 class ScanService:
@@ -63,8 +69,8 @@ class ScanService:
             scan.current_step = "Initializing"
             await self.db.commit()
 
-            # Get boto3 session
-            session = self._get_boto3_session(account)
+            # Get boto3 session (with assumed role credentials)
+            session = await self._get_boto3_session(account)
 
             # Determine regions to scan
             regions = scan.regions or account.regions or ["us-east-1"]
@@ -152,11 +158,81 @@ class ScanService:
         )
         return result.scalar_one_or_none()
 
-    def _get_boto3_session(self, account: CloudAccount) -> boto3.Session:
-        """Get boto3 session for the account."""
-        # For now, use default credentials
-        # In production, would use credentials_arn to assume role
-        return boto3.Session()
+    async def _get_boto3_session(self, account: CloudAccount) -> boto3.Session:
+        """Get boto3 session for the account using stored credentials.
+
+        This method:
+        1. Looks up the CloudCredential for the account
+        2. Uses STS AssumeRole to get temporary credentials
+        3. Returns a boto3 Session with those credentials
+
+        In DEV_MODE, returns a default session for testing.
+        """
+        if DEV_MODE:
+            self.logger.info(
+                "dev_mode_session",
+                account_id=str(account.id),
+                msg="Using default credentials in dev mode"
+            )
+            return boto3.Session()
+
+        # Get the credential for this account
+        result = await self.db.execute(
+            select(CloudCredential).where(
+                CloudCredential.cloud_account_id == account.id
+            )
+        )
+        credential = result.scalar_one_or_none()
+
+        if not credential:
+            raise ValueError(f"No credentials found for account {account.account_id}")
+
+        if credential.status != CredentialStatus.VALID:
+            raise ValueError(
+                f"Credentials for account {account.account_id} are not valid. "
+                f"Status: {credential.status.value}. Please re-validate credentials."
+            )
+
+        if credential.credential_type != CredentialType.AWS_IAM_ROLE:
+            raise ValueError(
+                f"Unsupported credential type: {credential.credential_type.value}. "
+                f"Only AWS IAM Role is currently supported for scanning."
+            )
+
+        if not credential.aws_role_arn or not credential.aws_external_id:
+            raise ValueError(
+                f"Incomplete AWS credentials for account {account.account_id}. "
+                f"Missing role ARN or external ID."
+            )
+
+        # Assume the role and get temporary credentials
+        self.logger.info(
+            "assuming_role",
+            account_id=str(account.id),
+            role_arn=credential.aws_role_arn,
+        )
+
+        try:
+            creds = aws_credential_service.assume_role(
+                role_arn=credential.aws_role_arn,
+                external_id=credential.aws_external_id,
+                session_name=f"A13E-Scan-{str(account.id)[:8]}",
+            )
+
+            # Create session with assumed credentials
+            return boto3.Session(
+                aws_access_key_id=creds['access_key_id'],
+                aws_secret_access_key=creds['secret_access_key'],
+                aws_session_token=creds['session_token'],
+            )
+        except Exception as e:
+            self.logger.error(
+                "assume_role_failed",
+                account_id=str(account.id),
+                role_arn=credential.aws_role_arn,
+                error=str(e),
+            )
+            raise ValueError(f"Failed to assume role for account {account.account_id}: {str(e)}")
 
     async def _scan_detections(
         self,

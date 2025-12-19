@@ -1,5 +1,6 @@
 """Main FastAPI application."""
 
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -8,6 +9,7 @@ import structlog
 
 from app.core.config import get_settings
 from app.api.routes import accounts, scans, detections, coverage, mappings, health, schedules, alerts, reports, auth, teams, api_keys, audit, cognito, org_security, billing, code_analysis, credentials, github_oauth
+from app.api.routes.admin import router as admin_router
 from app.services.scheduler_service import scheduler_service
 
 settings = get_settings()
@@ -40,7 +42,6 @@ app = FastAPI(
 )
 
 # CORS middleware - origins from environment or defaults for local dev
-import os
 cors_origins_str = os.environ.get("CORS_ORIGINS", "http://localhost:3000,http://localhost:3001,http://localhost:5173")
 cors_origins = [origin.strip() for origin in cors_origins_str.split(",")]
 app.add_middleware(
@@ -71,6 +72,9 @@ app.include_router(org_security.router, prefix="/api/v1/org", tags=["Organizatio
 app.include_router(billing.router, prefix="/api/v1/billing", tags=["Billing"])
 app.include_router(code_analysis.router, prefix="/api/v1/code-analysis", tags=["Code Analysis"])
 app.include_router(credentials.router, prefix="/api/v1/credentials", tags=["Cloud Credentials"])
+
+# Admin Portal routes (separate from user routes)
+app.include_router(admin_router, prefix="/api/v1/admin")
 
 
 @app.get("/")

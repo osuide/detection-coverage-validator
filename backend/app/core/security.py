@@ -1,13 +1,16 @@
 """Security middleware and dependencies for RBAC."""
 
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Callable
 from uuid import UUID
 
+import jwt
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.core.database import get_db
 from app.models.user import (
     User,
@@ -19,7 +22,35 @@ from app.models.user import (
 )
 from app.services.auth_service import AuthService
 
+settings = get_settings()
 security = HTTPBearer(auto_error=False)
+
+
+def create_access_token(
+    data: dict,
+    expires_delta: Optional[timedelta] = None,
+) -> str:
+    """Create a JWT access token.
+
+    Used by admin auth service for admin tokens.
+    """
+    to_encode = data.copy()
+    expire = datetime.now(timezone.utc) + (
+        expires_delta or timedelta(minutes=settings.access_token_expire_minutes)
+    )
+    to_encode.update({"exp": expire, "iat": datetime.now(timezone.utc)})
+    return jwt.encode(to_encode, settings.secret_key, algorithm="HS256")
+
+
+def decode_token(token: str) -> Optional[dict]:
+    """Decode and validate a JWT token."""
+    try:
+        payload = jwt.decode(token, settings.secret_key, algorithms=["HS256"])
+        return payload
+    except jwt.ExpiredSignatureError:
+        return None
+    except jwt.InvalidTokenError:
+        return None
 
 
 class AuthContext:

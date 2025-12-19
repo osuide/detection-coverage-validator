@@ -30,7 +30,7 @@ class AWSCredentialService:
     """Service for AWS cross-account credential management."""
 
     # A13E's AWS account ID (for trust relationship)
-    A13E_AWS_ACCOUNT_ID = "123456789012"  # TODO: Replace with actual
+    A13E_AWS_ACCOUNT_ID = "123080274263"  # A13E production AWS account
 
     def __init__(self):
         """Initialize with base AWS client."""

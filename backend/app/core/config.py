@@ -67,7 +67,7 @@ class Settings(BaseSettings):
     credential_encryption_key: Optional[str] = None
 
     # A13E Cloud Infrastructure (for cross-account access)
-    a13e_aws_account_id: str = "123456789012"  # A13E's AWS account for AssumeRole trust
+    a13e_aws_account_id: str = "123080274263"  # A13E's AWS account for AssumeRole trust
 
     # Email (optional - for sending invites, password resets, etc.)
     smtp_host: Optional[str] = None
