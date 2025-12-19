@@ -18,6 +18,10 @@ import OrgSecurity from './pages/OrgSecurity'
 import Billing from './pages/Billing'
 import Landing from './pages/Landing'
 
+// Documentation pages
+import { DocsIndex } from './pages/docs/DocsIndex'
+import { DocsPage } from './pages/docs/DocsPage'
+
 // Admin Portal pages
 import AdminLogin from './pages/admin/AdminLogin'
 import AdminDashboard from './pages/admin/AdminDashboard'
@@ -37,6 +41,10 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
+
+        {/* Documentation routes (public) */}
+        <Route path="/docs" element={<DocsIndex />} />
+        <Route path="/docs/:slug" element={<DocsPage />} />
 
         {/* Admin Portal routes (separate auth) */}
         <Route path="/admin/login" element={<AdminLogin />} />

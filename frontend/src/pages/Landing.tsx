@@ -726,7 +726,7 @@ export default function Landing() {
               <ul className="space-y-2 text-gray-400 text-sm">
                 <li><a href="#features" className="hover:text-white transition-colors">Features</a></li>
                 <li><a href="#pricing" className="hover:text-white transition-colors">Pricing</a></li>
-                <li><a href="#demo" className="hover:text-white transition-colors">Demo</a></li>
+                <li><Link to="/docs" className="hover:text-white transition-colors">Documentation</Link></li>
                 <li><Link to="/signup" className="hover:text-white transition-colors">Sign Up</Link></li>
               </ul>
             </div>
