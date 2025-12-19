@@ -7,6 +7,8 @@ import {
   AlertTriangle,
   Trash2,
   X,
+  Shield,
+  Info,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { useAuth } from '../contexts/AuthContext'
@@ -24,6 +26,8 @@ export default function APIKeys() {
   const [newKeyName, setNewKeyName] = useState('')
   const [newKeyScopes, setNewKeyScopes] = useState<string[]>([])
   const [newKeyExpires, setNewKeyExpires] = useState<string>('')
+  const [newKeyIpAllowlist, setNewKeyIpAllowlist] = useState<string>('')
+  const [ipAllowlistEnabled, setIpAllowlistEnabled] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
 
   // Newly created key state (to show the secret once)
@@ -63,16 +67,24 @@ export default function APIKeys() {
     setError(null)
 
     try {
+      // Parse IP allowlist if enabled
+      const ipList = ipAllowlistEnabled && newKeyIpAllowlist.trim()
+        ? newKeyIpAllowlist.split(/[,\n]/).map(ip => ip.trim()).filter(ip => ip)
+        : undefined
+
       const result = await apiKeysApi.createAPIKey(accessToken, {
         name: newKeyName,
         scopes: newKeyScopes,
         expires_days: newKeyExpires ? parseInt(newKeyExpires) : undefined,
+        ip_allowlist: ipList,
       })
       setCreatedKey(result)
       setShowCreateModal(false)
       setNewKeyName('')
       setNewKeyScopes([])
       setNewKeyExpires('')
+      setNewKeyIpAllowlist('')
+      setIpAllowlistEnabled(false)
       loadData()
     } catch (err: unknown) {
       const errorMessage = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ||
@@ -293,19 +305,23 @@ export default function APIKeys() {
                   </div>
                 </div>
 
-                {/* Scope badges */}
-                {key.scopes.length > 0 && (
-                  <div className="mt-3 flex flex-wrap gap-1">
-                    {key.scopes.map((scope) => (
-                      <span
-                        key={scope}
-                        className="px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-600 rounded"
-                      >
-                        {scope}
-                      </span>
-                    ))}
-                  </div>
-                )}
+                {/* Scope badges and IP restrictions */}
+                <div className="mt-3 flex flex-wrap gap-1">
+                  {key.scopes.length > 0 && key.scopes.map((scope) => (
+                    <span
+                      key={scope}
+                      className="px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-600 rounded"
+                    >
+                      {scope}
+                    </span>
+                  ))}
+                  {key.ip_allowlist && key.ip_allowlist.length > 0 && (
+                    <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded inline-flex items-center">
+                      <Shield className="h-3 w-3 mr-1" />
+                      {key.ip_allowlist.length} IP{key.ip_allowlist.length > 1 ? 's' : ''} allowed
+                    </span>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -389,6 +405,41 @@ export default function APIKeys() {
                   <option value="180">180 days</option>
                   <option value="365">1 year</option>
                 </select>
+              </div>
+
+              {/* IP Allowlist */}
+              <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                <label className="flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={ipAllowlistEnabled}
+                    onChange={(e) => setIpAllowlistEnabled(e.target.checked)}
+                    className="h-4 w-4 text-cyan-600 focus:ring-cyan-500 border-gray-300 rounded"
+                  />
+                  <div className="ml-3 flex items-center">
+                    <Shield className="h-4 w-4 text-gray-500 mr-2" />
+                    <span className="text-sm font-medium text-gray-700">Restrict to specific IP addresses</span>
+                  </div>
+                </label>
+
+                {ipAllowlistEnabled && (
+                  <div className="mt-3">
+                    <div className="flex items-start space-x-2 mb-2">
+                      <Info className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                      <p className="text-xs text-gray-500">
+                        Enter IP addresses or CIDR ranges, one per line or comma-separated.
+                        The API key will only work from these addresses.
+                      </p>
+                    </div>
+                    <textarea
+                      value={newKeyIpAllowlist}
+                      onChange={(e) => setNewKeyIpAllowlist(e.target.value)}
+                      placeholder="e.g., 192.168.1.100&#10;10.0.0.0/24&#10;203.0.113.50"
+                      rows={3}
+                      className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm font-mono"
+                    />
+                  </div>
+                )}
               </div>
 
               {error && (
