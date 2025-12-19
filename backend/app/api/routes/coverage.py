@@ -87,6 +87,11 @@ async def get_coverage(
                 has_query=s.get("has_query", False),
                 has_cloudformation=s.get("has_cloudformation", False),
                 has_terraform=s.get("has_terraform", False),
+                # GCP support
+                gcp_service=s.get("gcp_service"),
+                cloud_provider=s.get("cloud_provider"),
+                has_gcp_query=s.get("has_gcp_query", False),
+                has_gcp_terraform=s.get("has_gcp_terraform", False),
             ))
 
         gap_list.append(
@@ -302,6 +307,11 @@ async def calculate_coverage(
                 has_query=s.get("has_query", False),
                 has_cloudformation=s.get("has_cloudformation", False),
                 has_terraform=s.get("has_terraform", False),
+                # GCP support
+                gcp_service=s.get("gcp_service"),
+                cloud_provider=s.get("cloud_provider"),
+                has_gcp_query=s.get("has_gcp_query", False),
+                has_gcp_terraform=s.get("has_gcp_terraform", False),
             ))
 
         gap_list.append(

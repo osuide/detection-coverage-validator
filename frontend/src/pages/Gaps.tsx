@@ -455,7 +455,7 @@ function StrategyCard({
 }) {
   const [showModal, setShowModal] = useState(false)
 
-  const hasArtefacts = strategy.has_query || strategy.has_cloudformation || strategy.has_terraform
+  const hasArtefacts = strategy.has_query || strategy.has_cloudformation || strategy.has_terraform || strategy.has_gcp_query || strategy.has_gcp_terraform
 
   return (
     <>
@@ -473,7 +473,12 @@ function StrategyCard({
               )}
             </div>
             <p className="text-sm text-gray-500 mt-1">
-              {strategy.detection_type} via {strategy.aws_service}
+              {strategy.detection_type} via {strategy.cloud_provider === 'gcp' ? strategy.gcp_service : strategy.aws_service}
+              {strategy.cloud_provider && (
+                <span className={`ml-2 text-xs px-1.5 py-0.5 rounded ${strategy.cloud_provider === 'gcp' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
+                  {strategy.cloud_provider.toUpperCase()}
+                </span>
+              )}
             </p>
           </div>
         </div>
@@ -514,7 +519,23 @@ function StrategyCard({
               onClick={() => setShowModal(true)}
               className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded hover:bg-indigo-200 transition-colors cursor-pointer"
             >
-              Terraform
+              AWS Terraform
+            </button>
+          )}
+          {strategy.has_gcp_query && (
+            <button
+              onClick={() => setShowModal(true)}
+              className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200 transition-colors cursor-pointer"
+            >
+              GCP Query
+            </button>
+          )}
+          {strategy.has_gcp_terraform && (
+            <button
+              onClick={() => setShowModal(true)}
+              className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200 transition-colors cursor-pointer"
+            >
+              GCP Terraform
             </button>
           )}
           {hasArtefacts && (

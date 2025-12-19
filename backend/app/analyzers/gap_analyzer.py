@@ -25,6 +25,11 @@ class RecommendedStrategy:
     has_query: bool = False
     has_cloudformation: bool = False
     has_terraform: bool = False
+    # GCP support
+    gcp_service: Optional[str] = None
+    cloud_provider: Optional[str] = None
+    has_gcp_query: bool = False
+    has_gcp_terraform: bool = False
 
 
 @dataclass
@@ -135,6 +140,11 @@ class GapAnalyzer:
                             has_query=strategy.implementation.query is not None,
                             has_cloudformation=strategy.implementation.cloudformation_template is not None,
                             has_terraform=strategy.implementation.terraform_template is not None,
+                            # GCP support
+                            gcp_service=strategy.gcp_service,
+                            cloud_provider=strategy.cloud_provider.value if strategy.cloud_provider else None,
+                            has_gcp_query=strategy.implementation.gcp_logging_query is not None,
+                            has_gcp_terraform=strategy.implementation.gcp_terraform_template is not None,
                         )
                         gap.recommended_strategies.append(rec_strategy)
 

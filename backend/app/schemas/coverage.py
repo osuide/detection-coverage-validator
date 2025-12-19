@@ -32,6 +32,11 @@ class RecommendedStrategyItem(BaseModel):
     has_query: bool = False
     has_cloudformation: bool = False
     has_terraform: bool = False
+    # GCP support
+    gcp_service: Optional[str] = None
+    cloud_provider: Optional[str] = None
+    has_gcp_query: bool = False
+    has_gcp_terraform: bool = False
 
 
 class GapItem(BaseModel):

@@ -148,6 +148,11 @@ export interface RecommendedStrategy {
   has_query: boolean
   has_cloudformation: boolean
   has_terraform: boolean
+  // GCP support
+  gcp_service?: string
+  cloud_provider?: string
+  has_gcp_query?: boolean
+  has_gcp_terraform?: boolean
 }
 
 export interface Gap {
