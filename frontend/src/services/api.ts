@@ -303,6 +303,38 @@ export interface ValidationResult {
   missing_permissions: string[]
 }
 
+// Strategy detail with full implementation artefacts
+export interface StrategyDetail {
+  strategy_id: string
+  name: string
+  description: string
+  detection_type: string
+  aws_service: string
+  query: string | null
+  event_pattern: Record<string, unknown> | null
+  guardduty_finding_types: string[] | null
+  cloudformation_template: string | null
+  terraform_template: string | null
+  alert_severity: string
+  alert_title: string
+  alert_description_template: string
+  investigation_steps: string[]
+  containment_actions: string[]
+  estimated_false_positive_rate: string
+  false_positive_tuning: string
+  detection_coverage: string
+  evasion_considerations: string
+  implementation_effort: string
+  implementation_time: string
+  estimated_monthly_cost: string
+  prerequisites: string[]
+}
+
+export const recommendationsApi = {
+  getStrategyDetails: (techniqueId: string, strategyId: string) =>
+    api.get<StrategyDetail>(`/recommendations/techniques/${techniqueId}/strategies/${strategyId}`).then(r => r.data),
+}
+
 export const credentialsApi = {
   getSetupInstructions: (accountId: string) =>
     api.get<SetupInstructions>(`/credentials/setup/${accountId}`).then(r => r.data),

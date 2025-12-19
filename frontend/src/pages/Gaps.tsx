@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { AlertTriangle, ExternalLink, ChevronDown, ChevronUp, Filter, Search, Clock, Zap, Shield, Users } from 'lucide-react'
 import { accountsApi, coverageApi, Gap, RecommendedStrategy } from '../services/api'
 import { useState } from 'react'
+import StrategyDetailModal from '../components/StrategyDetailModal'
 
 const priorityStyles = {
   critical: 'bg-red-100 text-red-800 border-red-200',
@@ -371,6 +372,7 @@ function GapCard({
                 {gap.recommended_strategies.map((strategy, idx) => (
                   <StrategyCard
                     key={strategy.strategy_id}
+                    techniqueId={gap.technique_id}
                     strategy={strategy}
                     isQuickWin={strategy.strategy_id === gap.quick_win_strategy}
                     index={idx + 1}
@@ -441,65 +443,100 @@ const effortColors: Record<string, string> = {
 }
 
 function StrategyCard({
+  techniqueId,
   strategy,
   isQuickWin,
   index
 }: {
+  techniqueId: string
   strategy: RecommendedStrategy
   isQuickWin: boolean
   index: number
 }) {
+  const [showModal, setShowModal] = useState(false)
+
+  const hasArtefacts = strategy.has_query || strategy.has_cloudformation || strategy.has_terraform
+
   return (
-    <div className={`border rounded-lg p-4 ${isQuickWin ? 'border-green-300 bg-green-50' : 'border-gray-200 bg-white'}`}>
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-500">#{index}</span>
-            <h5 className="font-medium text-gray-900">{strategy.name}</h5>
-            {isQuickWin && (
-              <span className="text-xs bg-green-200 text-green-800 px-2 py-0.5 rounded-full flex items-center">
-                <Zap className="h-3 w-3 mr-1" />
-                Quick Win
-              </span>
-            )}
+    <>
+      <div className={`border rounded-lg p-4 ${isQuickWin ? 'border-green-300 bg-green-50' : 'border-gray-200 bg-white'}`}>
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-500">#{index}</span>
+              <h5 className="font-medium text-gray-900">{strategy.name}</h5>
+              {isQuickWin && (
+                <span className="text-xs bg-green-200 text-green-800 px-2 py-0.5 rounded-full flex items-center">
+                  <Zap className="h-3 w-3 mr-1" />
+                  Quick Win
+                </span>
+              )}
+            </div>
+            <p className="text-sm text-gray-500 mt-1">
+              {strategy.detection_type} via {strategy.aws_service}
+            </p>
           </div>
-          <p className="text-sm text-gray-500 mt-1">
-            {strategy.detection_type} via {strategy.aws_service}
-          </p>
+        </div>
+
+        <div className="mt-3 flex flex-wrap items-center gap-3 text-xs">
+          <span className={`px-2 py-1 rounded ${effortColors[strategy.implementation_effort] || 'bg-gray-100 text-gray-700'}`}>
+            {strategy.implementation_effort} effort
+          </span>
+          <span className="text-gray-500 flex items-center">
+            <Clock className="h-3 w-3 mr-1" />
+            {strategy.estimated_time}
+          </span>
+          <span className="text-gray-500">
+            Coverage: {strategy.detection_coverage}
+          </span>
+        </div>
+
+        {/* Available artefacts - clickable */}
+        <div className="mt-3 flex flex-wrap gap-2">
+          {strategy.has_query && (
+            <button
+              onClick={() => setShowModal(true)}
+              className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200 transition-colors cursor-pointer"
+            >
+              Query Available
+            </button>
+          )}
+          {strategy.has_cloudformation && (
+            <button
+              onClick={() => setShowModal(true)}
+              className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded hover:bg-purple-200 transition-colors cursor-pointer"
+            >
+              CloudFormation
+            </button>
+          )}
+          {strategy.has_terraform && (
+            <button
+              onClick={() => setShowModal(true)}
+              className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded hover:bg-indigo-200 transition-colors cursor-pointer"
+            >
+              Terraform
+            </button>
+          )}
+          {hasArtefacts && (
+            <button
+              onClick={() => setShowModal(true)}
+              className="text-xs text-blue-600 hover:text-blue-800 underline ml-2"
+            >
+              View Details
+            </button>
+          )}
         </div>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-3 text-xs">
-        <span className={`px-2 py-1 rounded ${effortColors[strategy.implementation_effort] || 'bg-gray-100 text-gray-700'}`}>
-          {strategy.implementation_effort} effort
-        </span>
-        <span className="text-gray-500 flex items-center">
-          <Clock className="h-3 w-3 mr-1" />
-          {strategy.estimated_time}
-        </span>
-        <span className="text-gray-500">
-          Coverage: {strategy.detection_coverage}
-        </span>
-      </div>
-
-      {/* Available artefacts */}
-      <div className="mt-3 flex flex-wrap gap-2">
-        {strategy.has_query && (
-          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
-            Query Available
-          </span>
-        )}
-        {strategy.has_cloudformation && (
-          <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">
-            CloudFormation
-          </span>
-        )}
-        {strategy.has_terraform && (
-          <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded">
-            Terraform
-          </span>
-        )}
-      </div>
-    </div>
+      {/* Strategy Detail Modal */}
+      {showModal && (
+        <StrategyDetailModal
+          techniqueId={techniqueId}
+          strategyId={strategy.strategy_id}
+          strategyName={strategy.name}
+          onClose={() => setShowModal(false)}
+        />
+      )}
+    </>
   )
 }
