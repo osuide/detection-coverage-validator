@@ -4,8 +4,10 @@ from uuid import UUID
 import structlog
 
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from app.models.coverage import CoverageSnapshot
+from app.models.cloud_account import CloudAccount
 from app.analyzers.coverage_calculator import CoverageCalculator
 from app.analyzers.gap_analyzer import GapAnalyzer
 from app.core.config import get_settings
@@ -40,13 +42,21 @@ class CoverageService:
             account_id=str(cloud_account_id),
         )
 
+        # Get cloud account to determine provider
+        account = await self.db.get(CloudAccount, cloud_account_id)
+        cloud_provider = account.provider.value if account else None
+
         # Calculate coverage
         calculator = CoverageCalculator(self.db)
         result = await calculator.calculate(cloud_account_id)
 
-        # Analyze gaps - include more to show all priority levels
+        # Analyze gaps - no limit to show full coverage picture
+        # Pass cloud provider to filter strategies
         gap_analyzer = GapAnalyzer()
-        gaps = gap_analyzer.analyze_gaps(result.technique_details, limit=50)
+        gaps = gap_analyzer.analyze_gaps(
+            result.technique_details,
+            cloud_provider=cloud_provider,
+        )
 
         # Build tactic coverage dict
         tactic_coverage = {}
@@ -96,6 +106,11 @@ class CoverageService:
                         "has_query": s.has_query,
                         "has_cloudformation": s.has_cloudformation,
                         "has_terraform": s.has_terraform,
+                        # GCP support
+                        "gcp_service": s.gcp_service,
+                        "cloud_provider": s.cloud_provider,
+                        "has_gcp_query": s.has_gcp_query,
+                        "has_gcp_terraform": s.has_gcp_terraform,
                     }
                     for s in gap.recommended_strategies
                 ]

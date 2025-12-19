@@ -86,13 +86,15 @@ class GapAnalyzer:
     def analyze_gaps(
         self,
         technique_coverage: list[TechniqueCoverageInfo],
-        limit: int = 20,
+        limit: Optional[int] = None,
+        cloud_provider: Optional[str] = None,
     ) -> list[Gap]:
         """Analyze and prioritize coverage gaps.
 
         Args:
             technique_coverage: Coverage info from CoverageCalculator
-            limit: Maximum number of gaps to return
+            limit: Maximum number of gaps to return (None for all)
+            cloud_provider: Filter strategies by cloud provider ("aws" or "gcp")
 
         Returns:
             List of Gap objects sorted by priority
@@ -127,8 +129,13 @@ class GapAnalyzer:
                     gap.total_effort_hours = template.total_effort_hours
                     gap.mitre_url = template.mitre_url
 
-                    # Add recommended strategies
+                    # Add recommended strategies, filtered by cloud provider if specified
                     for strategy in template.detection_strategies:
+                        # Filter by cloud provider if specified
+                        strategy_provider = strategy.cloud_provider.value if strategy.cloud_provider else None
+                        if cloud_provider and strategy_provider and strategy_provider != cloud_provider:
+                            continue  # Skip strategies for other cloud providers
+
                         rec_strategy = RecommendedStrategy(
                             strategy_id=strategy.strategy_id,
                             name=strategy.name,
@@ -142,14 +149,17 @@ class GapAnalyzer:
                             has_terraform=strategy.implementation.terraform_template is not None,
                             # GCP support
                             gcp_service=strategy.gcp_service,
-                            cloud_provider=strategy.cloud_provider.value if strategy.cloud_provider else None,
+                            cloud_provider=strategy_provider,
                             has_gcp_query=strategy.implementation.gcp_logging_query is not None,
                             has_gcp_terraform=strategy.implementation.gcp_terraform_template is not None,
                         )
                         gap.recommended_strategies.append(rec_strategy)
 
-                    # Set quick win (first low-effort strategy)
+                    # Set quick win (first low-effort strategy for this provider)
                     for strategy in template.detection_strategies:
+                        strategy_provider = strategy.cloud_provider.value if strategy.cloud_provider else None
+                        if cloud_provider and strategy_provider and strategy_provider != cloud_provider:
+                            continue
                         if strategy.implementation_effort.value == "low":
                             gap.quick_win_strategy = strategy.strategy_id
                             break
@@ -163,7 +173,7 @@ class GapAnalyzer:
             -(g.severity_score or 0)  # Higher severity first
         ))
 
-        return gaps[:limit]
+        return gaps[:limit] if limit else gaps
 
     def _calculate_priority(
         self,
