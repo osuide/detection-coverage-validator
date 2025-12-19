@@ -13,14 +13,13 @@ terraform {
   }
 
   # Backend configuration for remote state
-  # Uncomment after creating the S3 bucket and DynamoDB table
-  # backend "s3" {
-  #   bucket         = "a13e-terraform-state"
-  #   key            = "staging/terraform.tfstate"
-  #   region         = "eu-west-2"
-  #   encrypt        = true
-  #   dynamodb_table = "a13e-terraform-lock"
-  # }
+  backend "s3" {
+    bucket         = "a13e-terraform-state"
+    key            = "staging/terraform.tfstate"
+    region         = "eu-west-2"
+    encrypt        = true
+    dynamodb_table = "a13e-terraform-lock"
+  }
 }
 
 # Default provider (eu-west-2)
