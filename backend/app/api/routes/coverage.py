@@ -22,7 +22,6 @@ from app.services.coverage_service import CoverageService
 from app.models.mitre import Technique, Tactic
 from app.models.mapping import DetectionMapping
 from app.models.detection import Detection, DetectionStatus
-from sqlalchemy import func
 
 router = APIRouter()
 
