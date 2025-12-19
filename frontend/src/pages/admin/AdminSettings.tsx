@@ -6,6 +6,8 @@ import {
   Lock, Globe, ToggleLeft, ToggleRight
 } from 'lucide-react';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+
 interface Setting {
   key: string;
   value: string | null;
@@ -57,8 +59,8 @@ export default function AdminSettings() {
       const headers = { Authorization: `Bearer ${adminToken}` };
 
       const [settingsRes, stripeRes] = await Promise.all([
-        fetch('/api/v1/admin/settings', { headers }),
-        fetch('/api/v1/admin/settings/billing/stripe', { headers }),
+        fetch(`${API_BASE_URL}/api/v1/admin/settings`, { headers }),
+        fetch(`${API_BASE_URL}/api/v1/admin/settings/billing/stripe`, { headers }),
       ]);
 
       if (settingsRes.ok) {
@@ -86,7 +88,7 @@ export default function AdminSettings() {
     setMessage(null);
 
     try {
-      const response = await fetch('/api/v1/admin/settings/billing/stripe', {
+      const response = await fetch(`${API_BASE_URL}/api/v1/admin/settings/billing/stripe`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -123,7 +125,7 @@ export default function AdminSettings() {
 
   const updateSetting = async (key: string, value: string) => {
     try {
-      const response = await fetch(`/api/v1/admin/settings/${key}`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/admin/settings/${key}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

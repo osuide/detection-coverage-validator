@@ -16,6 +16,8 @@ import {
   UserCheck,
 } from 'lucide-react';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+
 interface User {
   id: string;
   email: string;
@@ -61,7 +63,7 @@ export default function AdminUsers() {
         params.append('search', searchQuery);
       }
 
-      const response = await fetch(`/api/v1/admin/users?${params}`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/admin/users?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -97,7 +99,7 @@ export default function AdminUsers() {
     setActionLoading(userId);
     try {
       const token = localStorage.getItem('admin_token');
-      const response = await fetch(`/api/v1/admin/users/${userId}/status`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/admin/users/${userId}/status`, {
         method: 'PUT',
         headers: {
           Authorization: `Bearer ${token}`,

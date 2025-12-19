@@ -9,8 +9,10 @@ import {
   ArrowLeft,
   Menu,
   X,
+  Mail,
+  ExternalLink,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { docPages } from '../../pages/docs/docs-content';
 import A13ELogo from '../A13ELogo';
 
@@ -23,6 +25,22 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   CreditCard,
 };
 
+// Group docs into sections
+const docSections = [
+  {
+    title: 'Getting Started',
+    pages: docPages.filter(d => ['getting-started', 'connecting-aws'].includes(d.slug)),
+  },
+  {
+    title: 'Features',
+    pages: docPages.filter(d => ['running-scans', 'understanding-coverage'].includes(d.slug)),
+  },
+  {
+    title: 'Management',
+    pages: docPages.filter(d => ['team-management', 'billing'].includes(d.slug)),
+  },
+];
+
 interface DocsLayoutProps {
   children: React.ReactNode;
 }
@@ -33,37 +51,63 @@ export function DocsLayout({ children }: DocsLayoutProps) {
 
   const currentSlug = location.pathname.replace('/docs/', '').replace('/docs', '');
 
+  // Lock scroll when mobile sidebar is open
+  useEffect(() => {
+    if (sidebarOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [sidebarOpen]);
+
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-slate-950/95 backdrop-blur-lg border-b border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-6">
+              {/* Mobile menu button */}
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="lg:hidden p-2 text-gray-500 hover:text-gray-700"
+                className="lg:hidden p-2 text-gray-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
               >
                 {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
               </button>
+
+              {/* Logo */}
               <Link to="/" className="flex items-center gap-2">
                 <A13ELogo size="sm" />
               </Link>
-              <span className="hidden sm:inline text-gray-300">|</span>
-              <Link to="/docs" className="hidden sm:inline text-sm font-medium text-gray-600 hover:text-gray-900">
-                Documentation
-              </Link>
+
+              {/* Separator */}
+              <div className="hidden sm:block h-6 w-px bg-slate-700" />
+
+              {/* Navigation tabs */}
+              <nav className="hidden md:flex items-center gap-1">
+                <Link
+                  to="/docs"
+                  className="px-3 py-1.5 text-sm font-medium text-blue-400 bg-blue-400/10 rounded-lg"
+                >
+                  Documentation
+                </Link>
+              </nav>
             </div>
+
+            {/* Right side */}
             <div className="flex items-center gap-4">
               <Link
                 to="/login"
-                className="text-sm font-medium text-gray-600 hover:text-gray-900"
+                className="hidden sm:inline-block text-sm font-medium text-gray-400 hover:text-white transition-colors"
               >
                 Sign in
               </Link>
               <Link
                 to="/signup"
-                className="text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg"
+                className="text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 px-4 py-2 rounded-lg shadow-lg shadow-blue-500/25 transition-all"
               >
                 Get Started
               </Link>
@@ -76,61 +120,83 @@ export function DocsLayout({ children }: DocsLayoutProps) {
         {/* Sidebar */}
         <aside
           className={`
-            fixed lg:sticky top-16 left-0 z-40 w-64 h-[calc(100vh-4rem)] bg-gray-50 border-r border-gray-200
+            fixed lg:sticky top-16 left-0 z-40 w-72 h-[calc(100vh-4rem)] bg-slate-900/95 backdrop-blur-lg border-r border-slate-800
             transform transition-transform duration-200 ease-in-out overflow-y-auto
             ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
           `}
         >
-          <nav className="p-4">
-            <div className="mb-6">
+          <nav className="p-6 space-y-8">
+            {/* Back link */}
+            <div>
               <Link
                 to="/"
-                className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700"
+                className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors group"
               >
-                <ArrowLeft className="h-4 w-4" />
+                <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
                 Back to A13E
               </Link>
             </div>
 
-            <div className="mb-2 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-              Documentation
-            </div>
-
-            <ul className="space-y-1">
-              {docPages.map((doc) => {
-                const Icon = iconMap[doc.icon] || BookOpen;
-                const isActive = currentSlug === doc.slug;
-                return (
-                  <li key={doc.slug}>
-                    <Link
-                      to={`/docs/${doc.slug}`}
-                      onClick={() => setSidebarOpen(false)}
-                      className={`
-                        flex items-center gap-3 px-3 py-2 rounded-lg text-sm
-                        ${isActive
-                          ? 'bg-blue-50 text-blue-700 font-medium'
-                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                        }
-                      `}
-                    >
-                      <Icon className="h-4 w-4 flex-shrink-0" />
-                      <span>{doc.title}</span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-
-            <div className="mt-8 pt-6 border-t border-gray-200">
-              <div className="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                Need Help?
+            {/* Doc sections */}
+            {docSections.map((section) => (
+              <div key={section.title}>
+                <div className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                  {section.title}
+                </div>
+                <ul className="space-y-1">
+                  {section.pages.map((doc) => {
+                    const Icon = iconMap[doc.icon] || BookOpen;
+                    const isActive = currentSlug === doc.slug;
+                    return (
+                      <li key={doc.slug}>
+                        <Link
+                          to={`/docs/${doc.slug}`}
+                          onClick={() => setSidebarOpen(false)}
+                          className={`
+                            flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all
+                            ${isActive
+                              ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-semibold shadow-lg shadow-blue-500/25'
+                              : 'text-gray-400 hover:bg-slate-800 hover:text-white'
+                            }
+                          `}
+                        >
+                          <Icon className="h-4 w-4 flex-shrink-0" />
+                          <span>{doc.title}</span>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
               </div>
-              <a
-                href="mailto:support@a13e.io"
-                className="block px-3 py-2 text-sm text-gray-600 hover:text-gray-900"
-              >
-                Contact Support
-              </a>
+            ))}
+
+            {/* Additional Links */}
+            <div className="pt-6 border-t border-slate-800">
+              <div className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                Resources
+              </div>
+              <ul className="space-y-1">
+                <li>
+                  <a
+                    href="mailto:support@a13e.io"
+                    className="flex items-center gap-3 px-3 py-2.5 text-sm text-gray-400 hover:bg-slate-800 hover:text-white rounded-lg transition-colors"
+                  >
+                    <Mail className="h-4 w-4" />
+                    Contact Support
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="https://attack.mitre.org/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 px-3 py-2.5 text-sm text-gray-400 hover:bg-slate-800 hover:text-white rounded-lg transition-colors"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    MITRE ATT&CK
+                  </a>
+                </li>
+              </ul>
             </div>
           </nav>
         </aside>
@@ -138,14 +204,14 @@ export function DocsLayout({ children }: DocsLayoutProps) {
         {/* Mobile overlay */}
         {sidebarOpen && (
           <div
-            className="fixed inset-0 z-30 bg-black/20 lg:hidden"
+            className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm lg:hidden"
             onClick={() => setSidebarOpen(false)}
           />
         )}
 
         {/* Main content */}
         <main className="flex-1 min-w-0">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
             {children}
           </div>
         </main>

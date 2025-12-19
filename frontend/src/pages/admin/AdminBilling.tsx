@@ -14,6 +14,8 @@ import {
   RefreshCw,
 } from 'lucide-react';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+
 interface BillingStats {
   total_revenue: number;
   mrr: number;
@@ -47,10 +49,10 @@ export default function AdminBilling() {
       const token = localStorage.getItem('admin_token');
 
       const [statsRes, subsRes] = await Promise.all([
-        fetch('/api/v1/admin/billing/stats', {
+        fetch(`${API_BASE_URL}/api/v1/admin/billing/stats`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetch('/api/v1/admin/billing/subscriptions?limit=20', {
+        fetch(`${API_BASE_URL}/api/v1/admin/billing/subscriptions?limit=20`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);

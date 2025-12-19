@@ -6,6 +6,8 @@ import {
   Ban, CheckCircle, ExternalLink
 } from 'lucide-react';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+
 interface Organization {
   id: string;
   name: string;
@@ -78,7 +80,7 @@ export default function AdminOrganizations() {
       if (tierFilter) params.set('tier', tierFilter);
       if (statusFilter) params.set('is_active', statusFilter);
 
-      const response = await fetch(`/api/v1/admin/organizations?${params}`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/admin/organizations?${params}`, {
         headers: { Authorization: `Bearer ${adminToken}` },
       });
 
@@ -96,7 +98,7 @@ export default function AdminOrganizations() {
 
   const fetchOrgDetails = async (orgId: string) => {
     try {
-      const response = await fetch(`/api/v1/admin/organizations/${orgId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/admin/organizations/${orgId}`, {
         headers: { Authorization: `Bearer ${adminToken}` },
       });
 
@@ -112,7 +114,7 @@ export default function AdminOrganizations() {
   const suspendOrg = async (orgId: string, reason: string) => {
     setActionLoading(orgId);
     try {
-      const response = await fetch(`/api/v1/admin/organizations/${orgId}/suspend`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/admin/organizations/${orgId}/suspend`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -135,7 +137,7 @@ export default function AdminOrganizations() {
   const unsuspendOrg = async (orgId: string) => {
     setActionLoading(orgId);
     try {
-      const response = await fetch(`/api/v1/admin/organizations/${orgId}/unsuspend`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/admin/organizations/${orgId}/unsuspend`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${adminToken}` },
       });

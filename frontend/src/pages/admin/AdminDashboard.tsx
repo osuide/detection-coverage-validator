@@ -6,6 +6,8 @@ import {
   Server, Database, Clock, ChevronRight, FileText, UserCog
 } from 'lucide-react';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+
 interface SystemHealth {
   status: string;
   api_latency_ms: number;
@@ -77,11 +79,11 @@ export default function AdminDashboard() {
         const headers = { Authorization: `Bearer ${adminToken}` };
 
         const [profileRes, systemRes, businessRes, usageRes, securityRes] = await Promise.all([
-          fetch('/api/v1/admin/auth/me', { headers }),
-          fetch('/api/v1/admin/metrics/system', { headers }),
-          fetch('/api/v1/admin/metrics/business', { headers }),
-          fetch('/api/v1/admin/metrics/usage', { headers }),
-          fetch('/api/v1/admin/metrics/security', { headers }),
+          fetch(`${API_BASE_URL}/api/v1/admin/auth/me`, { headers }),
+          fetch(`${API_BASE_URL}/api/v1/admin/metrics/system`, { headers }),
+          fetch(`${API_BASE_URL}/api/v1/admin/metrics/business`, { headers }),
+          fetch(`${API_BASE_URL}/api/v1/admin/metrics/usage`, { headers }),
+          fetch(`${API_BASE_URL}/api/v1/admin/metrics/security`, { headers }),
         ]);
 
         if (!profileRes.ok) {
@@ -107,7 +109,7 @@ export default function AdminDashboard() {
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/v1/admin/auth/logout', {
+      await fetch(`${API_BASE_URL}/api/v1/admin/auth/logout`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${adminToken}` },
       });

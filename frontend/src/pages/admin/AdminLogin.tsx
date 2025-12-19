@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Lock, Mail, AlertCircle, Key } from 'lucide-react';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+
 interface AdminLoginResponse {
   requires_mfa: boolean;
   mfa_token?: string;
@@ -25,7 +27,7 @@ export default function AdminLogin() {
     setLoading(true);
 
     try {
-      const response = await fetch('/api/v1/admin/auth/login', {
+      const response = await fetch(`${API_BASE_URL}/api/v1/admin/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -57,7 +59,7 @@ export default function AdminLogin() {
     setLoading(true);
 
     try {
-      const response = await fetch('/api/v1/admin/auth/mfa/verify', {
+      const response = await fetch(`${API_BASE_URL}/api/v1/admin/auth/mfa/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mfa_token: mfaToken, totp_code: mfaCode }),

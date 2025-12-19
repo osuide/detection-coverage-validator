@@ -16,6 +16,8 @@ import {
   Edit,
 } from 'lucide-react';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+
 interface AdminUser {
   id: string;
   email: string;
@@ -71,7 +73,7 @@ export default function AdminAdmins() {
     setLoading(true);
     try {
       const token = localStorage.getItem('admin_token');
-      const response = await fetch('/api/v1/admin/admins', {
+      const response = await fetch(`${API_BASE_URL}/api/v1/admin/admins`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -118,7 +120,7 @@ export default function AdminAdmins() {
     setCreating(true);
     try {
       const token = localStorage.getItem('admin_token');
-      const response = await fetch('/api/v1/admin/admins', {
+      const response = await fetch(`${API_BASE_URL}/api/v1/admin/admins`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -145,7 +147,7 @@ export default function AdminAdmins() {
   const toggleAdminStatus = async (adminId: string, currentStatus: boolean) => {
     try {
       const token = localStorage.getItem('admin_token');
-      const response = await fetch(`/api/v1/admin/admins/${adminId}/status`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/admin/admins/${adminId}/status`, {
         method: 'PUT',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -175,7 +177,7 @@ export default function AdminAdmins() {
 
     try {
       const token = localStorage.getItem('admin_token');
-      const response = await fetch(`/api/v1/admin/admins/${selectedAdmin.id}/password`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/admin/admins/${selectedAdmin.id}/password`, {
         method: 'PUT',
         headers: {
           Authorization: `Bearer ${token}`,

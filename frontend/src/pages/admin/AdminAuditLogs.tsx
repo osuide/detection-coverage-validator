@@ -16,6 +16,8 @@ import {
   Activity,
 } from 'lucide-react';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+
 interface AuditLog {
   id: string;
   admin_id: string;
@@ -72,7 +74,7 @@ export default function AdminAuditLogs() {
       if (actionFilter) params.append('action', actionFilter);
       if (adminFilter) params.append('admin_email', adminFilter);
 
-      const response = await fetch(`/api/v1/admin/audit-logs?${params}`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/admin/audit-logs?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
