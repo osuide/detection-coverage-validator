@@ -45,6 +45,7 @@ export default function Landing() {
               <a href="#features" className="text-gray-300 hover:text-white transition-colors">Features</a>
               <a href="#pricing" className="text-gray-300 hover:text-white transition-colors">Pricing</a>
               <a href="#demo" className="text-gray-300 hover:text-white transition-colors">Demo</a>
+              <Link to="/docs" className="text-gray-300 hover:text-white transition-colors">Docs</Link>
               {isAuthenticated ? (
                 <Link to="/dashboard" className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-5 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-cyan-700 transition-all shadow-lg shadow-blue-500/25">
                   Go to Dashboard
