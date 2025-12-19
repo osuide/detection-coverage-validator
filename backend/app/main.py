@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import structlog
 
 from app.core.config import get_settings
-from app.api.routes import accounts, scans, detections, coverage, mappings, health, schedules, alerts, reports, auth, teams, api_keys, audit, cognito, org_security, billing, code_analysis, credentials, github_oauth
+from app.api.routes import accounts, scans, detections, coverage, mappings, health, schedules, alerts, reports, auth, teams, api_keys, audit, cognito, org_security, billing, code_analysis, credentials, github_oauth, recommendations
 from app.api.routes.admin import router as admin_router
 from app.services.scheduler_service import scheduler_service
 
@@ -16,11 +16,157 @@ settings = get_settings()
 logger = structlog.get_logger()
 
 
+def run_migrations():
+    """Run database migrations on startup using subprocess."""
+    import subprocess
+    try:
+        result = subprocess.run(
+            ["alembic", "upgrade", "head"],
+            cwd="/app",
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+        if result.returncode == 0:
+            logger.info("migrations_completed", output=result.stdout[-500:] if result.stdout else "")
+        else:
+            logger.warning("migrations_failed", stderr=result.stderr[-500:] if result.stderr else "")
+    except Exception as e:
+        logger.warning("migrations_failed", error=str(e))
+
+
+def seed_mitre_data():
+    """Seed MITRE ATT&CK data if not already present."""
+    import json
+    from uuid import uuid4
+    from datetime import datetime, timezone
+    from sqlalchemy import create_engine, text
+    from app.scripts.seed_mitre import TACTICS, TECHNIQUES
+
+    database_url = os.environ.get("DATABASE_URL", "").replace("+asyncpg", "")
+    if not database_url:
+        logger.warning("mitre_seed_skipped", reason="DATABASE_URL not set")
+        return
+
+    try:
+        engine = create_engine(database_url)
+        with engine.connect() as conn:
+            # Check if techniques already exist
+            result = conn.execute(text("SELECT COUNT(*) FROM techniques"))
+            count = result.scalar()
+            if count > 0:
+                logger.info("mitre_seed_skipped", reason=f"{count} techniques already exist")
+                return
+
+            now = datetime.now(timezone.utc)
+
+            # Get existing tactics (may have been partially inserted)
+            existing_tactics = {}
+            result = conn.execute(text("SELECT tactic_id, id FROM tactics"))
+            for row in result:
+                existing_tactics[row[0]] = str(row[1])
+
+            # Insert missing tactics
+            tactics_added = 0
+            for tactic_id, name, short_name, display_order in TACTICS:
+                if tactic_id not in existing_tactics:
+                    tactic_uuid = str(uuid4())
+                    conn.execute(
+                        text("""
+                            INSERT INTO tactics (id, tactic_id, name, short_name, display_order, mitre_version, created_at)
+                            VALUES (:id, :tactic_id, :name, :short_name, :display_order, :mitre_version, :created_at)
+                            ON CONFLICT (tactic_id) DO NOTHING
+                        """),
+                        {
+                            "id": tactic_uuid,
+                            "tactic_id": tactic_id,
+                            "name": name,
+                            "short_name": short_name,
+                            "display_order": display_order,
+                            "mitre_version": "14.1",
+                            "created_at": now,
+                        }
+                    )
+                    existing_tactics[tactic_id] = tactic_uuid
+                    tactics_added += 1
+            conn.commit()
+
+            # Refresh tactics to get any that were inserted by conflict
+            result = conn.execute(text("SELECT tactic_id, id FROM tactics"))
+            existing_tactics = {row[0]: str(row[1]) for row in result}
+
+            # Insert techniques (skip duplicates - same technique can appear under multiple tactics)
+            seen_techniques = set()
+            techniques_added = 0
+            for technique_id, name, tactic_id, description in TECHNIQUES:
+                if technique_id in seen_techniques:
+                    continue
+                seen_techniques.add(technique_id)
+
+                tactic_uuid = existing_tactics.get(tactic_id)
+                if not tactic_uuid:
+                    continue
+
+                is_subtechnique = "." in technique_id
+                parent_id = None
+                if is_subtechnique:
+                    parent_tech_id = technique_id.split(".")[0]
+                    # Look up parent in DB
+                    parent_result = conn.execute(
+                        text("SELECT id FROM techniques WHERE technique_id = :tid"),
+                        {"tid": parent_tech_id}
+                    )
+                    parent_row = parent_result.fetchone()
+                    if parent_row:
+                        parent_id = str(parent_row[0])
+
+                tech_uuid = str(uuid4())
+                conn.execute(
+                    text("""
+                        INSERT INTO techniques (
+                            id, technique_id, name, description, tactic_id, parent_technique_id,
+                            platforms, mitre_version, is_subtechnique, created_at, updated_at
+                        )
+                        VALUES (
+                            :id, :technique_id, :name, :description, :tactic_id, :parent_id,
+                            CAST(:platforms AS jsonb), :mitre_version, :is_subtechnique, :created_at, :updated_at
+                        )
+                        ON CONFLICT (technique_id) DO NOTHING
+                    """),
+                    {
+                        "id": tech_uuid,
+                        "technique_id": technique_id,
+                        "name": name,
+                        "description": description,
+                        "tactic_id": tactic_uuid,
+                        "parent_id": parent_id,
+                        "platforms": json.dumps(["AWS", "Azure", "GCP", "IaaS"]),
+                        "mitre_version": "14.1",
+                        "is_subtechnique": is_subtechnique,
+                        "created_at": now,
+                        "updated_at": now,
+                    }
+                )
+                techniques_added += 1
+            conn.commit()
+
+            logger.info("mitre_seeded", tactics_added=tactics_added, techniques_added=techniques_added)
+    except Exception as e:
+        logger.warning("mitre_seed_failed", error=str(e))
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events."""
     # Startup
     logger.info("starting_application")
+
+    # Run migrations on startup
+    run_migrations()
+
+    # Seed MITRE data if not present
+    seed_mitre_data()
+
     try:
         await scheduler_service.start()
     except Exception as e:
@@ -72,6 +218,7 @@ app.include_router(org_security.router, prefix="/api/v1/org", tags=["Organizatio
 app.include_router(billing.router, prefix="/api/v1/billing", tags=["Billing"])
 app.include_router(code_analysis.router, prefix="/api/v1/code-analysis", tags=["Code Analysis"])
 app.include_router(credentials.router, prefix="/api/v1/credentials", tags=["Cloud Credentials"])
+app.include_router(recommendations.router, prefix="/api/v1/recommendations", tags=["Recommendations"])
 
 # Admin Portal routes (separate from user routes)
 app.include_router(admin_router, prefix="/api/v1/admin")
