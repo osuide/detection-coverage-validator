@@ -1,6 +1,5 @@
 """CloudWatch Logs Insights query scanner following 04-PARSER-AGENT.md design."""
 
-import json
 from datetime import datetime
 from typing import Any, Optional
 

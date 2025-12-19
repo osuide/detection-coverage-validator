@@ -309,7 +309,6 @@ from .t1542_pre_os_boot import TEMPLATE as T1542
 from .t1543_create_modify_system_process import TEMPLATE as T1543
 from .t1546_event_triggered_execution import TEMPLATE as T1546
 from .t1550_001_app_access_token import TEMPLATE as T1550_001
-from .t1550_003_pass_the_ticket import TEMPLATE as T1550_003
 from .t1550_004_web_session_cookie import TEMPLATE as T1550_004
 from .t1554_compromise_host_software import TEMPLATE as T1554
 from .t1555_credentials_password_stores import TEMPLATE as T1555
@@ -365,7 +364,6 @@ from .t1562_007_disable_cloud_firewall import TEMPLATE as T1562_007
 from .t1566_001_spearphishing_attachment import TEMPLATE as T1566_001
 from .t1566_002_spearphishing_link import TEMPLATE as T1566_002
 from .t1568_002_domain_generation_algorithms import TEMPLATE as T1568_002
-from .t1578_003_delete_cloud_instance import TEMPLATE as T1578_003
 from .t1578_004_revert_cloud_instance import TEMPLATE as T1578_004
 from .t1578_005_modify_cloud_compute_config import TEMPLATE as T1578_005
 from .t1583_006_web_services import TEMPLATE as T1583_006
@@ -579,7 +577,6 @@ TEMPLATES: Dict[str, RemediationTemplate] = {
     "T1543": T1543,
     "T1546": T1546,
     "T1550.001": T1550_001,
-    "T1550.003": T1550_003,
     "T1550.004": T1550_004,
     "T1554": T1554,
     "T1555": T1555,

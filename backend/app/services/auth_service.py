@@ -264,7 +264,7 @@ class AuthService:
             select(UserSession).where(
                 and_(
                     UserSession.refresh_token_hash == token_hash,
-                    UserSession.is_active == True,
+                    UserSession.is_active.is_(True),
                     UserSession.expires_at > datetime.now(timezone.utc),
                 )
             )
@@ -322,7 +322,7 @@ class AuthService:
             select(UserSession).where(
                 and_(
                     UserSession.user_id == user_id,
-                    UserSession.is_active == True,
+                    UserSession.is_active.is_(True),
                 )
             )
         )
@@ -343,7 +343,7 @@ class AuthService:
                 and_(
                     OrganizationMember.user_id == user_id,
                     OrganizationMember.status == MembershipStatus.ACTIVE,
-                    Organization.is_active == True,
+                    Organization.is_active.is_(True),
                 )
             )
         )

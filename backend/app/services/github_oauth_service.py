@@ -2,7 +2,7 @@
 
 import httpx
 import secrets
-from typing import Optional, Dict, Any, Tuple
+from typing import Optional, Dict, Any
 from urllib.parse import urlencode
 import structlog
 

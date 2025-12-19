@@ -4,7 +4,6 @@ from uuid import UUID
 import structlog
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 
 from app.models.coverage import CoverageSnapshot
 from app.models.cloud_account import CloudAccount

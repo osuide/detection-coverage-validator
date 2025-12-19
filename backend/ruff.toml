@@ -1,0 +1,7 @@
+[lint]
+# Ignore these rules globally
+ignore = []
+
+[lint.per-file-ignores]
+# Template loader intentionally imports after function definitions
+"app/data/remediation_templates/template_loader.py" = ["E402"]

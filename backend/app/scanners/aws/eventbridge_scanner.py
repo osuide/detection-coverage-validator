@@ -5,7 +5,7 @@ from typing import Any, Optional
 
 from botocore.exceptions import ClientError
 
-from app.models.detection import DetectionType, DetectionStatus
+from app.models.detection import DetectionType
 from app.scanners.base import BaseScanner, RawDetection
 
 
@@ -124,12 +124,6 @@ class EventBridgeScanner(BaseScanner):
             except json.JSONDecodeError:
                 event_pattern = {"raw": event_pattern_str}
 
-        # Determine status
-        if state == "ENABLED":
-            status = DetectionStatus.ACTIVE
-        else:
-            status = DetectionStatus.DISABLED
-
         return RawDetection(
             name=name,
             detection_type=DetectionType.EVENTBRIDGE_RULE,
@@ -173,9 +167,6 @@ class EventBridgeScanner(BaseScanner):
             events.extend(event_name)
         elif isinstance(event_name, str):
             events.append(event_name)
-
-        # Check for event source (AWS service)
-        event_source = detail.get("eventSource", [])
 
         return events
 

@@ -41,11 +41,11 @@ async def list_alerts(
     if cloud_account_id:
         query = query.where(
             (AlertConfig.cloud_account_id == cloud_account_id)
-            | (AlertConfig.cloud_account_id == None)
+            | (AlertConfig.cloud_account_id.is_(None))
         )
         count_query = count_query.where(
             (AlertConfig.cloud_account_id == cloud_account_id)
-            | (AlertConfig.cloud_account_id == None)
+            | (AlertConfig.cloud_account_id.is_(None))
         )
 
     if alert_type:

@@ -48,10 +48,10 @@ async def create_super_admin(email: str, password: str, full_name: str = "Super 
             }
         )
 
-        print(f"Super admin created successfully!")
+        print("Super admin created successfully!")
         print(f"  ID: {admin_id}")
         print(f"  Email: {email}")
-        print(f"  Role: super_admin")
+        print("  Role: super_admin")
         return admin_id
 
 

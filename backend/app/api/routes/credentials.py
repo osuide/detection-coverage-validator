@@ -382,12 +382,6 @@ async def validate_credential(
     if not credential:
         raise HTTPException(status_code=404, detail="Credential not found")
 
-    # Get account
-    result = await db.execute(
-        select(CloudAccount).where(CloudAccount.id == cloud_account_id)
-    )
-    account = result.scalar_one_or_none()
-
     # Validate based on provider
     if credential.credential_type == CredentialType.AWS_IAM_ROLE:
         validation = await aws_credential_service.validate_credentials(credential)

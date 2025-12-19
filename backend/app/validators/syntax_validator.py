@@ -223,8 +223,6 @@ class SyntaxValidator(BaseValidator):
             return 0.0, issues
 
         # Basic GCP logging filter syntax checks
-        filter_lower = filter_string.lower()
-
         # Check for balanced quotes
         if filter_string.count('"') % 2 != 0:
             issues.append(ValidationIssue(

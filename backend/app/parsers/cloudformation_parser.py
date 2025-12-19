@@ -533,7 +533,6 @@ class CloudFormationParser:
         techniques = []
 
         source = event_pattern.get("source", [])
-        detail_type = event_pattern.get("detail-type", [])
         detail = event_pattern.get("detail", {})
 
         # Map event sources to techniques

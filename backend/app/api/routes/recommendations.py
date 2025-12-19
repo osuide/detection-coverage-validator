@@ -4,7 +4,7 @@ from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -13,9 +13,6 @@ from app.models.cloud_account import CloudAccount
 from app.models.coverage import CoverageSnapshot
 from app.services.remediation_service import (
     remediation_service,
-    TechniqueRemediation,
-    DetailedRecommendation,
-    RecommendationSummary,
 )
 
 router = APIRouter()

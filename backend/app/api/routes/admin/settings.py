@@ -500,7 +500,7 @@ async def seed_mitre_data(
     await db.commit()
 
     return {
-        "message": f"Seeded MITRE data",
+        "message": "Seeded MITRE data",
         "tactics_added": tactics_added,
         "techniques_added": techniques_added,
         "total_tactics": len(existing_tactics),

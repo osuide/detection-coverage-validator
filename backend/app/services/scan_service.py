@@ -15,7 +15,7 @@ from app.models.cloud_credential import CloudCredential, CredentialType, Credent
 from app.models.detection import Detection, DetectionStatus
 from app.models.mapping import DetectionMapping, MappingSource
 from app.models.scan import Scan, ScanStatus
-from app.scanners.aws.cloudwatch_scanner import CloudWatchLogsInsightsScanner, CloudWatchMetricAlarmScanner
+from app.scanners.aws.cloudwatch_scanner import CloudWatchLogsInsightsScanner
 from app.scanners.aws.eventbridge_scanner import EventBridgeScanner
 from app.scanners.aws.guardduty_scanner import GuardDutyScanner
 from app.scanners.aws.config_scanner import ConfigRulesScanner

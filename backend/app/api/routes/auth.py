@@ -649,15 +649,11 @@ async def get_my_sessions(
         select(UserSession).where(
             and_(
                 UserSession.user_id == current_user.id,
-                UserSession.is_active == True,
+                UserSession.is_active.is_(True),
             )
         ).order_by(UserSession.last_activity_at.desc())
     )
     sessions = result.scalars().all()
-
-    # Decode current token to identify current session
-    auth_service = AuthService(db)
-    current_payload = auth_service.decode_token(credentials.credentials)
 
     responses = []
     for session in sessions:

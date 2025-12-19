@@ -78,7 +78,7 @@ class SchedulerService:
         """Load all active schedules from the database."""
         async with self._session_factory() as session:
             result = await session.execute(
-                select(ScanSchedule).where(ScanSchedule.is_active == True)
+                select(ScanSchedule).where(ScanSchedule.is_active.is_(True))
             )
             schedules = result.scalars().all()
 

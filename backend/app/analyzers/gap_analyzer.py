@@ -1,7 +1,7 @@
 """Gap analyzer following 06-ANALYSIS-AGENT.md design."""
 
 from dataclasses import dataclass, field
-from typing import Optional, List, Dict, Any
+from typing import Optional, List
 import structlog
 
 from app.analyzers.coverage_calculator import TechniqueCoverageInfo

@@ -1,7 +1,6 @@
 """Admin billing routes."""
 
-from typing import Optional
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
@@ -9,7 +8,7 @@ from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.models.admin import AdminUser, AdminRole
+from app.models.admin import AdminUser
 from app.models.user import Organization
 from app.models.billing import Subscription, AccountTier, SubscriptionStatus
 from app.api.deps import get_current_admin

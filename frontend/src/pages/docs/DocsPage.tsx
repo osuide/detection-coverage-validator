@@ -125,7 +125,7 @@ export function DocsPage() {
                 remarkPlugins={[remarkGfm, remarkBreaks]}
                 components={{
                   // Custom code block renderer
-                  code({ node, className, children, ...props }) {
+                  code({ className, children, ...props }) {
                     const match = /language-(\w+)/.exec(className || '');
                     const isInline = !match && !String(children).includes('\n');
 

@@ -24,7 +24,7 @@ export function TableOfContents({ content }: TableOfContentsProps) {
       const match = line.match(/^(#{2,3})\s+(.+)$/);
       if (match) {
         const level = match[1].length;
-        const text = match[2].replace(/[#*`\[\]]/g, '').trim();
+        const text = match[2].replace(/[#*`[\]]/g, '').trim();
         const id = text.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]/g, '');
         parsed.push({ id, text, level });
       }

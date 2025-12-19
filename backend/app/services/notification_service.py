@@ -44,9 +44,9 @@ class NotificationService:
         # Get active alerts for this account (and global alerts)
         result = await self.db.execute(
             select(AlertConfig).where(
-                AlertConfig.is_active == True,
+                AlertConfig.is_active.is_(True),
                 (AlertConfig.cloud_account_id == cloud_account_id)
-                | (AlertConfig.cloud_account_id == None),
+                | (AlertConfig.cloud_account_id.is_(None)),
             )
         )
         alerts = result.scalars().all()

@@ -192,7 +192,7 @@ async def update_admin_status(
             select(func.count(AdminUser.id)).where(
                 and_(
                     AdminUser.role == AdminRole.SUPER_ADMIN,
-                    AdminUser.is_active == True,
+                    AdminUser.is_active.is_(True),
                     AdminUser.id != admin_id,
                 )
             )

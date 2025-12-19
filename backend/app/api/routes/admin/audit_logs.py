@@ -1,7 +1,6 @@
 """Admin audit logs routes."""
 
 from typing import Optional
-from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel

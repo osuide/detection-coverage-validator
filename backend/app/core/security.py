@@ -234,7 +234,7 @@ async def _authenticate_api_key(
         select(APIKey).where(
             and_(
                 APIKey.key_hash == key_hash,
-                APIKey.is_active == True,
+                APIKey.is_active.is_(True),
             )
         )
     )

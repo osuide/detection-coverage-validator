@@ -27,7 +27,6 @@ except ImportError:
 # Google SecOps (Chronicle SIEM) SDK
 try:
     from secops import SecOpsClient
-    from secops.exceptions import SecOpsError
     HAS_SECOPS = True
 except ImportError:
     HAS_SECOPS = False
@@ -363,7 +362,7 @@ class GCPCredentialService:
                     # SecOps client requires a Chronicle instance
                     # We'll try to list rules to check permissions
                     secops_client = SecOpsClient(credentials=creds)
-                    rules = secops_client.rules.list_rules(project_id=project_id)
+                    secops_client.rules.list_rules(project_id=project_id)
                     granted.extend([
                         'chronicle.rules.list',
                         'chronicle.rules.get',
