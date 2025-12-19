@@ -211,7 +211,7 @@ export function DocsLayout({ children }: DocsLayoutProps) {
 
         {/* Main content */}
         <main className="flex-1 min-w-0">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+          <div className="max-w-5xl px-8 sm:px-12 lg:px-16 py-12">
             {children}
           </div>
         </main>
