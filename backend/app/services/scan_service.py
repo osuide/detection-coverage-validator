@@ -8,7 +8,7 @@ import boto3
 import structlog
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, delete
 
 from app.models.cloud_account import CloudAccount
 from app.models.cloud_credential import CloudCredential, CredentialType, CredentialStatus
@@ -344,7 +344,7 @@ class ScanService:
         for detection in detections:
             # Delete existing mappings
             await self.db.execute(
-                select(DetectionMapping).where(
+                delete(DetectionMapping).where(
                     DetectionMapping.detection_id == detection.id
                 )
             )
