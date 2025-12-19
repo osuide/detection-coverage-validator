@@ -97,125 +97,80 @@ TEMPLATE = RemediationTemplate(
                     "CredentialAccess:IAMUser/AnomalousBehavior"
                 ],
                 cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
-Description: |
-  Enable GuardDuty with alerting for credential abuse detection.
-  GuardDuty automatically detects these finding types once enabled:
-  - UnauthorizedAccess:IAMUser/ConsoleLoginSuccess.B (impossible travel)
-  - UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.OutsideAWS
-  - InitialAccess:IAMUser/AnomalousBehavior
+Description: GuardDuty + email alerts for credential abuse
 
 Parameters:
   AlertEmail:
     Type: String
-    Description: Email address for security alerts
 
 Resources:
+  # Step 1: Enable GuardDuty (detects credential abuse automatically)
   GuardDutyDetector:
     Type: AWS::GuardDuty::Detector
     Properties:
       Enable: true
-      FindingPublishingFrequency: FIFTEEN_MINUTES
-      Features:
-        - Name: S3_DATA_EVENTS
-          Status: ENABLED
-        - Name: EKS_AUDIT_LOGS
-          Status: ENABLED
-        - Name: RDS_LOGIN_EVENTS
-          Status: ENABLED
-      Tags:
-        - Key: Purpose
-          Value: T1078.004-Detection
 
-  SecurityAlertTopic:
+  # Step 2: Create SNS topic for alerts
+  AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
-      TopicName: guardduty-credential-abuse-alerts
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
-  GuardDutyEventRule:
+  # Step 3: Route credential findings to email
+  CredentialFindingsRule:
     Type: AWS::Events::Rule
     Properties:
-      Name: guardduty-credential-abuse-alerts
-      Description: Alert on credential-related GuardDuty findings
       EventPattern:
-        source:
-          - aws.guardduty
-        detail-type:
-          - GuardDuty Finding
+        source: [aws.guardduty]
         detail:
           type:
             - prefix: "UnauthorizedAccess:IAMUser"
             - prefix: "InitialAccess:IAMUser"
             - prefix: "CredentialAccess:IAMUser"
-      State: ENABLED
       Targets:
-        - Id: SNSAlert
-          Arn: !Ref SecurityAlertTopic
+        - Id: Email
+          Arn: !Ref AlertTopic
 
-  SNSTopicPolicy:
+  TopicPolicy:
     Type: AWS::SNS::TopicPolicy
     Properties:
-      Topics:
-        - !Ref SecurityAlertTopic
+      Topics: [!Ref AlertTopic]
       PolicyDocument:
         Statement:
           - Effect: Allow
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref SecurityAlertTopic''',
-                terraform_template='''# GuardDuty with alerting for credential abuse detection
-# GuardDuty automatically detects these finding types once enabled:
-# - UnauthorizedAccess:IAMUser/ConsoleLoginSuccess.B (impossible travel)
-# - UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.OutsideAWS
-# - InitialAccess:IAMUser/AnomalousBehavior
+            Resource: !Ref AlertTopic''',
+                terraform_template='''# GuardDuty + email alerts for credential abuse
 
 variable "alert_email" {
-  description = "Email address for security alerts"
-  type        = string
+  type = string
 }
 
+# Step 1: Enable GuardDuty (detects credential abuse automatically)
 resource "aws_guardduty_detector" "main" {
-  enable                       = true
-  finding_publishing_frequency = "FIFTEEN_MINUTES"
-
-  datasources {
-    s3_logs {
-      enable = true
-    }
-    kubernetes {
-      audit_logs {
-        enable = true
-      }
-    }
-  }
-
-  tags = {
-    Purpose = "T1078.004-Detection"
-  }
+  enable = true
 }
 
-# SNS Topic for alerts
-resource "aws_sns_topic" "guardduty_alerts" {
-  name = "guardduty-credential-abuse-alerts"
+# Step 2: Create SNS topic for alerts
+resource "aws_sns_topic" "alerts" {
+  name = "guardduty-credential-alerts"
 }
 
 resource "aws_sns_topic_subscription" "email" {
-  topic_arn = aws_sns_topic.guardduty_alerts.arn
+  topic_arn = aws_sns_topic.alerts.arn
   protocol  = "email"
   endpoint  = var.alert_email
 }
 
-# EventBridge rule to filter credential-related findings
-resource "aws_cloudwatch_event_rule" "guardduty_credential_abuse" {
-  name        = "guardduty-credential-abuse-alerts"
-  description = "Alert on credential-related GuardDuty findings"
-
+# Step 3: Route credential findings to email
+resource "aws_cloudwatch_event_rule" "credential_findings" {
+  name = "guardduty-credential-alerts"
   event_pattern = jsonencode({
-    source      = ["aws.guardduty"]
-    detail-type = ["GuardDuty Finding"]
+    source = ["aws.guardduty"]
     detail = {
       type = [
         { prefix = "UnauthorizedAccess:IAMUser" },
@@ -227,26 +182,20 @@ resource "aws_cloudwatch_event_rule" "guardduty_credential_abuse" {
 }
 
 resource "aws_cloudwatch_event_target" "sns" {
-  rule      = aws_cloudwatch_event_rule.guardduty_credential_abuse.name
-  target_id = "SendToSNS"
-  arn       = aws_sns_topic.guardduty_alerts.arn
+  rule = aws_cloudwatch_event_rule.credential_findings.name
+  arn  = aws_sns_topic.alerts.arn
 }
 
-resource "aws_sns_topic_policy" "default" {
-  arn = aws_sns_topic.guardduty_alerts.arn
-
+resource "aws_sns_topic_policy" "allow_eventbridge" {
+  arn = aws_sns_topic.alerts.arn
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Principal = {
-          Service = "events.amazonaws.com"
-        }
-        Action   = "sns:Publish"
-        Resource = aws_sns_topic.guardduty_alerts.arn
-      }
-    ]
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+    }]
   })
 }''',
                 alert_severity="high",
