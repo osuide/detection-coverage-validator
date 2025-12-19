@@ -95,7 +95,17 @@ TEMPLATE = RemediationTemplate(
                     "CredentialAccess:IAMUser/AnomalousBehavior"
                 ],
                 cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
-Description: GuardDuty configuration for T1098 detection
+Description: |
+  Enable GuardDuty with SNS alerting for IAM anomaly detection.
+  GuardDuty automatically detects these finding types once enabled:
+  - Persistence:IAMUser/AnomalousBehavior
+  - PrivilegeEscalation:IAMUser/AnomalousBehavior
+  - CredentialAccess:IAMUser/AnomalousBehavior
+
+Parameters:
+  AlertEmail:
+    Type: String
+    Description: Email address for security alerts
 
 Resources:
   GuardDutyDetector:
@@ -103,16 +113,152 @@ Resources:
     Properties:
       Enable: true
       FindingPublishingFrequency: FIFTEEN_MINUTES
+      Features:
+        - Name: S3_DATA_EVENTS
+          Status: ENABLED
+        - Name: EKS_AUDIT_LOGS
+          Status: ENABLED
+        - Name: EBS_MALWARE_PROTECTION
+          Status: ENABLED
+        - Name: RDS_LOGIN_EVENTS
+          Status: ENABLED
+        - Name: LAMBDA_NETWORK_LOGS
+          Status: ENABLED
       Tags:
         - Key: Purpose
-          Value: T1098-Detection''',
-                terraform_template='''resource "aws_guardduty_detector" "main" {
+          Value: T1098-Detection
+
+  SecurityAlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: guardduty-iam-alerts
+      Subscription:
+        - Protocol: email
+          Endpoint: !Ref AlertEmail
+
+  GuardDutyEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: guardduty-iam-anomaly-alerts
+      Description: Alert on IAM-related GuardDuty findings
+      EventPattern:
+        source:
+          - aws.guardduty
+        detail-type:
+          - GuardDuty Finding
+        detail:
+          type:
+            - prefix: "Persistence:IAMUser"
+            - prefix: "PrivilegeEscalation:IAMUser"
+            - prefix: "CredentialAccess:IAMUser"
+            - prefix: "UnauthorizedAccess:IAMUser"
+      State: ENABLED
+      Targets:
+        - Id: SNSAlert
+          Arn: !Ref SecurityAlertTopic
+
+  SNSTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref SecurityAlertTopic
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref SecurityAlertTopic''',
+                terraform_template='''# GuardDuty with SNS alerting for IAM anomaly detection
+# GuardDuty automatically detects these finding types once enabled:
+# - Persistence:IAMUser/AnomalousBehavior
+# - PrivilegeEscalation:IAMUser/AnomalousBehavior
+# - CredentialAccess:IAMUser/AnomalousBehavior
+
+variable "alert_email" {
+  description = "Email address for security alerts"
+  type        = string
+}
+
+resource "aws_guardduty_detector" "main" {
   enable                       = true
   finding_publishing_frequency = "FIFTEEN_MINUTES"
+
+  datasources {
+    s3_logs {
+      enable = true
+    }
+    kubernetes {
+      audit_logs {
+        enable = true
+      }
+    }
+    malware_protection {
+      scan_ec2_instance_with_findings {
+        ebs_volumes {
+          enable = true
+        }
+      }
+    }
+  }
 
   tags = {
     Purpose = "T1098-Detection"
   }
+}
+
+# SNS Topic for alerts
+resource "aws_sns_topic" "guardduty_alerts" {
+  name = "guardduty-iam-alerts"
+}
+
+resource "aws_sns_topic_subscription" "email" {
+  topic_arn = aws_sns_topic.guardduty_alerts.arn
+  protocol  = "email"
+  endpoint  = var.alert_email
+}
+
+# EventBridge rule to filter IAM-related findings
+resource "aws_cloudwatch_event_rule" "guardduty_iam" {
+  name        = "guardduty-iam-anomaly-alerts"
+  description = "Alert on IAM-related GuardDuty findings"
+
+  event_pattern = jsonencode({
+    source      = ["aws.guardduty"]
+    detail-type = ["GuardDuty Finding"]
+    detail = {
+      type = [
+        { prefix = "Persistence:IAMUser" },
+        { prefix = "PrivilegeEscalation:IAMUser" },
+        { prefix = "CredentialAccess:IAMUser" },
+        { prefix = "UnauthorizedAccess:IAMUser" }
+      ]
+    }
+  })
+}
+
+resource "aws_cloudwatch_event_target" "sns" {
+  rule      = aws_cloudwatch_event_rule.guardduty_iam.name
+  target_id = "SendToSNS"
+  arn       = aws_sns_topic.guardduty_alerts.arn
+}
+
+resource "aws_sns_topic_policy" "default" {
+  arn = aws_sns_topic.guardduty_alerts.arn
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "events.amazonaws.com"
+        }
+        Action   = "sns:Publish"
+        Resource = aws_sns_topic.guardduty_alerts.arn
+      }
+    ]
+  })
 }''',
                 alert_severity="high",
                 alert_title="GuardDuty: IAM Anomaly Detected",
