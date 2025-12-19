@@ -357,14 +357,14 @@ class ScanService:
         )
 
         for arn in duplicate_arns:
-            # Get all detections for this ARN, ordered by created_at
+            # Get all detections for this ARN, ordered by discovered_at
             dups = await self.db.execute(
                 select(Detection)
                 .where(
                     Detection.cloud_account_id == cloud_account_id,
                     Detection.source_arn == arn,
                 )
-                .order_by(Detection.created_at)
+                .order_by(Detection.discovered_at)
             )
             detections = list(dups.scalars().all())
 
