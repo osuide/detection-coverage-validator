@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Optional, List
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class TacticCoverage(BaseModel):
@@ -17,6 +17,24 @@ class TacticCoverage(BaseModel):
     uncovered: int
     total: int
     percent: float
+
+
+class CoverageBreakdown(BaseModel):
+    """Breakdown of coverage contribution by source."""
+
+    account_only: int = Field(
+        0, description="Techniques covered only by account-level detections"
+    )
+    org_only: int = Field(
+        0, description="Techniques covered only by organisation-level detections"
+    )
+    both: int = Field(
+        0, description="Techniques covered by both account and org detections"
+    )
+    total_covered: int = Field(0, description="Total covered techniques")
+    cloud_organization_id: Optional[str] = Field(
+        None, description="Cloud organisation ID if account is part of one"
+    )
 
 
 class RecommendedStrategyItem(BaseModel):
@@ -81,6 +99,14 @@ class CoverageResponse(BaseModel):
     mitre_version: str
     created_at: datetime
 
+    # Organisation contribution fields
+    org_detection_count: int = 0
+    org_covered_techniques: int = 0
+    account_only_techniques: int = 0
+    org_only_techniques: int = 0
+    overlap_techniques: int = 0
+    coverage_breakdown: Optional[CoverageBreakdown] = None
+
     class Config:
         from_attributes = True
 
@@ -101,3 +127,85 @@ class CoverageHistoryResponse(BaseModel):
     history: list[CoverageHistoryItem]
     trend: str  # "improving", "declining", "stable"
     change_percent: float  # Change over time period
+
+
+class OrgTacticCoverage(BaseModel):
+    """Aggregate tactic coverage for an organisation."""
+
+    tactic_id: str
+    tactic_name: str
+    total_techniques: int
+    union_covered: int
+    minimum_covered: int
+    union_percent: float
+    minimum_percent: float
+
+
+class AccountCoverageSummary(BaseModel):
+    """Summary of coverage for an account within an organisation."""
+
+    cloud_account_id: UUID
+    account_name: str
+    account_id: str  # External account ID (AWS account ID or GCP project ID)
+    coverage_percent: float
+    covered_techniques: int
+    total_techniques: int
+
+
+class OrgCoverageResponse(BaseModel):
+    """Schema for organisation-wide coverage response."""
+
+    id: UUID
+    cloud_organization_id: UUID
+
+    # Account counts
+    total_member_accounts: int
+    connected_accounts: int
+
+    # Aggregate coverage metrics
+    total_techniques: int
+    union_covered_techniques: int = Field(
+        description="Techniques covered in ANY account"
+    )
+    minimum_covered_techniques: int = Field(
+        description="Techniques covered in ALL accounts"
+    )
+    average_coverage_percent: float
+
+    # Coverage percentages
+    union_coverage_percent: float = Field(
+        description="Percentage of techniques covered in at least one account"
+    )
+    minimum_coverage_percent: float = Field(
+        description="Percentage of techniques covered in all accounts"
+    )
+
+    # Org-level detection summary
+    org_detection_count: int
+    org_covered_techniques: int
+
+    # Per-tactic breakdown
+    tactic_coverage: List[OrgTacticCoverage]
+
+    # Per-account summary (optional - may be requested separately for large orgs)
+    per_account_coverage: Optional[List[AccountCoverageSummary]] = None
+
+    mitre_version: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class OrgCoverageBreakdownRequest(BaseModel):
+    """Request for detailed org coverage breakdown."""
+
+    include_per_account: bool = Field(
+        True, description="Include per-account coverage details"
+    )
+    include_techniques: bool = Field(
+        False, description="Include per-technique coverage details"
+    )
+    filter_by_hierarchy: Optional[str] = Field(
+        None, description="Filter accounts by hierarchy path (e.g., 'Production')"
+    )

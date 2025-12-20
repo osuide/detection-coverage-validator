@@ -9,15 +9,20 @@ from sqlalchemy import select, desc
 
 from app.core.database import get_db
 from app.core.security import AuthContext, get_auth_context
-from app.models.coverage import CoverageSnapshot
+from app.models.coverage import CoverageSnapshot, OrgCoverageSnapshot
 from app.models.cloud_account import CloudAccount
+from app.models.cloud_organization import CloudOrganization
 from app.schemas.coverage import (
     CoverageResponse,
     TacticCoverage,
+    CoverageBreakdown,
     GapItem,
     RecommendedStrategyItem,
     CoverageHistoryResponse,
     CoverageHistoryItem,
+    OrgCoverageResponse,
+    OrgTacticCoverage,
+    AccountCoverageSummary,
 )
 from app.services.coverage_service import CoverageService
 from app.models.mitre import Technique, Tactic
@@ -122,6 +127,19 @@ async def get_coverage(
             )
         )
 
+    # Build coverage breakdown if available
+    coverage_breakdown = None
+    if snapshot.coverage_breakdown:
+        coverage_breakdown = CoverageBreakdown(
+            account_only=snapshot.coverage_breakdown.get("account_only", 0),
+            org_only=snapshot.coverage_breakdown.get("org_only", 0),
+            both=snapshot.coverage_breakdown.get("both", 0),
+            total_covered=snapshot.coverage_breakdown.get("total_covered", 0),
+            cloud_organization_id=snapshot.coverage_breakdown.get(
+                "cloud_organization_id"
+            ),
+        )
+
     return CoverageResponse(
         id=snapshot.id,
         cloud_account_id=snapshot.cloud_account_id,
@@ -138,6 +156,13 @@ async def get_coverage(
         top_gaps=gap_list,
         mitre_version=snapshot.mitre_version,
         created_at=snapshot.created_at,
+        # Org contribution fields
+        org_detection_count=snapshot.org_detection_count or 0,
+        org_covered_techniques=snapshot.org_covered_techniques or 0,
+        account_only_techniques=snapshot.account_only_techniques or 0,
+        org_only_techniques=snapshot.org_only_techniques or 0,
+        overlap_techniques=snapshot.overlap_techniques or 0,
+        coverage_breakdown=coverage_breakdown,
     )
 
 
@@ -367,6 +392,19 @@ async def calculate_coverage(
             )
         )
 
+    # Build coverage breakdown if available
+    calc_coverage_breakdown = None
+    if snapshot.coverage_breakdown:
+        calc_coverage_breakdown = CoverageBreakdown(
+            account_only=snapshot.coverage_breakdown.get("account_only", 0),
+            org_only=snapshot.coverage_breakdown.get("org_only", 0),
+            both=snapshot.coverage_breakdown.get("both", 0),
+            total_covered=snapshot.coverage_breakdown.get("total_covered", 0),
+            cloud_organization_id=snapshot.coverage_breakdown.get(
+                "cloud_organization_id"
+            ),
+        )
+
     return CoverageResponse(
         id=snapshot.id,
         cloud_account_id=snapshot.cloud_account_id,
@@ -381,6 +419,196 @@ async def calculate_coverage(
         active_detections=snapshot.active_detections,
         mapped_detections=snapshot.mapped_detections,
         top_gaps=gap_list,
+        mitre_version=snapshot.mitre_version,
+        created_at=snapshot.created_at,
+        # Org contribution fields
+        org_detection_count=snapshot.org_detection_count or 0,
+        org_covered_techniques=snapshot.org_covered_techniques or 0,
+        account_only_techniques=snapshot.account_only_techniques or 0,
+        org_only_techniques=snapshot.org_only_techniques or 0,
+        overlap_techniques=snapshot.overlap_techniques or 0,
+        coverage_breakdown=calc_coverage_breakdown,
+    )
+
+
+# Organisation Coverage Endpoints
+
+
+@router.get("/organization/{cloud_organization_id}", response_model=OrgCoverageResponse)
+async def get_org_coverage(
+    cloud_organization_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get the latest aggregate coverage for a cloud organisation."""
+    # Verify org exists and belongs to user's organization
+    org_result = await db.execute(
+        select(CloudOrganization).where(
+            CloudOrganization.id == cloud_organization_id,
+            CloudOrganization.organization_id == auth.organization_id,
+        )
+    )
+    cloud_org = org_result.scalar_one_or_none()
+    if not cloud_org:
+        raise HTTPException(status_code=404, detail="Cloud organisation not found")
+
+    # Get latest org coverage snapshot
+    result = await db.execute(
+        select(OrgCoverageSnapshot)
+        .where(OrgCoverageSnapshot.cloud_organization_id == cloud_organization_id)
+        .order_by(desc(OrgCoverageSnapshot.created_at))
+        .limit(1)
+    )
+    snapshot = result.scalar_one_or_none()
+
+    if not snapshot:
+        raise HTTPException(
+            status_code=404,
+            detail="No org coverage data found. Run a scan on member accounts first.",
+        )
+
+    # Transform tactic coverage
+    tactic_list = []
+    for tactic_id, data in snapshot.tactic_coverage.items():
+        tactic_list.append(
+            OrgTacticCoverage(
+                tactic_id=tactic_id,
+                tactic_name=data.get("tactic_name", tactic_id),
+                total_techniques=data.get("total_techniques", 0),
+                union_covered=data.get("union_covered", 0),
+                minimum_covered=data.get("minimum_covered", 0),
+                union_percent=data.get("union_percent", 0.0),
+                minimum_percent=data.get("minimum_percent", 0.0),
+            )
+        )
+
+    # Get per-account details
+    per_account_list = []
+    if snapshot.per_account_coverage:
+        # Get account details
+        account_ids = [UUID(aid) for aid in snapshot.per_account_coverage.keys()]
+        if account_ids:
+            accounts_result = await db.execute(
+                select(CloudAccount).where(CloudAccount.id.in_(account_ids))
+            )
+            accounts = {str(a.id): a for a in accounts_result.scalars().all()}
+
+            for account_id_str, coverage in snapshot.per_account_coverage.items():
+                account = accounts.get(account_id_str)
+                if account:
+                    per_account_list.append(
+                        AccountCoverageSummary(
+                            cloud_account_id=UUID(account_id_str),
+                            account_name=account.name,
+                            account_id=account.account_id,
+                            coverage_percent=coverage,
+                            covered_techniques=int(
+                                coverage * snapshot.total_techniques / 100
+                            ),
+                            total_techniques=snapshot.total_techniques,
+                        )
+                    )
+
+    return OrgCoverageResponse(
+        id=snapshot.id,
+        cloud_organization_id=snapshot.cloud_organization_id,
+        total_member_accounts=snapshot.total_member_accounts,
+        connected_accounts=snapshot.connected_accounts,
+        total_techniques=snapshot.total_techniques,
+        union_covered_techniques=snapshot.union_covered_techniques,
+        minimum_covered_techniques=snapshot.minimum_covered_techniques,
+        average_coverage_percent=snapshot.average_coverage_percent,
+        union_coverage_percent=snapshot.union_coverage_percent,
+        minimum_coverage_percent=snapshot.minimum_coverage_percent,
+        org_detection_count=snapshot.org_detection_count,
+        org_covered_techniques=snapshot.org_covered_techniques,
+        tactic_coverage=tactic_list,
+        per_account_coverage=per_account_list,
+        mitre_version=snapshot.mitre_version,
+        created_at=snapshot.created_at,
+    )
+
+
+@router.post(
+    "/organization/{cloud_organization_id}/calculate",
+    response_model=OrgCoverageResponse,
+)
+async def calculate_org_coverage(
+    cloud_organization_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
+    db: AsyncSession = Depends(get_db),
+):
+    """Manually trigger aggregate coverage calculation for an organisation."""
+    # Verify org exists and belongs to user's organization
+    org_result = await db.execute(
+        select(CloudOrganization).where(
+            CloudOrganization.id == cloud_organization_id,
+            CloudOrganization.organization_id == auth.organization_id,
+        )
+    )
+    cloud_org = org_result.scalar_one_or_none()
+    if not cloud_org:
+        raise HTTPException(status_code=404, detail="Cloud organisation not found")
+
+    coverage_service = CoverageService(db)
+    snapshot = await coverage_service.calculate_org_coverage(cloud_organization_id)
+
+    # Transform tactic coverage
+    tactic_list = []
+    for tactic_id, data in snapshot.tactic_coverage.items():
+        tactic_list.append(
+            OrgTacticCoverage(
+                tactic_id=tactic_id,
+                tactic_name=data.get("tactic_name", tactic_id),
+                total_techniques=data.get("total_techniques", 0),
+                union_covered=data.get("union_covered", 0),
+                minimum_covered=data.get("minimum_covered", 0),
+                union_percent=data.get("union_percent", 0.0),
+                minimum_percent=data.get("minimum_percent", 0.0),
+            )
+        )
+
+    # Get per-account details
+    per_account_list = []
+    if snapshot.per_account_coverage:
+        account_ids = [UUID(aid) for aid in snapshot.per_account_coverage.keys()]
+        if account_ids:
+            accounts_result = await db.execute(
+                select(CloudAccount).where(CloudAccount.id.in_(account_ids))
+            )
+            accounts = {str(a.id): a for a in accounts_result.scalars().all()}
+
+            for account_id_str, coverage in snapshot.per_account_coverage.items():
+                account = accounts.get(account_id_str)
+                if account:
+                    per_account_list.append(
+                        AccountCoverageSummary(
+                            cloud_account_id=UUID(account_id_str),
+                            account_name=account.name,
+                            account_id=account.account_id,
+                            coverage_percent=coverage,
+                            covered_techniques=int(
+                                coverage * snapshot.total_techniques / 100
+                            ),
+                            total_techniques=snapshot.total_techniques,
+                        )
+                    )
+
+    return OrgCoverageResponse(
+        id=snapshot.id,
+        cloud_organization_id=snapshot.cloud_organization_id,
+        total_member_accounts=snapshot.total_member_accounts,
+        connected_accounts=snapshot.connected_accounts,
+        total_techniques=snapshot.total_techniques,
+        union_covered_techniques=snapshot.union_covered_techniques,
+        minimum_covered_techniques=snapshot.minimum_covered_techniques,
+        average_coverage_percent=snapshot.average_coverage_percent,
+        union_coverage_percent=snapshot.union_coverage_percent,
+        minimum_coverage_percent=snapshot.minimum_coverage_percent,
+        org_detection_count=snapshot.org_detection_count,
+        org_covered_techniques=snapshot.org_covered_techniques,
+        tactic_coverage=tactic_list,
+        per_account_coverage=per_account_list,
         mitre_version=snapshot.mitre_version,
         created_at=snapshot.created_at,
     )

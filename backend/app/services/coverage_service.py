@@ -4,10 +4,12 @@ from uuid import UUID
 import structlog
 
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
-from app.models.coverage import CoverageSnapshot
+from app.models.coverage import CoverageSnapshot, OrgCoverageSnapshot
 from app.models.cloud_account import CloudAccount
-from app.analyzers.coverage_calculator import CoverageCalculator
+from app.models.cloud_organization import CloudOrganization
+from app.analyzers.coverage_calculator import CoverageCalculator, OrgCoverageCalculator
 from app.analyzers.gap_analyzer import GapAnalyzer
 from app.core.config import get_settings
 
@@ -116,7 +118,7 @@ class CoverageService:
 
             top_gaps.append(gap_data)
 
-        # Create snapshot
+        # Create snapshot with org contribution fields
         snapshot = CoverageSnapshot(
             cloud_account_id=cloud_account_id,
             total_techniques=result.total_techniques,
@@ -129,6 +131,13 @@ class CoverageService:
             total_detections=result.total_detections,
             active_detections=result.active_detections,
             mapped_detections=result.mapped_detections,
+            # Org contribution fields
+            org_detection_count=result.org_detection_count,
+            org_covered_techniques=result.org_covered_techniques,
+            account_only_techniques=result.account_only_techniques,
+            org_only_techniques=result.org_only_techniques,
+            overlap_techniques=result.overlap_techniques,
+            coverage_breakdown=result.coverage_breakdown,
             top_gaps=top_gaps,
             mitre_version=settings.mitre_attack_version,
             scan_id=scan_id,
@@ -142,6 +151,75 @@ class CoverageService:
             "coverage_snapshot_created",
             account_id=str(cloud_account_id),
             coverage=result.coverage_percent,
+            snapshot_id=str(snapshot.id),
+        )
+
+        return snapshot
+
+    async def calculate_org_coverage(
+        self,
+        cloud_organization_id: UUID,
+    ) -> OrgCoverageSnapshot:
+        """Calculate and store aggregate coverage for a cloud organisation.
+
+        Args:
+            cloud_organization_id: The cloud organisation to calculate coverage for
+
+        Returns:
+            The created OrgCoverageSnapshot
+        """
+        self.logger.info(
+            "calculating_org_coverage",
+            cloud_org_id=str(cloud_organization_id),
+        )
+
+        # Verify org exists
+        org_result = await self.db.execute(
+            select(CloudOrganization).where(
+                CloudOrganization.id == cloud_organization_id
+            )
+        )
+        cloud_org = org_result.scalar_one_or_none()
+        if not cloud_org:
+            raise ValueError(f"Cloud organisation {cloud_organization_id} not found")
+
+        # Calculate aggregate coverage
+        calculator = OrgCoverageCalculator(self.db)
+        result = await calculator.calculate(cloud_organization_id)
+
+        # Build per-account coverage dict for storage
+        per_account_coverage = {
+            str(account_id): coverage
+            for account_id, coverage in result.per_account_coverage.items()
+        }
+
+        # Create org coverage snapshot
+        snapshot = OrgCoverageSnapshot(
+            cloud_organization_id=cloud_organization_id,
+            total_member_accounts=result.total_member_accounts,
+            connected_accounts=result.connected_accounts,
+            total_techniques=result.total_techniques,
+            union_covered_techniques=result.union_covered_techniques,
+            minimum_covered_techniques=result.minimum_covered_techniques,
+            average_coverage_percent=result.average_coverage_percent,
+            union_coverage_percent=result.union_coverage_percent,
+            minimum_coverage_percent=result.minimum_coverage_percent,
+            org_detection_count=result.org_detection_count,
+            org_covered_techniques=result.org_covered_techniques,
+            per_account_coverage=per_account_coverage,
+            tactic_coverage=result.tactic_coverage,
+            mitre_version=settings.mitre_attack_version,
+        )
+
+        self.db.add(snapshot)
+        await self.db.flush()
+        await self.db.refresh(snapshot)
+
+        self.logger.info(
+            "org_coverage_snapshot_created",
+            cloud_org_id=str(cloud_organization_id),
+            union_coverage=result.union_coverage_percent,
+            minimum_coverage=result.minimum_coverage_percent,
             snapshot_id=str(snapshot.id),
         )
 
