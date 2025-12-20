@@ -318,11 +318,11 @@ def seed_admin_user():
 
 async def seed_compliance_data():
     """Seed compliance framework data if not present."""
-    from app.core.database import async_session_maker
+    from app.core.database import AsyncSessionLocal
     from app.data.compliance_mappings.loader import ComplianceMappingLoader
 
     try:
-        async with async_session_maker() as db:
+        async with AsyncSessionLocal() as db:
             loader = ComplianceMappingLoader(db)
             result = await loader.load_all()
             if result.get("frameworks_loaded", 0) > 0:
