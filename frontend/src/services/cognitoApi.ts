@@ -1,4 +1,5 @@
 import axios from 'axios'
+import type { User, Organization } from '../stores/authStore'
 
 // Use environment variable for API base URL (production uses full URL, dev uses proxy)
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
@@ -32,27 +33,8 @@ export interface CognitoTokenResponse {
   refresh_token: string
   csrf_token: string
   expires_in: number
-  user: {
-    id: string
-    email: string
-    full_name: string
-    role: 'owner' | 'admin' | 'member' | 'viewer'
-    mfa_enabled: boolean
-    email_verified?: boolean
-    avatar_url?: string | null
-    timezone?: string
-    created_at?: string
-    identity_provider?: string
-  }
-  organization: {
-    id: string
-    name: string
-    slug: string
-    plan: string
-    logo_url?: string | null
-    require_mfa?: boolean
-    created_at?: string
-  }
+  user: User
+  organization: Organization
 }
 
 export interface FederatedIdentity {
