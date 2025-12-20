@@ -5,38 +5,43 @@ Revises: 007
 Create Date: 2025-12-18
 
 """
+
 from typing import Sequence, Union
 
 from alembic import op
-import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '008'
-down_revision: Union[str, None] = '007'
+revision: str = "008"
+down_revision: Union[str, None] = "007"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
     # Create account_tier enum
-    op.execute("""
+    op.execute(
+        """
         DO $$ BEGIN
             CREATE TYPE account_tier AS ENUM ('free_scan', 'subscriber', 'enterprise');
         EXCEPTION WHEN duplicate_object THEN NULL;
         END $$;
-    """)
+    """
+    )
 
     # Create subscription_status enum
-    op.execute("""
+    op.execute(
+        """
         DO $$ BEGIN
             CREATE TYPE subscription_status AS ENUM ('active', 'past_due', 'canceled', 'unpaid');
         EXCEPTION WHEN duplicate_object THEN NULL;
         END $$;
-    """)
+    """
+    )
 
     # Create subscriptions table using raw SQL to avoid SQLAlchemy trying to create enums again
-    op.execute("""
+    op.execute(
+        """
         CREATE TABLE IF NOT EXISTS subscriptions (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
@@ -58,14 +63,22 @@ def upgrade() -> None:
             updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
             CONSTRAINT uq_subscription_org UNIQUE (organization_id)
         )
-    """)
+    """
+    )
 
-    op.execute("CREATE INDEX IF NOT EXISTS idx_subscriptions_org ON subscriptions(organization_id)")
-    op.execute("CREATE INDEX IF NOT EXISTS idx_subscriptions_stripe ON subscriptions(stripe_subscription_id)")
-    op.execute("CREATE INDEX IF NOT EXISTS idx_subscriptions_tier ON subscriptions(tier)")
+    op.execute(
+        "CREATE INDEX IF NOT EXISTS idx_subscriptions_org ON subscriptions(organization_id)"
+    )
+    op.execute(
+        "CREATE INDEX IF NOT EXISTS idx_subscriptions_stripe ON subscriptions(stripe_subscription_id)"
+    )
+    op.execute(
+        "CREATE INDEX IF NOT EXISTS idx_subscriptions_tier ON subscriptions(tier)"
+    )
 
     # Create invoices table
-    op.execute("""
+    op.execute(
+        """
         CREATE TABLE IF NOT EXISTS invoices (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
@@ -80,36 +93,49 @@ def upgrade() -> None:
             paid_at TIMESTAMP WITH TIME ZONE,
             created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
         )
-    """)
+    """
+    )
 
-    op.execute("CREATE INDEX IF NOT EXISTS idx_invoices_org ON invoices(organization_id)")
-    op.execute("CREATE INDEX IF NOT EXISTS idx_invoices_stripe ON invoices(stripe_invoice_id)")
+    op.execute(
+        "CREATE INDEX IF NOT EXISTS idx_invoices_org ON invoices(organization_id)"
+    )
+    op.execute(
+        "CREATE INDEX IF NOT EXISTS idx_invoices_stripe ON invoices(stripe_invoice_id)"
+    )
 
     # Add audit log actions for billing
-    op.execute("""
+    op.execute(
+        """
         DO $$ BEGIN
             ALTER TYPE auditlogaction ADD VALUE IF NOT EXISTS 'subscription.created';
         EXCEPTION WHEN duplicate_object THEN NULL;
         END $$;
-    """)
-    op.execute("""
+    """
+    )
+    op.execute(
+        """
         DO $$ BEGIN
             ALTER TYPE auditlogaction ADD VALUE IF NOT EXISTS 'subscription.upgraded';
         EXCEPTION WHEN duplicate_object THEN NULL;
         END $$;
-    """)
-    op.execute("""
+    """
+    )
+    op.execute(
+        """
         DO $$ BEGIN
             ALTER TYPE auditlogaction ADD VALUE IF NOT EXISTS 'subscription.canceled';
         EXCEPTION WHEN duplicate_object THEN NULL;
         END $$;
-    """)
-    op.execute("""
+    """
+    )
+    op.execute(
+        """
         DO $$ BEGIN
             ALTER TYPE auditlogaction ADD VALUE IF NOT EXISTS 'free_scan.used';
         EXCEPTION WHEN duplicate_object THEN NULL;
         END $$;
-    """)
+    """
+    )
 
 
 def downgrade() -> None:

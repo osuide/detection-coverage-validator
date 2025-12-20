@@ -10,20 +10,20 @@ Stores platform-wide configuration including:
 - Feature flags
 - Other platform settings
 """
+
 from alembic import op
-import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = '013'
-down_revision = '012'
+revision = "013"
+down_revision = "012"
 branch_labels = None
 depends_on = None
 
 
 def upgrade() -> None:
     # Create platform_settings table for encrypted secrets and config
-    op.execute("""
+    op.execute(
+        """
         CREATE TABLE platform_settings (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             key VARCHAR(100) UNIQUE NOT NULL,
@@ -36,12 +36,16 @@ def upgrade() -> None:
             updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
             updated_by_id UUID REFERENCES admin_users(id)
         )
-    """)
+    """
+    )
     op.execute("CREATE INDEX ix_platform_settings_key ON platform_settings(key)")
-    op.execute("CREATE INDEX ix_platform_settings_category ON platform_settings(category)")
+    op.execute(
+        "CREATE INDEX ix_platform_settings_category ON platform_settings(category)"
+    )
 
     # Create settings audit log for tracking changes to sensitive settings
-    op.execute("""
+    op.execute(
+        """
         CREATE TABLE platform_settings_audit (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             setting_id UUID NOT NULL REFERENCES platform_settings(id),
@@ -54,9 +58,14 @@ def upgrade() -> None:
             ip_address VARCHAR(45),
             reason TEXT
         )
-    """)
-    op.execute("CREATE INDEX ix_platform_settings_audit_setting ON platform_settings_audit(setting_id)")
-    op.execute("CREATE INDEX ix_platform_settings_audit_changed_at ON platform_settings_audit(changed_at)")
+    """
+    )
+    op.execute(
+        "CREATE INDEX ix_platform_settings_audit_setting ON platform_settings_audit(setting_id)"
+    )
+    op.execute(
+        "CREATE INDEX ix_platform_settings_audit_changed_at ON platform_settings_audit(changed_at)"
+    )
 
 
 def downgrade() -> None:

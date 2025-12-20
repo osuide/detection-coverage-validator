@@ -11,28 +11,30 @@ Adds secure storage for cloud provider credentials:
 """
 
 from alembic import op
-import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '011'
-down_revision = '010'
+revision = "011"
+down_revision = "010"
 branch_labels = None
 depends_on = None
 
 
 def upgrade():
     # Create credential type enum
-    op.execute("""
+    op.execute(
+        """
         CREATE TYPE credential_type AS ENUM (
             'aws_iam_role',
             'gcp_workload_identity',
             'gcp_service_account_key'
         )
-    """)
+    """
+    )
 
     # Create credential status enum
-    op.execute("""
+    op.execute(
+        """
         CREATE TYPE credential_status AS ENUM (
             'pending',
             'valid',
@@ -40,10 +42,12 @@ def upgrade():
             'expired',
             'permission_error'
         )
-    """)
+    """
+    )
 
     # Create cloud_credentials table
-    op.execute("""
+    op.execute(
+        """
         CREATE TABLE cloud_credentials (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             cloud_account_id UUID NOT NULL UNIQUE REFERENCES cloud_accounts(id) ON DELETE CASCADE,
@@ -76,11 +80,16 @@ def upgrade():
             created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
             updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
         )
-    """)
+    """
+    )
 
     # Create indexes
-    op.execute("CREATE INDEX ix_cloud_credentials_org ON cloud_credentials(organization_id)")
-    op.execute("CREATE INDEX ix_cloud_credentials_account ON cloud_credentials(cloud_account_id)")
+    op.execute(
+        "CREATE INDEX ix_cloud_credentials_org ON cloud_credentials(organization_id)"
+    )
+    op.execute(
+        "CREATE INDEX ix_cloud_credentials_account ON cloud_credentials(cloud_account_id)"
+    )
     op.execute("CREATE INDEX ix_cloud_credentials_status ON cloud_credentials(status)")
 
 

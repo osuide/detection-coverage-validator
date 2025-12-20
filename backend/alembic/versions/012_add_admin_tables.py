@@ -5,20 +5,20 @@ Revises: 011
 Create Date: 2025-12-19
 
 """
+
 from alembic import op
-import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = '012'
-down_revision = '011'
+revision = "012"
+down_revision = "011"
 branch_labels = None
 depends_on = None
 
 
 def upgrade() -> None:
     # Create enum types
-    op.execute("""
+    op.execute(
+        """
         DO $$ BEGIN
             CREATE TYPE admin_role AS ENUM (
                 'super_admin', 'platform_admin', 'security_admin',
@@ -27,34 +27,42 @@ def upgrade() -> None:
         EXCEPTION
             WHEN duplicate_object THEN null;
         END $$
-    """)
+    """
+    )
 
-    op.execute("""
+    op.execute(
+        """
         DO $$ BEGIN
             CREATE TYPE approval_status AS ENUM ('pending', 'approved', 'rejected', 'expired');
         EXCEPTION
             WHEN duplicate_object THEN null;
         END $$
-    """)
+    """
+    )
 
-    op.execute("""
+    op.execute(
+        """
         DO $$ BEGIN
             CREATE TYPE incident_severity AS ENUM ('critical', 'high', 'medium', 'low');
         EXCEPTION
             WHEN duplicate_object THEN null;
         END $$
-    """)
+    """
+    )
 
-    op.execute("""
+    op.execute(
+        """
         DO $$ BEGIN
             CREATE TYPE incident_status AS ENUM ('open', 'investigating', 'resolved', 'false_positive');
         EXCEPTION
             WHEN duplicate_object THEN null;
         END $$
-    """)
+    """
+    )
 
     # Create admin_users table
-    op.execute("""
+    op.execute(
+        """
         CREATE TABLE admin_users (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             email VARCHAR(255) UNIQUE NOT NULL,
@@ -74,11 +82,13 @@ def upgrade() -> None:
             last_login_at TIMESTAMP WITH TIME ZONE,
             last_password_change TIMESTAMP WITH TIME ZONE
         )
-    """)
+    """
+    )
     op.execute("CREATE INDEX ix_admin_users_email ON admin_users(email)")
 
     # Create admin_sessions table
-    op.execute("""
+    op.execute(
+        """
         CREATE TABLE admin_sessions (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             admin_id UUID NOT NULL REFERENCES admin_users(id) ON DELETE CASCADE,
@@ -94,12 +104,16 @@ def upgrade() -> None:
             is_active BOOLEAN DEFAULT TRUE,
             terminated_reason VARCHAR(50)
         )
-    """)
+    """
+    )
     op.execute("CREATE INDEX ix_admin_sessions_admin_id ON admin_sessions(admin_id)")
-    op.execute("CREATE INDEX ix_admin_sessions_expires ON admin_sessions(expires_at) WHERE is_active = true")
+    op.execute(
+        "CREATE INDEX ix_admin_sessions_expires ON admin_sessions(expires_at) WHERE is_active = true"
+    )
 
     # Create admin_audit_logs table
-    op.execute("""
+    op.execute(
+        """
         CREATE TABLE admin_audit_logs (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             admin_id UUID NOT NULL REFERENCES admin_users(id),
@@ -128,14 +142,22 @@ def upgrade() -> None:
             log_hash VARCHAR(64) NOT NULL,
             previous_log_hash VARCHAR(64)
         )
-    """)
-    op.execute("CREATE INDEX ix_admin_audit_logs_admin_id ON admin_audit_logs(admin_id)")
+    """
+    )
+    op.execute(
+        "CREATE INDEX ix_admin_audit_logs_admin_id ON admin_audit_logs(admin_id)"
+    )
     op.execute("CREATE INDEX ix_admin_audit_logs_action ON admin_audit_logs(action)")
-    op.execute("CREATE INDEX ix_admin_audit_logs_resource ON admin_audit_logs(resource_type, resource_id)")
-    op.execute("CREATE INDEX ix_admin_audit_logs_timestamp ON admin_audit_logs(timestamp)")
+    op.execute(
+        "CREATE INDEX ix_admin_audit_logs_resource ON admin_audit_logs(resource_type, resource_id)"
+    )
+    op.execute(
+        "CREATE INDEX ix_admin_audit_logs_timestamp ON admin_audit_logs(timestamp)"
+    )
 
     # Create admin_approval_requests table
-    op.execute("""
+    op.execute(
+        """
         CREATE TABLE admin_approval_requests (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             requestor_id UUID NOT NULL REFERENCES admin_users(id),
@@ -151,11 +173,15 @@ def upgrade() -> None:
             resolved_at TIMESTAMP WITH TIME ZONE,
             CONSTRAINT different_approver CHECK (approver_id IS NULL OR approver_id != requestor_id)
         )
-    """)
-    op.execute("CREATE INDEX ix_admin_approval_requests_requestor ON admin_approval_requests(requestor_id)")
+    """
+    )
+    op.execute(
+        "CREATE INDEX ix_admin_approval_requests_requestor ON admin_approval_requests(requestor_id)"
+    )
 
     # Create admin_impersonation_sessions table
-    op.execute("""
+    op.execute(
+        """
         CREATE TABLE admin_impersonation_sessions (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             admin_id UUID NOT NULL REFERENCES admin_users(id),
@@ -169,11 +195,15 @@ def upgrade() -> None:
             actions_log JSONB DEFAULT '[]',
             CONSTRAINT valid_duration CHECK (max_duration_minutes <= 60)
         )
-    """)
-    op.execute("CREATE INDEX ix_admin_impersonation_admin ON admin_impersonation_sessions(admin_id)")
+    """
+    )
+    op.execute(
+        "CREATE INDEX ix_admin_impersonation_admin ON admin_impersonation_sessions(admin_id)"
+    )
 
     # Create security_incidents table
-    op.execute("""
+    op.execute(
+        """
         CREATE TABLE security_incidents (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             severity incident_severity NOT NULL,
@@ -192,12 +222,18 @@ def upgrade() -> None:
             acknowledged_at TIMESTAMP WITH TIME ZONE,
             resolved_at TIMESTAMP WITH TIME ZONE
         )
-    """)
-    op.execute("CREATE INDEX ix_security_incidents_status ON security_incidents(status, severity)")
-    op.execute("CREATE INDEX ix_security_incidents_org ON security_incidents(organization_id)")
+    """
+    )
+    op.execute(
+        "CREATE INDEX ix_security_incidents_status ON security_incidents(status, severity)"
+    )
+    op.execute(
+        "CREATE INDEX ix_security_incidents_org ON security_incidents(organization_id)"
+    )
 
     # Create admin_ip_allowlist table
-    op.execute("""
+    op.execute(
+        """
         CREATE TABLE admin_ip_allowlist (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             ip_address VARCHAR(43) UNIQUE NOT NULL,
@@ -207,7 +243,8 @@ def upgrade() -> None:
             expires_at TIMESTAMP WITH TIME ZONE,
             is_active BOOLEAN DEFAULT TRUE
         )
-    """)
+    """
+    )
 
 
 def downgrade() -> None:

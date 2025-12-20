@@ -10,22 +10,24 @@ CloudFormation template analysis).
 """
 
 from alembic import op
-import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '010'
-down_revision = '009'
+revision = "010"
+down_revision = "009"
 branch_labels = None
 depends_on = None
 
 
 def upgrade():
     # Create code analysis scope enum
-    op.execute("CREATE TYPE code_analysis_scope AS ENUM ('lambda_functions', 'cloudformation', 'terraform', 'all')")
+    op.execute(
+        "CREATE TYPE code_analysis_scope AS ENUM ('lambda_functions', 'cloudformation', 'terraform', 'all')"
+    )
 
     # Create code_analysis_consents table
-    op.execute("""
+    op.execute(
+        """
         CREATE TABLE code_analysis_consents (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
@@ -56,12 +58,19 @@ def upgrade():
             -- Unique constraint per account
             UNIQUE(cloud_account_id)
         )
-    """)
+    """
+    )
 
     # Create indexes
-    op.execute("CREATE INDEX ix_code_analysis_consents_org ON code_analysis_consents(organization_id)")
-    op.execute("CREATE INDEX ix_code_analysis_consents_account ON code_analysis_consents(cloud_account_id)")
-    op.execute("CREATE INDEX ix_code_analysis_consents_active ON code_analysis_consents(cloud_account_id) WHERE consent_given = TRUE AND consent_revoked = FALSE")
+    op.execute(
+        "CREATE INDEX ix_code_analysis_consents_org ON code_analysis_consents(organization_id)"
+    )
+    op.execute(
+        "CREATE INDEX ix_code_analysis_consents_account ON code_analysis_consents(cloud_account_id)"
+    )
+    op.execute(
+        "CREATE INDEX ix_code_analysis_consents_active ON code_analysis_consents(cloud_account_id) WHERE consent_given = TRUE AND consent_revoked = FALSE"
+    )
 
 
 def downgrade():

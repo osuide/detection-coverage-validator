@@ -1,8 +1,6 @@
 """Tests for the pattern mapper."""
 
-import pytest
 from app.mappers.pattern_mapper import PatternMapper
-from app.mappers.indicator_library import TECHNIQUE_INDICATORS
 from app.scanners.base import RawDetection
 from app.models.detection import DetectionType
 
@@ -27,8 +25,8 @@ class TestPatternMapper:
                 "detail-type": ["AWS API Call via CloudTrail"],
                 "detail": {
                     "eventSource": ["iam.amazonaws.com"],
-                    "eventName": ["CreateAccessKey", "CreateLoginProfile"]
-                }
+                    "eventName": ["CreateAccessKey", "CreateLoginProfile"],
+                },
             },
             description="Monitor for new IAM credentials being created",
         )
@@ -85,9 +83,7 @@ class TestPatternMapper:
             raw_config={},
             event_pattern={
                 "source": ["aws.cloudtrail"],
-                "detail": {
-                    "eventName": ["StopLogging", "DeleteTrail"]
-                }
+                "detail": {"eventName": ["StopLogging", "DeleteTrail"]},
             },
             description="Detect CloudTrail tampering",
         )
@@ -105,7 +101,7 @@ class TestPatternMapper:
         """Test getting all technique indicators."""
         techniques = self.mapper.get_all_techniques()
         assert len(techniques) > 0
-        assert all(hasattr(t, 'technique_id') for t in techniques)
+        assert all(hasattr(t, "technique_id") for t in techniques)
 
     def test_get_technique_by_id(self):
         """Test getting a specific technique."""

@@ -1,0 +1,57 @@
+# Pre-commit hooks for A13E Detection Coverage Validator
+# Install: pip install pre-commit && pre-commit install
+# Run manually: pre-commit run --all-files
+
+repos:
+  # Python formatting with Black
+  - repo: https://github.com/psf/black
+    rev: 24.10.0
+    hooks:
+      - id: black
+        name: black (Python formatter)
+        files: ^backend/
+        language_version: python3
+
+  # Python linting with Ruff
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.4
+    hooks:
+      - id: ruff
+        name: ruff (Python linter)
+        files: ^backend/
+        args: [--fix, --exit-non-zero-on-fix]
+
+  # Terraform formatting
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: v1.96.2
+    hooks:
+      - id: terraform_fmt
+        name: terraform fmt
+        files: ^infrastructure/terraform/
+
+  # Frontend linting with ESLint
+  - repo: local
+    hooks:
+      - id: eslint
+        name: eslint (TypeScript/React linter)
+        entry: bash -c 'cd frontend && npm run lint'
+        language: system
+        files: ^frontend/src/.*\.(ts|tsx)$
+        pass_filenames: false
+
+  # General file hygiene
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: ^(frontend/public/docs/|.*\.md)$
+      - id: end-of-file-fixer
+        exclude: ^(frontend/public/docs/|.*\.md)$
+      - id: check-yaml
+        args: [--unsafe]
+        exclude: ^backend/(app/)?templates/.*\.yaml$
+      - id: check-json
+      - id: check-added-large-files
+        args: [--maxkb=1000]
+      - id: no-commit-to-branch
+        args: [--branch, production]

@@ -73,7 +73,9 @@ async def test_create_duplicate_account(authenticated_client: AsyncClient):
 @pytest.mark.asyncio
 async def test_get_account_not_found(authenticated_client: AsyncClient):
     """Test getting a non-existent account."""
-    response = await authenticated_client.get("/api/v1/accounts/00000000-0000-0000-0000-000000000000")
+    response = await authenticated_client.get(
+        "/api/v1/accounts/00000000-0000-0000-0000-000000000000"
+    )
     assert response.status_code == 404
 
 
@@ -106,8 +108,7 @@ async def test_unauthenticated_create_account_fails(client: AsyncClient):
 async def test_forgot_password_endpoint(client: AsyncClient):
     """Test the forgot password endpoint (no auth required)."""
     response = await client.post(
-        "/api/v1/auth/forgot-password",
-        json={"email": "test@example.com"}
+        "/api/v1/auth/forgot-password", json={"email": "test@example.com"}
     )
     # Always returns 204 to prevent email enumeration
     assert response.status_code == 204

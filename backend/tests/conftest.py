@@ -13,15 +13,19 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sess
 
 from app.main import app
 from app.core.database import Base, get_db
-from app.core.config import get_settings
-from app.models.user import User, Organization, OrganizationMember, UserRole, MembershipStatus
+from app.models.user import (
+    User,
+    Organization,
+    OrganizationMember,
+    UserRole,
+    MembershipStatus,
+)
 from app.services.auth_service import AuthService
 
 
 # Test settings - use postgres hostname when running in Docker, localhost otherwise
 TEST_DATABASE_URL = os.environ.get(
-    "TEST_DATABASE_URL",
-    "postgresql+asyncpg://postgres:postgres@postgres:5432/dcv_test"
+    "TEST_DATABASE_URL", "postgresql+asyncpg://postgres:postgres@postgres:5432/dcv_test"
 )
 
 
