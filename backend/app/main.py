@@ -31,6 +31,7 @@ from app.api.routes import (
     credentials,
     github_oauth,
     recommendations,
+    cloud_organizations,
 )
 from app.api.routes.admin import router as admin_router
 from app.services.scheduler_service import scheduler_service
@@ -336,6 +337,11 @@ app.include_router(
 )
 app.include_router(
     recommendations.router, prefix="/api/v1/recommendations", tags=["Recommendations"]
+)
+app.include_router(
+    cloud_organizations.router,
+    prefix="/api/v1/cloud-organizations",
+    tags=["Cloud Organisations"],
 )
 
 # Admin Portal routes (separate from user routes)
