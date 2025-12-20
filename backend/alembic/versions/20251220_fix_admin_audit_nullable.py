@@ -1,7 +1,7 @@
 """Make admin_id and admin_role nullable in admin_audit_logs
 
 Revision ID: fix_audit_nullable
-Revises: None
+Revises: 018_add_scan_limits
 Create Date: 2025-12-20
 
 This fixes the foreign key constraint issue when logging failed login
@@ -14,7 +14,7 @@ import sqlalchemy as sa
 
 # revision identifiers
 revision = "fix_audit_nullable"
-down_revision = None
+down_revision = "018"
 branch_labels = None
 depends_on = None
 
