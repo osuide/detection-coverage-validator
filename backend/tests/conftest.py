@@ -23,9 +23,13 @@ from app.models.user import (
 from app.services.auth_service import AuthService
 
 
-# Test settings - use postgres hostname when running in Docker, localhost otherwise
+# Test settings - use DATABASE_URL from environment (set by CI), fallback to Docker hostname
 TEST_DATABASE_URL = os.environ.get(
-    "TEST_DATABASE_URL", "postgresql+asyncpg://postgres:postgres@postgres:5432/dcv_test"
+    "DATABASE_URL",
+    os.environ.get(
+        "TEST_DATABASE_URL",
+        "postgresql+asyncpg://postgres:postgres@postgres:5432/dcv_test",
+    ),
 )
 
 
