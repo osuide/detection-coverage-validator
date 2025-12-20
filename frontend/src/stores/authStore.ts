@@ -100,6 +100,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       organization: data.organization,
       isAuthenticated: true,
       isLoading: false,
+      isInitialised: true, // Mark as initialised after successful login
     })
   },
 
@@ -112,6 +113,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       organization: null,
       isAuthenticated: false,
       isLoading: false,
+      isInitialised: true, // Keep initialised true so we don't re-fetch on logout
     })
   },
 
