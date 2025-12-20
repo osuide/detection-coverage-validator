@@ -24,7 +24,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Use Alternate Authentication Material: Pass the Ticket",
     tactic_ids=["TA0005", "TA0008"],
     mitre_url="https://attack.mitre.org/techniques/T1550/003/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries leverage stolen Kerberos tickets to authenticate to systems without "
@@ -42,30 +41,28 @@ TEMPLATE = RemediationTemplate(
             "Golden Tickets can provide domain-wide access for extended periods",
             "Legitimate ticket usage makes detection challenging",
             "Tickets can be injected into processes without triggering typical authentication logs",
-            "Enables lateral movement to cloud-connected resources and hybrid environments"
+            "Enables lateral movement to cloud-connected resources and hybrid environments",
         ],
-        known_threat_actors=[
-            "APT29 (Cozy Bear)", "APT32", "BRONZE BUTLER"
-        ],
+        known_threat_actors=["APT29 (Cozy Bear)", "APT32", "BRONZE BUTLER"],
         recent_campaigns=[
             Campaign(
                 name="APT29 Kerberos Abuse",
                 year=2023,
                 description="APT29 used Kerberos ticket attacks for lateral movement across hybrid cloud environments",
-                reference_url="https://attack.mitre.org/groups/G0016/"
+                reference_url="https://attack.mitre.org/groups/G0016/",
             ),
             Campaign(
                 name="BRONZE BUTLER Forged Tickets",
                 year=2022,
                 description="Created forged TGT and TGS tickets for administrative persistence in enterprise networks",
-                reference_url="https://attack.mitre.org/groups/G0060/"
+                reference_url="https://attack.mitre.org/groups/G0060/",
             ),
             Campaign(
                 name="APT32 Remote Access",
                 year=2021,
                 description="Successfully gained remote access to cloud-connected systems via pass the ticket attacks",
-                reference_url="https://attack.mitre.org/groups/G0050/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0050/",
+            ),
         ],
         prevalence="moderate",
         trend="increasing",
@@ -83,13 +80,12 @@ TEMPLATE = RemediationTemplate(
             "Privilege escalation using forged or stolen administrative tickets",
             "Long-term persistent access via Golden Tickets",
             "Bypassing multi-factor authentication on Kerberos-authenticated systems",
-            "Access to cloud-integrated Active Directory services and resources"
+            "Access to cloud-integrated Active Directory services and resources",
         ],
         typical_attack_phase="lateral_movement",
         often_precedes=["T1021", "T1570", "T1087"],
-        often_follows=["T1003", "T1558"]
+        often_follows=["T1003", "T1558"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS Managed Microsoft AD Monitoring
         DetectionStrategy(
@@ -104,7 +100,7 @@ TEMPLATE = RemediationTemplate(
             aws_service="directory_service",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query=r'''fields @timestamp, @message, eventID, logon_type, auth_package
+                query=r"""fields @timestamp, @message, eventID, logon_type, auth_package
 | filter eventID in [4768, 4769, 4770, 4624, 4672]
 | parse @message /EventID=(?<event_id>\d+).*Account\sName:\s+(?<account>[^\s]+).*Client\sAddress:\s+(?<client_ip>[0-9\.]+)/
 | stats count(*) as event_count,
@@ -113,8 +109,8 @@ TEMPLATE = RemediationTemplate(
         latest(@timestamp) as last_seen
   by account, client_ip, bin(10m)
 | filter (event_id = "4769" and unique_events = 1) or event_count > 50
-| sort event_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort event_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Monitor AWS Managed Microsoft AD for Pass the Ticket attacks
 
 Parameters:
@@ -173,8 +169,8 @@ Resources:
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref SecurityAlertTopic''',
-                terraform_template='''# Monitor AWS Managed Microsoft AD for Pass the Ticket attacks
+            Resource: !Ref SecurityAlertTopic""",
+                terraform_template="""# Monitor AWS Managed Microsoft AD for Pass the Ticket attacks
 
 variable "directory_log_group" {
   type        = string
@@ -224,7 +220,7 @@ resource "aws_cloudwatch_metric_alarm" "pass_the_ticket" {
   threshold           = 5
   comparison_operator = "GreaterThanThreshold"
   alarm_actions       = [aws_sns_topic.pass_the_ticket_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Suspicious Kerberos Ticket Activity Detected",
                 alert_description_template=(
@@ -239,7 +235,7 @@ resource "aws_cloudwatch_metric_alarm" "pass_the_ticket" {
                     "Review the source IP addresses and verify they are expected for the account",
                     "Check for multiple service ticket requests in short time periods",
                     "Investigate if the account has been recently compromised or credentials dumped",
-                    "Review CloudTrail for API activity from affected accounts"
+                    "Review CloudTrail for API activity from affected accounts",
                 ],
                 containment_actions=[
                     "Reset the affected user account password immediately",
@@ -248,8 +244,8 @@ resource "aws_cloudwatch_metric_alarm" "pass_the_ticket" {
                     "Enable MFA for the affected account if not already enabled",
                     "Audit all systems accessed using suspicious tickets",
                     "Review and restrict lateral movement paths",
-                    "Implement privileged access workstation policies"
-                ]
+                    "Implement privileged access workstation policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal ticket request patterns for service accounts; exclude known automated systems",
@@ -261,10 +257,9 @@ resource "aws_cloudwatch_metric_alarm" "pass_the_ticket" {
             prerequisites=[
                 "AWS Managed Microsoft AD deployed",
                 "Security event logging enabled and sent to CloudWatch Logs",
-                "Windows Event IDs 4768, 4769, 4770, 4624 logged"
-            ]
+                "Windows Event IDs 4768, 4769, 4770, 4624 logged",
+            ],
         ),
-
         # Strategy 2: Hybrid Cloud Authentication Anomalies
         DetectionStrategy(
             strategy_id="t1550003-hybrid-auth-anomaly",
@@ -281,9 +276,9 @@ resource "aws_cloudwatch_metric_alarm" "pass_the_ticket" {
                 guardduty_finding_types=[
                     "UnauthorizedAccess:IAMUser/AnomalousBehavior",
                     "CredentialAccess:IAMUser/AnomalousBehavior",
-                    "InitialAccess:IAMUser/AnomalousBehavior"
+                    "InitialAccess:IAMUser/AnomalousBehavior",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect hybrid cloud authentication anomalies
 
 Parameters:
@@ -336,8 +331,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect hybrid cloud authentication anomalies
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect hybrid cloud authentication anomalies
 
 variable "alert_email" {
   type = string
@@ -394,7 +389,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Resource  = aws_sns_topic.hybrid_auth_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Hybrid Cloud Authentication Anomaly",
                 alert_description_template=(
@@ -409,7 +404,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Review geographic location of authentication",
                     "Check CloudTrail for all API activity from the federated session",
                     "Verify with on-premises AD logs for corresponding authentication events",
-                    "Look for signs of credential dumping on user's workstation"
+                    "Look for signs of credential dumping on user's workstation",
                 ],
                 containment_actions=[
                     "Terminate all active federated sessions for the affected user",
@@ -417,8 +412,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Revoke all Kerberos tickets in AD",
                     "Review and revoke any AWS STS sessions",
                     "Enable MFA enforcement for federated access if not configured",
-                    "Review trust relationship between AD and AWS"
-                ]
+                    "Review trust relationship between AD and AWS",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal authentication patterns for federated users; consider travelling employees",
@@ -427,9 +422,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$4 per million events analysed",
-            prerequisites=["GuardDuty enabled", "SAML or AD federation configured"]
+            prerequisites=["GuardDuty enabled", "SAML or AD federation configured"],
         ),
-
         # Strategy 3: Domain Controller API Access Monitoring
         DetectionStrategy(
             strategy_id="t1550003-dc-api-monitoring",
@@ -443,14 +437,14 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn, eventName, requestParameters, sourceIPAddress
+                query="""fields @timestamp, userIdentity.arn, eventName, requestParameters, sourceIPAddress
 | filter eventSource = "ds.amazonaws.com"
 | filter eventName in ["ResetUserPassword", "DescribeDirectories", "GetDirectoryLimits", "VerifyTrust"]
   or requestParameters.userName like /krbtgt|administrator/
 | stats count(*) as api_count by userIdentity.arn, eventName, sourceIPAddress, bin(10m)
 | filter api_count > 3
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Monitor Directory Service API for ticket manipulation
 
 Parameters:
@@ -498,8 +492,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       AlarmActions:
-        - !Ref SNSTopicArn''',
-                terraform_template='''# Monitor Directory Service API for ticket manipulation
+        - !Ref SNSTopicArn""",
+                terraform_template="""# Monitor Directory Service API for ticket manipulation
 
 variable "cloudtrail_log_group" {
   type = string
@@ -557,7 +551,7 @@ resource "aws_cloudwatch_metric_alarm" "suspicious_directory_ops" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Suspicious Directory Service Operation",
                 alert_description_template=(
@@ -572,7 +566,7 @@ resource "aws_cloudwatch_metric_alarm" "suspicious_directory_ops" {
                     "Verify the source IP is expected for this type of operation",
                     "Check for signs of DCSync or credential dumping on domain controllers",
                     "Review AD security event logs for corresponding events",
-                    "Audit who has permissions to reset directory passwords"
+                    "Audit who has permissions to reset directory passwords",
                 ],
                 containment_actions=[
                     "If unauthorised, immediately rotate KRBTGT password twice with delays",
@@ -580,8 +574,8 @@ resource "aws_cloudwatch_metric_alarm" "suspicious_directory_ops" {
                     "Review and restrict IAM policies for Directory Service access",
                     "Enable MFA requirement for sensitive directory operations",
                     "Audit all password reset operations in the last 30 days",
-                    "Implement SCPs to restrict directory modifications to specific roles"
-                ]
+                    "Implement SCPs to restrict directory modifications to specific roles",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Create exceptions for authorised directory management automation",
@@ -590,9 +584,11 @@ resource "aws_cloudwatch_metric_alarm" "suspicious_directory_ops" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled", "AWS Managed Microsoft AD or AD Connector"]
+            prerequisites=[
+                "CloudTrail enabled",
+                "AWS Managed Microsoft AD or AD Connector",
+            ],
         ),
-
         # Strategy 4: GCP Identity-Aware Proxy Anomalies
         DetectionStrategy(
             strategy_id="t1550003-gcp-iap-anomaly",
@@ -607,12 +603,12 @@ resource "aws_cloudwatch_metric_alarm" "suspicious_directory_ops" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="cloud_run_revision" OR resource.type="app_engine_application"
+                gcp_logging_query="""resource.type="cloud_run_revision" OR resource.type="app_engine_application"
 protoPayload.authenticationInfo.principalEmail!=""
 (protoPayload.response.status="UNAUTHENTICATED"
 OR protoPayload.response.status="PERMISSION_DENIED"
-OR jsonPayload.message=~"authentication.*failed|ticket.*invalid|token.*expired")''',
-                gcp_terraform_template='''# GCP: Detect IAP authentication anomalies
+OR jsonPayload.message=~"authentication.*failed|ticket.*invalid|token.*expired")""",
+                gcp_terraform_template="""# GCP: Detect IAP authentication anomalies
 
 variable "project_id" {
   type        = string
@@ -694,7 +690,7 @@ resource "google_monitoring_alert_policy" "iap_auth_anomalies" {
     content   = "Multiple authentication anomalies detected. Investigate for stolen tickets or tokens."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: IAP Authentication Anomaly",
                 alert_description_template=(
@@ -709,7 +705,7 @@ resource "google_monitoring_alert_policy" "iap_auth_anomalies" {
                     "Review recent successful authentications for the user",
                     "Look for patterns of authentication attempts across multiple services",
                     "Check if the user reported any suspicious activity",
-                    "Review workspace or Cloud Identity logs for account compromise indicators"
+                    "Review workspace or Cloud Identity logs for account compromise indicators",
                 ],
                 containment_actions=[
                     "Suspend the affected user account temporarily",
@@ -718,8 +714,8 @@ resource "google_monitoring_alert_policy" "iap_auth_anomalies" {
                     "Enable 2FA if not already configured",
                     "Review IAM bindings for the affected user",
                     "Audit resources accessed by the user in the last 24 hours",
-                    "Implement context-aware access policies with additional verification"
-                ]
+                    "Implement context-aware access policies with additional verification",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal authentication patterns; account for mobile users and VPNs",
@@ -728,9 +724,8 @@ resource "google_monitoring_alert_policy" "iap_auth_anomalies" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Identity-Aware Proxy enabled", "Cloud Logging API enabled"]
+            prerequisites=["Identity-Aware Proxy enabled", "Cloud Logging API enabled"],
         ),
-
         # Strategy 5: Windows EC2 Instance Authentication Monitoring
         DetectionStrategy(
             strategy_id="t1550003-ec2-windows-auth",
@@ -743,13 +738,13 @@ resource "google_monitoring_alert_policy" "iap_auth_anomalies" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query=r'''fields @timestamp, @message, instanceId, eventID, process, commandLine
+                query=r"""fields @timestamp, @message, instanceId, eventID, process, commandLine
 | filter eventID in [4768, 4769, 4770] or @message like /mimikatz|kerberos::ptt|sekurlsa::tickets|Invoke-Mimikatz|lsadump/
 | parse @message /EventID=(?<event_id>\d+).*Account:\s+(?<account>[^\s]+).*Service:\s+(?<service>[^\s]+)/
 | stats count(*) as ticket_events, count_distinct(service) as unique_services by instanceId, account, bin(5m)
 | filter ticket_events > 10 or unique_services > 5
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Monitor Windows EC2 for Kerberos ticket injection
 
 Parameters:
@@ -797,8 +792,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       AlarmActions:
-        - !Ref SNSTopicArn''',
-                terraform_template='''# Monitor Windows EC2 for Kerberos ticket injection
+        - !Ref SNSTopicArn""",
+                terraform_template="""# Monitor Windows EC2 for Kerberos ticket injection
 
 variable "windows_log_group" {
   type    = string
@@ -857,7 +852,7 @@ resource "aws_cloudwatch_metric_alarm" "ticket_injection" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Kerberos Ticket Injection Detected",
                 alert_description_template=(
@@ -872,7 +867,7 @@ resource "aws_cloudwatch_metric_alarm" "ticket_injection" {
                     "Identify which accounts had tickets injected",
                     "Check for lateral movement attempts from the instance",
                     "Review network connections for communication with domain controllers",
-                    "Examine CloudTrail for AWS API calls made using instance credentials"
+                    "Examine CloudTrail for AWS API calls made using instance credentials",
                 ],
                 containment_actions=[
                     "Isolate the instance from the network immediately",
@@ -881,8 +876,8 @@ resource "aws_cloudwatch_metric_alarm" "ticket_injection" {
                     "Revoke all Kerberos tickets for affected accounts in Active Directory",
                     "Terminate the instance if compromise is confirmed",
                     "Review and reset KRBTGT account password if Golden Ticket suspected",
-                    "Audit all domain-joined instances for similar activity"
-                ]
+                    "Audit all domain-joined instances for similar activity",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised security testing; exclude known administrative tools with approval",
@@ -894,18 +889,17 @@ resource "aws_cloudwatch_metric_alarm" "ticket_injection" {
             prerequisites=[
                 "Windows EC2 instances domain-joined",
                 "CloudWatch Logs Agent configured to send Security event logs",
-                "Windows Event IDs 4768, 4769, 4770 configured for logging"
-            ]
-        )
+                "Windows Event IDs 4768, 4769, 4770 configured for logging",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1550003-ec2-windows-auth",
         "t1550003-aws-mad-monitoring",
         "t1550003-dc-api-monitoring",
         "t1550003-hybrid-auth-anomaly",
-        "t1550003-gcp-iap-anomaly"
+        "t1550003-gcp-iap-anomaly",
     ],
     total_effort_hours=8.0,
-    coverage_improvement="+25% improvement for Lateral Movement and Defence Evasion tactics"
+    coverage_improvement="+25% improvement for Lateral Movement and Defence Evasion tactics",
 )

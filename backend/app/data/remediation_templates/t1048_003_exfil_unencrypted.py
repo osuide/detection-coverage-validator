@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Exfiltration Over Unencrypted Non-C2 Protocol",
     tactic_ids=["TA0010"],
     mitre_url="https://attack.mitre.org/techniques/T1048/003/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries steal data by transmitting it through unencrypted network protocols "
@@ -39,38 +38,45 @@ TEMPLATE = RemediationTemplate(
             "Data can be encoded or obfuscated without encryption",
             "Blends with legitimate protocol usage",
             "Uses readily available tools (curl, wget, FTP clients)",
-            "Separate exfiltration channel reduces C2 detection risk"
+            "Separate exfiltration channel reduces C2 detection risk",
         ],
         known_threat_actors=[
-            "APT32", "APT33", "APT41", "Lazarus Group",
-            "FIN6", "FIN8", "OilRig", "Mustang Panda",
-            "Salt Typhoon", "Wizard Spider"
+            "APT32",
+            "APT33",
+            "APT41",
+            "Lazarus Group",
+            "FIN6",
+            "FIN8",
+            "OilRig",
+            "Mustang Panda",
+            "Salt Typhoon",
+            "Wizard Spider",
         ],
         recent_campaigns=[
             Campaign(
                 name="APT32 DNS Subdomain Encoding",
                 year=2024,
                 description="APT32 exfiltrated data via DNS lookups by encoding and prepending it as subdomains",
-                reference_url="https://attack.mitre.org/groups/G0050/"
+                reference_url="https://attack.mitre.org/groups/G0050/",
             ),
             Campaign(
                 name="C0017 DNS Exfiltration",
                 year=2024,
                 description="Campaign C0017 involved exfiltrating victim data via DNS lookups using subdomain encoding",
-                reference_url="https://attack.mitre.org/campaigns/"
+                reference_url="https://attack.mitre.org/campaigns/",
             ),
             Campaign(
                 name="Agent Tesla Multi-Protocol Exfil",
                 year=2023,
                 description="Agent Tesla used SMTP, FTP, and HTTP exfiltration routines to steal credentials and system information",
-                reference_url="https://attack.mitre.org/software/S0331/"
+                reference_url="https://attack.mitre.org/software/S0331/",
             ),
             Campaign(
                 name="Thrip WinSCP Transfers",
                 year=2023,
                 description="Thrip group used WinSCP for FTP-based file transfers to exfiltrate data from compromised networks",
-                reference_url="https://attack.mitre.org/groups/G0076/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0076/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -88,13 +94,12 @@ TEMPLATE = RemediationTemplate(
             "Regulatory fines and compliance violations (GDPR, HIPAA)",
             "Reputational damage and loss of customer trust",
             "Operational disruption from incident response activities",
-            "Potential legal liability from data exposure"
+            "Potential legal liability from data exposure",
         ],
         typical_attack_phase="exfiltration",
         often_precedes=[],
-        often_follows=["T1530", "T1552.001", "T1005", "T1074", "T1560"]
+        often_follows=["T1530", "T1552.001", "T1005", "T1074", "T1560"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1048.003-aws-http",
@@ -104,14 +109,14 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcAddr, dstAddr, dstPort, bytes, action
+                query="""fields @timestamp, srcAddr, dstAddr, dstPort, bytes, action
 | filter dstPort = 80 and action = "ACCEPT"
 | filter dstAddr not like /^10\\./ and dstAddr not like /^172\\.1[6-9]\\./
 | filter dstAddr not like /^192\\.168\\./
 | stats sum(bytes) as total_bytes, count(*) as connections by srcAddr, dstAddr, bin(1h)
 | filter total_bytes > 10485760
-| sort total_bytes desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort total_bytes desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Unencrypted HTTP exfiltration detection via VPC Flow Logs
 
 Parameters:
@@ -159,8 +164,8 @@ Resources:
       EvaluationPeriods: 1
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching''',
-                terraform_template='''# Unencrypted HTTP exfiltration detection via VPC Flow Logs
+      TreatMissingData: notBreaching""",
+                terraform_template="""# Unencrypted HTTP exfiltration detection via VPC Flow Logs
 
 variable "alert_email" {
   type        = string
@@ -211,7 +216,7 @@ resource "aws_cloudwatch_metric_alarm" "http_exfil" {
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.http_exfil_alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Unencrypted HTTP Exfiltration Detected",
                 alert_description_template="Large unencrypted HTTP transfer detected from {srcAddr} to {dstAddr}: {total_bytes} bytes over {connections} connections.",
@@ -222,7 +227,7 @@ resource "aws_cloudwatch_metric_alarm" "http_exfil" {
                     "Check for file access patterns preceding the transfer",
                     "Correlate with authentication and user activity logs",
                     "Review CloudTrail for API calls from the instance",
-                    "Analyse transferred data if possible (packet capture)"
+                    "Analyse transferred data if possible (packet capture)",
                 ],
                 containment_actions=[
                     "Isolate the source instance from the network",
@@ -230,8 +235,8 @@ resource "aws_cloudwatch_metric_alarm" "http_exfil" {
                     "Revoke instance IAM role credentials",
                     "Create VPC endpoint policies to restrict external access",
                     "Enable TLS inspection at network perimeter",
-                    "Review and restrict outbound security group rules"
-                ]
+                    "Review and restrict outbound security group rules",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known HTTP endpoints (package mirrors, update servers); exclude CDN and monitoring endpoints; adjust byte threshold based on environment",
@@ -240,9 +245,8 @@ resource "aws_cloudwatch_metric_alarm" "http_exfil" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-20",
-            prerequisites=["VPC Flow Logs enabled and sent to CloudWatch Logs"]
+            prerequisites=["VPC Flow Logs enabled and sent to CloudWatch Logs"],
         ),
-
         DetectionStrategy(
             strategy_id="t1048.003-aws-ftp",
             name="AWS FTP Exfiltration Detection",
@@ -251,12 +255,12 @@ resource "aws_cloudwatch_metric_alarm" "http_exfil" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcAddr, dstAddr, dstPort, bytes, action
+                query="""fields @timestamp, srcAddr, dstAddr, dstPort, bytes, action
 | filter dstPort in [20, 21, 989, 990] and action = "ACCEPT"
 | stats sum(bytes) as total_bytes, count(*) as sessions by srcAddr, dstAddr, dstPort, bin(1h)
 | filter total_bytes > 5242880
-| sort total_bytes desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort total_bytes desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: FTP exfiltration detection via VPC Flow Logs
 
 Parameters:
@@ -304,8 +308,8 @@ Resources:
       EvaluationPeriods: 1
       AlarmActions:
         - !Ref FTPAlertTopic
-      TreatMissingData: notBreaching''',
-                terraform_template='''# FTP exfiltration detection via VPC Flow Logs
+      TreatMissingData: notBreaching""",
+                terraform_template="""# FTP exfiltration detection via VPC Flow Logs
 
 variable "alert_email" {
   type        = string
@@ -356,7 +360,7 @@ resource "aws_cloudwatch_metric_alarm" "ftp_exfil" {
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.ftp_exfil_alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="FTP Data Exfiltration Detected",
                 alert_description_template="FTP transfer detected from {srcAddr} to {dstAddr}:{dstPort} - {total_bytes} bytes across {sessions} sessions.",
@@ -367,7 +371,7 @@ resource "aws_cloudwatch_metric_alarm" "ftp_exfil" {
                     "Check for compromised credentials or malware",
                     "Examine files accessed before transfer",
                     "Review authentication logs for suspicious activity",
-                    "Analyse transfer timing and patterns"
+                    "Analyse transfer timing and patterns",
                 ],
                 containment_actions=[
                     "Isolate the source instance immediately",
@@ -375,8 +379,8 @@ resource "aws_cloudwatch_metric_alarm" "ftp_exfil" {
                     "Disable FTP services on the instance",
                     "Revoke instance credentials and rotate keys",
                     "Implement network ACLs to block FTP traffic",
-                    "Review and restrict outbound connectivity"
-                ]
+                    "Review and restrict outbound connectivity",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist known FTP servers for legitimate backups or file transfers; exclude scheduled transfer jobs",
@@ -385,9 +389,8 @@ resource "aws_cloudwatch_metric_alarm" "ftp_exfil" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-20",
-            prerequisites=["VPC Flow Logs enabled"]
+            prerequisites=["VPC Flow Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1048.003-aws-dns",
             name="AWS DNS Tunnelling Detection",
@@ -396,15 +399,15 @@ resource "aws_cloudwatch_metric_alarm" "ftp_exfil" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, query_name, query_type, srcaddr, rcode
+                query="""fields @timestamp, query_name, query_type, srcaddr, rcode
 | filter query_type = "TXT" or length(query_name) > 50
 | stats count(*) as query_count,
         avg(length(query_name)) as avg_length,
         count_distinct(query_name) as unique_queries
         by srcaddr, bin(5m)
 | filter query_count > 100 or avg_length > 40
-| sort query_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort query_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: DNS tunnelling detection via Route 53 query logging
 
 Parameters:
@@ -462,8 +465,8 @@ Resources:
       DisplayName: DNS Tunnelling Alerts
       Subscription:
         - Protocol: email
-          Endpoint: !Ref AlertEmail''',
-                terraform_template='''# DNS tunnelling detection via Route 53 query logging
+          Endpoint: !Ref AlertEmail""",
+                terraform_template="""# DNS tunnelling detection via Route 53 query logging
 
 variable "alert_email" {
   type        = string
@@ -522,7 +525,7 @@ resource "aws_cloudwatch_metric_alarm" "dns_tunnel" {
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.dns_alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="DNS Tunnelling Activity Detected",
                 alert_description_template="Suspicious DNS query patterns from {srcaddr}: {query_count} queries with average length {avg_length} characters.",
@@ -533,7 +536,7 @@ resource "aws_cloudwatch_metric_alarm" "dns_tunnel" {
                     "Examine destination DNS servers",
                     "Analyse query types (particularly TXT records)",
                     "Correlate with other network and system activity",
-                    "Review running processes on source instance"
+                    "Review running processes on source instance",
                 ],
                 containment_actions=[
                     "Isolate the source instance from network",
@@ -541,8 +544,8 @@ resource "aws_cloudwatch_metric_alarm" "dns_tunnel" {
                     "Implement DNS firewall rules",
                     "Restrict DNS resolver configuration",
                     "Block queries to suspicious domains",
-                    "Review and update Route 53 Resolver rules"
-                ]
+                    "Review and update Route 53 Resolver rules",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude legitimate long query names (DMARC, SPF records); whitelist known services with TXT queries; adjust query length and frequency thresholds",
@@ -551,9 +554,8 @@ resource "aws_cloudwatch_metric_alarm" "dns_tunnel" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$20-35",
-            prerequisites=["Route 53 Resolver in use", "VPC DNS query logging enabled"]
+            prerequisites=["Route 53 Resolver in use", "VPC DNS query logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1048.003-gcp-http",
             name="GCP Unencrypted HTTP Transfer Detection",
@@ -569,7 +571,7 @@ jsonPayload.bytes_sent > 10485760
 NOT jsonPayload.connection.dest_ip=~"^10\\."
 NOT jsonPayload.connection.dest_ip=~"^172\\.1[6-9]\\."
 NOT jsonPayload.connection.dest_ip=~"^192\\.168\\."''',
-                gcp_terraform_template='''# GCP: Unencrypted HTTP exfiltration detection
+                gcp_terraform_template="""# GCP: Unencrypted HTTP exfiltration detection
 
 variable "project_id" {
   type        = string
@@ -630,7 +632,7 @@ resource "google_monitoring_alert_policy" "http_exfil" {
     content   = "Large unencrypted HTTP transfer detected. Investigate source instance for potential data exfiltration."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Unencrypted HTTP Exfiltration Detected",
                 alert_description_template="Large unencrypted HTTP transfer detected from GCP instance to external destination.",
@@ -641,7 +643,7 @@ resource "google_monitoring_alert_policy" "http_exfil" {
                     "Check for unusual process activity",
                     "Review Cloud Audit Logs for API activity",
                     "Analyse network traffic patterns",
-                    "Check for data access preceding transfer"
+                    "Check for data access preceding transfer",
                 ],
                 containment_actions=[
                     "Isolate the source instance using firewall rules",
@@ -649,8 +651,8 @@ resource "google_monitoring_alert_policy" "http_exfil" {
                     "Revoke instance service account credentials",
                     "Implement VPC Service Controls",
                     "Enable Cloud Armor for traffic inspection",
-                    "Review and restrict firewall egress rules"
-                ]
+                    "Review and restrict firewall egress rules",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known HTTP endpoints; exclude package repositories and update servers; adjust byte threshold",
@@ -659,9 +661,11 @@ resource "google_monitoring_alert_policy" "http_exfil" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$15-25",
-            prerequisites=["VPC Flow Logs enabled on subnets", "Cloud Logging API enabled"]
+            prerequisites=[
+                "VPC Flow Logs enabled on subnets",
+                "Cloud Logging API enabled",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1048.003-gcp-dns",
             name="GCP DNS Tunnelling Detection",
@@ -674,7 +678,7 @@ resource "google_monitoring_alert_policy" "http_exfil" {
                 gcp_logging_query='''resource.type="dns_query"
 (LENGTH(protoPayload.queryName) > 50 OR protoPayload.queryType="TXT")
 protoPayload.responseCode="NOERROR"''',
-                gcp_terraform_template='''# GCP: DNS tunnelling detection
+                gcp_terraform_template="""# GCP: DNS tunnelling detection
 
 variable "project_id" {
   type        = string
@@ -747,7 +751,7 @@ resource "google_monitoring_alert_policy" "dns_tunnel" {
     content   = "Suspicious DNS query patterns detected. Potential DNS tunnelling for data exfiltration."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: DNS Tunnelling Activity Detected",
                 alert_description_template="Suspicious DNS query patterns detected indicating potential DNS tunnelling exfiltration.",
@@ -758,7 +762,7 @@ resource "google_monitoring_alert_policy" "dns_tunnel" {
                     "Examine destination DNS servers",
                     "Check for TXT record queries with unusual content",
                     "Correlate with VPC Flow Logs",
-                    "Review instance workload and processes"
+                    "Review instance workload and processes",
                 ],
                 containment_actions=[
                     "Isolate source instances via firewall rules",
@@ -766,8 +770,8 @@ resource "google_monitoring_alert_policy" "dns_tunnel" {
                     "Implement DNS firewall policies",
                     "Restrict DNS resolver configuration",
                     "Review and update VPC DNS settings",
-                    "Enable Cloud IDS for DNS inspection"
-                ]
+                    "Enable Cloud IDS for DNS inspection",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude legitimate services with long DNS names (DMARC, SPF); whitelist known TXT query services; adjust thresholds",
@@ -776,17 +780,19 @@ resource "google_monitoring_alert_policy" "dns_tunnel" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$20-30",
-            prerequisites=["Cloud DNS managed zone with logging enabled", "Cloud Logging API enabled"]
-        )
+            prerequisites=[
+                "Cloud DNS managed zone with logging enabled",
+                "Cloud Logging API enabled",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1048.003-aws-http",
         "t1048.003-aws-ftp",
         "t1048.003-aws-dns",
         "t1048.003-gcp-http",
-        "t1048.003-gcp-dns"
+        "t1048.003-gcp-dns",
     ],
     total_effort_hours=7.5,
-    coverage_improvement="+22% improvement for Exfiltration tactic (T1048.003)"
+    coverage_improvement="+22% improvement for Exfiltration tactic (T1048.003)",
 )

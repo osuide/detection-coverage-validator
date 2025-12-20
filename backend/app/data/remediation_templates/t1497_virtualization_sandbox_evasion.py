@@ -21,7 +21,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Virtualization/Sandbox Evasion",
     tactic_ids=["TA0005", "TA0007"],
     mitre_url="https://attack.mitre.org/techniques/T1497/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries may employ methods to detect and avoid virtualization and analysis environments. "
@@ -35,7 +34,7 @@ TEMPLATE = RemediationTemplate(
             "Enables selective payload delivery to real targets only",
             "Prevents security tools from observing malicious behaviour",
             "Reduces likelihood of malware samples being analysed",
-            "Enables attackers to avoid triggering alerts in test environments"
+            "Enables attackers to avoid triggering alerts in test environments",
         ],
         known_threat_actors=["Darkhotel", "Saint Bear", "Contagious Interview"],
         recent_campaigns=[
@@ -43,20 +42,20 @@ TEMPLATE = RemediationTemplate(
                 name="Contagious Interview",
                 year=2024,
                 description="Social engineering campaign that requested victims disable Docker containers to evade detection",
-                reference_url="https://attack.mitre.org/groups/G1052/"
+                reference_url="https://attack.mitre.org/groups/G1052/",
             ),
             Campaign(
                 name="Raspberry Robin Worm",
                 year=2022,
                 description="USB worm that checks for virtualised environments and only delivers real payload outside VMs",
-                reference_url="https://www.microsoft.com/security/blog/2022/10/27/raspberry-robin-worm-part-of-larger-ecosystem/"
+                reference_url="https://www.microsoft.com/security/blog/2022/10/27/raspberry-robin-worm-part-of-larger-ecosystem/",
             ),
             Campaign(
                 name="Darkhotel APT",
                 year=2020,
                 description="APT group using anti-VM checks to avoid sandbox detection in targeted hotel Wi-Fi attacks",
-                reference_url="https://attack.mitre.org/groups/G0012/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0012/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -72,13 +71,12 @@ TEMPLATE = RemediationTemplate(
             "Delayed threat detection and response",
             "Incomplete security telemetry and forensic evidence",
             "Potential for undetected malware execution in production",
-            "Increased incident response complexity"
+            "Increased incident response complexity",
         ],
         typical_attack_phase="defence_evasion",
         often_precedes=["T1059", "T1053", "T1105"],
-        often_follows=["T1204", "T1566"]
+        often_follows=["T1204", "T1566"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - Lambda Anti-Sandbox Behaviour
         DetectionStrategy(
@@ -92,15 +90,15 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message, @logStream
+                query="""fields @timestamp, @message, @logStream
 | filter @message like /(?i)(cpu|processor|vmware|virtualbox|sandbox|hypervisor|xen|kvm)/
   or @message like /(?i)(sleep|delay|wait|timer)/
   or @message like /(?i)(docker|container|virtualization)/
 | filter @message not like /normal-application-pattern/
 | stats count(*) as evasion_checks by @logStream, bin(5m) as time_window
 | filter evasion_checks >= 3
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Lambda anti-sandbox behaviour detection for T1497
 
 Parameters:
@@ -150,8 +148,8 @@ Resources:
         fields @timestamp, @message, @logStream
         | filter @message like /(?i)(cpu|vmware|virtualbox|sandbox|hypervisor|docker)/
         | stats count(*) by @logStream, bin(5m)
-        | sort @timestamp desc''',
-                terraform_template='''# Lambda anti-sandbox behaviour detection for T1497
+        | sort @timestamp desc""",
+                terraform_template="""# Lambda anti-sandbox behaviour detection for T1497
 
 variable "lambda_log_group" {
   type        = string
@@ -202,7 +200,7 @@ resource "aws_cloudwatch_query_definition" "sandbox_evasion" {
     | stats count(*) by @logStream, bin(5m)
     | sort @timestamp desc
   EOT
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Lambda Anti-Sandbox Behaviour Detected",
                 alert_description_template=(
@@ -216,15 +214,15 @@ resource "aws_cloudwatch_query_definition" "sandbox_evasion" {
                     "Check function's execution history and invocation patterns",
                     "Analyse what the function does after environment checks",
                     "Review IAM permissions granted to the function",
-                    "Check for unusual network connections or API calls"
+                    "Check for unusual network connections or API calls",
                 ],
                 containment_actions=[
                     "Disable or quarantine the suspicious Lambda function",
                     "Review and revoke excessive IAM permissions",
                     "Analyse function code for malicious payloads",
                     "Check for similar functions deployed by the same principal",
-                    "Enable AWS Lambda Insights for enhanced monitoring"
-                ]
+                    "Enable AWS Lambda Insights for enhanced monitoring",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate infrastructure monitoring functions; tune keyword patterns",
@@ -233,9 +231,8 @@ resource "aws_cloudwatch_query_definition" "sandbox_evasion" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Lambda function logs sent to CloudWatch"]
+            prerequisites=["Lambda function logs sent to CloudWatch"],
         ),
-
         # Strategy 2: AWS - EC2 Instance Metadata Queries
         DetectionStrategy(
             strategy_id="t1497-aws-metadata-checks",
@@ -248,15 +245,15 @@ resource "aws_cloudwatch_query_definition" "sandbox_evasion" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn as user, sourceIPAddress,
+                query="""fields @timestamp, userIdentity.arn as user, sourceIPAddress,
        requestParameters.attribute as metadata_attribute
 | filter eventName = "DescribeInstanceAttribute"
   or eventName = "DescribeInstances"
   or (eventSource = "ec2.amazonaws.com" and requestParameters.attribute like /(?i)(instanceType|hypervisor|platform)/)
 | stats count(*) as check_count by sourceIPAddress, user, bin(5m) as time_window
 | filter check_count >= 10
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: EC2 metadata environment check detection for T1497
 
 Parameters:
@@ -304,8 +301,8 @@ Resources:
         fields @timestamp, userIdentity.arn, sourceIPAddress, requestParameters.attribute
         | filter eventName = "DescribeInstanceAttribute" or eventName = "DescribeInstances"
         | stats count(*) by sourceIPAddress, userIdentity.arn, bin(5m)
-        | sort @timestamp desc''',
-                terraform_template='''# EC2 metadata environment check detection for T1497
+        | sort @timestamp desc""",
+                terraform_template="""# EC2 metadata environment check detection for T1497
 
 variable "cloudtrail_log_group" {
   type = string
@@ -353,7 +350,7 @@ resource "aws_cloudwatch_query_definition" "metadata_checks" {
     | stats count(*) by sourceIPAddress, userIdentity.arn, bin(5m)
     | sort @timestamp desc
   EOT
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="EC2 Environment Check Pattern Detected",
                 alert_description_template=(
@@ -366,15 +363,15 @@ resource "aws_cloudwatch_query_definition" "metadata_checks" {
                     "Check if the source IP matches known workloads",
                     "Look for subsequent suspicious activity from the same source",
                     "Review the IAM principal's other recent API calls",
-                    "Check for any new instances launched around the same time"
+                    "Check for any new instances launched around the same time",
                 ],
                 containment_actions=[
                     "Investigate the source instance or principal",
                     "Review security group rules for the source",
                     "Check for signs of compromise on the querying instance",
                     "Consider isolating the instance for forensic analysis",
-                    "Enable VPC Flow Logs for network analysis"
-                ]
+                    "Enable VPC Flow Logs for network analysis",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal infrastructure automation; exclude monitoring tools",
@@ -383,9 +380,8 @@ resource "aws_cloudwatch_query_definition" "metadata_checks" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["CloudTrail enabled", "CloudTrail logs in CloudWatch"]
+            prerequisites=["CloudTrail enabled", "CloudTrail logs in CloudWatch"],
         ),
-
         # Strategy 3: AWS - Unusual Timing Delays
         DetectionStrategy(
             strategy_id="t1497-aws-timing-delays",
@@ -398,14 +394,14 @@ resource "aws_cloudwatch_query_definition" "metadata_checks" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @duration, @billedDuration, @message, @logStream
+                query="""fields @timestamp, @duration, @billedDuration, @message, @logStream
 | filter @type = "REPORT"
 | filter @duration > 60000 and @message not like /normal-long-running/
 | stats avg(@duration) as avg_duration, max(@duration) as max_duration,
   count(*) as invocation_count by @logStream, bin(1h) as time_window
 | filter max_duration > 120000 or (invocation_count > 5 and avg_duration > 60000)
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Time-based evasion detection for Lambda functions
 
 Parameters:
@@ -456,8 +452,8 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanOrEqualToThreshold
       AlarmActions:
-        - !Ref SNSTopicArn''',
-                terraform_template='''# Time-based evasion detection for Lambda functions
+        - !Ref SNSTopicArn""",
+                terraform_template="""# Time-based evasion detection for Lambda functions
 
 variable "lambda_log_group" {
   type = string
@@ -508,7 +504,7 @@ resource "aws_cloudwatch_metric_alarm" "long_execution" {
   statistic           = "Sum"
   threshold           = 5
   alarm_actions       = [var.sns_topic_arn]
-}''',
+}""",
                 alert_severity="low",
                 alert_title="Time-Based Evasion Pattern Detected",
                 alert_description_template=(
@@ -522,14 +518,14 @@ resource "aws_cloudwatch_metric_alarm" "long_execution" {
                     "Analyse what the function does after delays",
                     "Compare timing patterns with known-good behaviour",
                     "Review function deployment history",
-                    "Check for code obfuscation or unusual logic"
+                    "Check for code obfuscation or unusual logic",
                 ],
                 containment_actions=[
                     "Review and analyse the function's code",
                     "Monitor for subsequent malicious activity",
                     "Consider disabling the function pending investigation",
-                    "Review IAM permissions and execution role"
-                ]
+                    "Review IAM permissions and execution role",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Baseline normal function durations; whitelist legitimate long-running workloads",
@@ -538,9 +534,8 @@ resource "aws_cloudwatch_metric_alarm" "long_execution" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-15",
-            prerequisites=["Lambda execution logs in CloudWatch"]
+            prerequisites=["Lambda execution logs in CloudWatch"],
         ),
-
         # Strategy 4: GCP - Compute Engine Metadata Checks
         DetectionStrategy(
             strategy_id="t1497-gcp-metadata-checks",
@@ -557,7 +552,7 @@ resource "aws_cloudwatch_metric_alarm" "long_execution" {
                 gcp_logging_query='''resource.type="gce_instance"
 protoPayload.methodName=~".*instances.get.*|.*instances.describe.*"
 protoPayload.metadata.@type="type.googleapis.com/google.cloud.audit.AuditLog"''',
-                gcp_terraform_template='''# GCP: Compute Engine metadata environment check detection
+                gcp_terraform_template="""# GCP: Compute Engine metadata environment check detection
 
 variable "project_id" {
   type = string
@@ -632,7 +627,7 @@ resource "google_monitoring_alert_policy" "metadata_checks" {
       4. Analyse running processes on the instance
     EOT
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Compute Engine Environment Check Pattern",
                 alert_description_template=(
@@ -645,15 +640,15 @@ resource "google_monitoring_alert_policy" "metadata_checks" {
                     "Check instance startup scripts and running processes",
                     "Look for subsequent API calls or network activity",
                     "Review service account permissions",
-                    "Analyse instance creation and configuration history"
+                    "Analyse instance creation and configuration history",
                 ],
                 containment_actions=[
                     "Investigate the instance for signs of compromise",
                     "Review instance IAM bindings and service account",
                     "Consider isolating the instance for forensic analysis",
                     "Enable VPC Flow Logs for network analysis",
-                    "Review and restrict metadata server access"
-                ]
+                    "Review and restrict metadata server access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal infrastructure automation; exclude monitoring workloads",
@@ -662,9 +657,8 @@ resource "google_monitoring_alert_policy" "metadata_checks" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["Cloud Audit Logs enabled for Compute Engine"]
+            prerequisites=["Cloud Audit Logs enabled for Compute Engine"],
         ),
-
         # Strategy 5: GCP - Cloud Functions Environment Checks
         DetectionStrategy(
             strategy_id="t1497-gcp-function-evasion",
@@ -681,7 +675,7 @@ resource "google_monitoring_alert_policy" "metadata_checks" {
                 gcp_logging_query='''resource.type="cloud_function"
 textPayload=~"(?i)(cpu|processor|vmware|virtualbox|sandbox|hypervisor|xen|kvm|docker|container|virtualization)"
 severity>="WARNING"''',
-                gcp_terraform_template='''# GCP: Cloud Functions anti-sandbox behaviour detection
+                gcp_terraform_template="""# GCP: Cloud Functions anti-sandbox behaviour detection
 
 variable "project_id" {
   type = string
@@ -758,7 +752,7 @@ resource "google_monitoring_alert_policy" "function_evasion" {
       4. Analyse what occurs after environment checks
     EOT
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Cloud Function Anti-Sandbox Behaviour",
                 alert_description_template=(
@@ -772,7 +766,7 @@ resource "google_monitoring_alert_policy" "function_evasion" {
                     "Check function invocation logs and patterns",
                     "Analyse what the function does after environment checks",
                     "Review IAM bindings and service account permissions",
-                    "Check for unusual network connections or API calls"
+                    "Check for unusual network connections or API calls",
                 ],
                 containment_actions=[
                     "Disable or delete the suspicious Cloud Function",
@@ -780,8 +774,8 @@ resource "google_monitoring_alert_policy" "function_evasion" {
                     "Analyse function code for malicious payloads",
                     "Check for similar functions deployed by the same principal",
                     "Review Cloud Build history if applicable",
-                    "Enable Cloud Functions detailed monitoring"
-                ]
+                    "Enable Cloud Functions detailed monitoring",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate system monitoring functions; adjust keyword patterns",
@@ -790,17 +784,16 @@ resource "google_monitoring_alert_policy" "function_evasion" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["Cloud Logging enabled for Cloud Functions"]
-        )
+            prerequisites=["Cloud Logging enabled for Cloud Functions"],
+        ),
     ],
-
     recommended_order=[
         "t1497-aws-lambda-evasion",
         "t1497-gcp-function-evasion",
         "t1497-aws-metadata-checks",
         "t1497-gcp-metadata-checks",
-        "t1497-aws-timing-delays"
+        "t1497-aws-timing-delays",
     ],
     total_effort_hours=9.0,
-    coverage_improvement="+15% improvement for Defence Evasion tactic"
+    coverage_improvement="+15% improvement for Defence Evasion tactic",
 )

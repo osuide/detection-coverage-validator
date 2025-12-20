@@ -7,10 +7,23 @@ from app.models.mapping import DetectionMapping
 from app.models.scan import Scan, ScanStatus
 from app.models.coverage import CoverageSnapshot
 from app.models.schedule import ScanSchedule, ScheduleFrequency
-from app.models.alert import AlertConfig, AlertHistory, AlertType, AlertSeverity, NotificationChannel
+from app.models.alert import (
+    AlertConfig,
+    AlertHistory,
+    AlertType,
+    AlertSeverity,
+    NotificationChannel,
+)
 
 # Import billing and security BEFORE user (for relationship resolution)
-from app.models.billing import Subscription, Invoice, AccountTier, SubscriptionStatus, TIER_LIMITS, STRIPE_PRICES
+from app.models.billing import (
+    Subscription,
+    Invoice,
+    AccountTier,
+    SubscriptionStatus,
+    TIER_LIMITS,
+    STRIPE_PRICES,
+)
 from app.models.security import OrganizationSecuritySettings, VerifiedDomain
 
 from app.models.user import (

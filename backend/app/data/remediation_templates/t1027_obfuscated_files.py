@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Obfuscated Files or Information",
     tactic_ids=["TA0005"],  # Defense Evasion
     mitre_url="https://attack.mitre.org/techniques/T1027/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries conceal executable files or data through encryption, encoding, "
@@ -38,31 +37,37 @@ TEMPLATE = RemediationTemplate(
             "Enables payload staging without triggering security alerts",
             "Obfuscates command-line activity to avoid logging detection",
             "Prevents analysis of malicious tools and scripts",
-            "Facilitates multi-stage attacks by hiding subsequent payloads"
+            "Facilitates multi-stage attacks by hiding subsequent payloads",
         ],
         known_threat_actors=[
-            "Sandworm Team", "APT37", "APT41", "Kimsuky", "Cobalt Strike operators",
-            "Conti ransomware", "Emotet operators", "TrickBot operators"
+            "Sandworm Team",
+            "APT37",
+            "APT41",
+            "Kimsuky",
+            "Cobalt Strike operators",
+            "Conti ransomware",
+            "Emotet operators",
+            "TrickBot operators",
         ],
         recent_campaigns=[
             Campaign(
                 name="Sandworm Industroyer Attacks",
                 year=2016,
                 description="Deployed heavily obfuscated code in Windows Notepad backdoor during Ukrainian infrastructure attacks",
-                reference_url="https://attack.mitre.org/groups/G0034/"
+                reference_url="https://attack.mitre.org/groups/G0034/",
             ),
             Campaign(
                 name="APT41 VMProtected Binaries",
                 year=2023,
                 description="Used VMProtected binaries and fragmented executables (DEADEYE, KEYPLUG) to evade detection systems",
-                reference_url="https://attack.mitre.org/groups/G0096/"
+                reference_url="https://attack.mitre.org/groups/G0096/",
             ),
             Campaign(
                 name="Conti Ransomware Operations",
                 year=2021,
                 description="Applied compiler-based obfuscation, encrypted DLL files, and concealed Windows API calls",
-                reference_url="https://attack.mitre.org/software/S0575/"
-            )
+                reference_url="https://attack.mitre.org/software/S0575/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -80,13 +85,12 @@ TEMPLATE = RemediationTemplate(
             "Failed security control effectiveness",
             "Compromised instances executing undetected malicious code",
             "Data exfiltration using obfuscated channels",
-            "Ransomware deployment through encoded payloads"
+            "Ransomware deployment through encoded payloads",
         ],
         typical_attack_phase="defense_evasion",
         often_precedes=["T1059", "T1204", "T1105", "T1071"],
-        often_follows=["T1190", "T1566", "T1078"]
+        often_follows=["T1190", "T1566", "T1078"],
     ),
-
     detection_strategies=[
         # Strategy 1: High-Entropy File Detection
         DetectionStrategy(
@@ -101,13 +105,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message, instanceId, processName, commandLine
+                query="""fields @timestamp, @message, instanceId, processName, commandLine
 | filter @message like /base64|gzip|openssl enc|uuencode|certutil.*encode|xxd|\.7z|\.enc|\.zip/
 | filter @message like /curl|wget|aws s3|scp/ or processName like /python|perl|ruby/
 | stats count() as encoding_operations by instanceId, processName, bin(10m)
 | filter encoding_operations > 3
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect obfuscated files and encoded content creation
 
 Parameters:
@@ -165,8 +169,8 @@ Resources:
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref SecurityAlertTopic''',
-                terraform_template='''# Detect obfuscated files and encoded content
+            Resource: !Ref SecurityAlertTopic""",
+                terraform_template="""# Detect obfuscated files and encoded content
 
 variable "cloudwatch_log_group" {
   type        = string
@@ -215,7 +219,7 @@ resource "aws_cloudwatch_metric_alarm" "encoding_activity" {
   threshold           = 3
   comparison_operator = "GreaterThanThreshold"
   alarm_actions       = [aws_sns_topic.obfuscation_alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Obfuscated File Creation Detected",
                 alert_description_template=(
@@ -229,7 +233,7 @@ resource "aws_cloudwatch_metric_alarm" "encoding_activity" {
                     "Examine the user or service account executing the encoding commands",
                     "Look for network transfers of encoded files",
                     "Check CloudTrail for S3 uploads of suspicious files",
-                    "Decode sample content to determine if malicious"
+                    "Decode sample content to determine if malicious",
                 ],
                 containment_actions=[
                     "Isolate the instance to prevent payload execution",
@@ -237,8 +241,8 @@ resource "aws_cloudwatch_metric_alarm" "encoding_activity" {
                     "Review and delete any uploaded obfuscated files from S3",
                     "Terminate suspicious processes",
                     "Rotate credentials that may have been compromised",
-                    "Apply S3 bucket policies to prevent anonymous or external uploads"
-                ]
+                    "Apply S3 bucket policies to prevent anonymous or external uploads",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude legitimate backup operations, software updates, and known deployment scripts",
@@ -247,9 +251,11 @@ resource "aws_cloudwatch_metric_alarm" "encoding_activity" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="$10-20 depending on log volume",
-            prerequisites=["CloudWatch Logs Agent with process logging", "Bash history or auditd logging enabled"]
+            prerequisites=[
+                "CloudWatch Logs Agent with process logging",
+                "Bash history or auditd logging enabled",
+            ],
         ),
-
         # Strategy 2: Obfuscated PowerShell/Script Detection
         DetectionStrategy(
             strategy_id="t1027-script-obfuscation",
@@ -263,12 +269,12 @@ resource "aws_cloudwatch_metric_alarm" "encoding_activity" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message, commandLine, userName
+                query="""fields @timestamp, @message, commandLine, userName
 | filter commandLine like /powershell.*-enc|python.*-c.*eval|bash.*-c.*eval|\$\{.*\}|\`.*\`/
 | filter commandLine like /IEX|Invoke-Expression|exec|char.*join|frombase64/i
 | stats count() as obfuscated_commands by userName, bin(15m)
 | filter obfuscated_commands > 2
-| sort @timestamp desc''',
+| sort @timestamp desc""",
                 cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect obfuscated script execution
 
@@ -319,7 +325,7 @@ Resources:
         - MetricName: EnvironmentVariableObfuscation
           MetricNamespace: Security/T1027
           MetricValue: "1"''',
-                terraform_template='''# Detect obfuscated script execution
+                terraform_template="""# Detect obfuscated script execution
 
 variable "ssm_log_group" {
   type        = string
@@ -379,7 +385,7 @@ resource "aws_cloudwatch_log_metric_filter" "env_var_obfuscation" {
     namespace = "Security/T1027"
     value     = "1"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Obfuscated Script Execution Detected",
                 alert_description_template=(
@@ -392,7 +398,7 @@ resource "aws_cloudwatch_log_metric_filter" "env_var_obfuscation" {
                     "Check for additional suspicious commands in the session",
                     "Review CloudTrail for API calls made during or after execution",
                     "Examine parent process and execution context",
-                    "Search for related obfuscated files on the instance"
+                    "Search for related obfuscated files on the instance",
                 ],
                 containment_actions=[
                     "Terminate the suspicious user session immediately",
@@ -400,8 +406,8 @@ resource "aws_cloudwatch_log_metric_filter" "env_var_obfuscation" {
                     "Review and revoke IAM credentials used",
                     "Check for persistence mechanisms installed",
                     "Isolate the instance for forensic analysis",
-                    "Enable CloudTrail Insights to detect anomalous API patterns"
-                ]
+                    "Enable CloudTrail Insights to detect anomalous API patterns",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known automation frameworks and deployment scripts using encoding",
@@ -410,9 +416,11 @@ resource "aws_cloudwatch_log_metric_filter" "env_var_obfuscation" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$8-15",
-            prerequisites=["SSM Session Manager logging enabled", "CloudWatch Logs Agent configured"]
+            prerequisites=[
+                "SSM Session Manager logging enabled",
+                "CloudWatch Logs Agent configured",
+            ],
         ),
-
         # Strategy 3: GuardDuty Malware Detection
         DetectionStrategy(
             strategy_id="t1027-guardduty-malware",
@@ -429,9 +437,9 @@ resource "aws_cloudwatch_log_metric_filter" "env_var_obfuscation" {
                     "Execution:S3/MaliciousFile",
                     "Execution:S3/SuspiciousFile",
                     "Backdoor:S3/MalwareFile",
-                    "Trojan:S3/MalwareFile"
+                    "Trojan:S3/MalwareFile",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty Malware Protection for obfuscated files
 
 Parameters:
@@ -489,8 +497,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref MalwareAlertTopic''',
-                terraform_template='''# GuardDuty Malware Protection for obfuscated files
+            Resource: !Ref MalwareAlertTopic""",
+                terraform_template="""# GuardDuty Malware Protection for obfuscated files
 
 variable "s3_bucket_name" {
   type        = string
@@ -563,7 +571,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Resource  = aws_sns_topic.malware_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Malicious File Detected in S3",
                 alert_description_template=(
@@ -577,7 +585,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Examine the file metadata and upload timestamp",
                     "Review S3 bucket policies and access controls",
                     "Check if the file was accessed or downloaded",
-                    "Search for related files uploaded by the same principal"
+                    "Search for related files uploaded by the same principal",
                 ],
                 containment_actions=[
                     "Delete the malicious file from S3 immediately",
@@ -585,8 +593,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Review and restrict S3 bucket IAM policies",
                     "Rotate credentials used to upload the file",
                     "Enable S3 versioning and MFA delete",
-                    "Implement S3 bucket policies to block public uploads"
-                ]
+                    "Implement S3 bucket policies to block public uploads",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Review findings for legitimate compressed or encrypted files; whitelist known safe sources",
@@ -595,9 +603,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",
             estimated_monthly_cost="$0.40 per GB scanned (first 150GB/month free per account)",
-            prerequisites=["GuardDuty enabled", "S3 buckets with data events enabled"]
+            prerequisites=["GuardDuty enabled", "S3 buckets with data events enabled"],
         ),
-
         # Strategy 4: GCP Detection
         DetectionStrategy(
             strategy_id="t1027-gcp-obfuscation",
@@ -611,12 +618,12 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type=("gce_instance" OR "cloud_function" OR "cloud_run_revision")
+                gcp_logging_query="""resource.type=("gce_instance" OR "cloud_function" OR "cloud_run_revision")
 (textPayload=~"base64|gzip|openssl enc|python.*eval|bash.*-c"
 OR protoPayload.request.commandLine=~"-enc|-e .*base64|IEX|Invoke-Expression"
 OR textPayload=~"certutil.*encode|xxd|uuencode")
-severity>=WARNING''',
-                gcp_terraform_template='''# GCP: Detect obfuscated files and script execution
+severity>=WARNING""",
+                gcp_terraform_template="""# GCP: Detect obfuscated files and script execution
 
 variable "project_id" {
   type        = string
@@ -690,7 +697,7 @@ resource "google_monitoring_alert_policy" "obfuscation_detection" {
     content   = "Obfuscated file or script execution detected. Investigate for potential malicious activity."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Obfuscated Content Detected",
                 alert_description_template=(
@@ -703,7 +710,7 @@ resource "google_monitoring_alert_policy" "obfuscation_detection" {
                     "Check VPC Flow Logs for network activity from the resource",
                     "Examine recent API calls from the resource's service account",
                     "Look for file uploads to Cloud Storage with suspicious patterns",
-                    "Review the resource's IAM permissions and recent changes"
+                    "Review the resource's IAM permissions and recent changes",
                 ],
                 containment_actions=[
                     "Stop the GCE instance or disable the Cloud Function/Cloud Run service",
@@ -711,8 +718,8 @@ resource "google_monitoring_alert_policy" "obfuscation_detection" {
                     "Create a snapshot for forensic analysis",
                     "Review and delete suspicious files from Cloud Storage",
                     "Update VPC firewall rules to isolate the resource",
-                    "Enable VPC Service Controls to restrict API access"
-                ]
+                    "Enable VPC Service Controls to restrict API access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude known CI/CD pipelines and deployment automation that legitimately uses encoding",
@@ -721,9 +728,11 @@ resource "google_monitoring_alert_policy" "obfuscation_detection" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="$12-25",
-            prerequisites=["Cloud Logging API enabled", "Ops Agent on GCE instances for enhanced logging"]
+            prerequisites=[
+                "Cloud Logging API enabled",
+                "Ops Agent on GCE instances for enhanced logging",
+            ],
         ),
-
         # Strategy 5: Lambda Function Obfuscation
         DetectionStrategy(
             strategy_id="t1027-lambda-obfuscation",
@@ -737,13 +746,13 @@ resource "google_monitoring_alert_policy" "obfuscation_detection" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, requestParameters.functionName, eventName
+                query="""fields @timestamp, userIdentity.principalId, requestParameters.functionName, eventName
 | filter eventSource = "lambda.amazonaws.com"
 | filter eventName in ["CreateFunction", "UpdateFunctionCode", "UpdateFunctionConfiguration"]
 | filter requestParameters.environment.variables like /base64|eval|exec/
   or requestParameters.code.zipFile like /obfuscated|encrypted/
 | stats count() as suspicious_updates by requestParameters.functionName, userIdentity.principalId
-| sort @timestamp desc''',
+| sort @timestamp desc""",
                 cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect obfuscated Lambda function deployments
 
@@ -796,7 +805,7 @@ Resources:
         - MetricName: ObfuscatedLambdaExecution
           MetricNamespace: Security/T1027
           MetricValue: "1"''',
-                terraform_template='''# Detect obfuscated Lambda function deployments
+                terraform_template="""# Detect obfuscated Lambda function deployments
 
 variable "cloudtrail_log_group" {
   type = string
@@ -864,7 +873,7 @@ resource "aws_sns_topic_policy" "lambda_alerts" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Suspicious Lambda Function Deployment",
                 alert_description_template=(
@@ -877,7 +886,7 @@ resource "aws_sns_topic_policy" "lambda_alerts" {
                     "Check function dependencies and layers for malicious libraries",
                     "Review the function's IAM role and permissions",
                     "Check CloudWatch Logs for function execution patterns",
-                    "Identify who deployed the function and from which source IP"
+                    "Identify who deployed the function and from which source IP",
                 ],
                 containment_actions=[
                     "Disable the Lambda function immediately",
@@ -885,8 +894,8 @@ resource "aws_sns_topic_policy" "lambda_alerts" {
                     "Review and revoke any credentials or API keys in the function",
                     "Check for S3 buckets, databases, or APIs accessed by the function",
                     "Delete the function if confirmed malicious",
-                    "Enable Lambda code signing to prevent unauthorised deployments"
-                ]
+                    "Enable Lambda code signing to prevent unauthorised deployments",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal Lambda deployment patterns; exclude known CI/CD automation",
@@ -895,17 +904,19 @@ resource "aws_sns_topic_policy" "lambda_alerts" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$5-12",
-            prerequisites=["CloudTrail enabled", "Lambda execution logs sent to CloudWatch"]
-        )
+            prerequisites=[
+                "CloudTrail enabled",
+                "Lambda execution logs sent to CloudWatch",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1027-guardduty-malware",
         "t1027-high-entropy",
         "t1027-script-obfuscation",
         "t1027-lambda-obfuscation",
-        "t1027-gcp-obfuscation"
+        "t1027-gcp-obfuscation",
     ],
     total_effort_hours=8.0,
-    coverage_improvement="+25% improvement for Defence Evasion tactic"
+    coverage_improvement="+25% improvement for Defence Evasion tactic",
 )

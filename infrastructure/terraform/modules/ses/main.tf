@@ -38,7 +38,7 @@ resource "aws_ses_configuration_set" "main" {
   name = "${var.environment}-a13e-emails"
 
   reputation_metrics_enabled = true
-  sending_enabled           = true
+  sending_enabled            = true
 
   delivery_options {
     tls_policy = "REQUIRE"

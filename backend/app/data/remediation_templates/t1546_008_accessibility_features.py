@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Event Triggered Execution: Accessibility Features",
     tactic_ids=["TA0004", "TA0003"],  # Privilege Escalation, Persistence
     mitre_url="https://attack.mitre.org/techniques/T1546/008/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries exploit Windows accessibility features to establish persistence "
@@ -40,22 +39,29 @@ TEMPLATE = RemediationTemplate(
             "Accessible via Remote Desktop Protocol",
             "Difficult to detect without file integrity monitoring",
             "Can be triggered from login screen",
-            "Bypasses standard authentication controls"
+            "Bypasses standard authentication controls",
         ],
-        known_threat_actors=["APT29", "APT3", "APT41", "Axiom", "Deep Panda", "Fox Kitten"],
+        known_threat_actors=[
+            "APT29",
+            "APT3",
+            "APT41",
+            "Axiom",
+            "Deep Panda",
+            "Fox Kitten",
+        ],
         recent_campaigns=[
             Campaign(
                 name="APT29 Sticky Keys Persistence",
                 year=2020,
                 description="Used sticky-keys for unauthenticated, privileged console access",
-                reference_url="https://attack.mitre.org/groups/G0016/"
+                reference_url="https://attack.mitre.org/groups/G0016/",
             ),
             Campaign(
                 name="APT41 Accessibility Feature Abuse",
                 year=2021,
                 description="Leveraged sticky keys for persistence establishment in compromised environments",
-                reference_url="https://attack.mitre.org/groups/G0096/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0096/",
+            ),
         ],
         prevalence="uncommon",
         trend="declining",
@@ -70,13 +76,18 @@ TEMPLATE = RemediationTemplate(
             "Privilege escalation to SYSTEM",
             "Bypass of authentication controls",
             "Remote access via RDP sessions",
-            "Difficult to remediate without awareness"
+            "Difficult to remediate without awareness",
         ],
         typical_attack_phase="persistence",
-        often_precedes=["T1078", "T1021.001"],  # Valid Accounts, Remote Desktop Protocol
-        often_follows=["T1068", "T1055"]  # Exploitation for Privilege Escalation, Process Injection
+        often_precedes=[
+            "T1078",
+            "T1021.001",
+        ],  # Valid Accounts, Remote Desktop Protocol
+        often_follows=[
+            "T1068",
+            "T1055",
+        ],  # Exploitation for Privilege Escalation, Process Injection
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1546008-aws-file-integrity",
@@ -86,13 +97,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, detail.eventName, detail.requestParameters.instanceId
+                query="""fields @timestamp, detail.eventName, detail.requestParameters.instanceId
 | filter detail.eventName = "ModifyInstanceAttribute"
   OR detail.eventName = "RunCommand"
 | filter detail.requestParameters.command like /sethc|utilman|osk|magnify|narrator|displayswitch|atbroker/
 | stats count(*) as modifications by detail.userIdentity.principalId, detail.requestParameters.instanceId
-| sort modifications desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort modifications desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Monitor for accessibility feature tampering on EC2 Windows instances
 
 Parameters:
@@ -154,8 +165,8 @@ Resources:
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
       AlarmActions:
-        - !Ref AlertTopic''',
-                terraform_template='''# Monitor for accessibility feature tampering on EC2 Windows instances
+        - !Ref AlertTopic""",
+                terraform_template="""# Monitor for accessibility feature tampering on EC2 Windows instances
 
 variable "alert_email" {
   type = string
@@ -219,7 +230,7 @@ resource "aws_cloudwatch_metric_alarm" "accessibility_tamper" {
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.accessibility_alerts.arn]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Windows Accessibility Feature Tampering Detected",
                 alert_description_template="Potential tampering with accessibility features detected on instance {instanceId}.",
@@ -229,7 +240,7 @@ resource "aws_cloudwatch_metric_alarm" "accessibility_tamper" {
                     "Review recent administrative actions and SSM commands",
                     "Examine Windows Security Event Log for file modification events (Event ID 4663, 4656)",
                     "Check for suspicious processes launched with SYSTEM privileges",
-                    "Review RDP access logs for unauthorised connections"
+                    "Review RDP access logs for unauthorised connections",
                 ],
                 containment_actions=[
                     "Isolate affected EC2 instance immediately",
@@ -237,8 +248,8 @@ resource "aws_cloudwatch_metric_alarm" "accessibility_tamper" {
                     "Remove malicious Registry keys under Image File Execution Options",
                     "Rotate credentials for affected systems",
                     "Review and restrict RDP access",
-                    "Enable enhanced file integrity monitoring"
-                ]
+                    "Enable enhanced file integrity monitoring",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Legitimate modifications to accessibility features are extremely rare in production",
@@ -247,9 +258,11 @@ resource "aws_cloudwatch_metric_alarm" "accessibility_tamper" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$5-20",
-            prerequisites=["CloudWatch Logs agent on Windows EC2 instances", "Windows Security Event Log forwarding configured"]
+            prerequisites=[
+                "CloudWatch Logs agent on Windows EC2 instances",
+                "Windows Security Event Log forwarding configured",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1546008-aws-registry-monitor",
             name="AWS Registry Monitoring for IFEO Modifications",
@@ -258,12 +271,12 @@ resource "aws_cloudwatch_metric_alarm" "accessibility_tamper" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, EventID, TargetObject, Details
+                query="""fields @timestamp, EventID, TargetObject, Details
 | filter EventID = 13 OR EventID = 12
 | filter TargetObject like /Image File Execution Options.*sethc|Image File Execution Options.*utilman|Image File Execution Options.*osk|Image File Execution Options.*magnify/
 | stats count(*) as registry_changes by TargetObject, Details
-| sort registry_changes desc''',
-                terraform_template='''# Monitor Registry changes to Image File Execution Options for accessibility features
+| sort registry_changes desc""",
+                terraform_template="""# Monitor Registry changes to Image File Execution Options for accessibility features
 
 variable "alert_email" {
   type = string
@@ -314,7 +327,7 @@ resource "aws_cloudwatch_metric_alarm" "ifeo_tamper" {
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.ifeo_alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Image File Execution Options Tampering Detected",
                 alert_description_template="Registry modification detected for accessibility feature IFEO: {TargetObject}.",
@@ -324,7 +337,7 @@ resource "aws_cloudwatch_metric_alarm" "ifeo_tamper" {
                     "Identify user account that made the modification",
                     "Review Sysmon Event ID 12 (Registry object added/deleted) and 13 (Registry value set)",
                     "Correlate with process creation events (Sysmon Event ID 1)",
-                    "Check for other indicators of compromise on the system"
+                    "Check for other indicators of compromise on the system",
                 ],
                 containment_actions=[
                     "Immediately delete malicious IFEO Registry keys",
@@ -332,8 +345,8 @@ resource "aws_cloudwatch_metric_alarm" "ifeo_tamper" {
                     "Terminate suspicious processes running as SYSTEM",
                     "Review and revoke administrative credentials",
                     "Deploy EDR/File Integrity Monitoring if not present",
-                    "Conduct full forensic analysis of the instance"
-                ]
+                    "Conduct full forensic analysis of the instance",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="IFEO modifications for accessibility features are almost always malicious",
@@ -342,9 +355,11 @@ resource "aws_cloudwatch_metric_alarm" "ifeo_tamper" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["Sysmon installed on Windows EC2 instances", "Sysmon logs forwarded to CloudWatch"]
+            prerequisites=[
+                "Sysmon installed on Windows EC2 instances",
+                "Sysmon logs forwarded to CloudWatch",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1546008-gcp-file-integrity",
             name="GCP File Integrity Monitoring for Windows Accessibility Features",
@@ -362,7 +377,7 @@ jsonPayload.EventID=4663
  jsonPayload.ObjectName=~".*osk\\.exe.*" OR
  jsonPayload.ObjectName=~".*magnify\\.exe.*")
 jsonPayload.AccessMask=~".*WRITE.*|.*DELETE.*"''',
-                gcp_terraform_template='''# GCP: Monitor for Windows accessibility feature tampering
+                gcp_terraform_template="""# GCP: Monitor for Windows accessibility feature tampering
 
 variable "project_id" {
   type = string
@@ -457,7 +472,7 @@ resource "google_logging_project_sink" "windows_security" {
   EOT
 
   unique_writer_identity = true
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GCP: Windows Accessibility Feature Tampering",
                 alert_description_template="Accessibility feature modification detected on GCE instance in project {project_id}.",
@@ -467,7 +482,7 @@ resource "google_logging_project_sink" "windows_security" {
                     "Check file hashes against known good values",
                     "Review Cloud Audit Logs for administrative actions",
                     "Examine Windows Event Viewer for Security Events (4663, 4656, 4658)",
-                    "Look for suspicious processes running as SYSTEM"
+                    "Look for suspicious processes running as SYSTEM",
                 ],
                 containment_actions=[
                     "Stop affected GCE instance",
@@ -475,8 +490,8 @@ resource "google_logging_project_sink" "windows_security" {
                     "Restore system files from clean VM image",
                     "Remove firewall rules allowing RDP from internet",
                     "Rotate service account keys and credentials",
-                    "Enable VPC Service Controls for enhanced isolation"
-                ]
+                    "Enable VPC Service Controls for enhanced isolation",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Legitimate modifications are extremely rare; Windows Update may trigger false positives",
@@ -485,11 +500,17 @@ resource "google_logging_project_sink" "windows_security" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$10-25",
-            prerequisites=["Windows Security Event Log forwarding to Cloud Logging", "Ops Agent or legacy logging agent installed"]
-        )
+            prerequisites=[
+                "Windows Security Event Log forwarding to Cloud Logging",
+                "Ops Agent or legacy logging agent installed",
+            ],
+        ),
     ],
-
-    recommended_order=["t1546008-aws-registry-monitor", "t1546008-aws-file-integrity", "t1546008-gcp-file-integrity"],
+    recommended_order=[
+        "t1546008-aws-registry-monitor",
+        "t1546008-aws-file-integrity",
+        "t1546008-gcp-file-integrity",
+    ],
     total_effort_hours=7.0,
-    coverage_improvement="+15% improvement for Persistence and Privilege Escalation tactics"
+    coverage_improvement="+15% improvement for Persistence and Privilege Escalation tactics",
 )

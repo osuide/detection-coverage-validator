@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Software Discovery: Security Software Discovery",
     tactic_ids=["TA0007"],
     mitre_url="https://attack.mitre.org/techniques/T1518/001/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries enumerate security software, configurations, defensive tools, "
@@ -37,22 +36,29 @@ TEMPLATE = RemediationTemplate(
             "Identifies monitoring and EDR solutions",
             "Discovers firewall configurations",
             "Detects backup and recovery tools",
-            "Informs evasion and anti-analysis tactics"
+            "Informs evasion and anti-analysis tactics",
         ],
-        known_threat_actors=["Kimsuky", "SUNBURST", "IcedID", "Action RAT", "Bumblebee", "Raspberry Robin"],
+        known_threat_actors=[
+            "Kimsuky",
+            "SUNBURST",
+            "IcedID",
+            "Action RAT",
+            "Bumblebee",
+            "Raspberry Robin",
+        ],
         recent_campaigns=[
             Campaign(
                 name="SUNBURST Security Tool Reconnaissance",
                 year=2020,
                 description="SolarWinds attackers checked for multiple antivirus and endpoint detection agents before proceeding with malicious operations",
-                reference_url="https://attack.mitre.org/software/S0559/"
+                reference_url="https://attack.mitre.org/software/S0559/",
             ),
             Campaign(
                 name="IcedID Security Software Enumeration",
                 year=2024,
                 description="Banking trojan uses WMIC to query Windows Security Centre for installed antivirus products via SecurityCenter2 namespace",
-                reference_url="https://attack.mitre.org/software/S0483/"
-            )
+                reference_url="https://attack.mitre.org/software/S0483/",
+            ),
         ],
         prevalence="very_common",
         trend="increasing",
@@ -66,13 +72,12 @@ TEMPLATE = RemediationTemplate(
             "Exposes defensive capabilities to adversaries",
             "Enables targeted evasion techniques",
             "Precedes security tool disablement",
-            "Indicates sophisticated attacker reconnaissance"
+            "Indicates sophisticated attacker reconnaissance",
         ],
         typical_attack_phase="discovery",
         often_precedes=["T1562.001", "T1027", "T1497"],
-        often_follows=["T1078.004", "T1059.009"]
+        often_follows=["T1078.004", "T1059.009"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - CloudWatch Agent Enumeration
         DetectionStrategy(
@@ -89,13 +94,11 @@ TEMPLATE = RemediationTemplate(
                     "detail": {
                         "eventName": ["GetParameter", "GetParameters"],
                         "requestParameters": {
-                            "names": [{
-                                "prefix": "AmazonCloudWatch"
-                            }]
-                        }
-                    }
+                            "names": [{"prefix": "AmazonCloudWatch"}]
+                        },
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect CloudWatch agent enumeration
 
 Parameters:
@@ -135,8 +138,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect CloudWatch agent enumeration
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect CloudWatch agent enumeration
 
 variable "alert_email" {
   type = string
@@ -182,7 +185,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="CloudWatch Agent Enumeration Detected",
                 alert_description_template="Monitoring agent queries performed by {userIdentity.arn}.",
@@ -190,14 +193,14 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Identify the principal performing monitoring enumeration",
                     "Check if this is authorised security assessment activity",
                     "Review what monitoring configurations were accessed",
-                    "Look for follow-on defence evasion or disablement attempts"
+                    "Look for follow-on defence evasion or disablement attempts",
                 ],
                 containment_actions=[
                     "Review principal's permissions and recent activity",
                     "Monitor for attempts to disable CloudWatch agents",
                     "Check for subsequent T1562.001 (Disable Security Tools) activity",
-                    "Consider restricting SSM parameter read access"
-                ]
+                    "Consider restricting SSM parameter read access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist infrastructure automation, monitoring tools, and operations teams",
@@ -206,9 +209,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled", "CloudWatch agents deployed"]
+            prerequisites=["CloudTrail enabled", "CloudWatch agents deployed"],
         ),
-
         # Strategy 2: AWS - GuardDuty Status Checks
         DetectionStrategy(
             strategy_id="t1518-001-aws-guardduty",
@@ -223,9 +225,9 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "detail-type": ["AWS API Call via CloudTrail"],
                     "detail": {
                         "eventName": ["GetDetector", "ListDetectors", "GetFindings"]
-                    }
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect GuardDuty enumeration
 
 Parameters:
@@ -265,8 +267,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect GuardDuty enumeration
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect GuardDuty enumeration
 
 variable "alert_email" {
   type = string
@@ -312,7 +314,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GuardDuty Enumeration Detected",
                 alert_description_template="GuardDuty status queries by {userIdentity.arn} - potential reconnaissance.",
@@ -320,14 +322,14 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Identify who is querying GuardDuty configurations",
                     "Determine if this is authorised security operations",
                     "Check for attempts to disable GuardDuty",
-                    "Review for broader security service enumeration"
+                    "Review for broader security service enumeration",
                 ],
                 containment_actions=[
                     "Review principal's permissions immediately",
                     "Monitor for GuardDuty disablement attempts",
                     "Check for concurrent security tool reconnaissance",
-                    "Consider alerting on GuardDuty configuration changes"
-                ]
+                    "Consider alerting on GuardDuty configuration changes",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist security operations teams and SIEM integrations",
@@ -336,9 +338,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled", "GuardDuty enabled"]
+            prerequisites=["CloudTrail enabled", "GuardDuty enabled"],
         ),
-
         # Strategy 3: AWS - Security Hub Status Checks
         DetectionStrategy(
             strategy_id="t1518-001-aws-securityhub",
@@ -348,13 +349,13 @@ resource "aws_sns_topic_policy" "allow_events" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.arn, sourceIPAddress
+                query="""fields @timestamp, eventName, userIdentity.arn, sourceIPAddress
 | filter eventSource = "securityhub.amazonaws.com"
 | filter eventName in ["GetEnabledStandards", "DescribeHub", "GetFindings", "ListMembers"]
 | stats count(*) as query_count by userIdentity.arn, bin(1h)
 | filter query_count > 5
-| sort query_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort query_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect Security Hub enumeration
 
 Parameters:
@@ -395,8 +396,8 @@ Resources:
       Threshold: 10
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect Security Hub enumeration
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect Security Hub enumeration
 
 variable "cloudtrail_log_group" {
   type = string
@@ -441,7 +442,7 @@ resource "aws_cloudwatch_metric_alarm" "securityhub_enum" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_description_template="Security Hub enumeration detected from {userIdentity.arn}.",
                 alert_title="Security Hub Enumeration Detected",
@@ -449,14 +450,14 @@ resource "aws_cloudwatch_metric_alarm" "securityhub_enum" {
                     "Identify the principal querying Security Hub",
                     "Verify if this is authorised compliance scanning",
                     "Check for attempts to disable Security Hub",
-                    "Look for broader security service reconnaissance"
+                    "Look for broader security service reconnaissance",
                 ],
                 containment_actions=[
                     "Review principal's permissions and activity",
                     "Monitor for Security Hub disablement attempts",
                     "Check for concurrent security tool enumeration",
-                    "Consider implementing SCPs for Security Hub protection"
-                ]
+                    "Consider implementing SCPs for Security Hub protection",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist compliance tools, SIEM integrations, and security operations",
@@ -465,9 +466,8 @@ resource "aws_cloudwatch_metric_alarm" "securityhub_enum" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail logging to CloudWatch", "Security Hub enabled"]
+            prerequisites=["CloudTrail logging to CloudWatch", "Security Hub enabled"],
         ),
-
         # Strategy 4: GCP - Security Command Centre Enumeration
         DetectionStrategy(
             strategy_id="t1518-001-gcp-scc",
@@ -480,7 +480,7 @@ resource "aws_cloudwatch_metric_alarm" "securityhub_enum" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName=~"(google.cloud.securitycenter.*.Get|google.cloud.securitycenter.*.List)"
 protoPayload.methodName!~"ListFindings"''',
-                gcp_terraform_template='''# GCP: Detect Security Command Centre enumeration
+                gcp_terraform_template="""# GCP: Detect Security Command Centre enumeration
 
 variable "project_id" {
   type = string
@@ -529,7 +529,7 @@ resource "google_monitoring_alert_policy" "scc_enum" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Security Command Centre Enumeration Detected",
                 alert_description_template="Security Command Centre status queries detected - potential reconnaissance.",
@@ -537,14 +537,14 @@ resource "google_monitoring_alert_policy" "scc_enum" {
                     "Identify the principal querying Security Command Centre",
                     "Verify if this is authorised security operations",
                     "Check for attempts to modify SCC configurations",
-                    "Review for broader security service enumeration"
+                    "Review for broader security service enumeration",
                 ],
                 containment_actions=[
                     "Review principal's IAM permissions",
                     "Monitor for SCC configuration changes",
                     "Check for concurrent security tool reconnaissance",
-                    "Consider IAM Conditions to restrict SCC access"
-                ]
+                    "Consider IAM Conditions to restrict SCC access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist security operations, SIEM integrations, and compliance tools",
@@ -553,9 +553,11 @@ resource "google_monitoring_alert_policy" "scc_enum" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Cloud Audit Logs enabled", "Security Command Centre enabled"]
+            prerequisites=[
+                "Cloud Audit Logs enabled",
+                "Security Command Centre enabled",
+            ],
         ),
-
         # Strategy 5: GCP - Cloud Monitoring Agent Enumeration
         DetectionStrategy(
             strategy_id="t1518-001-gcp-monitoring",
@@ -568,7 +570,7 @@ resource "google_monitoring_alert_policy" "scc_enum" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName=~"(monitoring.metricDescriptors.list|monitoring.timeSeries.list|compute.instances.getGuestAttributes)"
 protoPayload.request.filter=~"(agent|monitoring|metrics)"''',
-                gcp_terraform_template='''# GCP: Detect Cloud Monitoring agent enumeration
+                gcp_terraform_template="""# GCP: Detect Cloud Monitoring agent enumeration
 
 variable "project_id" {
   type = string
@@ -616,7 +618,7 @@ resource "google_monitoring_alert_policy" "monitoring_enum" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Cloud Monitoring Agent Enumeration Detected",
                 alert_description_template="Cloud Monitoring agent queries detected - potential security tool reconnaissance.",
@@ -624,14 +626,14 @@ resource "google_monitoring_alert_policy" "monitoring_enum" {
                     "Identify the principal querying monitoring configurations",
                     "Check if this is authorised operations or security scanning",
                     "Review which instances and metrics were queried",
-                    "Look for attempts to disable monitoring agents"
+                    "Look for attempts to disable monitoring agents",
                 ],
                 containment_actions=[
                     "Review principal's IAM permissions",
                     "Monitor for agent disablement attempts",
                     "Check for broader security tool enumeration",
-                    "Consider restricting monitoring API access"
-                ]
+                    "Consider restricting monitoring API access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist monitoring dashboards, operations teams, and infrastructure automation",
@@ -640,17 +642,16 @@ resource "google_monitoring_alert_policy" "monitoring_enum" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Cloud Audit Logs enabled", "Cloud Monitoring configured"]
-        )
+            prerequisites=["Cloud Audit Logs enabled", "Cloud Monitoring configured"],
+        ),
     ],
-
     recommended_order=[
         "t1518-001-aws-guardduty",
         "t1518-001-aws-securityhub",
         "t1518-001-gcp-scc",
         "t1518-001-aws-cw-agent",
-        "t1518-001-gcp-monitoring"
+        "t1518-001-gcp-monitoring",
     ],
     total_effort_hours=4.0,
-    coverage_improvement="+15% improvement for Discovery tactic"
+    coverage_improvement="+15% improvement for Discovery tactic",
 )

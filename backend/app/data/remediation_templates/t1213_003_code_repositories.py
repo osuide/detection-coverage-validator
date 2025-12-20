@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Data from Information Repositories: Code Repositories",
     tactic_ids=["TA0009"],  # Collection
     mitre_url="https://attack.mitre.org/techniques/T1213/003/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries leverage code repositories (GitHub, GitLab, SourceForge, BitBucket) "
@@ -37,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Discovery of hardcoded credentials and secrets",
             "Understanding of security controls and weaknesses",
             "Enables development of targeted exploits",
-            "Facilitates lateral movement via stolen credentials"
+            "Facilitates lateral movement via stolen credentials",
         ],
         known_threat_actors=["APT41", "APT29", "LAPSUS$", "Scattered Spider"],
         recent_campaigns=[
@@ -45,20 +44,20 @@ TEMPLATE = RemediationTemplate(
                 name="SolarWinds Compromise",
                 year=2020,
                 description="APT29 downloaded source code from victim code repositories during the SolarWinds supply chain attack",
-                reference_url="https://attack.mitre.org/groups/G0016/"
+                reference_url="https://attack.mitre.org/groups/G0016/",
             ),
             Campaign(
                 name="LAPSUS$ Credential Harvesting",
                 year=2022,
                 description="Searched victim networks for GitLab and GitHub instances to discover high-privilege account credentials",
-                reference_url="https://attack.mitre.org/groups/G1004/"
+                reference_url="https://attack.mitre.org/groups/G1004/",
             ),
             Campaign(
                 name="APT41 Repository Cloning",
                 year=2021,
                 description="Cloned victim Git repositories during intrusions to exfiltrate proprietary source code",
-                reference_url="https://attack.mitre.org/groups/G0096/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0096/",
+            ),
         ],
         prevalence="moderate",
         trend="increasing",
@@ -72,13 +71,20 @@ TEMPLATE = RemediationTemplate(
             "Exposure of embedded credentials and secrets",
             "Competitive disadvantage",
             "Regulatory compliance violations",
-            "Enables further attacks via stolen credentials"
+            "Enables further attacks via stolen credentials",
         ],
         typical_attack_phase="collection",
-        often_precedes=["T1078.004", "T1552.001", "T1567.001"],  # Cloud Accounts, Credentials in Files, Exfil to Code Repo
-        often_follows=["T1087.004", "T1526", "T1538"]  # Cloud Account Discovery, Cloud Service Discovery, Dashboard
+        often_precedes=[
+            "T1078.004",
+            "T1552.001",
+            "T1567.001",
+        ],  # Cloud Accounts, Credentials in Files, Exfil to Code Repo
+        often_follows=[
+            "T1087.004",
+            "T1526",
+            "T1538",
+        ],  # Cloud Account Discovery, Cloud Service Discovery, Dashboard
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1213-003-aws-codecommit",
@@ -88,13 +94,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, eventName, requestParameters.repositoryName
+                query="""fields @timestamp, userIdentity.principalId, eventName, requestParameters.repositoryName
 | filter eventSource = "codecommit.amazonaws.com"
 | filter eventName in ["GitPull", "GetRepository", "BatchGetRepositories"]
 | stats count(*) as operations by userIdentity.principalId, bin(1h)
 | filter operations > 20
-| sort operations desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort operations desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect anomalous CodeCommit repository access
 
 Parameters:
@@ -163,8 +169,8 @@ Resources:
       Threshold: 10
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect anomalous CodeCommit repository access
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect anomalous CodeCommit repository access
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -236,7 +242,7 @@ resource "aws_cloudwatch_metric_alarm" "unusual_location" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.code_repo_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Anomalous Code Repository Access Detected",
                 alert_description_template="Bulk repository access detected from {principalId}.",
@@ -246,7 +252,7 @@ resource "aws_cloudwatch_metric_alarm" "unusual_location" {
                     "Identify which repositories were accessed",
                     "Review user's typical access patterns and geographic locations",
                     "Check for OAuth token usage or API key access",
-                    "Verify if user is a legitimate developer with repository access"
+                    "Verify if user is a legitimate developer with repository access",
                 ],
                 containment_actions=[
                     "Suspend suspicious user accounts immediately",
@@ -254,8 +260,8 @@ resource "aws_cloudwatch_metric_alarm" "unusual_location" {
                     "Review repository access logs for data exfiltration",
                     "Enable MFA for all repository access",
                     "Implement IP allowlisting for repository access",
-                    "Scan repositories for exposed secrets using tools like git-secrets"
-                ]
+                    "Scan repositories for exposed secrets using tools like git-secrets",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Tune threshold based on developer activity. Exclude CI/CD service accounts.",
@@ -264,9 +270,11 @@ resource "aws_cloudwatch_metric_alarm" "unusual_location" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["CloudTrail logging enabled", "CloudTrail logs sent to CloudWatch"]
+            prerequisites=[
+                "CloudTrail logging enabled",
+                "CloudTrail logs sent to CloudWatch",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1213-003-aws-secrets-scan",
             name="AWS Secrets Manager Access Correlation",
@@ -275,12 +283,12 @@ resource "aws_cloudwatch_metric_alarm" "unusual_location" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, eventName, eventSource
+                query="""fields @timestamp, userIdentity.principalId, eventName, eventSource
 | filter eventSource in ["codecommit.amazonaws.com", "secretsmanager.amazonaws.com"]
 | filter eventName in ["GitPull", "GetSecretValue", "DescribeSecret"]
 | stats count(*) as events by userIdentity.principalId, eventSource, bin(1h)
-| filter events > 5''',
-                terraform_template='''# Correlate repository access with secrets access
+| filter events > 5""",
+                terraform_template="""# Correlate repository access with secrets access
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -326,7 +334,7 @@ resource "aws_cloudwatch_metric_alarm" "secrets_enumeration" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.secrets_correlation_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Code Repository and Secrets Access Correlation",
                 alert_description_template="User {principalId} accessed repositories and queried secrets.",
@@ -335,15 +343,15 @@ resource "aws_cloudwatch_metric_alarm" "secrets_enumeration" {
                     "Check if accessed secrets are referenced in repositories",
                     "Verify user's authorisation for both repository and secrets access",
                     "Review CloudTrail for other suspicious activities",
-                    "Check for credential harvesting attempts"
+                    "Check for credential harvesting attempts",
                 ],
                 containment_actions=[
                     "Suspend suspicious user account",
                     "Rotate all accessed secrets immediately",
                     "Review and remove hardcoded secrets from repositories",
                     "Implement secrets scanning in CI/CD pipeline",
-                    "Enable MFA and IP restrictions"
-                ]
+                    "Enable MFA and IP restrictions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude legitimate CI/CD pipelines and deployment automation",
@@ -352,9 +360,8 @@ resource "aws_cloudwatch_metric_alarm" "secrets_enumeration" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5-2 hours",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail logging", "Secrets Manager in use"]
+            prerequisites=["CloudTrail logging", "Secrets Manager in use"],
         ),
-
         DetectionStrategy(
             strategy_id="t1213-003-gcp-source-repos",
             name="GCP Cloud Source Repositories Access Monitoring",
@@ -367,7 +374,7 @@ resource "aws_cloudwatch_metric_alarm" "secrets_enumeration" {
                 gcp_logging_query='''resource.type="source.googleapis.com/Repository"
 protoPayload.methodName=~"google.devtools.source.*"
 protoPayload.methodName=~"(Clone|Download|Get)"''',
-                gcp_terraform_template='''# GCP: Detect anomalous Cloud Source Repositories access
+                gcp_terraform_template="""# GCP: Detect anomalous Cloud Source Repositories access
 
 variable "project_id" {
   type        = string
@@ -479,7 +486,7 @@ resource "google_monitoring_alert_policy" "unusual_location_access" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Anomalous Code Repository Access",
                 alert_description_template="Unusual repository access pattern detected in Cloud Source Repositories.",
@@ -489,7 +496,7 @@ resource "google_monitoring_alert_policy" "unusual_location_access" {
                     "Verify geographic location of access",
                     "Review which repositories were accessed",
                     "Check for concurrent Secrets Manager or IAM activity",
-                    "Verify user's typical development patterns"
+                    "Verify user's typical development patterns",
                 ],
                 containment_actions=[
                     "Suspend suspicious user or service account",
@@ -497,8 +504,8 @@ resource "google_monitoring_alert_policy" "unusual_location_access" {
                     "Enable VPC Service Controls for repository access",
                     "Implement IP allowlisting",
                     "Enable Binary Authorisation for container images",
-                    "Scan repositories for secrets using Secret Manager"
-                ]
+                    "Scan repositories for secrets using Secret Manager",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude CI/CD service accounts and known developer IPs",
@@ -507,9 +514,8 @@ resource "google_monitoring_alert_policy" "unusual_location_access" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Logging enabled", "Cloud Source Repositories in use"]
+            prerequisites=["Cloud Logging enabled", "Cloud Source Repositories in use"],
         ),
-
         DetectionStrategy(
             strategy_id="t1213-003-gcp-secret-correlation",
             name="GCP Secret Manager and Repository Access Correlation",
@@ -519,9 +525,9 @@ resource "google_monitoring_alert_policy" "unusual_location_access" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''(resource.type="source.googleapis.com/Repository" OR resource.type="secretmanager.googleapis.com/Secret")
-(protoPayload.methodName=~"google.devtools.source.*Clone" OR protoPayload.methodName=~"google.cloud.secretmanager.*AccessSecretVersion")''',
-                gcp_terraform_template='''# GCP: Correlate repository and secret access
+                gcp_logging_query="""(resource.type="source.googleapis.com/Repository" OR resource.type="secretmanager.googleapis.com/Secret")
+(protoPayload.methodName=~"google.devtools.source.*Clone" OR protoPayload.methodName=~"google.cloud.secretmanager.*AccessSecretVersion")""",
+                gcp_terraform_template="""# GCP: Correlate repository and secret access
 
 variable "project_id" {
   type        = string
@@ -588,7 +594,7 @@ resource "google_monitoring_alert_policy" "secret_enumeration" {
     content   = "High volume of Secret Manager access detected. Investigate for potential credential harvesting."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Repository and Secrets Access Correlation",
                 alert_description_template="Correlated access to repositories and secrets detected.",
@@ -597,7 +603,7 @@ resource "google_monitoring_alert_policy" "secret_enumeration" {
                     "Identify which secrets were accessed",
                     "Check if secrets are referenced in accessed repositories",
                     "Verify principal's authorisation for both services",
-                    "Review for other suspicious IAM or service activities"
+                    "Review for other suspicious IAM or service activities",
                 ],
                 containment_actions=[
                     "Disable suspicious service account or user",
@@ -605,8 +611,8 @@ resource "google_monitoring_alert_policy" "secret_enumeration" {
                     "Scan repositories for hardcoded credentials",
                     "Enable VPC Service Controls",
                     "Implement least-privilege IAM policies",
-                    "Enable Secret Manager audit logging"
-                ]
+                    "Enable Secret Manager audit logging",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal CI/CD patterns and exclude automation accounts",
@@ -615,16 +621,15 @@ resource "google_monitoring_alert_policy" "secret_enumeration" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Cloud Logging enabled", "Secret Manager in use"]
-        )
+            prerequisites=["Cloud Logging enabled", "Secret Manager in use"],
+        ),
     ],
-
     recommended_order=[
         "t1213-003-aws-codecommit",
         "t1213-003-gcp-source-repos",
         "t1213-003-aws-secrets-scan",
-        "t1213-003-gcp-secret-correlation"
+        "t1213-003-gcp-secret-correlation",
     ],
     total_effort_hours=7.0,
-    coverage_improvement="+25% improvement for Collection tactic detection"
+    coverage_improvement="+25% improvement for Collection tactic detection",
 )

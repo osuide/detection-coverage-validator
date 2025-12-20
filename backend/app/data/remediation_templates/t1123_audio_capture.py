@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Audio Capture",
     tactic_ids=["TA0009"],  # Collection
     mitre_url="https://attack.mitre.org/techniques/T1123/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries exploit computer peripherals like microphones and webcams, or integrated "
@@ -39,31 +38,37 @@ TEMPLATE = RemediationTemplate(
             "Capture authentication codes spoken aloud",
             "Monitor business discussions and strategic planning",
             "Collect personally identifiable information from voice interactions",
-            "Difficult to detect as legitimate applications use microphones"
+            "Difficult to detect as legitimate applications use microphones",
         ],
         known_threat_actors=[
-            "APT37", "Evasive Panda", "OilRig", "FIN7", "Darkhotel",
-            "Lazarus Group", "Turla", "Equation Group"
+            "APT37",
+            "Evasive Panda",
+            "OilRig",
+            "FIN7",
+            "Darkhotel",
+            "Lazarus Group",
+            "Turla",
+            "Equation Group",
         ],
         recent_campaigns=[
             Campaign(
                 name="APT37 SOUNDWAVE Operations",
                 year=2024,
                 description="APT37 deployed SOUNDWAVE utility specifically designed for microphone input capture targeting diplomatic and government entities",
-                reference_url="https://attack.mitre.org/groups/G0067/"
+                reference_url="https://attack.mitre.org/groups/G0067/",
             ),
             Campaign(
                 name="Evasive Panda MgBot Campaign",
                 year=2023,
                 description="MgBot malware captured both input and output audio streams from compromised systems in targeted espionage operations",
-                reference_url="https://attack.mitre.org/groups/G1011/"
+                reference_url="https://attack.mitre.org/groups/G1011/",
             ),
             Campaign(
                 name="DarkComet Surveillance Operations",
                 year=2022,
                 description="DarkComet RAT used microphone listening functionality in sustained surveillance campaigns against corporate targets",
-                reference_url="https://attack.mitre.org/software/S0334/"
-            )
+                reference_url="https://attack.mitre.org/software/S0334/",
+            ),
         ],
         prevalence="moderate",
         trend="increasing",
@@ -81,13 +86,12 @@ TEMPLATE = RemediationTemplate(
             "Loss of competitive intelligence and trade secrets",
             "Compromise of multi-factor authentication codes",
             "Reputational damage from surveillance disclosure",
-            "Legal liability from unauthorised recordings"
+            "Legal liability from unauthorised recordings",
         ],
         typical_attack_phase="collection",
         often_precedes=["T1041", "T1048", "T1567"],  # Exfiltration techniques
-        often_follows=["T1078.004", "T1190", "T1566"]  # Initial access techniques
+        often_follows=["T1078.004", "T1190", "T1566"],  # Initial access techniques
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - Unusual Audio/Media Processing Activity
         DetectionStrategy(
@@ -104,9 +108,9 @@ TEMPLATE = RemediationTemplate(
                 guardduty_finding_types=[
                     "Execution:Runtime/NewBinaryExecuted",
                     "Execution:Runtime/ReverseShell",
-                    "Execution:Runtime/ProcessInjection"
+                    "Execution:Runtime/ProcessInjection",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect audio capture activity via GuardDuty Runtime Monitoring
 
 Parameters:
@@ -159,8 +163,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AudioCaptureAlertTopic''',
-                terraform_template='''# AWS: Detect audio capture activity via GuardDuty
+            Resource: !Ref AudioCaptureAlertTopic""",
+                terraform_template="""# AWS: Detect audio capture activity via GuardDuty
 
 variable "alert_email" {
   type        = string
@@ -221,7 +225,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Resource  = aws_sns_topic.audio_capture_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="AWS: Potential Audio Capture Activity Detected",
                 alert_description_template=(
@@ -234,7 +238,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Examine running processes for audio capture tools (arecord, ffmpeg, sox)",
                     "Review file system for recently created audio files (.wav, .mp3, .aiff)",
                     "Check network connections for data exfiltration to unusual destinations",
-                    "Examine CloudTrail logs for instance role credential usage"
+                    "Examine CloudTrail logs for instance role credential usage",
                 ],
                 containment_actions=[
                     "Isolate the instance by modifying security group rules",
@@ -242,8 +246,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Terminate suspicious processes accessing audio devices",
                     "Review and remove any unauthorised audio capture tools",
                     "Rotate instance credentials and access keys",
-                    "Assess if similar activity exists on other instances"
-                ]
+                    "Assess if similar activity exists on other instances",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist instances running legitimate VoIP, conferencing, or media processing services",
@@ -252,9 +256,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",
             estimated_monthly_cost="$4.60 per instance per month for Runtime Monitoring",
-            prerequisites=["GuardDuty enabled", "SSM Agent on EC2 instances for Runtime Monitoring"]
+            prerequisites=[
+                "GuardDuty enabled",
+                "SSM Agent on EC2 instances for Runtime Monitoring",
+            ],
         ),
-
         # Strategy 2: AWS - Audio File Creation Monitoring
         DetectionStrategy(
             strategy_id="t1123-aws-audio-files",
@@ -267,13 +273,13 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, instanceId, fileName, filePath, processName
+                query="""fields @timestamp, instanceId, fileName, filePath, processName
 | filter fileName like /.wav$|.mp3$|.aiff$|.flac$|.ogg$|.m4a$/
 | filter filePath like /tmp|temp|var.tmp|home.*Downloads/
 | stats count() as audioFileCount by instanceId, processName, bin(10m)
 | filter audioFileCount > 5
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Monitor audio file creation on EC2 instances
 
 Parameters:
@@ -317,8 +323,8 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
-        - !Ref AlertTopic''',
-                terraform_template='''# AWS: Monitor audio file creation
+        - !Ref AlertTopic""",
+                terraform_template="""# AWS: Monitor audio file creation
 
 variable "cloudwatch_log_group" {
   type        = string
@@ -365,7 +371,7 @@ resource "aws_cloudwatch_metric_alarm" "audio_files" {
   threshold           = 5
   comparison_operator = "GreaterThanThreshold"
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Suspicious Audio File Creation Detected",
                 alert_description_template=(
@@ -379,15 +385,15 @@ resource "aws_cloudwatch_metric_alarm" "audio_files" {
                     "Check if the instance runs legitimate audio processing services",
                     "Examine file content to determine if they contain recorded audio",
                     "Search for data exfiltration attempts of these files",
-                    "Review user sessions active during file creation"
+                    "Review user sessions active during file creation",
                 ],
                 containment_actions=[
                     "Quarantine suspicious audio files for analysis",
                     "Terminate the process creating audio files if unauthorised",
                     "Review and restrict file system permissions",
                     "Enable file integrity monitoring on sensitive directories",
-                    "Implement DLP policies to prevent audio file exfiltration"
-                ]
+                    "Implement DLP policies to prevent audio file exfiltration",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist media servers, conferencing platforms, and audio processing workflows",
@@ -396,9 +402,11 @@ resource "aws_cloudwatch_metric_alarm" "audio_files" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-15 depending on log volume",
-            prerequisites=["CloudWatch Logs Agent with file monitoring", "File system activity logging enabled"]
+            prerequisites=[
+                "CloudWatch Logs Agent with file monitoring",
+                "File system activity logging enabled",
+            ],
         ),
-
         # Strategy 3: AWS - Audio Processing Tool Detection
         DetectionStrategy(
             strategy_id="t1123-aws-audio-tools",
@@ -411,11 +419,11 @@ resource "aws_cloudwatch_metric_alarm" "audio_files" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, instanceId, processName, commandLine, parentProcess
+                query="""fields @timestamp, instanceId, processName, commandLine, parentProcess
 | filter processName like /arecord|ffmpeg.*-f alsa|sox.*rec|parecord|parec|alsaloop|gst-launch.*pulsesrc/
 | stats count() as executions by instanceId, processName, commandLine
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect audio capture tool execution
 
 Parameters:
@@ -459,8 +467,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       AlarmActions:
-        - !Ref AlertTopic''',
-                terraform_template='''# AWS: Detect audio capture tool execution
+        - !Ref AlertTopic""",
+                terraform_template="""# AWS: Detect audio capture tool execution
 
 variable "cloudwatch_log_group" {
   type        = string
@@ -507,7 +515,7 @@ resource "aws_cloudwatch_metric_alarm" "audio_tools" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Audio Capture Tool Execution Detected",
                 alert_description_template=(
@@ -521,7 +529,7 @@ resource "aws_cloudwatch_metric_alarm" "audio_tools" {
                     "Check if the tool is part of a legitimate application workflow",
                     "Examine the parent process and execution context",
                     "Search for output files specified in the command",
-                    "Review network activity for potential exfiltration"
+                    "Review network activity for potential exfiltration",
                 ],
                 containment_actions=[
                     "Terminate the audio capture process immediately",
@@ -529,8 +537,8 @@ resource "aws_cloudwatch_metric_alarm" "audio_tools" {
                     "Review and remove any captured audio files",
                     "Restrict installation of audio processing packages",
                     "Implement application whitelisting to prevent unauthorised tools",
-                    "Review user access and revoke if compromised"
-                ]
+                    "Review user access and revoke if compromised",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist instances with legitimate audio processing requirements and approved tools",
@@ -539,9 +547,11 @@ resource "aws_cloudwatch_metric_alarm" "audio_tools" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudWatch Logs with process execution logging", "Process monitoring enabled"]
+            prerequisites=[
+                "CloudWatch Logs with process execution logging",
+                "Process monitoring enabled",
+            ],
         ),
-
         # Strategy 4: GCP - Audio Capture Detection via Cloud Logging
         DetectionStrategy(
             strategy_id="t1123-gcp-audio-capture",
@@ -555,10 +565,10 @@ resource "aws_cloudwatch_metric_alarm" "audio_tools" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 (protoPayload.request.commandLine=~"arecord|ffmpeg.*alsa|sox.*rec|parecord|gst-launch.*pulsesrc"
-OR textPayload=~"dev.snd|dev.dsp|ALSA.*capture|PulseAudio.*record")''',
-                gcp_terraform_template='''# GCP: Detect audio capture activity
+OR textPayload=~"dev.snd|dev.dsp|ALSA.*capture|PulseAudio.*record")""",
+                gcp_terraform_template="""# GCP: Detect audio capture activity
 
 variable "project_id" {
   type        = string
@@ -630,7 +640,7 @@ resource "google_monitoring_alert_policy" "audio_capture" {
     content   = "Audio capture activity detected on GCE instance. Investigate for unauthorised audio recording."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Audio Capture Activity Detected",
                 alert_description_template=(
@@ -643,7 +653,7 @@ resource "google_monitoring_alert_policy" "audio_capture" {
                     "Identify if the instance hosts legitimate audio services",
                     "Examine storage buckets for uploaded audio files",
                     "Review recent API calls made by the instance's service account",
-                    "Check VPC Flow Logs for data exfiltration patterns"
+                    "Check VPC Flow Logs for data exfiltration patterns",
                 ],
                 containment_actions=[
                     "Stop the GCE instance to prevent further audio capture",
@@ -651,8 +661,8 @@ resource "google_monitoring_alert_policy" "audio_capture" {
                     "Search for and secure any captured audio files",
                     "Revoke the instance's service account credentials",
                     "Update firewall rules to prevent data exfiltration",
-                    "Review and remove unauthorised audio capture tools"
-                ]
+                    "Review and remove unauthorised audio capture tools",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude instances running authorised VoIP, transcription, or media processing services",
@@ -661,9 +671,11 @@ resource "google_monitoring_alert_policy" "audio_capture" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Logging API enabled", "Ops Agent installed on GCE instances"]
+            prerequisites=[
+                "Cloud Logging API enabled",
+                "Ops Agent installed on GCE instances",
+            ],
         ),
-
         # Strategy 5: GCP - Audio File Upload Detection
         DetectionStrategy(
             strategy_id="t1123-gcp-audio-upload",
@@ -681,7 +693,7 @@ resource "google_monitoring_alert_policy" "audio_capture" {
 protoPayload.methodName="storage.objects.create"
 protoPayload.resourceName=~".*\\.(wav|mp3|aiff|flac|ogg|m4a)$"
 protoPayload.authenticationInfo.principalEmail=~".*gserviceaccount.com$"''',
-                gcp_terraform_template='''# GCP: Detect audio file uploads to Cloud Storage
+                gcp_terraform_template="""# GCP: Detect audio file uploads to Cloud Storage
 
 variable "project_id" {
   type        = string
@@ -762,7 +774,7 @@ resource "google_monitoring_alert_policy" "audio_uploads" {
     content   = "Multiple audio files uploaded to Cloud Storage by compute instance. Investigate for data exfiltration."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Suspicious Audio File Upload Detected",
                 alert_description_template=(
@@ -775,7 +787,7 @@ resource "google_monitoring_alert_policy" "audio_uploads" {
                     "Check file creation timestamps on the source instance",
                     "Examine the bucket's access logs for unusual activity",
                     "Review instance logs for audio capture tool execution",
-                    "Assess if the upload pattern is legitimate for the workload"
+                    "Assess if the upload pattern is legitimate for the workload",
                 ],
                 containment_actions=[
                     "Quarantine uploaded audio files for forensic review",
@@ -783,8 +795,8 @@ resource "google_monitoring_alert_policy" "audio_uploads" {
                     "Enable object versioning and retention on the bucket",
                     "Implement bucket-level DLP scanning for sensitive content",
                     "Review and restrict network egress from compute instances",
-                    "Enable VPC Service Controls to limit data exfiltration"
-                ]
+                    "Enable VPC Service Controls to limit data exfiltration",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist service accounts for legitimate media processing and transcription services",
@@ -793,17 +805,19 @@ resource "google_monitoring_alert_policy" "audio_uploads" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-15",
-            prerequisites=["Cloud Audit Logs enabled for Cloud Storage", "Data Access logs enabled"]
-        )
+            prerequisites=[
+                "Cloud Audit Logs enabled for Cloud Storage",
+                "Data Access logs enabled",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1123-aws-audio-tools",
         "t1123-gcp-audio-capture",
         "t1123-aws-media-access",
         "t1123-aws-audio-files",
-        "t1123-gcp-audio-upload"
+        "t1123-gcp-audio-upload",
     ],
     total_effort_hours=6.5,
-    coverage_improvement="+15% improvement for Collection tactic"
+    coverage_improvement="+15% improvement for Collection tactic",
 )

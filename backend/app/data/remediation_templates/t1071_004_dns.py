@@ -24,7 +24,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Application Layer Protocol: DNS",
     tactic_ids=["TA0011"],  # Command and Control
     mitre_url="https://attack.mitre.org/techniques/T1071/004/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries exploit DNS protocol for command and control communications by "
@@ -45,7 +44,7 @@ TEMPLATE = RemediationTemplate(
             "Supports bidirectional communication for C2 operations",
             "Enables data exfiltration through encoded subdomains",
             "Difficult to distinguish from normal application behaviour",
-            "Multiple DNS record types available for data encoding"
+            "Multiple DNS record types available for data encoding",
         ],
         known_threat_actors=[
             "APT18",
@@ -59,33 +58,33 @@ TEMPLATE = RemediationTemplate(
             "Ke3chang",
             "Tropic Trooper",
             "LazyScripter",
-            "Lyceum"
+            "Lyceum",
         ],
         recent_campaigns=[
             Campaign(
                 name="SUNBURST SolarWinds Supply Chain",
                 year=2020,
                 description="SUNBURST malware mimicked legitimate SolarWinds API communications via DNS, using DNS queries to communicate with C2 infrastructure whilst evading detection",
-                reference_url="https://attack.mitre.org/software/S0559/"
+                reference_url="https://attack.mitre.org/software/S0559/",
             ),
             Campaign(
                 name="Cobalt Strike DNS Beaconing",
                 year=2024,
                 description="Cobalt Strike framework deployed with DNS beaconing profiles, encapsulating C2 communications in DNS traffic using custom protocols",
-                reference_url="https://attack.mitre.org/software/S0154/"
+                reference_url="https://attack.mitre.org/software/S0154/",
             ),
             Campaign(
                 name="APT39 DNS Tunnelling Operations",
                 year=2023,
                 description="APT39 utilised DNS tunnelling techniques for covert C2 communications in targeted intelligence gathering operations",
-                reference_url="https://attack.mitre.org/groups/G0087/"
+                reference_url="https://attack.mitre.org/groups/G0087/",
             ),
             Campaign(
                 name="OilRig DNS C2 Infrastructure",
                 year=2022,
                 description="OilRig APT group deployed DNS-based C2 infrastructure for persistent access in Middle Eastern targets",
-                reference_url="https://attack.mitre.org/groups/G0049/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0049/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -103,13 +102,12 @@ TEMPLATE = RemediationTemplate(
             "Prolonged attacker dwell time due to detection challenges",
             "Compliance violations from undetected malicious communications",
             "Potential for lateral movement and privilege escalation",
-            "Reputation damage if DNS infrastructure is compromised"
+            "Reputation damage if DNS infrastructure is compromised",
         ],
         typical_attack_phase="command_and_control",
         often_precedes=["T1041", "T1567", "T1048"],  # Exfiltration techniques
-        often_follows=["T1078.004", "T1190", "T1566"]  # Initial Access techniques
+        often_follows=["T1078.004", "T1190", "T1566"],  # Initial Access techniques
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - DNS Query Anomaly Detection
         DetectionStrategy(
@@ -120,14 +118,14 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query=r'''fields @timestamp, query_name, query_type, srcaddr, srcport
+                query=r"""fields @timestamp, query_name, query_type, srcaddr, srcport
 | filter query_type in ["TXT", "NULL", "ANY", "MX"]
 | filter query_name like /[a-f0-9]{32,}/ or query_name like /[A-Za-z0-9+\/=]{40,}/ or strlen(query_name) > 60
 | stats count() as query_count, dc(query_name) as unique_queries by srcaddr, query_type, bin(5m)
 | filter query_count > 20 or unique_queries > 15
 | sort query_count desc
-| limit 100''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| limit 100""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect DNS tunnelling and C2 communications via Route 53
 
 Parameters:
@@ -187,8 +185,8 @@ Resources:
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref DnsTunnellingAlertTopic''',
-                terraform_template='''# Detect DNS tunnelling via Route 53 query logs
+            Resource: !Ref DnsTunnellingAlertTopic""",
+                terraform_template="""# Detect DNS tunnelling via Route 53 query logs
 
 variable "route53_log_group" {
   type        = string
@@ -251,7 +249,7 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
       Resource  = aws_sns_topic.dns_tunnelling.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="DNS Tunnelling Pattern Detected",
                 alert_description_template="Suspicious DNS query patterns detected from {srcaddr}. Unusual record types, long subdomains, or high-entropy queries may indicate DNS tunnelling or C2 activity.",
@@ -263,7 +261,7 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
                     "Review destination DNS servers and domain ownership",
                     "Examine instance processes and network connections",
                     "Correlate with other suspicious activities (unusual network traffic, process execution)",
-                    "Check CloudTrail for recent API calls from the source"
+                    "Check CloudTrail for recent API calls from the source",
                 ],
                 containment_actions=[
                     "Isolate affected instances from the network immediately",
@@ -273,8 +271,8 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
                     "Enable enhanced DNS query logging for affected resources",
                     "Implement DNS sinkholing for identified C2 domains",
                     "Review outbound security group rules and remove unnecessary egress",
-                    "Rotate credentials for potentially compromised resources"
-                ]
+                    "Rotate credentials for potentially compromised resources",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate use of TXT records for SPF, DKIM, DMARC, and service discovery (e.g., SRV records). Establish baseline for normal DNS patterns in your environment. Tune entropy thresholds based on legitimate application behaviour.",
@@ -283,9 +281,12 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-1.5 hours",
             estimated_monthly_cost="$10-25",
-            prerequisites=["Route 53 Resolver Query Logging enabled", "CloudWatch Logs", "CloudTrail enabled"]
+            prerequisites=[
+                "Route 53 Resolver Query Logging enabled",
+                "CloudWatch Logs",
+                "CloudTrail enabled",
+            ],
         ),
-
         # Strategy 2: AWS - GuardDuty DNS C2 Detection
         DetectionStrategy(
             strategy_id="t1071-004-aws-guardduty",
@@ -300,9 +301,9 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
                     "Trojan:EC2/DNSDataExfiltration",
                     "Backdoor:EC2/DenialOfService.Dns",
                     "Trojan:EC2/BlackholeTraffic!DNS",
-                    "Trojan:EC2/DropPoint!DNS"
+                    "Trojan:EC2/DropPoint!DNS",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Configure GuardDuty alerts for DNS-based C2 detection
 
 Parameters:
@@ -369,8 +370,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref GuardDutyAlertTopic''',
-                terraform_template='''# Configure GuardDuty for DNS C2 detection
+            Resource: !Ref GuardDutyAlertTopic""",
+                terraform_template="""# Configure GuardDuty for DNS C2 detection
 
 variable "alert_email" {
   type        = string
@@ -449,7 +450,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.guardduty_dns.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GuardDuty DNS C2 Activity Detected",
                 alert_description_template="GuardDuty detected {type} on instance {resource.instanceDetails.instanceId}. This indicates DNS-based command and control or data exfiltration activity.",
@@ -461,7 +462,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Review instance processes and running services",
                     "Examine CloudTrail logs for API activity from the instance",
                     "Check VPC Flow Logs for correlated network activity",
-                    "Investigate for signs of initial compromise or lateral movement"
+                    "Investigate for signs of initial compromise or lateral movement",
                 ],
                 containment_actions=[
                     "Isolate affected instances immediately using security groups",
@@ -471,8 +472,8 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Add C2 domains to AWS Network Firewall block list",
                     "Review and rotate any credentials accessible to the instance",
                     "Terminate compromised instances and deploy from clean AMIs",
-                    "Update security group rules to prevent similar attacks"
-                ]
+                    "Update security group rules to prevent similar attacks",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Review findings for legitimate security tools, monitoring agents, and development environments. Create suppression rules for known benign DNS patterns. Update threat intelligence lists regularly.",
@@ -481,9 +482,13 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-45 minutes",
             estimated_monthly_cost="$30-100 depending on data volume and resources",
-            prerequisites=["GuardDuty enabled", "VPC Flow Logs", "DNS Logs", "CloudTrail enabled"]
+            prerequisites=[
+                "GuardDuty enabled",
+                "VPC Flow Logs",
+                "DNS Logs",
+                "CloudTrail enabled",
+            ],
         ),
-
         # Strategy 3: AWS - DNS Beaconing Detection
         DetectionStrategy(
             strategy_id="t1071-004-aws-dns-beaconing",
@@ -493,15 +498,15 @@ resource "aws_sns_topic_policy" "allow_events" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query=r'''fields @timestamp, query_name, query_type, srcaddr
+                query=r"""fields @timestamp, query_name, query_type, srcaddr
 | filter ispresent(query_name)
 | stats count() as query_count by srcaddr, query_name, bin(60s)
 | filter query_count >= 3 and query_count <= 10
 | stats count() as beacon_intervals by srcaddr
 | filter beacon_intervals > 5
 | sort beacon_intervals desc
-| limit 100''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| limit 100""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect DNS beaconing patterns indicative of C2 activity
 
 Parameters:
@@ -558,8 +563,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref BeaconingAlertTopic''',
-                terraform_template='''# Detect DNS beaconing patterns
+            Resource: !Ref BeaconingAlertTopic""",
+                terraform_template="""# Detect DNS beaconing patterns
 
 variable "route53_log_group" {
   type        = string
@@ -614,7 +619,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.dns_beaconing.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="DNS Beaconing Activity Detected",
                 alert_description_template="Regular, periodic DNS queries detected from {srcaddr}. Beaconing pattern may indicate DNS-based C2 check-ins using tools like dnscat2 or Iodine.",
@@ -626,7 +631,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Examine instance processes for suspicious executables",
                     "Correlate with network traffic for additional C2 indicators",
                     "Review instance CloudTrail logs for API anomalies",
-                    "Check for data encoding in DNS query strings"
+                    "Check for data encoding in DNS query strings",
                 ],
                 containment_actions=[
                     "Isolate the beaconing instance from the network",
@@ -636,8 +641,8 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Review security group rules and remove unnecessary egress",
                     "Deploy endpoint detection tools on affected instances",
                     "Implement DNS firewall rules to block C2 domains",
-                    "Monitor for similar patterns from other instances"
-                ]
+                    "Monitor for similar patterns from other instances",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Establish baselines for legitimate periodic DNS queries (health checks, monitoring tools, CDN queries). Whitelist known monitoring agents and scheduled tasks. Adjust timing thresholds based on environment.",
@@ -646,9 +651,11 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-1.5 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["Route 53 Resolver Query Logging enabled", "CloudWatch Logs Insights"]
+            prerequisites=[
+                "Route 53 Resolver Query Logging enabled",
+                "CloudWatch Logs Insights",
+            ],
         ),
-
         # Strategy 4: GCP - Cloud Logging DNS Anomaly Detection
         DetectionStrategy(
             strategy_id="t1071-004-gcp-dns-anomaly",
@@ -668,7 +675,7 @@ logName="projects/PROJECT_ID/logs/dns.googleapis.com%2Fdns_queries"
   length(jsonPayload.queryName) > 60
 )
 jsonPayload.responseCode="NOERROR"''',
-                gcp_terraform_template='''# GCP: Detect DNS tunnelling via Cloud DNS logs
+                gcp_terraform_template="""# GCP: Detect DNS tunnelling via Cloud DNS logs
 
 variable "project_id" {
   type        = string
@@ -752,7 +759,7 @@ resource "google_monitoring_alert_policy" "dns_tunnelling" {
     content   = "Suspicious DNS query patterns detected. This may indicate DNS tunnelling or C2 activity."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: DNS Tunnelling Pattern Detected",
                 alert_description_template="Unusual DNS queries detected in Cloud DNS logs. Suspicious record types or long query strings may indicate DNS tunnelling or C2 communications.",
@@ -764,7 +771,7 @@ resource "google_monitoring_alert_policy" "dns_tunnelling" {
                     "Check destination DNS servers and domain ownership",
                     "Review VM instance metadata and service accounts",
                     "Examine Cloud Logging for correlated suspicious activity",
-                    "Check VPC Flow Logs for additional network indicators"
+                    "Check VPC Flow Logs for additional network indicators",
                 ],
                 containment_actions=[
                     "Isolate affected VM instances using VPC firewall rules",
@@ -774,8 +781,8 @@ resource "google_monitoring_alert_policy" "dns_tunnelling" {
                     "Implement VPC Service Controls to restrict egress",
                     "Enable Private Google Access to control DNS resolution",
                     "Review and restrict firewall rules for DNS traffic",
-                    "Deploy Cloud IDS for enhanced network monitoring"
-                ]
+                    "Deploy Cloud IDS for enhanced network monitoring",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate TXT record usage for email authentication (SPF, DKIM, DMARC) and service discovery. Establish baselines for normal DNS query patterns. Tune thresholds based on application behaviour.",
@@ -784,9 +791,12 @@ resource "google_monitoring_alert_policy" "dns_tunnelling" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-1.5 hours",
             estimated_monthly_cost="$10-25",
-            prerequisites=["Cloud DNS Query Logging enabled", "Cloud Logging", "Cloud Monitoring"]
+            prerequisites=[
+                "Cloud DNS Query Logging enabled",
+                "Cloud Logging",
+                "Cloud Monitoring",
+            ],
         ),
-
         # Strategy 5: GCP - Security Command Centre DNS Threat Detection
         DetectionStrategy(
             strategy_id="t1071-004-gcp-scc",
@@ -802,9 +812,9 @@ resource "google_monitoring_alert_policy" "dns_tunnelling" {
                     "Malware: Bad Domain",
                     "Malware: Bad IP",
                     "Malware: Outgoing DoS",
-                    "Initial Access: Suspicious Login"
+                    "Initial Access: Suspicious Login",
                 ],
-                gcp_terraform_template='''# GCP: Configure Security Command Centre for DNS threat detection
+                gcp_terraform_template="""# GCP: Configure Security Command Centre for DNS threat detection
 
 variable "organization_id" {
   type        = string
@@ -898,7 +908,7 @@ resource "google_monitoring_alert_policy" "scc_dns_threats" {
 }
 
 # Note: SCC notification configs require organization-level access
-# Configure via: gcloud scc notifications create --organization=ORG_ID''',
+# Configure via: gcloud scc notifications create --organization=ORG_ID""",
                 alert_severity="critical",
                 alert_title="GCP: DNS-Based Malware or C2 Detected",
                 alert_description_template="Security Command Centre detected {category} on {resourceName}. This indicates DNS-based command and control or malware communications.",
@@ -910,7 +920,7 @@ resource "google_monitoring_alert_policy" "scc_dns_threats" {
                     "Review VPC Flow Logs for correlated network activity",
                     "Examine VM instance processes and configurations",
                     "Check service account permissions and recent usage",
-                    "Investigate for signs of lateral movement or privilege escalation"
+                    "Investigate for signs of lateral movement or privilege escalation",
                 ],
                 containment_actions=[
                     "Isolate affected resources immediately using firewall rules",
@@ -920,8 +930,8 @@ resource "google_monitoring_alert_policy" "scc_dns_threats" {
                     "Enable VPC Service Controls to prevent data exfiltration",
                     "Review and update firewall rules to block C2 infrastructure",
                     "Deploy Cloud IDS for enhanced threat detection",
-                    "Apply organisation policy constraints to prevent recurrence"
-                ]
+                    "Apply organisation policy constraints to prevent recurrence",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Review findings for legitimate security tools, development environments, and known services. Configure SCC muting rules for confirmed benign activities. Update threat intelligence feeds regularly.",
@@ -930,17 +940,21 @@ resource "google_monitoring_alert_policy" "scc_dns_threats" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$50-150 depending on assets and organisation size",
-            prerequisites=["Security Command Centre enabled", "Event Threat Detection enabled", "Cloud DNS Query Logging", "VPC Flow Logs"]
-        )
+            prerequisites=[
+                "Security Command Centre enabled",
+                "Event Threat Detection enabled",
+                "Cloud DNS Query Logging",
+                "VPC Flow Logs",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1071-004-aws-guardduty",
         "t1071-004-gcp-scc",
         "t1071-004-aws-dns-anomaly",
         "t1071-004-gcp-dns-anomaly",
-        "t1071-004-aws-dns-beaconing"
+        "t1071-004-aws-dns-beaconing",
     ],
     total_effort_hours=6.0,
-    coverage_improvement="+30% improvement for DNS-based Command and Control detection"
+    coverage_improvement="+30% improvement for DNS-based Command and Control detection",
 )

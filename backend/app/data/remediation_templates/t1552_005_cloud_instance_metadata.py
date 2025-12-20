@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Unsecured Credentials: Cloud Instance Metadata API",
     tactic_ids=["TA0006"],
     mitre_url="https://attack.mitre.org/techniques/T1552/005/",
-
     threat_context=ThreatContext(
         description=(
             "Cloud instances expose metadata services (AWS IMDS, GCP metadata server) "
@@ -35,7 +34,7 @@ TEMPLATE = RemediationTemplate(
             "No authentication required by default (IMDSv1)",
             "Credentials can have significant permissions",
             "SSRF vulnerabilities make exploitation easy",
-            "Credentials valid for hours after theft"
+            "Credentials valid for hours after theft",
         ],
         known_threat_actors=["Capital One attacker", "TeamTNT", "Kinsing"],
         recent_campaigns=[
@@ -43,14 +42,14 @@ TEMPLATE = RemediationTemplate(
                 name="Capital One Breach",
                 year=2019,
                 description="SSRF exploit used to access IMDS and steal IAM credentials, exfiltrating 100M+ records",
-                reference_url="https://krebsonsecurity.com/2019/08/what-we-can-learn-from-the-capital-one-hack/"
+                reference_url="https://krebsonsecurity.com/2019/08/what-we-can-learn-from-the-capital-one-hack/",
             ),
             Campaign(
                 name="TeamTNT IMDS Attacks",
                 year=2024,
                 description="Cryptomining group targeting misconfigured IMDS to steal credentials across cloud providers",
-                reference_url="https://www.cadosecurity.com/blog/teamtnt-reemerges-with-new-aggressive-cloud-campaign"
-            )
+                reference_url="https://www.cadosecurity.com/blog/teamtnt-reemerges-with-new-aggressive-cloud-campaign",
+            ),
         ],
         prevalence="common",
         trend="stable",
@@ -64,13 +63,12 @@ TEMPLATE = RemediationTemplate(
             "Credential theft leading to data breaches",
             "Lateral movement across cloud resources",
             "Resource abuse for cryptomining",
-            "Privilege escalation if role is overpermissioned"
+            "Privilege escalation if role is overpermissioned",
         ],
         typical_attack_phase="credential_access",
         often_precedes=["T1078.004", "T1530", "T1537"],
-        often_follows=["T1190", "T1059"]
+        often_follows=["T1190", "T1059"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - GuardDuty IMDS exfiltration
         DetectionStrategy(
@@ -83,9 +81,9 @@ TEMPLATE = RemediationTemplate(
             implementation=DetectionImplementation(
                 guardduty_finding_types=[
                     "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.OutsideAWS",
-                    "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.InsideAWS"
+                    "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.InsideAWS",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect IMDS credential exfiltration
 
 Parameters:
@@ -130,8 +128,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect IMDS credential exfiltration
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect IMDS credential exfiltration
 
 variable "alert_email" {
   type = string
@@ -180,7 +178,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="IMDS Credential Exfiltration Detected",
                 alert_description_template="Instance credentials used from external location. This indicates credential theft via IMDS.",
@@ -188,14 +186,14 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Identify which EC2 instance's credentials were stolen",
                     "Check VPC flow logs for connections to 169.254.169.254",
                     "Review application logs for SSRF patterns",
-                    "List all API calls made with the stolen credentials"
+                    "List all API calls made with the stolen credentials",
                 ],
                 containment_actions=[
                     "Terminate or isolate the affected instance",
                     "Revoke the instance role's sessions",
                     "Enable IMDSv2 requirement on the instance",
-                    "Review and restrict the IAM role permissions"
-                ]
+                    "Review and restrict the IAM role permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist known hybrid/on-prem services that use instance credentials",
@@ -204,9 +202,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$4/million events",
-            prerequisites=["GuardDuty enabled"]
+            prerequisites=["GuardDuty enabled"],
         ),
-
         # Strategy 2: AWS - Enforce IMDSv2
         DetectionStrategy(
             strategy_id="t1552005-aws-imdsv2",
@@ -217,7 +214,7 @@ resource "aws_sns_topic_policy" "allow_events" {
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
                 config_rule_identifier="ec2-imdsv2-check",
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Enforce IMDSv2 on EC2 instances
 
 Parameters:
@@ -268,8 +265,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Enforce IMDSv2 on EC2 instances
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Enforce IMDSv2 on EC2 instances
 
 variable "alert_email" {
   type = string
@@ -329,7 +326,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="EC2 Instance Not Using IMDSv2",
                 alert_description_template="Instance {instance_id} is not configured to require IMDSv2, making it vulnerable to SSRF credential theft.",
@@ -337,14 +334,14 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Identify which instances are non-compliant",
                     "Check if instances are internet-facing",
                     "Review applications running for SSRF vulnerabilities",
-                    "Plan migration to IMDSv2"
+                    "Plan migration to IMDSv2",
                 ],
                 containment_actions=[
                     "Enable IMDSv2 requirement on non-compliant instances",
                     "Update launch templates to require IMDSv2",
                     "Set account-level default for IMDSv2",
-                    "Review IAM role permissions on instances"
-                ]
+                    "Review IAM role permissions on instances",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Some legacy applications may require IMDSv1",
@@ -353,9 +350,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$1-5",
-            prerequisites=["AWS Config enabled"]
+            prerequisites=["AWS Config enabled"],
         ),
-
         # Strategy 3: GCP - Metadata server access monitoring
         DetectionStrategy(
             strategy_id="t1552005-gcp-metadata",
@@ -369,7 +365,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                 gcp_logging_query='''resource.type="gce_instance"
 protoPayload.methodName="compute.instances.getSerialPortOutput"
 OR protoPayload.requestMetadata.callerSuppliedUserAgent=~".*metadata.*"''',
-                gcp_terraform_template='''# GCP: Detect metadata server abuse
+                gcp_terraform_template="""# GCP: Detect metadata server abuse
 
 variable "project_id" {
   type = string
@@ -428,7 +424,7 @@ resource "google_monitoring_alert_policy" "metadata_alert" {
 # }
 # shielded_instance_config {
 #   enable_secure_boot = true
-# }''',
+# }""",
                 alert_severity="high",
                 alert_title="GCP: Suspicious Metadata Access",
                 alert_description_template="Unusual metadata server access pattern detected on GCE instances.",
@@ -436,14 +432,14 @@ resource "google_monitoring_alert_policy" "metadata_alert" {
                     "Check Cloud Audit Logs for metadata API calls",
                     "Review which service accounts accessed metadata",
                     "Look for SSRF patterns in application logs",
-                    "Verify instance security configurations"
+                    "Verify instance security configurations",
                 ],
                 containment_actions=[
                     "Enable metadata concealment on instances",
                     "Rotate service account keys",
                     "Review and restrict service account permissions",
-                    "Enable OS Login for instance access"
-                ]
+                    "Enable OS Login for instance access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal metadata access patterns",
@@ -452,9 +448,8 @@ resource "google_monitoring_alert_policy" "metadata_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled"],
         ),
-
         # Strategy 4: AWS - VPC Flow Logs IMDS detection
         DetectionStrategy(
             strategy_id="t1552005-aws-flowlogs",
@@ -464,12 +459,12 @@ resource "google_monitoring_alert_policy" "metadata_alert" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcAddr, dstAddr, dstPort, bytes
+                query="""fields @timestamp, srcAddr, dstAddr, dstPort, bytes
 | filter dstAddr = "169.254.169.254"
 | stats count(*) as imds_calls, sum(bytes) as total_bytes by srcAddr, bin(1h)
 | filter imds_calls > 100
-| sort imds_calls desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort imds_calls desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Monitor IMDS access via VPC Flow Logs
 
 Parameters:
@@ -510,8 +505,8 @@ Resources:
       Threshold: 1000
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Monitor IMDS access via VPC Flow Logs
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Monitor IMDS access via VPC Flow Logs
 
 variable "vpc_flow_log_group" {
   type = string
@@ -556,7 +551,7 @@ resource "aws_cloudwatch_metric_alarm" "imds_access" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="High IMDS Access Volume",
                 alert_description_template="Instance {srcAddr} made {imds_calls} calls to IMDS in 1 hour. Normal is <100.",
@@ -564,14 +559,14 @@ resource "aws_cloudwatch_metric_alarm" "imds_access" {
                     "Identify which instances have high IMDS access",
                     "Check if application legitimately uses IMDS",
                     "Review for SSRF vulnerabilities",
-                    "Check if credentials were subsequently used"
+                    "Check if credentials were subsequently used",
                 ],
                 containment_actions=[
                     "Enable IMDSv2 with hop limit 1",
                     "Review application code for SSRF",
                     "Restrict IMDS access via iptables if needed",
-                    "Add IMDS hop count limit"
-                ]
+                    "Add IMDS hop count limit",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Adjust threshold based on normal application IMDS usage",
@@ -580,16 +575,15 @@ resource "aws_cloudwatch_metric_alarm" "imds_access" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-30",
-            prerequisites=["VPC Flow Logs enabled to CloudWatch"]
-        )
+            prerequisites=["VPC Flow Logs enabled to CloudWatch"],
+        ),
     ],
-
     recommended_order=[
         "t1552005-aws-guardduty",
         "t1552005-aws-imdsv2",
         "t1552005-gcp-metadata",
-        "t1552005-aws-flowlogs"
+        "t1552005-aws-flowlogs",
     ],
     total_effort_hours=4.5,
-    coverage_improvement="+20% improvement for Credential Access tactic"
+    coverage_improvement="+20% improvement for Credential Access tactic",
 )

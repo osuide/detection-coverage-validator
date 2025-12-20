@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Event Triggered Execution",
     tactic_ids=["TA0003", "TA0004"],  # Persistence, Privilege Escalation
     mitre_url="https://attack.mitre.org/techniques/T1546/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries establish persistence and escalate privileges by exploiting "
@@ -41,39 +40,39 @@ TEMPLATE = RemediationTemplate(
             "Difficult to detect among legitimate event triggers",
             "Survives system reboots and credential rotation",
             "Can be triggered by routine cloud operations",
-            "Provides both persistence and privilege escalation"
+            "Provides both persistence and privilege escalation",
         ],
         known_threat_actors=[
             "KV Botnet operators",
             "Pacu operators",
             "UPSTYLE operators",
-            "XCSSET operators"
+            "XCSSET operators",
         ],
         recent_campaigns=[
             Campaign(
                 name="KV Botnet Event Management",
                 year=2024,
                 description="KV Botnet used libevent to manage events on victim systems, executing callbacks to terminate processes matching specific criteria",
-                reference_url="https://attack.mitre.org/campaigns/C0035/"
+                reference_url="https://attack.mitre.org/campaigns/C0035/",
             ),
             Campaign(
                 name="Pacu Lambda Event Triggers",
                 year=2024,
                 description="Pacu configures S3 bucket notifications triggering malicious Lambda functions on CloudFormation uploads and creates Lambda functions responding to IAM events",
-                reference_url="https://attack.mitre.org/software/S1091/"
+                reference_url="https://attack.mitre.org/software/S1091/",
             ),
             Campaign(
                 name="UPSTYLE Python Hooks",
                 year=2024,
                 description="UPSTYLE creates .pth files beginning with 'import' so code executes whenever processes reference modified items",
-                reference_url="https://attack.mitre.org/software/S1164/"
+                reference_url="https://attack.mitre.org/software/S1164/",
             ),
             Campaign(
                 name="XCSSET Xcode Build Rules",
                 year=2024,
                 description="XCSSET embeds encoded payloads into build rules and target configurations in Xcode projects for execution during builds",
-                reference_url="https://attack.mitre.org/software/S0658/"
-            )
+                reference_url="https://attack.mitre.org/software/S0658/",
+            ),
         ],
         prevalence="moderate",
         trend="increasing",
@@ -90,13 +89,12 @@ TEMPLATE = RemediationTemplate(
             "Privilege escalation via service accounts",
             "Data exfiltration through event triggers",
             "Resource abuse (cryptomining, spam)",
-            "Backdoor access survives remediation attempts"
+            "Backdoor access survives remediation attempts",
         ],
         typical_attack_phase="persistence",
         often_precedes=["T1078.004", "T1098.001", "T1530"],
-        often_follows=["T1078.004", "T1098.003", "T1648"]
+        often_follows=["T1078.004", "T1098.003", "T1648"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - Lambda Event Source Mapping
         DetectionStrategy(
@@ -114,11 +112,11 @@ TEMPLATE = RemediationTemplate(
                         "eventName": [
                             "CreateEventSourceMapping",
                             "UpdateEventSourceMapping",
-                            "CreateEventSourceMapping20150331"
+                            "CreateEventSourceMapping20150331",
                         ]
-                    }
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect Lambda event trigger creation
 
 Parameters:
@@ -161,8 +159,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect Lambda event trigger creation
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect Lambda event trigger creation
 
 variable "alert_email" {
   type = string
@@ -212,7 +210,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Lambda Event Trigger Created",
                 alert_description_template="New Lambda event source mapping created for function {functionName} by {userIdentity.arn}.",
@@ -222,15 +220,15 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Check IAM role attached to function",
                     "Identify event source (S3, DynamoDB, etc.)",
                     "Review function execution history",
-                    "Check for concurrent suspicious IAM activity"
+                    "Check for concurrent suspicious IAM activity",
                 ],
                 containment_actions=[
                     "Delete unauthorised event source mappings",
                     "Review and restrict Lambda creation permissions",
                     "Audit Lambda function IAM roles",
                     "Disable suspicious Lambda functions",
-                    "Enable Lambda code signing"
-                ]
+                    "Enable Lambda code signing",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist CI/CD pipelines and authorised automation tools",
@@ -239,9 +237,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         # Strategy 2: AWS - EventBridge Rule Creation
         DetectionStrategy(
             strategy_id="t1546-aws-eventbridge",
@@ -255,14 +252,10 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "source": ["aws.events"],
                     "detail-type": ["AWS API Call via CloudTrail"],
                     "detail": {
-                        "eventName": [
-                            "PutRule",
-                            "PutTargets",
-                            "CreateEventBus"
-                        ]
-                    }
+                        "eventName": ["PutRule", "PutTargets", "CreateEventBus"]
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect EventBridge rule creation
 
 Parameters:
@@ -305,8 +298,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect EventBridge rule creation
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect EventBridge rule creation
 
 variable "alert_email" {
   type = string
@@ -356,7 +349,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="EventBridge Rule Created or Modified",
                 alert_description_template="EventBridge rule {ruleName} was created or modified by {userIdentity.arn}.",
@@ -366,15 +359,15 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Check what the rule triggers (Lambda, Step Functions, etc.)",
                     "Review execution history of targets",
                     "Check for patterns matching IAM events or sensitive operations",
-                    "Look for rules with overly broad patterns"
+                    "Look for rules with overly broad patterns",
                 ],
                 containment_actions=[
                     "Disable unauthorised EventBridge rules",
                     "Delete malicious rule targets",
                     "Review permissions for EventBridge management",
                     "Audit target Lambda functions or Step Functions",
-                    "Enable EventBridge schema validation"
-                ]
+                    "Enable EventBridge schema validation",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist infrastructure automation and CI/CD tools. Focus on rules targeting IAM or security events.",
@@ -383,9 +376,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         # Strategy 3: AWS - S3 Event Notification Configuration
         DetectionStrategy(
             strategy_id="t1546-aws-s3-events",
@@ -398,11 +390,9 @@ resource "aws_sns_topic_policy" "allow_events" {
                 event_pattern={
                     "source": ["aws.s3"],
                     "detail-type": ["AWS API Call via CloudTrail"],
-                    "detail": {
-                        "eventName": ["PutBucketNotificationConfiguration"]
-                    }
+                    "detail": {"eventName": ["PutBucketNotificationConfiguration"]},
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect S3 event notification configuration
 
 Parameters:
@@ -442,8 +432,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect S3 event notification configuration
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect S3 event notification configuration
 
 variable "alert_email" {
   type = string
@@ -489,7 +479,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="S3 Event Notification Configured",
                 alert_description_template="S3 bucket {bucketName} event notification configured by {userIdentity.arn}.",
@@ -499,15 +489,15 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Verify the bucket contains sensitive data",
                     "Review Lambda function code if applicable",
                     "Check for CloudFormation upload triggers (Pacu technique)",
-                    "Review recent S3 bucket policy changes"
+                    "Review recent S3 bucket policy changes",
                 ],
                 containment_actions=[
                     "Remove unauthorised bucket notifications",
                     "Review and restrict s3:PutBucketNotification permissions",
                     "Audit Lambda functions triggered by S3 events",
                     "Enable S3 bucket versioning and MFA delete",
-                    "Review bucket policies for unauthorised access"
-                ]
+                    "Review bucket policies for unauthorised access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known data processing pipelines and ETL jobs",
@@ -516,9 +506,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled with S3 data events"]
+            prerequisites=["CloudTrail enabled with S3 data events"],
         ),
-
         # Strategy 4: GCP - Cloud Functions Event Triggers
         DetectionStrategy(
             strategy_id="t1546-gcp-function-triggers",
@@ -529,9 +518,9 @@ resource "aws_sns_topic_policy" "allow_events" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''protoPayload.methodName=~"CloudFunctionsService.CreateFunction|FunctionService.CreateFunction"
-protoPayload.request.eventTrigger:*''',
-                gcp_terraform_template='''# GCP: Detect Cloud Functions with event triggers
+                gcp_logging_query="""protoPayload.methodName=~"CloudFunctionsService.CreateFunction|FunctionService.CreateFunction"
+protoPayload.request.eventTrigger:*""",
+                gcp_terraform_template="""# GCP: Detect Cloud Functions with event triggers
 
 variable "project_id" {
   type = string
@@ -580,7 +569,7 @@ resource "google_monitoring_alert_policy" "function_trigger" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Cloud Function with Event Trigger Created",
                 alert_description_template="Cloud Function with event trigger was created.",
@@ -590,15 +579,15 @@ resource "google_monitoring_alert_policy" "function_trigger" {
                     "Verify service account permissions",
                     "Review what events trigger the function",
                     "Check for triggers on IAM, storage, or Pub/Sub events",
-                    "Audit recent function executions"
+                    "Audit recent function executions",
                 ],
                 containment_actions=[
                     "Delete unauthorised functions",
                     "Remove event triggers from suspicious functions",
                     "Review Cloud Functions deployment permissions",
                     "Audit service account IAM bindings",
-                    "Enable VPC Service Controls for Functions"
-                ]
+                    "Enable VPC Service Controls for Functions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist CI/CD pipelines and known serverless applications",
@@ -607,9 +596,8 @@ resource "google_monitoring_alert_policy" "function_trigger" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled"],
         ),
-
         # Strategy 5: GCP - Pub/Sub Subscription Creation
         DetectionStrategy(
             strategy_id="t1546-gcp-pubsub",
@@ -620,9 +608,9 @@ resource "google_monitoring_alert_policy" "function_trigger" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''protoPayload.methodName="google.pubsub.v1.Subscriber.CreateSubscription"
-protoPayload.request.pushConfig:*''',
-                gcp_terraform_template='''# GCP: Detect Pub/Sub push subscription creation
+                gcp_logging_query="""protoPayload.methodName="google.pubsub.v1.Subscriber.CreateSubscription"
+protoPayload.request.pushConfig:*""",
+                gcp_terraform_template="""# GCP: Detect Pub/Sub push subscription creation
 
 variable "project_id" {
   type = string
@@ -671,7 +659,7 @@ resource "google_monitoring_alert_policy" "pubsub_push" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Pub/Sub Push Subscription Created",
                 alert_description_template="Pub/Sub push subscription was created.",
@@ -681,15 +669,15 @@ resource "google_monitoring_alert_policy" "pubsub_push" {
                     "Check what topic the subscription monitors",
                     "Review push endpoint authentication",
                     "Audit service account permissions",
-                    "Check for subscriptions to admin activity topics"
+                    "Check for subscriptions to admin activity topics",
                 ],
                 containment_actions=[
                     "Delete unauthorised subscriptions",
                     "Review Pub/Sub IAM permissions",
                     "Verify push endpoint legitimacy",
                     "Enable authentication for push endpoints",
-                    "Audit topic publishing permissions"
-                ]
+                    "Audit topic publishing permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known event-driven applications and integration platforms",
@@ -698,9 +686,8 @@ resource "google_monitoring_alert_policy" "pubsub_push" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled"],
         ),
-
         # Strategy 6: AWS - CloudWatch Logs Subscription Filters
         DetectionStrategy(
             strategy_id="t1546-aws-logs-subscription",
@@ -713,11 +700,9 @@ resource "google_monitoring_alert_policy" "pubsub_push" {
                 event_pattern={
                     "source": ["aws.logs"],
                     "detail-type": ["AWS API Call via CloudTrail"],
-                    "detail": {
-                        "eventName": ["PutSubscriptionFilter"]
-                    }
+                    "detail": {"eventName": ["PutSubscriptionFilter"]},
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect CloudWatch Logs subscription filter creation
 
 Parameters:
@@ -757,8 +742,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect CloudWatch Logs subscription filter creation
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect CloudWatch Logs subscription filter creation
 
 variable "alert_email" {
   type = string
@@ -804,7 +789,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="CloudWatch Logs Subscription Filter Created",
                 alert_description_template="Subscription filter created for log group {logGroupName} by {userIdentity.arn}.",
@@ -814,15 +799,15 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Verify subscription was authorised",
                     "Review what logs are being filtered",
                     "Check for filters on security-related log groups",
-                    "Audit Lambda function execution history"
+                    "Audit Lambda function execution history",
                 ],
                 containment_actions=[
                     "Delete unauthorised subscription filters",
                     "Review logs:PutSubscriptionFilter permissions",
                     "Audit destination Lambda functions",
                     "Enable log group encryption",
-                    "Review Lambda function IAM roles"
-                ]
+                    "Review Lambda function IAM roles",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist known log processing and SIEM integrations",
@@ -831,18 +816,17 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled"]
-        )
+            prerequisites=["CloudTrail enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1546-aws-lambda-triggers",
         "t1546-aws-s3-events",
         "t1546-gcp-function-triggers",
         "t1546-aws-eventbridge",
         "t1546-gcp-pubsub",
-        "t1546-aws-logs-subscription"
+        "t1546-aws-logs-subscription",
     ],
     total_effort_hours=3.5,
-    coverage_improvement="+20% improvement for Persistence and Privilege Escalation tactics"
+    coverage_improvement="+20% improvement for Persistence and Privilege Escalation tactics",
 )

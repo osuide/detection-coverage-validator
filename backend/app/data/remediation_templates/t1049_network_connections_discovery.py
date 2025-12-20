@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="System Network Connections Discovery",
     tactic_ids=["TA0007"],  # Discovery
     mitre_url="https://attack.mitre.org/techniques/T1049/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries enumerate network connections on compromised systems to identify "
@@ -38,31 +37,39 @@ TEMPLATE = RemediationTemplate(
             "Maps RDP, SSH, and database connections",
             "Discovers cloud VPC peering and VPN configurations",
             "Essential for planning lateral movement",
-            "Helps identify high-value targets on the network"
+            "Helps identify high-value targets on the network",
         ],
         known_threat_actors=[
-            "APT1", "APT3", "APT32", "APT41", "Lazarus Group",
-            "Turla", "FIN7", "OilRig", "Volt Typhoon", "TeamTNT"
+            "APT1",
+            "APT3",
+            "APT32",
+            "APT41",
+            "Lazarus Group",
+            "Turla",
+            "FIN7",
+            "OilRig",
+            "Volt Typhoon",
+            "TeamTNT",
         ],
         recent_campaigns=[
             Campaign(
                 name="Volt Typhoon Infrastructure Reconnaissance",
                 year=2024,
                 description="Chinese state-sponsored group used netstat and network enumeration commands to map critical infrastructure networks",
-                reference_url="https://attack.mitre.org/groups/G1017/"
+                reference_url="https://attack.mitre.org/groups/G1017/",
             ),
             Campaign(
                 name="TeamTNT Cloud Reconnaissance",
                 year=2024,
                 description="TeamTNT used network discovery commands on compromised cloud instances to identify lateral movement opportunities",
-                reference_url="https://attack.mitre.org/groups/G0139/"
+                reference_url="https://attack.mitre.org/groups/G0139/",
             ),
             Campaign(
                 name="APT41 Network Mapping",
                 year=2023,
                 description="APT41 systematically enumerated network connections using netstat and Get-NetTCPConnection during post-compromise reconnaissance",
-                reference_url="https://attack.mitre.org/groups/G0096/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0096/",
+            ),
         ],
         prevalence="very_common",
         trend="stable",
@@ -77,13 +84,12 @@ TEMPLATE = RemediationTemplate(
             "Indicates active threat actor in environment",
             "Precursor to lateral movement attempts",
             "Reveals attacker's interest in network mapping",
-            "Early warning opportunity if detected quickly"
+            "Early warning opportunity if detected quickly",
         ],
         typical_attack_phase="discovery",
         often_precedes=["T1021", "T1570", "T1046"],
-        often_follows=["T1078.004", "T1059.009", "T1651"]
+        often_follows=["T1078.004", "T1059.009", "T1651"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - Process Execution Monitoring via GuardDuty
         DetectionStrategy(
@@ -100,11 +106,11 @@ TEMPLATE = RemediationTemplate(
                     "detail": {
                         "type": [
                             "Execution:Runtime/SuspiciousCommand",
-                            "Discovery:Runtime/ProcessDiscovery"
+                            "Discovery:Runtime/ProcessDiscovery",
                         ]
-                    }
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect network enumeration commands on EC2
 
 Parameters:
@@ -146,8 +152,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect network enumeration commands on EC2
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect network enumeration commands on EC2
 
 variable "alert_email" {
   type = string
@@ -196,7 +202,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Network Enumeration Commands Detected on EC2",
                 alert_description_template="Network discovery commands (netstat, ss, lsof) executed on instance {instanceId}.",
@@ -205,15 +211,15 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Check which user or process executed the commands",
                     "Review instance authentication history",
                     "Look for other discovery or reconnaissance activity",
-                    "Check for follow-on lateral movement attempts"
+                    "Check for follow-on lateral movement attempts",
                 ],
                 containment_actions=[
                     "Review SSM Session Manager logs if applicable",
                     "Examine instance security group for unauthorised access",
                     "Check for compromised credentials or SSH keys",
                     "Consider isolating instance if suspicious",
-                    "Enable enhanced monitoring and logging"
-                ]
+                    "Enable enhanced monitoring and logging",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised system administration and troubleshooting activity based on user identity",
@@ -222,9 +228,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5 plus GuardDuty runtime monitoring costs",
-            prerequisites=["GuardDuty enabled with Runtime Monitoring"]
+            prerequisites=["GuardDuty enabled with Runtime Monitoring"],
         ),
-
         # Strategy 2: AWS - SSM Command Document Execution
         DetectionStrategy(
             strategy_id="t1049-aws-ssm-commands",
@@ -234,14 +239,14 @@ resource "aws_sns_topic_policy" "allow_events" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, commandId, documentName, requestedDateTime, status
+                query="""fields @timestamp, commandId, documentName, requestedDateTime, status
 | filter eventSource = "ssm.amazonaws.com"
 | filter eventName = "SendCommand"
 | filter requestParameters.documentName = "AWS-RunShellScript" or requestParameters.documentName = "AWS-RunPowerShellScript"
 | filter requestParameters.parameters.commands like /netstat|ss |lsof|Get-NetTCPConnection|net use|quser/
 | sort @timestamp desc
-| limit 100''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| limit 100""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect network enumeration via SSM
 
 Parameters:
@@ -282,8 +287,8 @@ Resources:
       Threshold: 3
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect network enumeration via SSM
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect network enumeration via SSM
 
 variable "cloudtrail_log_group" {
   type = string
@@ -328,7 +333,7 @@ resource "aws_cloudwatch_metric_alarm" "ssm_network_enum" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Network Enumeration via SSM Detected",
                 alert_description_template="Network discovery commands executed via Systems Manager on {instanceId}.",
@@ -337,15 +342,15 @@ resource "aws_cloudwatch_metric_alarm" "ssm_network_enum" {
                     "Identify who initiated the SSM command",
                     "Check if this is authorised administrative activity",
                     "Review output of the commands in SSM console",
-                    "Look for other suspicious SSM activity"
+                    "Look for other suspicious SSM activity",
                 ],
                 containment_actions=[
                     "Review IAM permissions for ssm:SendCommand",
                     "Check for compromised IAM credentials",
                     "Enable MFA for SSM command execution",
                     "Consider restricting SSM document usage",
-                    "Audit recent SSM command executions"
-                ]
+                    "Audit recent SSM command executions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised operations teams and automation",
@@ -354,9 +359,11 @@ resource "aws_cloudwatch_metric_alarm" "ssm_network_enum" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="45 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail logging to CloudWatch", "SSM Session logging enabled"]
+            prerequisites=[
+                "CloudTrail logging to CloudWatch",
+                "SSM Session logging enabled",
+            ],
         ),
-
         # Strategy 3: AWS - VPC Describe Operations
         DetectionStrategy(
             strategy_id="t1049-aws-vpc-discovery",
@@ -366,13 +373,13 @@ resource "aws_cloudwatch_metric_alarm" "ssm_network_enum" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.arn, sourceIPAddress
+                query="""fields @timestamp, eventName, userIdentity.arn, sourceIPAddress
 | filter eventSource = "ec2.amazonaws.com"
 | filter eventName in ["DescribeVpcPeeringConnections", "DescribeVpnConnections", "DescribeVpcs", "DescribeSubnets", "DescribeRouteTables", "DescribeNetworkInterfaces"]
 | stats count(*) as api_count by userIdentity.arn, bin(1h)
 | filter api_count > 15
-| sort api_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort api_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect VPC network discovery
 
 Parameters:
@@ -413,8 +420,8 @@ Resources:
       Threshold: 20
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect VPC network discovery
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect VPC network discovery
 
 variable "cloudtrail_log_group" {
   type = string
@@ -459,7 +466,7 @@ resource "aws_cloudwatch_metric_alarm" "vpc_discovery" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="low",
                 alert_title="VPC Network Discovery Activity Detected",
                 alert_description_template="High volume of VPC describe operations from {userIdentity.arn}.",
@@ -468,14 +475,14 @@ resource "aws_cloudwatch_metric_alarm" "vpc_discovery" {
                     "Check if this is normal behaviour for the user",
                     "Review what network information was accessed",
                     "Look for other discovery or reconnaissance activity",
-                    "Correlate with instance-level network enumeration"
+                    "Correlate with instance-level network enumeration",
                 ],
                 containment_actions=[
                     "Review user's permissions and access patterns",
                     "Check for compromised credentials",
                     "Monitor for lateral movement attempts",
-                    "Consider limiting VPC read permissions"
-                ]
+                    "Consider limiting VPC read permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist CSPM tools, infrastructure-as-code deployments, and network monitoring tools",
@@ -484,9 +491,8 @@ resource "aws_cloudwatch_metric_alarm" "vpc_discovery" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail logging to CloudWatch"]
+            prerequisites=["CloudTrail logging to CloudWatch"],
         ),
-
         # Strategy 4: GCP - Network Connection Discovery
         DetectionStrategy(
             strategy_id="t1049-gcp-compute-discovery",
@@ -499,7 +505,7 @@ resource "aws_cloudwatch_metric_alarm" "vpc_discovery" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.serviceName="compute.googleapis.com"
 protoPayload.methodName=~"(networks.list|instances.list|routes.list|vpnGateways.list|interconnects.list)"''',
-                gcp_terraform_template='''# GCP: Detect network discovery activity
+                gcp_terraform_template="""# GCP: Detect network discovery activity
 
 variable "project_id" {
   type = string
@@ -551,7 +557,7 @@ resource "google_monitoring_alert_policy" "network_discovery" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Network Connection Discovery Detected",
                 alert_description_template="High volume of network discovery API calls detected.",
@@ -560,15 +566,15 @@ resource "google_monitoring_alert_policy" "network_discovery" {
                     "Review what network resources were enumerated",
                     "Check if this is authorised security scanning",
                     "Look for other discovery activities",
-                    "Check for lateral movement attempts"
+                    "Check for lateral movement attempts",
                 ],
                 containment_actions=[
                     "Review principal's permissions",
                     "Check for compromised credentials",
                     "Monitor for follow-on attacks",
                     "Consider IAM Conditions to restrict discovery",
-                    "Audit VPC and network configurations"
-                ]
+                    "Audit VPC and network configurations",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist CSPM tools, Terraform, and authorised network monitoring",
@@ -577,9 +583,8 @@ resource "google_monitoring_alert_policy" "network_discovery" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled"],
         ),
-
         # Strategy 5: GCP - OS-Level Network Enumeration
         DetectionStrategy(
             strategy_id="t1049-gcp-os-commands",
@@ -593,7 +598,7 @@ resource "google_monitoring_alert_policy" "network_discovery" {
                 gcp_logging_query='''resource.type="gce_instance"
 jsonPayload.message=~"(netstat|lsof|ss )"
 severity="INFO"''',
-                gcp_terraform_template='''# GCP: Detect OS-level network enumeration
+                gcp_terraform_template="""# GCP: Detect OS-level network enumeration
 
 variable "project_id" {
   type = string
@@ -642,7 +647,7 @@ resource "google_monitoring_alert_policy" "os_network_enum" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Network Enumeration Commands Detected",
                 alert_description_template="Network discovery commands executed on GCP instance.",
@@ -651,15 +656,15 @@ resource "google_monitoring_alert_policy" "os_network_enum" {
                     "Determine which user executed the commands",
                     "Check SSH authentication logs",
                     "Review other discovery or reconnaissance activity",
-                    "Look for lateral movement attempts"
+                    "Look for lateral movement attempts",
                 ],
                 containment_actions=[
                     "Review instance metadata and startup scripts",
                     "Examine firewall rules for unauthorised access",
                     "Check for compromised SSH keys or service accounts",
                     "Consider instance isolation if suspicious",
-                    "Enable OS Config for enhanced logging"
-                ]
+                    "Enable OS Config for enhanced logging",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Requires OS-level logging enabled; whitelist authorised system administration",
@@ -668,17 +673,19 @@ resource "google_monitoring_alert_policy" "os_network_enum" {
             implementation_effort=EffortLevel.HIGH,
             implementation_time="2 hours",
             estimated_monthly_cost="$15-30",
-            prerequisites=["Cloud Logging agent installed", "OS audit logging configured"]
-        )
+            prerequisites=[
+                "Cloud Logging agent installed",
+                "OS audit logging configured",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1049-aws-guardduty-runtime",
         "t1049-gcp-compute-discovery",
         "t1049-aws-ssm-commands",
         "t1049-aws-vpc-discovery",
-        "t1049-gcp-os-commands"
+        "t1049-gcp-os-commands",
     ],
     total_effort_hours=5.25,
-    coverage_improvement="+12% improvement for Discovery tactic"
+    coverage_improvement="+12% improvement for Discovery tactic",
 )

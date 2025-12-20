@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Adversary-in-the-Middle: DHCP Spoofing",
     tactic_ids=["TA0006", "TA0009"],  # Credential Access, Collection
     mitre_url="https://attack.mitre.org/techniques/T1557/003/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries impersonate DHCP servers to redirect network traffic through "
@@ -38,7 +37,7 @@ TEMPLATE = RemediationTemplate(
             "Redirect DNS queries to malicious servers",
             "Force traffic through attacker-controlled gateways",
             "Intercept API requests and cloud service traffic",
-            "Perform denial-of-service via DHCP exhaustion"
+            "Perform denial-of-service via DHCP exhaustion",
         ],
         known_threat_actors=["APT28", "Kimsuky"],
         recent_campaigns=[
@@ -46,14 +45,14 @@ TEMPLATE = RemediationTemplate(
                 name="APT28 Wi-Fi Pineapple Operations",
                 year=2023,
                 description="APT28 deployed Wi-Fi pineapple devices and Responder tool for NetBIOS poisoning to capture network credentials, including DHCP manipulation capabilities",
-                reference_url="https://attack.mitre.org/groups/G0007/"
+                reference_url="https://attack.mitre.org/groups/G0007/",
             ),
             Campaign(
                 name="Kimsuky PHProxy Deployment",
                 year=2022,
                 description="Deployed modified PHProxy to examine web traffic, including network-level traffic redirection techniques",
-                reference_url="https://attack.mitre.org/groups/G0094/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0094/",
+            ),
         ],
         prevalence="low",
         trend="stable",
@@ -69,13 +68,12 @@ TEMPLATE = RemediationTemplate(
             "DNS poisoning and phishing attacks",
             "Session hijacking and unauthorised access",
             "Compliance violations from data interception",
-            "Network denial-of-service from DHCP exhaustion"
+            "Network denial-of-service from DHCP exhaustion",
         ],
         typical_attack_phase="credential_access",
         often_precedes=["T1078.004", "T1528", "T1550", "T1557"],
-        often_follows=["T1190", "T1133", "T1078.004"]
+        often_follows=["T1190", "T1133", "T1078.004"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - DHCP Options Set Monitoring
         DetectionStrategy(
@@ -93,11 +91,11 @@ TEMPLATE = RemediationTemplate(
                         "eventName": [
                             "CreateDhcpOptions",
                             "AssociateDhcpOptions",
-                            "DeleteDhcpOptions"
+                            "DeleteDhcpOptions",
                         ]
-                    }
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect unauthorised DHCP options changes
 
 Parameters:
@@ -141,8 +139,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# AWS: Monitor VPC DHCP options changes
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# AWS: Monitor VPC DHCP options changes
 
 variable "alert_email" {
   type        = string
@@ -193,7 +191,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="VPC DHCP Options Modified",
                 alert_description_template="DHCP options {eventName} performed on VPC {vpcId} by {userIdentity.principalId}. Potential traffic redirection attempt.",
@@ -203,7 +201,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Check if DNS servers point to known-good resolvers",
                     "Examine CloudTrail for related suspicious activities",
                     "Verify no unauthorised Route 53 Resolver endpoints created",
-                    "Review VPC Flow Logs for traffic to unexpected DNS servers"
+                    "Review VPC Flow Logs for traffic to unexpected DNS servers",
                 ],
                 containment_actions=[
                     "Revert to known-good DHCP options immediately",
@@ -211,8 +209,8 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Review and restrict ec2:*DhcpOptions permissions",
                     "Enable SCPs to prevent DHCP option modifications",
                     "Force DNS resolution through Route 53 Resolver",
-                    "Implement VPC endpoint policies for DNS traffic"
-                ]
+                    "Implement VPC endpoint policies for DNS traffic",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised network operations and infrastructure automation",
@@ -221,9 +219,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         # Strategy 2: AWS - Route 53 Resolver Endpoint Monitoring
         DetectionStrategy(
             strategy_id="t1557-003-aws-resolver",
@@ -240,11 +237,11 @@ resource "aws_sns_topic_policy" "allow_events" {
                         "eventName": [
                             "CreateResolverEndpoint",
                             "UpdateResolverEndpoint",
-                            "AssociateResolverEndpointIpAddress"
+                            "AssociateResolverEndpointIpAddress",
                         ]
-                    }
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect unauthorised Route 53 Resolver endpoints
 
 Parameters:
@@ -287,8 +284,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# AWS: Monitor Route 53 Resolver endpoints
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# AWS: Monitor Route 53 Resolver endpoints
 
 variable "alert_email" {
   type = string
@@ -338,7 +335,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Route 53 Resolver Endpoint Modified",
                 alert_description_template="Resolver endpoint {eventName} performed by {userIdentity.principalId}. Potential DNS interception attempt.",
@@ -348,7 +345,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Check if endpoint is in authorised VPC and subnets",
                     "Examine resolver rules associated with the endpoint",
                     "Review CloudTrail for related DNS configuration changes",
-                    "Validate outbound resolver rules point to legitimate targets"
+                    "Validate outbound resolver rules point to legitimate targets",
                 ],
                 containment_actions=[
                     "Delete unauthorised resolver endpoints immediately",
@@ -356,8 +353,8 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Review and restrict route53resolver:* permissions",
                     "Enable SCPs to control resolver endpoint creation",
                     "Audit all resolver rules and endpoint associations",
-                    "Enable DNSSEC validation on Route 53 Resolver"
-                ]
+                    "Enable DNSSEC validation on Route 53 Resolver",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised DNS operations and hybrid DNS architectures",
@@ -366,9 +363,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         # Strategy 3: AWS - VPC Flow Logs for DHCP Traffic Analysis
         DetectionStrategy(
             strategy_id="t1557-003-aws-flow",
@@ -378,13 +374,13 @@ resource "aws_sns_topic_policy" "allow_events" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcaddr, dstaddr, srcport, dstport, protocol, action
+                query="""fields @timestamp, srcaddr, dstaddr, srcport, dstport, protocol, action
 | filter dstport = 67 or srcport = 67 or dstport = 68 or srcport = 68
 | filter protocol = 17
 | stats count() as dhcp_packets by srcaddr, dstaddr, srcport, dstport
 | filter dhcp_packets > 100
-| sort dhcp_packets desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort dhcp_packets desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Monitor DHCP traffic patterns via VPC Flow Logs
 
 Parameters:
@@ -432,8 +428,8 @@ Resources:
       TrafficType: ALL
       LogDestinationType: cloud-watch-logs
       LogGroupName: !Ref FlowLogGroup
-      DeliverLogsPermissionArn: !GetAtt FlowLogRole.Arn''',
-                terraform_template='''# AWS: Monitor DHCP traffic via VPC Flow Logs
+      DeliverLogsPermissionArn: !GetAtt FlowLogRole.Arn""",
+                terraform_template="""# AWS: Monitor DHCP traffic via VPC Flow Logs
 
 variable "vpc_id" {
   type        = string
@@ -495,7 +491,7 @@ resource "aws_flow_log" "dhcp" {
     Name    = "DHCP Monitoring"
     Purpose = "Detect rogue DHCP servers"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Rogue DHCP Server Detected",
                 alert_description_template="Excessive DHCP traffic detected from {srcaddr}. Potential rogue DHCP server or DHCP spoofing attack.",
@@ -505,7 +501,7 @@ resource "aws_flow_log" "dhcp" {
                     "Review DHCP packet patterns for anomalies",
                     "Check for multiple DHCP servers on same subnet",
                     "Examine instances for unauthorised DHCP server software",
-                    "Correlate with DNS query anomalies"
+                    "Correlate with DNS query anomalies",
                 ],
                 containment_actions=[
                     "Isolate suspected rogue DHCP server via security groups",
@@ -513,8 +509,8 @@ resource "aws_flow_log" "dhcp" {
                     "Terminate compromised instances if confirmed malicious",
                     "Enable DHCP snooping at network layer if available",
                     "Force static IP configurations for critical systems",
-                    "Review and harden EC2 instance launch permissions"
-                ]
+                    "Review and harden EC2 instance launch permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal DHCP traffic patterns; whitelist authorised DHCP servers and high-frequency legitimate traffic",
@@ -523,9 +519,8 @@ resource "aws_flow_log" "dhcp" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-25 (VPC Flow Logs + CloudWatch)",
-            prerequisites=["VPC Flow Logs enabled", "CloudWatch Logs"]
+            prerequisites=["VPC Flow Logs enabled", "CloudWatch Logs"],
         ),
-
         # Strategy 4: GCP - VPC Network Configuration Monitoring
         DetectionStrategy(
             strategy_id="t1557-003-gcp-network",
@@ -539,7 +534,7 @@ resource "aws_flow_log" "dhcp" {
                 gcp_logging_query='''protoPayload.serviceName="compute.googleapis.com"
 protoPayload.methodName=~"(v1.compute.networks.patch|v1.compute.networks.insert)"
 OR protoPayload.methodName=~"v1.compute.subnetworks.(patch|insert)"''',
-                gcp_terraform_template='''# GCP: Monitor VPC network DHCP configuration
+                gcp_terraform_template="""# GCP: Monitor VPC network DHCP configuration
 
 variable "project_id" {
   type = string
@@ -594,7 +589,7 @@ resource "google_monitoring_alert_policy" "network_change" {
     content   = "VPC network or subnet configuration modified. Review for unauthorised DHCP or DNS changes."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: VPC Network Configuration Modified",
                 alert_description_template="VPC network operation {methodName} performed on {resourceName}. Review for DHCP/DNS configuration changes.",
@@ -604,7 +599,7 @@ resource "google_monitoring_alert_policy" "network_change" {
                     "Check for modifications to private Google access settings",
                     "Examine DNS server configurations",
                     "Review Cloud Audit Logs for related activities",
-                    "Validate firewall rules for DHCP traffic (UDP 67/68)"
+                    "Validate firewall rules for DHCP traffic (UDP 67/68)",
                 ],
                 containment_actions=[
                     "Revert unauthorised network configuration changes",
@@ -612,8 +607,8 @@ resource "google_monitoring_alert_policy" "network_change" {
                     "Review and restrict compute.networks.* permissions",
                     "Enable organisation policy constraints for network modifications",
                     "Implement VPC Service Controls for sensitive networks",
-                    "Enable Private Google Access for controlled DNS resolution"
-                ]
+                    "Enable Private Google Access for controlled DNS resolution",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist legitimate infrastructure changes and terraform/automation service accounts",
@@ -622,9 +617,8 @@ resource "google_monitoring_alert_policy" "network_change" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled"],
         ),
-
         # Strategy 5: GCP - VPC Flow Logs DHCP Analysis
         DetectionStrategy(
             strategy_id="t1557-003-gcp-flow",
@@ -635,12 +629,12 @@ resource "google_monitoring_alert_policy" "network_change" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_subnetwork"
+                gcp_logging_query="""resource.type="gce_subnetwork"
 logName="projects/[PROJECT_ID]/logs/compute.googleapis.com%2Fvpc_flows"
 (jsonPayload.connection.src_port=67 OR jsonPayload.connection.dest_port=67 OR
  jsonPayload.connection.src_port=68 OR jsonPayload.connection.dest_port=68)
-jsonPayload.connection.protocol=17''',
-                gcp_terraform_template='''# GCP: Monitor DHCP traffic via VPC Flow Logs
+jsonPayload.connection.protocol=17""",
+                gcp_terraform_template="""# GCP: Monitor DHCP traffic via VPC Flow Logs
 
 variable "project_id" {
   type = string
@@ -738,7 +732,7 @@ resource "google_monitoring_alert_policy" "dhcp_anomaly" {
     content   = "Excessive DHCP traffic detected from source IP. Potential rogue DHCP server or spoofing attack."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Rogue DHCP Server Detected",
                 alert_description_template="Excessive DHCP traffic detected from {srcIp}. Potential DHCP spoofing attack.",
@@ -748,7 +742,7 @@ resource "google_monitoring_alert_policy" "dhcp_anomaly" {
                     "Review DHCP traffic patterns and volume",
                     "Check for multiple DHCP servers on same subnet",
                     "Examine instances for unauthorised DHCP software",
-                    "Correlate with Cloud DNS query anomalies"
+                    "Correlate with Cloud DNS query anomalies",
                 ],
                 containment_actions=[
                     "Apply firewall rules to block DHCP from unauthorised sources",
@@ -756,8 +750,8 @@ resource "google_monitoring_alert_policy" "dhcp_anomaly" {
                     "Enable hierarchical firewall policies to prevent DHCP spoofing",
                     "Implement VPC Service Controls for sensitive subnets",
                     "Review and restrict compute instance creation permissions",
-                    "Consider static IP assignments for critical systems"
-                ]
+                    "Consider static IP assignments for critical systems",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Establish baseline DHCP traffic patterns; whitelist authorised DHCP infrastructure",
@@ -766,9 +760,8 @@ resource "google_monitoring_alert_policy" "dhcp_anomaly" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$15-35 (VPC Flow Logs + monitoring)",
-            prerequisites=["VPC Flow Logs enabled on subnets"]
+            prerequisites=["VPC Flow Logs enabled on subnets"],
         ),
-
         # Strategy 6: GCP - Cloud DNS Policy Monitoring
         DetectionStrategy(
             strategy_id="t1557-003-gcp-dns-policy",
@@ -781,7 +774,7 @@ resource "google_monitoring_alert_policy" "dhcp_anomaly" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.serviceName="dns.googleapis.com"
 protoPayload.methodName=~"dns.policies.(create|patch|update)"''',
-                gcp_terraform_template='''# GCP: Monitor Cloud DNS policy changes
+                gcp_terraform_template="""# GCP: Monitor Cloud DNS policy changes
 
 variable "project_id" {
   type = string
@@ -835,7 +828,7 @@ resource "google_monitoring_alert_policy" "dns_policy_change" {
     content   = "Cloud DNS server policy modified. Review for unauthorised DNS server changes that could redirect traffic."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Cloud DNS Policy Modified",
                 alert_description_template="DNS policy {methodName} performed. Review for unauthorised DNS server configurations.",
@@ -845,7 +838,7 @@ resource "google_monitoring_alert_policy" "dns_policy_change" {
                     "Check alternative DNS server IP addresses",
                     "Validate target VPC networks for DNS policy",
                     "Examine Cloud Audit Logs for related DNS changes",
-                    "Verify DNSSEC configuration and validation settings"
+                    "Verify DNSSEC configuration and validation settings",
                 ],
                 containment_actions=[
                     "Revert unauthorised DNS policy changes immediately",
@@ -853,8 +846,8 @@ resource "google_monitoring_alert_policy" "dns_policy_change" {
                     "Review and restrict dns.policies.* IAM permissions",
                     "Enable organisation policy constraints for DNS modifications",
                     "Implement Cloud DNS DNSSEC for managed zones",
-                    "Audit all DNS policies across organisation"
-                ]
+                    "Audit all DNS policies across organisation",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist legitimate DNS operations and hybrid cloud DNS architectures",
@@ -863,18 +856,17 @@ resource "google_monitoring_alert_policy" "dns_policy_change" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1557-003-aws-dhcp",
         "t1557-003-gcp-network",
         "t1557-003-aws-resolver",
         "t1557-003-gcp-dns-policy",
         "t1557-003-aws-flow",
-        "t1557-003-gcp-flow"
+        "t1557-003-gcp-flow",
     ],
     total_effort_hours=4.5,
-    coverage_improvement="+12% improvement for Credential Access and Collection tactics"
+    coverage_improvement="+12% improvement for Credential Access and Collection tactics",
 )

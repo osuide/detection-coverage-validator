@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Exfiltration Over Symmetric Encrypted Non-C2 Protocol",
     tactic_ids=["TA0010"],
     mitre_url="https://attack.mitre.org/techniques/T1048/001/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries steal data by exfiltrating it over a symmetrically encrypted network "
@@ -39,7 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Multiple encryption layers hide data",
             "Custom encryption evades signatures",
             "Separate from C2 avoids correlation",
-            "Blends with legitimate encrypted traffic"
+            "Blends with legitimate encrypted traffic",
         ],
         known_threat_actors=["OilRig", "APT41", "FIN6", "Turla", "APT37"],
         recent_campaigns=[
@@ -47,20 +46,20 @@ TEMPLATE = RemediationTemplate(
                 name="OilRig Custom Encryption",
                 year=2023,
                 description="OilRig leveraged custom encryption implementations for data exfiltration",
-                reference_url="https://attack.mitre.org/groups/G0049/"
+                reference_url="https://attack.mitre.org/groups/G0049/",
             ),
             Campaign(
                 name="FIN6 FrameworkPOS Exfil",
                 year=2023,
                 description="FrameworkPOS malware used custom encryption for credit card data theft",
-                reference_url="https://attack.mitre.org/software/S0503/"
+                reference_url="https://attack.mitre.org/software/S0503/",
             ),
             Campaign(
                 name="APT41 State Government Targeting",
                 year=2024,
                 description="APT41 employed encrypted channels for data exfiltration from U.S. state systems",
-                reference_url="https://attack.mitre.org/groups/G0096/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0096/",
+            ),
         ],
         prevalence="moderate",
         trend="increasing",
@@ -77,13 +76,12 @@ TEMPLATE = RemediationTemplate(
             "Intellectual property theft",
             "Regulatory fines and compliance violations",
             "Reputational damage and customer trust loss",
-            "Bypasses of DLP investments"
+            "Bypasses of DLP investments",
         ],
         typical_attack_phase="exfiltration",
         often_precedes=[],
-        often_follows=["T1530", "T1552.001", "T1005", "T1074", "T1560"]
+        often_follows=["T1530", "T1552.001", "T1005", "T1074", "T1560"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1048.001-aws-encrypted-non-browser",
@@ -93,12 +91,12 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcAddr, dstAddr, dstPort, bytes, protocol
+                query="""fields @timestamp, srcAddr, dstAddr, dstPort, bytes, protocol
 | filter dstPort in [443, 8443, 9443] and action = "ACCEPT"
 | stats sum(bytes) as total_bytes, count(*) as connection_count by srcAddr, dstAddr, dstPort, bin(5m)
 | filter total_bytes > 52428800 or connection_count > 100
-| sort total_bytes desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort total_bytes desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect non-browser encrypted connections for exfiltration
 
 Parameters:
@@ -140,8 +138,8 @@ Resources:
       Threshold: 104857600
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect non-browser encrypted connections for exfiltration
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect non-browser encrypted connections for exfiltration
 
 variable "alert_email" { type = string }
 variable "vpc_flow_log_group" { type = string }
@@ -182,7 +180,7 @@ resource "aws_cloudwatch_metric_alarm" "encrypted_exfil" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Encrypted Exfiltration Detected",
                 alert_description_template="Large encrypted transfer from {srcAddr} to {dstAddr}:{dstPort} - {total_bytes} bytes transferred.",
@@ -192,15 +190,15 @@ resource "aws_cloudwatch_metric_alarm" "encrypted_exfil" {
                     "Review destination IP reputation",
                     "Check for OpenSSL, GPG, or custom crypto usage",
                     "Correlate with file staging activity",
-                    "Examine process execution history"
+                    "Examine process execution history",
                 ],
                 containment_actions=[
                     "Isolate the source instance",
                     "Block destination IP at security group",
                     "Review and restrict outbound HTTPS traffic",
                     "Capture network traffic for forensic analysis",
-                    "Disable suspicious processes"
-                ]
+                    "Disable suspicious processes",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known backup services and CDN endpoints; adjust byte thresholds for environment",
@@ -209,9 +207,8 @@ resource "aws_cloudwatch_metric_alarm" "encrypted_exfil" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-20",
-            prerequisites=["VPC Flow Logs enabled"]
+            prerequisites=["VPC Flow Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1048.001-aws-crypto-tools",
             name="AWS Encryption Tool Usage",
@@ -220,13 +217,13 @@ resource "aws_cloudwatch_metric_alarm" "encrypted_exfil" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.arn, requestParameters, responseElements
+                query="""fields @timestamp, eventName, userIdentity.arn, requestParameters, responseElements
 | filter eventSource = "cloudtrail.amazonaws.com"
 | filter eventName in ["RunInstances", "StartInstances"]
 | filter requestParameters.userData like /openssl|gpg|aes|rc4|pycrypto|cryptography/
 | stats count() as exec_count by userIdentity.arn, requestParameters.instanceType
-| sort exec_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort exec_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect encryption tool usage for exfiltration
 
 Parameters:
@@ -267,8 +264,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect encryption tool usage for exfiltration
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect encryption tool usage for exfiltration
 
 variable "alert_email" { type = string }
 variable "cloudtrail_log_group" { type = string }
@@ -308,7 +305,7 @@ resource "aws_cloudwatch_metric_alarm" "crypto_tool" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Encryption Tool Usage Detected",
                 alert_description_template="Encryption tool executed by {userIdentity.arn} on instance.",
@@ -318,15 +315,15 @@ resource "aws_cloudwatch_metric_alarm" "crypto_tool" {
                     "Check for data staging or collection activity",
                     "Review network connections from instance",
                     "Examine command history and process tree",
-                    "Verify business justification for encryption"
+                    "Verify business justification for encryption",
                 ],
                 containment_actions=[
                     "Terminate suspicious instances",
                     "Revoke user credentials",
                     "Block outbound connections",
                     "Review and restrict IAM permissions",
-                    "Enable enhanced monitoring"
-                ]
+                    "Enable enhanced monitoring",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised encryption use cases (e.g., database encryption, backup systems)",
@@ -335,9 +332,8 @@ resource "aws_cloudwatch_metric_alarm" "crypto_tool" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["CloudTrail enabled with data events"]
+            prerequisites=["CloudTrail enabled with data events"],
         ),
-
         DetectionStrategy(
             strategy_id="t1048.001-aws-symmetric-key-ops",
             name="AWS Symmetric Key Operations",
@@ -346,14 +342,14 @@ resource "aws_cloudwatch_metric_alarm" "crypto_tool" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.arn, requestParameters.keyId, errorCode
+                query="""fields @timestamp, eventName, userIdentity.arn, requestParameters.keyId, errorCode
 | filter eventSource = "kms.amazonaws.com"
 | filter eventName in ["Encrypt", "GenerateDataKey", "GenerateDataKeyWithoutPlaintext"]
 | filter errorCode not exists or errorCode = ""
 | stats count() as encrypt_ops by userIdentity.arn, requestParameters.keyId, bin(5m)
 | filter encrypt_ops > 50
-| sort encrypt_ops desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort encrypt_ops desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect symmetric key operations for potential exfiltration
 
 Parameters:
@@ -394,8 +390,8 @@ Resources:
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect symmetric key operations for potential exfiltration
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect symmetric key operations for potential exfiltration
 
 variable "alert_email" { type = string }
 variable "cloudtrail_log_group" { type = string }
@@ -435,7 +431,7 @@ resource "aws_cloudwatch_metric_alarm" "symmetric_encrypt" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="High Symmetric Encryption Activity",
                 alert_description_template="Unusual volume of symmetric encryption operations by {userIdentity.arn} - {encrypt_ops} operations.",
@@ -445,15 +441,15 @@ resource "aws_cloudwatch_metric_alarm" "symmetric_encrypt" {
                     "Check for concurrent outbound network activity",
                     "Examine encrypted data destinations",
                     "Verify legitimate encryption use cases",
-                    "Review CloudTrail for data access patterns"
+                    "Review CloudTrail for data access patterns",
                 ],
                 containment_actions=[
                     "Disable suspicious KMS keys",
                     "Revoke IAM permissions for encryption",
                     "Enable KMS key rotation",
                     "Review and restrict key policies",
-                    "Isolate systems performing encryption"
-                ]
+                    "Isolate systems performing encryption",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal encryption volumes; exclude batch processing jobs and ETL workloads",
@@ -462,9 +458,8 @@ resource "aws_cloudwatch_metric_alarm" "symmetric_encrypt" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-25",
-            prerequisites=["CloudTrail with KMS data events enabled"]
+            prerequisites=["CloudTrail with KMS data events enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1048.001-gcp-encrypted-egress",
             name="GCP Encrypted Egress Detection",
@@ -474,11 +469,11 @@ resource "aws_cloudwatch_metric_alarm" "symmetric_encrypt" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 jsonPayload.connection.dest_port:(443 OR 8443 OR 9443)
 jsonPayload.bytes_sent > 52428800
-NOT jsonPayload.dest_ip:(35.0.0.0/8 OR 34.0.0.0/8)''',
-                gcp_terraform_template='''# GCP: Encrypted egress detection
+NOT jsonPayload.dest_ip:(35.0.0.0/8 OR 34.0.0.0/8)""",
+                gcp_terraform_template="""# GCP: Encrypted egress detection
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -524,7 +519,7 @@ resource "google_monitoring_alert_policy" "encrypted_egress" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Encrypted Exfiltration Detected",
                 alert_description_template="Large encrypted transfer detected from GCP instance to external destination.",
@@ -534,15 +529,15 @@ resource "google_monitoring_alert_policy" "encrypted_egress" {
                     "Analyse encryption tools or libraries in use",
                     "Check for data staging activity",
                     "Examine instance metadata and startup scripts",
-                    "Review VPC firewall rules"
+                    "Review VPC firewall rules",
                 ],
                 containment_actions=[
                     "Isolate the source instance",
                     "Block destination via VPC firewall",
                     "Review and restrict egress rules",
                     "Snapshot instance for forensics",
-                    "Revoke service account permissions"
-                ]
+                    "Revoke service account permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known backup destinations and Google Cloud IPs; adjust byte thresholds",
@@ -551,9 +546,8 @@ resource "google_monitoring_alert_policy" "encrypted_egress" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$15-30",
-            prerequisites=["VPC Flow Logs enabled on subnets"]
+            prerequisites=["VPC Flow Logs enabled on subnets"],
         ),
-
         DetectionStrategy(
             strategy_id="t1048.001-gcp-crypto-activity",
             name="GCP Cryptographic Activity Monitoring",
@@ -569,7 +563,7 @@ resource "google_monitoring_alert_policy" "encrypted_egress" {
  protoPayload.request.metadata.items.value=~".*aes.*" OR
  protoPayload.request.metadata.items.value=~".*pycrypto.*")
 protoPayload.methodName="v1.compute.instances.insert"''',
-                gcp_terraform_template='''# GCP: Cryptographic activity monitoring
+                gcp_terraform_template="""# GCP: Cryptographic activity monitoring
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -612,7 +606,7 @@ resource "google_monitoring_alert_policy" "crypto_tools" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Encryption Tool Usage Detected",
                 alert_description_template="Encryption tool or library detected in instance startup.",
@@ -622,15 +616,15 @@ resource "google_monitoring_alert_policy" "crypto_tools" {
                     "Check for data access or collection activity",
                     "Analyse network connections from instance",
                     "Review service account permissions",
-                    "Verify business justification"
+                    "Verify business justification",
                 ],
                 containment_actions=[
                     "Stop suspicious instances",
                     "Delete unauthorised startup scripts",
                     "Revoke service account credentials",
                     "Review and restrict IAM permissions",
-                    "Enable OS Config for compliance"
-                ]
+                    "Enable OS Config for compliance",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised encryption use cases (e.g., application encryption, secure storage)",
@@ -639,17 +633,16 @@ resource "google_monitoring_alert_policy" "crypto_tools" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Audit Logs enabled for Compute Engine"]
-        )
+            prerequisites=["Cloud Audit Logs enabled for Compute Engine"],
+        ),
     ],
-
     recommended_order=[
         "t1048.001-aws-encrypted-non-browser",
         "t1048.001-gcp-encrypted-egress",
         "t1048.001-aws-crypto-tools",
         "t1048.001-gcp-crypto-activity",
-        "t1048.001-aws-symmetric-key-ops"
+        "t1048.001-aws-symmetric-key-ops",
     ],
     total_effort_hours=7.0,
-    coverage_improvement="+15% improvement for Exfiltration tactic"
+    coverage_improvement="+15% improvement for Exfiltration tactic",
 )

@@ -114,20 +114,24 @@ class ReferenceValidator(BaseValidator):
 
         for log_group in log_groups:
             exists = await self._log_group_exists(session, log_group, region)
-            resources.append({
-                "type": "log_group",
-                "name": log_group,
-                "region": region,
-                "exists": exists,
-            })
+            resources.append(
+                {
+                    "type": "log_group",
+                    "name": log_group,
+                    "region": region,
+                    "exists": exists,
+                }
+            )
 
             if not exists:
-                issues.append(ValidationIssue(
-                    message=f"Log group '{log_group}' does not exist in region {region}",
-                    severity=ValidationSeverity.CRITICAL,
-                    code="MISSING_LOG_GROUP",
-                    details={"log_group": log_group, "region": region},
-                ))
+                issues.append(
+                    ValidationIssue(
+                        message=f"Log group '{log_group}' does not exist in region {region}",
+                        severity=ValidationSeverity.CRITICAL,
+                        code="MISSING_LOG_GROUP",
+                        details={"log_group": log_group, "region": region},
+                    )
+                )
                 score = min(score, 0.3)
 
         return score, issues, resources
@@ -165,20 +169,24 @@ class ReferenceValidator(BaseValidator):
                 exists = True
                 resource_type = "unknown"
 
-            resources.append({
-                "type": resource_type,
-                "arn": target_arn,
-                "region": region,
-                "exists": exists,
-            })
+            resources.append(
+                {
+                    "type": resource_type,
+                    "arn": target_arn,
+                    "region": region,
+                    "exists": exists,
+                }
+            )
 
             if not exists:
-                issues.append(ValidationIssue(
-                    message=f"EventBridge target '{target_arn}' does not exist",
-                    severity=ValidationSeverity.CRITICAL,
-                    code="MISSING_TARGET",
-                    details={"target_arn": target_arn},
-                ))
+                issues.append(
+                    ValidationIssue(
+                        message=f"EventBridge target '{target_arn}' does not exist",
+                        severity=ValidationSeverity.CRITICAL,
+                        code="MISSING_TARGET",
+                        details={"target_arn": target_arn},
+                    )
+                )
                 score = min(score, 0.3)
 
         return score, issues, resources
@@ -205,15 +213,18 @@ class ReferenceValidator(BaseValidator):
         # Extract project references
         project_pattern = r'projects/([^/\s"]+)'
         import re
+
         project_matches = re.findall(project_pattern, filter_string)
 
         for project in project_matches:
             # Note: Would need GCP credentials to validate project access
-            resources.append({
-                "type": "gcp_project",
-                "name": project,
-                "exists": True,  # Assume exists without validation
-            })
+            resources.append(
+                {
+                    "type": "gcp_project",
+                    "name": project,
+                    "exists": True,  # Assume exists without validation
+                }
+            )
 
         return score, issues, resources
 
@@ -235,20 +246,24 @@ class ReferenceValidator(BaseValidator):
         if destination.get("type") == "cloud_run":
             service = destination.get("service")
             if service:
-                resources.append({
-                    "type": "cloud_run_service",
-                    "name": service,
-                    "exists": True,  # Would need GCP client to validate
-                })
+                resources.append(
+                    {
+                        "type": "cloud_run_service",
+                        "name": service,
+                        "exists": True,  # Would need GCP client to validate
+                    }
+                )
 
         if destination.get("type") == "cloud_function":
             function_name = destination.get("function")
             if function_name:
-                resources.append({
-                    "type": "cloud_function",
-                    "name": function_name,
-                    "exists": True,  # Would need GCP client to validate
-                })
+                resources.append(
+                    {
+                        "type": "cloud_function",
+                        "name": function_name,
+                        "exists": True,  # Would need GCP client to validate
+                    }
+                )
 
         # Check transport (Pub/Sub)
         transport = raw_config.get("transport", {})
@@ -256,11 +271,13 @@ class ReferenceValidator(BaseValidator):
         topic = pubsub.get("topic")
 
         if topic:
-            resources.append({
-                "type": "pubsub_topic",
-                "name": topic,
-                "exists": True,  # Would need GCP client to validate
-            })
+            resources.append(
+                {
+                    "type": "pubsub_topic",
+                    "name": topic,
+                    "exists": True,  # Would need GCP client to validate
+                }
+            )
 
         return score, issues, resources
 

@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Pre-OS Boot",
     tactic_ids=["TA0005", "TA0003"],  # Defense Evasion, Persistence
     mitre_url="https://attack.mitre.org/techniques/T1542/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries exploit Pre-OS Boot mechanisms to establish persistence "
@@ -39,40 +38,40 @@ TEMPLATE = RemediationTemplate(
             "Extremely difficult to detect and remove",
             "System-level privileges from boot",
             "Bypasses host-based security defences",
-            "Enables long-term persistent access"
+            "Enables long-term persistent access",
         ],
         known_threat_actors=[
             "APT28 (Fancy Bear)",
             "APT41 (Winnti/Double Dragon)",
             "Winnti Umbrella Groups",
             "MosaicRegressor operators",
-            "Nation-state actors"
+            "Nation-state actors",
         ],
         recent_campaigns=[
             Campaign(
                 name="MoonBounce UEFI Implant",
                 year=2022,
                 description="APT41 deployed advanced UEFI firmware implant for espionage",
-                reference_url="https://securelist.com/moonbounce-the-dark-side-of-uefi-firmware/105468/"
+                reference_url="https://securelist.com/moonbounce-the-dark-side-of-uefi-firmware/105468/",
             ),
             Campaign(
                 name="BlackLotus UEFI Bootkit",
                 year=2023,
                 description="First public bootkit bypassing UEFI Secure Boot on Windows 11",
-                reference_url="https://www.bleepingcomputer.com/news/security/blacklotus-bootkit-bypasses-uefi-secure-boot-on-patched-windows-11/"
+                reference_url="https://www.bleepingcomputer.com/news/security/blacklotus-bootkit-bypasses-uefi-secure-boot-on-patched-windows-11/",
             ),
             Campaign(
                 name="LoJax UEFI Rootkit",
                 year=2018,
                 description="APT28 deployed first discovered UEFI rootkit targeting government institutions",
-                reference_url="https://www.welivesecurity.com/2018/09/27/lojax-first-uefi-rootkit-found-wild-courtesy-sednit-group/"
+                reference_url="https://www.welivesecurity.com/2018/09/27/lojax-first-uefi-rootkit-found-wild-courtesy-sednit-group/",
             ),
             Campaign(
                 name="Bootkitty Linux UEFI Bootkit",
                 year=2024,
                 description="First UEFI bootkit targeting Linux systems (proof-of-concept)",
-                reference_url="https://www.welivesecurity.com/en/eset-research/bootkitty-analyzing-first-uefi-bootkit-linux/"
-            )
+                reference_url="https://www.welivesecurity.com/en/eset-research/bootkitty-analyzing-first-uefi-bootkit-linux/",
+            ),
         ],
         prevalence="rare",
         trend="increasing",
@@ -91,13 +90,12 @@ TEMPLATE = RemediationTemplate(
             "Potential fleet-wide impact",
             "Loss of hardware/firmware trust",
             "Regulatory compliance violations",
-            "Total control over boot process"
+            "Total control over boot process",
         ],
         typical_attack_phase="persistence",
         often_precedes=["T1078.004", "T1552.005", "T1562.001", "T1070"],
-        often_follows=["T1190", "T1068", "T1078"]
+        often_follows=["T1190", "T1068", "T1078"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1542-aws-nitro",
@@ -110,11 +108,9 @@ TEMPLATE = RemediationTemplate(
                 event_pattern={
                     "source": ["aws.ec2"],
                     "detail-type": ["EC2 Instance State-change Notification"],
-                    "detail": {
-                        "state": ["running"]
-                    }
+                    "detail": {"state": ["running"]},
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Monitor EC2 boot integrity and Nitro attestation
 
 Parameters:
@@ -207,8 +203,8 @@ Resources:
       FunctionName: !Ref VerificationLambda
       Action: lambda:InvokeFunction
       Principal: events.amazonaws.com
-      SourceArn: !GetAtt InstanceLaunchRule.Arn''',
-                terraform_template='''# AWS: Monitor EC2 boot integrity and Nitro attestation
+      SourceArn: !GetAtt InstanceLaunchRule.Arn""",
+                terraform_template="""# AWS: Monitor EC2 boot integrity and Nitro attestation
 
 variable "alert_email" {
   type        = string
@@ -313,7 +309,7 @@ resource "aws_lambda_permission" "allow_eventbridge" {
   function_name = aws_lambda_function.verify_boot.function_name
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.instance_launch.arn
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="EC2 Instance Boot Verification Required",
                 alert_description_template="Instance {instance-id} launched - verify Nitro attestation and boot integrity.",
@@ -325,7 +321,7 @@ resource "aws_lambda_permission" "allow_eventbridge" {
                     "Verify AMI integrity and source",
                     "Review instance metadata and hardware details",
                     "Check for unexpected firmware modifications",
-                    "Consult AWS Support for hardware verification if suspicious"
+                    "Consult AWS Support for hardware verification if suspicious",
                 ],
                 containment_actions=[
                     "Immediately isolate suspicious instance",
@@ -334,8 +330,8 @@ resource "aws_lambda_permission" "allow_eventbridge" {
                     "Enable Nitro Enclaves where possible",
                     "Implement boot integrity monitoring",
                     "Review all instances from same hardware batch",
-                    "Report suspected firmware compromise to AWS Security"
-                ]
+                    "Report suspected firmware compromise to AWS Security",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal boot patterns; whitelist authorised AMIs",
@@ -344,9 +340,8 @@ resource "aws_lambda_permission" "allow_eventbridge" {
             implementation_effort=EffortLevel.HIGH,
             implementation_time="4-6 hours",
             estimated_monthly_cost="$20-50",
-            prerequisites=["Nitro-based EC2 instances", "CloudWatch Logs configured"]
+            prerequisites=["Nitro-based EC2 instances", "CloudWatch Logs configured"],
         ),
-
         DetectionStrategy(
             strategy_id="t1542-aws-boot-logs",
             name="AWS EC2 Boot Anomaly Detection",
@@ -355,13 +350,13 @@ resource "aws_lambda_permission" "allow_eventbridge" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, instance_id, @message
+                query="""fields @timestamp, instance_id, @message
 | filter @message like /boot|firmware|UEFI|BIOS|TPM|secure.boot/
 | filter @message like /fail|error|anomaly|unexpected|modified|corrupt|invalid/
 | stats count(*) as anomalies by instance_id, bin(1h)
 | filter anomalies > 0
-| sort anomalies desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort anomalies desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect EC2 boot anomalies and firmware integrity issues
 
 Parameters:
@@ -406,8 +401,8 @@ Resources:
       EvaluationPeriods: 1
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching''',
-                terraform_template='''# AWS: Detect EC2 boot anomalies and firmware issues
+      TreatMissingData: notBreaching""",
+                terraform_template="""# AWS: Detect EC2 boot anomalies and firmware issues
 
 variable "alert_email" {
   type        = string
@@ -453,7 +448,7 @@ resource "aws_cloudwatch_metric_alarm" "boot_anomaly" {
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.boot_anomaly_alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="EC2 Boot Anomaly Detected",
                 alert_description_template="Boot failure or firmware anomaly detected on instance {instance_id}.",
@@ -465,7 +460,7 @@ resource "aws_cloudwatch_metric_alarm" "boot_anomaly" {
                     "Compare with other instances from same AMI",
                     "Check AWS Systems Manager inventory",
                     "Review recent instance modifications",
-                    "Investigate any unexpected reboots"
+                    "Investigate any unexpected reboots",
                 ],
                 containment_actions=[
                     "Quarantine affected instance immediately",
@@ -474,8 +469,8 @@ resource "aws_cloudwatch_metric_alarm" "boot_anomaly" {
                     "Deploy replacement from verified AMI",
                     "Enable enhanced boot logging",
                     "Implement firmware integrity monitoring",
-                    "Review fleet for similar anomalies"
-                ]
+                    "Review fleet for similar anomalies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude planned firmware updates; baseline normal boot patterns",
@@ -484,9 +479,8 @@ resource "aws_cloudwatch_metric_alarm" "boot_anomaly" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$10-25",
-            prerequisites=["EC2 system logs enabled", "CloudWatch Logs configured"]
+            prerequisites=["EC2 system logs enabled", "CloudWatch Logs configured"],
         ),
-
         DetectionStrategy(
             strategy_id="t1542-gcp-shielded",
             name="GCP Shielded VM Integrity Monitoring",
@@ -496,7 +490,7 @@ resource "aws_cloudwatch_metric_alarm" "boot_anomaly" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 (protoPayload.methodName="v1.compute.instances.insert"
 OR protoPayload.methodName="beta.compute.instances.start"
 OR logName=~"logs/serialconsole"
@@ -508,8 +502,8 @@ AND (
   OR jsonPayload.message=~".*secure.*boot.*fail.*"
   OR jsonPayload.message=~".*UEFI.*fail.*"
   OR jsonPayload.message=~".*firmware.*error.*"
-)''',
-                gcp_terraform_template='''# GCP: Monitor Shielded VM boot integrity and vTPM attestation
+)""",
+                gcp_terraform_template="""# GCP: Monitor Shielded VM boot integrity and vTPM attestation
 
 variable "project_id" {
   type        = string
@@ -633,7 +627,7 @@ resource "google_monitoring_alert_policy" "vtpm_alert" {
     content   = "vTPM attestation failed. This may indicate firmware-level compromise or tampering."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GCP: Shielded VM Boot Integrity Failure",
                 alert_description_template="Boot integrity or vTPM verification failed for instance {instance_name}.",
@@ -645,7 +639,7 @@ resource "google_monitoring_alert_policy" "vtpm_alert" {
                     "Compare with other instances from same image",
                     "Check firmware update and modification history",
                     "Verify image source integrity and provenance",
-                    "Review instance metadata for anomalies"
+                    "Review instance metadata for anomalies",
                 ],
                 containment_actions=[
                     "Stop instance immediately",
@@ -655,8 +649,8 @@ resource "google_monitoring_alert_policy" "vtpm_alert" {
                     "Enable Shielded VM on all instances",
                     "Implement Confidential Computing where applicable",
                     "Review all instances from same image source",
-                    "Report to Google Cloud Security if hardware suspected"
-                ]
+                    "Report to Google Cloud Security if hardware suspected",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Baseline Shielded VM measurements; exclude authorised firmware updates",
@@ -665,9 +659,8 @@ resource "google_monitoring_alert_policy" "vtpm_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Shielded VM enabled", "Serial console logging enabled"]
+            prerequisites=["Shielded VM enabled", "Serial console logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1542-gcp-instance-launch",
             name="GCP Instance Launch Boot Verification",
@@ -677,11 +670,11 @@ resource "google_monitoring_alert_policy" "vtpm_alert" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 (protoPayload.methodName="v1.compute.instances.insert"
 OR protoPayload.methodName="beta.compute.instances.start")
-AND operation.first=true''',
-                gcp_terraform_template='''# GCP: Monitor instance launch and verify boot integrity
+AND operation.first=true""",
+                gcp_terraform_template="""# GCP: Monitor instance launch and verify boot integrity
 
 variable "project_id" {
   type        = string
@@ -780,7 +773,7 @@ resource "google_pubsub_topic_iam_binding" "log_sink" {
   topic   = google_pubsub_topic.verification.name
   role    = "roles/pubsub.publisher"
   members = [google_logging_project_sink.instance_creation.writer_identity]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Instance Launch - Boot Verification Required",
                 alert_description_template="Instance {instance_name} created/started - verify boot integrity and Shielded VM settings.",
@@ -791,7 +784,7 @@ resource "google_pubsub_topic_iam_binding" "log_sink" {
                     "Verify image source and integrity hash",
                     "Check instance zone and machine type",
                     "Review Secure Boot configuration",
-                    "Compare boot baseline with expected values"
+                    "Compare boot baseline with expected values",
                 ],
                 containment_actions=[
                     "Enforce Shielded VM on all new instances",
@@ -799,8 +792,8 @@ resource "google_pubsub_topic_iam_binding" "log_sink" {
                     "Implement organisation policy requiring Shielded VM",
                     "Enable automatic OS patch management",
                     "Document boot integrity verification process",
-                    "Create golden image baselines with verified boot configs"
-                ]
+                    "Create golden image baselines with verified boot configs",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist authorised deployment service accounts; baseline normal instance creation",
@@ -809,16 +802,15 @@ resource "google_pubsub_topic_iam_binding" "log_sink" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["Cloud Audit Logs enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1542-aws-nitro",
         "t1542-gcp-shielded",
         "t1542-aws-boot-logs",
-        "t1542-gcp-instance-launch"
+        "t1542-gcp-instance-launch",
     ],
     total_effort_hours=14.0,
-    coverage_improvement="+30% improvement for Defense Evasion and Persistence tactics"
+    coverage_improvement="+30% improvement for Defense Evasion and Persistence tactics",
 )

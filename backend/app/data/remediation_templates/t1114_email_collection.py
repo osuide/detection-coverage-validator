@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Email Collection",
     tactic_ids=["TA0009"],
     mitre_url="https://attack.mitre.org/techniques/T1114/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries target user email to extract sensitive information including trade secrets, "
@@ -38,28 +37,33 @@ TEMPLATE = RemediationTemplate(
             "Can reveal incident response details and security posture",
             "Access to trade secrets and confidential business data",
             "May contain MFA codes and authentication tokens",
-            "Provides reconnaissance for lateral movement"
+            "Provides reconnaissance for lateral movement",
         ],
-        known_threat_actors=["Ember Bear", "Magic Hound", "Scattered Spider", "Silent Librarian"],
+        known_threat_actors=[
+            "Ember Bear",
+            "Magic Hound",
+            "Scattered Spider",
+            "Silent Librarian",
+        ],
         recent_campaigns=[
             Campaign(
                 name="Scattered Spider Exchange Reconnaissance",
                 year=2023,
                 description="Searched Exchange servers for emails about intrusions and incident response to understand detection capabilities",
-                reference_url="https://attack.mitre.org/groups/G1015/"
+                reference_url="https://attack.mitre.org/groups/G1015/",
             ),
             Campaign(
                 name="Silent Librarian Mailbox Exfiltration",
                 year=2022,
                 description="Exfiltrated entire mailboxes from compromised academic accounts to collect research data and credentials",
-                reference_url="https://attack.mitre.org/groups/G0122/"
+                reference_url="https://attack.mitre.org/groups/G0122/",
             ),
             Campaign(
                 name="Magic Hound Credential Theft",
                 year=2021,
                 description="Compromised email credentials to steal sensitive communications and intellectual property",
-                reference_url="https://attack.mitre.org/groups/G0059/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0059/",
+            ),
         ],
         prevalence="common",
         trend="stable",
@@ -74,13 +78,12 @@ TEMPLATE = RemediationTemplate(
             "Exposure of sensitive business communications",
             "Credential and authentication token compromise",
             "Regulatory compliance violations (GDPR, HIPAA)",
-            "Disclosure of incident response capabilities to attackers"
+            "Disclosure of incident response capabilities to attackers",
         ],
         typical_attack_phase="collection",
         often_precedes=["T1567", "T1537", "T1048"],
-        often_follows=["T1078.004", "T1110", "T1621", "T1528"]
+        often_follows=["T1078.004", "T1110", "T1621", "T1528"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1114-aws-workmail",
@@ -90,14 +93,14 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.arn, sourceIPAddress,
+                query="""fields @timestamp, eventName, userIdentity.arn, sourceIPAddress,
        requestParameters.organizationId, requestParameters.entityId
 | filter eventSource = "workmail.amazonaws.com"
 | filter eventName in ["GetMailboxDetails", "ExportMailbox", "GetRawMessageContent", "SearchMailboxes"]
 | stats count(*) as access_count by userIdentity.arn, sourceIPAddress, bin(1h) as hour_window
 | filter access_count >= 50
-| sort access_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort access_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect suspicious WorkMail email collection attempts
 
 Parameters:
@@ -143,8 +146,8 @@ Resources:
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
       AlarmActions:
-        - !Ref AlertTopic''',
-                terraform_template='''# AWS: Detect WorkMail email collection attempts
+        - !Ref AlertTopic""",
+                terraform_template="""# AWS: Detect WorkMail email collection attempts
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -193,7 +196,7 @@ resource "aws_cloudwatch_metric_alarm" "bulk_email_access" {
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.workmail_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="AWS WorkMail Bulk Email Access Detected",
                 alert_description_template="User {userIdentity.arn} accessed {access_count} emails from IP {sourceIPAddress}. This may indicate email collection activity.",
@@ -202,15 +205,15 @@ resource "aws_cloudwatch_metric_alarm" "bulk_email_access" {
                     "Verify the user's business need for bulk email access",
                     "Check source IP geolocation and reputation",
                     "Review email content accessed for sensitivity",
-                    "Check for concurrent suspicious activities from this user"
+                    "Check for concurrent suspicious activities from this user",
                 ],
                 containment_actions=[
                     "Suspend the compromised user account",
                     "Reset user credentials and revoke active sessions",
                     "Block source IP if external and malicious",
                     "Review and restrict WorkMail API access",
-                    "Enable MFA if not already enforced"
-                ]
+                    "Enable MFA if not already enforced",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Exclude authorised backup and archival operations; adjust threshold based on organisation size",
@@ -219,9 +222,11 @@ resource "aws_cloudwatch_metric_alarm" "bulk_email_access" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["CloudTrail enabled for WorkMail events", "CloudTrail logs in CloudWatch"]
+            prerequisites=[
+                "CloudTrail enabled for WorkMail events",
+                "CloudTrail logs in CloudWatch",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1114-aws-ses",
             name="AWS SES Email Export Detection",
@@ -230,14 +235,14 @@ resource "aws_cloudwatch_metric_alarm" "bulk_email_access" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.arn, sourceIPAddress,
+                query="""fields @timestamp, eventName, userIdentity.arn, sourceIPAddress,
        requestParameters.messageId
 | filter eventSource = "ses.amazonaws.com"
 | filter eventName in ["GetMessage", "GetRawMessageContent", "ListMessages"]
 | stats count(*) as message_count by userIdentity.arn, sourceIPAddress, bin(1h) as hour_window
 | filter message_count >= 100
-| sort message_count desc''',
-                terraform_template='''# AWS: Detect SES email collection
+| sort message_count desc""",
+                terraform_template="""# AWS: Detect SES email collection
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -285,7 +290,7 @@ resource "aws_cloudwatch_metric_alarm" "ses_bulk_access" {
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.ses_alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="AWS SES Bulk Message Retrieval",
                 alert_description_template="User {userIdentity.arn} retrieved {message_count} messages via SES from {sourceIPAddress}.",
@@ -294,14 +299,14 @@ resource "aws_cloudwatch_metric_alarm" "ses_bulk_access" {
                     "Check which messages were retrieved",
                     "Review source IP for legitimacy",
                     "Determine if this is automated processing or manual access",
-                    "Check for data exfiltration indicators"
+                    "Check for data exfiltration indicators",
                 ],
                 containment_actions=[
                     "Revoke SES access from compromised credentials",
                     "Review SES access policies",
                     "Enable additional logging if not present",
-                    "Implement rate limiting on SES API access"
-                ]
+                    "Implement rate limiting on SES API access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude legitimate email processing services and automation roles",
@@ -310,9 +315,8 @@ resource "aws_cloudwatch_metric_alarm" "ses_bulk_access" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled for SES API events"]
+            prerequisites=["CloudTrail enabled for SES API events"],
         ),
-
         DetectionStrategy(
             strategy_id="t1114-gcp-gmail",
             name="Google Workspace Gmail API Access",
@@ -325,7 +329,7 @@ resource "aws_cloudwatch_metric_alarm" "ses_bulk_access" {
                 gcp_logging_query='''protoPayload.serviceName="gmail.googleapis.com"
 AND protoPayload.methodName=~"gmail.users.messages.(get|list)"
 AND severity!="INFO"''',
-                gcp_terraform_template='''# GCP: Detect Gmail API bulk email access
+                gcp_terraform_template="""# GCP: Detect Gmail API bulk email access
 
 variable "project_id" {
   type        = string
@@ -387,7 +391,7 @@ resource "google_monitoring_alert_policy" "gmail_bulk_access" {
   alert_strategy {
     auto_close = "86400s"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Gmail Bulk Message Access",
                 alert_description_template="High volume of Gmail API message access detected. This may indicate email collection activity.",
@@ -396,15 +400,15 @@ resource "google_monitoring_alert_policy" "gmail_bulk_access" {
                     "Review OAuth scopes granted to the application",
                     "Check which mailboxes were accessed",
                     "Verify the application is authorised",
-                    "Review message access patterns and volume"
+                    "Review message access patterns and volume",
                 ],
                 containment_actions=[
                     "Revoke OAuth token for suspicious application",
                     "Disable compromised service account",
                     "Review and restrict Gmail API access organisation-wide",
                     "Enable advanced Gmail security features",
-                    "Implement Gmail API rate limiting"
-                ]
+                    "Implement Gmail API rate limiting",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised email management and backup applications",
@@ -413,9 +417,11 @@ resource "google_monitoring_alert_policy" "gmail_bulk_access" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="$15-25",
-            prerequisites=["Google Workspace with Gmail API enabled", "Cloud Logging configured"]
+            prerequisites=[
+                "Google Workspace with Gmail API enabled",
+                "Cloud Logging configured",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1114-gcp-export",
             name="Google Workspace Mailbox Export Detection",
@@ -427,7 +433,7 @@ resource "google_monitoring_alert_policy" "gmail_bulk_access" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.serviceName="admin.googleapis.com"
 AND protoPayload.methodName=~"(EXPORT_MAILBOX|TAKEOUT_INITIATED|DOWNLOAD_USER_DATA)"''',
-                gcp_terraform_template='''# GCP: Detect Workspace mailbox exports
+                gcp_terraform_template="""# GCP: Detect Workspace mailbox exports
 
 variable "project_id" {
   type        = string
@@ -481,7 +487,7 @@ resource "google_monitoring_alert_policy" "mailbox_export" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Workspace Mailbox Export",
                 alert_description_template="A mailbox export or data takeout was initiated in Google Workspace.",
@@ -490,15 +496,15 @@ resource "google_monitoring_alert_policy" "mailbox_export" {
                     "Verify the business justification for the export",
                     "Check which mailbox(es) were exported",
                     "Review the user's recent activity for anomalies",
-                    "Determine where the exported data was sent"
+                    "Determine where the exported data was sent",
                 ],
                 containment_actions=[
                     "Cancel unauthorised export requests",
                     "Reset credentials for affected accounts",
                     "Review and restrict data export permissions",
                     "Enable additional approval workflows for exports",
-                    "Investigate for data exfiltration"
-                ]
+                    "Investigate for data exfiltration",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Exports are relatively rare; validate with IT team processes",
@@ -507,16 +513,15 @@ resource "google_monitoring_alert_policy" "mailbox_export" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Google Workspace admin audit logs enabled"]
-        )
+            prerequisites=["Google Workspace admin audit logs enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1114-aws-workmail",
         "t1114-gcp-gmail",
         "t1114-gcp-export",
-        "t1114-aws-ses"
+        "t1114-aws-ses",
     ],
     total_effort_hours=5.0,
-    coverage_improvement="+20% improvement for Collection tactic"
+    coverage_improvement="+20% improvement for Collection tactic",
 )

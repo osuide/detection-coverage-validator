@@ -11,7 +11,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 
 from app.models.cloud_account import CloudAccount
-from app.models.cloud_credential import CloudCredential, CredentialType, CredentialStatus
+from app.models.cloud_credential import (
+    CloudCredential,
+    CredentialType,
+    CredentialStatus,
+)
 from app.models.detection import Detection, DetectionStatus
 from app.models.mapping import DetectionMapping, MappingSource
 from app.models.scan import Scan, ScanStatus
@@ -89,9 +93,7 @@ class ScanService:
             scan.progress_percent = 50
             await self.db.commit()
 
-            stats = await self._process_detections(
-                account.id, raw_detections
-            )
+            stats = await self._process_detections(account.id, raw_detections)
 
             # Map to MITRE techniques
             scan.current_step = "Mapping to MITRE ATT&CK"
@@ -106,7 +108,9 @@ class ScanService:
             await self.db.commit()
 
             coverage_service = CoverageService(self.db)
-            coverage_snapshot = await coverage_service.calculate_coverage(account.id, scan.id)
+            coverage_snapshot = await coverage_service.calculate_coverage(
+                account.id, scan.id
+            )
 
             # Trigger alerts based on scan results
             try:
@@ -172,7 +176,7 @@ class ScanService:
             self.logger.info(
                 "dev_mode_session",
                 account_id=str(account.id),
-                msg="Using default credentials in dev mode"
+                msg="Using default credentials in dev mode",
             )
             return boto3.Session()
 
@@ -221,9 +225,9 @@ class ScanService:
 
             # Create session with assumed credentials
             return boto3.Session(
-                aws_access_key_id=creds['access_key_id'],
-                aws_secret_access_key=creds['secret_access_key'],
-                aws_session_token=creds['session_token'],
+                aws_access_key_id=creds["access_key_id"],
+                aws_secret_access_key=creds["secret_access_key"],
+                aws_session_token=creds["session_token"],
             )
         except Exception as e:
             self.logger.error(
@@ -232,7 +236,9 @@ class ScanService:
                 role_arn=credential.aws_role_arn,
                 error=str(e),
             )
-            raise ValueError(f"Failed to assume role for account {account.account_id}: {str(e)}")
+            raise ValueError(
+                f"Failed to assume role for account {account.account_id}: {str(e)}"
+            )
 
     async def _scan_detections(
         self,
@@ -292,10 +298,12 @@ class ScanService:
         for raw in raw_detections:
             # Check if detection already exists
             existing = await self.db.execute(
-                select(Detection).where(
+                select(Detection)
+                .where(
                     Detection.cloud_account_id == cloud_account_id,
                     Detection.source_arn == raw.source_arn,
-                ).limit(1)
+                )
+                .limit(1)
             )
             detection = existing.scalar_one_or_none()
 
@@ -421,6 +429,7 @@ class ScanService:
             for mapping in mappings:
                 # Look up technique in DB
                 from app.models.mitre import Technique
+
                 tech_result = await self.db.execute(
                     select(Technique).where(
                         Technique.technique_id == mapping.technique_id

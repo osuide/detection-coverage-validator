@@ -15,6 +15,7 @@ from app.core.database import Base
 
 class AccountTier(str, enum.Enum):
     """Account tier levels."""
+
     FREE_SCAN = "free_scan"
     SUBSCRIBER = "subscriber"
     ENTERPRISE = "enterprise"
@@ -22,6 +23,7 @@ class AccountTier(str, enum.Enum):
 
 class SubscriptionStatus(str, enum.Enum):
     """Subscription status."""
+
     ACTIVE = "active"
     PAST_DUE = "past_due"
     CANCELED = "canceled"
@@ -31,55 +33,55 @@ class SubscriptionStatus(str, enum.Enum):
 # Tier limits configuration
 TIER_LIMITS = {
     AccountTier.FREE_SCAN: {
-        'cloud_accounts': 1,
-        'included_accounts': 1,
-        'scans_allowed': 1,
-        'results_retention_days': 7,
-        'org_discovery': False,
-        'features': {
-            'coverage_heatmap': True,
-            'gap_list': True,
-            'pdf_report': True,
-            'historical_trends': False,
-            'scheduled_scans': False,
-            'alerts': False,
-            'api_access': False,
-            'org_scanning': False,
-        }
+        "cloud_accounts": 1,
+        "included_accounts": 1,
+        "scans_allowed": 1,
+        "results_retention_days": 7,
+        "org_discovery": False,
+        "features": {
+            "coverage_heatmap": True,
+            "gap_list": True,
+            "pdf_report": True,
+            "historical_trends": False,
+            "scheduled_scans": False,
+            "alerts": False,
+            "api_access": False,
+            "org_scanning": False,
+        },
     },
     AccountTier.SUBSCRIBER: {
-        'cloud_accounts': 3,  # Base included accounts
-        'included_accounts': 3,
-        'scans_allowed': -1,  # Unlimited
-        'results_retention_days': -1,  # Forever
-        'org_discovery': True,
-        'features': {
-            'coverage_heatmap': True,
-            'gap_list': True,
-            'pdf_report': True,
-            'historical_trends': True,
-            'scheduled_scans': True,
-            'alerts': True,
-            'api_access': True,
-            'code_analysis': True,  # Opt-in feature requiring consent
-            'org_scanning': True,
-        }
+        "cloud_accounts": 3,  # Base included accounts
+        "included_accounts": 3,
+        "scans_allowed": -1,  # Unlimited
+        "results_retention_days": -1,  # Forever
+        "org_discovery": True,
+        "features": {
+            "coverage_heatmap": True,
+            "gap_list": True,
+            "pdf_report": True,
+            "historical_trends": True,
+            "scheduled_scans": True,
+            "alerts": True,
+            "api_access": True,
+            "code_analysis": True,  # Opt-in feature requiring consent
+            "org_scanning": True,
+        },
     },
     AccountTier.ENTERPRISE: {
-        'cloud_accounts': -1,  # Unlimited base (usage-based pricing applies)
-        'included_accounts': 10,  # 10 accounts included in base price
-        'scans_allowed': -1,
-        'results_retention_days': -1,
-        'org_discovery': True,
-        'features': {
-            'all': True,
-            'sso': True,
-            'sla': True,
-            'code_analysis': True,  # Opt-in feature requiring consent
-            'org_scanning': True,
-            'unlimited_accounts': True,
-        }
-    }
+        "cloud_accounts": -1,  # Unlimited base (usage-based pricing applies)
+        "included_accounts": 10,  # 10 accounts included in base price
+        "scans_allowed": -1,
+        "results_retention_days": -1,
+        "org_discovery": True,
+        "features": {
+            "all": True,
+            "sso": True,
+            "sla": True,
+            "code_analysis": True,  # Opt-in feature requiring consent
+            "org_scanning": True,
+            "unlimited_accounts": True,
+        },
+    },
 }
 
 # Tiered volume pricing for additional accounts (in cents per account per month)
@@ -87,18 +89,18 @@ TIER_LIMITS = {
 ACCOUNT_VOLUME_TIERS = [
     # (max_accounts, price_per_account_cents)
     # Accounts 1-10: included in Enterprise base
-    (10, 0),        # First 10 included in base price
-    (50, 800),      # Accounts 11-50: $8/account/month
-    (200, 500),     # Accounts 51-200: $5/account/month
-    (1000, 300),    # Accounts 201-1000: $3/account/month
-    (None, 200),    # Accounts 1000+: $2/account/month
+    (10, 0),  # First 10 included in base price
+    (50, 800),  # Accounts 11-50: $8/account/month
+    (200, 500),  # Accounts 51-200: $5/account/month
+    (1000, 300),  # Accounts 201-1000: $3/account/month
+    (None, 200),  # Accounts 1000+: $2/account/month
 ]
 
 # Stripe pricing (in cents)
 STRIPE_PRICES = {
-    'subscriber_monthly': 2900,      # $29.00/month base
-    'enterprise_monthly': 49900,     # $499.00/month base (includes 10 accounts)
-    'additional_account_subscriber': 900,  # $9.00/account for Subscriber tier overage
+    "subscriber_monthly": 2900,  # $29.00/month base
+    "enterprise_monthly": 49900,  # $499.00/month base (includes 10 accounts)
+    "additional_account_subscriber": 900,  # $9.00/account for Subscriber tier overage
 }
 
 
@@ -117,63 +119,69 @@ def calculate_account_cost(account_count: int, tier: AccountTier) -> dict:
         if account_count > 1:
             raise ValueError("Free tier only allows 1 account. Upgrade to Subscriber.")
         return {
-            'base_cost_cents': 0,
-            'included_accounts': 1,
-            'additional_accounts': 0,
-            'additional_cost_cents': 0,
-            'total_cost_cents': 0,
-            'breakdown': [('Free Tier', 1, 0, 0)],
+            "base_cost_cents": 0,
+            "included_accounts": 1,
+            "additional_accounts": 0,
+            "additional_cost_cents": 0,
+            "total_cost_cents": 0,
+            "breakdown": [("Free Tier", 1, 0, 0)],
         }
 
     elif tier == AccountTier.SUBSCRIBER:
-        included = TIER_LIMITS[AccountTier.SUBSCRIBER]['included_accounts']
-        base_cost = STRIPE_PRICES['subscriber_monthly']
+        included = TIER_LIMITS[AccountTier.SUBSCRIBER]["included_accounts"]
+        base_cost = STRIPE_PRICES["subscriber_monthly"]
 
         if account_count <= included:
             return {
-                'base_cost_cents': base_cost,
-                'included_accounts': included,
-                'additional_accounts': 0,
-                'additional_cost_cents': 0,
-                'total_cost_cents': base_cost,
-                'breakdown': [
-                    ('Subscriber Base (3 accounts)', 1, base_cost, base_cost),
+                "base_cost_cents": base_cost,
+                "included_accounts": included,
+                "additional_accounts": 0,
+                "additional_cost_cents": 0,
+                "total_cost_cents": base_cost,
+                "breakdown": [
+                    ("Subscriber Base (3 accounts)", 1, base_cost, base_cost),
                 ],
             }
         else:
             additional = account_count - included
-            additional_cost = additional * STRIPE_PRICES['additional_account_subscriber']
+            additional_cost = (
+                additional * STRIPE_PRICES["additional_account_subscriber"]
+            )
             return {
-                'base_cost_cents': base_cost,
-                'included_accounts': included,
-                'additional_accounts': additional,
-                'additional_cost_cents': additional_cost,
-                'total_cost_cents': base_cost + additional_cost,
-                'breakdown': [
-                    ('Subscriber Base (3 accounts)', 1, base_cost, base_cost),
-                    (f'Additional Accounts ({additional})', additional,
-                     STRIPE_PRICES['additional_account_subscriber'], additional_cost),
+                "base_cost_cents": base_cost,
+                "included_accounts": included,
+                "additional_accounts": additional,
+                "additional_cost_cents": additional_cost,
+                "total_cost_cents": base_cost + additional_cost,
+                "breakdown": [
+                    ("Subscriber Base (3 accounts)", 1, base_cost, base_cost),
+                    (
+                        f"Additional Accounts ({additional})",
+                        additional,
+                        STRIPE_PRICES["additional_account_subscriber"],
+                        additional_cost,
+                    ),
                 ],
             }
 
     elif tier == AccountTier.ENTERPRISE:
-        base_cost = STRIPE_PRICES['enterprise_monthly']
-        included = TIER_LIMITS[AccountTier.ENTERPRISE]['included_accounts']
+        base_cost = STRIPE_PRICES["enterprise_monthly"]
+        included = TIER_LIMITS[AccountTier.ENTERPRISE]["included_accounts"]
 
         if account_count <= included:
             return {
-                'base_cost_cents': base_cost,
-                'included_accounts': included,
-                'additional_accounts': 0,
-                'additional_cost_cents': 0,
-                'total_cost_cents': base_cost,
-                'breakdown': [
-                    ('Enterprise Base (10 accounts)', 1, base_cost, base_cost),
+                "base_cost_cents": base_cost,
+                "included_accounts": included,
+                "additional_accounts": 0,
+                "additional_cost_cents": 0,
+                "total_cost_cents": base_cost,
+                "breakdown": [
+                    ("Enterprise Base (10 accounts)", 1, base_cost, base_cost),
                 ],
             }
 
         # Calculate volume-tiered pricing for accounts beyond included
-        breakdown = [('Enterprise Base (10 accounts)', 1, base_cost, base_cost)]
+        breakdown = [("Enterprise Base (10 accounts)", 1, base_cost, base_cost)]
         remaining = account_count - included
         additional_cost = 0
         current_count = included
@@ -184,13 +192,13 @@ def calculate_account_cost(account_count: int, tier: AccountTier) -> dict:
             if max_accounts is None:
                 # Unlimited tier - all remaining accounts
                 tier_count = remaining
-                tier_name = f'Accounts {current_count + 1}+ @ $0.02/ea'
+                tier_name = f"Accounts {current_count + 1}+ @ $0.02/ea"
             else:
                 tier_count = min(remaining, max_accounts - current_count)
                 if tier_count <= 0:
                     current_count = max_accounts
                     continue
-                tier_name = f'Accounts {current_count + 1}-{current_count + tier_count} @ ${price_cents/100:.2f}/ea'
+                tier_name = f"Accounts {current_count + 1}-{current_count + tier_count} @ ${price_cents/100:.2f}/ea"
 
             if price_cents > 0 and tier_count > 0:
                 tier_cost = tier_count * price_cents
@@ -204,12 +212,12 @@ def calculate_account_cost(account_count: int, tier: AccountTier) -> dict:
                 break
 
         return {
-            'base_cost_cents': base_cost,
-            'included_accounts': included,
-            'additional_accounts': account_count - included,
-            'additional_cost_cents': additional_cost,
-            'total_cost_cents': base_cost + additional_cost,
-            'breakdown': breakdown,
+            "base_cost_cents": base_cost,
+            "included_accounts": included,
+            "additional_accounts": account_count - included,
+            "additional_cost_cents": additional_cost,
+            "total_cost_cents": base_cost + additional_cost,
+            "breakdown": breakdown,
         }
 
     raise ValueError(f"Unknown tier: {tier}")
@@ -220,44 +228,84 @@ class Subscription(Base):
 
     __tablename__ = "subscriptions"
 
-    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid())
-    organization_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, unique=True)
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid()
+    )
+    organization_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
 
     # Stripe fields
-    stripe_customer_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    stripe_subscription_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    stripe_customer_id: Mapped[Optional[str]] = mapped_column(
+        String(255), nullable=True
+    )
+    stripe_subscription_id: Mapped[Optional[str]] = mapped_column(
+        String(255), nullable=True
+    )
 
     # Tier and status
     tier: Mapped[AccountTier] = mapped_column(
-        Enum(AccountTier, name='account_tier', create_type=False, values_callable=lambda e: [x.value for x in e]),
+        Enum(
+            AccountTier,
+            name="account_tier",
+            create_type=False,
+            values_callable=lambda e: [x.value for x in e],
+        ),
         nullable=False,
-        default=AccountTier.FREE_SCAN
+        default=AccountTier.FREE_SCAN,
     )
     status: Mapped[SubscriptionStatus] = mapped_column(
-        Enum(SubscriptionStatus, name='subscription_status', create_type=False, values_callable=lambda e: [x.value for x in e]),
+        Enum(
+            SubscriptionStatus,
+            name="subscription_status",
+            create_type=False,
+            values_callable=lambda e: [x.value for x in e],
+        ),
         nullable=False,
-        default=SubscriptionStatus.ACTIVE
+        default=SubscriptionStatus.ACTIVE,
     )
 
     # Free scan tracking
     free_scan_used: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    free_scan_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    free_scan_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    free_scan_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    free_scan_expires_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # Account limits
     included_accounts: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     additional_accounts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     # Billing period
-    current_period_start: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    current_period_end: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    cancel_at_period_end: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    canceled_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    current_period_start: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    current_period_end: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    cancel_at_period_end: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
+    canceled_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # Extra data (stored as "metadata" in DB)
     metadata_: Mapped[Optional[dict]] = mapped_column("metadata", JSONB, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
 
     # Relationships
     organization = relationship("Organization", back_populates="subscription")
@@ -266,7 +314,7 @@ class Subscription(Base):
     def total_accounts_allowed(self) -> int:
         """Total cloud accounts allowed for this subscription."""
         limits = TIER_LIMITS.get(self.tier, TIER_LIMITS[AccountTier.FREE_SCAN])
-        base = limits['cloud_accounts']
+        base = limits["cloud_accounts"]
         if base == -1:  # Unlimited
             return -1
         return base + self.additional_accounts
@@ -278,7 +326,9 @@ class Subscription(Base):
             return False
         if not self.free_scan_expires_at:
             return False
-        return datetime.now(self.free_scan_expires_at.tzinfo) > self.free_scan_expires_at
+        return (
+            datetime.now(self.free_scan_expires_at.tzinfo) > self.free_scan_expires_at
+        )
 
     @property
     def can_scan(self) -> bool:
@@ -290,6 +340,7 @@ class Subscription(Base):
     def use_free_scan(self) -> None:
         """Mark free scan as used and set expiry."""
         from datetime import timezone
+
         now = datetime.now(timezone.utc)
         self.free_scan_used = True
         self.free_scan_at = now
@@ -298,8 +349,8 @@ class Subscription(Base):
     def has_feature(self, feature: str) -> bool:
         """Check if subscription has access to a feature."""
         limits = TIER_LIMITS.get(self.tier, TIER_LIMITS[AccountTier.FREE_SCAN])
-        features = limits.get('features', {})
-        return features.get(feature, False) or features.get('all', False)
+        features = limits.get("features", {})
+        return features.get(feature, False) or features.get("all", False)
 
 
 class Invoice(Base):
@@ -307,22 +358,36 @@ class Invoice(Base):
 
     __tablename__ = "invoices"
 
-    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid())
-    organization_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False)
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid()
+    )
+    organization_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=False,
+    )
 
     stripe_invoice_id: Mapped[str] = mapped_column(String(255), nullable=False)
     amount_cents: Mapped[int] = mapped_column(Integer, nullable=False)
-    currency: Mapped[str] = mapped_column(String(3), nullable=False, default='usd')
+    currency: Mapped[str] = mapped_column(String(3), nullable=False, default="usd")
     status: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
 
     invoice_pdf_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     hosted_invoice_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
-    period_start: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    period_end: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    paid_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    period_start: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    period_end: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    paid_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
 
     # Relationships
     organization = relationship("Organization", back_populates="invoices")

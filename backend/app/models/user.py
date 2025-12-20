@@ -6,7 +6,16 @@ import secrets
 from datetime import datetime, timezone
 from typing import Optional, List
 
-from sqlalchemy import String, DateTime, Boolean, Text, Integer, ForeignKey, Index, Enum as SQLEnum
+from sqlalchemy import (
+    String,
+    DateTime,
+    Boolean,
+    Text,
+    Integer,
+    ForeignKey,
+    Index,
+    Enum as SQLEnum,
+)
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -15,6 +24,7 @@ from app.core.database import Base
 
 class UserRole(str, enum.Enum):
     """User roles within an organization."""
+
     OWNER = "owner"
     ADMIN = "admin"
     MEMBER = "member"
@@ -23,6 +33,7 @@ class UserRole(str, enum.Enum):
 
 class MembershipStatus(str, enum.Enum):
     """Status of organization membership."""
+
     ACTIVE = "active"
     PENDING = "pending"
     SUSPENDED = "suspended"
@@ -37,14 +48,20 @@ class User(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
-    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
+    email: Mapped[str] = mapped_column(
+        String(255), unique=True, nullable=False, index=True
+    )
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
     password_hash: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
     # Email verification
     email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
-    email_verification_token: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    email_verification_sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    email_verification_token: Mapped[Optional[str]] = mapped_column(
+        String(255), nullable=True
+    )
+    email_verification_sent_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # MFA
     mfa_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -56,24 +73,36 @@ class User(Base):
     oauth_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
     # Cognito SSO
-    cognito_sub: Mapped[Optional[str]] = mapped_column(String(255), unique=True, nullable=True)
+    cognito_sub: Mapped[Optional[str]] = mapped_column(
+        String(255), unique=True, nullable=True
+    )
     cognito_username: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    identity_provider: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # cognito, google, azure, okta
+    identity_provider: Mapped[Optional[str]] = mapped_column(
+        String(50), nullable=True
+    )  # cognito, google, azure, okta
 
     # Profile
     avatar_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     timezone: Mapped[str] = mapped_column(String(50), default="UTC")
 
     # Password reset
-    password_reset_token: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    password_reset_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    password_reset_token: Mapped[Optional[str]] = mapped_column(
+        String(255), nullable=True
+    )
+    password_reset_expires_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # Account status
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_superadmin: Mapped[bool] = mapped_column(Boolean, default=False)
-    last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_login_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     failed_login_attempts: Mapped[int] = mapped_column(Integer, default=0)
-    locked_until: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    locked_until: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
@@ -82,7 +111,7 @@ class User(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc)
+        onupdate=lambda: datetime.now(timezone.utc),
     )
 
     # Relationships
@@ -90,10 +119,14 @@ class User(Base):
         "OrganizationMember",
         back_populates="user",
         cascade="all, delete-orphan",
-        foreign_keys="[OrganizationMember.user_id]"
+        foreign_keys="[OrganizationMember.user_id]",
     )
-    sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")
-    federated_identities = relationship("FederatedIdentity", back_populates="user", cascade="all, delete-orphan")
+    sessions = relationship(
+        "UserSession", back_populates="user", cascade="all, delete-orphan"
+    )
+    federated_identities = relationship(
+        "FederatedIdentity", back_populates="user", cascade="all, delete-orphan"
+    )
 
     __table_args__ = (
         Index("ix_users_oauth", "oauth_provider", "oauth_id"),
@@ -113,7 +146,9 @@ class Organization(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    slug: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
+    slug: Mapped[str] = mapped_column(
+        String(100), unique=True, nullable=False, index=True
+    )
 
     # Settings
     logo_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
@@ -122,8 +157,12 @@ class Organization(Base):
 
     # Security policies
     require_mfa: Mapped[bool] = mapped_column(Boolean, default=False)
-    allowed_auth_methods: Mapped[List[str]] = mapped_column(JSONB, default=["email_password"])
-    session_timeout_minutes: Mapped[int] = mapped_column(Integer, default=1440)  # 24 hours
+    allowed_auth_methods: Mapped[List[str]] = mapped_column(
+        JSONB, default=["email_password"]
+    )
+    session_timeout_minutes: Mapped[int] = mapped_column(
+        Integer, default=1440
+    )  # 24 hours
 
     # SSO Configuration
     sso_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -133,7 +172,9 @@ class Organization(Base):
     # Subscription
     plan: Mapped[str] = mapped_column(String(50), default="free")
     plan_seats: Mapped[int] = mapped_column(Integer, default=5)
-    trial_ends_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    trial_ends_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # Status
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -145,18 +186,40 @@ class Organization(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc)
+        onupdate=lambda: datetime.now(timezone.utc),
     )
 
     # Relationships
-    members = relationship("OrganizationMember", back_populates="organization", cascade="all, delete-orphan")
+    members = relationship(
+        "OrganizationMember",
+        back_populates="organization",
+        cascade="all, delete-orphan",
+    )
     cloud_accounts = relationship("CloudAccount", back_populates="organization")
-    api_keys = relationship("APIKey", back_populates="organization", cascade="all, delete-orphan")
-    audit_logs = relationship("AuditLog", back_populates="organization", cascade="all, delete-orphan")
-    subscription = relationship("Subscription", back_populates="organization", uselist=False, cascade="all, delete-orphan")
-    invoices = relationship("Invoice", back_populates="organization", cascade="all, delete-orphan")
-    security_settings = relationship("OrganizationSecuritySettings", back_populates="organization", uselist=False, cascade="all, delete-orphan")
-    verified_domains_rel = relationship("VerifiedDomain", back_populates="organization", cascade="all, delete-orphan")
+    api_keys = relationship(
+        "APIKey", back_populates="organization", cascade="all, delete-orphan"
+    )
+    audit_logs = relationship(
+        "AuditLog", back_populates="organization", cascade="all, delete-orphan"
+    )
+    subscription = relationship(
+        "Subscription",
+        back_populates="organization",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+    invoices = relationship(
+        "Invoice", back_populates="organization", cascade="all, delete-orphan"
+    )
+    security_settings = relationship(
+        "OrganizationSecuritySettings",
+        back_populates="organization",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+    verified_domains_rel = relationship(
+        "VerifiedDomain", back_populates="organization", cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:
         return f"<Organization {self.name} ({self.slug})>"
@@ -171,7 +234,9 @@ class OrganizationMember(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     organization_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
+        UUID(as_uuid=True),
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=False,
     )
     user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True
@@ -180,28 +245,46 @@ class OrganizationMember(Base):
     # For pending invitations
     invited_email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     invite_token: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    invite_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    invited_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    invite_expires_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    invited_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     invited_by: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
 
     # Role and status
     role: Mapped[UserRole] = mapped_column(
-        SQLEnum(UserRole, values_callable=lambda x: [e.value for e in x], name='userrole', create_type=False),
-        default=UserRole.MEMBER
+        SQLEnum(
+            UserRole,
+            values_callable=lambda x: [e.value for e in x],
+            name="userrole",
+            create_type=False,
+        ),
+        default=UserRole.MEMBER,
     )
     status: Mapped[MembershipStatus] = mapped_column(
-        SQLEnum(MembershipStatus, values_callable=lambda x: [e.value for e in x], name='membershipstatus', create_type=False),
-        default=MembershipStatus.PENDING
+        SQLEnum(
+            MembershipStatus,
+            values_callable=lambda x: [e.value for e in x],
+            name="membershipstatus",
+            create_type=False,
+        ),
+        default=MembershipStatus.PENDING,
     )
 
     # Cloud account access (for member/viewer roles)
     # If null, has access to all accounts; otherwise, only these account IDs
-    allowed_account_ids: Mapped[Optional[List[str]]] = mapped_column(JSONB, nullable=True)
+    allowed_account_ids: Mapped[Optional[List[str]]] = mapped_column(
+        JSONB, nullable=True
+    )
 
     # Timestamps
-    joined_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    joined_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
@@ -234,11 +317,15 @@ class UserSession(Base):
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     organization_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=True
+        UUID(as_uuid=True),
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=True,
     )
 
     # Token
-    refresh_token_hash: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    refresh_token_hash: Mapped[str] = mapped_column(
+        String(255), nullable=False, unique=True
+    )
 
     # Session metadata
     user_agent: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
@@ -251,7 +338,9 @@ class UserSession(Base):
     last_activity_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
-    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
@@ -279,7 +368,9 @@ class APIKey(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     organization_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
+        UUID(as_uuid=True),
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=False,
     )
     created_by_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
@@ -287,24 +378,34 @@ class APIKey(Base):
 
     # Key details
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    key_prefix: Mapped[str] = mapped_column(String(32), nullable=False)  # e.g., "dcv_live_abc123"
+    key_prefix: Mapped[str] = mapped_column(
+        String(32), nullable=False
+    )  # e.g., "dcv_live_abc123"
     key_hash: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
 
     # Permissions
-    scopes: Mapped[List[str]] = mapped_column(JSONB, default=list)  # e.g., ["read:accounts", "write:scans"]
+    scopes: Mapped[List[str]] = mapped_column(
+        JSONB, default=list
+    )  # e.g., ["read:accounts", "write:scans"]
 
     # Restrictions
     ip_allowlist: Mapped[Optional[List[str]]] = mapped_column(JSONB, nullable=True)
-    expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    expires_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # Usage tracking
-    last_used_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_used_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     last_used_ip: Mapped[Optional[str]] = mapped_column(String(45), nullable=True)
     usage_count: Mapped[int] = mapped_column(Integer, default=0)
 
     # Status
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    revoked_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     revoked_by_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
@@ -348,21 +449,30 @@ class FederatedIdentity(Base):
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
 
-    provider: Mapped[str] = mapped_column(String(50), nullable=False)  # google, azure, okta
+    provider: Mapped[str] = mapped_column(
+        String(50), nullable=False
+    )  # google, azure, okta
     provider_user_id: Mapped[str] = mapped_column(String(255), nullable=False)
     provider_email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
     linked_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
-    last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_login_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # Relationships
     user = relationship("User", back_populates="federated_identities")
 
     __table_args__ = (
         Index("ix_federated_identities_user", "user_id"),
-        Index("ix_federated_identities_provider", "provider", "provider_user_id", unique=True),
+        Index(
+            "ix_federated_identities_provider",
+            "provider",
+            "provider_user_id",
+            unique=True,
+        ),
     )
 
     def __repr__(self) -> str:
@@ -371,6 +481,7 @@ class FederatedIdentity(Base):
 
 class AuditLogAction(str, enum.Enum):
     """Types of audit log actions."""
+
     # Auth
     USER_LOGIN = "user.login"
     USER_LOGOUT = "user.logout"
@@ -425,7 +536,9 @@ class AuditLog(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     organization_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="SET NULL"), nullable=True
+        UUID(as_uuid=True),
+        ForeignKey("organizations.id", ondelete="SET NULL"),
+        nullable=True,
     )
     user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
@@ -433,8 +546,13 @@ class AuditLog(Base):
 
     # Action details
     action: Mapped[AuditLogAction] = mapped_column(
-        SQLEnum(AuditLogAction, values_callable=lambda x: [e.value for e in x], name='auditlogaction', create_type=False),
-        nullable=False
+        SQLEnum(
+            AuditLogAction,
+            values_callable=lambda x: [e.value for e in x],
+            name="auditlogaction",
+            create_type=False,
+        ),
+        nullable=False,
     )
     resource_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     resource_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)

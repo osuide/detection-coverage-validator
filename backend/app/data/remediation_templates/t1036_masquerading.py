@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Masquerading",
     tactic_ids=["TA0005"],
     mitre_url="https://attack.mitre.org/techniques/T1036/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries manipulate features of their artefacts to make them appear legitimate "
@@ -37,37 +36,45 @@ TEMPLATE = RemediationTemplate(
             "Reduces scrutiny during manual security reviews",
             "Exploits trust in familiar system processes and services",
             "Simple to implement with high effectiveness",
-            "Commonly used alongside other defence evasion techniques"
+            "Commonly used alongside other defence evasion techniques",
         ],
         known_threat_actors=[
-            "APT28", "APT32", "Lazarus Group", "FIN13", "Sandworm Team",
-            "ZIRCONIUM", "APT29", "APT41", "TeamTNT", "Kimsuky"
+            "APT28",
+            "APT32",
+            "Lazarus Group",
+            "FIN13",
+            "Sandworm Team",
+            "ZIRCONIUM",
+            "APT29",
+            "APT41",
+            "TeamTNT",
+            "Kimsuky",
         ],
         recent_campaigns=[
             Campaign(
                 name="APT28 WinRAR Masquerading",
                 year=2024,
                 description="APT28 renamed WinRAR utility to avoid detection during reconnaissance operations",
-                reference_url="https://attack.mitre.org/groups/G0007/"
+                reference_url="https://attack.mitre.org/groups/G0007/",
             ),
             Campaign(
                 name="APT32 Cobalt Strike Disguise",
                 year=2023,
                 description="APT32 disguised Cobalt Strike beacon as Flash Installer to trick users and security tools",
-                reference_url="https://attack.mitre.org/groups/G0050/"
+                reference_url="https://attack.mitre.org/groups/G0050/",
             ),
             Campaign(
                 name="Lazarus Group Fake Recruitment",
                 year=2024,
                 description="Used masqueraded files in fake recruitment campaigns, hiding malware as legitimate documents",
-                reference_url="https://attack.mitre.org/groups/G0032/"
+                reference_url="https://attack.mitre.org/groups/G0032/",
             ),
             Campaign(
                 name="FIN13 Certutil Abuse",
                 year=2023,
                 description="Used certutil to generate fake Base64-encoded certificates to disguise malicious activity",
-                reference_url="https://attack.mitre.org/groups/G1016/"
-            )
+                reference_url="https://attack.mitre.org/groups/G1016/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -83,13 +90,12 @@ TEMPLATE = RemediationTemplate(
             "Increased attacker dwell time in environment",
             "Potential compliance violations due to undetected threats",
             "Resource consumption from hidden malicious processes",
-            "Difficulty in forensic investigation and incident response"
+            "Difficulty in forensic investigation and incident response",
         ],
         typical_attack_phase="defence_evasion",
         often_precedes=["T1059", "T1105", "T1496.001", "T1530"],
-        often_follows=["T1078.004", "T1190", "T1552.005"]
+        often_follows=["T1078.004", "T1190", "T1552.005"],
     ),
-
     detection_strategies=[
         # AWS Strategy 1: GuardDuty Process Anomalies
         DetectionStrategy(
@@ -107,9 +113,9 @@ TEMPLATE = RemediationTemplate(
                     "Execution:EC2/MaliciousFile",
                     "Execution:Runtime/NewBinaryExecuted",
                     "DefenseEvasion:EC2/UnusualProcessName",
-                    "UnauthorizedAccess:EC2/MaliciousIPCaller.Custom"
+                    "UnauthorizedAccess:EC2/MaliciousIPCaller.Custom",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty detection for masquerading attempts
 
 Parameters:
@@ -160,8 +166,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref GuardDutyAlertTopic''',
-                terraform_template='''# AWS: GuardDuty masquerading detection
+            Resource: !Ref GuardDutyAlertTopic""",
+                terraform_template="""# AWS: GuardDuty masquerading detection
 
 variable "alert_email" {
   description = "Email for security alerts"
@@ -216,7 +222,7 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
       Resource  = aws_sns_topic.guardduty_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GuardDuty: Potential Masquerading Detected",
                 alert_description_template=(
@@ -229,7 +235,7 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
                     "Check if binary is in expected system location",
                     "Compare process behaviour with known baselines",
                     "Review instance timeline for other suspicious activity",
-                    "Verify process digital signatures and metadata"
+                    "Verify process digital signatures and metadata",
                 ],
                 containment_actions=[
                     "Isolate affected instance immediately",
@@ -237,8 +243,8 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
                     "Create forensic snapshot of instance",
                     "Revoke instance credentials",
                     "Block any malicious IPs at network level",
-                    "Consider instance replacement if compromised"
-                ]
+                    "Consider instance replacement if compromised",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Review suppression rules for known legitimate processes; whitelist authorised custom applications",
@@ -247,9 +253,8 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$1-5 (requires GuardDuty)",
-            prerequisites=["AWS GuardDuty enabled with Runtime Monitoring"]
+            prerequisites=["AWS GuardDuty enabled with Runtime Monitoring"],
         ),
-
         # AWS Strategy 2: Lambda Function Name Monitoring
         DetectionStrategy(
             strategy_id="t1036-aws-lambda-names",
@@ -262,14 +267,14 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn, requestParameters.functionName, eventName
+                query="""fields @timestamp, userIdentity.arn, requestParameters.functionName, eventName
 | filter eventSource = "lambda.amazonaws.com"
 | filter eventName in ["CreateFunction", "UpdateFunctionCode", "UpdateFunctionConfiguration"]
 | filter requestParameters.functionName =~ /^(aws-|amazon-|system|svc-|service-|backup-|log-|monitor-)/
 | filter requestParameters.functionName !~ /^(aws-lambda-|aws-sam-)/
 | sort @timestamp desc
-| limit 100''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| limit 100""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect Lambda functions with suspicious masquerading names
 
 Parameters:
@@ -330,8 +335,8 @@ Resources:
       State: ENABLED
       Targets:
         - Id: SNSAlert
-          Arn: !Ref SNSTopicArn''',
-                terraform_template='''# AWS: Detect Lambda functions with masquerading names
+          Arn: !Ref SNSTopicArn""",
+                terraform_template="""# AWS: Detect Lambda functions with masquerading names
 
 variable "cloudtrail_log_group" {
   description = "CloudTrail log group name"
@@ -390,7 +395,7 @@ resource "aws_cloudwatch_event_rule" "lambda_masquerading" {
 resource "aws_cloudwatch_event_target" "lambda_alert" {
   rule = aws_cloudwatch_event_rule.lambda_masquerading.name
   arn  = var.sns_topic_arn
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Suspicious Lambda Function Name Detected",
                 alert_description_template=(
@@ -403,7 +408,7 @@ resource "aws_cloudwatch_event_target" "lambda_alert" {
                     "Verify the identity that created the function",
                     "Review function's execution history and invocation sources",
                     "Check for similar functions with suspicious names",
-                    "Analyse function environment variables and layers"
+                    "Analyse function environment variables and layers",
                 ],
                 containment_actions=[
                     "Delete or disable suspicious Lambda function",
@@ -411,8 +416,8 @@ resource "aws_cloudwatch_event_target" "lambda_alert" {
                     "Block the creating user if unauthorised",
                     "Enable Lambda function URL authentication",
                     "Implement Lambda naming convention policies",
-                    "Review all functions for similar patterns"
-                ]
+                    "Review all functions for similar patterns",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known legitimate functions; implement organisation naming standards",
@@ -421,9 +426,11 @@ resource "aws_cloudwatch_event_target" "lambda_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled with Lambda API logging", "CloudWatch Logs integration"]
+            prerequisites=[
+                "CloudTrail enabled with Lambda API logging",
+                "CloudWatch Logs integration",
+            ],
         ),
-
         # AWS Strategy 3: ECS/Container Masquerading
         DetectionStrategy(
             strategy_id="t1036-aws-ecs-containers",
@@ -436,13 +443,13 @@ resource "aws_cloudwatch_event_target" "lambda_alert" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn, requestParameters.taskDefinition, requestParameters.containerDefinitions[0].name
+                query="""fields @timestamp, userIdentity.arn, requestParameters.taskDefinition, requestParameters.containerDefinitions[0].name
 | filter eventSource = "ecs.amazonaws.com"
 | filter eventName in ["RegisterTaskDefinition", "RunTask"]
 | filter requestParameters.taskDefinition =~ /^(aws-|amazon-|system|kube-|docker-|svc-)/
 | sort @timestamp desc
-| limit 100''',
-                terraform_template='''# AWS: Detect ECS tasks/containers with masquerading names
+| limit 100""",
+                terraform_template="""# AWS: Detect ECS tasks/containers with masquerading names
 
 variable "cloudtrail_log_group" {
   description = "CloudTrail log group name"
@@ -492,7 +499,7 @@ resource "aws_cloudwatch_metric_alarm" "ecs_alert" {
   comparison_operator = "GreaterThanOrEqualToThreshold"
   alarm_actions       = [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Suspicious ECS Task/Container Name Detected",
                 alert_description_template=(
@@ -505,7 +512,7 @@ resource "aws_cloudwatch_metric_alarm" "ecs_alert" {
                     "Verify the identity that registered the task",
                     "Analyse container environment variables and secrets",
                     "Review network configuration and security groups",
-                    "Check for cryptocurrency mining or data exfiltration patterns"
+                    "Check for cryptocurrency mining or data exfiltration patterns",
                 ],
                 containment_actions=[
                     "Stop running tasks immediately",
@@ -513,8 +520,8 @@ resource "aws_cloudwatch_metric_alarm" "ecs_alert" {
                     "Block container image in ECR",
                     "Review IAM roles attached to tasks",
                     "Implement container image scanning",
-                    "Enable ECS Exec auditing"
-                ]
+                    "Enable ECS Exec auditing",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Establish naming conventions; whitelist approved task definitions",
@@ -523,9 +530,11 @@ resource "aws_cloudwatch_metric_alarm" "ecs_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["CloudTrail enabled with ECS API logging", "CloudWatch Logs integration"]
+            prerequisites=[
+                "CloudTrail enabled with ECS API logging",
+                "CloudWatch Logs integration",
+            ],
         ),
-
         # GCP Strategy 1: VM Instance Suspicious Process Names
         DetectionStrategy(
             strategy_id="t1036-gcp-vm-processes",
@@ -544,7 +553,7 @@ resource "aws_cloudwatch_metric_alarm" "ecs_alert" {
  protoPayload.request.command=~"/tmp/.*|/dev/shm/.*|/var/tmp/.*")
 NOT jsonPayload.message=~"^(google-|gce-)"
 severity>="WARNING"''',
-                gcp_terraform_template='''# GCP: Detect suspicious process execution on VM instances
+                gcp_terraform_template="""# GCP: Detect suspicious process execution on VM instances
 
 variable "project_id" {
   description = "GCP project ID"
@@ -615,7 +624,7 @@ resource "google_monitoring_alert_policy" "process_alert" {
   alert_strategy {
     auto_close = "1800s"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Suspicious Process Execution Detected",
                 alert_description_template=(
@@ -628,7 +637,7 @@ resource "google_monitoring_alert_policy" "process_alert" {
                     "Verify process binary location and metadata",
                     "Analyse service account permissions",
                     "Review network connections from the instance",
-                    "Check for persistence mechanisms"
+                    "Check for persistence mechanisms",
                 ],
                 containment_actions=[
                     "Isolate VM using firewall rules",
@@ -636,8 +645,8 @@ resource "google_monitoring_alert_policy" "process_alert" {
                     "Create disk snapshot for forensic analysis",
                     "Revoke service account access",
                     "Review and harden VM metadata settings",
-                    "Consider VM replacement if compromised"
-                ]
+                    "Consider VM replacement if compromised",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude known custom applications and deployment tools; whitelist approved process names",
@@ -646,9 +655,11 @@ resource "google_monitoring_alert_policy" "process_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Logging enabled for GCE", "OS Login or system logging configured"]
+            prerequisites=[
+                "Cloud Logging enabled for GCE",
+                "OS Login or system logging configured",
+            ],
         ),
-
         # GCP Strategy 2: Cloud Functions Suspicious Names
         DetectionStrategy(
             strategy_id="t1036-gcp-cloud-functions",
@@ -667,7 +678,7 @@ protoPayload.methodName=~"google.cloud.functions.*.(CreateFunction|UpdateFunctio
 (protoPayload.request.name=~"gcp-|google-|system-|svc-|service-|backup-|log-|monitor-" OR
  protoPayload.request.function.name=~"gcp-|google-|system-|svc-|service-")
 NOT protoPayload.request.name=~"gcf-|cf-"''',
-                gcp_terraform_template='''# GCP: Detect Cloud Functions with masquerading names
+                gcp_terraform_template="""# GCP: Detect Cloud Functions with masquerading names
 
 variable "project_id" {
   description = "GCP project ID"
@@ -738,7 +749,7 @@ resource "google_monitoring_alert_policy" "function_alert" {
   alert_strategy {
     auto_close = "1800s"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Suspicious Cloud Function Name Detected",
                 alert_description_template=(
@@ -751,7 +762,7 @@ resource "google_monitoring_alert_policy" "function_alert" {
                     "Verify the identity that deployed the function",
                     "Review function's invocation history and triggers",
                     "Analyse function environment variables",
-                    "Check for similar functions with suspicious names"
+                    "Check for similar functions with suspicious names",
                 ],
                 containment_actions=[
                     "Delete or disable suspicious Cloud Function",
@@ -759,8 +770,8 @@ resource "google_monitoring_alert_policy" "function_alert" {
                     "Block the deploying user if unauthorised",
                     "Enable Cloud Functions VPC connector restrictions",
                     "Implement function naming standards via policies",
-                    "Review all functions for similar patterns"
-                ]
+                    "Review all functions for similar patterns",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Implement organisation naming standards; whitelist known legitimate patterns",
@@ -769,9 +780,8 @@ resource "google_monitoring_alert_policy" "function_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["Cloud Logging enabled for Cloud Functions"]
+            prerequisites=["Cloud Logging enabled for Cloud Functions"],
         ),
-
         # GCP Strategy 3: GKE Pod/Container Masquerading
         DetectionStrategy(
             strategy_id="t1036-gcp-gke-containers",
@@ -790,7 +800,7 @@ resource "google_monitoring_alert_policy" "function_alert" {
  resource.labels.container_name=~"^(kube-|system-|google-|gcp-|aws-|svc-|daemon-)")
 NOT resource.labels.namespace_name="kube-system"
 NOT resource.labels.pod_name=~"^(kube-proxy|kube-dns|kube-apiserver)"''',
-                gcp_terraform_template='''# GCP: Detect GKE pods/containers with masquerading names
+                gcp_terraform_template="""# GCP: Detect GKE pods/containers with masquerading names
 
 variable "project_id" {
   description = "GCP project ID"
@@ -867,7 +877,7 @@ resource "google_monitoring_alert_policy" "pod_alert" {
   alert_strategy {
     auto_close = "1800s"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Suspicious GKE Pod/Container Name Detected",
                 alert_description_template=(
@@ -880,7 +890,7 @@ resource "google_monitoring_alert_policy" "pod_alert" {
                     "Verify the identity that deployed the pod",
                     "Analyse pod resource requests and limits",
                     "Review network policies and service accounts",
-                    "Check for cryptocurrency mining or unusual processes"
+                    "Check for cryptocurrency mining or unusual processes",
                 ],
                 containment_actions=[
                     "Delete suspicious pod immediately",
@@ -889,8 +899,8 @@ resource "google_monitoring_alert_policy" "pod_alert" {
                     "Revoke service account permissions",
                     "Implement pod security policies/standards",
                     "Enable GKE Binary Authorisation",
-                    "Review admission controllers configuration"
-                ]
+                    "Review admission controllers configuration",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist approved pod naming patterns; implement naming conventions via policies",
@@ -899,18 +909,20 @@ resource "google_monitoring_alert_policy" "pod_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["GKE cluster with Cloud Logging enabled", "Workload Identity configured"]
-        )
+            prerequisites=[
+                "GKE cluster with Cloud Logging enabled",
+                "Workload Identity configured",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1036-aws-guardduty",
         "t1036-gcp-vm-processes",
         "t1036-aws-ecs-containers",
         "t1036-gcp-gke-containers",
         "t1036-aws-lambda-names",
-        "t1036-gcp-cloud-functions"
+        "t1036-gcp-cloud-functions",
     ],
     total_effort_hours=8.5,
-    coverage_improvement="+35% improvement for Defence Evasion tactic"
+    coverage_improvement="+35% improvement for Defence Evasion tactic",
 )

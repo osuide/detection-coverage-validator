@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Implant Internal Image",
     tactic_ids=["TA0003"],
     mitre_url="https://attack.mitre.org/techniques/T1525/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries implant malicious code into container or VM images stored "
@@ -36,7 +35,7 @@ TEMPLATE = RemediationTemplate(
             "Persists across instance replacements",
             "Hard to detect in running containers",
             "Affects all deployments using image",
-            "CI/CD may pull latest automatically"
+            "CI/CD may pull latest automatically",
         ],
         known_threat_actors=["TeamTNT", "Container-focused attackers"],
         recent_campaigns=[
@@ -44,7 +43,7 @@ TEMPLATE = RemediationTemplate(
                 name="Container Image Backdoors",
                 year=2024,
                 description="Attackers backdooring ECR/GCR images for persistence",
-                reference_url="https://attack.mitre.org/techniques/T1525/"
+                reference_url="https://attack.mitre.org/techniques/T1525/",
             )
         ],
         prevalence="moderate",
@@ -58,13 +57,12 @@ TEMPLATE = RemediationTemplate(
             "Persistent backdoor access",
             "Supply chain compromise",
             "All deployments affected",
-            "Hard to remediate fully"
+            "Hard to remediate fully",
         ],
         typical_attack_phase="persistence",
         often_precedes=["T1530", "T1496.001"],
-        often_follows=["T1078.004", "T1190"]
+        often_follows=["T1078.004", "T1190"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1525-aws-ecr",
@@ -77,11 +75,9 @@ TEMPLATE = RemediationTemplate(
                 event_pattern={
                     "source": ["aws.ecr"],
                     "detail-type": ["ECR Image Action"],
-                    "detail": {
-                        "action-type": ["PUSH"]
-                    }
+                    "detail": {"action-type": ["PUSH"]},
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect ECR image pushes
 
 Parameters:
@@ -118,8 +114,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect ECR image pushes
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect ECR image pushes
 
 variable "alert_email" { type = string }
 
@@ -158,7 +154,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="ECR Image Pushed",
                 alert_description_template="Image pushed to ECR repository {repository-name}.",
@@ -166,14 +162,14 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Verify image push was authorised",
                     "Check who pushed the image",
                     "Scan image for vulnerabilities/malware",
-                    "Compare with previous versions"
+                    "Compare with previous versions",
                 ],
                 containment_actions=[
                     "Delete unauthorised images",
                     "Enable ECR image scanning",
                     "Require image signing",
-                    "Review ECR permissions"
-                ]
+                    "Review ECR permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist CI/CD pipeline roles",
@@ -182,9 +178,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["ECR with EventBridge enabled"]
+            prerequisites=["ECR with EventBridge enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1525-gcp-gcr",
             name="GCP Container Registry Push Detection",
@@ -197,7 +192,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                 gcp_logging_query='''protoPayload.methodName="google.devtools.artifactregistry.v1.ArtifactRegistry.ImportAptArtifacts"
 OR protoPayload.methodName=~"docker.upload"
 OR resource.type="gcs_bucket" AND protoPayload.methodName="storage.objects.create" AND resource.labels.bucket_name=~"artifacts"''',
-                gcp_terraform_template='''# GCP: Detect container image pushes
+                gcp_terraform_template="""# GCP: Detect container image pushes
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -233,7 +228,7 @@ resource "google_monitoring_alert_policy" "image_push" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Container Image Pushed",
                 alert_description_template="Container image pushed to registry.",
@@ -241,14 +236,14 @@ resource "google_monitoring_alert_policy" "image_push" {
                     "Verify push was authorised",
                     "Check pushing identity",
                     "Scan image for malware",
-                    "Compare with previous versions"
+                    "Compare with previous versions",
                 ],
                 containment_actions=[
                     "Delete unauthorised images",
                     "Enable vulnerability scanning",
                     "Require Binary Authorization",
-                    "Review IAM permissions"
-                ]
+                    "Review IAM permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist CI/CD service accounts",
@@ -257,11 +252,10 @@ resource "google_monitoring_alert_policy" "image_push" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled"],
+        ),
     ],
-
     recommended_order=["t1525-aws-ecr", "t1525-gcp-gcr"],
     total_effort_hours=1.5,
-    coverage_improvement="+15% improvement for Persistence tactic"
+    coverage_improvement="+15% improvement for Persistence tactic",
 )

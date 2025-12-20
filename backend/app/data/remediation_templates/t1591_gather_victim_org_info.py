@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Gather Victim Org Information",
     tactic_ids=["TA0043"],
     mitre_url="https://attack.mitre.org/techniques/T1591/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries collect intelligence about target organisations including "
@@ -39,37 +38,41 @@ TEMPLATE = RemediationTemplate(
             "Reveals business relationships and partners",
             "Uncovers operational tempo and schedules",
             "Occurs outside enterprise defences",
-            "Publicly available information reduces risk"
+            "Publicly available information reduces risk",
         ],
         known_threat_actors=[
-            "APT28", "FIN7", "Kimsuky", "Lazarus Group",
-            "Moonstone Sleet", "Volt Typhoon"
+            "APT28",
+            "FIN7",
+            "Kimsuky",
+            "Lazarus Group",
+            "Moonstone Sleet",
+            "Volt Typhoon",
         ],
         recent_campaigns=[
             Campaign(
                 name="APT28 Satellite Intelligence Gathering",
                 year=2024,
                 description="Leveraged large language models to gather satellite capability information",
-                reference_url="https://attack.mitre.org/groups/G0007/"
+                reference_url="https://attack.mitre.org/groups/G0007/",
             ),
             Campaign(
                 name="Kimsuky Organisational Reconnaissance",
                 year=2024,
                 description="Collected organisational hierarchy, functions, and press releases using LLMs",
-                reference_url="https://attack.mitre.org/groups/G0094/"
+                reference_url="https://attack.mitre.org/groups/G0094/",
             ),
             Campaign(
                 name="FIN7 ZoomInfo Target List Compilation",
                 year=2023,
                 description="Used ZoomInfo to compile victim lists filtered by company revenue",
-                reference_url="https://attack.mitre.org/groups/G0046/"
+                reference_url="https://attack.mitre.org/groups/G0046/",
             ),
             Campaign(
                 name="Volt Typhoon Pre-Compromise Reconnaissance",
                 year=2023,
                 description="Conducted extensive pre-compromise reconnaissance on target organisations",
-                reference_url="https://attack.mitre.org/groups/G1017/"
-            )
+                reference_url="https://attack.mitre.org/groups/G1017/",
+            ),
         ],
         prevalence="very_common",
         trend="increasing",
@@ -84,13 +87,12 @@ TEMPLATE = RemediationTemplate(
             "Reveals sensitive organisational structure",
             "Exposes business relationships",
             "Identifies high-value targets",
-            "Precursor to initial access attempts"
+            "Precursor to initial access attempts",
         ],
         typical_attack_phase="reconnaissance",
         often_precedes=["T1598", "T1566", "T1078", "T1589"],
-        often_follows=[]
+        often_follows=[],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1591-aws-web-scraping",
@@ -100,13 +102,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, c-ip, cs-uri-stem, cs-user-agent, sc-bytes
+                query="""fields @timestamp, c-ip, cs-uri-stem, cs-user-agent, sc-bytes
 | filter cs-user-agent like /bot|crawler|scraper|spider|curl|wget|python/i
 | filter cs-uri-stem like /about|team|contact|careers|press|investor/
 | stats count(*) as requests, sum(sc-bytes) as bytes by c-ip, cs-user-agent, bin(1h)
 | filter requests > 100 or bytes > 10000000
-| sort requests desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort requests desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect automated scraping of public organisational data
 
 Parameters:
@@ -152,8 +154,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# AWS: Detect automated scraping of public organisational data
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# AWS: Detect automated scraping of public organisational data
 
 variable "cloudfront_log_group" {
   type        = string
@@ -203,7 +205,7 @@ resource "aws_cloudwatch_metric_alarm" "scraping_activity" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
   alarm_actions       = [aws_sns_topic.scraping_alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Automated Scraping of Organisational Data Detected",
                 alert_description_template="High volume of automated requests detected from {c-ip} using {cs-user-agent}.",
@@ -212,15 +214,15 @@ resource "aws_cloudwatch_metric_alarm" "scraping_activity" {
                     "Identify which pages were accessed most frequently",
                     "Check for correlation with other reconnaissance activities",
                     "Determine if legitimate search engine or malicious actor",
-                    "Review timing patterns and access frequency"
+                    "Review timing patterns and access frequency",
                 ],
                 containment_actions=[
                     "Implement rate limiting on public pages",
                     "Add CAPTCHA to sensitive organisational pages",
                     "Block confirmed malicious IPs via WAF",
                     "Review and minimise exposed organisational data",
-                    "Monitor for subsequent attack phases"
-                ]
+                    "Monitor for subsequent attack phases",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Exclude legitimate search engines and monitoring services by IP/user-agent",
@@ -229,9 +231,8 @@ resource "aws_cloudwatch_metric_alarm" "scraping_activity" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$10-25",
-            prerequisites=["CloudFront with access logging enabled"]
+            prerequisites=["CloudFront with access logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1591-aws-phishing-attempts",
             name="AWS: Detect Reconnaissance Phishing via SES",
@@ -240,13 +241,13 @@ resource "aws_cloudwatch_metric_alarm" "scraping_activity" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, mail.source, mail.destination, delivery.recipients
+                query="""fields @timestamp, mail.source, mail.destination, delivery.recipients
 | filter mail.commonHeaders.subject like /org chart|organisation|directory|employee list|staff list/i
 | filter delivery.smtpResponse like /rejected|bounce|blocked/
 | stats count(*) as attempts by mail.source, bin(1d)
 | filter attempts > 5
-| sort attempts desc''',
-                terraform_template='''# AWS: Detect reconnaissance phishing attempts via SES
+| sort attempts desc""",
+                terraform_template="""# AWS: Detect reconnaissance phishing attempts via SES
 
 variable "ses_log_group" {
   type        = string
@@ -296,7 +297,7 @@ resource "aws_cloudwatch_metric_alarm" "recon_phishing" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
   alarm_actions       = [aws_sns_topic.phishing_alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Reconnaissance Phishing Attempts Detected",
                 alert_description_template="Multiple phishing attempts seeking organisational data from {mail.source}.",
@@ -305,15 +306,15 @@ resource "aws_cloudwatch_metric_alarm" "recon_phishing" {
                     "Identify targeted recipients and departments",
                     "Check sender reputation and domain",
                     "Determine if part of broader campaign",
-                    "Review any successful deliveries"
+                    "Review any successful deliveries",
                 ],
                 containment_actions=[
                     "Block sender domains via SES",
                     "Alert targeted employees",
                     "Review and update email filtering rules",
                     "Monitor for follow-up attacks",
-                    "Brief security awareness training"
-                ]
+                    "Brief security awareness training",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude legitimate HR and recruitment communications",
@@ -322,9 +323,8 @@ resource "aws_cloudwatch_metric_alarm" "recon_phishing" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["SES with CloudWatch logging configured"]
+            prerequisites=["SES with CloudWatch logging configured"],
         ),
-
         DetectionStrategy(
             strategy_id="t1591-gcp-public-bucket-access",
             name="GCP: Detect Enumeration of Public Storage Buckets",
@@ -334,11 +334,11 @@ resource "aws_cloudwatch_metric_alarm" "recon_phishing" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gcs_bucket"
+                gcp_logging_query="""resource.type="gcs_bucket"
 protoPayload.methodName="storage.buckets.list" OR protoPayload.methodName="storage.objects.list"
 protoPayload.authenticationInfo.principalEmail="allUsers" OR protoPayload.authenticationInfo.principalEmail="allAuthenticatedUsers"
-protoPayload.status.code!=7''',
-                gcp_terraform_template='''# GCP: Detect enumeration of public storage buckets
+protoPayload.status.code!=7""",
+                gcp_terraform_template="""# GCP: Detect enumeration of public storage buckets
 
 variable "project_id" {
   type        = string
@@ -406,7 +406,7 @@ resource "google_monitoring_alert_policy" "bucket_enumeration" {
   alert_strategy {
     auto_close = "604800s"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Public Bucket Enumeration Detected",
                 alert_description_template="Systematic enumeration of public storage buckets from {caller_ip}.",
@@ -415,15 +415,15 @@ resource "google_monitoring_alert_policy" "bucket_enumeration" {
                     "Identify source IP geolocation and reputation",
                     "Check for successful data access",
                     "Determine if sensitive organisational data exposed",
-                    "Review bucket permissions and public access"
+                    "Review bucket permissions and public access",
                 ],
                 containment_actions=[
                     "Review and restrict public bucket access",
                     "Enable Bucket Lock for sensitive data",
                     "Implement VPC Service Controls",
                     "Block malicious IPs via Cloud Armor",
-                    "Audit all public storage resources"
-                ]
+                    "Audit all public storage resources",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude legitimate CDN and analytics services by IP range",
@@ -432,9 +432,8 @@ resource "google_monitoring_alert_policy" "bucket_enumeration" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Storage audit logging enabled"]
+            prerequisites=["Cloud Storage audit logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1591-gcp-workspace-directory",
             name="GCP: Detect Directory Enumeration Attempts",
@@ -444,11 +443,11 @@ resource "google_monitoring_alert_policy" "bucket_enumeration" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="audited_resource"
+                gcp_logging_query="""resource.type="audited_resource"
 protoPayload.serviceName="admin.googleapis.com"
 protoPayload.methodName=~"directory.users.list|directory.orgunits.list|directory.groups.list"
-protoPayload.status.code!=0''',
-                gcp_terraform_template='''# GCP: Detect Google Workspace directory enumeration
+protoPayload.status.code!=0""",
+                gcp_terraform_template="""# GCP: Detect Google Workspace directory enumeration
 
 variable "project_id" {
   type        = string
@@ -518,7 +517,7 @@ resource "google_monitoring_alert_policy" "directory_enum" {
   alert_strategy {
     auto_close = "604800s"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Workspace Directory Enumeration Detected",
                 alert_description_template="Multiple directory enumeration attempts by {principal_email}.",
@@ -527,15 +526,15 @@ resource "google_monitoring_alert_policy" "directory_enum" {
                     "Check for compromised credentials",
                     "Identify targeted organisational units",
                     "Review successful vs failed attempts",
-                    "Correlate with other suspicious activities"
+                    "Correlate with other suspicious activities",
                 ],
                 containment_actions=[
                     "Revoke suspicious API credentials",
                     "Review and restrict directory API access",
                     "Enable advanced protection for high-risk users",
                     "Implement context-aware access policies",
-                    "Brief affected users on targeted reconnaissance"
-                ]
+                    "Brief affected users on targeted reconnaissance",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Exclude legitimate admin and HR service accounts",
@@ -544,16 +543,15 @@ resource "google_monitoring_alert_policy" "directory_enum" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["Google Workspace with Admin SDK logging"]
-        )
+            prerequisites=["Google Workspace with Admin SDK logging"],
+        ),
     ],
-
     recommended_order=[
         "t1591-aws-web-scraping",
         "t1591-gcp-public-bucket-access",
         "t1591-gcp-workspace-directory",
-        "t1591-aws-phishing-attempts"
+        "t1591-aws-phishing-attempts",
     ],
     total_effort_hours=10.0,
-    coverage_improvement="+15% improvement for Reconnaissance tactic (limited detection opportunities for pre-compromise activity)"
+    coverage_improvement="+15% improvement for Reconnaissance tactic (limited detection opportunities for pre-compromise activity)",
 )

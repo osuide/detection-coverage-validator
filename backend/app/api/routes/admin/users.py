@@ -18,6 +18,7 @@ router = APIRouter(prefix="/users", tags=["Admin Users"])
 
 class UserOrganization(BaseModel):
     """Organization info for user."""
+
     id: str
     name: str
     role: str
@@ -25,6 +26,7 @@ class UserOrganization(BaseModel):
 
 class UserResponse(BaseModel):
     """User response."""
+
     id: str
     email: str
     full_name: str
@@ -37,6 +39,7 @@ class UserResponse(BaseModel):
 
 class UsersListResponse(BaseModel):
     """Users list response."""
+
     users: list[UserResponse]
     total: int
     page: int
@@ -45,6 +48,7 @@ class UsersListResponse(BaseModel):
 
 class UserStatusRequest(BaseModel):
     """User status update request."""
+
     is_active: bool
 
 
@@ -108,7 +112,9 @@ async def list_users(
                 is_active=user.is_active,
                 email_verified=user.email_verified,
                 created_at=user.created_at.isoformat() if user.created_at else "",
-                last_login_at=user.last_login_at.isoformat() if user.last_login_at else None,
+                last_login_at=(
+                    user.last_login_at.isoformat() if user.last_login_at else None
+                ),
                 organizations=orgs,
             )
         )
@@ -133,8 +139,7 @@ async def get_user(
 
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
 
     # Get memberships
@@ -176,10 +181,13 @@ async def update_user_status(
 ):
     """Update user status (suspend/activate)."""
     # Check permissions
-    if admin.role not in [AdminRole.SUPER_ADMIN, AdminRole.PLATFORM_ADMIN, AdminRole.SUPPORT_ADMIN]:
+    if admin.role not in [
+        AdminRole.SUPER_ADMIN,
+        AdminRole.PLATFORM_ADMIN,
+        AdminRole.SUPPORT_ADMIN,
+    ]:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Insufficient permissions"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions"
         )
 
     result = await db.execute(select(User).where(User.id == user_id))
@@ -187,8 +195,7 @@ async def update_user_status(
 
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
 
     user.is_active = body.is_active

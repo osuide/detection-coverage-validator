@@ -57,9 +57,7 @@ class NotificationService:
             )
 
             if should_trigger:
-                history = await self._trigger_alert(
-                    alert, cloud_account_id, details
-                )
+                history = await self._trigger_alert(alert, cloud_account_id, details)
                 if history:
                     triggered_alerts.append(history)
 
@@ -111,9 +109,7 @@ class NotificationService:
 
         elif alert.alert_type == AlertType.SCAN_COMPLETED:
             if scan_id:
-                result = await self.db.execute(
-                    select(Scan).where(Scan.id == scan_id)
-                )
+                result = await self.db.execute(select(Scan).where(Scan.id == scan_id))
                 scan = result.scalar_one_or_none()
                 if scan and scan.status == ScanStatus.COMPLETED:
                     details = {
@@ -125,9 +121,7 @@ class NotificationService:
 
         elif alert.alert_type == AlertType.SCAN_FAILED:
             if scan_id:
-                result = await self.db.execute(
-                    select(Scan).where(Scan.id == scan_id)
-                )
+                result = await self.db.execute(select(Scan).where(Scan.id == scan_id))
                 scan = result.scalar_one_or_none()
                 if scan and scan.status == ScanStatus.FAILED:
                     details = {
@@ -140,8 +134,7 @@ class NotificationService:
             if coverage_snapshot and coverage_snapshot.top_gaps:
                 # Check if there are high-priority gaps
                 high_priority_gaps = [
-                    g for g in coverage_snapshot.top_gaps
-                    if g.get("priority", 0) >= 7
+                    g for g in coverage_snapshot.top_gaps if g.get("priority", 0) >= 7
                 ]
                 if high_priority_gaps:
                     details = {
@@ -184,10 +177,14 @@ class NotificationService:
             channel_type = channel_config.get("type")
             try:
                 if channel_type == NotificationChannel.WEBHOOK.value:
-                    await self._send_webhook(channel_config, alert, title, message, details)
+                    await self._send_webhook(
+                        channel_config, alert, title, message, details
+                    )
                     notified.append(channel_type)
                 elif channel_type == NotificationChannel.SLACK.value:
-                    await self._send_slack(channel_config, alert, title, message, details)
+                    await self._send_slack(
+                        channel_config, alert, title, message, details
+                    )
                     notified.append(channel_type)
                 elif channel_type == NotificationChannel.EMAIL.value:
                     # Email would require SMTP setup - log for now
@@ -197,10 +194,12 @@ class NotificationService:
                         recipient=channel_config.get("email"),
                     )
             except Exception as e:
-                errors.append({
-                    "channel": channel_type,
-                    "error": str(e),
-                })
+                errors.append(
+                    {
+                        "channel": channel_type,
+                        "error": str(e),
+                    }
+                )
                 self.logger.error(
                     "notification_failed",
                     channel=channel_type,

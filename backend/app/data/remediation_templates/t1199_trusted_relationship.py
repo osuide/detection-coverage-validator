@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Trusted Relationship",
     tactic_ids=["TA0001"],
     mitre_url="https://attack.mitre.org/techniques/T1199/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries exploit established third-party relationships to breach target organisations. "
@@ -37,34 +36,41 @@ TEMPLATE = RemediationTemplate(
             "Bypasses perimeter security controls",
             "Single compromise enables access to multiple customers",
             "Trusted relationships may lack MFA requirements",
-            "Partner accounts persist longer than employee accounts"
+            "Partner accounts persist longer than employee accounts",
         ],
-        known_threat_actors=["APT28", "APT29", "menuPass", "HAFNIUM", "LAPSUS$", "Sea Turtle"],
+        known_threat_actors=[
+            "APT28",
+            "APT29",
+            "menuPass",
+            "HAFNIUM",
+            "LAPSUS$",
+            "Sea Turtle",
+        ],
         recent_campaigns=[
             Campaign(
                 name="SolarWinds/SUNBURST",
                 year=2020,
                 description="APT29 exploited compromised cloud partner accounts and fraudulent Mimecast certificates",
-                reference_url="https://attack.mitre.org/campaigns/C0024/"
+                reference_url="https://attack.mitre.org/campaigns/C0024/",
             ),
             Campaign(
                 name="Operation Cloud Hopper",
                 year=2017,
                 description="menuPass abused legitimate MSP access to target downstream customers across multiple industries",
-                reference_url="https://attack.mitre.org/groups/G0045/"
+                reference_url="https://attack.mitre.org/groups/G0045/",
             ),
             Campaign(
                 name="HAFNIUM Partner Abuse",
                 year=2021,
                 description="Utilised stolen API keys from privilege access management and cloud app providers",
-                reference_url="https://attack.mitre.org/groups/G0125/"
+                reference_url="https://attack.mitre.org/groups/G0125/",
             ),
             Campaign(
                 name="Sea Turtle DNS Compromise",
                 year=2019,
                 description="Targeted DNS registrars, telecommunications companies, and ISPs with trusted relationships",
-                reference_url="https://attack.mitre.org/groups/G1041/"
-            )
+                reference_url="https://attack.mitre.org/groups/G1041/",
+            ),
         ],
         prevalence="uncommon",
         trend="increasing",
@@ -79,13 +85,12 @@ TEMPLATE = RemediationTemplate(
             "Reputational damage from third-party breach",
             "Compliance violations (shared responsibility failures)",
             "Supply chain compromise affecting multiple organisations",
-            "Difficulty attributing malicious activity to external actors"
+            "Difficulty attributing malicious activity to external actors",
         ],
         typical_attack_phase="initial_access",
         often_precedes=["T1078.004", "T1098.001", "T1087.004", "T1530"],
-        often_follows=["T1566", "T1110"]
+        often_follows=["T1566", "T1110"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1199-aws-partner-access",
@@ -98,7 +103,7 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, userIdentity.accountId, requestParameters.roleArn, sourceIPAddress
+                query="""fields @timestamp, userIdentity.principalId, userIdentity.accountId, requestParameters.roleArn, sourceIPAddress
 | filter eventName = "AssumeRole"
 | filter userIdentity.accountId != recipientAccountId
 | stats count(*) as assume_count,
@@ -107,8 +112,8 @@ TEMPLATE = RemediationTemplate(
         latest(@timestamp) as last_seen
   by userIdentity.accountId, requestParameters.roleArn, bin(1h)
 | filter assume_count > 3 or unique_ips > 2
-| sort last_seen desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort last_seen desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect partner/cross-account role assumption (T1199)
 
 Parameters:
@@ -164,8 +169,8 @@ Resources:
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# AWS: Detect partner/cross-account role assumption (T1199)
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# AWS: Detect partner/cross-account role assumption (T1199)
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -225,7 +230,7 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
       Resource  = aws_sns_topic.partner_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Trusted Relationship: Suspicious Partner Access",
                 alert_description_template=(
@@ -239,7 +244,7 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
                     "Verify the source IPs against known partner infrastructure",
                     "Contact the partner organisation to confirm legitimate access",
                     "Review session duration and accessed resources",
-                    "Check for unusual data access or configuration changes"
+                    "Check for unusual data access or configuration changes",
                 ],
                 containment_actions=[
                     "Revoke active STS sessions for the assumed role",
@@ -247,8 +252,8 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
                     "Enable MFA requirement in trust policy conditions",
                     "Add IP address restrictions to trust policy",
                     "Temporarily disable the cross-account role if unauthorised",
-                    "Rotate any credentials accessed during the session"
-                ]
+                    "Rotate any credentials accessed during the session",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known partner account IDs and typical access patterns",
@@ -257,9 +262,11 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-45 minutes",
             estimated_monthly_cost="$5-10 depending on log volume",
-            prerequisites=["CloudTrail enabled", "CloudTrail logs sent to CloudWatch Logs"]
+            prerequisites=[
+                "CloudTrail enabled",
+                "CloudTrail logs sent to CloudWatch Logs",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1199-aws-delegated-admin",
             name="AWS Organisations Delegated Administrator Activity Detection",
@@ -279,11 +286,11 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
                             "RegisterDelegatedAdministrator",
                             "DeregisterDelegatedAdministrator",
                             "EnableAWSServiceAccess",
-                            "DisableAWSServiceAccess"
+                            "DisableAWSServiceAccess",
                         ]
-                    }
+                    },
                 },
-                terraform_template='''# AWS: Monitor delegated administrator activity (T1199)
+                terraform_template="""# AWS: Monitor delegated administrator activity (T1199)
 
 variable "alert_email" {
   type = string
@@ -335,7 +342,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Resource  = aws_sns_topic.delegated_admin_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Trusted Relationship: Delegated Administrator Change",
                 alert_description_template=(
@@ -348,14 +355,14 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Review which account received delegated admin permissions",
                     "Check all subsequent API calls from the delegated account",
                     "Verify the account belongs to a legitimate partner/vendor",
-                    "Review service principal access scope"
+                    "Review service principal access scope",
                 ],
                 containment_actions=[
                     "Deregister unauthorised delegated administrators immediately",
                     "Review and revoke any policies or resources created",
                     "Enable SCPs to restrict delegated admin capabilities",
-                    "Require MFA and approval workflow for delegated admin changes"
-                ]
+                    "Require MFA and approval workflow for delegated admin changes",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Very low false positives - these actions are rare and should be tracked",
@@ -364,9 +371,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["AWS Organisations enabled", "CloudTrail enabled"]
+            prerequisites=["AWS Organisations enabled", "CloudTrail enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1199-aws-support-access",
             name="AWS Support API Access Detection",
@@ -378,7 +384,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn, sourceIPAddress, eventName
+                query="""fields @timestamp, userIdentity.arn, sourceIPAddress, eventName
 | filter eventSource = "support.amazonaws.com"
 | filter eventName in ["DescribeCases", "CreateCase", "DescribeServices", "DescribeTrustedAdvisorChecks"]
 | stats count(*) as api_calls,
@@ -386,8 +392,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
         count_distinct(sourceIPAddress) as unique_ips
   by userIdentity.arn, bin(1h)
 | filter api_calls > 5 or unique_actions > 2
-| sort @timestamp desc''',
-                terraform_template='''# AWS: Monitor third-party support access (T1199)
+| sort @timestamp desc""",
+                terraform_template="""# AWS: Monitor third-party support access (T1199)
 
 variable "cloudtrail_log_group" {
   type = string
@@ -446,7 +452,7 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
       Resource  = aws_sns_topic.support_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Trusted Relationship: Unusual Support Access",
                 alert_description_template=(
@@ -459,14 +465,14 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
                     "Review what information was accessed via Support APIs",
                     "Verify source IP matches vendor infrastructure",
                     "Check for correlation with support tickets",
-                    "Review whether account has active support contracts"
+                    "Review whether account has active support contracts",
                 ],
                 containment_actions=[
                     "Revoke IAM permissions for support:* actions if unauthorised",
                     "Review and close any suspicious support cases",
                     "Contact AWS Support to report potential abuse",
-                    "Implement IAM condition keys to restrict Support access"
-                ]
+                    "Implement IAM condition keys to restrict Support access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Filter legitimate support vendor access during active tickets",
@@ -475,9 +481,11 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-45 minutes",
             estimated_monthly_cost="$3-8",
-            prerequisites=["CloudTrail enabled", "CloudTrail logs sent to CloudWatch Logs"]
+            prerequisites=[
+                "CloudTrail enabled",
+                "CloudTrail logs sent to CloudWatch Logs",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1199-gcp-shared-vpc",
             name="GCP Shared VPC and Partner Interconnect Monitoring",
@@ -494,7 +502,7 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
 (protoPayload.methodName=~"(attachSharedVpc|detachSharedVpc|createInterconnectAttachment|deleteInterconnectAttachment)"
 OR protoPayload.methodName=~"(setIamPolicy|getIamPolicy)")
 resource.type="gce_network"''',
-                gcp_terraform_template='''# GCP: Monitor shared VPC and partner access (T1199)
+                gcp_terraform_template="""# GCP: Monitor shared VPC and partner access (T1199)
 
 variable "project_id" {
   type = string
@@ -545,7 +553,7 @@ resource "google_monitoring_alert_policy" "partner_access" {
   alert_strategy {
     auto_close = "604800s"  # 7 days
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Trusted Relationship Network Access",
                 alert_description_template=(
@@ -559,15 +567,15 @@ resource "google_monitoring_alert_policy" "partner_access" {
                     "Verify Partner Interconnect connection legitimacy",
                     "Review network routes and firewall rules",
                     "Check for unusual resource creation in shared networks",
-                    "Verify access aligns with contractual agreements"
+                    "Verify access aligns with contractual agreements",
                 ],
                 containment_actions=[
                     "Detach unauthorised service projects from Shared VPC",
                     "Delete suspicious Partner Interconnect attachments",
                     "Review and restrict network IAM permissions",
                     "Enable VPC Service Controls for additional isolation",
-                    "Implement organisation policy constraints for Shared VPC"
-                ]
+                    "Implement organisation policy constraints for Shared VPC",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="These network changes are rare and should be tracked",
@@ -576,9 +584,11 @@ resource "google_monitoring_alert_policy" "partner_access" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="45 minutes - 1 hour",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Audit Logs enabled", "Shared VPC or Partner Interconnect in use"]
+            prerequisites=[
+                "Cloud Audit Logs enabled",
+                "Shared VPC or Partner Interconnect in use",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1199-gcp-marketplace",
             name="GCP Marketplace Third-Party Application Monitoring",
@@ -591,13 +601,13 @@ resource "google_monitoring_alert_policy" "partner_access" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''protoPayload.serviceName="serviceusage.googleapis.com"
+                gcp_logging_query="""protoPayload.serviceName="serviceusage.googleapis.com"
 protoPayload.methodName=~"(EnableService|DisableService)"
 protoPayload.request.parent=~"projects/"
 OR (protoPayload.serviceName="cloudresourcemanager.googleapis.com"
     protoPayload.methodName="SetIamPolicy"
-    protoPayload.request.policy.bindings.members=~"serviceAccount.*gserviceaccount.com")''',
-                gcp_terraform_template='''# GCP: Monitor third-party marketplace applications (T1199)
+    protoPayload.request.policy.bindings.members=~"serviceAccount.*gserviceaccount.com")""",
+                gcp_terraform_template="""# GCP: Monitor third-party marketplace applications (T1199)
 
 variable "project_id" {
   type = string
@@ -646,7 +656,7 @@ resource "google_monitoring_alert_policy" "marketplace_activity" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Third-Party Application Activity",
                 alert_description_template=(
@@ -659,15 +669,15 @@ resource "google_monitoring_alert_policy" "marketplace_activity" {
                     "Check if installation aligns with procurement records",
                     "Verify which user authorised the installation",
                     "Review data access granted to the application",
-                    "Check vendor security posture and compliance"
+                    "Check vendor security posture and compliance",
                 ],
                 containment_actions=[
                     "Disable unauthorised marketplace services",
                     "Revoke service account permissions",
                     "Review and delete service account keys",
                     "Implement organisation policy to restrict service enablement",
-                    "Require approval workflow for third-party integrations"
-                ]
+                    "Require approval workflow for third-party integrations",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist approved marketplace vendors and service patterns",
@@ -676,17 +686,19 @@ resource "google_monitoring_alert_policy" "marketplace_activity" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="45 minutes - 1 hour",
             estimated_monthly_cost="$8-15",
-            prerequisites=["Cloud Audit Logs enabled", "Organisation policies configured"]
-        )
+            prerequisites=[
+                "Cloud Audit Logs enabled",
+                "Organisation policies configured",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1199-aws-delegated-admin",
         "t1199-aws-partner-access",
         "t1199-gcp-shared-vpc",
         "t1199-aws-support-access",
-        "t1199-gcp-marketplace"
+        "t1199-gcp-marketplace",
     ],
     total_effort_hours=4.0,
-    coverage_improvement="+20% improvement for Initial Access tactic"
+    coverage_improvement="+20% improvement for Initial Access tactic",
 )

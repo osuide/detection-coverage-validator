@@ -117,7 +117,9 @@ class GapAnalyzer:
                     priority=priority,
                     reason=self._generate_reason(tech, indicator, template),
                     data_sources=self._get_data_sources(indicator),
-                    recommended_detections=self._get_recommendations(indicator, template),
+                    recommended_detections=self._get_recommendations(
+                        indicator, template
+                    ),
                 )
 
                 # Enrich with template data if available
@@ -132,8 +134,16 @@ class GapAnalyzer:
                     # Add recommended strategies, filtered by cloud provider if specified
                     for strategy in template.detection_strategies:
                         # Filter by cloud provider if specified
-                        strategy_provider = strategy.cloud_provider.value if strategy.cloud_provider else None
-                        if cloud_provider and strategy_provider and strategy_provider != cloud_provider:
+                        strategy_provider = (
+                            strategy.cloud_provider.value
+                            if strategy.cloud_provider
+                            else None
+                        )
+                        if (
+                            cloud_provider
+                            and strategy_provider
+                            and strategy_provider != cloud_provider
+                        ):
                             continue  # Skip strategies for other cloud providers
 
                         rec_strategy = RecommendedStrategy(
@@ -145,20 +155,32 @@ class GapAnalyzer:
                             estimated_time=strategy.implementation_time,
                             detection_coverage=strategy.detection_coverage,
                             has_query=strategy.implementation.query is not None,
-                            has_cloudformation=strategy.implementation.cloudformation_template is not None,
-                            has_terraform=strategy.implementation.terraform_template is not None,
+                            has_cloudformation=strategy.implementation.cloudformation_template
+                            is not None,
+                            has_terraform=strategy.implementation.terraform_template
+                            is not None,
                             # GCP support
                             gcp_service=strategy.gcp_service,
                             cloud_provider=strategy_provider,
-                            has_gcp_query=strategy.implementation.gcp_logging_query is not None,
-                            has_gcp_terraform=strategy.implementation.gcp_terraform_template is not None,
+                            has_gcp_query=strategy.implementation.gcp_logging_query
+                            is not None,
+                            has_gcp_terraform=strategy.implementation.gcp_terraform_template
+                            is not None,
                         )
                         gap.recommended_strategies.append(rec_strategy)
 
                     # Set quick win (first low-effort strategy for this provider)
                     for strategy in template.detection_strategies:
-                        strategy_provider = strategy.cloud_provider.value if strategy.cloud_provider else None
-                        if cloud_provider and strategy_provider and strategy_provider != cloud_provider:
+                        strategy_provider = (
+                            strategy.cloud_provider.value
+                            if strategy.cloud_provider
+                            else None
+                        )
+                        if (
+                            cloud_provider
+                            and strategy_provider
+                            and strategy_provider != cloud_provider
+                        ):
                             continue
                         if strategy.implementation_effort.value == "low":
                             gap.quick_win_strategy = strategy.strategy_id
@@ -168,10 +190,12 @@ class GapAnalyzer:
 
         # Sort by priority (critical first), then by severity score if available
         priority_order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
-        gaps.sort(key=lambda g: (
-            priority_order.get(g.priority, 99),
-            -(g.severity_score or 0)  # Higher severity first
-        ))
+        gaps.sort(
+            key=lambda g: (
+                priority_order.get(g.priority, 99),
+                -(g.severity_score or 0),  # Higher severity first
+            )
+        )
 
         return gaps[:limit] if limit else gaps
 
@@ -279,16 +303,17 @@ class GapAnalyzer:
 
         if indicator.cloudtrail_events:
             events = indicator.cloudtrail_events[:3]  # Top 3
-            recommendations.append(
-                f"Create EventBridge rule for: {', '.join(events)}"
-            )
+            recommendations.append(f"Create EventBridge rule for: {', '.join(events)}")
 
         if indicator.log_patterns:
             recommendations.append(
                 "Create CloudWatch Logs Insights query for relevant log patterns"
             )
 
-        if "guardduty" in indicator.keywords or indicator.tactic_id in ["TA0001", "TA0006"]:
+        if "guardduty" in indicator.keywords or indicator.tactic_id in [
+            "TA0001",
+            "TA0006",
+        ]:
             recommendations.append("Enable GuardDuty finding type if available")
 
         return recommendations

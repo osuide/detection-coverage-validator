@@ -24,7 +24,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Software Deployment Tools",
     tactic_ids=["TA0002", "TA0008"],  # Execution, Lateral Movement
     mitre_url="https://attack.mitre.org/techniques/T1072/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries exploit centralised software deployment suites to achieve "
@@ -40,7 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Legitimate administrative tool abuse evades detection",
             "Often executes with SYSTEM or elevated privileges",
             "Can target cloud, on-premises, and hybrid environments",
-            "Enables rapid malware distribution across infrastructure"
+            "Enables rapid malware distribution across infrastructure",
         ],
         known_threat_actors=[
             "APT32",
@@ -48,33 +47,33 @@ TEMPLATE = RemediationTemplate(
             "Mustang Panda",
             "Threat Group-1314",
             "Silence Group",
-            "Medusa Group"
+            "Medusa Group",
         ],
         recent_campaigns=[
             Campaign(
                 name="APT32 McAfee ePO Compromise",
                 year=2024,
                 description="Compromised McAfee ePO servers to distribute malware via deployment tasks",
-                reference_url="https://attack.mitre.org/groups/G0050/"
+                reference_url="https://attack.mitre.org/groups/G0050/",
             ),
             Campaign(
                 name="C0018 AvosLocker Ransomware",
                 year=2024,
                 description="Used PDQ Deploy to distribute AvosLocker ransomware across enterprise networks",
-                reference_url="https://attack.mitre.org/software/S1053/"
+                reference_url="https://attack.mitre.org/software/S1053/",
             ),
             Campaign(
                 name="Medusa Group BigFix Exploitation",
                 year=2024,
                 description="Deployed ransomware encryption payloads via BigFix and PDQ Deploy tools",
-                reference_url="https://attack.mitre.org/groups/G1036/"
+                reference_url="https://attack.mitre.org/groups/G1036/",
             ),
             Campaign(
                 name="Sandworm RemoteExec Deployment",
                 year=2024,
                 description="Deployed RemoteExec for agentless remote code execution across infrastructure",
-                reference_url="https://attack.mitre.org/groups/G0034/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0034/",
+            ),
         ],
         prevalence="moderate",
         trend="increasing",
@@ -90,13 +89,12 @@ TEMPLATE = RemediationTemplate(
             "Ransomware deployment across infrastructure",
             "Complete environment compromise",
             "Privileged code execution on all managed systems",
-            "Rapid lateral movement capability"
+            "Rapid lateral movement capability",
         ],
         typical_attack_phase="lateral_movement",
         often_precedes=["T1486", "T1485", "T1490", "T1489"],
-        often_follows=["T1078.004", "T1098.003", "T1098.001", "T1110"]
+        often_follows=["T1078.004", "T1098.003", "T1098.001", "T1110"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1072-aws-ssm-session",
@@ -106,13 +104,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, requestParameters.instanceIds, requestParameters.documentName
+                query="""fields @timestamp, userIdentity.principalId, requestParameters.instanceIds, requestParameters.documentName
 | filter eventName = "SendCommand"
 | filter eventSource = "ssm.amazonaws.com"
 | stats count(*) as commands by userIdentity.principalId, requestParameters.documentName, bin(1h)
 | filter commands > 20 or requestParameters.documentName like /AWS-RunPowerShellScript|AWS-RunShellScript/
-| sort commands desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort commands desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect suspicious AWS Systems Manager Run Command activity
 
 Parameters:
@@ -159,8 +157,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       AlarmActions: [!Ref AlertTopic]
-      TreatMissingData: notBreaching''',
-                terraform_template='''# Detect suspicious AWS Systems Manager activity
+      TreatMissingData: notBreaching""",
+                terraform_template="""# Detect suspicious AWS Systems Manager activity
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -210,7 +208,7 @@ resource "aws_cloudwatch_metric_alarm" "ssm_command_volume" {
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.ssm_alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Suspicious AWS Systems Manager Activity",
                 alert_description_template="High volume of Run Command executions from {principalId}.",
@@ -220,7 +218,7 @@ resource "aws_cloudwatch_metric_alarm" "ssm_command_volume" {
                     "Examine command documents executed",
                     "Review command outputs in S3 or CloudWatch",
                     "Verify principal authorisation for SSM access",
-                    "Check for unusual execution times or patterns"
+                    "Check for unusual execution times or patterns",
                 ],
                 containment_actions=[
                     "Disable compromised IAM principal immediately",
@@ -228,8 +226,8 @@ resource "aws_cloudwatch_metric_alarm" "ssm_command_volume" {
                     "Review and terminate suspicious SSM sessions",
                     "Audit all instances targeted by suspicious commands",
                     "Enable AWS Systems Manager Session Manager logging",
-                    "Implement least-privilege IAM policies for SSM"
-                ]
+                    "Implement least-privilege IAM policies for SSM",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Adjust thresholds based on legitimate administrative activity and maintenance windows",
@@ -238,9 +236,11 @@ resource "aws_cloudwatch_metric_alarm" "ssm_command_volume" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["CloudTrail enabled with SSM API logging", "CloudWatch Logs integration"]
+            prerequisites=[
+                "CloudTrail enabled with SSM API logging",
+                "CloudWatch Logs integration",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1072-aws-ssm-unusual-document",
             name="AWS SSM Unusual Document Execution",
@@ -249,13 +249,13 @@ resource "aws_cloudwatch_metric_alarm" "ssm_command_volume" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, requestParameters.documentName, requestParameters.parameters
+                query="""fields @timestamp, userIdentity.principalId, requestParameters.documentName, requestParameters.parameters
 | filter eventName = "SendCommand"
 | filter eventSource = "ssm.amazonaws.com"
 | filter requestParameters.documentName not like /AWS-UpdateSSMAgent|AWS-GatherSoftwareInventory|AWS-ConfigureAWSPackage/
 | stats count(*) as executions by requestParameters.documentName, userIdentity.principalId
-| sort executions desc''',
-                terraform_template='''# Detect unusual SSM document executions
+| sort executions desc""",
+                terraform_template="""# Detect unusual SSM document executions
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -304,7 +304,7 @@ resource "aws_cloudwatch_metric_alarm" "unusual_documents" {
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.ssm_document_alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Unusual SSM Document Execution",
                 alert_description_template="Execution of unusual SSM document {documentName} by {principalId}.",
@@ -313,14 +313,14 @@ resource "aws_cloudwatch_metric_alarm" "unusual_documents" {
                     "Check document creation/modification history",
                     "Verify principal authorisation",
                     "Review command outputs",
-                    "Check for similar executions across environment"
+                    "Check for similar executions across environment",
                 ],
                 containment_actions=[
                     "Disable suspicious SSM documents",
                     "Revoke document execution permissions",
                     "Review and update SSM access policies",
-                    "Audit all instances where document was executed"
-                ]
+                    "Audit all instances where document was executed",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate custom documents and maintenance windows",
@@ -329,9 +329,8 @@ resource "aws_cloudwatch_metric_alarm" "unusual_documents" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["CloudTrail enabled", "SSM document inventory"]
+            prerequisites=["CloudTrail enabled", "SSM document inventory"],
         ),
-
         DetectionStrategy(
             strategy_id="t1072-gcp-deployment-manager",
             name="GCP Deployment Manager Suspicious Activity",
@@ -344,7 +343,7 @@ resource "aws_cloudwatch_metric_alarm" "unusual_documents" {
                 gcp_logging_query='''resource.type="deploymentmanager.googleapis.com/Deployment"
 protoPayload.methodName=~"deploymentmanager.deployments.(insert|update|patch)"
 severity="NOTICE"''',
-                gcp_terraform_template='''# GCP: Detect suspicious Deployment Manager activity
+                gcp_terraform_template="""# GCP: Detect suspicious Deployment Manager activity
 
 variable "project_id" {
   type        = string
@@ -417,7 +416,7 @@ resource "google_monitoring_alert_policy" "deployment_manager_activity" {
   alert_strategy {
     auto_close = "1800s"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Suspicious Deployment Manager Activity",
                 alert_description_template="Unusual Deployment Manager operations detected from {principal}.",
@@ -427,15 +426,15 @@ resource "google_monitoring_alert_policy" "deployment_manager_activity" {
                     "Verify principal authorisation for deployments",
                     "Review resources created/modified by deployment",
                     "Check deployment timing against maintenance windows",
-                    "Audit similar deployments across projects"
+                    "Audit similar deployments across projects",
                 ],
                 containment_actions=[
                     "Delete suspicious deployments immediately",
                     "Revoke Deployment Manager permissions from compromised principals",
                     "Review and rollback unauthorised resource changes",
                     "Enable organisation policy constraints on deployments",
-                    "Implement approval workflows for deployments"
-                ]
+                    "Implement approval workflows for deployments",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude legitimate deployment pipelines and maintenance windows",
@@ -444,9 +443,8 @@ resource "google_monitoring_alert_policy" "deployment_manager_activity" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Logging enabled", "Deployment Manager API auditing"]
+            prerequisites=["Cloud Logging enabled", "Deployment Manager API auditing"],
         ),
-
         DetectionStrategy(
             strategy_id="t1072-gcp-compute-startup",
             name="GCP Compute Instance Startup Script Modification",
@@ -459,7 +457,7 @@ resource "google_monitoring_alert_policy" "deployment_manager_activity" {
                 gcp_logging_query='''resource.type="gce_instance"
 protoPayload.methodName="v1.compute.instances.setMetadata"
 protoPayload.request.metadata.items.key="startup-script"''',
-                gcp_terraform_template='''# GCP: Detect startup script modifications
+                gcp_terraform_template="""# GCP: Detect startup script modifications
 
 variable "project_id" {
   type        = string
@@ -522,7 +520,7 @@ resource "google_monitoring_alert_policy" "startup_script_changes" {
   alert_strategy {
     auto_close = "1800s"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Instance Startup Script Modified",
                 alert_description_template="Startup script modified on instance {instanceName} by {principal}.",
@@ -531,14 +529,14 @@ resource "google_monitoring_alert_policy" "startup_script_changes" {
                     "Check instance metadata change history",
                     "Verify principal authorisation",
                     "Review instance network activity",
-                    "Check for similar modifications across fleet"
+                    "Check for similar modifications across fleet",
                 ],
                 containment_actions=[
                     "Restore original startup script",
                     "Reboot instance with clean configuration",
                     "Revoke metadata modification permissions",
-                    "Enable organisation policy on metadata changes"
-                ]
+                    "Enable organisation policy on metadata changes",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised automation principals",
@@ -547,16 +545,15 @@ resource "google_monitoring_alert_policy" "startup_script_changes" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Logging enabled", "Compute API audit logs"]
-        )
+            prerequisites=["Cloud Logging enabled", "Compute API audit logs"],
+        ),
     ],
-
     recommended_order=[
         "t1072-aws-ssm-session",
         "t1072-aws-ssm-unusual-document",
         "t1072-gcp-deployment-manager",
-        "t1072-gcp-compute-startup"
+        "t1072-gcp-compute-startup",
     ],
     total_effort_hours=6.0,
-    coverage_improvement="+25% improvement for Execution and Lateral Movement tactics"
+    coverage_improvement="+25% improvement for Execution and Lateral Movement tactics",
 )

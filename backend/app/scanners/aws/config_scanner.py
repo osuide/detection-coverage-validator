@@ -34,11 +34,7 @@ class ConfigRulesScanner(BaseScanner):
                 region_detections = await self.scan_region(region, options)
                 all_detections.extend(region_detections)
             except ClientError as e:
-                self.logger.warning(
-                    "config_scan_error",
-                    region=region,
-                    error=str(e)
-                )
+                self.logger.warning("config_scan_error", region=region, error=str(e))
 
         return all_detections
 
@@ -64,7 +60,10 @@ class ConfigRulesScanner(BaseScanner):
         except ClientError as e:
             if e.response["Error"]["Code"] == "AccessDeniedException":
                 self.logger.warning("config_access_denied", region=region)
-            elif e.response["Error"]["Code"] == "NoAvailableConfigurationRecorderException":
+            elif (
+                e.response["Error"]["Code"]
+                == "NoAvailableConfigurationRecorderException"
+            ):
                 # Config not enabled in this region
                 self.logger.info("config_not_enabled", region=region)
             else:
@@ -345,4 +344,6 @@ class ConfigRulesScanner(BaseScanner):
             "WAFV2_WEBACL_NOT_EMPTY": "Checks if WAFv2 web ACL is not empty",
         }
 
-        return managed_rules.get(source_identifier, f"AWS Config managed rule: {source_identifier}")
+        return managed_rules.get(
+            source_identifier, f"AWS Config managed rule: {source_identifier}"
+        )

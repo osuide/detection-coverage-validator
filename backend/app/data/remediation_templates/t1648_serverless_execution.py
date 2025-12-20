@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Serverless Execution",
     tactic_ids=["TA0002"],
     mitre_url="https://attack.mitre.org/techniques/T1648/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries exploit serverless computing services (Lambda, Cloud Functions) "
@@ -36,7 +35,7 @@ TEMPLATE = RemediationTemplate(
             "Event-triggered execution for persistence",
             "Can add credentials to new users",
             "Abuse automation for lateral movement",
-            "Hard to detect among legitimate functions"
+            "Hard to detect among legitimate functions",
         ],
         known_threat_actors=["Pacu operators"],
         recent_campaigns=[
@@ -44,7 +43,7 @@ TEMPLATE = RemediationTemplate(
                 name="Pacu Lambda Abuse",
                 year=2024,
                 description="Pacu can create malicious Lambda functions within AWS environments",
-                reference_url="https://attack.mitre.org/software/S1091/"
+                reference_url="https://attack.mitre.org/software/S1091/",
             )
         ],
         prevalence="moderate",
@@ -59,13 +58,12 @@ TEMPLATE = RemediationTemplate(
             "Arbitrary code execution",
             "Privilege escalation via function roles",
             "Persistent backdoors",
-            "Resource abuse"
+            "Resource abuse",
         ],
         typical_attack_phase="execution",
         often_precedes=["T1098.001", "T1530"],
-        often_follows=["T1078.004", "T1098.003"]
+        often_follows=["T1078.004", "T1098.003"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1648-aws-lambda",
@@ -80,9 +78,9 @@ TEMPLATE = RemediationTemplate(
                     "detail-type": ["AWS API Call via CloudTrail"],
                     "detail": {
                         "eventName": ["CreateFunction20150331", "CreateFunction"]
-                    }
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect Lambda function creation
 
 Parameters:
@@ -121,8 +119,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect Lambda function creation
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect Lambda function creation
 
 variable "alert_email" { type = string }
 
@@ -161,7 +159,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Lambda Function Created",
                 alert_description_template="New Lambda function {functionName} created by {userIdentity.arn}.",
@@ -169,14 +167,14 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Verify function creation was authorised",
                     "Review function code for malicious content",
                     "Check IAM role attached to function",
-                    "Review event triggers"
+                    "Review event triggers",
                 ],
                 containment_actions=[
                     "Delete unauthorised functions",
                     "Review Lambda deployment permissions",
                     "Audit function IAM roles",
-                    "Check for event triggers"
-                ]
+                    "Check for event triggers",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist CI/CD deployment pipelines",
@@ -185,9 +183,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1648-gcp-functions",
             name="GCP Cloud Functions Creation Detection",
@@ -199,7 +196,7 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName="google.cloud.functions.v1.CloudFunctionsService.CreateFunction"
 OR protoPayload.methodName="google.cloud.functions.v2.FunctionService.CreateFunction"''',
-                gcp_terraform_template='''# GCP: Detect Cloud Functions creation
+                gcp_terraform_template="""# GCP: Detect Cloud Functions creation
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -234,7 +231,7 @@ resource "google_monitoring_alert_policy" "function_create" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Cloud Function Created",
                 alert_description_template="New Cloud Function was created.",
@@ -242,13 +239,13 @@ resource "google_monitoring_alert_policy" "function_create" {
                     "Verify function was authorised",
                     "Review function code",
                     "Check service account permissions",
-                    "Review triggers"
+                    "Review triggers",
                 ],
                 containment_actions=[
                     "Delete unauthorised functions",
                     "Review deployment permissions",
-                    "Audit service accounts"
-                ]
+                    "Audit service accounts",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist CI/CD pipelines",
@@ -257,11 +254,10 @@ resource "google_monitoring_alert_policy" "function_create" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled"],
+        ),
     ],
-
     recommended_order=["t1648-aws-lambda", "t1648-gcp-functions"],
     total_effort_hours=1.5,
-    coverage_improvement="+15% improvement for Execution tactic"
+    coverage_improvement="+15% improvement for Execution tactic",
 )

@@ -21,9 +21,12 @@ from .template_loader import (
 TEMPLATE = RemediationTemplate(
     technique_id="T1053",
     technique_name="Scheduled Task/Job",
-    tactic_ids=["TA0002", "TA0003", "TA0004"],  # Execution, Persistence, Privilege Escalation
+    tactic_ids=[
+        "TA0002",
+        "TA0003",
+        "TA0004",
+    ],  # Execution, Persistence, Privilege Escalation
     mitre_url="https://attack.mitre.org/techniques/T1053/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries abuse task scheduling functionality across operating systems and cloud "
@@ -39,7 +42,7 @@ TEMPLATE = RemediationTemplate(
             "Blends in with legitimate scheduled tasks",
             "Survives system reboots and restarts",
             "Difficult to detect among numerous legitimate jobs",
-            "Provides automated recurring execution"
+            "Provides automated recurring execution",
         ],
         known_threat_actors=["APT32", "APT29", "BRONZE BUTLER", "FIN7"],
         recent_campaigns=[
@@ -47,14 +50,14 @@ TEMPLATE = RemediationTemplate(
                 name="Lokibot Scheduled Execution",
                 year=2024,
                 description="Lokibot's second stage DLL set a timer using timeSetEvent to schedule its next execution",
-                reference_url="https://attack.mitre.org/software/S0447/"
+                reference_url="https://attack.mitre.org/software/S0447/",
             ),
             Campaign(
                 name="APT32 VBA Macro Scheduled Task",
                 year=2024,
                 description="APT32 used scheduled tasks in malicious VBA macros to run Regsvr32.exe every 30 minutes for persistence",
-                reference_url="https://attack.mitre.org/techniques/T1053/"
-            )
+                reference_url="https://attack.mitre.org/techniques/T1053/",
+            ),
         ],
         prevalence="very_common",
         trend="increasing",
@@ -71,13 +74,12 @@ TEMPLATE = RemediationTemplate(
             "Cryptomining and resource abuse",
             "Data exfiltration on schedule",
             "Lateral movement automation",
-            "Compliance violations"
+            "Compliance violations",
         ],
         typical_attack_phase="persistence",
         often_precedes=["T1496.001", "T1530", "T1087.004"],
-        often_follows=["T1078.004", "T1098.003", "T1190"]
+        often_follows=["T1078.004", "T1098.003", "T1190"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1053-aws-eventbridge",
@@ -95,11 +97,11 @@ TEMPLATE = RemediationTemplate(
                             "PutRule",
                             "CreateSchedule",
                             "UpdateSchedule",
-                            "PutTargets"
+                            "PutTargets",
                         ]
-                    }
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect EventBridge rule and schedule creation
 
 Parameters:
@@ -145,8 +147,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect EventBridge rule and schedule creation
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect EventBridge rule and schedule creation
 
 variable "alert_email" { type = string }
 
@@ -196,7 +198,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="EventBridge Rule/Schedule Created or Modified",
                 alert_description_template="EventBridge rule or schedule {ruleName} was created/modified by {userIdentity.principalId}",
@@ -206,7 +208,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Check the IAM principal that created the rule",
                     "Inspect the target resources (Lambda, ECS, etc.)",
                     "Review rule permissions and IAM roles",
-                    "Check for unusual schedule patterns (every minute, etc.)"
+                    "Check for unusual schedule patterns (every minute, etc.)",
                 ],
                 containment_actions=[
                     "Disable suspicious EventBridge rules",
@@ -214,8 +216,8 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Review and restrict EventBridge permissions",
                     "Implement SCPs to limit rule creation",
                     "Enable EventBridge rule approval workflow",
-                    "Audit all existing scheduled rules"
-                ]
+                    "Audit all existing scheduled rules",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known automation accounts and CI/CD pipelines",
@@ -224,9 +226,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled", "EventBridge events logged"]
+            prerequisites=["CloudTrail enabled", "EventBridge events logged"],
         ),
-
         DetectionStrategy(
             strategy_id="t1053-aws-lambda-schedule",
             name="AWS Lambda Scheduled Event Detection",
@@ -235,12 +236,12 @@ resource "aws_sns_topic_policy" "allow_events" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.principalId, requestParameters.functionName, requestParameters.rule
+                query="""fields @timestamp, eventName, userIdentity.principalId, requestParameters.functionName, requestParameters.rule
 | filter eventSource = "lambda.amazonaws.com" or eventSource = "events.amazonaws.com"
 | filter eventName = "AddPermission20150331v2" or eventName = "PutTargets"
 | filter requestParameters.statementId like /ScheduledEvent/ or requestParameters.rule like /schedule/
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect Lambda scheduled event triggers
 
 Parameters:
@@ -281,8 +282,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect Lambda scheduled event triggers
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect Lambda scheduled event triggers
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -322,7 +323,7 @@ resource "aws_cloudwatch_metric_alarm" "lambda_schedule" {
   threshold           = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
   alarm_description   = "Detects Lambda functions with new scheduled event triggers"
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Lambda Scheduled Event Trigger Added",
                 alert_description_template="Lambda function {functionName} was given a scheduled event trigger by {principalId}",
@@ -332,7 +333,7 @@ resource "aws_cloudwatch_metric_alarm" "lambda_schedule" {
                     "Verify the principal that added the trigger was authorised",
                     "Review Lambda function IAM role permissions",
                     "Check Lambda execution logs for suspicious activity",
-                    "Inspect function environment variables for credentials"
+                    "Inspect function environment variables for credentials",
                 ],
                 containment_actions=[
                     "Remove unauthorised event triggers",
@@ -340,8 +341,8 @@ resource "aws_cloudwatch_metric_alarm" "lambda_schedule" {
                     "Review Lambda deployment permissions",
                     "Implement function code approval process",
                     "Enable Lambda function URL restrictions",
-                    "Audit all Lambda scheduled triggers"
-                ]
+                    "Audit all Lambda scheduled triggers",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known scheduled Lambda functions for backups, monitoring, etc.",
@@ -350,9 +351,8 @@ resource "aws_cloudwatch_metric_alarm" "lambda_schedule" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled", "Lambda API calls logged"]
+            prerequisites=["CloudTrail enabled", "Lambda API calls logged"],
         ),
-
         DetectionStrategy(
             strategy_id="t1053-aws-ecs-scheduled",
             name="AWS ECS Scheduled Task Detection",
@@ -361,12 +361,12 @@ resource "aws_cloudwatch_metric_alarm" "lambda_schedule" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.principalId, requestParameters.taskDefinition, requestParameters.launchType
+                query="""fields @timestamp, eventName, userIdentity.principalId, requestParameters.taskDefinition, requestParameters.launchType
 | filter eventSource = "ecs.amazonaws.com"
 | filter eventName = "RunTask" or eventName = "RegisterTaskDefinition"
 | filter requestParameters.schedulingStrategy = "DAEMON" or requestParameters.launchType = "FARGATE"
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect ECS scheduled task creation
 
 Parameters:
@@ -407,8 +407,8 @@ Resources:
       Threshold: 3
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect ECS scheduled task creation
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect ECS scheduled task creation
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -448,7 +448,7 @@ resource "aws_cloudwatch_metric_alarm" "ecs_scheduled" {
   threshold           = 3
   alarm_actions       = [aws_sns_topic.alerts.arn]
   alarm_description   = "Detects creation of ECS scheduled tasks"
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="ECS Scheduled Task Created",
                 alert_description_template="ECS task {taskDefinition} scheduled by {principalId}",
@@ -458,7 +458,7 @@ resource "aws_cloudwatch_metric_alarm" "ecs_scheduled" {
                     "Verify task execution role permissions",
                     "Inspect container images for malware",
                     "Review task networking configuration",
-                    "Check for privileged container settings"
+                    "Check for privileged container settings",
                 ],
                 containment_actions=[
                     "Stop unauthorised scheduled tasks",
@@ -466,8 +466,8 @@ resource "aws_cloudwatch_metric_alarm" "ecs_scheduled" {
                     "Disable associated EventBridge rules",
                     "Review ECS task execution roles",
                     "Implement task definition approval",
-                    "Enable container image scanning"
-                ]
+                    "Enable container image scanning",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known batch processing and ETL tasks",
@@ -476,9 +476,8 @@ resource "aws_cloudwatch_metric_alarm" "ecs_scheduled" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled", "ECS API calls logged"]
+            prerequisites=["CloudTrail enabled", "ECS API calls logged"],
         ),
-
         DetectionStrategy(
             strategy_id="t1053-gcp-scheduler",
             name="GCP Cloud Scheduler Job Creation",
@@ -490,7 +489,7 @@ resource "aws_cloudwatch_metric_alarm" "ecs_scheduled" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.serviceName="cloudscheduler.googleapis.com"
 protoPayload.methodName=~"google.cloud.scheduler.v1.CloudScheduler.(CreateJob|UpdateJob|PauseJob|ResumeJob)"''',
-                gcp_terraform_template='''# GCP: Detect Cloud Scheduler job creation
+                gcp_terraform_template="""# GCP: Detect Cloud Scheduler job creation
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -545,7 +544,7 @@ resource "google_monitoring_alert_policy" "scheduler_changes" {
     content   = "Cloud Scheduler job was created or modified. Review job target and schedule for authorisation."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Cloud Scheduler Job Created or Modified",
                 alert_description_template="Cloud Scheduler job was created or modified",
@@ -555,7 +554,7 @@ resource "google_monitoring_alert_policy" "scheduler_changes" {
                     "Verify the principal that created the job was authorised",
                     "Inspect the job's HTTP headers and payload",
                     "Review the service account assigned to the job",
-                    "Check job execution history for suspicious patterns"
+                    "Check job execution history for suspicious patterns",
                 ],
                 containment_actions=[
                     "Pause or delete unauthorised scheduler jobs",
@@ -563,8 +562,8 @@ resource "google_monitoring_alert_policy" "scheduler_changes" {
                     "Implement job creation approval workflow",
                     "Audit all existing scheduled jobs",
                     "Enable VPC Service Controls",
-                    "Restrict scheduler job targets"
-                ]
+                    "Restrict scheduler job targets",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known automation service accounts",
@@ -573,9 +572,8 @@ resource "google_monitoring_alert_policy" "scheduler_changes" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled", "Cloud Logging API enabled"]
+            prerequisites=["Cloud Audit Logs enabled", "Cloud Logging API enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1053-k8s-cronjob",
             name="Kubernetes CronJob Creation Detection",
@@ -584,11 +582,11 @@ resource "google_monitoring_alert_policy" "scheduler_changes" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, user.username, objectRef.namespace, objectRef.name, requestObject.spec.schedule
+                query="""fields @timestamp, user.username, objectRef.namespace, objectRef.name, requestObject.spec.schedule
 | filter objectRef.resource = "cronjobs"
 | filter verb = "create" or verb = "update"
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect Kubernetes CronJob creation in EKS
 
 Parameters:
@@ -618,8 +616,8 @@ Resources:
         fields @timestamp, user.username, objectRef.namespace, objectRef.name, requestObject.spec.schedule
         | filter objectRef.resource = "cronjobs"
         | filter verb = "create" or verb = "update"
-        | sort @timestamp desc''',
-                terraform_template='''# Detect Kubernetes CronJob creation
+        | sort @timestamp desc""",
+                terraform_template="""# Detect Kubernetes CronJob creation
 
 variable "eks_cluster_name" { type = string }
 variable "alert_email" { type = string }
@@ -675,7 +673,7 @@ resource "aws_cloudwatch_metric_alarm" "cronjob_creation" {
   threshold           = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
   alarm_description   = "Detects Kubernetes CronJob creation or modification"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Kubernetes CronJob Created",
                 alert_description_template="CronJob {name} created in namespace {namespace} by {username}",
@@ -686,7 +684,7 @@ resource "aws_cloudwatch_metric_alarm" "cronjob_creation" {
                     "Check the service account assigned to the CronJob",
                     "Review job template for privileged containers",
                     "Inspect volume mounts for host filesystem access",
-                    "Check namespace for other suspicious resources"
+                    "Check namespace for other suspicious resources",
                 ],
                 containment_actions=[
                     "Delete unauthorised CronJobs immediately",
@@ -695,8 +693,8 @@ resource "aws_cloudwatch_metric_alarm" "cronjob_creation" {
                     "Enforce Pod Security Standards for CronJobs",
                     "Require image signatures via admission webhook",
                     "Enable Kubernetes audit logging",
-                    "Review RBAC permissions for CronJob creation"
-                ]
+                    "Review RBAC permissions for CronJob creation",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist known system namespaces and automation service accounts",
@@ -705,9 +703,11 @@ resource "aws_cloudwatch_metric_alarm" "cronjob_creation" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-15",
-            prerequisites=["EKS control plane logging enabled", "Kubernetes audit logs enabled"]
+            prerequisites=[
+                "EKS control plane logging enabled",
+                "Kubernetes audit logs enabled",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1053-gcp-k8s-cronjob",
             name="GCP GKE CronJob Creation Detection",
@@ -717,10 +717,10 @@ resource "aws_cloudwatch_metric_alarm" "cronjob_creation" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="k8s_cluster"
+                gcp_logging_query="""resource.type="k8s_cluster"
 protoPayload.resourceName=~"cronjobs"
-(protoPayload.methodName="create" OR protoPayload.methodName="update" OR protoPayload.methodName="patch")''',
-                gcp_terraform_template='''# GCP: Detect GKE CronJob creation
+(protoPayload.methodName="create" OR protoPayload.methodName="update" OR protoPayload.methodName="patch")""",
+                gcp_terraform_template="""# GCP: Detect GKE CronJob creation
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -782,7 +782,7 @@ resource "google_monitoring_alert_policy" "cronjob_creation" {
     content   = "Kubernetes CronJob was created or modified. Review schedule, container image, and service account for authorisation."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: GKE CronJob Created or Modified",
                 alert_description_template="CronJob created or modified in GKE cluster",
@@ -793,7 +793,7 @@ resource "google_monitoring_alert_policy" "cronjob_creation" {
                     "Inspect job template for security context",
                     "Review service account permissions",
                     "Check for volume mounts to host filesystem",
-                    "Inspect RBAC bindings for the namespace"
+                    "Inspect RBAC bindings for the namespace",
                 ],
                 containment_actions=[
                     "Delete unauthorised CronJobs",
@@ -802,8 +802,8 @@ resource "google_monitoring_alert_policy" "cronjob_creation" {
                     "Implement Pod Security Policies/Standards",
                     "Use admission controllers for validation",
                     "Require image attestations",
-                    "Audit RBAC permissions"
-                ]
+                    "Audit RBAC permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist system namespaces and known automation accounts",
@@ -812,18 +812,17 @@ resource "google_monitoring_alert_policy" "cronjob_creation" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["GKE audit logging enabled", "Cloud Logging API enabled"]
-        )
+            prerequisites=["GKE audit logging enabled", "Cloud Logging API enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1053-k8s-cronjob",
         "t1053-gcp-k8s-cronjob",
         "t1053-aws-eventbridge",
         "t1053-gcp-scheduler",
         "t1053-aws-lambda-schedule",
-        "t1053-aws-ecs-scheduled"
+        "t1053-aws-ecs-scheduled",
     ],
     total_effort_hours=6.0,
-    coverage_improvement="+12% improvement for Persistence and Execution tactics"
+    coverage_improvement="+12% improvement for Persistence and Execution tactics",
 )

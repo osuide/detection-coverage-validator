@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Office Application Startup",
     tactic_ids=["TA0003"],
     mitre_url="https://attack.mitre.org/techniques/T1137/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries exploit Microsoft Office applications to establish persistence by "
@@ -40,7 +39,7 @@ TEMPLATE = RemediationTemplate(
             "No administrative privileges required for most methods",
             "Works in both standalone and cloud Office environments",
             "Can execute without triggering traditional malware signatures",
-            "Multiple sub-techniques provide redundancy"
+            "Multiple sub-techniques provide redundancy",
         ],
         known_threat_actors=["APT32", "Gamaredon Group"],
         recent_campaigns=[
@@ -48,14 +47,14 @@ TEMPLATE = RemediationTemplate(
                 name="APT32 VbaProject.OTM Backdoor",
                 year=2022,
                 description="APT32 replaced Microsoft Outlook's VbaProject.OTM file with malicious macros to establish persistent backdoor access",
-                reference_url="https://attack.mitre.org/groups/G0050/"
+                reference_url="https://attack.mitre.org/groups/G0050/",
             ),
             Campaign(
                 name="Gamaredon Application.Startup Persistence",
                 year=2023,
                 description="Gamaredon Group inserted malicious macros into documents and leveraged /altvba option with Microsoft Outlook Application.Startup events",
-                reference_url="https://attack.mitre.org/groups/G0047/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0047/",
+            ),
         ],
         prevalence="moderate",
         trend="stable",
@@ -70,13 +69,12 @@ TEMPLATE = RemediationTemplate(
             "Data exfiltration via Office application hooks",
             "Credential harvesting through macro execution",
             "Lateral movement using compromised Office features",
-            "Compliance violations for endpoint security controls"
+            "Compliance violations for endpoint security controls",
         ],
         typical_attack_phase="persistence",
         often_precedes=["T1003", "T1083", "T1057", "T1082"],
-        often_follows=["T1566", "T1204", "T1105"]
+        often_follows=["T1566", "T1204", "T1105"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS WorkSpaces File Monitoring
         DetectionStrategy(
@@ -91,13 +89,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query=r'''fields @timestamp, @message, instance_id, user_identity
+                query=r"""fields @timestamp, @message, instance_id, user_identity
 | filter @message like /VbaProject.OTM|STARTUP|\.otm|\.wll|\.xlam|Office.*Test|HKCU.*Office/
 | filter @message like /Created|Modified|Registry.*Set/
 | parse @message /(?<action>Created|Modified|Set).*(?<path>.*\.(otm|wll|xlam|dotm))/
 | stats count(*) as modification_count by instance_id, user_identity, path, bin(1h)
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect Office persistence in AWS WorkSpaces for T1137
 
 Parameters:
@@ -144,8 +142,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
         - !Ref OfficePersistenceAlertTopic
-      TreatMissingData: notBreaching''',
-                terraform_template='''# AWS WorkSpaces Office Persistence Detection
+      TreatMissingData: notBreaching""",
+                terraform_template="""# AWS WorkSpaces Office Persistence Detection
 
 variable "workspaces_log_group" {
   type        = string
@@ -195,7 +193,7 @@ resource "aws_cloudwatch_metric_alarm" "office_persistence" {
   comparison_operator = "GreaterThanThreshold"
   alarm_actions       = [aws_sns_topic.office_persistence_alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Office Application Startup Persistence Detected",
                 alert_description_template=(
@@ -208,7 +206,7 @@ resource "aws_cloudwatch_metric_alarm" "office_persistence" {
                     "Check for VbaProject.OTM modifications in Outlook startup directory",
                     "Examine registry changes related to HKCU\\Software\\Microsoft\\Office\\<version>\\<app>\\Addins",
                     "Review user's recent email attachments and document downloads",
-                    "Check for other Office persistence mechanisms on the same instance"
+                    "Check for other Office persistence mechanisms on the same instance",
                 ],
                 containment_actions=[
                     "Isolate the affected WorkSpace instance from network",
@@ -216,8 +214,8 @@ resource "aws_cloudwatch_metric_alarm" "office_persistence" {
                     "Remove malicious registry keys under Office Test and Addins paths",
                     "Scan the WorkSpace for additional malware and persistence mechanisms",
                     "Reset the WorkSpace to clean snapshot if compromise is confirmed",
-                    "Review and block suspicious email attachments organisation-wide"
-                ]
+                    "Review and block suspicious email attachments organisation-wide",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning=(
@@ -236,10 +234,9 @@ resource "aws_cloudwatch_metric_alarm" "office_persistence" {
             prerequisites=[
                 "AWS WorkSpaces deployed with CloudWatch agent",
                 "File integrity monitoring enabled for Office directories",
-                "Windows event logs forwarded to CloudWatch Logs"
-            ]
+                "Windows event logs forwarded to CloudWatch Logs",
+            ],
         ),
-
         # Strategy 2: Microsoft 365/Office 365 Macro Execution Monitoring
         DetectionStrategy(
             strategy_id="t1137-m365-macro",
@@ -252,13 +249,13 @@ resource "aws_cloudwatch_metric_alarm" "office_persistence" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query=r'''fields @timestamp, event_source, operation, user_id, workload
+                query=r"""fields @timestamp, event_source, operation, user_id, workload
 | filter event_source = "Office365" or workload = "Exchange" or workload = "OneDrive"
 | filter operation in ["FileMalwareDetected", "FileScanned", "VirusScan", "FileModified"]
 | filter @message like /macro|vba|\.otm|\.xlam|\.wll|\.dotm/i
 | stats count(*) as macro_events by user_id, operation, bin(1h)
-| sort @timestamp desc''',
-                terraform_template='''# Microsoft 365 Macro Execution Detection (via CloudWatch integration)
+| sort @timestamp desc""",
+                terraform_template="""# Microsoft 365 Macro Execution Detection (via CloudWatch integration)
 
 variable "office365_log_group" {
   type        = string
@@ -308,7 +305,7 @@ resource "aws_cloudwatch_metric_alarm" "m365_macro" {
   comparison_operator = "GreaterThanThreshold"
   alarm_actions       = [aws_sns_topic.m365_macro_alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Microsoft 365 Suspicious Macro Activity",
                 alert_description_template=(
@@ -321,7 +318,7 @@ resource "aws_cloudwatch_metric_alarm" "m365_macro" {
                     "Examine OneDrive/SharePoint for recently uploaded macro files",
                     "Review Defender for Office 365 detections for this user",
                     "Check if user has opened documents from external/untrusted sources",
-                    "Investigate if templates were downloaded from suspicious locations"
+                    "Investigate if templates were downloaded from suspicious locations",
                 ],
                 containment_actions=[
                     "Quarantine malicious Office documents in Exchange Online",
@@ -329,8 +326,8 @@ resource "aws_cloudwatch_metric_alarm" "m365_macro" {
                     "Disable macros organisation-wide via Group Policy or Intune",
                     "Block external macro-enabled attachments at email gateway",
                     "Reset user credentials if persistence is confirmed",
-                    "Apply Attack Surface Reduction rules to block Office child processes"
-                ]
+                    "Apply Attack Surface Reduction rules to block Office child processes",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning=(
@@ -350,10 +347,9 @@ resource "aws_cloudwatch_metric_alarm" "m365_macro" {
             prerequisites=[
                 "Office 365 E3/E5 or Microsoft 365 E3/E5 licensing",
                 "Office 365 audit logging enabled and forwarded to CloudWatch",
-                "Defender for Office 365 or equivalent protection"
-            ]
+                "Defender for Office 365 or equivalent protection",
+            ],
         ),
-
         # Strategy 3: GCP Workspace Macro and Add-in Detection
         DetectionStrategy(
             strategy_id="t1137-gcp-workspace",
@@ -376,7 +372,7 @@ AND (
 )
 AND protoPayload.request.applicationName=~".*Office.*|.*Macro.*|.*Script.*"
 severity >= "NOTICE"''',
-                gcp_terraform_template='''# GCP: Detect Google Workspace Office add-in installations
+                gcp_terraform_template="""# GCP: Detect Google Workspace Office add-in installations
 
 variable "project_id" {
   type        = string
@@ -454,7 +450,7 @@ resource "google_monitoring_alert_policy" "office_addon" {
     content   = "Suspicious Office-related add-in or macro tool was installed in Google Workspace. Investigate for T1137 Office Application Startup persistence."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Suspicious Office Add-in Installation",
                 alert_description_template=(
@@ -467,7 +463,7 @@ resource "google_monitoring_alert_policy" "office_addon" {
                     "Check if the add-in was approved through organisation's review process",
                     "Investigate user's recent Google Drive activity for suspicious documents",
                     "Review Google Workspace Marketplace permissions granted to the add-in",
-                    "Check for similar add-in installations across other users"
+                    "Check for similar add-in installations across other users",
                 ],
                 containment_actions=[
                     "Uninstall unauthorised add-ins from affected user accounts",
@@ -475,8 +471,8 @@ resource "google_monitoring_alert_policy" "office_addon" {
                     "Review and revoke OAuth permissions granted to suspicious add-ins",
                     "Enable Google Workspace add-on allowlist for the organisation",
                     "Educate users on approved add-in installation procedures",
-                    "Implement application allow list in Google Workspace Admin Console"
-                ]
+                    "Implement application allow list in Google Workspace Admin Console",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning=(
@@ -496,10 +492,9 @@ resource "google_monitoring_alert_policy" "office_addon" {
             prerequisites=[
                 "Google Workspace Enterprise or Business Plus licensing",
                 "Admin audit logging enabled in Google Workspace",
-                "Marketplace app installation monitoring enabled"
-            ]
+                "Marketplace app installation monitoring enabled",
+            ],
         ),
-
         # Strategy 4: Registry-based Detection for Cloud VDI
         DetectionStrategy(
             strategy_id="t1137-registry-monitoring",
@@ -513,13 +508,13 @@ resource "google_monitoring_alert_policy" "office_addon" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, registry_path, registry_value, user_identity, instance_id
+                query="""fields @timestamp, registry_path, registry_value, user_identity, instance_id
 | filter event_id = 13 or event_name = "RegistryValueSet"
 | filter registry_path like /HKCU.*Office.*Test|HKCU.*Office.*Addins|HKCU.*Office.*Options/
 | filter registry_path like /Word|Excel|Outlook|PowerPoint/
 | stats count(*) as registry_modifications by user_identity, registry_path, bin(1h)
-| sort @timestamp desc''',
-                terraform_template='''# Office Registry Persistence Detection for Cloud VDI
+| sort @timestamp desc""",
+                terraform_template="""# Office Registry Persistence Detection for Cloud VDI
 
 variable "vdi_log_group" {
   type        = string
@@ -569,7 +564,7 @@ resource "aws_cloudwatch_metric_alarm" "office_registry" {
   comparison_operator = "GreaterThanThreshold"
   alarm_actions       = [aws_sns_topic.registry_persistence_alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Office Registry Persistence Detected",
                 alert_description_template=(
@@ -582,7 +577,7 @@ resource "aws_cloudwatch_metric_alarm" "office_registry" {
                     "Check for Office Test key abuse (HKCU\\Software\\Microsoft\\Office\\<version>\\<app>\\Test)",
                     "Examine Addins registry for unauthorised COM add-in registrations",
                     "Correlate with recent process creation or file write events",
-                    "Search for additional persistence mechanisms on the same endpoint"
+                    "Search for additional persistence mechanisms on the same endpoint",
                 ],
                 containment_actions=[
                     "Delete malicious registry keys under Office Test and Addins paths",
@@ -590,8 +585,8 @@ resource "aws_cloudwatch_metric_alarm" "office_registry" {
                     "Disable affected Office application until remediation is complete",
                     "Deploy Group Policy to block Office Test key usage organisation-wide",
                     "Scan endpoint for additional malware and persistence mechanisms",
-                    "Rebuild VDI instance from clean golden image if heavily compromised"
-                ]
+                    "Rebuild VDI instance from clean golden image if heavily compromised",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning=(
@@ -611,17 +606,16 @@ resource "aws_cloudwatch_metric_alarm" "office_registry" {
             prerequisites=[
                 "Sysmon deployed on VDI instances with registry monitoring (Event ID 13)",
                 "Windows event logs forwarded to CloudWatch Logs",
-                "CloudWatch agent configured for custom log collection"
-            ]
-        )
+                "CloudWatch agent configured for custom log collection",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1137-registry-monitoring",
         "t1137-aws-workspaces",
         "t1137-m365-macro",
-        "t1137-gcp-workspace"
+        "t1137-gcp-workspace",
     ],
     total_effort_hours=11.0,
-    coverage_improvement="+25% improvement for Persistence tactic in cloud-hosted Windows environments"
+    coverage_improvement="+25% improvement for Persistence tactic in cloud-hosted Windows environments",
 )

@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Automated Collection",
     tactic_ids=["TA0009"],
     mitre_url="https://attack.mitre.org/techniques/T1119/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries employ automated techniques to collect internal data once established "
@@ -38,28 +37,34 @@ TEMPLATE = RemediationTemplate(
             "Cloud APIs enable rapid enumeration and data extraction",
             "Scheduled scripts can continuously harvest new data",
             "Automated collection is harder to detect than manual browsing",
-            "Compressing and staging data enables efficient exfiltration"
+            "Compressing and staging data enables efficient exfiltration",
         ],
-        known_threat_actors=["APT28 (Fancy Bear)", "Agrius", "FIN5", "Gamaredon Group", "Ember Bear"],
+        known_threat_actors=[
+            "APT28 (Fancy Bear)",
+            "Agrius",
+            "FIN5",
+            "Gamaredon Group",
+            "Ember Bear",
+        ],
         recent_campaigns=[
             Campaign(
                 name="DNC Breach",
                 year=2016,
                 description="APT28 used public tools to gather and compress multiple documents on the DCCC and DNC networks",
-                reference_url="https://www.justice.gov/file/1080281/download"
+                reference_url="https://www.justice.gov/file/1080281/download",
             ),
             Campaign(
                 name="Agrius Database Extraction",
                 year=2021,
                 description="Agrius deployed custom SQL tools to extract personally identifiable information from databases",
-                reference_url="https://www.sentinelone.com/labs/from-wiper-to-ransomware-the-evolution-of-agrius/"
+                reference_url="https://www.sentinelone.com/labs/from-wiper-to-ransomware-the-evolution-of-agrius/",
             ),
             Campaign(
                 name="Gamaredon Document Collection",
                 year=2022,
                 description="Gamaredon Group deployed scripts that automatically scan for interesting documents",
-                reference_url="https://unit42.paloaltonetworks.com/gamaredon-primitive-bear-ukraine-update-2021/"
-            )
+                reference_url="https://unit42.paloaltonetworks.com/gamaredon-primitive-bear-ukraine-update-2021/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -74,13 +79,12 @@ TEMPLATE = RemediationTemplate(
             "Regulatory violations (GDPR, CCPA, HIPAA)",
             "Loss of competitive advantage",
             "Precursor to ransomware or extortion",
-            "Reputation damage from data breach disclosure"
+            "Reputation damage from data breach disclosure",
         ],
         typical_attack_phase="collection",
         often_precedes=["T1567", "T1537", "T1048"],
-        often_follows=["T1078", "T1059", "T1105"]
+        often_follows=["T1078", "T1059", "T1105"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - Bulk S3 Enumeration
         DetectionStrategy(
@@ -94,14 +98,14 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn as user, requestParameters.bucketName as bucket,
+                query="""fields @timestamp, userIdentity.arn as user, requestParameters.bucketName as bucket,
        sourceIPAddress, eventName
 | filter eventName in ["ListObjects", "ListObjectsV2", "ListBuckets"]
 | stats count(*) as list_count, count_distinct(bucket) as unique_buckets
   by user, sourceIPAddress, bin(15m) as time_window
 | filter list_count >= 50 or unique_buckets >= 5
-| sort list_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort list_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect automated S3 enumeration for T1119
 
 Parameters:
@@ -142,8 +146,8 @@ Resources:
       Threshold: 50
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect automated S3 enumeration for T1119
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect automated S3 enumeration for T1119
 
 variable "cloudtrail_log_group" {
   type = string
@@ -188,7 +192,7 @@ resource "aws_cloudwatch_metric_alarm" "s3_enum" {
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Automated S3 Enumeration Detected",
                 alert_description_template=(
@@ -200,15 +204,15 @@ resource "aws_cloudwatch_metric_alarm" "s3_enum" {
                     "Check if user/role typically accesses these buckets",
                     "Review follow-on GetObject requests for bulk downloads",
                     "Verify source IP location and reputation",
-                    "Check for any data exfiltration indicators"
+                    "Check for any data exfiltration indicators",
                 ],
                 containment_actions=[
                     "Revoke credentials for compromised principal",
                     "Block source IP at security group/WAF level",
                     "Enable S3 Object Lock on sensitive buckets",
                     "Review and restrict S3 bucket policies",
-                    "Enable MFA Delete for critical buckets"
-                ]
+                    "Enable MFA Delete for critical buckets",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate backup tools, data pipelines, and CSPM solutions",
@@ -217,9 +221,11 @@ resource "aws_cloudwatch_metric_alarm" "s3_enum" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["CloudTrail with S3 data events enabled", "CloudTrail logs in CloudWatch"]
+            prerequisites=[
+                "CloudTrail with S3 data events enabled",
+                "CloudTrail logs in CloudWatch",
+            ],
         ),
-
         # Strategy 2: AWS - Scripted API Usage
         DetectionStrategy(
             strategy_id="t1119-aws-scriptedapi",
@@ -232,7 +238,7 @@ resource "aws_cloudwatch_metric_alarm" "s3_enum" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn as user, userAgent, eventName,
+                query="""fields @timestamp, userIdentity.arn as user, userAgent, eventName,
        sourceIPAddress, requestParameters
 | filter userAgent like /(?i)(python|powershell|curl|wget|boto3|aws-cli|aws-sdk)/
 | filter eventName in ["GetObject", "DescribeInstances", "GetParameter", "GetSecretValue"]
@@ -240,8 +246,8 @@ resource "aws_cloudwatch_metric_alarm" "s3_enum" {
         count_distinct(sourceIPAddress) as unique_ips
   by user, userAgent, bin(1h) as time_window
 | filter api_calls >= 100
-| sort api_calls desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort api_calls desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect scripted API usage for automated collection
 
 Parameters:
@@ -282,8 +288,8 @@ Resources:
       Threshold: 100
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect scripted API usage for automated collection
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect scripted API usage for automated collection
 
 variable "cloudtrail_log_group" {
   type = string
@@ -328,7 +334,7 @@ resource "aws_cloudwatch_metric_alarm" "scripted_api" {
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="High-Volume Scripted API Usage Detected",
                 alert_description_template=(
@@ -340,15 +346,15 @@ resource "aws_cloudwatch_metric_alarm" "scripted_api" {
                     "Review what APIs and resources were accessed",
                     "Check if this is authorised automation or DevOps activity",
                     "Verify source IP geolocation",
-                    "Look for any sensitive data access patterns"
+                    "Look for any sensitive data access patterns",
                 ],
                 containment_actions=[
                     "Verify legitimacy with the account owner",
                     "Rotate credentials if compromise is suspected",
                     "Review and restrict IAM permissions",
                     "Monitor for data exfiltration attempts",
-                    "Consider implementing SCPs to restrict scripted access"
-                ]
+                    "Consider implementing SCPs to restrict scripted access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Baseline normal automation; whitelist known CI/CD, backup, and monitoring tools",
@@ -357,9 +363,8 @@ resource "aws_cloudwatch_metric_alarm" "scripted_api" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$15-30",
-            prerequisites=["CloudTrail enabled", "CloudTrail logs in CloudWatch"]
+            prerequisites=["CloudTrail enabled", "CloudTrail logs in CloudWatch"],
         ),
-
         # Strategy 3: AWS - Secrets Manager Bulk Access
         DetectionStrategy(
             strategy_id="t1119-aws-secretsenum",
@@ -372,14 +377,14 @@ resource "aws_cloudwatch_metric_alarm" "scripted_api" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn as user, eventName,
+                query="""fields @timestamp, userIdentity.arn as user, eventName,
        sourceIPAddress, requestParameters.secretId
 | filter eventName in ["GetSecretValue", "GetParameter", "GetParameters", "DescribeSecret", "ListSecrets"]
 | stats count(*) as secret_accesses, count_distinct(requestParameters.secretId) as unique_secrets
   by user, sourceIPAddress, bin(1h) as time_window
 | filter secret_accesses >= 20 or unique_secrets >= 10
-| sort secret_accesses desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort secret_accesses desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect bulk secrets access for T1119
 
 Parameters:
@@ -420,8 +425,8 @@ Resources:
       Threshold: 20
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect bulk secrets access for T1119
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect bulk secrets access for T1119
 
 variable "cloudtrail_log_group" {
   type = string
@@ -466,7 +471,7 @@ resource "aws_cloudwatch_metric_alarm" "secrets_access" {
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Bulk Secrets Access Detected",
                 alert_description_template=(
@@ -478,15 +483,15 @@ resource "aws_cloudwatch_metric_alarm" "secrets_access" {
                     "Verify if the user/role should have this access",
                     "Check for credential usage after collection",
                     "Review source IP location and reputation",
-                    "Determine if secrets were exfiltrated"
+                    "Determine if secrets were exfiltrated",
                 ],
                 containment_actions=[
                     "Immediately rotate all accessed secrets",
                     "Revoke credentials for compromised principal",
                     "Review and restrict IAM policies for secrets access",
                     "Enable resource-based policies on critical secrets",
-                    "Monitor for unauthorised use of stolen credentials"
-                ]
+                    "Monitor for unauthorised use of stolen credentials",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist deployment pipelines and application startup patterns",
@@ -495,9 +500,8 @@ resource "aws_cloudwatch_metric_alarm" "secrets_access" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-15",
-            prerequisites=["CloudTrail enabled", "CloudTrail logs in CloudWatch"]
+            prerequisites=["CloudTrail enabled", "CloudTrail logs in CloudWatch"],
         ),
-
         # Strategy 4: GCP - Cloud Storage Enumeration
         DetectionStrategy(
             strategy_id="t1119-gcp-gcsenum",
@@ -513,7 +517,7 @@ resource "aws_cloudwatch_metric_alarm" "secrets_access" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName=~"storage\\..*\\.(list|get)"
 protoPayload.serviceName="storage.googleapis.com"''',
-                gcp_terraform_template='''# GCP: Detect automated Cloud Storage enumeration
+                gcp_terraform_template="""# GCP: Detect automated Cloud Storage enumeration
 
 variable "project_id" {
   type = string
@@ -570,7 +574,7 @@ resource "google_monitoring_alert_policy" "gcs_enum" {
   documentation {
     content = "Automated collection of Cloud Storage data detected (T1119)"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Automated Storage Enumeration Detected",
                 alert_description_template=(
@@ -582,15 +586,15 @@ resource "google_monitoring_alert_policy" "gcs_enum" {
                     "Review which buckets and objects were accessed",
                     "Check if this is authorised backup or data pipeline activity",
                     "Verify source IP geolocation",
-                    "Look for subsequent data download patterns"
+                    "Look for subsequent data download patterns",
                 ],
                 containment_actions=[
                     "Revoke compromised service account keys",
                     "Review and restrict IAM permissions on buckets",
                     "Enable VPC Service Controls to limit data access",
                     "Implement Object Lifecycle policies to protect data",
-                    "Monitor for data exfiltration to external destinations"
-                ]
+                    "Monitor for data exfiltration to external destinations",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate data processing jobs and backup tools",
@@ -599,9 +603,8 @@ resource "google_monitoring_alert_policy" "gcs_enum" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Audit Logs enabled for Cloud Storage"]
+            prerequisites=["Cloud Audit Logs enabled for Cloud Storage"],
         ),
-
         # Strategy 5: GCP - Secret Manager Bulk Access
         DetectionStrategy(
             strategy_id="t1119-gcp-secretsenum",
@@ -617,7 +620,7 @@ resource "google_monitoring_alert_policy" "gcs_enum" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName=~"AccessSecretVersion|ListSecrets"
 protoPayload.serviceName="secretmanager.googleapis.com"''',
-                gcp_terraform_template='''# GCP: Detect bulk Secret Manager access
+                gcp_terraform_template="""# GCP: Detect bulk Secret Manager access
 
 variable "project_id" {
   type = string
@@ -674,7 +677,7 @@ resource "google_monitoring_alert_policy" "secret_access" {
   documentation {
     content = "Automated credential collection detected via Secret Manager (T1119)"
   }
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GCP: Bulk Secret Access Detected",
                 alert_description_template=(
@@ -686,15 +689,15 @@ resource "google_monitoring_alert_policy" "secret_access" {
                     "Verify the principal's authorisation for secret access",
                     "Check for credential usage after collection",
                     "Review audit logs for exfiltration indicators",
-                    "Determine scope of compromise"
+                    "Determine scope of compromise",
                 ],
                 containment_actions=[
                     "Rotate all accessed secrets immediately",
                     "Disable compromised service account",
                     "Review and restrict IAM bindings on secrets",
                     "Enable VPC Service Controls for Secret Manager",
-                    "Monitor for unauthorised use of stolen credentials"
-                ]
+                    "Monitor for unauthorised use of stolen credentials",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist application deployments and automated workflows",
@@ -703,17 +706,16 @@ resource "google_monitoring_alert_policy" "secret_access" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled for Secret Manager"]
-        )
+            prerequisites=["Cloud Audit Logs enabled for Secret Manager"],
+        ),
     ],
-
     recommended_order=[
         "t1119-aws-secretsenum",
         "t1119-gcp-secretsenum",
         "t1119-aws-s3enum",
         "t1119-gcp-gcsenum",
-        "t1119-aws-scriptedapi"
+        "t1119-aws-scriptedapi",
     ],
     total_effort_hours=7.5,
-    coverage_improvement="+25% improvement for Collection tactic"
+    coverage_improvement="+25% improvement for Collection tactic",
 )

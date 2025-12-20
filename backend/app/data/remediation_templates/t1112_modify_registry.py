@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Modify Registry",
     tactic_ids=["TA0005"],
     mitre_url="https://attack.mitre.org/techniques/T1112/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries interact with the Windows Registry to support defence evasion, "
@@ -42,39 +41,51 @@ TEMPLATE = RemediationTemplate(
             "UAC bypass registry changes enable privilege escalation without prompts",
             "Hiding registry keys with null characters evades forensic tools",
             "Modifying RemoteRegistry service enables lateral movement",
-            "Changes persist after system restart without file system modifications"
+            "Changes persist after system restart without file system modifications",
         ],
         known_threat_actors=[
-            "APT19", "APT28", "APT32", "APT38", "APT41", "APT42",
-            "Wizard Spider", "Turla", "Kimsuky", "OilRig",
-            "Gamaredon Group", "Dragonfly", "Aquatic Panda",
-            "Volt Typhoon", "LuminousMoth", "Earth Lusca"
+            "APT19",
+            "APT28",
+            "APT32",
+            "APT38",
+            "APT41",
+            "APT42",
+            "Wizard Spider",
+            "Turla",
+            "Kimsuky",
+            "OilRig",
+            "Gamaredon Group",
+            "Dragonfly",
+            "Aquatic Panda",
+            "Volt Typhoon",
+            "LuminousMoth",
+            "Earth Lusca",
         ],
         recent_campaigns=[
             Campaign(
                 name="APT41 Registry Persistence",
                 year=2024,
                 description="APT41 created registry Run keys and modified Windows Defender settings to maintain persistence on compromised cloud instances",
-                reference_url="https://attack.mitre.org/groups/G0096/"
+                reference_url="https://attack.mitre.org/groups/G0096/",
             ),
             Campaign(
                 name="Wizard Spider Registry Manipulation",
                 year=2023,
                 description="Wizard Spider modified registry to disable security tools and enable WDigest for credential theft before ransomware deployment",
-                reference_url="https://attack.mitre.org/groups/G0102/"
+                reference_url="https://attack.mitre.org/groups/G0102/",
             ),
             Campaign(
                 name="Volt Typhoon UAC Bypass",
                 year=2023,
                 description="Volt Typhoon used registry modifications to bypass UAC and disable Windows security features on compromised infrastructure",
-                reference_url="https://www.microsoft.com/en-us/security/blog/2023/05/24/volt-typhoon-targets-us-critical-infrastructure-with-living-off-the-land-techniques/"
+                reference_url="https://www.microsoft.com/en-us/security/blog/2023/05/24/volt-typhoon-targets-us-critical-infrastructure-with-living-off-the-land-techniques/",
             ),
             Campaign(
                 name="Turla Registry Stealth",
                 year=2022,
                 description="Turla modified registry keys to hide malicious drivers and disable security logging on Windows servers",
-                reference_url="https://attack.mitre.org/groups/G0010/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0010/",
+            ),
         ],
         prevalence="common",
         trend="stable",
@@ -93,13 +104,12 @@ TEMPLATE = RemediationTemplate(
             "Bypassed security controls allowing undetected malicious activity",
             "Compliance violations from disabled security features",
             "Extended attacker dwell time through stealth persistence",
-            "Potential data exfiltration from compromised instances"
+            "Potential data exfiltration from compromised instances",
         ],
         typical_attack_phase="defence_evasion",
         often_precedes=["T1003", "T1021", "T1486", "T1562"],
-        often_follows=["T1078", "T1190", "T1133", "T1059"]
+        often_follows=["T1078", "T1190", "T1133", "T1059"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS GuardDuty Runtime Monitoring
         DetectionStrategy(
@@ -118,9 +128,9 @@ TEMPLATE = RemediationTemplate(
                     "DefenseEvasion:Runtime/ProcessInjectionAttempt",
                     "Persistence:Runtime/NewBinaryExecuted",
                     "PrivilegeEscalation:Runtime/AnomalousBehavior",
-                    "DefenseEvasion:Runtime/FilelessExecution"
+                    "DefenseEvasion:Runtime/FilelessExecution",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty Runtime Monitoring for registry modification detection
 
 Parameters:
@@ -175,8 +185,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref RegistryModAlertTopic''',
-                terraform_template='''# GuardDuty Runtime Monitoring for registry modifications
+            Resource: !Ref RegistryModAlertTopic""",
+                terraform_template="""# GuardDuty Runtime Monitoring for registry modifications
 
 variable "alert_email" {
   type        = string
@@ -250,7 +260,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Resource  = aws_sns_topic.registry_mod_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GuardDuty: Suspicious Registry Modification Detected",
                 alert_description_template=(
@@ -264,7 +274,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Review the process that made the registry changes and its parent process",
                     "Check for modifications to critical keys (Run, RunOnce, Windows Defender, WDigest)",
                     "Examine recent user logins and API calls from the instance IAM role",
-                    "Search for additional indicators of compromise on the instance"
+                    "Search for additional indicators of compromise on the instance",
                 ],
                 containment_actions=[
                     "Isolate the instance by modifying security group rules",
@@ -273,8 +283,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Terminate suspicious processes making registry modifications",
                     "Rotate instance IAM role credentials immediately",
                     "Re-enable any disabled security features (Windows Defender, UAC)",
-                    "Terminate and rebuild the instance if compromise is confirmed"
-                ]
+                    "Terminate and rebuild the instance if compromise is confirmed",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline legitimate administrative registry changes; exclude authorised system management tools",
@@ -283,9 +293,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",
             estimated_monthly_cost="$4.60 per instance per month for Runtime Monitoring",
-            prerequisites=["GuardDuty enabled", "SSM Agent on EC2 instances for Runtime Monitoring"]
+            prerequisites=[
+                "GuardDuty enabled",
+                "SSM Agent on EC2 instances for Runtime Monitoring",
+            ],
         ),
-
         # Strategy 2: Windows Registry Event Monitoring
         DetectionStrategy(
             strategy_id="t1112-registry-events",
@@ -299,13 +311,13 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, EventID, Computer, ProcessName, ObjectName, ObjectValueName
+                query="""fields @timestamp, EventID, Computer, ProcessName, ObjectName, ObjectValueName
 | filter EventID in [4657, 4660, 4663]
 | filter ObjectName like /Software\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Run|Software\\\\Microsoft\\\\Windows Defender|SYSTEM\\\\CurrentControlSet\\\\Services|WDigest|UserInitMprLogonScript|SafeDllSearchMode/
 | stats count() as modifications by Computer, ProcessName, ObjectName, bin(10m)
 | filter modifications > 2
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Windows Registry event monitoring for T1112
 
 Parameters:
@@ -369,8 +381,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       AlarmActions:
-        - !Ref SNSTopicArn''',
-                terraform_template='''# Windows Registry event monitoring
+        - !Ref SNSTopicArn""",
+                terraform_template="""# Windows Registry event monitoring
 
 variable "cloudwatch_log_group" {
   type        = string
@@ -443,7 +455,7 @@ resource "aws_cloudwatch_metric_alarm" "security_registry" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Suspicious Registry Modification Detected",
                 alert_description_template=(
@@ -459,7 +471,7 @@ resource "aws_cloudwatch_metric_alarm" "security_registry" {
                     "Review Event ID 4688 (Process Creation) for related process starts",
                     "Check for other registry modifications by the same process",
                     "Investigate the user account that initiated the change",
-                    "Search for known malware patterns matching the registry change"
+                    "Search for known malware patterns matching the registry change",
                 ],
                 containment_actions=[
                     "Revert the malicious registry modification using regedit or PowerShell",
@@ -469,8 +481,8 @@ resource "aws_cloudwatch_metric_alarm" "security_registry" {
                     "Re-enable Windows Defender or other disabled security features",
                     "Check and restore UAC and other security policy settings",
                     "Scan the instance with updated antivirus signatures",
-                    "Rebuild the instance if multiple malicious changes are found"
-                ]
+                    "Rebuild the instance if multiple malicious changes are found",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate software installation and system management tools; baseline normal administrative registry changes",
@@ -479,9 +491,12 @@ resource "aws_cloudwatch_metric_alarm" "security_registry" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$10-25 depending on log volume",
-            prerequisites=["CloudWatch Agent installed on Windows instances", "Windows Registry auditing enabled via Group Policy or Local Security Policy", "CloudWatch Logs configured to receive Windows Event logs"]
+            prerequisites=[
+                "CloudWatch Agent installed on Windows instances",
+                "Windows Registry auditing enabled via Group Policy or Local Security Policy",
+                "CloudWatch Logs configured to receive Windows Event logs",
+            ],
         ),
-
         # Strategy 3: PowerShell Registry Modification Detection
         DetectionStrategy(
             strategy_id="t1112-powershell-registry",
@@ -495,11 +510,11 @@ resource "aws_cloudwatch_metric_alarm" "security_registry" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message, Computer, CommandLine, ScriptBlockText
+                query="""fields @timestamp, @message, Computer, CommandLine, ScriptBlockText
 | filter @message like /Set-ItemProperty|New-ItemProperty|Remove-ItemProperty|HKLM:|HKCU:|reg add|reg delete|reg modify/
 | filter @message like /Run|Windows Defender|WDigest|SafeDllSearchMode|UserInitMprLogonScript|EnableLUA|ConsentPromptBehaviorAdmin/
 | stats count() as commands by Computer, bin(10m)
-| sort @timestamp desc''',
+| sort @timestamp desc""",
                 cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
 Description: PowerShell registry modification detection
 
@@ -550,7 +565,7 @@ Resources:
         - MetricName: CriticalRegistryModifications
           MetricNamespace: Security/T1112
           MetricValue: "1"''',
-                terraform_template='''# PowerShell registry modification detection
+                terraform_template="""# PowerShell registry modification detection
 
 variable "cloudwatch_log_group" {
   type        = string
@@ -610,7 +625,7 @@ resource "aws_cloudwatch_log_metric_filter" "critical_registry_mods" {
     namespace = "Security/T1112"
     value     = "1"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="PowerShell Registry Modification Detected",
                 alert_description_template=(
@@ -625,7 +640,7 @@ resource "aws_cloudwatch_log_metric_filter" "critical_registry_mods" {
                     "Examine the user account that executed the PowerShell command",
                     "Check for PowerShell execution policy bypasses or obfuscation",
                     "Look for other PowerShell commands executed around the same time",
-                    "Investigate the source of the PowerShell script (local file, remote download)"
+                    "Investigate the source of the PowerShell script (local file, remote download)",
                 ],
                 containment_actions=[
                     "Terminate active PowerShell processes if still running",
@@ -635,8 +650,8 @@ resource "aws_cloudwatch_log_metric_filter" "critical_registry_mods" {
                     "Delete any malicious PowerShell scripts from the file system",
                     "Revoke credentials for the user account that ran the script",
                     "Enable PowerShell Constrained Language Mode to limit future abuse",
-                    "Review and harden AppLocker or WDAC policies"
-                ]
+                    "Review and harden AppLocker or WDAC policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline authorised configuration management scripts; whitelist known administrative PowerShell scripts and scheduled tasks",
@@ -645,9 +660,11 @@ resource "aws_cloudwatch_log_metric_filter" "critical_registry_mods" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="$10-20 depending on log volume",
-            prerequisites=["PowerShell Script Block Logging enabled (Event ID 4104)", "CloudWatch Agent configured to forward PowerShell operational logs"]
+            prerequisites=[
+                "PowerShell Script Block Logging enabled (Event ID 4104)",
+                "CloudWatch Agent configured to forward PowerShell operational logs",
+            ],
         ),
-
         # Strategy 4: GCP Windows Registry Monitoring
         DetectionStrategy(
             strategy_id="t1112-gcp-registry",
@@ -661,14 +678,14 @@ resource "aws_cloudwatch_log_metric_filter" "critical_registry_mods" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 (jsonPayload.EventID=4657 OR jsonPayload.EventID=4660 OR jsonPayload.EventID=4663)
 (jsonPayload.ObjectName=~".*\\\\Software\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Run.*"
 OR jsonPayload.ObjectName=~".*Windows Defender.*"
 OR jsonPayload.ObjectName=~".*WDigest.*"
 OR jsonPayload.ObjectName=~".*SafeDllSearchMode.*"
-OR textPayload=~"Set-ItemProperty|New-ItemProperty|reg add")''',
-                gcp_terraform_template='''# GCP: Windows Registry modification detection
+OR textPayload=~"Set-ItemProperty|New-ItemProperty|reg add")""",
+                gcp_terraform_template="""# GCP: Windows Registry modification detection
 
 variable "project_id" {
   type        = string
@@ -750,7 +767,7 @@ resource "google_monitoring_alert_policy" "registry_modifications" {
     content   = "Suspicious Windows Registry modification detected. Registry changes may indicate persistence establishment, defence evasion, or security tool tampering. Investigate immediately."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Suspicious Registry Modification Detected",
                 alert_description_template=(
@@ -765,7 +782,7 @@ resource "google_monitoring_alert_policy" "registry_modifications" {
                     "Examine Windows Event Viewer for related security events",
                     "Check for other suspicious registry modifications on the instance",
                     "Review VPC Flow Logs for unusual network activity",
-                    "Investigate recent instance metadata access patterns"
+                    "Investigate recent instance metadata access patterns",
                 ],
                 containment_actions=[
                     "Stop the GCE instance to prevent further modifications",
@@ -775,8 +792,8 @@ resource "google_monitoring_alert_policy" "registry_modifications" {
                     "Update firewall rules to isolate the instance",
                     "Re-enable any disabled security features (Windows Defender)",
                     "Remove malicious Run keys or startup entries",
-                    "Rebuild the instance from a known good image if compromised"
-                ]
+                    "Rebuild the instance from a known good image if compromised",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal software installations and administrative changes; whitelist authorised configuration management tools",
@@ -785,9 +802,13 @@ resource "google_monitoring_alert_policy" "registry_modifications" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$15-30",
-            prerequisites=["Cloud Logging API enabled", "Ops Agent installed on Windows GCE instances", "Windows Registry auditing enabled", "Windows Event logging configured in Ops Agent"]
+            prerequisites=[
+                "Cloud Logging API enabled",
+                "Ops Agent installed on Windows GCE instances",
+                "Windows Registry auditing enabled",
+                "Windows Event logging configured in Ops Agent",
+            ],
         ),
-
         # Strategy 5: Registry Tool Execution Detection
         DetectionStrategy(
             strategy_id="t1112-registry-tools",
@@ -801,12 +822,12 @@ resource "google_monitoring_alert_policy" "registry_modifications" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, instanceId, ProcessName, CommandLine, ParentProcessName
+                query="""fields @timestamp, instanceId, ProcessName, CommandLine, ParentProcessName
 | filter ProcessName in ["reg.exe", "regedit.exe", "powershell.exe", "pwsh.exe"]
 | filter CommandLine like /add|delete|import|Windows Defender|WDigest|Run|EnableLUA|DisableAntiSpyware/
 | stats count() as executions by instanceId, ProcessName, CommandLine, bin(10m)
 | filter executions > 1
-| sort @timestamp desc''',
+| sort @timestamp desc""",
                 cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
 Description: Registry tool execution detection
 
@@ -856,7 +877,7 @@ Resources:
         - MetricName: CriticalRegToolMods
           MetricNamespace: Security/T1112
           MetricValue: "1"''',
-                terraform_template='''# Registry tool execution detection
+                terraform_template="""# Registry tool execution detection
 
 variable "cloudwatch_log_group" {
   type        = string
@@ -915,7 +936,7 @@ resource "aws_cloudwatch_log_metric_filter" "critical_reg_mods" {
     namespace = "Security/T1112"
     value     = "1"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Registry Tool Execution Detected",
                 alert_description_template=(
@@ -931,7 +952,7 @@ resource "aws_cloudwatch_log_metric_filter" "critical_reg_mods" {
                     "Examine the user account that ran the registry command",
                     "Check for registry import files (.reg) and review their contents",
                     "Look for other registry modifications around the same time",
-                    "Search for indicators of automated or scripted execution"
+                    "Search for indicators of automated or scripted execution",
                 ],
                 containment_actions=[
                     "Terminate the registry tool process if still running",
@@ -941,8 +962,8 @@ resource "aws_cloudwatch_log_metric_filter" "critical_reg_mods" {
                     "Block reg.exe execution for non-administrative users via AppLocker",
                     "Re-enable disabled security features (Windows Defender, UAC)",
                     "Review and remove any malicious persistence mechanisms",
-                    "Scan the instance with updated endpoint protection"
-                ]
+                    "Scan the instance with updated endpoint protection",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised administrative accounts and scripts; baseline normal registry tool usage patterns",
@@ -951,17 +972,20 @@ resource "aws_cloudwatch_log_metric_filter" "critical_reg_mods" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="$5-15 depending on log volume",
-            prerequisites=["Process creation logging enabled (Event ID 4688)", "Command-line auditing enabled", "CloudWatch Agent configured to forward process logs"]
-        )
+            prerequisites=[
+                "Process creation logging enabled (Event ID 4688)",
+                "Command-line auditing enabled",
+                "CloudWatch Agent configured to forward process logs",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1112-registry-events",
         "t1112-guardduty-runtime",
         "t1112-powershell-registry",
         "t1112-registry-tools",
-        "t1112-gcp-registry"
+        "t1112-gcp-registry",
     ],
     total_effort_hours=9.5,
-    coverage_improvement="+30% improvement for Defence Evasion tactic"
+    coverage_improvement="+30% improvement for Defence Evasion tactic",
 )

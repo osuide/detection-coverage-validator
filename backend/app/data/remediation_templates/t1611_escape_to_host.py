@@ -25,7 +25,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Escape to Host",
     tactic_ids=["TA0004"],  # Privilege Escalation
     mitre_url="https://attack.mitre.org/techniques/T1611/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries break out of containerised or virtualised environments to gain "
@@ -40,7 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Execute commands with host-level privileges",
             "Deploy persistent malware on the host",
             "Steal secrets and credentials from host",
-            "Pivot to other systems via host network"
+            "Pivot to other systems via host network",
         ],
         known_threat_actors=["TeamTNT"],
         recent_campaigns=[
@@ -48,14 +47,14 @@ TEMPLATE = RemediationTemplate(
                 name="TeamTNT Container Escapes",
                 year=2024,
                 description="TeamTNT deployed privileged containers mounting victim host filesystems for cryptomining and credential theft",
-                reference_url="https://attack.mitre.org/groups/G0139/"
+                reference_url="https://attack.mitre.org/groups/G0139/",
             ),
             Campaign(
                 name="Doki and Hildegard Malware",
                 year=2024,
                 description="Doki and Hildegard malware used bind mounts and BOtB tool for container breakouts",
-                reference_url="https://attack.mitre.org/software/S0600/"
-            )
+                reference_url="https://attack.mitre.org/software/S0600/",
+            ),
         ],
         prevalence="moderate",
         trend="increasing",
@@ -71,13 +70,12 @@ TEMPLATE = RemediationTemplate(
             "Access to all containers on the host",
             "Credential and secret theft",
             "Persistent malware deployment",
-            "Lateral movement to other hosts"
+            "Lateral movement to other hosts",
         ],
         typical_attack_phase="privilege_escalation",
         often_precedes=["T1078.004", "T1552.001", "T1021.007"],
-        often_follows=["T1525", "T1204.003", "T1648"]
+        often_follows=["T1525", "T1204.003", "T1648"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - Privileged Container Detection
         DetectionStrategy(
@@ -88,14 +86,14 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, requestParameters.taskDefinition, requestParameters.containerDefinitions
+                query="""fields @timestamp, eventName, requestParameters.taskDefinition, requestParameters.containerDefinitions
 | filter eventSource = "ecs.amazonaws.com"
 | filter eventName = "RegisterTaskDefinition"
 | filter requestParameters.containerDefinitions.0.privileged = true
    or requestParameters.containerDefinitions.0.mountPoints.0.sourceVolume = "/"
    or requestParameters.containerDefinitions.0.mountPoints.0.sourceVolume = "/var/run/docker.sock"
-| fields @timestamp, userIdentity.arn, requestParameters.family, requestParameters.containerDefinitions.0.privileged, requestParameters.containerDefinitions.0.mountPoints''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| fields @timestamp, userIdentity.arn, requestParameters.family, requestParameters.containerDefinitions.0.privileged, requestParameters.containerDefinitions.0.mountPoints""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect privileged containers and risky bind mounts
 
 Parameters:
@@ -133,8 +131,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect privileged containers and risky bind mounts
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect privileged containers and risky bind mounts
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -171,7 +169,7 @@ resource "aws_cloudwatch_metric_alarm" "privileged_container" {
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Privileged Container or Risky Bind Mount Detected",
                 alert_description_template="Privileged container or risky bind mount created in task definition {taskDefinition} by {userIdentity.arn}.",
@@ -181,15 +179,15 @@ resource "aws_cloudwatch_metric_alarm" "privileged_container" {
                     "Check bind mounts for host filesystem access",
                     "Verify if docker.sock is mounted",
                     "Review container image source and integrity",
-                    "Check for container runtime activity on host"
+                    "Check for container runtime activity on host",
                 ],
                 containment_actions=[
                     "Stop and delete unauthorised tasks",
                     "Revoke task registration permissions",
                     "Implement SCPs to prevent privileged containers",
                     "Enable GuardDuty runtime monitoring",
-                    "Audit all task definitions for privileged settings"
-                ]
+                    "Audit all task definitions for privileged settings",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist legitimate system containers requiring privileged access",
@@ -198,9 +196,8 @@ resource "aws_cloudwatch_metric_alarm" "privileged_container" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled with ECS data events"]
+            prerequisites=["CloudTrail enabled with ECS data events"],
         ),
-
         # Strategy 2: AWS - Container Runtime Security
         DetectionStrategy(
             strategy_id="t1611-aws-runtime",
@@ -214,9 +211,9 @@ resource "aws_cloudwatch_metric_alarm" "privileged_container" {
                     "PrivilegeEscalation:Runtime/DockerSocketAccessed",
                     "PrivilegeEscalation:Runtime/RuncContainerEscape",
                     "Execution:Runtime/NewBinaryExecuted",
-                    "PrivilegeEscalation:Runtime/ContainerMountsHost"
+                    "PrivilegeEscalation:Runtime/ContainerMountsHost",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty container escape detection via EventBridge
 
 Parameters:
@@ -255,8 +252,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# GuardDuty container escape detection
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# GuardDuty container escape detection
 
 variable "alert_email" { type = string }
 
@@ -300,7 +297,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Container Escape Attempt Detected",
                 alert_description_template="GuardDuty detected container escape behaviour: {detail.type}.",
@@ -310,15 +307,15 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Check container image provenance",
                     "Review syscalls and process tree",
                     "Investigate host-level activity",
-                    "Check for lateral movement"
+                    "Check for lateral movement",
                 ],
                 containment_actions=[
                     "Immediately stop affected tasks",
                     "Isolate affected host instances",
                     "Review and rotate credentials",
                     "Scan container images for malware",
-                    "Implement runtime security policies"
-                ]
+                    "Implement runtime security policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Minimal tuning needed; GuardDuty has built-in ML",
@@ -327,9 +324,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$15-30 (GuardDuty EKS/ECS runtime monitoring)",
-            prerequisites=["GuardDuty enabled with EKS/ECS runtime monitoring"]
+            prerequisites=["GuardDuty enabled with EKS/ECS runtime monitoring"],
         ),
-
         # Strategy 3: GCP - Privileged Container Detection
         DetectionStrategy(
             strategy_id="t1611-gcp-privileged",
@@ -344,7 +340,7 @@ resource "aws_sns_topic_policy" "allow_events" {
 protoPayload.request.spec.containers.securityContext.privileged=true
 OR protoPayload.request.spec.volumes.hostPath.path="/"
 OR protoPayload.request.spec.volumes.hostPath.path="/var/run/docker.sock"''',
-                gcp_terraform_template='''# GCP: Detect privileged containers and host mounts
+                gcp_terraform_template="""# GCP: Detect privileged containers and host mounts
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -385,7 +381,7 @@ resource "google_monitoring_alert_policy" "privileged_container" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GCP: Privileged Container Detected",
                 alert_description_template="Privileged container or risky host mount detected in GKE cluster.",
@@ -395,15 +391,15 @@ resource "google_monitoring_alert_policy" "privileged_container" {
                     "Check volume mounts for host filesystem",
                     "Verify pod creator and RBAC permissions",
                     "Review container image source",
-                    "Check for runtime escape activity"
+                    "Check for runtime escape activity",
                 ],
                 containment_actions=[
                     "Delete unauthorised pods immediately",
                     "Enforce Pod Security Standards/Policies",
                     "Review RBAC permissions",
                     "Enable GKE Binary Authorisation",
-                    "Implement Workload Identity"
-                ]
+                    "Implement Workload Identity",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist system DaemonSets requiring privileged access",
@@ -412,9 +408,8 @@ resource "google_monitoring_alert_policy" "privileged_container" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-15",
-            prerequisites=["GKE audit logging enabled", "Cloud Audit Logs enabled"]
+            prerequisites=["GKE audit logging enabled", "Cloud Audit Logs enabled"],
         ),
-
         # Strategy 4: GCP - Runtime Security with Security Command Center
         DetectionStrategy(
             strategy_id="t1611-gcp-scc",
@@ -428,9 +423,9 @@ resource "google_monitoring_alert_policy" "privileged_container" {
                 scc_finding_categories=[
                     "Persistence: Launch Suspicious Process",
                     "Privilege Escalation: Anomalous Multistep Privilege Escalation",
-                    "Execution: Suspicious Process"
+                    "Execution: Suspicious Process",
                 ],
-                gcp_terraform_template='''# GCP: Security Command Center container escape detection
+                gcp_terraform_template="""# GCP: Security Command Center container escape detection
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -462,7 +457,7 @@ resource "google_scc_notification_config" "container_escape" {
       OR category="Execution: Suspicious Process"
     EOT
   }
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GCP: Container Escape Activity Detected",
                 alert_description_template="Security Command Center detected suspicious container activity indicating escape attempt.",
@@ -472,15 +467,15 @@ resource "google_scc_notification_config" "container_escape" {
                     "Analyse process tree and syscalls",
                     "Check for privilege escalation chains",
                     "Review container image and vulnerabilities",
-                    "Investigate lateral movement"
+                    "Investigate lateral movement",
                 ],
                 containment_actions=[
                     "Terminate affected pods immediately",
                     "Isolate compromised nodes",
                     "Rotate service account keys",
                     "Implement runtime security policies",
-                    "Enable GKE Sandbox (gVisor)"
-                ]
+                    "Enable GKE Sandbox (gVisor)",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Minimal tuning; SCC uses threat intelligence",
@@ -489,16 +484,18 @@ resource "google_scc_notification_config" "container_escape" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="$20-40 (Security Command Center Premium)",
-            prerequisites=["Security Command Center Premium", "GKE Security Posture enabled"]
-        )
+            prerequisites=[
+                "Security Command Center Premium",
+                "GKE Security Posture enabled",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1611-aws-runtime",
         "t1611-aws-privileged",
         "t1611-gcp-scc",
-        "t1611-gcp-privileged"
+        "t1611-gcp-privileged",
     ],
     total_effort_hours=4.0,
-    coverage_improvement="+25% improvement for Privilege Escalation tactic"
+    coverage_improvement="+25% improvement for Privilege Escalation tactic",
 )

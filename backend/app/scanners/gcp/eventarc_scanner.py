@@ -55,7 +55,9 @@ class EventarcScanner(BaseScanner):
                 except PermissionDenied:
                     self.logger.warning("eventarc_permission_denied", region=region)
                 except Exception as e:
-                    self.logger.error("eventarc_region_error", region=region, error=str(e))
+                    self.logger.error(
+                        "eventarc_region_error", region=region, error=str(e)
+                    )
 
             self.logger.info(
                 "eventarc_scan_complete",
@@ -112,10 +114,16 @@ class EventarcScanner(BaseScanner):
                 filter_dict = {
                     "attribute": event_filter.attribute,
                     "value": event_filter.value,
-                    "operator": event_filter.operator if hasattr(event_filter, 'operator') else "=",
+                    "operator": (
+                        event_filter.operator
+                        if hasattr(event_filter, "operator")
+                        else "="
+                    ),
                 }
                 event_filters.append(filter_dict)
-                matching_criteria.append(f"{event_filter.attribute}={event_filter.value}")
+                matching_criteria.append(
+                    f"{event_filter.attribute}={event_filter.value}"
+                )
 
         # Extract destination info
         destination = {}
@@ -155,16 +163,28 @@ class EventarcScanner(BaseScanner):
             region=region,
             raw_config={
                 "name": trigger_name,
-                "uid": trigger.uid if hasattr(trigger, 'uid') else None,
+                "uid": trigger.uid if hasattr(trigger, "uid") else None,
                 "eventFilters": event_filters,
-                "serviceAccount": trigger.service_account if hasattr(trigger, 'service_account') else None,
+                "serviceAccount": (
+                    trigger.service_account
+                    if hasattr(trigger, "service_account")
+                    else None
+                ),
                 "destination": destination,
-                "transport": {
-                    "pubsub": {
-                        "topic": trigger.transport.pubsub.topic if trigger.transport and trigger.transport.pubsub else None,
+                "transport": (
+                    {
+                        "pubsub": {
+                            "topic": (
+                                trigger.transport.pubsub.topic
+                                if trigger.transport and trigger.transport.pubsub
+                                else None
+                            ),
+                        }
                     }
-                } if trigger.transport else None,
-                "channel": trigger.channel if hasattr(trigger, 'channel') else None,
+                    if trigger.transport
+                    else None
+                ),
+                "channel": trigger.channel if hasattr(trigger, "channel") else None,
             },
             event_pattern={"eventFilters": event_filters} if event_filters else None,
             description=f"Eventarc trigger: {short_name} - {', '.join(matching_criteria)}",
@@ -226,19 +246,31 @@ class EventarcScanner(BaseScanner):
             value = filter_item.get("value", "")
 
             # Check for security event types
-            if attribute == "type" and any(evt in value for evt in security_event_types):
+            if attribute == "type" and any(
+                evt in value for evt in security_event_types
+            ):
                 return True
 
             # Check for security service names in audit logs
-            if attribute == "serviceName" and any(svc in value for svc in security_service_names):
+            if attribute == "serviceName" and any(
+                svc in value for svc in security_service_names
+            ):
                 return True
 
             # Check for security methods
             if attribute == "methodName":
                 security_methods = [
-                    "SetIamPolicy", "CreateServiceAccountKey", "DeleteServiceAccountKey",
-                    "CreateRole", "DeleteRole", "CreateInstance", "DeleteInstance",
-                    "Insert", "Delete", "Update", "Patch",
+                    "SetIamPolicy",
+                    "CreateServiceAccountKey",
+                    "DeleteServiceAccountKey",
+                    "CreateRole",
+                    "DeleteRole",
+                    "CreateInstance",
+                    "DeleteInstance",
+                    "Insert",
+                    "Delete",
+                    "Update",
+                    "Patch",
                 ]
                 if any(method.lower() in value.lower() for method in security_methods):
                     return True

@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="System Network Configuration Discovery",
     tactic_ids=["TA0007"],
     mitre_url="https://attack.mitre.org/techniques/T1016/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries investigate network configuration details including IP/MAC addresses, "
@@ -39,22 +38,35 @@ TEMPLATE = RemediationTemplate(
             "Maps security group and firewall rules",
             "Discovers network interfaces and IP addresses",
             "Enables lateral movement planning",
-            "Identifies VPC peering and interconnections"
+            "Identifies VPC peering and interconnections",
         ],
-        known_threat_actors=["APT1", "APT3", "APT19", "APT32", "APT41", "Lazarus Group", "Turla", "OilRig", "Wizard Spider", "Kimsuky", "MuddyWater", "Volt Typhoon"],
+        known_threat_actors=[
+            "APT1",
+            "APT3",
+            "APT19",
+            "APT32",
+            "APT41",
+            "Lazarus Group",
+            "Turla",
+            "OilRig",
+            "Wizard Spider",
+            "Kimsuky",
+            "MuddyWater",
+            "Volt Typhoon",
+        ],
         recent_campaigns=[
             Campaign(
                 name="Volt Typhoon Network Reconnaissance",
                 year=2024,
                 description="Extensive network configuration discovery including routing tables and network interfaces to identify critical infrastructure targets",
-                reference_url="https://attack.mitre.org/groups/G1017/"
+                reference_url="https://attack.mitre.org/groups/G1017/",
             ),
             Campaign(
                 name="APT41 Cloud Infrastructure Mapping",
                 year=2023,
                 description="Systematic enumeration of cloud network configurations including VPCs, subnets, and routing tables during post-compromise reconnaissance",
-                reference_url="https://attack.mitre.org/groups/G0096/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0096/",
+            ),
         ],
         prevalence="very_common",
         trend="increasing",
@@ -69,13 +81,12 @@ TEMPLATE = RemediationTemplate(
             "Identifies network segmentation gaps",
             "Exposes routing and connectivity",
             "Early warning for lateral movement",
-            "Indicates compromised credentials"
+            "Indicates compromised credentials",
         ],
         typical_attack_phase="discovery",
         often_precedes=["T1021", "T1570", "T1210"],
-        often_follows=["T1078.004", "T1059.009", "T1580"]
+        often_follows=["T1078.004", "T1059.009", "T1580"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - VPC/Network Configuration Enumeration
         DetectionStrategy(
@@ -86,12 +97,12 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.arn, eventSource, requestParameters
+                query="""fields @timestamp, eventName, userIdentity.arn, eventSource, requestParameters
 | filter eventName in ["DescribeVpcs", "DescribeSubnets", "DescribeRouteTables", "DescribeNetworkInterfaces", "DescribeSecurityGroups", "DescribeNetworkAcls", "DescribeVpcPeeringConnections", "DescribeTransitGateways", "DescribeNatGateways"]
 | stats count(*) as network_enum_count by userIdentity.arn, bin(1h)
 | filter network_enum_count > 30
-| sort network_enum_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort network_enum_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect network configuration discovery activity
 
 Parameters:
@@ -139,8 +150,8 @@ Resources:
       EvaluationPeriods: 1
       AlarmActions:
         - !Ref NetworkDiscoveryAlertTopic
-      TreatMissingData: notBreaching''',
-                terraform_template='''# AWS: Detect network configuration discovery
+      TreatMissingData: notBreaching""",
+                terraform_template="""# AWS: Detect network configuration discovery
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -191,7 +202,7 @@ resource "aws_cloudwatch_metric_alarm" "network_discovery" {
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.network_discovery_alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Network Configuration Discovery Detected",
                 alert_description_template="High volume of network configuration discovery API calls from {userIdentity.arn}. {network_enum_count} network enumeration calls in 1 hour.",
@@ -202,7 +213,7 @@ resource "aws_cloudwatch_metric_alarm" "network_discovery" {
                     "Check for unusual access patterns or timing",
                     "Look for follow-on lateral movement or resource access attempts",
                     "Review CloudTrail for other suspicious activity from same principal",
-                    "Verify source IP address and geolocation"
+                    "Verify source IP address and geolocation",
                 ],
                 containment_actions=[
                     "Review and restrict IAM permissions for ec2:Describe* actions",
@@ -210,8 +221,8 @@ resource "aws_cloudwatch_metric_alarm" "network_discovery" {
                     "Consider implementing VPC endpoint policies to limit discovery",
                     "Enable VPC Flow Logs for network traffic monitoring",
                     "Audit recent changes to security groups and network ACLs",
-                    "If unauthorised, rotate compromised credentials immediately"
-                ]
+                    "If unauthorised, rotate compromised credentials immediately",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist infrastructure automation tools, CSPM scanners, monitoring solutions, and DevOps CI/CD pipelines. Adjust threshold based on environment size.",
@@ -220,9 +231,11 @@ resource "aws_cloudwatch_metric_alarm" "network_discovery" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail logging to CloudWatch Logs", "EC2 read events logged"]
+            prerequisites=[
+                "CloudTrail logging to CloudWatch Logs",
+                "EC2 read events logged",
+            ],
         ),
-
         # Strategy 2: AWS - Network Interface Metadata Access
         DetectionStrategy(
             strategy_id="t1016-aws-eni-metadata",
@@ -232,12 +245,12 @@ resource "aws_cloudwatch_metric_alarm" "network_discovery" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.arn, requestParameters.networkInterfaceId
+                query="""fields @timestamp, eventName, userIdentity.arn, requestParameters.networkInterfaceId
 | filter eventName = "DescribeNetworkInterfaces" or eventName = "DescribeNetworkInterfaceAttribute"
 | stats count(*) as eni_enum_count by userIdentity.arn, bin(30m)
 | filter eni_enum_count > 20
-| sort eni_enum_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort eni_enum_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect network interface enumeration
 
 Parameters:
@@ -278,8 +291,8 @@ Resources:
       Threshold: 30
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref ENIDiscoveryAlertTopic]''',
-                terraform_template='''# AWS: Detect network interface enumeration
+      AlarmActions: [!Ref ENIDiscoveryAlertTopic]""",
+                terraform_template="""# AWS: Detect network interface enumeration
 
 variable "cloudtrail_log_group" {
   type = string
@@ -325,7 +338,7 @@ resource "aws_cloudwatch_metric_alarm" "eni_discovery" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.eni_discovery_alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Network Interface Enumeration Detected",
                 alert_description_template="High volume of network interface enumeration from {userIdentity.arn}.",
@@ -333,14 +346,14 @@ resource "aws_cloudwatch_metric_alarm" "eni_discovery" {
                     "Identify the enumerating principal",
                     "Check if authorised network scanning",
                     "Review which network interfaces were queried",
-                    "Look for follow-on exploitation attempts"
+                    "Look for follow-on exploitation attempts",
                 ],
                 containment_actions=[
                     "Review principal's IAM permissions",
                     "Monitor for lateral movement",
                     "Enable VPC Flow Logs",
-                    "Audit security group changes"
-                ]
+                    "Audit security group changes",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist network monitoring tools and load balancer health checks",
@@ -349,9 +362,8 @@ resource "aws_cloudwatch_metric_alarm" "eni_discovery" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",
             estimated_monthly_cost="$3-5",
-            prerequisites=["CloudTrail logging to CloudWatch Logs"]
+            prerequisites=["CloudTrail logging to CloudWatch Logs"],
         ),
-
         # Strategy 3: GCP - Network Configuration Enumeration
         DetectionStrategy(
             strategy_id="t1016-gcp-network",
@@ -363,7 +375,7 @@ resource "aws_cloudwatch_metric_alarm" "eni_discovery" {
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName=~"(compute.networks.list|compute.subnetworks.list|compute.routes.list|compute.firewalls.list|compute.addresses.list|compute.forwardingRules.list|v1.compute.networks.get|v1.compute.subnetworks.get)"''',
-                gcp_terraform_template='''# GCP: Detect network configuration discovery
+                gcp_terraform_template="""# GCP: Detect network configuration discovery
 
 variable "project_id" {
   type        = string
@@ -439,7 +451,7 @@ resource "google_monitoring_alert_policy" "network_discovery" {
     content   = "High volume of network configuration discovery API calls detected. Investigate the principal and verify if this is authorised scanning activity."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP Network Configuration Discovery",
                 alert_description_template="High volume of network configuration discovery calls detected in GCP project.",
@@ -450,7 +462,7 @@ resource "google_monitoring_alert_policy" "network_discovery" {
                     "Check for unusual access patterns or source locations",
                     "Look for follow-on lateral movement or resource access",
                     "Review audit logs for other suspicious activity",
-                    "Verify source IP address and geolocation"
+                    "Verify source IP address and geolocation",
                 ],
                 containment_actions=[
                     "Review and restrict IAM permissions for compute.networks.* and compute.subnetworks.*",
@@ -458,8 +470,8 @@ resource "google_monitoring_alert_policy" "network_discovery" {
                     "Enable VPC Flow Logs for network traffic monitoring",
                     "Audit recent firewall rule changes",
                     "Consider implementing IAM Conditions for network access",
-                    "If unauthorised, revoke credentials and rotate keys"
-                ]
+                    "If unauthorised, revoke credentials and rotate keys",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist infrastructure automation, CSPM tools, Terraform/deployment pipelines, and monitoring solutions. Adjust threshold based on deployment frequency.",
@@ -468,9 +480,11 @@ resource "google_monitoring_alert_policy" "network_discovery" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Cloud Audit Logs enabled", "Admin Activity and Data Access logs configured"]
+            prerequisites=[
+                "Cloud Audit Logs enabled",
+                "Admin Activity and Data Access logs configured",
+            ],
         ),
-
         # Strategy 4: GCP - VPC Peering and Interconnect Discovery
         DetectionStrategy(
             strategy_id="t1016-gcp-connectivity",
@@ -482,7 +496,7 @@ resource "google_monitoring_alert_policy" "network_discovery" {
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName=~"(compute.networks.listPeeringRoutes|v1.compute.vpnTunnels.list|v1.compute.interconnects.list|v1.compute.routers.list)"''',
-                gcp_terraform_template='''# GCP: Detect network connectivity discovery
+                gcp_terraform_template="""# GCP: Detect network connectivity discovery
 
 variable "project_id" {
   type = string
@@ -540,7 +554,7 @@ resource "google_monitoring_alert_policy" "connectivity_discovery" {
   documentation {
     content = "Network connectivity configuration discovery detected. Review for authorised scanning."
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP Network Connectivity Discovery",
                 alert_description_template="VPC peering and interconnect enumeration detected.",
@@ -548,14 +562,14 @@ resource "google_monitoring_alert_policy" "connectivity_discovery" {
                     "Identify principal enumerating connectivity",
                     "Check if authorised network audit",
                     "Review peering relationships queried",
-                    "Look for privilege escalation attempts"
+                    "Look for privilege escalation attempts",
                 ],
                 containment_actions=[
                     "Review IAM permissions for compute.networks.*",
                     "Monitor VPC peering changes",
                     "Audit interconnect configurations",
-                    "Enable VPC Service Controls"
-                ]
+                    "Enable VPC Service Controls",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist network engineering tools and compliance scanners",
@@ -564,16 +578,15 @@ resource "google_monitoring_alert_policy" "connectivity_discovery" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$8-12",
-            prerequisites=["Cloud Audit Logs enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1016-aws-network",
         "t1016-gcp-network",
         "t1016-aws-eni-metadata",
-        "t1016-gcp-connectivity"
+        "t1016-gcp-connectivity",
     ],
     total_effort_hours=3.75,
-    coverage_improvement="+8% improvement for Discovery tactic"
+    coverage_improvement="+8% improvement for Discovery tactic",
 )

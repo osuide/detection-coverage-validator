@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Modify Cloud Compute Infrastructure: Create Snapshot",
     tactic_ids=["TA0005", "TA0010"],
     mitre_url="https://attack.mitre.org/techniques/T1578/001/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries create snapshots of EBS volumes, RDS databases, or GCE disks "
@@ -35,7 +34,7 @@ TEMPLATE = RemediationTemplate(
             "Faster than downloading individual files",
             "Can be shared cross-account easily",
             "Often overlooked in monitoring",
-            "45% increase in attacks in late 2024"
+            "45% increase in attacks in late 2024",
         ],
         known_threat_actors=["APT29", "UNC5537", "Scattered Spider"],
         recent_campaigns=[
@@ -43,7 +42,7 @@ TEMPLATE = RemediationTemplate(
                 name="Snapshot Exfiltration Wave",
                 year=2024,
                 description="45% increase in snapshot-based exfiltration observed",
-                reference_url="https://unit42.paloaltonetworks.com/2025-cloud-security-alert-trends/"
+                reference_url="https://unit42.paloaltonetworks.com/2025-cloud-security-alert-trends/",
             )
         ],
         prevalence="common",
@@ -57,13 +56,12 @@ TEMPLATE = RemediationTemplate(
             "Complete data exfiltration",
             "Intellectual property theft",
             "Compliance violations",
-            "Evidence for further attacks"
+            "Evidence for further attacks",
         ],
         typical_attack_phase="exfiltration",
         often_precedes=["T1537"],
-        often_follows=["T1078.004", "T1530"]
+        often_follows=["T1078.004", "T1530"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - EBS Snapshot Creation
         DetectionStrategy(
@@ -77,11 +75,9 @@ TEMPLATE = RemediationTemplate(
                 event_pattern={
                     "source": ["aws.ec2"],
                     "detail-type": ["AWS API Call via CloudTrail"],
-                    "detail": {
-                        "eventName": ["CreateSnapshot", "CreateSnapshots"]
-                    }
+                    "detail": {"eventName": ["CreateSnapshot", "CreateSnapshots"]},
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect EBS snapshot creation
 
 Parameters:
@@ -120,8 +116,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect EBS snapshot creation
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect EBS snapshot creation
 
 variable "alert_email" {
   type = string
@@ -166,7 +162,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="EBS Snapshot Created",
                 alert_description_template="EBS snapshot created for volume {volumeId}.",
@@ -174,14 +170,14 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Verify snapshot creation was authorised",
                     "Check who created the snapshot",
                     "Review if snapshot is shared externally",
-                    "Check for data sensitivity of the volume"
+                    "Check for data sensitivity of the volume",
                 ],
                 containment_actions=[
                     "Delete unauthorised snapshots",
                     "Remove external sharing permissions",
                     "Review snapshot creation permissions",
-                    "Enable AWS Backup with restrictions"
-                ]
+                    "Enable AWS Backup with restrictions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist backup automation and DR processes",
@@ -190,9 +186,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         # Strategy 2: AWS - RDS Snapshot Creation
         DetectionStrategy(
             strategy_id="t1578001-aws-rds",
@@ -207,9 +202,9 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "detail-type": ["AWS API Call via CloudTrail"],
                     "detail": {
                         "eventName": ["CreateDBSnapshot", "CreateDBClusterSnapshot"]
-                    }
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect RDS snapshot creation
 
 Parameters:
@@ -248,8 +243,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect RDS snapshot creation
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect RDS snapshot creation
 
 variable "alert_email" {
   type = string
@@ -294,7 +289,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="RDS Snapshot Created",
                 alert_description_template="RDS snapshot created for database {dBInstanceIdentifier}.",
@@ -302,14 +297,14 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Verify snapshot was authorised",
                     "Check who created the snapshot",
                     "Review if shared externally",
-                    "Check database data sensitivity"
+                    "Check database data sensitivity",
                 ],
                 containment_actions=[
                     "Delete unauthorised snapshots",
                     "Remove external sharing",
                     "Review RDS permissions",
-                    "Enable RDS encryption"
-                ]
+                    "Enable RDS encryption",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist backup and DR automation",
@@ -318,9 +313,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         # Strategy 3: GCP - Disk Snapshot Creation
         DetectionStrategy(
             strategy_id="t1578001-gcp-snapshot",
@@ -333,7 +327,7 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName="compute.disks.createSnapshot"
 OR protoPayload.methodName="compute.snapshots.insert"''',
-                gcp_terraform_template='''# GCP: Detect disk snapshot creation
+                gcp_terraform_template="""# GCP: Detect disk snapshot creation
 
 variable "project_id" {
   type = string
@@ -381,7 +375,7 @@ resource "google_monitoring_alert_policy" "snapshot_create" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Disk Snapshot Created",
                 alert_description_template="GCE disk snapshot was created.",
@@ -389,14 +383,14 @@ resource "google_monitoring_alert_policy" "snapshot_create" {
                     "Verify snapshot was authorised",
                     "Check who created the snapshot",
                     "Review if shared externally",
-                    "Check disk data sensitivity"
+                    "Check disk data sensitivity",
                 ],
                 containment_actions=[
                     "Delete unauthorised snapshots",
                     "Remove external IAM bindings",
                     "Review snapshot permissions",
-                    "Enable organisation policies"
-                ]
+                    "Enable organisation policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist backup automation",
@@ -405,15 +399,10 @@ resource "google_monitoring_alert_policy" "snapshot_create" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled"],
+        ),
     ],
-
-    recommended_order=[
-        "t1578001-aws-ebs",
-        "t1578001-aws-rds",
-        "t1578001-gcp-snapshot"
-    ],
+    recommended_order=["t1578001-aws-ebs", "t1578001-aws-rds", "t1578001-gcp-snapshot"],
     total_effort_hours=2.0,
-    coverage_improvement="+18% improvement for Exfiltration tactic"
+    coverage_improvement="+18% improvement for Exfiltration tactic",
 )

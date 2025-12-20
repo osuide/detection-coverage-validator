@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Cloud Service Dashboard",
     tactic_ids=["TA0007"],
     mitre_url="https://attack.mitre.org/techniques/T1538/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries exploit stolen credentials to access cloud service dashboards "
@@ -35,7 +34,7 @@ TEMPLATE = RemediationTemplate(
             "May show more than API access",
             "No API calls to detect",
             "Easy navigation of services",
-            "Browser-based access blends in"
+            "Browser-based access blends in",
         ],
         known_threat_actors=["Scattered Spider"],
         recent_campaigns=[
@@ -43,7 +42,7 @@ TEMPLATE = RemediationTemplate(
                 name="Scattered Spider AWS Dashboard Recon",
                 year=2024,
                 description="Abused AWS Systems Manager Inventory to identify targets prior to lateral movement",
-                reference_url="https://attack.mitre.org/groups/G1015/"
+                reference_url="https://attack.mitre.org/groups/G1015/",
             )
         ],
         prevalence="moderate",
@@ -57,13 +56,12 @@ TEMPLATE = RemediationTemplate(
             "Environment reconnaissance",
             "Attack planning enablement",
             "Resource discovery",
-            "Configuration exposure"
+            "Configuration exposure",
         ],
         typical_attack_phase="discovery",
         often_precedes=["T1530", "T1021.007", "T1059.009"],
-        often_follows=["T1078.004", "T1110"]
+        often_follows=["T1078.004", "T1110"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1538-aws-console",
@@ -73,12 +71,12 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn, sourceIPAddress, eventName, userAgent
+                query="""fields @timestamp, userIdentity.arn, sourceIPAddress, eventName, userAgent
 | filter eventSource = "signin.amazonaws.com"
 | filter eventName = "ConsoleLogin"
 | stats count(*) as logins by userIdentity.arn, sourceIPAddress, bin(1d)
-| sort logins desc''',
-                terraform_template='''# Detect unusual console access
+| sort logins desc""",
+                terraform_template="""# Detect unusual console access
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -117,7 +115,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="AWS Console Login Detected",
                 alert_description_template="Console login by {userIdentity.arn} from {sourceIPAddress}.",
@@ -125,14 +123,14 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Verify login was authorised",
                     "Check source IP geolocation",
                     "Review subsequent console activity",
-                    "Check for unusual navigation patterns"
+                    "Check for unusual navigation patterns",
                 ],
                 containment_actions=[
                     "Force session logout",
                     "Reset user credentials",
                     "Enable MFA if not set",
-                    "Review IAM permissions"
-                ]
+                    "Review IAM permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Filter known admin users and IPs",
@@ -141,9 +139,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1538-aws-ssm",
             name="AWS Systems Manager Dashboard Access",
@@ -152,13 +149,13 @@ resource "aws_sns_topic_policy" "allow_events" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn, eventName, sourceIPAddress
+                query="""fields @timestamp, userIdentity.arn, eventName, sourceIPAddress
 | filter eventSource = "ssm.amazonaws.com"
 | filter eventName like /^(Describe|List|Get)/
 | stats count(*) as ssm_calls by userIdentity.arn, bin(1h)
 | filter ssm_calls > 20
-| sort ssm_calls desc''',
-                terraform_template='''# Detect SSM dashboard reconnaissance
+| sort ssm_calls desc""",
+                terraform_template="""# Detect SSM dashboard reconnaissance
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -195,7 +192,7 @@ resource "aws_cloudwatch_metric_alarm" "ssm_recon" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="SSM Dashboard Reconnaissance",
                 alert_description_template="Heavy SSM inventory access by {userIdentity.arn}.",
@@ -203,14 +200,14 @@ resource "aws_cloudwatch_metric_alarm" "ssm_recon" {
                     "Review SSM queries made",
                     "Check target instances",
                     "Verify user authorisation",
-                    "Look for lateral movement"
+                    "Look for lateral movement",
                 ],
                 containment_actions=[
                     "Restrict SSM permissions",
                     "Review user access",
                     "Enable session logging",
-                    "Audit managed instances"
-                ]
+                    "Audit managed instances",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal SSM admin activity",
@@ -219,9 +216,8 @@ resource "aws_cloudwatch_metric_alarm" "ssm_recon" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1538-gcp-console",
             name="GCP Console Access Anomaly Detection",
@@ -231,9 +227,9 @@ resource "aws_cloudwatch_metric_alarm" "ssm_recon" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''protoPayload.methodName=~"(GetProject|ListProjects|GetIamPolicy)"
-protoPayload.authenticationInfo.principalEmail:*''',
-                gcp_terraform_template='''# GCP: Detect console reconnaissance
+                gcp_logging_query="""protoPayload.methodName=~"(GetProject|ListProjects|GetIamPolicy)"
+protoPayload.authenticationInfo.principalEmail:*""",
+                gcp_terraform_template="""# GCP: Detect console reconnaissance
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -268,7 +264,7 @@ resource "google_monitoring_alert_policy" "console_recon" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Console Reconnaissance",
                 alert_description_template="Unusual console activity detected.",
@@ -276,14 +272,14 @@ resource "google_monitoring_alert_policy" "console_recon" {
                     "Review accessed resources",
                     "Check principal identity",
                     "Verify access was authorised",
-                    "Look for follow-up actions"
+                    "Look for follow-up actions",
                 ],
                 containment_actions=[
                     "Revoke user session",
                     "Review IAM permissions",
                     "Enable 2FA if not set",
-                    "Audit project access"
-                ]
+                    "Audit project access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal console patterns",
@@ -292,11 +288,10 @@ resource "google_monitoring_alert_policy" "console_recon" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Cloud Audit Logs enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled"],
+        ),
     ],
-
     recommended_order=["t1538-aws-ssm", "t1538-aws-console", "t1538-gcp-console"],
     total_effort_hours=3.0,
-    coverage_improvement="+10% improvement for Discovery tactic"
+    coverage_improvement="+10% improvement for Discovery tactic",
 )

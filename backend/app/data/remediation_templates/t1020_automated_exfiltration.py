@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Automated Exfiltration",
     tactic_ids=["TA0010"],  # Exfiltration
     mitre_url="https://attack.mitre.org/techniques/T1020/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries use automated processes to exfiltrate collected data from cloud environments. "
@@ -39,28 +38,34 @@ TEMPLATE = RemediationTemplate(
             "Can operate in background over extended periods",
             "Reduces attacker operational exposure",
             "Leverages legitimate cloud services for exfiltration",
-            "Circumvents manual monitoring controls"
+            "Circumvents manual monitoring controls",
         ],
-        known_threat_actors=["Gamaredon Group", "Tropic Trooper", "Winter Vivern", "RedCurl", "Sidewinder"],
+        known_threat_actors=[
+            "Gamaredon Group",
+            "Tropic Trooper",
+            "Winter Vivern",
+            "RedCurl",
+            "Sidewinder",
+        ],
         recent_campaigns=[
             Campaign(
                 name="Salesforce Data Exfiltration (C0059)",
                 year=2024,
                 description="Threat actors used automated API queries for large-scale data theft from Salesforce environments",
-                reference_url="https://attack.mitre.org/campaigns/C0059/"
+                reference_url="https://attack.mitre.org/campaigns/C0059/",
             ),
             Campaign(
                 name="ArcaneDoor",
                 year=2024,
                 description="Campaign included scripted exfiltration mechanisms for automated data theft from compromised network devices",
-                reference_url="https://attack.mitre.org/campaigns/"
+                reference_url="https://attack.mitre.org/campaigns/",
             ),
             Campaign(
                 name="Winter Vivern Document Exfiltration",
                 year=2023,
                 description="Delivered PowerShell scripts that recursively scanned for documents before automatically exfiltrating via HTTP",
-                reference_url="https://attack.mitre.org/groups/G1033/"
-            )
+                reference_url="https://attack.mitre.org/groups/G1033/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -77,13 +82,12 @@ TEMPLATE = RemediationTemplate(
             "Sustained compliance violations and regulatory penalties",
             "Loss of competitive advantage through data leakage",
             "Reputational damage from extended breach periods",
-            "Increased cloud egress costs from unauthorised transfers"
+            "Increased cloud egress costs from unauthorised transfers",
         ],
         typical_attack_phase="exfiltration",
         often_precedes=["T1041", "T1567"],
-        often_follows=["T1074", "T1560", "T1005"]
+        often_follows=["T1074", "T1560", "T1005"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - Automated S3 Upload Detection
         DetectionStrategy(
@@ -94,12 +98,12 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn, eventName, requestParameters.bucketName, sourceIPAddress
+                query="""fields @timestamp, userIdentity.arn, eventName, requestParameters.bucketName, sourceIPAddress
 | filter eventName in ["PutObject", "CopyObject", "UploadPart", "CompleteMultipartUpload"]
 | stats count(*) as upload_count, sum(requestParameters.contentLength) as total_bytes by userIdentity.arn, requestParameters.bucketName, bin(5m)
 | filter upload_count > 50 or total_bytes > 100000000
-| sort upload_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort upload_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect automated S3 data uploads indicating exfiltration
 
 Parameters:
@@ -148,8 +152,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect automated S3 uploads
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect automated S3 uploads
 
 variable "alert_email" {
   type        = string
@@ -206,7 +210,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.s3_upload_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Automated S3 Upload Pattern Detected",
                 alert_description_template="High-frequency S3 uploads detected from {userIdentity.arn} to bucket {bucketName}. May indicate automated data exfiltration.",
@@ -216,7 +220,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Check destination bucket ownership and region",
                     "Examine upload patterns and timing",
                     "Review CloudTrail for concurrent suspicious activities",
-                    "Verify if uploads align with scheduled jobs or workflows"
+                    "Verify if uploads align with scheduled jobs or workflows",
                 ],
                 containment_actions=[
                     "Revoke credentials for suspicious identities",
@@ -224,8 +228,8 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Implement bucket policies to restrict uploads",
                     "Enable S3 Object Lock for critical data",
                     "Review and restrict s3:PutObject permissions",
-                    "Enable S3 Access Logging for forensic analysis"
-                ]
+                    "Enable S3 Access Logging for forensic analysis",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known backup jobs, ETL pipelines, and scheduled data transfer workflows. Adjust thresholds based on normal upload volumes.",
@@ -234,9 +238,11 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled with S3 data events", "S3 bucket logging"]
+            prerequisites=[
+                "CloudTrail enabled with S3 data events",
+                "S3 bucket logging",
+            ],
         ),
-
         # Strategy 2: AWS - Lambda-based Exfiltration Detection
         DetectionStrategy(
             strategy_id="t1020-aws-lambda-exfil",
@@ -253,11 +259,11 @@ resource "aws_sns_topic_policy" "allow_events" {
                         "eventName": [
                             "CreateFunction20150331",
                             "UpdateFunctionCode20150331v2",
-                            "UpdateFunctionConfiguration20150331v2"
+                            "UpdateFunctionConfiguration20150331v2",
                         ]
-                    }
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect Lambda functions for automated exfiltration
 
 Parameters:
@@ -300,8 +306,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect Lambda-based automated exfiltration
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect Lambda-based automated exfiltration
 
 variable "alert_email" {
   type = string
@@ -354,7 +360,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.lambda_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Lambda Function Modified - Potential Exfiltration Vector",
                 alert_description_template="Lambda function {functionName} was modified. Review for unauthorised data exfiltration code.",
@@ -364,7 +370,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Examine function IAM role permissions",
                     "Identify who made the modifications",
                     "Review VPC configuration and security groups",
-                    "Check for environment variables containing credentials"
+                    "Check for environment variables containing credentials",
                 ],
                 containment_actions=[
                     "Delete or disable suspicious Lambda functions",
@@ -372,8 +378,8 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Enable function code signing",
                     "Implement VPC endpoints for AWS services",
                     "Review Lambda execution role permissions",
-                    "Enable CloudWatch Logs for all functions"
-                ]
+                    "Enable CloudWatch Logs for all functions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised deployment pipelines and CI/CD systems",
@@ -382,9 +388,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$3-8",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         # Strategy 3: AWS - Scheduled Task Exfiltration Detection
         DetectionStrategy(
             strategy_id="t1020-aws-scheduled-exfil",
@@ -394,12 +399,12 @@ resource "aws_sns_topic_policy" "allow_events" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn, eventName, requestParameters.name, requestParameters.scheduleExpression
+                query="""fields @timestamp, userIdentity.arn, eventName, requestParameters.name, requestParameters.scheduleExpression
 | filter eventName in ["PutRule", "PutTargets"]
 | filter requestParameters.scheduleExpression like /rate|cron/
 | sort @timestamp desc
-| limit 100''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| limit 100""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect scheduled rules for automated exfiltration
 
 Parameters:
@@ -441,8 +446,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect scheduled automated exfiltration
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect scheduled automated exfiltration
 
 variable "alert_email" {
   type = string
@@ -491,7 +496,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.schedule_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Scheduled EventBridge Rule Created",
                 alert_description_template="New scheduled rule {ruleName} created with expression {scheduleExpression}. Verify legitimacy to prevent automated exfiltration.",
@@ -501,15 +506,15 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Examine target Lambda functions or services",
                     "Check rule pattern and filter criteria",
                     "Review recent CloudTrail events from same principal",
-                    "Verify business justification for automation"
+                    "Verify business justification for automation",
                 ],
                 containment_actions=[
                     "Disable suspicious scheduled rules",
                     "Review and restrict events:PutRule permissions",
                     "Enable EventBridge rule audit logging",
                     "Implement approval workflows for scheduled tasks",
-                    "Review all existing scheduled rules"
-                ]
+                    "Review all existing scheduled rules",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist known automation frameworks, backup schedules, and operational tasks. Focus on rules with external network targets.",
@@ -518,9 +523,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$3-8",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         # Strategy 4: GCP - Cloud Storage Upload Anomaly Detection
         DetectionStrategy(
             strategy_id="t1020-gcp-gcs-upload",
@@ -534,7 +538,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                 gcp_logging_query='''resource.type="gcs_bucket"
 protoPayload.methodName="storage.objects.create"
 protoPayload.serviceName="storage.googleapis.com"''',
-                gcp_terraform_template='''# GCP: Detect automated Cloud Storage uploads
+                gcp_terraform_template="""# GCP: Detect automated Cloud Storage uploads
 
 variable "project_id" {
   type        = string
@@ -603,7 +607,7 @@ resource "google_monitoring_alert_policy" "gcs_upload_alert" {
   alert_strategy {
     auto_close = "1800s"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Automated Cloud Storage Upload Pattern Detected",
                 alert_description_template="High-frequency uploads detected to bucket {bucket_name}. May indicate automated data exfiltration.",
@@ -613,7 +617,7 @@ resource "google_monitoring_alert_policy" "gcs_upload_alert" {
                     "Check bucket location and storage class",
                     "Examine upload patterns and timing",
                     "Review Cloud Audit Logs for concurrent activities",
-                    "Verify against known scheduled jobs"
+                    "Verify against known scheduled jobs",
                 ],
                 containment_actions=[
                     "Revoke service account keys if compromised",
@@ -621,8 +625,8 @@ resource "google_monitoring_alert_policy" "gcs_upload_alert" {
                     "Enable uniform bucket-level access",
                     "Review and restrict storage.objects.create permissions",
                     "Enable Object Versioning for recovery",
-                    "Configure VPC Service Controls to limit data egress"
-                ]
+                    "Configure VPC Service Controls to limit data egress",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known backup jobs, data pipelines, and application upload workflows. Adjust thresholds based on normal patterns.",
@@ -631,9 +635,11 @@ resource "google_monitoring_alert_policy" "gcs_upload_alert" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",
             estimated_monthly_cost="$8-15",
-            prerequisites=["Cloud Audit Logs enabled", "Cloud Storage data access logs"]
+            prerequisites=[
+                "Cloud Audit Logs enabled",
+                "Cloud Storage data access logs",
+            ],
         ),
-
         # Strategy 5: GCP - Cloud Function Exfiltration Detection
         DetectionStrategy(
             strategy_id="t1020-gcp-function-exfil",
@@ -648,7 +654,7 @@ resource "google_monitoring_alert_policy" "gcs_upload_alert" {
 (protoPayload.methodName="google.cloud.functions.v1.CloudFunctionsService.CreateFunction"
 OR protoPayload.methodName="google.cloud.functions.v1.CloudFunctionsService.UpdateFunction")
 protoPayload.serviceName="cloudfunctions.googleapis.com"''',
-                gcp_terraform_template='''# GCP: Detect Cloud Function modifications for exfiltration
+                gcp_terraform_template="""# GCP: Detect Cloud Function modifications for exfiltration
 
 variable "project_id" {
   type = string
@@ -703,7 +709,7 @@ resource "google_monitoring_alert_policy" "function_alert" {
   alert_strategy {
     auto_close = "1800s"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Cloud Function Modified - Potential Exfiltration Vector",
                 alert_description_template="Cloud Function {function_name} was modified. Review for unauthorised data exfiltration code.",
@@ -713,7 +719,7 @@ resource "google_monitoring_alert_policy" "function_alert" {
                     "Examine function service account permissions",
                     "Identify who made the modifications",
                     "Review VPC Connector configuration",
-                    "Check environment variables for credentials"
+                    "Check environment variables for credentials",
                 ],
                 containment_actions=[
                     "Delete or disable suspicious Cloud Functions",
@@ -721,8 +727,8 @@ resource "google_monitoring_alert_policy" "function_alert" {
                     "Implement VPC Service Controls",
                     "Review function service account IAM bindings",
                     "Enable function source code repository tracking",
-                    "Configure Cloud Logging for all function executions"
-                ]
+                    "Configure Cloud Logging for all function executions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised deployment systems and CI/CD pipelines",
@@ -731,9 +737,8 @@ resource "google_monitoring_alert_policy" "function_alert" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",
             estimated_monthly_cost="$8-15",
-            prerequisites=["Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled"],
         ),
-
         # Strategy 6: GCP - Cloud Scheduler Job Detection
         DetectionStrategy(
             strategy_id="t1020-gcp-scheduler",
@@ -748,7 +753,7 @@ resource "google_monitoring_alert_policy" "function_alert" {
 (protoPayload.methodName="google.cloud.scheduler.v1.CloudScheduler.CreateJob"
 OR protoPayload.methodName="google.cloud.scheduler.v1.CloudScheduler.UpdateJob")
 protoPayload.serviceName="cloudscheduler.googleapis.com"''',
-                gcp_terraform_template='''# GCP: Detect Cloud Scheduler job creation
+                gcp_terraform_template="""# GCP: Detect Cloud Scheduler job creation
 
 variable "project_id" {
   type = string
@@ -803,7 +808,7 @@ resource "google_monitoring_alert_policy" "scheduler_alert" {
   alert_strategy {
     auto_close = "1800s"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Cloud Scheduler Job Created or Modified",
                 alert_description_template="Cloud Scheduler job {job_name} with schedule {schedule} was modified. Verify legitimacy.",
@@ -813,15 +818,15 @@ resource "google_monitoring_alert_policy" "scheduler_alert" {
                     "Examine target Cloud Function, HTTP endpoint, or Pub/Sub topic",
                     "Check job service account permissions",
                     "Review recent Cloud Audit Logs from same principal",
-                    "Verify business justification"
+                    "Verify business justification",
                 ],
                 containment_actions=[
                     "Pause or delete suspicious scheduler jobs",
                     "Review and restrict cloudscheduler.jobs.create permissions",
                     "Implement organisation policy constraints",
                     "Review all existing scheduled jobs",
-                    "Enable notifications for job executions"
-                ]
+                    "Enable notifications for job executions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist known automation systems, backup schedules, and operational workflows",
@@ -830,18 +835,17 @@ resource "google_monitoring_alert_policy" "scheduler_alert" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",
             estimated_monthly_cost="$8-15",
-            prerequisites=["Cloud Audit Logs enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1020-aws-s3-upload",
         "t1020-gcp-gcs-upload",
         "t1020-aws-lambda-exfil",
         "t1020-gcp-function-exfil",
         "t1020-aws-scheduled-exfil",
-        "t1020-gcp-scheduler"
+        "t1020-gcp-scheduler",
     ],
     total_effort_hours=4.0,
-    coverage_improvement="+25% improvement for Exfiltration tactic detection"
+    coverage_improvement="+25% improvement for Exfiltration tactic detection",
 )

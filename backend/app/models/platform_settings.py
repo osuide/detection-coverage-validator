@@ -14,6 +14,7 @@ from app.core.database import Base
 
 class SettingCategory(str, enum.Enum):
     """Categories for platform settings."""
+
     BILLING = "billing"  # Stripe, payment processors
     AUTH = "auth"  # OAuth secrets, SSO config
     EMAIL = "email"  # SMTP, email service providers
@@ -31,9 +32,12 @@ class PlatformSetting(Base):
     - All changes are audit logged
     - Secrets are never returned in API responses (only masked hints)
     """
+
     __tablename__ = "platform_settings"
 
-    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid4
+    )
     key: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
 
     # For secrets - encrypted value
@@ -78,14 +82,19 @@ class PlatformSettingAudit(Base):
 
     Tracks all modifications to platform settings for compliance.
     """
+
     __tablename__ = "platform_settings_audit"
 
-    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid4
+    )
     setting_id: Mapped[UUID] = mapped_column(
         PGUUID(as_uuid=True), ForeignKey("platform_settings.id"), nullable=False
     )
     setting_key: Mapped[str] = mapped_column(String(100), nullable=False)
-    action: Mapped[str] = mapped_column(String(20), nullable=False)  # create, update, delete
+    action: Mapped[str] = mapped_column(
+        String(20), nullable=False
+    )  # create, update, delete
 
     # Hash of values (not actual values) for verification
     old_value_hash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
@@ -109,6 +118,7 @@ class PlatformSettingAudit(Base):
 # Well-known setting keys
 class SettingKeys:
     """Well-known platform setting keys."""
+
     # Stripe
     STRIPE_SECRET_KEY = "stripe_secret_key"
     STRIPE_PUBLISHABLE_KEY = "stripe_publishable_key"

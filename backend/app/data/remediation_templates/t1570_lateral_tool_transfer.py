@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Lateral Tool Transfer",
     tactic_ids=["TA0008"],
     mitre_url="https://attack.mitre.org/techniques/T1570/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries transfer tools and files between compromised systems within a victim "
@@ -38,31 +37,39 @@ TEMPLATE = RemediationTemplate(
             "Distributes ransomware and malware across network",
             "Deploys post-exploitation tools to new systems",
             "Cloud instances can share files via storage services",
-            "Appears as normal administrative activity"
+            "Appears as normal administrative activity",
         ],
         known_threat_actors=[
-            "Sandworm Team", "APT41", "APT32", "Wizard Spider", "BlackByte", "BlackCat",
-            "FIN10", "GALLIUM", "Magic Hound", "Volt Typhoon"
+            "Sandworm Team",
+            "APT41",
+            "APT32",
+            "Wizard Spider",
+            "BlackByte",
+            "BlackCat",
+            "FIN10",
+            "GALLIUM",
+            "Magic Hound",
+            "Volt Typhoon",
         ],
         recent_campaigns=[
             Campaign(
                 name="Sandworm Team Wiper Deployment",
                 year=2024,
                 description="Used `move` command and GPO to deploy CaddyWiper and Prestige ransomware via network shares",
-                reference_url="https://attack.mitre.org/groups/G0034/"
+                reference_url="https://attack.mitre.org/groups/G0034/",
             ),
             Campaign(
                 name="BlackCat/ALPHV Ransomware Distribution",
                 year=2024,
                 description="Leveraged SMB shares and PsExec to distribute ransomware payloads across networks",
-                reference_url="https://attack.mitre.org/software/S1068/"
+                reference_url="https://attack.mitre.org/software/S1068/",
             ),
             Campaign(
                 name="Volt Typhoon Web Shell Propagation",
                 year=2023,
                 description="Copied web shells between servers using internal file transfers",
-                reference_url="https://attack.mitre.org/groups/G1017/"
-            )
+                reference_url="https://attack.mitre.org/groups/G1017/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -78,13 +85,12 @@ TEMPLATE = RemediationTemplate(
             "Rapid malware propagation",
             "Multi-system compromise",
             "Distributed cryptomining operations",
-            "Network-wide data theft"
+            "Network-wide data theft",
         ],
         typical_attack_phase="lateral_movement",
         often_precedes=["T1486", "T1485", "T1021.007", "T1496.001"],
-        often_follows=["T1078.004", "T1105", "T1021.007"]
+        often_follows=["T1078.004", "T1105", "T1021.007"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1570-aws-s3-internal-transfer",
@@ -94,14 +100,14 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query=r'''fields @timestamp, userIdentity.principalId, requestParameters.bucketName, requestParameters.key
+                query=r"""fields @timestamp, userIdentity.principalId, requestParameters.bucketName, requestParameters.key
 | filter eventSource = "s3.amazonaws.com"
 | filter eventName in ["PutObject", "CopyObject", "GetObject"]
 | filter requestParameters.key like /\.(exe|dll|ps1|sh|bin|elf|py|bat)$/
 | stats count(*) as transfers, count_distinct(userIdentity.principalId) as unique_principals by requestParameters.bucketName, requestParameters.key, bin(5m)
 | filter unique_principals > 2
-| sort transfers desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort transfers desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect S3 used for lateral tool transfer between instances
 
 Parameters:
@@ -149,8 +155,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching''',
-                terraform_template='''# AWS: Detect S3 lateral tool transfer
+      TreatMissingData: notBreaching""",
+                terraform_template="""# AWS: Detect S3 lateral tool transfer
 
 variable "cloudtrail_log_group" {
   description = "CloudTrail log group name"
@@ -200,7 +206,7 @@ resource "aws_cloudwatch_metric_alarm" "transfer_alert" {
   comparison_operator = "GreaterThanThreshold"
   alarm_actions       = [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="S3 Lateral Tool Transfer Detected",
                 alert_description_template="S3 bucket {bucketName} used for transferring executable files between principals.",
@@ -209,15 +215,15 @@ resource "aws_cloudwatch_metric_alarm" "transfer_alert" {
                     "Review all principals accessing the files",
                     "Check instance roles and associated instances",
                     "Analyse file content and hash against threat intelligence",
-                    "Review timeline of uploads and downloads"
+                    "Review timeline of uploads and downloads",
                 ],
                 containment_actions=[
                     "Delete suspicious files from S3 bucket",
                     "Block bucket access via bucket policy",
                     "Isolate affected instances via security groups",
                     "Revoke instance profile credentials",
-                    "Enable S3 Object Lock for protection"
-                ]
+                    "Enable S3 Object Lock for protection",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude authorised deployment buckets and known software distribution patterns",
@@ -226,9 +232,11 @@ resource "aws_cloudwatch_metric_alarm" "transfer_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["CloudTrail enabled with S3 data events", "CloudWatch Logs integration"]
+            prerequisites=[
+                "CloudTrail enabled with S3 data events",
+                "CloudWatch Logs integration",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1570-aws-ssm-lateral",
             name="AWS SSM Inter-Instance File Transfer",
@@ -237,14 +245,14 @@ resource "aws_cloudwatch_metric_alarm" "transfer_alert" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query=r'''fields @timestamp, requestParameters.instanceId, requestParameters.commands
+                query=r"""fields @timestamp, requestParameters.instanceId, requestParameters.commands
 | filter eventSource = "ssm.amazonaws.com"
 | filter eventName = "SendCommand"
 | filter requestParameters.commands like /scp|rsync|curl.*http:\/\/.*\/|wget.*http:\/\/.*\//
 | stats count(*) as commands by userIdentity.principalId, requestParameters.instanceId, bin(5m)
 | filter commands > 3
-| sort commands desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort commands desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect lateral file transfers via SSM
 
 Parameters:
@@ -296,8 +304,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# AWS: Detect lateral file transfers via SSM
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# AWS: Detect lateral file transfers via SSM
 
 variable "alert_email" {
   description = "Email for security alerts"
@@ -348,7 +356,7 @@ resource "aws_sns_topic_policy" "ssm_publish" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="SSM Lateral File Transfer Detected",
                 alert_description_template="Instance {instanceId} executing file transfer commands via SSM.",
@@ -357,15 +365,15 @@ resource "aws_sns_topic_policy" "ssm_publish" {
                     "Identify source and destination instances",
                     "Check files being transferred",
                     "Review instance role permissions",
-                    "Correlate with other suspicious activity"
+                    "Correlate with other suspicious activity",
                 ],
                 containment_actions=[
                     "Revoke SSM permissions on affected instances",
                     "Isolate instances via security groups",
                     "Review and rotate instance credentials",
                     "Disable SSM agent if not required",
-                    "Implement least privilege for SSM"
-                ]
+                    "Implement least privilege for SSM",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude authorised configuration management and deployment automation",
@@ -374,9 +382,8 @@ resource "aws_sns_topic_policy" "ssm_publish" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-60 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled with SSM logging"]
+            prerequisites=["CloudTrail enabled with SSM logging"],
         ),
-
         DetectionStrategy(
             strategy_id="t1570-aws-vpc-internal-traffic",
             name="AWS VPC Internal SMB/SSH File Transfer",
@@ -385,14 +392,14 @@ resource "aws_sns_topic_policy" "ssm_publish" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcAddr, dstAddr, dstPort, bytes, packets
+                query="""fields @timestamp, srcAddr, dstAddr, dstPort, bytes, packets
 | filter (dstPort = 22 or dstPort = 445 or dstPort = 139)
 | filter action = "ACCEPT"
 | filter bytes > 10485760
 | stats count(*) as connections, sum(bytes) as total_bytes by srcAddr, dstAddr, dstPort, bin(5m)
 | filter connections > 5 and total_bytes > 52428800
-| sort total_bytes desc''',
-                terraform_template='''# AWS: Detect internal file transfers via VPC Flow Logs
+| sort total_bytes desc""",
+                terraform_template="""# AWS: Detect internal file transfers via VPC Flow Logs
 
 variable "vpc_flow_log_group" {
   description = "VPC Flow Logs log group name"
@@ -442,7 +449,7 @@ resource "aws_cloudwatch_metric_alarm" "transfer_alert" {
   comparison_operator = "GreaterThanThreshold"
   alarm_actions       = [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Large Internal File Transfer Detected",
                 alert_description_template="Instance {srcAddr} transferred {total_bytes} bytes to {dstAddr} via port {dstPort}.",
@@ -451,15 +458,15 @@ resource "aws_cloudwatch_metric_alarm" "transfer_alert" {
                     "Verify if instances should communicate",
                     "Check instance purposes and owners",
                     "Review security group rules",
-                    "Analyse historical traffic patterns"
+                    "Analyse historical traffic patterns",
                 ],
                 containment_actions=[
                     "Restrict security group rules to required traffic",
                     "Implement network segmentation",
                     "Enable VPC Flow Logs analysis automation",
                     "Deploy network IDS/IPS",
-                    "Isolate suspicious instances"
-                ]
+                    "Isolate suspicious instances",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Exclude known database replication, backup operations, and authorised file sharing",
@@ -468,9 +475,8 @@ resource "aws_cloudwatch_metric_alarm" "transfer_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-25",
-            prerequisites=["VPC Flow Logs enabled"]
+            prerequisites=["VPC Flow Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1570-gcp-gcs-lateral",
             name="GCP Cloud Storage Lateral Tool Transfer",
@@ -484,7 +490,7 @@ resource "aws_cloudwatch_metric_alarm" "transfer_alert" {
 (protoPayload.methodName="storage.objects.create" OR
  protoPayload.methodName="storage.objects.get")
 protoPayload.resourceName=~".*\\.(exe|elf|sh|py|bin|ps1)$"''',
-                gcp_terraform_template='''# GCP: Detect GCS lateral tool transfer
+                gcp_terraform_template="""# GCP: Detect GCS lateral tool transfer
 
 variable "project_id" {
   description = "GCP project ID"
@@ -554,7 +560,7 @@ resource "google_monitoring_alert_policy" "transfer_alert" {
   alert_strategy {
     auto_close = "1800s"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: GCS Lateral Tool Transfer",
                 alert_description_template="GCS bucket {bucket_name} used for transferring executable files.",
@@ -563,15 +569,15 @@ resource "google_monitoring_alert_policy" "transfer_alert" {
                     "Identify all service accounts accessing files",
                     "Check associated VM instances",
                     "Analyse file content and hashes",
-                    "Review bucket IAM permissions"
+                    "Review bucket IAM permissions",
                 ],
                 containment_actions=[
                     "Delete suspicious objects from bucket",
                     "Remove unauthorised IAM bindings",
                     "Isolate affected VMs via firewall rules",
                     "Revoke service account credentials",
-                    "Enable Object Versioning for forensics"
-                ]
+                    "Enable Object Versioning for forensics",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude authorised deployment buckets and known software distribution",
@@ -580,9 +586,8 @@ resource "google_monitoring_alert_policy" "transfer_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Audit Logs enabled for GCS"]
+            prerequisites=["Cloud Audit Logs enabled for GCS"],
         ),
-
         DetectionStrategy(
             strategy_id="t1570-gcp-internal-ssh",
             name="GCP Internal SSH File Transfer",
@@ -595,7 +600,7 @@ resource "google_monitoring_alert_policy" "transfer_alert" {
                 gcp_logging_query='''resource.type="gce_instance"
 jsonPayload.message=~"scp|rsync|sftp"
 jsonPayload.connection.protocol="ssh"''',
-                gcp_terraform_template='''# GCP: Detect internal SSH file transfers
+                gcp_terraform_template="""# GCP: Detect internal SSH file transfers
 
 variable "project_id" {
   description = "GCP project ID"
@@ -664,7 +669,7 @@ resource "google_monitoring_alert_policy" "ssh_alert" {
   alert_strategy {
     auto_close = "1800s"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Internal SSH File Transfer",
                 alert_description_template="VM instance {instance_id} performing SSH-based file transfers.",
@@ -673,15 +678,15 @@ resource "google_monitoring_alert_policy" "ssh_alert" {
                     "Identify source and destination instances",
                     "Check files being transferred",
                     "Verify service account permissions",
-                    "Analyse network connectivity patterns"
+                    "Analyse network connectivity patterns",
                 ],
                 containment_actions=[
                     "Restrict firewall rules for SSH access",
                     "Isolate affected VMs",
                     "Review and rotate SSH keys",
                     "Implement network segmentation",
-                    "Enable VPC Flow Logs for analysis"
-                ]
+                    "Enable VPC Flow Logs for analysis",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Exclude authorised configuration management, deployment pipelines, and backup operations",
@@ -690,17 +695,16 @@ resource "google_monitoring_alert_policy" "ssh_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Logging enabled for GCE", "SSH logging configured"]
-        )
+            prerequisites=["Cloud Logging enabled for GCE", "SSH logging configured"],
+        ),
     ],
-
     recommended_order=[
         "t1570-aws-s3-internal-transfer",
         "t1570-aws-ssm-lateral",
         "t1570-gcp-gcs-lateral",
         "t1570-aws-vpc-internal-traffic",
-        "t1570-gcp-internal-ssh"
+        "t1570-gcp-internal-ssh",
     ],
     total_effort_hours=7.5,
-    coverage_improvement="+18% improvement for Lateral Movement tactic"
+    coverage_improvement="+18% improvement for Lateral Movement tactic",
 )

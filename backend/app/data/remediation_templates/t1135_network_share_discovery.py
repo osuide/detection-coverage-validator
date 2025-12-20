@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Network Share Discovery",
     tactic_ids=["TA0007"],
     mitre_url="https://attack.mitre.org/techniques/T1135/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries leverage shared network drives and folders—commonly accessible "
@@ -38,33 +37,43 @@ TEMPLATE = RemediationTemplate(
             "Identify lateral movement targets",
             "Map network structure and resources",
             "Find backup locations and archives",
-            "Establish persistence via shared folders"
+            "Establish persistence via shared folders",
         ],
         known_threat_actors=[
-            "APT1", "APT32", "APT38", "APT39", "APT41",
-            "Chimera", "Dragonfly", "FIN8", "FIN13",
-            "Sowbug", "Tropic Trooper", "Wizard Spider",
-            "Tonto Team", "Medusa Group"
+            "APT1",
+            "APT32",
+            "APT38",
+            "APT39",
+            "APT41",
+            "Chimera",
+            "Dragonfly",
+            "FIN8",
+            "FIN13",
+            "Sowbug",
+            "Tropic Trooper",
+            "Wizard Spider",
+            "Tonto Team",
+            "Medusa Group",
         ],
         recent_campaigns=[
             Campaign(
                 name="Operation CuckooBees",
                 year=2022,
                 description="Threat actors used 'net share' command for network reconnaissance",
-                reference_url="https://attack.mitre.org/techniques/T1135/"
+                reference_url="https://attack.mitre.org/techniques/T1135/",
             ),
             Campaign(
                 name="Leviathan Australian Intrusions",
                 year=2019,
                 description="Remote share enumeration in victim environments for data discovery",
-                reference_url="https://attack.mitre.org/techniques/T1135/"
+                reference_url="https://attack.mitre.org/techniques/T1135/",
             ),
             Campaign(
                 name="C0015 Bazar Campaign",
                 year=2021,
                 description="PowerView ShareFinder module execution for share discovery",
-                reference_url="https://attack.mitre.org/techniques/T1135/"
-            )
+                reference_url="https://attack.mitre.org/techniques/T1135/",
+            ),
         ],
         prevalence="common",
         trend="stable",
@@ -78,13 +87,12 @@ TEMPLATE = RemediationTemplate(
             "Precursor to data theft",
             "Enables lateral movement",
             "Identifies backup targets for ransomware",
-            "Maps sensitive data locations"
+            "Maps sensitive data locations",
         ],
         typical_attack_phase="discovery",
         often_precedes=["T1021.002", "T1039", "T1570", "T1486"],
-        often_follows=["T1087", "T1069", "T1018"]
+        often_follows=["T1087", "T1069", "T1018"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1135-aws-net-share",
@@ -94,13 +102,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, sourceIPAddress, userIdentity.principalId, requestParameters
+                query="""fields @timestamp, eventName, sourceIPAddress, userIdentity.principalId, requestParameters
 | filter eventName like /net view|net share|Get-SmbShare|NetShareEnum/
 OR (eventName = "RunInstances" AND requestParameters.instanceType like /Windows/)
 | stats count(*) as shareEnumEvents by userIdentity.principalId, bin(1h)
 | filter shareEnumEvents > 5
-| sort shareEnumEvents desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort shareEnumEvents desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect network share enumeration via process and network monitoring
 
 Parameters:
@@ -145,8 +153,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       AlarmDescription: Detects excessive network share enumeration attempts
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect network share enumeration via process monitoring
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect network share enumeration via process monitoring
 
 variable "log_group_name" {
   description = "CloudWatch Log Group for Windows instances"
@@ -194,7 +202,7 @@ resource "aws_cloudwatch_metric_alarm" "share_enum_alarm" {
   evaluation_periods  = 1
   alarm_description   = "Detects excessive network share enumeration attempts"
   alarm_actions       = [aws_sns_topic.share_enum_alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Network Share Enumeration Detected",
                 alert_description_template="Multiple share enumeration commands detected from {principalId}.",
@@ -204,15 +212,15 @@ resource "aws_cloudwatch_metric_alarm" "share_enum_alarm" {
                     "Identify source instance and associated IAM principal",
                     "Review command-line arguments and target systems",
                     "Check for subsequent lateral movement or data access",
-                    "Correlate with other discovery techniques (T1087, T1018)"
+                    "Correlate with other discovery techniques (T1087, T1018)",
                 ],
                 containment_actions=[
                     "Isolate affected instances via security group modifications",
                     "Review and restrict SMB access via NACLs",
                     "Revoke compromised IAM credentials",
                     "Enable GuardDuty for behavioural detection",
-                    "Review file shares for unauthorised access"
-                ]
+                    "Review file shares for unauthorised access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Legitimate administrators may enumerate shares; whitelist known admin accounts",
@@ -221,9 +229,11 @@ resource "aws_cloudwatch_metric_alarm" "share_enum_alarm" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$15-25",
-            prerequisites=["CloudWatch Logs agent on Windows EC2 instances", "Process command-line logging enabled"]
+            prerequisites=[
+                "CloudWatch Logs agent on Windows EC2 instances",
+                "Process command-line logging enabled",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1135-aws-smb-traffic",
             name="SMB Traffic Pattern Detection",
@@ -232,12 +242,12 @@ resource "aws_cloudwatch_metric_alarm" "share_enum_alarm" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcaddr, dstaddr, dstport, protocol, packets, bytes
+                query="""fields @timestamp, srcaddr, dstaddr, dstport, protocol, packets, bytes
 | filter dstport in [139, 445] and protocol = 6
 | stats count(*) as smbConnections, count_distinct(dstaddr) as uniqueTargets by srcaddr, bin(5m)
 | filter uniqueTargets > 10
-| sort smbConnections desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort smbConnections desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect SMB enumeration via VPC Flow Logs analysis
 
 Parameters:
@@ -282,8 +292,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       AlarmDescription: Detects excessive SMB connections indicating share enumeration
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect SMB enumeration via VPC Flow Logs
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect SMB enumeration via VPC Flow Logs
 
 variable "flow_log_group" {
   description = "VPC Flow Logs CloudWatch Log Group"
@@ -331,7 +341,7 @@ resource "aws_cloudwatch_metric_alarm" "smb_enum_alarm" {
   evaluation_periods  = 1
   alarm_description   = "Detects excessive SMB connections indicating share enumeration"
   alarm_actions       = [aws_sns_topic.smb_enum_alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="SMB Share Enumeration Pattern Detected",
                 alert_description_template="Excessive SMB connections from {srcaddr} to multiple targets.",
@@ -341,15 +351,15 @@ resource "aws_cloudwatch_metric_alarm" "smb_enum_alarm" {
                     "Check for rapid connections to multiple hosts",
                     "Review security group rules allowing SMB",
                     "Correlate with CloudTrail for instance activity",
-                    "Check for data transfer volumes post-discovery"
+                    "Check for data transfer volumes post-discovery",
                 ],
                 containment_actions=[
                     "Block SMB traffic from source via security groups",
                     "Update NACLs to restrict SMB ports (445, 139)",
                     "Isolate affected instances",
                     "Review file server access logs",
-                    "Enable GuardDuty for automated threat detection"
-                ]
+                    "Enable GuardDuty for automated threat detection",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate file servers and backup systems; adjust threshold based on environment",
@@ -358,9 +368,8 @@ resource "aws_cloudwatch_metric_alarm" "smb_enum_alarm" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["VPC Flow Logs enabled", "Flow Logs sent to CloudWatch"]
+            prerequisites=["VPC Flow Logs enabled", "Flow Logs sent to CloudWatch"],
         ),
-
         DetectionStrategy(
             strategy_id="t1135-gcp-smb-detection",
             name="GCP SMB Enumeration Detection",
@@ -370,11 +379,11 @@ resource "aws_cloudwatch_metric_alarm" "smb_enum_alarm" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_subnetwork"
+                gcp_logging_query="""resource.type="gce_subnetwork"
 logName="projects/PROJECT_ID/logs/compute.googleapis.com%2Fvpc_flows"
 jsonPayload.connection.dest_port=(445 OR 139)
-jsonPayload.connection.protocol=6''',
-                gcp_terraform_template='''# GCP: Detect network share enumeration via VPC Flow Logs
+jsonPayload.connection.protocol=6""",
+                gcp_terraform_template="""# GCP: Detect network share enumeration via VPC Flow Logs
 
 variable "project_id" {
   description = "GCP Project ID"
@@ -439,7 +448,7 @@ resource "google_monitoring_alert_policy" "smb_enum_alert" {
   alert_strategy {
     auto_close = "86400s"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Network Share Enumeration Detected",
                 alert_description_template="Excessive SMB connections detected from source IP in GCP environment.",
@@ -449,15 +458,15 @@ resource "google_monitoring_alert_policy" "smb_enum_alert" {
                     "Check for connections to multiple targets",
                     "Review firewall rules allowing SMB",
                     "Check Cloud Audit Logs for VM activity",
-                    "Investigate subsequent file access or data transfer"
+                    "Investigate subsequent file access or data transfer",
                 ],
                 containment_actions=[
                     "Update firewall rules to block SMB from source",
                     "Isolate affected VM instance",
                     "Review Filestore and file share access logs",
                     "Enable Security Command Centre detections",
-                    "Review IAM permissions for affected principal"
-                ]
+                    "Review IAM permissions for affected principal",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate file servers; adjust threshold based on normal traffic patterns",
@@ -466,9 +475,8 @@ resource "google_monitoring_alert_policy" "smb_enum_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$15-25",
-            prerequisites=["VPC Flow Logs enabled", "Cloud Logging configured"]
+            prerequisites=["VPC Flow Logs enabled", "Cloud Logging configured"],
         ),
-
         DetectionStrategy(
             strategy_id="t1135-aws-guardduty",
             name="AWS GuardDuty Reconnaissance Detection",
@@ -477,11 +485,11 @@ resource "google_monitoring_alert_policy" "smb_enum_alert" {
             aws_service="guardduty",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, detail.type, detail.severity, detail.resource.instanceDetails.instanceId, detail.service.action.networkConnectionAction.remotePortDetails.port
+                query="""fields @timestamp, detail.type, detail.severity, detail.resource.instanceDetails.instanceId, detail.service.action.networkConnectionAction.remotePortDetails.port
 | filter detail.type like /Recon:EC2|UnauthorizedAccess:EC2/
 | filter detail.service.action.networkConnectionAction.remotePortDetails.port in [139, 445]
-| sort @timestamp desc''',
-                terraform_template='''# Leverage GuardDuty for reconnaissance detection
+| sort @timestamp desc""",
+                terraform_template="""# Leverage GuardDuty for reconnaissance detection
 
 variable "alert_email" {
   description = "Email for security alerts"
@@ -539,7 +547,7 @@ resource "aws_sns_topic_policy" "guardduty_alerts_policy" {
       Resource = aws_sns_topic.guardduty_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GuardDuty: Reconnaissance Activity Detected",
                 alert_description_template="GuardDuty detected reconnaissance behaviour from instance {instanceId}.",
@@ -549,15 +557,15 @@ resource "aws_sns_topic_policy" "guardduty_alerts_policy" {
                     "Review CloudTrail for instance actions",
                     "Analyse network connections and targets",
                     "Check for related GuardDuty findings",
-                    "Review IAM role and permissions"
+                    "Review IAM role and permissions",
                 ],
                 containment_actions=[
                     "Isolate affected instance",
                     "Revoke IAM role credentials",
                     "Enable network isolation via security groups",
                     "Investigate and remediate root cause",
-                    "Review and rotate credentials"
-                ]
+                    "Review and rotate credentials",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="GuardDuty findings are generally high-fidelity; review suppression rules for known behaviour",
@@ -566,11 +574,15 @@ resource "aws_sns_topic_policy" "guardduty_alerts_policy" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-15",
-            prerequisites=["GuardDuty enabled in region"]
-        )
+            prerequisites=["GuardDuty enabled in region"],
+        ),
     ],
-
-    recommended_order=["t1135-aws-guardduty", "t1135-aws-smb-traffic", "t1135-aws-net-share", "t1135-gcp-smb-detection"],
+    recommended_order=[
+        "t1135-aws-guardduty",
+        "t1135-aws-smb-traffic",
+        "t1135-aws-net-share",
+        "t1135-gcp-smb-detection",
+    ],
     total_effort_hours=6.5,
-    coverage_improvement="+25% improvement for Discovery tactic detection"
+    coverage_improvement="+25% improvement for Discovery tactic detection",
 )

@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Screen Capture",
     tactic_ids=["TA0009"],  # Collection
     mitre_url="https://attack.mitre.org/techniques/T1113/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries capture desktop screenshots to gather sensitive information during operations. "
@@ -37,32 +36,39 @@ TEMPLATE = RemediationTemplate(
             "Embedded in most remote access tools and post-exploitation frameworks",
             "Difficult to detect as screenshot APIs are legitimate system functions",
             "Effective against virtual desktop infrastructure and remote sessions",
-            "Reveals business processes, communications, and proprietary information"
+            "Reveals business processes, communications, and proprietary information",
         ],
         known_threat_actors=[
-            "APT28 (Fancy Bear)", "APT37", "APT39", "APT42",
-            "FIN7", "FIN8", "Gamaredon Group", "MuddyWater",
-            "OilRig", "Volt Typhoon"
+            "APT28 (Fancy Bear)",
+            "APT37",
+            "APT39",
+            "APT42",
+            "FIN7",
+            "FIN8",
+            "Gamaredon Group",
+            "MuddyWater",
+            "OilRig",
+            "Volt Typhoon",
         ],
         recent_campaigns=[
             Campaign(
                 name="Volt Typhoon Infrastructure Espionage",
                 year=2023,
                 description="Volt Typhoon obtained screenshots using gdi32.dll and gdiplus.dll libraries during long-term espionage operations targeting critical infrastructure",
-                reference_url="https://attack.mitre.org/groups/G1017/"
+                reference_url="https://attack.mitre.org/groups/G1017/",
             ),
             Campaign(
                 name="Gamaredon Automated Screenshot Capture",
                 year=2022,
                 description="Gamaredon Group malware captured screenshots of compromised computers every minute for continuous surveillance",
-                reference_url="https://attack.mitre.org/groups/G0047/"
+                reference_url="https://attack.mitre.org/groups/G0047/",
             ),
             Campaign(
                 name="APT28 Credential Harvesting",
                 year=2021,
                 description="APT28 deployed tools with screenshot capabilities to capture credentials and sensitive information from compromised systems",
-                reference_url="https://attack.mitre.org/groups/G0007/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0007/",
+            ),
         ],
         prevalence="common",
         trend="stable",
@@ -79,13 +85,12 @@ TEMPLATE = RemediationTemplate(
             "Theft of proprietary documents and intellectual property",
             "Disclosure of business communications and strategic information",
             "Compliance violations from unauthorised data capture",
-            "Privacy breaches from capturing personal information"
+            "Privacy breaches from capturing personal information",
         ],
         typical_attack_phase="collection",
         often_precedes=["T1567", "T1041", "T1048"],
-        often_follows=["T1078", "T1219", "T1021"]
+        often_follows=["T1078", "T1219", "T1021"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - WorkSpaces Session Activity Monitoring
         DetectionStrategy(
@@ -99,15 +104,15 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn as user, eventName,
+                query="""fields @timestamp, userIdentity.arn as user, eventName,
        requestParameters.workspaceId, requestParameters.directoryId,
        sourceIPAddress
 | filter eventSource = "workspaces.amazonaws.com"
 | filter eventName in ["ModifyWorkspaceProperties", "RebuildWorkspaces",
                        "CreateWorkspaces", "TerminateWorkspaces"]
 | stats count(*) as event_count by user, sourceIPAddress, bin(1h) as time_window
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Monitor AWS WorkSpaces for potential screen capture activity
 
 Parameters:
@@ -148,8 +153,8 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Monitor AWS WorkSpaces for screen capture indicators
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Monitor AWS WorkSpaces for screen capture indicators
 
 variable "cloudtrail_log_group" {
   type = string
@@ -194,7 +199,7 @@ resource "aws_cloudwatch_metric_alarm" "workspaces_activity" {
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Suspicious AWS WorkSpaces Activity Detected",
                 alert_description_template=(
@@ -207,7 +212,7 @@ resource "aws_cloudwatch_metric_alarm" "workspaces_activity" {
                     "Check for installation of remote access or screenshot tools",
                     "Examine file creation patterns in WorkSpaces directories",
                     "Verify source IP location and user authentication history",
-                    "Review CloudWatch logs for unusual process execution"
+                    "Review CloudWatch logs for unusual process execution",
                 ],
                 containment_actions=[
                     "Suspend suspicious WorkSpaces sessions immediately",
@@ -215,8 +220,8 @@ resource "aws_cloudwatch_metric_alarm" "workspaces_activity" {
                     "Enable enhanced monitoring for affected WorkSpaces",
                     "Implement application allowlisting in WorkSpaces",
                     "Review and update WorkSpaces security group rules",
-                    "Force password reset for affected users"
-                ]
+                    "Force password reset for affected users",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised IT operations and maintenance windows for WorkSpaces management",
@@ -225,9 +230,8 @@ resource "aws_cloudwatch_metric_alarm" "workspaces_activity" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled", "WorkSpaces in use"]
+            prerequisites=["CloudTrail enabled", "WorkSpaces in use"],
         ),
-
         # Strategy 2: AWS - EC2 Instance Screenshot API Monitoring
         DetectionStrategy(
             strategy_id="t1113-aws-ec2-screenshot",
@@ -243,11 +247,9 @@ resource "aws_cloudwatch_metric_alarm" "workspaces_activity" {
                 event_pattern={
                     "source": ["aws.ec2"],
                     "detail-type": ["AWS API Call via CloudTrail"],
-                    "detail": {
-                        "eventName": ["GetConsoleScreenshot"]
-                    }
+                    "detail": {"eventName": ["GetConsoleScreenshot"]},
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect EC2 console screenshot capture attempts
 
 Parameters:
@@ -287,8 +289,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect EC2 console screenshot API usage
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect EC2 console screenshot API usage
 
 variable "alert_email" {
   type = string
@@ -334,7 +336,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="EC2 Console Screenshot Captured",
                 alert_description_template=(
@@ -347,7 +349,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Check if this is authorised troubleshooting activity",
                     "Review recent authentication activity for the principal",
                     "Examine the instance for sensitive data exposure",
-                    "Check for repeated screenshot attempts"
+                    "Check for repeated screenshot attempts",
                 ],
                 containment_actions=[
                     "Verify legitimacy with the user or IT team",
@@ -355,8 +357,8 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Rotate credentials if compromise is suspected",
                     "Enable MFA for sensitive EC2 operations",
                     "Audit IAM policies for excessive EC2 permissions",
-                    "Monitor for additional suspicious API calls"
-                ]
+                    "Monitor for additional suspicious API calls",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised troubleshooting teams and monitoring tools",
@@ -365,9 +367,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         # Strategy 3: AWS - AppStream Session Monitoring
         DetectionStrategy(
             strategy_id="t1113-aws-appstream",
@@ -380,14 +381,14 @@ resource "aws_sns_topic_policy" "allow_events" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn as user, eventName,
+                query="""fields @timestamp, userIdentity.arn as user, eventName,
        requestParameters.stackName, requestParameters.fleetName,
        sourceIPAddress
 | filter eventSource = "appstream.amazonaws.com"
 | filter eventName in ["CreateStreamingURL", "CreateUser", "DescribeStacks"]
 | stats count(*) as event_count by user, sourceIPAddress, bin(1h)
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Monitor AppStream for potential screen capture activity
 
 Parameters:
@@ -428,8 +429,8 @@ Resources:
       Threshold: 10
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Monitor AppStream for screen capture indicators
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Monitor AppStream for screen capture indicators
 
 variable "cloudtrail_log_group" {
   type = string
@@ -474,7 +475,7 @@ resource "aws_cloudwatch_metric_alarm" "appstream_activity" {
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Suspicious AppStream Activity Detected",
                 alert_description_template=(
@@ -487,7 +488,7 @@ resource "aws_cloudwatch_metric_alarm" "appstream_activity" {
                     "Check for unauthorised user creation or access",
                     "Examine source IP reputation and geolocation",
                     "Verify if streaming URLs were created for unknown users",
-                    "Review application usage within AppStream sessions"
+                    "Review application usage within AppStream sessions",
                 ],
                 containment_actions=[
                     "Terminate suspicious AppStream sessions",
@@ -495,8 +496,8 @@ resource "aws_cloudwatch_metric_alarm" "appstream_activity" {
                     "Enable session recording for AppStream",
                     "Implement IP allowlisting for AppStream access",
                     "Review and update fleet security configurations",
-                    "Enable MFA for AppStream user access"
-                ]
+                    "Enable MFA for AppStream user access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal AppStream usage patterns and whitelist authorised administrators",
@@ -505,9 +506,8 @@ resource "aws_cloudwatch_metric_alarm" "appstream_activity" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled", "AppStream 2.0 in use"]
+            prerequisites=["CloudTrail enabled", "AppStream 2.0 in use"],
         ),
-
         # Strategy 4: GCP - Compute Instance Screenshot Detection
         DetectionStrategy(
             strategy_id="t1113-gcp-compute-screenshot",
@@ -523,7 +523,7 @@ resource "aws_cloudwatch_metric_alarm" "appstream_activity" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName="v1.compute.instances.getScreenshot"
 protoPayload.serviceName="compute.googleapis.com"''',
-                gcp_terraform_template='''# GCP: Detect Compute Engine screenshot API usage
+                gcp_terraform_template="""# GCP: Detect Compute Engine screenshot API usage
 
 variable "project_id" {
   type = string
@@ -576,7 +576,7 @@ resource "google_monitoring_alert_policy" "compute_screenshot" {
   documentation {
     content = "Compute Engine screenshot captured - potential screen capture activity (T1113)"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Compute Instance Screenshot Captured",
                 alert_description_template=(
@@ -589,7 +589,7 @@ resource "google_monitoring_alert_policy" "compute_screenshot" {
                     "Check if this is authorised troubleshooting activity",
                     "Review recent authentication events for the principal",
                     "Examine the instance for sensitive data exposure",
-                    "Check for repeated screenshot attempts across instances"
+                    "Check for repeated screenshot attempts across instances",
                 ],
                 containment_actions=[
                     "Verify legitimacy with the user or operations team",
@@ -597,8 +597,8 @@ resource "google_monitoring_alert_policy" "compute_screenshot" {
                     "Rotate service account keys if compromise is suspected",
                     "Enable organisation policy constraints to limit screenshot access",
                     "Audit IAM bindings for excessive Compute permissions",
-                    "Monitor for additional suspicious API activity"
-                ]
+                    "Monitor for additional suspicious API activity",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised support and troubleshooting teams",
@@ -607,9 +607,8 @@ resource "google_monitoring_alert_policy" "compute_screenshot" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled"],
         ),
-
         # Strategy 5: GCP - Virtual Desktop Activity Monitoring
         DetectionStrategy(
             strategy_id="t1113-gcp-virtual-desktop",
@@ -623,11 +622,11 @@ resource "google_monitoring_alert_policy" "compute_screenshot" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 (protoPayload.methodName=~".*RemoteDesktop.*" OR
  protoPayload.methodName=~".*VNC.*" OR
- protoPayload.methodName=~".*RDP.*")''',
-                gcp_terraform_template='''# GCP: Monitor virtual desktop sessions for screen capture indicators
+ protoPayload.methodName=~".*RDP.*")""",
+                gcp_terraform_template="""# GCP: Monitor virtual desktop sessions for screen capture indicators
 
 variable "project_id" {
   type = string
@@ -686,7 +685,7 @@ resource "google_monitoring_alert_policy" "remote_desktop" {
   documentation {
     content = "Suspicious remote desktop activity detected - potential screen capture threat (T1113)"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Suspicious Virtual Desktop Activity",
                 alert_description_template=(
@@ -699,7 +698,7 @@ resource "google_monitoring_alert_policy" "remote_desktop" {
                     "Check source IP locations and authentication methods",
                     "Examine instances for installation of screenshot tools",
                     "Review file access and creation patterns during sessions",
-                    "Correlate with other security events"
+                    "Correlate with other security events",
                 ],
                 containment_actions=[
                     "Terminate suspicious remote desktop sessions",
@@ -707,8 +706,8 @@ resource "google_monitoring_alert_policy" "remote_desktop" {
                     "Enable session recording and monitoring",
                     "Implement IP allowlisting for remote access",
                     "Review firewall rules for RDP/VNC ports",
-                    "Enable OS Login for centralised access control"
-                ]
+                    "Enable OS Login for centralised access control",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Establish baselines for normal remote desktop usage and whitelist authorised users",
@@ -717,17 +716,16 @@ resource "google_monitoring_alert_policy" "remote_desktop" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Cloud Audit Logs enabled", "VPC Flow Logs enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled", "VPC Flow Logs enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1113-aws-ec2-screenshot",
         "t1113-gcp-compute-screenshot",
         "t1113-aws-workspaces",
         "t1113-aws-appstream",
-        "t1113-gcp-virtual-desktop"
+        "t1113-gcp-virtual-desktop",
     ],
     total_effort_hours=4.0,
-    coverage_improvement="+15% improvement for Collection tactic"
+    coverage_improvement="+15% improvement for Collection tactic",
 )

@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Indicator Removal",
     tactic_ids=["TA0005"],
     mitre_url="https://attack.mitre.org/techniques/T1070/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries remove or modify artefacts to conceal evidence of compromise. "
@@ -37,30 +36,34 @@ TEMPLATE = RemediationTemplate(
             "Hides lateral movement and privilege escalation activities",
             "Can be executed with a single API call in many cases",
             "Often performed before exfiltration or destructive actions",
-            "May go unnoticed without proper monitoring controls"
+            "May go unnoticed without proper monitoring controls",
         ],
         known_threat_actors=[
-            "APT42", "APT5", "APT29", "Lazarus Group", "Mustang Panda"
+            "APT42",
+            "APT5",
+            "APT29",
+            "Lazarus Group",
+            "Mustang Panda",
         ],
         recent_campaigns=[
             Campaign(
                 name="Scattered Spider Cloud Log Tampering",
                 year=2024,
                 description="Adversaries deleted CloudTrail logs and modified audit configurations after initial compromise to hide their tracks",
-                reference_url="https://attack.mitre.org/groups/G1015/"
+                reference_url="https://attack.mitre.org/groups/G1015/",
             ),
             Campaign(
                 name="APT29 Log Deletion",
                 year=2024,
                 description="APT29 restored original files after payload execution and cleared system logs to evade detection",
-                reference_url="https://attack.mitre.org/groups/G0016/"
+                reference_url="https://attack.mitre.org/groups/G0016/",
             ),
             Campaign(
                 name="TeamTNT Container Log Evasion",
                 year=2023,
                 description="Cryptomining group cleared container logs and bash history on compromised Kubernetes clusters",
-                reference_url="https://attack.mitre.org/groups/G0139/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0139/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -78,13 +81,12 @@ TEMPLATE = RemediationTemplate(
             "Potential regulatory violations and fines",
             "Extended dwell time for attackers without detection",
             "Compromised forensic evidence for legal proceedings",
-            "Reduced ability to prevent future similar attacks"
+            "Reduced ability to prevent future similar attacks",
         ],
         typical_attack_phase="defence_evasion",
         often_precedes=["T1530", "T1537", "T1485", "T1486"],
-        often_follows=["T1078.004", "T1098", "T1136.003"]
+        often_follows=["T1078.004", "T1098", "T1136.003"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - CloudTrail Log File Deletion
         DetectionStrategy(
@@ -100,12 +102,10 @@ TEMPLATE = RemediationTemplate(
                     "detail-type": ["AWS API Call via CloudTrail"],
                     "detail": {
                         "eventName": ["DeleteObject", "DeleteObjects"],
-                        "requestParameters": {
-                            "bucketName": [{"exists": True}]
-                        }
-                    }
+                        "requestParameters": {"bucketName": [{"exists": True}]},
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect CloudTrail log file deletion attempts
 
 Parameters:
@@ -157,8 +157,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect CloudTrail log file deletion attempts
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect CloudTrail log file deletion attempts
 
 variable "alert_email" {
   type        = string
@@ -216,7 +216,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Resource  = aws_sns_topic.cloudtrail_log_deletion_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="CloudTrail Log Files Deleted",
                 alert_description_template="CloudTrail log files were deleted from bucket {bucketName}. This indicates potential evidence tampering.",
@@ -226,7 +226,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Review remaining CloudTrail events before deletion occurred",
                     "Check for concurrent suspicious activities",
                     "Verify if CloudTrail log file validation is enabled",
-                    "Examine other S3 access patterns from the same principal"
+                    "Examine other S3 access patterns from the same principal",
                 ],
                 containment_actions=[
                     "Enable S3 Object Lock on CloudTrail bucket to prevent deletion",
@@ -234,8 +234,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Enable MFA Delete on CloudTrail S3 bucket",
                     "Implement SCPs to prevent CloudTrail log deletion",
                     "Configure CloudTrail to send logs to a separate security account",
-                    "Enable S3 versioning to recover deleted objects"
-                ]
+                    "Enable S3 versioning to recover deleted objects",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Legitimate log rotation should use lifecycle policies, not manual deletion",
@@ -244,9 +244,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled", "CloudTrail logging to S3"]
+            prerequisites=["CloudTrail enabled", "CloudTrail logging to S3"],
         ),
-
         # Strategy 2: AWS - Instance Command History Clearing
         DetectionStrategy(
             strategy_id="t1070-aws-bash-history",
@@ -256,11 +255,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message, instanceId, commandLine
+                query="""fields @timestamp, @message, instanceId, commandLine
 | filter @message like /history -c|rm.*bash_history|unset HISTFILE|shred.*bash_history|cat.*null.*bash_history|truncate.*bash_history/
 | stats count() as occurrences by instanceId, commandLine, bin(5m)
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect bash history clearing on EC2 instances
 
 Parameters:
@@ -304,8 +303,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       AlarmActions:
-        - !Ref AlertTopic''',
-                terraform_template='''# Detect bash history clearing on EC2 instances
+        - !Ref AlertTopic""",
+                terraform_template="""# Detect bash history clearing on EC2 instances
 
 variable "cloudwatch_log_group" {
   type        = string
@@ -352,7 +351,7 @@ resource "aws_cloudwatch_metric_alarm" "history_clear" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   alarm_actions       = [aws_sns_topic.history_clear_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_description_template="Bash history clearing detected on instance {instance_id}. Command: {command_line}",
                 alert_title="Bash History Clearing Detected",
@@ -362,7 +361,7 @@ resource "aws_cloudwatch_metric_alarm" "history_clear" {
                     "Check CloudTrail for API calls from the instance role",
                     "Examine process execution timeline before history was cleared",
                     "Look for other anti-forensic activities on the instance",
-                    "Check for signs of lateral movement or data exfiltration"
+                    "Check for signs of lateral movement or data exfiltration",
                 ],
                 containment_actions=[
                     "Enable auditd logging with tamper-proof configuration",
@@ -370,8 +369,8 @@ resource "aws_cloudwatch_metric_alarm" "history_clear" {
                     "Isolate the instance from the network",
                     "Create forensic snapshot before further investigation",
                     "Review and rotate instance IAM role credentials",
-                    "Implement read-only audit logging with separate storage"
-                ]
+                    "Implement read-only audit logging with separate storage",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="History clearing is rarely legitimate; investigate all occurrences",
@@ -380,9 +379,11 @@ resource "aws_cloudwatch_metric_alarm" "history_clear" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["CloudWatch Agent installed", "Command execution logging enabled"]
+            prerequisites=[
+                "CloudWatch Agent installed",
+                "Command execution logging enabled",
+            ],
         ),
-
         # Strategy 3: AWS - Container Log Tampering
         DetectionStrategy(
             strategy_id="t1070-aws-container-logs",
@@ -395,11 +396,9 @@ resource "aws_cloudwatch_metric_alarm" "history_clear" {
                 event_pattern={
                     "source": ["aws.logs"],
                     "detail-type": ["AWS API Call via CloudTrail"],
-                    "detail": {
-                        "eventName": ["DeleteLogGroup", "DeleteLogStream"]
-                    }
+                    "detail": {"eventName": ["DeleteLogGroup", "DeleteLogStream"]},
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect container log deletion in CloudWatch
 
 Parameters:
@@ -444,8 +443,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect container log deletion in CloudWatch
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect container log deletion in CloudWatch
 
 variable "alert_email" {
   type = string
@@ -493,7 +492,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Resource  = aws_sns_topic.log_deletion_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Container Log Deletion Detected",
                 alert_description_template="CloudWatch log group or stream deleted: {logGroupName}. This may indicate evidence tampering.",
@@ -503,7 +502,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Check if logs were exported to S3 before deletion",
                     "Review CloudTrail for other suspicious activities by the same principal",
                     "Check for concurrent container or pod deletions",
-                    "Examine remaining logs for signs of compromise"
+                    "Examine remaining logs for signs of compromise",
                 ],
                 containment_actions=[
                     "Implement CloudWatch log retention policies to prevent deletion",
@@ -511,8 +510,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Revoke credentials of the principal that deleted logs",
                     "Implement SCPs to restrict log deletion permissions",
                     "Configure log groups with retention policies",
-                    "Use cross-account log aggregation for tamper-proof logging"
-                ]
+                    "Use cross-account log aggregation for tamper-proof logging",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised log cleanup automation with approval workflows",
@@ -521,9 +520,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         # Strategy 4: GCP - Audit Log Deletion Detection
         DetectionStrategy(
             strategy_id="t1070-gcp-log-deletion",
@@ -537,7 +535,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                 gcp_logging_query='''protoPayload.serviceName="logging.googleapis.com"
 protoPayload.methodName=~"DeleteSink|DeleteLog|UpdateSink"
 severity="NOTICE"''',
-                gcp_terraform_template='''# GCP: Detect audit log and log sink deletion
+                gcp_terraform_template="""# GCP: Detect audit log and log sink deletion
 
 variable "project_id" {
   type        = string
@@ -609,7 +607,7 @@ resource "google_monitoring_alert_policy" "log_deletion" {
     content   = "Audit log deletion or sink modification detected. This may indicate evidence tampering. Investigate immediately."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GCP: Audit Log Deletion Detected",
                 alert_description_template="GCP audit log or sink was deleted/modified. Method: {method_name}. Investigate for evidence tampering.",
@@ -619,7 +617,7 @@ resource "google_monitoring_alert_policy" "log_deletion" {
                     "Review remaining audit logs for the principal's recent activities",
                     "Verify if logs were exported to Cloud Storage before deletion",
                     "Check for concurrent suspicious API calls",
-                    "Review IAM permissions granted to the principal"
+                    "Review IAM permissions granted to the principal",
                 ],
                 containment_actions=[
                     "Restore deleted log sinks from configuration backups",
@@ -627,8 +625,8 @@ resource "google_monitoring_alert_policy" "log_deletion" {
                     "Revoke credentials of the principal that deleted logs",
                     "Implement organisation policies to prevent log deletion",
                     "Configure log retention with locked buckets in Cloud Storage",
-                    "Use VPC Service Controls to restrict Logging API access"
-                ]
+                    "Use VPC Service Controls to restrict Logging API access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist approved infrastructure-as-code deployments",
@@ -637,9 +635,8 @@ resource "google_monitoring_alert_policy" "log_deletion" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled"],
         ),
-
         # Strategy 5: GCP - Instance Command History Clearing
         DetectionStrategy(
             strategy_id="t1070-gcp-bash-history",
@@ -650,10 +647,10 @@ resource "google_monitoring_alert_policy" "log_deletion" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 (textPayload=~"history -c|rm.*bash_history|unset HISTFILE|shred.*bash_history|truncate.*bash_history"
-OR jsonPayload.message=~"history -c|rm.*bash_history")''',
-                gcp_terraform_template='''# GCP: Detect command history clearing on GCE instances
+OR jsonPayload.message=~"history -c|rm.*bash_history")""",
+                gcp_terraform_template="""# GCP: Detect command history clearing on GCE instances
 
 variable "project_id" {
   type        = string
@@ -725,7 +722,7 @@ resource "google_monitoring_alert_policy" "history_clearing" {
     content   = "Bash history clearing detected on GCE instance. This may indicate evidence tampering. Investigate immediately."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Bash History Clearing Detected",
                 alert_description_template="Bash history clearing detected on GCE instance {instance_id}. This indicates potential evidence tampering.",
@@ -735,7 +732,7 @@ resource "google_monitoring_alert_policy" "history_clearing" {
                     "Check the instance's service account recent API calls",
                     "Examine OS Login audit logs if enabled",
                     "Look for signs of lateral movement or privilege escalation",
-                    "Check VPC Flow Logs for suspicious network connections"
+                    "Check VPC Flow Logs for suspicious network connections",
                 ],
                 containment_actions=[
                     "Enable OS Login with 2FA for enhanced audit logging",
@@ -743,8 +740,8 @@ resource "google_monitoring_alert_policy" "history_clearing" {
                     "Stop the instance to preserve evidence",
                     "Create disk snapshot for forensic analysis",
                     "Revoke the instance's service account credentials",
-                    "Implement organisation policy requiring OS Login"
-                ]
+                    "Implement organisation policy requiring OS Login",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="History clearing is rarely legitimate; investigate all occurrences",
@@ -753,17 +750,19 @@ resource "google_monitoring_alert_policy" "history_clearing" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$15-25",
-            prerequisites=["Ops Agent installed on GCE instances", "Cloud Logging API enabled"]
-        )
+            prerequisites=[
+                "Ops Agent installed on GCE instances",
+                "Cloud Logging API enabled",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1070-aws-cloudtrail-deletion",
         "t1070-gcp-log-deletion",
         "t1070-aws-container-logs",
         "t1070-aws-bash-history",
-        "t1070-gcp-bash-history"
+        "t1070-gcp-bash-history",
     ],
     total_effort_hours=4.5,
-    coverage_improvement="+35% improvement for Defence Evasion tactic"
+    coverage_improvement="+35% improvement for Defence Evasion tactic",
 )

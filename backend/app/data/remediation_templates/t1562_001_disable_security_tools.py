@@ -20,7 +20,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Impair Defences: Disable or Modify Tools",
     tactic_ids=["TA0005"],
     mitre_url="https://attack.mitre.org/techniques/T1562/001/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries may disable or modify security tools to evade detection. "
@@ -33,28 +32,34 @@ TEMPLATE = RemediationTemplate(
             "Reduces forensic evidence available for investigation",
             "Creates blind spots in security monitoring",
             "Often automated as first step after gaining access",
-            "Can be done quickly with appropriate IAM permissions"
+            "Can be done quickly with appropriate IAM permissions",
         ],
-        known_threat_actors=["APT29", "APT41", "Lazarus Group", "TeamTNT", "Scattered Spider"],
+        known_threat_actors=[
+            "APT29",
+            "APT41",
+            "Lazarus Group",
+            "TeamTNT",
+            "Scattered Spider",
+        ],
         recent_campaigns=[
             Campaign(
                 name="SolarWinds/SUNBURST",
                 year=2020,
                 description="APT29 disabled security logging and monitoring to maintain stealth during the campaign",
-                reference_url="https://www.mandiant.com/resources/sunburst-additional-technical-details"
+                reference_url="https://www.mandiant.com/resources/sunburst-additional-technical-details",
             ),
             Campaign(
                 name="TeamTNT Cloud Attacks",
                 year=2021,
                 description="Cryptomining group routinely disabled CloudWatch and CloudTrail as first step",
-                reference_url="https://www.trendmicro.com/en_us/research/21/f/teamtnt-now-deploying-decrypted-vulnerable-kerberos-authentication.html"
+                reference_url="https://www.trendmicro.com/en_us/research/21/f/teamtnt-now-deploying-decrypted-vulnerable-kerberos-authentication.html",
             ),
             Campaign(
                 name="Scattered Spider",
                 year=2023,
                 description="Disabled endpoint detection tools and cloud security controls before ransomware deployment",
-                reference_url="https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-320a"
-            )
+                reference_url="https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-320a",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -69,13 +74,12 @@ TEMPLATE = RemediationTemplate(
             "Inability to detect ongoing attacks",
             "Compliance violations (many frameworks require continuous monitoring)",
             "Extended attacker dwell time",
-            "Difficulty in forensic investigation and incident response"
+            "Difficulty in forensic investigation and incident response",
         ],
         typical_attack_phase="defence_evasion",
         often_precedes=["T1530", "T1552", "T1537"],
-        often_follows=["T1078", "T1098"]
+        often_follows=["T1078", "T1098"],
     ),
-
     detection_strategies=[
         # Strategy 1: GuardDuty
         DetectionStrategy(
@@ -93,9 +97,9 @@ TEMPLATE = RemediationTemplate(
                     "Stealth:IAMUser/S3ServerAccessLoggingDisabled",
                     "Stealth:IAMUser/PasswordPolicyChange",
                     "Stealth:IAMUser/LoggingConfigurationModified",
-                    "DefenseEvasion:IAMUser/AnomalousBehavior"
+                    "DefenseEvasion:IAMUser/AnomalousBehavior",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty + email alerts for security tool tampering
 
 Parameters:
@@ -141,8 +145,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# GuardDuty + email alerts for security tool tampering
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# GuardDuty + email alerts for security tool tampering
 
 variable "alert_email" {
   type = string
@@ -194,7 +198,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GuardDuty: Security Tool Tampering Detected",
                 alert_description_template=(
@@ -206,15 +210,15 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Review all API calls from this principal in the last 24 hours",
                     "Check if the change was authorised and documented",
                     "Verify the current state of all security services",
-                    "Look for lateral movement or data access after the change"
+                    "Look for lateral movement or data access after the change",
                 ],
                 containment_actions=[
                     "Immediately re-enable any disabled security services",
                     "Disable or quarantine the IAM principal",
                     "Revoke all active sessions for the principal",
                     "Enable additional logging and monitoring",
-                    "Initiate incident response procedures"
-                ]
+                    "Initiate incident response procedures",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised maintenance windows and known admin accounts",
@@ -223,9 +227,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$4 per million events",
-            prerequisites=["AWS account with appropriate IAM permissions"]
+            prerequisites=["AWS account with appropriate IAM permissions"],
         ),
-
         # Strategy 2: CloudTrail Monitoring
         DetectionStrategy(
             strategy_id="t1562001-cloudtrail-disable",
@@ -246,11 +249,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                             "StopLogging",
                             "DeleteTrail",
                             "UpdateTrail",
-                            "PutEventSelectors"
-                        ]
-                    }
+                            "PutEventSelectors",
+                        ],
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: CloudTrail tampering detection
 
 Parameters:
@@ -279,7 +282,7 @@ Resources:
       State: ENABLED
       Targets:
         - Id: SNSAlert
-          Arn: !Ref SNSTopicArn''',
+          Arn: !Ref SNSTopicArn""",
                 alert_severity="critical",
                 alert_title="CloudTrail Tampering Detected",
                 alert_description_template=(
@@ -292,14 +295,14 @@ Resources:
                     "Check the current state of all CloudTrail trails",
                     "Review recent activity from the IAM principal",
                     "Look for other security service modifications",
-                    "Assess what visibility was lost and for how long"
+                    "Assess what visibility was lost and for how long",
                 ],
                 containment_actions=[
                     "Re-enable CloudTrail logging immediately",
                     "Lock down the IAM principal's access",
                     "Enable CloudTrail Insights for anomaly detection",
-                    "Consider enabling multi-region trail with organisation-level controls"
-                ]
+                    "Consider enabling multi-region trail with organisation-level controls",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Create exceptions for planned maintenance; use SCP to prevent trail deletion",
@@ -308,9 +311,8 @@ Resources:
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled", "EventBridge configured"]
+            prerequisites=["CloudTrail enabled", "EventBridge configured"],
         ),
-
         # Strategy 3: GuardDuty Disable Detection
         DetectionStrategy(
             strategy_id="t1562001-guardduty-disable",
@@ -332,11 +334,11 @@ Resources:
                             "DisassociateFromMasterAccount",
                             "DisassociateMembers",
                             "StopMonitoringMembers",
-                            "UpdateDetector"
-                        ]
-                    }
+                            "UpdateDetector",
+                        ],
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty tampering detection
 
 Parameters:
@@ -366,7 +368,7 @@ Resources:
       State: ENABLED
       Targets:
         - Id: SNSAlert
-          Arn: !Ref SNSTopicArn''',
+          Arn: !Ref SNSTopicArn""",
                 alert_severity="critical",
                 alert_title="GuardDuty Tampering Detected",
                 alert_description_template=(
@@ -379,14 +381,14 @@ Resources:
                     "Check the current state of GuardDuty across all regions",
                     "Review all API calls from this principal",
                     "Look for concurrent attempts to disable other security services",
-                    "Check for any GuardDuty findings before the disable attempt"
+                    "Check for any GuardDuty findings before the disable attempt",
                 ],
                 containment_actions=[
                     "Re-enable GuardDuty immediately",
                     "Lock the offending IAM principal",
                     "Review and strengthen SCPs to prevent GuardDuty deletion",
-                    "Enable delegated administrator for centralised control"
-                ]
+                    "Enable delegated administrator for centralised control",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Use SCPs to prevent GuardDuty deletion; whitelist specific admin roles",
@@ -395,9 +397,8 @@ Resources:
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$2-5",
-            prerequisites=["GuardDuty enabled", "EventBridge configured"]
+            prerequisites=["GuardDuty enabled", "EventBridge configured"],
         ),
-
         # Strategy 4: Config and Security Hub Monitoring
         DetectionStrategy(
             strategy_id="t1562001-config-securityhub",
@@ -409,14 +410,14 @@ Resources:
             detection_type=DetectionType.CLOUDWATCH_QUERY,
             aws_service="cloudwatch",
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn as user, eventSource, eventName, sourceIPAddress
+                query="""fields @timestamp, userIdentity.arn as user, eventSource, eventName, sourceIPAddress
 | filter eventSource in ["config.amazonaws.com", "securityhub.amazonaws.com"]
 | filter eventName in ["StopConfigurationRecorder", "DeleteConfigurationRecorder",
     "DeleteDeliveryChannel", "DisableSecurityHub", "DeleteMembers",
     "DisassociateFromMasterAccount", "UpdateSecurityHubConfiguration"]
 | sort @timestamp desc
-| limit 100''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| limit 100""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Config and Security Hub tampering detection
 
 Parameters:
@@ -449,7 +450,7 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       AlarmActions:
-        - !Ref SNSTopicArn''',
+        - !Ref SNSTopicArn""",
                 alert_severity="critical",
                 alert_title="Config/Security Hub Tampering Detected",
                 alert_description_template=(
@@ -461,14 +462,14 @@ Resources:
                     "Check the current state of Config and Security Hub",
                     "Review the IAM principal's recent activity",
                     "Look for patterns indicating credential compromise",
-                    "Assess compliance impact of any gap in monitoring"
+                    "Assess compliance impact of any gap in monitoring",
                 ],
                 containment_actions=[
                     "Re-enable Config and Security Hub immediately",
                     "Quarantine the IAM principal",
                     "Implement SCPs to prevent future disable attempts",
-                    "Review and update IAM policies to least privilege"
-                ]
+                    "Review and update IAM policies to least privilege",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist specific admin roles; use change management process",
@@ -477,16 +478,15 @@ Resources:
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["CloudTrail enabled", "CloudTrail logs in CloudWatch"]
-        )
+            prerequisites=["CloudTrail enabled", "CloudTrail logs in CloudWatch"],
+        ),
     ],
-
     recommended_order=[
         "t1562001-guardduty",
         "t1562001-cloudtrail-disable",
         "t1562001-guardduty-disable",
-        "t1562001-config-securityhub"
+        "t1562001-config-securityhub",
     ],
     total_effort_hours=4.5,
-    coverage_improvement="+40% improvement for Defence Evasion tactic"
+    coverage_improvement="+40% improvement for Defence Evasion tactic",
 )

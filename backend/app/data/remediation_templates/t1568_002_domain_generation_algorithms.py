@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Dynamic Resolution: Domain Generation Algorithms",
     tactic_ids=["TA0011"],
     mitre_url="https://attack.mitre.org/techniques/T1568/002/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries use Domain Generation Algorithms (DGAs) to dynamically generate "
@@ -39,7 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Provides fallback C2 when primary channels fail",
             "Makes takedown efforts impractical",
             "Complicates network forensics and tracking",
-            "Enables automated C2 rotation"
+            "Enables automated C2 rotation",
         ],
         known_threat_actors=["APT41", "TA551"],
         recent_campaigns=[
@@ -47,14 +46,14 @@ TEMPLATE = RemediationTemplate(
                 name="QakBot DGA Operations",
                 year=2024,
                 description="QakBot malware using time-based DGAs for monthly C2 server rotation",
-                reference_url="https://attack.mitre.org/software/S0650/"
+                reference_url="https://attack.mitre.org/software/S0650/",
             ),
             Campaign(
                 name="Conficker Worm DGA",
                 year=2024,
                 description="Conficker using current date as seed variable to generate unique domains",
-                reference_url="https://attack.mitre.org/software/S0608/"
-            )
+                reference_url="https://attack.mitre.org/software/S0608/",
+            ),
         ],
         prevalence="common",
         trend="stable",
@@ -69,13 +68,12 @@ TEMPLATE = RemediationTemplate(
             "Difficult to block or contain",
             "Enables data exfiltration",
             "Complicates incident response",
-            "Indicator of active malware infection"
+            "Indicator of active malware infection",
         ],
         typical_attack_phase="command_and_control",
         often_precedes=["T1041", "T1030", "T1048"],
-        often_follows=["T1203", "T1204", "T1566"]
+        often_follows=["T1203", "T1204", "T1566"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1568.002-aws-dns-entropy",
@@ -85,12 +83,12 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, query_name, srcaddr, query_type, rcode
+                query="""fields @timestamp, query_name, srcaddr, query_type, rcode
 | filter rcode = "NXDOMAIN"
 | stats count(*) as nxdomain_count by srcaddr, bin(5m)
 | filter nxdomain_count > 50
-| sort nxdomain_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort nxdomain_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect DGA activity via Route 53 DNS query logs
 
 Parameters:
@@ -135,8 +133,8 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 100
       ComparisonOperator: GreaterThanThreshold
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect DGA activity via Route 53 DNS query logs
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect DGA activity via Route 53 DNS query logs
 
 variable "route53_log_group" {
   type        = string
@@ -185,7 +183,7 @@ resource "aws_cloudwatch_metric_alarm" "dga_detection" {
   threshold           = 100
   comparison_operator = "GreaterThanThreshold"
   alarm_actions       = [aws_sns_topic.dga_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Possible DGA Activity Detected",
                 alert_description_template="High volume of NXDOMAIN responses from {srcaddr} indicates potential DGA activity.",
@@ -195,7 +193,7 @@ resource "aws_cloudwatch_metric_alarm" "dga_detection" {
                     "Check for known DGA patterns or families",
                     "Identify affected host and review running processes",
                     "Check for concurrent suspicious network activity",
-                    "Search for matching malware indicators"
+                    "Search for matching malware indicators",
                 ],
                 containment_actions=[
                     "Isolate affected host from network",
@@ -203,8 +201,8 @@ resource "aws_cloudwatch_metric_alarm" "dga_detection" {
                     "Terminate suspicious processes",
                     "Deploy DNS sinkhole for identified DGA pattern",
                     "Scan host for malware and remediate",
-                    "Review other hosts for similar activity"
-                ]
+                    "Review other hosts for similar activity",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Tune threshold based on environment size. Exclude legitimate DNS-intensive applications.",
@@ -213,9 +211,11 @@ resource "aws_cloudwatch_metric_alarm" "dga_detection" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$15-40",
-            prerequisites=["Route 53 Resolver Query Logging enabled", "VPC DNS query logging enabled"]
+            prerequisites=[
+                "Route 53 Resolver Query Logging enabled",
+                "VPC DNS query logging enabled",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1568.002-aws-vpc-dns",
             name="AWS VPC DNS Pattern Analysis",
@@ -224,12 +224,12 @@ resource "aws_cloudwatch_metric_alarm" "dga_detection" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, query_name, srcids.instance as instance_id, answers.Rdata as resolved_ip
+                query="""fields @timestamp, query_name, srcids.instance as instance_id, answers.Rdata as resolved_ip
 | filter query_name like /^[a-z]{15,}\./ or query_name like /^[0-9a-z]{20,}\./
 | stats count(*) as suspicious_queries by srcids.instance, bin(10m)
 | filter suspicious_queries > 20
-| sort suspicious_queries desc''',
-                terraform_template='''# Detect DGA patterns via VPC DNS logs
+| sort suspicious_queries desc""",
+                terraform_template="""# Detect DGA patterns via VPC DNS logs
 
 variable "vpc_dns_log_group" {
   type        = string
@@ -279,7 +279,7 @@ resource "aws_cloudwatch_metric_alarm" "dga_pattern_detection" {
   threshold           = 50
   comparison_operator = "GreaterThanThreshold"
   alarm_actions       = [aws_sns_topic.dga_pattern_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Suspicious Domain Pattern Detected",
                 alert_description_template="Instance {instance_id} querying domains with DGA-like characteristics.",
@@ -289,7 +289,7 @@ resource "aws_cloudwatch_metric_alarm" "dga_pattern_detection" {
                     "Check instance for running malware",
                     "Review instance CloudTrail/VPC Flow logs",
                     "Identify process making DNS queries",
-                    "Compare against known DGA families"
+                    "Compare against known DGA families",
                 ],
                 containment_actions=[
                     "Isolate affected EC2 instance",
@@ -297,8 +297,8 @@ resource "aws_cloudwatch_metric_alarm" "dga_pattern_detection" {
                     "Take memory dump for forensic analysis",
                     "Terminate instance if confirmed compromised",
                     "Deploy network IDS signatures",
-                    "Review security group rules"
-                ]
+                    "Review security group rules",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude known domains with long random-looking subdomains (CDNs, analytics). Adjust pattern matching.",
@@ -307,9 +307,8 @@ resource "aws_cloudwatch_metric_alarm" "dga_pattern_detection" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$20-50",
-            prerequisites=["VPC DNS query logging enabled", "Enhanced VPC Flow Logs"]
+            prerequisites=["VPC DNS query logging enabled", "Enhanced VPC Flow Logs"],
         ),
-
         DetectionStrategy(
             strategy_id="t1568.002-gcp-dns-entropy",
             name="GCP Cloud DNS High Entropy Query Detection",
@@ -319,10 +318,10 @@ resource "aws_cloudwatch_metric_alarm" "dga_pattern_detection" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="dns_query"
+                gcp_logging_query="""resource.type="dns_query"
 protoPayload.responseCode="NXDOMAIN"
-severity>=WARNING''',
-                gcp_terraform_template='''# GCP: Detect DGA activity via Cloud DNS logs
+severity>=WARNING""",
+                gcp_terraform_template="""# GCP: Detect DGA activity via Cloud DNS logs
 
 variable "project_id" {
   type        = string
@@ -384,7 +383,7 @@ resource "google_monitoring_alert_policy" "dga_detection" {
   alert_strategy {
     auto_close = "86400s"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Possible DGA Activity Detected",
                 alert_description_template="High NXDOMAIN rate detected in Cloud DNS queries indicating potential DGA activity.",
@@ -394,7 +393,7 @@ resource "google_monitoring_alert_policy" "dga_detection" {
                     "Analyse domain names for entropy characteristics",
                     "Check VPC Flow Logs for related activity",
                     "Review VM instance processes and connections",
-                    "Check for known malware signatures"
+                    "Check for known malware signatures",
                 ],
                 containment_actions=[
                     "Isolate affected GCE instances",
@@ -402,8 +401,8 @@ resource "google_monitoring_alert_policy" "dga_detection" {
                     "Deploy firewall rules to restrict outbound DNS",
                     "Terminate compromised instances",
                     "Deploy DNS sinkhole configuration",
-                    "Review and update security policies"
-                ]
+                    "Review and update security policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Adjust threshold based on environment DNS traffic. Exclude known high-query applications.",
@@ -412,9 +411,8 @@ resource "google_monitoring_alert_policy" "dga_detection" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$20-45",
-            prerequisites=["Cloud DNS logging enabled", "Cloud Logging API enabled"]
+            prerequisites=["Cloud DNS logging enabled", "Cloud Logging API enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1568.002-gcp-vpc-dns",
             name="GCP VPC DNS Query Pattern Analysis",
@@ -427,7 +425,7 @@ resource "google_monitoring_alert_policy" "dga_detection" {
                 gcp_logging_query='''resource.type="gce_instance"
 logName=~"logs/dns"
 jsonPayload.queryName=~"^[a-z0-9]{15,}\\."''',
-                gcp_terraform_template='''# GCP: Detect DGA via VPC DNS pattern analysis
+                gcp_terraform_template="""# GCP: Detect DGA via VPC DNS pattern analysis
 
 variable "project_id" {
   type        = string
@@ -494,7 +492,7 @@ resource "google_monitoring_alert_policy" "dga_pattern_alert" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Suspicious DNS Query Patterns",
                 alert_description_template="GCE instance exhibiting DNS query patterns consistent with DGA activity.",
@@ -504,7 +502,7 @@ resource "google_monitoring_alert_policy" "dga_pattern_alert" {
                     "Check instance metadata and processes",
                     "Review VPC Flow Logs for C2 connections",
                     "Compare against threat intelligence feeds",
-                    "Check for lateral movement indicators"
+                    "Check for lateral movement indicators",
                 ],
                 containment_actions=[
                     "Isolate GCE instance from network",
@@ -512,8 +510,8 @@ resource "google_monitoring_alert_policy" "dga_pattern_alert" {
                     "Implement Cloud DNS response policies",
                     "Take disk snapshot for forensics",
                     "Terminate and rebuild instance if confirmed",
-                    "Update security monitoring rules"
-                ]
+                    "Update security monitoring rules",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Refine regex patterns to exclude legitimate services. Whitelist known CDN/cloud service domains.",
@@ -522,16 +520,15 @@ resource "google_monitoring_alert_policy" "dga_pattern_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$25-50",
-            prerequisites=["VPC Flow Logs enabled", "Cloud DNS logging enabled"]
-        )
+            prerequisites=["VPC Flow Logs enabled", "Cloud DNS logging enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1568.002-aws-dns-entropy",
         "t1568.002-gcp-dns-entropy",
         "t1568.002-aws-vpc-dns",
-        "t1568.002-gcp-vpc-dns"
+        "t1568.002-gcp-vpc-dns",
     ],
     total_effort_hours=8.0,
-    coverage_improvement="+15% improvement for Command and Control tactic"
+    coverage_improvement="+15% improvement for Command and Control tactic",
 )

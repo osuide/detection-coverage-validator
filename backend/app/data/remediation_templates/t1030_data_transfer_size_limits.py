@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Data Transfer Size Limits",
     tactic_ids=["TA0010"],  # Exfiltration
     mitre_url="https://attack.mitre.org/techniques/T1030/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries exfiltrate data in fixed-size chunks instead of whole files or "
@@ -39,28 +38,34 @@ TEMPLATE = RemediationTemplate(
             "Blends with legitimate application traffic patterns",
             "Avoids triggering network monitoring thresholds",
             "Can maintain persistence over extended periods",
-            "Reduces likelihood of connection timeouts"
+            "Reduces likelihood of connection timeouts",
         ],
-        known_threat_actors=["APT28", "APT41", "LuminousMoth", "Play", "Threat Group-3390"],
+        known_threat_actors=[
+            "APT28",
+            "APT41",
+            "LuminousMoth",
+            "Play",
+            "Threat Group-3390",
+        ],
         recent_campaigns=[
             Campaign(
                 name="APT28 Archive Chunking",
                 year=2024,
                 description="APT28 split RAR archives into chunks smaller than 1MB to evade detection during exfiltration",
-                reference_url="https://attack.mitre.org/groups/G0007/"
+                reference_url="https://attack.mitre.org/groups/G0007/",
             ),
             Campaign(
                 name="LuminousMoth File Fragmentation",
                 year=2023,
                 description="LuminousMoth fragmented stolen files into chunks to bypass 5MB file transfer limits",
-                reference_url="https://attack.mitre.org/groups/G0133/"
+                reference_url="https://attack.mitre.org/groups/G0133/",
             ),
             Campaign(
                 name="Play Ransomware Data Theft",
                 year=2023,
                 description="Play ransomware group split victim files into uniform chunks before exfiltration",
-                reference_url="https://attack.mitre.org/software/S1062/"
-            )
+                reference_url="https://attack.mitre.org/software/S1062/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -78,13 +83,12 @@ TEMPLATE = RemediationTemplate(
             "Intellectual property and trade secret theft",
             "Customer data breaches and regulatory violations",
             "Delayed incident detection and response",
-            "Increased cloud egress costs from slow exfiltration"
+            "Increased cloud egress costs from slow exfiltration",
         ],
         typical_attack_phase="exfiltration",
         often_precedes=[],
-        often_follows=["T1560", "T1074", "T1020", "T1530", "T1552.001"]
+        often_follows=["T1560", "T1074", "T1020", "T1530", "T1552.001"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - Uniform S3 Upload Pattern Detection
         DetectionStrategy(
@@ -95,7 +99,7 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn, requestParameters.bucketName, requestParameters.key,
+                query="""fields @timestamp, userIdentity.arn, requestParameters.bucketName, requestParameters.key,
        requestParameters.contentLength as size
 | filter eventName = "PutObject"
 | stats count(*) as upload_count,
@@ -105,8 +109,8 @@ TEMPLATE = RemediationTemplate(
         max(size) as max_size
   by userIdentity.arn, requestParameters.bucketName, bin(15m)
 | filter upload_count > 10 and size_stddev < (avg_size * 0.1)
-| sort upload_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort upload_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect chunked S3 uploads indicating data exfiltration
 
 Parameters:
@@ -153,8 +157,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       AlarmActions: [!Ref AlertTopic]
-      TreatMissingData: notBreaching''',
-                terraform_template='''# Detect chunked S3 uploads
+      TreatMissingData: notBreaching""",
+                terraform_template="""# Detect chunked S3 uploads
 
 variable "alert_email" {
   type        = string
@@ -205,7 +209,7 @@ resource "aws_cloudwatch_metric_alarm" "chunked_upload" {
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.chunked_upload_alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="S3 Chunked Upload Pattern Detected",
                 alert_description_template="Uniform S3 upload pattern detected from {userIdentity.arn} to {bucketName}: {upload_count} uploads with avg size {avg_size} bytes.",
@@ -216,7 +220,7 @@ resource "aws_cloudwatch_metric_alarm" "chunked_upload" {
                     "Examine destination bucket ownership and location",
                     "Check uploaded file names for sequential patterns",
                     "Review CloudTrail for concurrent suspicious activities",
-                    "Verify if uploads correlate with legitimate workflows"
+                    "Verify if uploads correlate with legitimate workflows",
                 ],
                 containment_actions=[
                     "Revoke credentials for suspicious identities",
@@ -224,8 +228,8 @@ resource "aws_cloudwatch_metric_alarm" "chunked_upload" {
                     "Enable S3 Object Lock on critical buckets",
                     "Implement bucket policies to restrict uploads",
                     "Review and restrict s3:PutObject permissions",
-                    "Enable MFA Delete on sensitive buckets"
-                ]
+                    "Enable MFA Delete on sensitive buckets",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known backup systems, log aggregators, and data pipelines that perform chunked uploads. Adjust size ranges and count thresholds.",
@@ -234,9 +238,8 @@ resource "aws_cloudwatch_metric_alarm" "chunked_upload" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled with S3 data events"]
+            prerequisites=["CloudTrail enabled with S3 data events"],
         ),
-
         # Strategy 2: AWS - Network Transfer Pattern Detection
         DetectionStrategy(
             strategy_id="t1030-aws-network-chunks",
@@ -246,7 +249,7 @@ resource "aws_cloudwatch_metric_alarm" "chunked_upload" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcAddr, dstAddr, dstPort, bytes, packets
+                query="""fields @timestamp, srcAddr, dstAddr, dstPort, bytes, packets
 | filter action = "ACCEPT" and bytes > 1000
 | stats count(*) as transfer_count,
         avg(bytes) as avg_bytes,
@@ -254,8 +257,8 @@ resource "aws_cloudwatch_metric_alarm" "chunked_upload" {
         sum(bytes) as total_bytes
   by srcAddr, dstAddr, dstPort, bin(10m)
 | filter transfer_count > 20 and bytes_stddev < (avg_bytes * 0.15)
-| sort transfer_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort transfer_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect uniform network transfer patterns via VPC Flow Logs
 
 Parameters:
@@ -296,8 +299,8 @@ Resources:
       Threshold: 30
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect uniform network transfer patterns
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect uniform network transfer patterns
 
 variable "alert_email" {
   type = string
@@ -342,7 +345,7 @@ resource "aws_cloudwatch_metric_alarm" "uniform_transfer" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.network_chunk_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Network Chunked Transfer Pattern Detected",
                 alert_description_template="Uniform network transfer pattern from {srcAddr} to {dstAddr}:{dstPort}: {transfer_count} transfers with avg {avg_bytes} bytes.",
@@ -352,15 +355,15 @@ resource "aws_cloudwatch_metric_alarm" "uniform_transfer" {
                     "Review packet size distribution",
                     "Check for legitimate applications using chunked transfers",
                     "Examine destination IP reputation",
-                    "Correlate with CloudTrail for API activity"
+                    "Correlate with CloudTrail for API activity",
                 ],
                 containment_actions=[
                     "Isolate source instance from network",
                     "Block traffic to suspicious destinations",
                     "Review and restrict security group rules",
                     "Enable VPC Flow Logs if not already enabled",
-                    "Implement network ACLs to limit egress"
-                ]
+                    "Implement network ACLs to limit egress",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known streaming services, backup systems, and applications with consistent packet sizes. Tune byte range thresholds.",
@@ -369,9 +372,8 @@ resource "aws_cloudwatch_metric_alarm" "uniform_transfer" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-20",
-            prerequisites=["VPC Flow Logs enabled"]
+            prerequisites=["VPC Flow Logs enabled"],
         ),
-
         # Strategy 3: AWS - Lambda Scheduled Chunked Transfers
         DetectionStrategy(
             strategy_id="t1030-aws-lambda-scheduled",
@@ -381,13 +383,13 @@ resource "aws_cloudwatch_metric_alarm" "uniform_transfer" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, requestParameters.functionName, requestParameters.rule
+                query="""fields @timestamp, requestParameters.functionName, requestParameters.rule
 | filter eventSource = "lambda.amazonaws.com"
 | filter eventName in ["Invoke"]
 | stats count(*) as invocation_count by requestParameters.functionName, bin(15m)
 | filter invocation_count > 5
-| sort invocation_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort invocation_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect Lambda functions with regular execution patterns
 
 Parameters:
@@ -428,8 +430,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect Lambda scheduled chunked transfers
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect Lambda scheduled chunked transfers
 
 variable "alert_email" {
   type = string
@@ -478,7 +480,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.lambda_schedule_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Lambda Scheduled Execution Pattern Detected",
                 alert_description_template="Lambda function {functionName} executing at regular intervals: {invocation_count} invocations.",
@@ -488,15 +490,15 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Examine EventBridge rules triggering the function",
                     "Review function IAM role permissions",
                     "Verify network connections from function",
-                    "Check for legitimate scheduled workflows"
+                    "Check for legitimate scheduled workflows",
                 ],
                 containment_actions=[
                     "Disable suspicious EventBridge rules",
                     "Delete or quarantine suspicious Lambda functions",
                     "Review and restrict lambda:InvokeFunction permissions",
                     "Enable function code signing requirements",
-                    "Implement VPC endpoints for AWS service access"
-                ]
+                    "Implement VPC endpoints for AWS service access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist known scheduled functions for backups, monitoring, and automation. Focus on functions with external network access.",
@@ -505,9 +507,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         # Strategy 4: GCP - Cloud Storage Uniform Upload Detection
         DetectionStrategy(
             strategy_id="t1030-gcp-gcs-chunked",
@@ -518,11 +519,11 @@ resource "aws_sns_topic_policy" "allow_events" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gcs_bucket"
+                gcp_logging_query="""resource.type="gcs_bucket"
 protoPayload.methodName="storage.objects.create"
 protoPayload.request.size >= 1000000
-protoPayload.request.size <= 10000000''',
-                gcp_terraform_template='''# GCP: Detect chunked Cloud Storage uploads
+protoPayload.request.size <= 10000000""",
+                gcp_terraform_template="""# GCP: Detect chunked Cloud Storage uploads
 
 variable "project_id" {
   type        = string
@@ -597,7 +598,7 @@ resource "google_monitoring_alert_policy" "chunked_upload" {
   documentation {
     content = "Uniform GCS upload pattern detected. Review for potential chunked data exfiltration."
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Chunked Cloud Storage Upload Pattern Detected",
                 alert_description_template="Uniform upload pattern to bucket {bucket_name}: frequent uploads with consistent sizes.",
@@ -608,7 +609,7 @@ resource "google_monitoring_alert_policy" "chunked_upload" {
                     "Check bucket location and storage class",
                     "Examine object naming patterns for sequences",
                     "Review Cloud Audit Logs for concurrent activities",
-                    "Verify against known data pipelines"
+                    "Verify against known data pipelines",
                 ],
                 containment_actions=[
                     "Revoke service account keys if compromised",
@@ -616,8 +617,8 @@ resource "google_monitoring_alert_policy" "chunked_upload" {
                     "Enable uniform bucket-level access",
                     "Review and restrict storage.objects.create permissions",
                     "Enable Object Versioning and retention policies",
-                    "Configure VPC Service Controls to limit data egress"
-                ]
+                    "Configure VPC Service Controls to limit data egress",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known backup systems, log collectors, and ETL pipelines. Adjust size range and frequency thresholds.",
@@ -626,9 +627,8 @@ resource "google_monitoring_alert_policy" "chunked_upload" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Cloud Audit Logs enabled for Cloud Storage"]
+            prerequisites=["Cloud Audit Logs enabled for Cloud Storage"],
         ),
-
         # Strategy 5: GCP - Network Flow Pattern Detection
         DetectionStrategy(
             strategy_id="t1030-gcp-network-chunks",
@@ -639,11 +639,11 @@ resource "google_monitoring_alert_policy" "chunked_upload" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_subnetwork"
+                gcp_logging_query="""resource.type="gce_subnetwork"
 log_name="compute.googleapis.com/vpc_flows"
 jsonPayload.bytes_sent > 10000
-jsonPayload.bytes_sent < 1000000''',
-                gcp_terraform_template='''# GCP: Detect uniform network transfer patterns
+jsonPayload.bytes_sent < 1000000""",
+                gcp_terraform_template="""# GCP: Detect uniform network transfer patterns
 
 variable "project_id" {
   type = string
@@ -716,7 +716,7 @@ resource "google_monitoring_alert_policy" "network_chunks" {
   documentation {
     content = "Uniform network transfer pattern detected via VPC Flow Logs. Investigate for chunked data exfiltration."
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Uniform Network Transfer Pattern Detected",
                 alert_description_template="Uniform network transfers from {source_ip}: frequent connections with consistent byte sizes.",
@@ -726,7 +726,7 @@ resource "google_monitoring_alert_policy" "network_chunks" {
                     "Review byte size distribution for uniformity",
                     "Check destination IP addresses and locations",
                     "Examine firewall rules and network routes",
-                    "Correlate with application logs"
+                    "Correlate with application logs",
                 ],
                 containment_actions=[
                     "Isolate source instance via firewall rules",
@@ -734,8 +734,8 @@ resource "google_monitoring_alert_policy" "network_chunks" {
                     "Review and restrict egress firewall rules",
                     "Enable Private Google Access where appropriate",
                     "Implement VPC Service Controls",
-                    "Enable Packet Mirroring for deep inspection"
-                ]
+                    "Enable Packet Mirroring for deep inspection",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known streaming applications, backup systems, and services with consistent packet sizes. Tune byte ranges.",
@@ -744,9 +744,8 @@ resource "google_monitoring_alert_policy" "network_chunks" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$15-25",
-            prerequisites=["VPC Flow Logs enabled on subnets"]
+            prerequisites=["VPC Flow Logs enabled on subnets"],
         ),
-
         # Strategy 6: GCP - Cloud Function Scheduled Execution
         DetectionStrategy(
             strategy_id="t1030-gcp-function-scheduled",
@@ -760,7 +759,7 @@ resource "google_monitoring_alert_policy" "network_chunks" {
                 gcp_logging_query='''resource.type="cloud_function"
 protoPayload.methodName="google.cloud.functions.v1.CloudFunctionsService.CallFunction"
 severity="INFO"''',
-                gcp_terraform_template='''# GCP: Detect Cloud Function scheduled executions
+                gcp_terraform_template="""# GCP: Detect Cloud Function scheduled executions
 
 variable "project_id" {
   type = string
@@ -830,7 +829,7 @@ resource "google_monitoring_alert_policy" "function_frequency" {
   documentation {
     content = "Cloud Function executing frequently at regular intervals. Review for scheduled chunked transfers."
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Cloud Function Frequent Execution Pattern",
                 alert_description_template="Cloud Function {function_name} executing at regular intervals.",
@@ -840,7 +839,7 @@ resource "google_monitoring_alert_policy" "function_frequency" {
                     "Examine Cloud Scheduler jobs or Pub/Sub triggers",
                     "Review function service account permissions",
                     "Check for outbound network connections",
-                    "Verify against legitimate scheduled workflows"
+                    "Verify against legitimate scheduled workflows",
                 ],
                 containment_actions=[
                     "Pause or delete Cloud Scheduler jobs",
@@ -848,8 +847,8 @@ resource "google_monitoring_alert_policy" "function_frequency" {
                     "Review and restrict cloudfunctions.functions.call permissions",
                     "Implement VPC Service Controls",
                     "Review function service account IAM bindings",
-                    "Enable function source code repository tracking"
-                ]
+                    "Enable function source code repository tracking",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist known scheduled functions for monitoring, backups, and automation. Focus on functions with external network access.",
@@ -858,18 +857,17 @@ resource "google_monitoring_alert_policy" "function_frequency" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Cloud Audit Logs enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1030-aws-s3-chunked",
         "t1030-gcp-gcs-chunked",
         "t1030-aws-network-chunks",
         "t1030-gcp-network-chunks",
         "t1030-aws-lambda-scheduled",
-        "t1030-gcp-function-scheduled"
+        "t1030-gcp-function-scheduled",
     ],
     total_effort_hours=6.0,
-    coverage_improvement="+18% improvement for Exfiltration tactic detection"
+    coverage_improvement="+18% improvement for Exfiltration tactic detection",
 )

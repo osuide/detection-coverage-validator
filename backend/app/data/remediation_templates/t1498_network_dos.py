@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Network Denial of Service",
     tactic_ids=["TA0040"],
     mitre_url="https://attack.mitre.org/techniques/T1498/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries conduct network denial of service attacks to degrade or block "
@@ -37,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Political/hacktivist motivations",
             "Extortion demands",
             "Distraction during other attacks",
-            "Easy to execute with available tools"
+            "Easy to execute with available tools",
         ],
         known_threat_actors=["APT28", "Lucifer", "NKAbuse"],
         recent_campaigns=[
@@ -45,14 +44,14 @@ TEMPLATE = RemediationTemplate(
                 name="APT28 WADA DDoS Attack",
                 year=2016,
                 description="APT28 conducted DDoS attack against World Anti-Doping Agency",
-                reference_url="https://attack.mitre.org/groups/G0007/"
+                reference_url="https://attack.mitre.org/groups/G0007/",
             ),
             Campaign(
                 name="Lucifer Malware",
                 year=2020,
                 description="Malware capable of TCP, UDP, and HTTP denial of service attacks",
-                reference_url="https://attack.mitre.org/software/S0532/"
-            )
+                reference_url="https://attack.mitre.org/software/S0532/",
+            ),
         ],
         prevalence="common",
         trend="stable",
@@ -67,13 +66,12 @@ TEMPLATE = RemediationTemplate(
             "Revenue loss",
             "Customer dissatisfaction",
             "Reputational damage",
-            "Potential SLA violations"
+            "Potential SLA violations",
         ],
         typical_attack_phase="impact",
         often_precedes=[],
-        often_follows=["T1498.001", "T1498.002"]
+        often_follows=["T1498.001", "T1498.002"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1498-aws-shield",
@@ -83,11 +81,11 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message
+                query="""fields @timestamp, @message
 | filter eventName = "DDoSDetected"
 | stats count(*) as attacks by bin(5m)
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect network DDoS attacks via AWS Shield
 
 Parameters:
@@ -144,8 +142,8 @@ Resources:
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect network DDoS attacks via AWS Shield
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect network DDoS attacks via AWS Shield
 
 variable "alert_email" {
   type        = string
@@ -202,7 +200,7 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Network DDoS Attack Detected",
                 alert_description_template="DDoS attack detected against AWS resources.",
@@ -211,15 +209,15 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
                     "Check affected resources and services",
                     "Review traffic patterns and volume",
                     "Check Shield Advanced metrics for attack details",
-                    "Determine if attack is ongoing or mitigated"
+                    "Determine if attack is ongoing or mitigated",
                 ],
                 containment_actions=[
                     "Enable AWS Shield Advanced if not already active",
                     "Contact AWS Shield Response Team (SRT) if Shield Advanced enabled",
                     "Implement rate limiting at application level",
                     "Add WAF rules to block malicious patterns",
-                    "Scale resources if needed to handle legitimate traffic"
-                ]
+                    "Scale resources if needed to handle legitimate traffic",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Shield detection is highly accurate with low false positives",
@@ -228,9 +226,8 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$10-20 (Shield Standard free, Advanced $3000/month)",
-            prerequisites=["AWS Shield Standard (automatic) or Shield Advanced"]
+            prerequisites=["AWS Shield Standard (automatic) or Shield Advanced"],
         ),
-
         DetectionStrategy(
             strategy_id="t1498-aws-flowlogs",
             name="VPC Flow Logs Anomaly Detection",
@@ -239,12 +236,12 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcaddr, dstaddr, bytes, packets
+                query="""fields @timestamp, srcaddr, dstaddr, bytes, packets
 | filter action = "ACCEPT"
 | stats sum(bytes) as total_bytes, sum(packets) as total_packets by srcaddr, bin(5m)
 | filter total_bytes > 100000000 or total_packets > 100000
-| sort total_bytes desc''',
-                terraform_template='''# Detect network floods via VPC Flow Logs
+| sort total_bytes desc""",
+                terraform_template="""# Detect network floods via VPC Flow Logs
 
 variable "vpc_flow_log_group" {
   type        = string
@@ -301,7 +298,7 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Network Flood Detected",
                 alert_description_template="Abnormally high network traffic from {srcaddr}.",
@@ -310,15 +307,15 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
                     "Check if traffic is legitimate (e.g., backups, migrations)",
                     "Review affected destination resources",
                     "Analyse traffic protocol and ports",
-                    "Check for multiple sources (DDoS vs single-source)"
+                    "Check for multiple sources (DDoS vs single-source)",
                 ],
                 containment_actions=[
                     "Block attacking IPs via NACLs or security groups",
                     "Enable rate limiting",
                     "Contact ISP for upstream filtering",
                     "Scale resources temporarily if needed",
-                    "Implement geo-blocking if applicable"
-                ]
+                    "Implement geo-blocking if applicable",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate high-volume sources (backups, CDN)",
@@ -327,9 +324,8 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-20 depending on flow log volume",
-            prerequisites=["VPC Flow Logs enabled and sent to CloudWatch"]
+            prerequisites=["VPC Flow Logs enabled and sent to CloudWatch"],
         ),
-
         DetectionStrategy(
             strategy_id="t1498-gcp-armor-ddos",
             name="GCP Cloud Armor DDoS Detection",
@@ -342,7 +338,7 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
                 gcp_logging_query='''resource.type="http_load_balancer"
 jsonPayload.enforcedSecurityPolicy.name=~"ddos|adaptive"
 jsonPayload.enforcedSecurityPolicy.outcome="DENY"''',
-                gcp_terraform_template='''# GCP: Detect DDoS attacks via Cloud Armor
+                gcp_terraform_template="""# GCP: Detect DDoS attacks via Cloud Armor
 
 variable "project_id" {
   type        = string
@@ -412,7 +408,7 @@ resource "google_monitoring_alert_policy" "ddos_attack" {
   documentation {
     content = "DDoS attack detected by Cloud Armor adaptive protection. Review blocked traffic and ensure legitimate users can access services."
   }
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GCP: DDoS Attack Detected",
                 alert_description_template="Cloud Armor detected and is mitigating a DDoS attack.",
@@ -421,15 +417,15 @@ resource "google_monitoring_alert_policy" "ddos_attack" {
                     "Check blocked traffic patterns and source IPs",
                     "Verify legitimate users are not affected",
                     "Analyse attack vector (volumetric, protocol, application)",
-                    "Check if attack is ongoing or mitigated"
+                    "Check if attack is ongoing or mitigated",
                 ],
                 containment_actions=[
                     "Enable adaptive protection if not already active",
                     "Configure rate limiting policies",
                     "Add custom Cloud Armor rules for observed patterns",
                     "Implement geo-blocking if attack sources are regional",
-                    "Scale backend services if needed"
-                ]
+                    "Scale backend services if needed",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Cloud Armor adaptive protection has low false positives",
@@ -438,9 +434,8 @@ resource "google_monitoring_alert_policy" "ddos_attack" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$20-50 depending on traffic volume",
-            prerequisites=["Cloud Armor with adaptive protection enabled"]
+            prerequisites=["Cloud Armor with adaptive protection enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1498-gcp-vpc-flow",
             name="GCP VPC Flow Logs Anomaly Detection",
@@ -450,10 +445,10 @@ resource "google_monitoring_alert_policy" "ddos_attack" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_subnetwork"
+                gcp_logging_query="""resource.type="gce_subnetwork"
 logName=~"vpc_flows"
-jsonPayload.bytes_sent > 100000000''',
-                gcp_terraform_template='''# GCP: Detect network floods via VPC Flow Logs
+jsonPayload.bytes_sent > 100000000""",
+                gcp_terraform_template="""# GCP: Detect network floods via VPC Flow Logs
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -513,7 +508,7 @@ resource "google_monitoring_alert_policy" "network_flood" {
   documentation {
     content = "Network flood detected via VPC Flow Logs. Investigate source IPs and traffic patterns."
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Network Flood Detected",
                 alert_description_template="Abnormally high network traffic detected in VPC.",
@@ -522,15 +517,15 @@ resource "google_monitoring_alert_policy" "network_flood" {
                     "Check if traffic is legitimate",
                     "Review traffic protocol and patterns",
                     "Analyse geographical distribution of sources",
-                    "Check for business impact"
+                    "Check for business impact",
                 ],
                 containment_actions=[
                     "Block attacking IPs via firewall rules",
                     "Enable Cloud Armor for load-balanced services",
                     "Implement rate limiting",
                     "Contact upstream provider for filtering",
-                    "Scale resources if needed for legitimate traffic"
-                ]
+                    "Scale resources if needed for legitimate traffic",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude legitimate high-volume operations",
@@ -539,16 +534,15 @@ resource "google_monitoring_alert_policy" "network_flood" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-30 depending on flow log volume",
-            prerequisites=["VPC Flow Logs enabled"]
-        )
+            prerequisites=["VPC Flow Logs enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1498-aws-shield",
         "t1498-gcp-armor-ddos",
         "t1498-aws-flowlogs",
-        "t1498-gcp-vpc-flow"
+        "t1498-gcp-vpc-flow",
     ],
     total_effort_hours=5.0,
-    coverage_improvement="+30% improvement for Impact tactic"
+    coverage_improvement="+30% improvement for Impact tactic",
 )

@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Data Destruction: Cloud Storage Object Deletion",
     tactic_ids=["TA0040"],
     mitre_url="https://attack.mitre.org/techniques/T1485/001/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries exploit cloud storage lifecycle policies to systematically destroy "
@@ -37,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Difficult to reverse once executed",
             "Can target logging buckets for anti-forensics",
             "Leverages legitimate cloud features",
-            "May evade traditional deletion monitoring"
+            "May evade traditional deletion monitoring",
         ],
         known_threat_actors=[],
         recent_campaigns=[],
@@ -54,13 +53,12 @@ TEMPLATE = RemediationTemplate(
             "Business continuity disruption",
             "Forensic evidence destruction",
             "Regulatory compliance violations",
-            "Recovery costs and downtime"
+            "Recovery costs and downtime",
         ],
         typical_attack_phase="impact",
         often_precedes=[],
-        often_follows=["T1098", "T1078.004"]
+        often_follows=["T1098", "T1078.004"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1485-001-aws-s3-lifecycle",
@@ -70,11 +68,11 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, requestParameters.bucketName, requestParameters.LifecycleConfiguration
+                query="""fields @timestamp, userIdentity.principalId, requestParameters.bucketName, requestParameters.LifecycleConfiguration
 | filter eventName = "PutBucketLifecycle" or eventName = "PutBucketLifecycleConfiguration"
 | filter requestParameters.LifecycleConfiguration.Rule.*.Expiration.Days < 7 or requestParameters.LifecycleConfiguration.Rule.*.Expiration.Date exists
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect S3 lifecycle policy modifications for rapid deletion
 
 Parameters:
@@ -121,8 +119,8 @@ Resources:
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect S3 lifecycle policy modifications for rapid deletion
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect S3 lifecycle policy modifications for rapid deletion
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -172,7 +170,7 @@ resource "aws_cloudwatch_metric_alarm" "lifecycle_policy" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
   alarm_actions       = [aws_sns_topic.lifecycle_alerts.arn]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="S3 Lifecycle Policy Modification Detected",
                 alert_description_template="S3 lifecycle policy modified on bucket {bucketName} by {principalId}.",
@@ -182,7 +180,7 @@ resource "aws_cloudwatch_metric_alarm" "lifecycle_policy" {
                     "Check if the policy sets rapid expiration (< 7 days)",
                     "Verify if logging or backup buckets were targeted",
                     "Review recent CloudTrail activity for the principal",
-                    "Check for any objects already deleted"
+                    "Check for any objects already deleted",
                 ],
                 containment_actions=[
                     "Immediately revert or delete malicious lifecycle policies",
@@ -190,8 +188,8 @@ resource "aws_cloudwatch_metric_alarm" "lifecycle_policy" {
                     "Enable S3 Object Lock on critical buckets",
                     "Restore deleted objects from backups if available",
                     "Implement SCPs to restrict PutBucketLifecycle permissions",
-                    "Enable MFA Delete on critical buckets"
-                ]
+                    "Enable MFA Delete on critical buckets",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Lifecycle policy changes are infrequent and should be reviewed",
@@ -200,9 +198,8 @@ resource "aws_cloudwatch_metric_alarm" "lifecycle_policy" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-60 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail with CloudWatch Logs integration"]
+            prerequisites=["CloudTrail with CloudWatch Logs integration"],
         ),
-
         DetectionStrategy(
             strategy_id="t1485-001-aws-s3-mass-deletion",
             name="AWS S3 Mass Object Deletion Detection",
@@ -211,12 +208,12 @@ resource "aws_cloudwatch_metric_alarm" "lifecycle_policy" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, requestParameters.bucketName, requestParameters.key
+                query="""fields @timestamp, userIdentity.principalId, requestParameters.bucketName, requestParameters.key
 | filter eventName = "DeleteObject" or eventName = "DeleteObjects"
 | stats count(*) as deletions by userIdentity.principalId, requestParameters.bucketName, bin(5m)
 | filter deletions > 100
-| sort deletions desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort deletions desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect mass S3 object deletions
 
 Parameters:
@@ -263,8 +260,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect mass S3 object deletions
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect mass S3 object deletions
 
 variable "s3_data_events_log_group" {
   type        = string
@@ -314,7 +311,7 @@ resource "aws_cloudwatch_metric_alarm" "mass_deletion" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
   alarm_actions       = [aws_sns_topic.deletion_alerts.arn]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Mass S3 Object Deletion Detected",
                 alert_description_template="High volume of S3 deletions by {principalId} on bucket {bucketName}.",
@@ -324,7 +321,7 @@ resource "aws_cloudwatch_metric_alarm" "mass_deletion" {
                     "Check if deletions are authorised activity",
                     "Verify credential compromise indicators",
                     "Review CloudTrail for related suspicious activity",
-                    "Check S3 versioning status and deleted versions"
+                    "Check S3 versioning status and deleted versions",
                 ],
                 containment_actions=[
                     "Suspend or revoke compromised credentials",
@@ -332,8 +329,8 @@ resource "aws_cloudwatch_metric_alarm" "mass_deletion" {
                     "Restore objects from versions or backups",
                     "Apply bucket policies to restrict deletions",
                     "Enable MFA Delete on critical buckets",
-                    "Review and tighten IAM permissions"
-                ]
+                    "Review and tighten IAM permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Adjust threshold based on normal deletion patterns; whitelist automated cleanup jobs",
@@ -342,9 +339,11 @@ resource "aws_cloudwatch_metric_alarm" "mass_deletion" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$20-50",
-            prerequisites=["CloudTrail with S3 data events enabled", "CloudWatch Logs integration"]
+            prerequisites=[
+                "CloudTrail with S3 data events enabled",
+                "CloudWatch Logs integration",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1485-001-gcp-storage-lifecycle",
             name="GCP Storage Lifecycle Policy Modification Detection",
@@ -357,7 +356,7 @@ resource "aws_cloudwatch_metric_alarm" "mass_deletion" {
                 gcp_logging_query='''resource.type="gcs_bucket"
 protoPayload.methodName="storage.buckets.update"
 protoPayload.request.lifecycle.rule.action.type="Delete"''',
-                gcp_terraform_template='''# GCP: Detect Cloud Storage lifecycle policy modifications
+                gcp_terraform_template="""# GCP: Detect Cloud Storage lifecycle policy modifications
 
 variable "project_id" {
   type        = string
@@ -412,7 +411,7 @@ resource "google_monitoring_alert_policy" "lifecycle_policy" {
     auto_close = "604800s"
   }
   project = var.project_id
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GCP: Storage Lifecycle Policy Modification",
                 alert_description_template="Cloud Storage lifecycle policy modified on bucket.",
@@ -422,7 +421,7 @@ resource "google_monitoring_alert_policy" "lifecycle_policy" {
                     "Check if the policy sets rapid deletion conditions",
                     "Verify if logging or backup buckets were targeted",
                     "Review recent Cloud Audit Logs for the principal",
-                    "Check for any objects already deleted"
+                    "Check for any objects already deleted",
                 ],
                 containment_actions=[
                     "Revert or remove malicious lifecycle policies",
@@ -430,8 +429,8 @@ resource "google_monitoring_alert_policy" "lifecycle_policy" {
                     "Enable Object Retention on critical buckets",
                     "Restore deleted objects from backups",
                     "Review and tighten IAM permissions",
-                    "Implement Organisation Policy constraints"
-                ]
+                    "Implement Organisation Policy constraints",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Lifecycle policy changes are infrequent and should be reviewed",
@@ -440,9 +439,8 @@ resource "google_monitoring_alert_policy" "lifecycle_policy" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-60 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1485-001-gcp-storage-mass-deletion",
             name="GCP Storage Mass Object Deletion Detection",
@@ -455,7 +453,7 @@ resource "google_monitoring_alert_policy" "lifecycle_policy" {
                 gcp_logging_query='''resource.type="gcs_bucket"
 protoPayload.methodName="storage.objects.delete"
 severity="NOTICE"''',
-                gcp_terraform_template='''# GCP: Detect mass Cloud Storage object deletions
+                gcp_terraform_template="""# GCP: Detect mass Cloud Storage object deletions
 
 variable "project_id" {
   type        = string
@@ -514,7 +512,7 @@ resource "google_monitoring_alert_policy" "mass_deletion" {
     auto_close = "604800s"
   }
   project = var.project_id
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GCP: Mass Storage Object Deletion",
                 alert_description_template="High volume of Cloud Storage object deletions detected.",
@@ -524,7 +522,7 @@ resource "google_monitoring_alert_policy" "mass_deletion" {
                     "Check if deletions are authorised activity",
                     "Verify credential compromise indicators",
                     "Review Cloud Audit Logs for related activity",
-                    "Check object versioning status"
+                    "Check object versioning status",
                 ],
                 containment_actions=[
                     "Suspend or revoke compromised credentials",
@@ -532,8 +530,8 @@ resource "google_monitoring_alert_policy" "mass_deletion" {
                     "Restore objects from versions or backups",
                     "Apply IAM policies to restrict deletions",
                     "Review and tighten service account permissions",
-                    "Implement Organisation Policy constraints"
-                ]
+                    "Implement Organisation Policy constraints",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Adjust threshold based on normal deletion patterns; whitelist automated cleanup jobs",
@@ -542,11 +540,15 @@ resource "google_monitoring_alert_policy" "mass_deletion" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$15-30",
-            prerequisites=["Cloud Audit Logs with Data Access logs enabled"]
-        )
+            prerequisites=["Cloud Audit Logs with Data Access logs enabled"],
+        ),
     ],
-
-    recommended_order=["t1485-001-aws-s3-lifecycle", "t1485-001-gcp-storage-lifecycle", "t1485-001-aws-s3-mass-deletion", "t1485-001-gcp-storage-mass-deletion"],
+    recommended_order=[
+        "t1485-001-aws-s3-lifecycle",
+        "t1485-001-gcp-storage-lifecycle",
+        "t1485-001-aws-s3-mass-deletion",
+        "t1485-001-gcp-storage-mass-deletion",
+    ],
     total_effort_hours=5.0,
-    coverage_improvement="+25% improvement for Impact tactic"
+    coverage_improvement="+25% improvement for Impact tactic",
 )

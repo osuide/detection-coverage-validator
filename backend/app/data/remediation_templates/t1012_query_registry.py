@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Query Registry",
     tactic_ids=["TA0007"],
     mitre_url="https://attack.mitre.org/techniques/T1012/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries query the Windows Registry to gather critical system information including "
@@ -40,7 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Enumerates Terminal Server Client Registry keys for lateral movement",
             "Checks proxy configurations and network settings",
             "Identifies vulnerable software versions for exploitation",
-            "Obtains MachineGuid and unique system identifiers"
+            "Obtains MachineGuid and unique system identifiers",
         ],
         known_threat_actors=[
             "APT32",
@@ -51,27 +50,27 @@ TEMPLATE = RemediationTemplate(
             "Turla",
             "OilRig",
             "Kimsuky",
-            "MuddyWater"
+            "MuddyWater",
         ],
         recent_campaigns=[
             Campaign(
                 name="SUNBURST Supply Chain Attack",
                 year=2020,
                 description="SUNBURST malware queried MachineGuid from HKLM\\SOFTWARE\\Microsoft\\Cryptography to uniquely identify compromised hosts",
-                reference_url="https://attack.mitre.org/software/S0559/"
+                reference_url="https://attack.mitre.org/software/S0559/",
             ),
             Campaign(
                 name="Volt Typhoon Infrastructure Reconnaissance",
                 year=2023,
                 description="Searched Registry for PuTTY sessions to identify network infrastructure and pivot points for lateral movement",
-                reference_url="https://attack.mitre.org/groups/G1017/"
+                reference_url="https://attack.mitre.org/groups/G1017/",
             ),
             Campaign(
                 name="Lazarus Cryptocurrency Theft",
                 year=2023,
                 description="Queried Registry keys to detect cryptocurrency wallets and remote access tools on compromised Windows cloud instances",
-                reference_url="https://attack.mitre.org/groups/G0032/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0032/",
+            ),
         ],
         prevalence="very_common",
         trend="stable",
@@ -87,13 +86,12 @@ TEMPLATE = RemediationTemplate(
             "Enables targeted evasion of security tools",
             "Facilitates lateral movement planning",
             "Identifies high-value targets like cryptocurrency wallets",
-            "Precedes ransomware deployment in many campaigns"
+            "Precedes ransomware deployment in many campaigns",
         ],
         typical_attack_phase="discovery",
         often_precedes=["T1562.001", "T1021.001", "T1552.001", "T1486"],
-        often_follows=["T1078.004", "T1133", "T1190"]
+        often_follows=["T1078.004", "T1133", "T1190"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - Windows Registry Query Detection via CloudWatch
         DetectionStrategy(
@@ -107,13 +105,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, Computer, ProcessName, CommandLine, RegistryKey
+                query="""fields @timestamp, Computer, ProcessName, CommandLine, RegistryKey
 | filter EventID = 4656 or EventID = 4663  # Registry access events
 | filter ObjectName like /SOFTWARE\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Uninstall|Terminal Server Client|PuTTY|SecurityCenter|Windows Defender/
 | stats count() as query_count by Computer, ProcessName, bin(10m)
 | filter query_count > 20
-| sort query_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort query_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect suspicious Windows Registry queries on EC2 instances
 
 Parameters:
@@ -157,8 +155,8 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 30
       ComparisonOperator: GreaterThanThreshold
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect suspicious Windows Registry queries on EC2
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect suspicious Windows Registry queries on EC2
 
 variable "windows_log_group" {
   type        = string
@@ -206,7 +204,7 @@ resource "aws_cloudwatch_metric_alarm" "registry_queries" {
   threshold           = 30
   comparison_operator = "GreaterThanThreshold"
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Suspicious Windows Registry Queries Detected",
                 alert_description_template=(
@@ -221,7 +219,7 @@ resource "aws_cloudwatch_metric_alarm" "registry_queries" {
                     "Examine command-line arguments and parent process",
                     "Look for subsequent suspicious activity (credential access, lateral movement)",
                     "Review recent logons to the affected instance",
-                    "Check for known reconnaissance tools (reg.exe, PowerShell, wmic)"
+                    "Check for known reconnaissance tools (reg.exe, PowerShell, wmic)",
                 ],
                 containment_actions=[
                     "Isolate the instance if compromise is confirmed",
@@ -229,8 +227,8 @@ resource "aws_cloudwatch_metric_alarm" "registry_queries" {
                     "Review and restrict Registry permissions if needed",
                     "Rotate credentials for accounts that logged into the instance",
                     "Check for persistence mechanisms (Run keys, services)",
-                    "Enable Windows Defender if disabled"
-                ]
+                    "Enable Windows Defender if disabled",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised inventory tools, patch management systems, and monitoring agents",
@@ -239,9 +237,11 @@ resource "aws_cloudwatch_metric_alarm" "registry_queries" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["CloudWatch Agent with Windows Event Log forwarding", "Windows Event Auditing enabled"]
+            prerequisites=[
+                "CloudWatch Agent with Windows Event Log forwarding",
+                "Windows Event Auditing enabled",
+            ],
         ),
-
         # Strategy 2: AWS - Command-Line Registry Tool Detection
         DetectionStrategy(
             strategy_id="t1012-aws-reg-command",
@@ -254,13 +254,13 @@ resource "aws_cloudwatch_metric_alarm" "registry_queries" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, Computer, ProcessName, CommandLine
+                query="""fields @timestamp, Computer, ProcessName, CommandLine
 | filter ProcessName like /reg.exe|powershell.exe|wmic.exe/
 | filter CommandLine like /reg query|Get-ItemProperty|HKLM|HKCU|wmic.*path.*Registry/
 | stats count() as command_count by Computer, ProcessName, CommandLine, bin(10m)
 | filter command_count > 5
-| sort command_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort command_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect Registry query tool execution on Windows EC2
 
 Parameters:
@@ -304,8 +304,8 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 10
       ComparisonOperator: GreaterThanThreshold
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect Registry query tool execution on Windows EC2
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect Registry query tool execution on Windows EC2
 
 variable "process_log_group" {
   type        = string
@@ -353,7 +353,7 @@ resource "aws_cloudwatch_metric_alarm" "reg_tool" {
   threshold           = 10
   comparison_operator = "GreaterThanThreshold"
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Registry Query Tool Execution Detected",
                 alert_description_template=(
@@ -367,7 +367,7 @@ resource "aws_cloudwatch_metric_alarm" "reg_tool" {
                     "Review which Registry keys were targeted",
                     "Look for patterns indicating automated enumeration",
                     "Check for recently created scripts or executables",
-                    "Review CloudTrail for any suspicious API calls from the instance role"
+                    "Review CloudTrail for any suspicious API calls from the instance role",
                 ],
                 containment_actions=[
                     "Investigate the process and parent process tree",
@@ -375,8 +375,8 @@ resource "aws_cloudwatch_metric_alarm" "reg_tool" {
                     "Review and restrict administrative access to instances",
                     "Enable PowerShell script block logging",
                     "Implement application allowlisting if not already enabled",
-                    "Check for lateral movement indicators"
-                ]
+                    "Check for lateral movement indicators",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist system administrators, deployment scripts, and configuration management tools",
@@ -385,9 +385,11 @@ resource "aws_cloudwatch_metric_alarm" "reg_tool" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Process execution logging via Sysmon or CloudWatch Agent", "Command-line auditing enabled"]
+            prerequisites=[
+                "Process execution logging via Sysmon or CloudWatch Agent",
+                "Command-line auditing enabled",
+            ],
         ),
-
         # Strategy 3: AWS - GuardDuty Runtime Monitoring
         DetectionStrategy(
             strategy_id="t1012-aws-guardduty",
@@ -403,9 +405,9 @@ resource "aws_cloudwatch_metric_alarm" "reg_tool" {
                 guardduty_finding_types=[
                     "Execution:Runtime/NewBinaryExecuted",
                     "Discovery:Runtime/RegistryDiscovery",
-                    "Execution:Runtime/SuspiciousCommandExecuted"
+                    "Execution:Runtime/SuspiciousCommandExecuted",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty Runtime Monitoring for Registry reconnaissance
 
 Parameters:
@@ -455,8 +457,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# GuardDuty Runtime Monitoring for Registry reconnaissance
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# GuardDuty Runtime Monitoring for Registry reconnaissance
 
 variable "alert_email" {
   type = string
@@ -514,7 +516,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GuardDuty: Registry Reconnaissance Detected",
                 alert_description_template=(
@@ -527,7 +529,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Identify the user context of the suspicious process",
                     "Review CloudTrail for API calls from the instance role",
                     "Check for indicators of compromise (IOCs) on the instance",
-                    "Look for lateral movement or privilege escalation attempts"
+                    "Look for lateral movement or privilege escalation attempts",
                 ],
                 containment_actions=[
                     "Isolate the instance using security group modifications",
@@ -535,8 +537,8 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Terminate suspicious processes via SSM Session Manager",
                     "Rotate instance IAM role credentials",
                     "Review and patch vulnerable software identified in Registry",
-                    "Consider instance termination if fully compromised"
-                ]
+                    "Consider instance termination if fully compromised",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="GuardDuty ML models reduce false positives; whitelist known administrative activity",
@@ -545,9 +547,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",
             estimated_monthly_cost="$4.60 per instance per month",
-            prerequisites=["GuardDuty enabled", "SSM Agent on EC2 instances"]
+            prerequisites=["GuardDuty enabled", "SSM Agent on EC2 instances"],
         ),
-
         # Strategy 4: GCP - Windows VM Registry Query Detection
         DetectionStrategy(
             strategy_id="t1012-gcp-registry-queries",
@@ -561,14 +562,14 @@ resource "aws_sns_topic_policy" "allow_events" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 protoPayload.eventName=~"4656|4663"
 (textPayload=~"SOFTWARE\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Uninstall"
 OR textPayload=~"Terminal Server Client"
 OR textPayload=~"PuTTY\\\\Sessions"
 OR textPayload=~"Windows Defender"
-OR textPayload=~"SecurityCenter")''',
-                gcp_terraform_template='''# GCP: Detect Registry queries on Windows VMs
+OR textPayload=~"SecurityCenter")""",
+                gcp_terraform_template="""# GCP: Detect Registry queries on Windows VMs
 
 variable "project_id" {
   type = string
@@ -640,7 +641,7 @@ resource "google_monitoring_alert_policy" "registry_queries" {
     content   = "Suspicious Registry enumeration detected. Investigate for reconnaissance activity."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Registry Reconnaissance Detected",
                 alert_description_template=(
@@ -653,7 +654,7 @@ resource "google_monitoring_alert_policy" "registry_queries" {
                     "Check for reconnaissance tools or malware",
                     "Review instance service account permissions",
                     "Look for follow-on exploitation or lateral movement",
-                    "Check VPC Flow Logs for suspicious network activity"
+                    "Check VPC Flow Logs for suspicious network activity",
                 ],
                 containment_actions=[
                     "Stop the instance to prevent further compromise",
@@ -661,8 +662,8 @@ resource "google_monitoring_alert_policy" "registry_queries" {
                     "Review and rotate service account credentials",
                     "Update firewall rules to isolate the instance",
                     "Scan for malware and persistence mechanisms",
-                    "Review IAM policies for overly permissive access"
-                ]
+                    "Review IAM policies for overly permissive access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude authorised system administrators and inventory management tools",
@@ -671,16 +672,19 @@ resource "google_monitoring_alert_policy" "registry_queries" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="$15-25",
-            prerequisites=["Cloud Logging API enabled", "Windows Event Log forwarding configured", "Ops Agent installed"]
-        )
+            prerequisites=[
+                "Cloud Logging API enabled",
+                "Windows Event Log forwarding configured",
+                "Ops Agent installed",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1012-aws-guardduty",
         "t1012-aws-reg-command",
         "t1012-aws-registry-queries",
-        "t1012-gcp-registry-queries"
+        "t1012-gcp-registry-queries",
     ],
     total_effort_hours=5.5,
-    coverage_improvement="+10% improvement for Discovery tactic"
+    coverage_improvement="+10% improvement for Discovery tactic",
 )

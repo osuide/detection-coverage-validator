@@ -24,7 +24,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Stage Capabilities",
     tactic_ids=["TA0042"],
     mitre_url="https://attack.mitre.org/techniques/T1608/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries upload, install, or configure capabilities on infrastructure "
@@ -40,7 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Leverages cloud platforms for hosting",
             "Enables rapid deployment when targeting",
             "Reduces detection during initial staging",
-            "Facilitates distributed attack infrastructure"
+            "Facilitates distributed attack infrastructure",
         ],
         known_threat_actors=["Mustang Panda"],
         recent_campaigns=[
@@ -48,7 +47,7 @@ TEMPLATE = RemediationTemplate(
                 name="Mustang Panda Tracking Pixel Validation",
                 year=2024,
                 description="Used controlled servers to validate tracking pixels targeting phishing victims",
-                reference_url="https://attack.mitre.org/groups/G0129/"
+                reference_url="https://attack.mitre.org/groups/G0129/",
             )
         ],
         prevalence="common",
@@ -65,13 +64,12 @@ TEMPLATE = RemediationTemplate(
             "Indicates active targeting preparation",
             "May abuse organisational cloud resources",
             "Enables sophisticated attack campaigns",
-            "Facilitates multi-stage attacks"
+            "Facilitates multi-stage attacks",
         ],
         typical_attack_phase="resource_development",
         often_precedes=["T1566", "T1189", "T1190", "T1204"],
-        often_follows=["T1583", "T1584", "T1585", "T1586", "T1587"]
+        often_follows=["T1583", "T1584", "T1585", "T1586", "T1587"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1608-aws-s3-staging",
@@ -81,13 +79,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, requestParameters.bucketName, userIdentity.principalId, eventName
+                query="""fields @timestamp, requestParameters.bucketName, userIdentity.principalId, eventName
 | filter eventName like /PutBucketAcl|PutBucketPolicy|PutBucketPublicAccessBlock/
 | filter requestParameters.accessControlList.grant.grantee.uri = "http://acs.amazonaws.com/groups/global/AllUsers"
    or requestParameters.publicAccessBlockConfiguration.blockPublicAcls = false
 | stats count(*) as public_changes by requestParameters.bucketName, userIdentity.principalId
-| sort public_changes desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort public_changes desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect S3 buckets made public for staging capabilities
 
 Parameters:
@@ -127,8 +125,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect S3 buckets made public for staging
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect S3 buckets made public for staging
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -165,7 +163,7 @@ resource "aws_cloudwatch_metric_alarm" "s3_staging" {
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="S3 Bucket Made Public",
                 alert_description_template="S3 bucket {bucketName} made public by {principalId}.",
@@ -174,15 +172,15 @@ resource "aws_cloudwatch_metric_alarm" "s3_staging" {
                     "Review objects in the bucket for suspicious content",
                     "Check who made the change and verify authorisation",
                     "Review bucket access logs for unusual activity",
-                    "Check for recently uploaded malware or tools"
+                    "Check for recently uploaded malware or tools",
                 ],
                 containment_actions=[
                     "Revert bucket to private if unauthorised",
                     "Review and remove suspicious objects",
                     "Enable S3 Block Public Access",
                     "Review IAM permissions for the principal",
-                    "Enable S3 Object Lock if needed"
-                ]
+                    "Enable S3 Object Lock if needed",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude known legitimate public buckets (e.g., static website hosting)",
@@ -191,9 +189,8 @@ resource "aws_cloudwatch_metric_alarm" "s3_staging" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail logging enabled", "S3 data events logged"]
+            prerequisites=["CloudTrail logging enabled", "S3 data events logged"],
         ),
-
         DetectionStrategy(
             strategy_id="t1608-aws-lambda-staging",
             name="AWS Lambda Unauthorised Deployment Detection",
@@ -202,12 +199,12 @@ resource "aws_cloudwatch_metric_alarm" "s3_staging" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, requestParameters.functionName, eventName
+                query="""fields @timestamp, userIdentity.principalId, requestParameters.functionName, eventName
 | filter eventName like /CreateFunction|UpdateFunctionCode/
 | stats count(*) as deployments by userIdentity.principalId, requestParameters.functionName, bin(1h)
 | filter deployments > 5
-| sort deployments desc''',
-                terraform_template='''# Detect suspicious Lambda deployments
+| sort deployments desc""",
+                terraform_template="""# Detect suspicious Lambda deployments
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -244,7 +241,7 @@ resource "aws_cloudwatch_metric_alarm" "lambda_staging" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Suspicious Lambda Function Deployment",
                 alert_description_template="Multiple Lambda deployments by {principalId}.",
@@ -253,15 +250,15 @@ resource "aws_cloudwatch_metric_alarm" "lambda_staging" {
                     "Check function permissions and execution role",
                     "Verify deploying principal is authorised",
                     "Review function invocation logs",
-                    "Check for unusual network connections"
+                    "Check for unusual network connections",
                 ],
                 containment_actions=[
                     "Delete unauthorised functions",
                     "Review and restrict Lambda deployment permissions",
                     "Enable Lambda code signing",
                     "Review VPC and network configurations",
-                    "Audit IAM roles attached to functions"
-                ]
+                    "Audit IAM roles attached to functions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Adjust threshold based on normal deployment patterns",
@@ -270,9 +267,8 @@ resource "aws_cloudwatch_metric_alarm" "lambda_staging" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail logging enabled"]
+            prerequisites=["CloudTrail logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1608-aws-ec2-staging",
             name="AWS EC2 Instance Unusual Network Activity",
@@ -281,13 +277,13 @@ resource "aws_cloudwatch_metric_alarm" "lambda_staging" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcaddr, dstaddr, dstport, bytes
+                query="""fields @timestamp, srcaddr, dstaddr, dstport, bytes
 | filter action = "ACCEPT"
 | filter dstport in [80, 443, 8080, 8443]
 | stats sum(bytes) as total_bytes, count(*) as connections by srcaddr, bin(1h)
 | filter total_bytes > 10000000 or connections > 1000
-| sort total_bytes desc''',
-                terraform_template='''# Detect EC2 staging server activity
+| sort total_bytes desc""",
+                terraform_template="""# Detect EC2 staging server activity
 
 variable "vpc_flow_logs_group" { type = string }
 variable "alert_email" { type = string }
@@ -324,7 +320,7 @@ resource "aws_cloudwatch_metric_alarm" "staging_server" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="EC2 Instance Unusual Network Activity",
                 alert_description_template="High outbound traffic from {srcaddr}.",
@@ -333,15 +329,15 @@ resource "aws_cloudwatch_metric_alarm" "staging_server" {
                     "Review instance purpose and ownership",
                     "Check destination IPs and domains",
                     "Review instance for malicious files or tools",
-                    "Check CloudTrail for instance creation/modification"
+                    "Check CloudTrail for instance creation/modification",
                 ],
                 containment_actions=[
                     "Isolate suspicious instances",
                     "Review and restrict security group rules",
                     "Take instance snapshot for forensics",
                     "Terminate unauthorised instances",
-                    "Review IAM permissions for instance launch"
-                ]
+                    "Review IAM permissions for instance launch",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Baseline normal traffic patterns and adjust thresholds per environment",
@@ -350,9 +346,8 @@ resource "aws_cloudwatch_metric_alarm" "staging_server" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["VPC Flow Logs enabled"]
+            prerequisites=["VPC Flow Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1608-gcp-storage-staging",
             name="GCP Cloud Storage Unauthorised Public Bucket Detection",
@@ -366,7 +361,7 @@ resource "aws_cloudwatch_metric_alarm" "staging_server" {
 protoPayload.methodName=~"storage.setIamPermissions|storage.buckets.setIamPolicy"
 protoPayload.serviceData.policyDelta.bindingDeltas.action="ADD"
 protoPayload.serviceData.policyDelta.bindingDeltas.member="allUsers"''',
-                gcp_terraform_template='''# GCP: Detect Cloud Storage buckets made public
+                gcp_terraform_template="""# GCP: Detect Cloud Storage buckets made public
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -404,7 +399,7 @@ resource "google_monitoring_alert_policy" "storage_staging" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Cloud Storage Bucket Made Public",
                 alert_description_template="Cloud Storage bucket made publicly accessible.",
@@ -413,15 +408,15 @@ resource "google_monitoring_alert_policy" "storage_staging" {
                     "Review objects for malicious content",
                     "Check who made the change",
                     "Review bucket access logs",
-                    "Check for recently uploaded files"
+                    "Check for recently uploaded files",
                 ],
                 containment_actions=[
                     "Revert bucket to private access",
                     "Remove suspicious objects",
                     "Review IAM permissions",
                     "Enable uniform bucket-level access",
-                    "Enable Object Versioning for recovery"
-                ]
+                    "Enable Object Versioning for recovery",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude known legitimate public buckets",
@@ -430,9 +425,8 @@ resource "google_monitoring_alert_policy" "storage_staging" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1608-gcp-functions-staging",
             name="GCP Cloud Functions Unauthorised Deployment Detection",
@@ -444,7 +438,7 @@ resource "google_monitoring_alert_policy" "storage_staging" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''resource.type="cloud_function"
 protoPayload.methodName=~"google.cloud.functions.v1.CloudFunctionsService.CreateFunction|google.cloud.functions.v1.CloudFunctionsService.UpdateFunction"''',
-                gcp_terraform_template='''# GCP: Detect Cloud Functions deployment for staging
+                gcp_terraform_template="""# GCP: Detect Cloud Functions deployment for staging
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -484,7 +478,7 @@ resource "google_monitoring_alert_policy" "function_staging" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Suspicious Cloud Functions Deployment",
                 alert_description_template="Multiple Cloud Functions deployments detected.",
@@ -493,15 +487,15 @@ resource "google_monitoring_alert_policy" "function_staging" {
                     "Check function permissions and service account",
                     "Verify deploying principal is authorised",
                     "Review function execution logs",
-                    "Check for unusual network access"
+                    "Check for unusual network access",
                 ],
                 containment_actions=[
                     "Delete unauthorised functions",
                     "Restrict Cloud Functions deployment permissions",
                     "Review service account permissions",
                     "Enable VPC Service Controls",
-                    "Audit IAM bindings"
-                ]
+                    "Audit IAM bindings",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Adjust threshold based on deployment frequency",
@@ -510,17 +504,16 @@ resource "google_monitoring_alert_policy" "function_staging" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1608-aws-s3-staging",
         "t1608-gcp-storage-staging",
         "t1608-aws-lambda-staging",
         "t1608-gcp-functions-staging",
-        "t1608-aws-ec2-staging"
+        "t1608-aws-ec2-staging",
     ],
     total_effort_hours=4.0,
-    coverage_improvement="+15% improvement for Resource Development tactic"
+    coverage_improvement="+15% improvement for Resource Development tactic",
 )

@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Fallback Channels",
     tactic_ids=["TA0011"],
     mitre_url="https://attack.mitre.org/techniques/T1008/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries employ alternative communication pathways when primary command-and-control "
@@ -38,7 +37,7 @@ TEMPLATE = RemediationTemplate(
             "Bypasses network security controls targeting specific protocols",
             "Provides resilience against detection and blocking",
             "Multiple fallback options increase operation longevity",
-            "Can switch protocols to evade signature-based detection"
+            "Can switch protocols to evade signature-based detection",
         ],
         known_threat_actors=["APT41", "Lazarus Group", "OilRig", "FIN7"],
         recent_campaigns=[
@@ -46,20 +45,20 @@ TEMPLATE = RemediationTemplate(
                 name="APT41 Steam Community C2",
                 year=2024,
                 description="APT41 used the Steam community page as a fallback mechanism for command and control",
-                reference_url="https://attack.mitre.org/groups/G0096/"
+                reference_url="https://attack.mitre.org/groups/G0096/",
             ),
             Campaign(
                 name="Lazarus Group Multi-Server Failover",
                 year=2024,
                 description="Employed randomised C2 server selection with failover logic across multiple backup servers",
-                reference_url="https://attack.mitre.org/groups/G0032/"
+                reference_url="https://attack.mitre.org/groups/G0032/",
             ),
             Campaign(
                 name="OilRig DNS Tunnelling Fallback",
                 year=2023,
                 description="Implemented DNS tunnelling as fallback when HTTP communication channels were blocked",
-                reference_url="https://attack.mitre.org/groups/G0049/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0049/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -76,13 +75,12 @@ TEMPLATE = RemediationTemplate(
             "Increased difficulty in eradicating threats",
             "Continued data exfiltration after initial detection",
             "Higher incident response costs",
-            "Extended recovery and remediation timelines"
+            "Extended recovery and remediation timelines",
         ],
         typical_attack_phase="command_and_control",
         often_precedes=["T1041", "T1048", "T1020"],
-        often_follows=["T1071", "T1105", "T1190", "T1078.004"]
+        often_follows=["T1071", "T1105", "T1190", "T1078.004"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1008-aws-protocol-switching",
@@ -92,13 +90,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcAddr, dstAddr, dstPort, protocol, action
+                query="""fields @timestamp, srcAddr, dstAddr, dstPort, protocol, action
 | filter action = "REJECT" or action = "ACCEPT"
 | stats count(*) as total, count_distinct(dstPort) as unique_ports,
         count_distinct(protocol) as unique_protocols by srcAddr, bin(5m)
 | filter unique_ports > 3 or unique_protocols > 2
-| sort total desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort total desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect protocol switching indicative of fallback C2 channels
 
 Parameters:
@@ -146,8 +144,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching''',
-                terraform_template='''# AWS: Detect protocol switching for fallback C2 channels
+      TreatMissingData: notBreaching""",
+                terraform_template="""# AWS: Detect protocol switching for fallback C2 channels
 
 variable "alert_email" {
   description = "Email for security alerts"
@@ -197,7 +195,7 @@ resource "aws_cloudwatch_metric_alarm" "protocol_switch" {
   comparison_operator = "GreaterThanThreshold"
   alarm_actions       = [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="C2 Fallback Channel Detected",
                 alert_description_template="Instance {srcAddr} switching between protocols/ports: {unique_ports} ports, {unique_protocols} protocols after {total} connection attempts.",
@@ -206,15 +204,15 @@ resource "aws_cloudwatch_metric_alarm" "protocol_switch" {
                     "Review connection timeline and destination IPs",
                     "Check for rejected connection patterns before switches",
                     "Analyse processes making network connections",
-                    "Correlate with threat intelligence on destination IPs"
+                    "Correlate with threat intelligence on destination IPs",
                 ],
                 containment_actions=[
                     "Isolate affected instance immediately",
                     "Block all suspicious destination IPs/domains",
                     "Review and restrict security group rules",
                     "Capture network traffic for forensic analysis",
-                    "Terminate instance if malware confirmed"
-                ]
+                    "Terminate instance if malware confirmed",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude legitimate applications with retry logic (e.g., database clients, monitoring tools)",
@@ -223,9 +221,8 @@ resource "aws_cloudwatch_metric_alarm" "protocol_switch" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$15-25",
-            prerequisites=["VPC Flow Logs enabled"]
+            prerequisites=["VPC Flow Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1008-aws-dns-fallback",
             name="AWS DNS Fallback Channel Detection",
@@ -234,13 +231,13 @@ resource "aws_cloudwatch_metric_alarm" "protocol_switch" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, query_name, query_type, srcaddr
+                query="""fields @timestamp, query_name, query_type, srcaddr
 | filter query_type in ["TXT", "NULL", "CNAME"] or length(query_name) > 50
 | stats count(*) as dns_queries, count_distinct(query_name) as unique_queries,
         avg(length(query_name)) as avg_length by srcaddr, bin(5m)
 | filter dns_queries > 50 and (avg_length > 40 or unique_queries > 30)
-| sort dns_queries desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort dns_queries desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect DNS fallback C2 channels
 
 Parameters:
@@ -296,8 +293,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching''',
-                terraform_template='''# AWS: Detect DNS fallback C2 channels
+      TreatMissingData: notBreaching""",
+                terraform_template="""# AWS: Detect DNS fallback C2 channels
 
 variable "alert_email" {
   description = "Email for security alerts"
@@ -351,7 +348,7 @@ resource "aws_cloudwatch_metric_alarm" "dns_fallback" {
   comparison_operator = "GreaterThanThreshold"
   alarm_actions       = [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="DNS Fallback C2 Channel Detected",
                 alert_description_template="Suspicious DNS activity from {srcaddr}: {dns_queries} queries with {unique_queries} unique domains, average length {avg_length}.",
@@ -360,15 +357,15 @@ resource "aws_cloudwatch_metric_alarm" "dns_fallback" {
                     "Review query names for encoded data patterns",
                     "Check for preceding failed HTTP/HTTPS connections",
                     "Analyse query timing and frequency patterns",
-                    "Investigate destination DNS servers"
+                    "Investigate destination DNS servers",
                 ],
                 containment_actions=[
                     "Block DNS queries to suspicious domains",
                     "Isolate affected instance",
                     "Restrict DNS resolver access to known servers",
                     "Enable DNS firewall rules",
-                    "Monitor for alternative fallback attempts"
-                ]
+                    "Monitor for alternative fallback attempts",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude legitimate TXT record queries (e.g., SPF, DMARC checks); adjust length threshold",
@@ -377,9 +374,8 @@ resource "aws_cloudwatch_metric_alarm" "dns_fallback" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$15-30",
-            prerequisites=["Route 53 resolver in use", "DNS query logging enabled"]
+            prerequisites=["Route 53 resolver in use", "DNS query logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1008-aws-port-hopping",
             name="AWS Port Hopping Detection",
@@ -388,13 +384,13 @@ resource "aws_cloudwatch_metric_alarm" "dns_fallback" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcAddr, dstAddr, dstPort, action
+                query="""fields @timestamp, srcAddr, dstAddr, dstPort, action
 | stats count(*) as attempts, count_distinct(dstPort) as unique_ports,
         sum(action = "REJECT") as rejected,
         sum(action = "ACCEPT") as accepted by srcAddr, dstAddr, bin(10m)
 | filter unique_ports > 5 and rejected > 0
-| sort attempts desc''',
-                terraform_template='''# AWS: Detect port hopping behaviour
+| sort attempts desc""",
+                terraform_template="""# AWS: Detect port hopping behaviour
 
 variable "alert_email" {
   description = "Email for security alerts"
@@ -444,7 +440,7 @@ resource "aws_cloudwatch_metric_alarm" "port_hopping" {
   comparison_operator = "GreaterThanThreshold"
   alarm_actions       = [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Port Hopping Detected",
                 alert_description_template="Instance {srcAddr} attempted {attempts} connections to {dstAddr} across {unique_ports} ports ({rejected} rejected).",
@@ -453,15 +449,15 @@ resource "aws_cloudwatch_metric_alarm" "port_hopping" {
                     "Review destination IP reputation",
                     "Check sequence of port attempts",
                     "Analyse application making connections",
-                    "Correlate with other network anomalies"
+                    "Correlate with other network anomalies",
                 ],
                 containment_actions=[
                     "Isolate source instance",
                     "Block destination IP at network level",
                     "Review and restrict egress rules",
                     "Examine instance for malware",
-                    "Monitor for continued fallback attempts"
-                ]
+                    "Monitor for continued fallback attempts",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude network scanners, monitoring tools, and load balancer health checks",
@@ -470,9 +466,8 @@ resource "aws_cloudwatch_metric_alarm" "port_hopping" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-20",
-            prerequisites=["VPC Flow Logs enabled"]
+            prerequisites=["VPC Flow Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1008-aws-guardduty-c2",
             name="AWS GuardDuty C2 Detection",
@@ -486,9 +481,9 @@ resource "aws_cloudwatch_metric_alarm" "port_hopping" {
                     "Backdoor:EC2/C&CActivity.B!DNS",
                     "Backdoor:EC2/DenialOfService.Tcp",
                     "Backdoor:EC2/DenialOfService.UdpOnTcpPorts",
-                    "Trojan:EC2/DNSDataExfiltration"
+                    "Trojan:EC2/DNSDataExfiltration",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty detection for C2 fallback channels
 
 Parameters:
@@ -538,8 +533,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref GuardDutyAlertTopic''',
-                terraform_template='''# AWS: GuardDuty C2 fallback detection
+            Resource: !Ref GuardDutyAlertTopic""",
+                terraform_template="""# AWS: GuardDuty C2 fallback detection
 
 variable "alert_email" {
   description = "Email for security alerts"
@@ -593,7 +588,7 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
       Resource  = aws_sns_topic.guardduty_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GuardDuty: C2 Activity Detected",
                 alert_description_template="Instance {instanceId} communicating with known C2 infrastructure or using fallback channels.",
@@ -602,15 +597,15 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
                     "Identify C2 infrastructure and protocols used",
                     "Check for multiple C2 connection attempts",
                     "Analyse instance timeline and user activity",
-                    "Search for indicators of compromise"
+                    "Search for indicators of compromise",
                 ],
                 containment_actions=[
                     "Immediately isolate affected instance",
                     "Block all identified C2 infrastructure",
                     "Revoke instance credentials and roles",
                     "Capture memory dump for forensics",
-                    "Replace instance from known good state"
-                ]
+                    "Replace instance from known good state",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="GuardDuty findings are high confidence; review suppression rules for known infrastructure",
@@ -619,9 +614,8 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$1-5 (requires GuardDuty subscription)",
-            prerequisites=["AWS GuardDuty enabled"]
+            prerequisites=["AWS GuardDuty enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1008-gcp-protocol-switching",
             name="GCP Protocol Switching Detection",
@@ -631,12 +625,12 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_subnetwork"
+                gcp_logging_query="""resource.type="gce_subnetwork"
 jsonPayload.connection.protocol:(6 OR 17 OR 1)
 | stats count() as attempts, count_distinct(jsonPayload.connection.dest_port) as unique_ports,
         count_distinct(jsonPayload.connection.protocol) as unique_protocols by jsonPayload.connection.src_ip
-| unique_ports > 5 OR unique_protocols > 2''',
-                gcp_terraform_template='''# GCP: Detect protocol switching for C2 fallback
+| unique_ports > 5 OR unique_protocols > 2""",
+                gcp_terraform_template="""# GCP: Detect protocol switching for C2 fallback
 
 variable "project_id" {
   description = "GCP project ID"
@@ -704,7 +698,7 @@ resource "google_monitoring_alert_policy" "protocol_switch" {
   alert_strategy {
     auto_close = "1800s"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: C2 Fallback Channel Detected",
                 alert_description_template="Instance switching between protocols/ports indicative of C2 fallback behaviour.",
@@ -713,15 +707,15 @@ resource "google_monitoring_alert_policy" "protocol_switch" {
                     "Review VPC flow logs for connection patterns",
                     "Check for rejected connections before switches",
                     "Analyse running processes and services",
-                    "Correlate with Cloud IDS alerts if available"
+                    "Correlate with Cloud IDS alerts if available",
                 ],
                 containment_actions=[
                     "Isolate VM using firewall rules",
                     "Block destination IPs via VPC firewall",
                     "Create disk snapshot for forensics",
                     "Review and restrict egress policies",
-                    "Stop instance if malware confirmed"
-                ]
+                    "Stop instance if malware confirmed",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude legitimate applications with connection retry logic",
@@ -730,9 +724,8 @@ resource "google_monitoring_alert_policy" "protocol_switch" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$15-25",
-            prerequisites=["VPC Flow Logs enabled on subnets"]
+            prerequisites=["VPC Flow Logs enabled on subnets"],
         ),
-
         DetectionStrategy(
             strategy_id="t1008-gcp-dns-fallback",
             name="GCP DNS Fallback Detection",
@@ -742,12 +735,12 @@ resource "google_monitoring_alert_policy" "protocol_switch" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="dns_query"
+                gcp_logging_query="""resource.type="dns_query"
 (protoPayload.queryType="TXT" OR protoPayload.queryType="NULL" OR LENGTH(protoPayload.queryName) > 50)
 | stats count() as queries, count_distinct(protoPayload.queryName) as unique_queries,
         avg(LENGTH(protoPayload.queryName)) as avg_length by protoPayload.sourceIP
-| queries > 50 AND (avg_length > 40 OR unique_queries > 30)''',
-                gcp_terraform_template='''# GCP: Detect DNS fallback C2 channels
+| queries > 50 AND (avg_length > 40 OR unique_queries > 30)""",
+                gcp_terraform_template="""# GCP: Detect DNS fallback C2 channels
 
 variable "project_id" {
   description = "GCP project ID"
@@ -827,7 +820,7 @@ resource "google_monitoring_alert_policy" "dns_fallback" {
   alert_strategy {
     auto_close = "1800s"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: DNS Fallback C2 Detected",
                 alert_description_template="Suspicious DNS activity indicative of fallback C2 channel detected.",
@@ -836,15 +829,15 @@ resource "google_monitoring_alert_policy" "dns_fallback" {
                     "Analyse DNS query patterns and timing",
                     "Check for preceding failed connections",
                     "Review query names for encoded data",
-                    "Investigate destination DNS servers"
+                    "Investigate destination DNS servers",
                 ],
                 containment_actions=[
                     "Block DNS queries to suspicious domains",
                     "Isolate affected VM instance",
                     "Configure Cloud DNS firewall policies",
                     "Restrict DNS resolver access",
-                    "Monitor for alternative fallback channels"
-                ]
+                    "Monitor for alternative fallback channels",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude legitimate TXT queries for SPF/DMARC; tune length thresholds",
@@ -853,18 +846,17 @@ resource "google_monitoring_alert_policy" "dns_fallback" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$15-30",
-            prerequisites=["Cloud DNS logging enabled", "VPC Flow Logs enabled"]
-        )
+            prerequisites=["Cloud DNS logging enabled", "VPC Flow Logs enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1008-aws-guardduty-c2",
         "t1008-aws-protocol-switching",
         "t1008-gcp-protocol-switching",
         "t1008-aws-dns-fallback",
         "t1008-gcp-dns-fallback",
-        "t1008-aws-port-hopping"
+        "t1008-aws-port-hopping",
     ],
     total_effort_hours=8.5,
-    coverage_improvement="+18% improvement for Command and Control tactic"
+    coverage_improvement="+18% improvement for Command and Control tactic",
 )

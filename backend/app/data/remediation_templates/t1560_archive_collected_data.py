@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Archive Collected Data",
     tactic_ids=["TA0009"],
     mitre_url="https://attack.mitre.org/techniques/T1560/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries compress and/or encrypt collected data before exfiltration to "
@@ -39,28 +38,39 @@ TEMPLATE = RemediationTemplate(
             "Encryption obfuscates data from DLP and content inspection",
             "Compression utilities are commonly used, blending in with normal activity",
             "Single archive file easier to exfiltrate than multiple files",
-            "Cloud instances often have archiving tools pre-installed"
+            "Cloud instances often have archiving tools pre-installed",
         ],
-        known_threat_actors=["APT28", "APT32", "Lazarus Group", "Dragonfly", "FIN6", "Patchwork", "Axiom", "Ke3chang", "menuPass", "Leviathan"],
+        known_threat_actors=[
+            "APT28",
+            "APT32",
+            "Lazarus Group",
+            "Dragonfly",
+            "FIN6",
+            "Patchwork",
+            "Axiom",
+            "Ke3chang",
+            "menuPass",
+            "Leviathan",
+        ],
         recent_campaigns=[
             Campaign(
                 name="APT28 DNC Compromise",
                 year=2016,
                 description="Used publicly available compression tools to gather and compress documents from Democratic National Committee networks",
-                reference_url="https://attack.mitre.org/groups/G0007/"
+                reference_url="https://attack.mitre.org/groups/G0007/",
             ),
             Campaign(
                 name="Lazarus RomeoDelta",
                 year=2020,
                 description="Deployed RAR compression and RomeoDelta malware for archiving and encryption workflows before exfiltration",
-                reference_url="https://attack.mitre.org/groups/G0032/"
+                reference_url="https://attack.mitre.org/groups/G0032/",
             ),
             Campaign(
                 name="Agent Tesla Exfiltration",
                 year=2021,
                 description="Implemented 3DES encryption before command-and-control transmission of stolen credentials and data",
-                reference_url="https://attack.mitre.org/software/S0331/"
-            )
+                reference_url="https://attack.mitre.org/software/S0331/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -75,13 +85,12 @@ TEMPLATE = RemediationTemplate(
             "Regulatory compliance violations (GDPR, CCPA, HIPAA)",
             "Loss of competitive advantage",
             "Potential ransomware or extortion leverage",
-            "Reputational damage from data breach"
+            "Reputational damage from data breach",
         ],
         typical_attack_phase="collection",
         often_precedes=["T1041", "T1567", "T1537"],
-        often_follows=["T1005", "T1039", "T1074", "T1530"]
+        often_follows=["T1005", "T1039", "T1074", "T1530"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - Archive Utility Execution on EC2
         DetectionStrategy(
@@ -95,13 +104,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, instance_id, user, command, working_directory
+                query="""fields @timestamp, instance_id, user, command, working_directory
 | filter command like /tar|zip|7z|rar|gzip|bzip2|xz|compress/
 | filter command like /-c|-z|-j|-x|--create|--compress/
 | stats count(*) as archive_count by instance_id, user, bin(5m) as time_window
 | filter archive_count >= 3
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect archive utility execution on EC2 instances
 
 Parameters:
@@ -163,8 +172,8 @@ Resources:
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# AWS: Detect archive utility execution on EC2 instances
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# AWS: Detect archive utility execution on EC2 instances
 
 variable "alert_email" {
   type        = string
@@ -229,7 +238,7 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
       Resource  = aws_sns_topic.archive_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Suspicious Archive Utility Activity Detected",
                 alert_description_template=(
@@ -243,15 +252,15 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
                     "Review network connections from the instance during and after archiving",
                     "Verify if the user account should be performing archiving operations",
                     "Examine created archive files for sensitive data",
-                    "Check for subsequent file transfer or upload activity"
+                    "Check for subsequent file transfer or upload activity",
                 ],
                 containment_actions=[
                     "Isolate the EC2 instance by modifying security group rules",
                     "Revoke credentials for the compromised user account",
                     "Take EBS snapshot for forensic analysis",
                     "Block outbound network connections if exfiltration is suspected",
-                    "Review and remove any created archive files containing sensitive data"
-                ]
+                    "Review and remove any created archive files containing sensitive data",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate backup jobs, build processes, and log rotation tasks; adjust threshold based on environment",
@@ -260,9 +269,12 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$15-30 (depends on log volume)",
-            prerequisites=["SSM Agent installed on EC2 instances", "Process execution logging configured", "CloudWatch Logs enabled"]
+            prerequisites=[
+                "SSM Agent installed on EC2 instances",
+                "Process execution logging configured",
+                "CloudWatch Logs enabled",
+            ],
         ),
-
         # Strategy 2: AWS - Large Archive File Creation Detection
         DetectionStrategy(
             strategy_id="t1560-aws-large-archives",
@@ -275,13 +287,13 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, instance_id, file_path, file_size, user
+                query="""fields @timestamp, instance_id, file_path, file_size, user
 | filter file_path like /\\.(zip|tar\\.gz|tgz|7z|rar|gz|bz2|xz)$/
 | filter file_size >= 10485760
 | stats count(*) as archive_count, sum(file_size) as total_size by instance_id, user, bin(10m) as time_window
 | filter archive_count >= 2 or total_size >= 52428800
-| sort total_size desc''',
-                terraform_template='''# AWS: Detect large archive file creation
+| sort total_size desc""",
+                terraform_template="""# AWS: Detect large archive file creation
 
 variable "alert_email" {
   type = string
@@ -325,7 +337,7 @@ resource "aws_cloudwatch_metric_alarm" "large_archive" {
   statistic           = "Sum"
   threshold           = 2
   alarm_actions       = [aws_sns_topic.large_archive_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Large Archive Files Created",
                 alert_description_template=(
@@ -338,15 +350,15 @@ resource "aws_cloudwatch_metric_alarm" "large_archive" {
                     "Review what source directories/files were archived",
                     "Check for network activity following archive creation",
                     "Verify if this activity aligns with legitimate backup schedules",
-                    "Investigate the user account's recent activity"
+                    "Investigate the user account's recent activity",
                 ],
                 containment_actions=[
                     "Quarantine the archive files",
                     "Block network egress from the instance",
                     "Suspend the user account pending investigation",
                     "Review S3 access logs for upload attempts",
-                    "Check CloudTrail for API calls related to data transfer"
-                ]
+                    "Check CloudTrail for API calls related to data transfer",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude known backup directories and scheduled backup times; whitelist backup service accounts",
@@ -355,9 +367,11 @@ resource "aws_cloudwatch_metric_alarm" "large_archive" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$10-25",
-            prerequisites=["File system monitoring enabled", "CloudWatch Logs configured"]
+            prerequisites=[
+                "File system monitoring enabled",
+                "CloudWatch Logs configured",
+            ],
         ),
-
         # Strategy 3: AWS - S3 Archive Upload Detection
         DetectionStrategy(
             strategy_id="t1560-aws-s3-upload",
@@ -374,7 +388,11 @@ resource "aws_cloudwatch_metric_alarm" "large_archive" {
                     "source": ["aws.s3"],
                     "detail-type": ["AWS API Call via CloudTrail"],
                     "detail": {
-                        "eventName": ["PutObject", "UploadPart", "CompleteMultipartUpload"],
+                        "eventName": [
+                            "PutObject",
+                            "UploadPart",
+                            "CompleteMultipartUpload",
+                        ],
                         "requestParameters": {
                             "key": [
                                 {"suffix": ".zip"},
@@ -384,12 +402,12 @@ resource "aws_cloudwatch_metric_alarm" "large_archive" {
                                 {"suffix": ".7z"},
                                 {"suffix": ".rar"},
                                 {"suffix": ".gz"},
-                                {"suffix": ".bz2"}
+                                {"suffix": ".bz2"},
                             ]
-                        }
-                    }
+                        },
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect archive file uploads to S3
 
 Parameters:
@@ -446,8 +464,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# AWS: Detect archive file uploads to S3
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# AWS: Detect archive file uploads to S3
 
 variable "alert_email" {
   type = string
@@ -519,7 +537,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Resource  = aws_sns_topic.s3_archive_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Archive File Uploaded to S3",
                 alert_description_template=(
@@ -532,15 +550,15 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Check if the bucket has cross-account access configured",
                     "Verify the user's authorisation to upload to this bucket",
                     "Review CloudTrail for subsequent download or copy operations",
-                    "Check source IP reputation and geolocation"
+                    "Check source IP reputation and geolocation",
                 ],
                 containment_actions=[
                     "Quarantine the uploaded archive file",
                     "Review bucket access policies and remove suspicious grants",
                     "Revoke credentials for compromised accounts",
                     "Enable S3 Object Lock to prevent deletion",
-                    "Block external access to the bucket if applicable"
-                ]
+                    "Block external access to the bucket if applicable",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist known backup buckets and automated backup processes; filter legitimate CI/CD pipelines",
@@ -549,9 +567,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-15",
-            prerequisites=["CloudTrail enabled with S3 data events", "S3 bucket logging enabled"]
+            prerequisites=[
+                "CloudTrail enabled with S3 data events",
+                "S3 bucket logging enabled",
+            ],
         ),
-
         # Strategy 4: GCP - Archive Utility Execution Detection
         DetectionStrategy(
             strategy_id="t1560-gcp-archiving",
@@ -565,13 +585,13 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 protoPayload.methodName="v1.compute.instances.start"
 OR (
   jsonPayload.command=~"tar|zip|7z|rar|gzip|bzip2"
   AND jsonPayload.command=~"-c|-z|-j|--create|--compress"
-)''',
-                gcp_terraform_template='''# GCP: Detect archive utility execution
+)""",
+                gcp_terraform_template="""# GCP: Detect archive utility execution
 
 variable "project_id" {
   type        = string
@@ -646,7 +666,7 @@ resource "google_monitoring_alert_policy" "archive_activity" {
   documentation {
     content = "Archive utility executed multiple times on GCE instance. This may indicate data collection before exfiltration (MITRE ATT&CK T1560)."
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Archive Utility Execution Detected",
                 alert_description_template=(
@@ -659,15 +679,15 @@ resource "google_monitoring_alert_policy" "archive_activity" {
                     "Check what files were archived",
                     "Examine network connections from the instance",
                     "Verify the user account's authorisation",
-                    "Look for subsequent data transfer activity"
+                    "Look for subsequent data transfer activity",
                 ],
                 containment_actions=[
                     "Isolate the instance using firewall rules",
                     "Suspend compromised user accounts",
                     "Take disk snapshot for forensic analysis",
                     "Review and remove suspicious archive files",
-                    "Check VPC Flow Logs for data exfiltration"
-                ]
+                    "Check VPC Flow Logs for data exfiltration",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate backup jobs and build processes; adjust threshold based on baseline",
@@ -676,9 +696,11 @@ resource "google_monitoring_alert_policy" "archive_activity" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Logging enabled", "Process execution logging configured on instances"]
+            prerequisites=[
+                "Cloud Logging enabled",
+                "Process execution logging configured on instances",
+            ],
         ),
-
         # Strategy 5: GCP - Cloud Storage Archive Upload Detection
         DetectionStrategy(
             strategy_id="t1560-gcp-gcs-upload",
@@ -695,7 +717,7 @@ resource "google_monitoring_alert_policy" "archive_activity" {
                 gcp_logging_query='''resource.type="gcs_bucket"
 protoPayload.methodName="storage.objects.create"
 protoPayload.resourceName=~"\\.(zip|tar|tar\\.gz|tgz|7z|rar|gz|bz2)$"''',
-                gcp_terraform_template='''# GCP: Detect archive file uploads to Cloud Storage
+                gcp_terraform_template="""# GCP: Detect archive file uploads to Cloud Storage
 
 variable "project_id" {
   type = string
@@ -768,7 +790,7 @@ resource "google_monitoring_alert_policy" "gcs_archive_upload" {
   documentation {
     content = "Archive file uploaded to Cloud Storage. Verify this is authorised activity and not data exfiltration (MITRE ATT&CK T1560)."
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Archive File Uploaded to Cloud Storage",
                 alert_description_template=(
@@ -781,15 +803,15 @@ resource "google_monitoring_alert_policy" "gcs_archive_upload" {
                     "Check bucket IAM policies for external access",
                     "Verify the principal's authorisation to upload",
                     "Review audit logs for subsequent download activity",
-                    "Check if the bucket is publicly accessible"
+                    "Check if the bucket is publicly accessible",
                 ],
                 containment_actions=[
                     "Quarantine the uploaded archive object",
                     "Review and restrict bucket IAM policies",
                     "Suspend compromised service accounts",
                     "Enable Object Versioning for recovery",
-                    "Configure VPC Service Controls to prevent exfiltration"
-                ]
+                    "Configure VPC Service Controls to prevent exfiltration",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist backup buckets and CI/CD service accounts; filter legitimate automated processes",
@@ -798,17 +820,19 @@ resource "google_monitoring_alert_policy" "gcs_archive_upload" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-15",
-            prerequisites=["Cloud Audit Logs enabled for Cloud Storage", "Data Access logs enabled"]
-        )
+            prerequisites=[
+                "Cloud Audit Logs enabled for Cloud Storage",
+                "Data Access logs enabled",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1560-aws-s3-upload",
         "t1560-gcp-gcs-upload",
         "t1560-aws-ec2-archiving",
         "t1560-gcp-archiving",
-        "t1560-aws-large-archives"
+        "t1560-aws-large-archives",
     ],
     total_effort_hours=8.0,
-    coverage_improvement="+30% improvement for Collection tactic"
+    coverage_improvement="+30% improvement for Collection tactic",
 )

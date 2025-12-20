@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Unused/Unsupported Cloud Regions",
     tactic_ids=["TA0005"],
     mitre_url="https://attack.mitre.org/techniques/T1535/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries exploit underutilised geographic cloud service regions to evade detection. "
@@ -38,7 +37,7 @@ TEMPLATE = RemediationTemplate(
             "Security teams focus monitoring on primary operational regions",
             "Billing alerts may not be granular enough to detect regional abuse",
             "Enables cryptomining without triggering alerts",
-            "Regions may have limited advanced security services"
+            "Regions may have limited advanced security services",
         ],
         known_threat_actors=["Cryptomining groups", "TeamTNT"],
         recent_campaigns=[
@@ -46,7 +45,7 @@ TEMPLATE = RemediationTemplate(
                 name="Unused Region Cryptomining",
                 year=2024,
                 description="Attackers leveraged unused AWS regions for cryptocurrency mining following account compromise, causing significant financial impact",
-                reference_url="https://attack.mitre.org/techniques/T1535/"
+                reference_url="https://attack.mitre.org/techniques/T1535/",
             )
         ],
         prevalence="moderate",
@@ -62,13 +61,12 @@ TEMPLATE = RemediationTemplate(
             "Undetected malicious activity and cryptomining",
             "Resource hijacking for attacker infrastructure",
             "Compliance gaps in unused regions",
-            "Reputational damage from resource abuse"
+            "Reputational damage from resource abuse",
         ],
         typical_attack_phase="defence_evasion",
         often_precedes=["T1496.001", "T1578.002"],
-        often_follows=["T1078.004", "T1098.001"]
+        often_follows=["T1078.004", "T1098.001"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - Unused Region Activity Detection
         DetectionStrategy(
@@ -84,9 +82,9 @@ TEMPLATE = RemediationTemplate(
                     "detail-type": ["AWS API Call via CloudTrail"],
                     "detail": {
                         "eventName": ["RunInstances", "CreateBucket", "CreateFunction"]
-                    }
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect activity in unused AWS regions
 
 Parameters:
@@ -140,8 +138,8 @@ Resources:
 Outputs:
   AlertTopicArn:
     Value: !Ref AlertTopic
-    Description: SNS topic for unused region alerts''',
-                terraform_template='''# Detect activity in unused AWS regions
+    Description: SNS topic for unused region alerts""",
+                terraform_template="""# Detect activity in unused AWS regions
 
 variable "alert_email" {
   type        = string
@@ -205,7 +203,7 @@ resource "aws_sns_topic_policy" "allow_events" {
 output "alert_topic_arn" {
   value       = aws_sns_topic.unused_region_alerts.arn
   description = "SNS topic for unused region alerts"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Activity Detected in Unused Region",
                 alert_description_template="Resource created in region {awsRegion} which is not normally used by the organisation.",
@@ -215,7 +213,7 @@ output "alert_topic_arn" {
                     "Review the identity that initiated the activity",
                     "Check for cryptomining indicators (large compute instances)",
                     "Verify if GuardDuty is enabled in the region",
-                    "Review billing data for unexpected costs"
+                    "Review billing data for unexpected costs",
                 ],
                 containment_actions=[
                     "Terminate unauthorised resources in unused regions immediately",
@@ -223,8 +221,8 @@ output "alert_topic_arn" {
                     "Enable GuardDuty in all AWS regions",
                     "Set up billing alerts per region",
                     "Review and rotate compromised credentials",
-                    "Consider disabling unused regions via AWS account settings"
-                ]
+                    "Consider disabling unused regions via AWS account settings",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Define allowed regions for your organisation and adjust the EventBridge rule accordingly",
@@ -233,9 +231,11 @@ output "alert_topic_arn" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours to deploy across unused regions",
             estimated_monthly_cost="$5-15 depending on number of regions monitored",
-            prerequisites=["CloudTrail enabled in all regions", "EventBridge available"]
+            prerequisites=[
+                "CloudTrail enabled in all regions",
+                "EventBridge available",
+            ],
         ),
-
         # Strategy 2: AWS - CloudWatch Logs Query for Unused Region Activity
         DetectionStrategy(
             strategy_id="t1535-aws-cloudwatch",
@@ -245,12 +245,12 @@ output "alert_topic_arn" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, awsRegion, eventName, userIdentity.arn, requestParameters
+                query="""fields @timestamp, awsRegion, eventName, userIdentity.arn, requestParameters
 | filter eventName like /Create|Run|Launch|Put/
 | filter awsRegion not in ["eu-west-1", "eu-west-2", "us-east-1"]
 | stats count(*) as activity_count by awsRegion, eventName
-| sort activity_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort activity_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: CloudWatch metric filter for unused region activity
 
 Parameters:
@@ -296,8 +296,8 @@ Resources:
       Threshold: 0
       ComparisonOperator: GreaterThanThreshold
       AlarmActions: [!Ref AlertTopic]
-      TreatMissingData: notBreaching''',
-                terraform_template='''# CloudWatch metric filter for unused region activity
+      TreatMissingData: notBreaching""",
+                terraform_template="""# CloudWatch metric filter for unused region activity
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -348,7 +348,7 @@ resource "aws_cloudwatch_metric_alarm" "unused_region" {
   threshold           = 0
   treat_missing_data  = "notBreaching"
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Unused Region Activity Detected",
                 alert_description_template="Resource creation detected in unused region.",
@@ -357,14 +357,14 @@ resource "aws_cloudwatch_metric_alarm" "unused_region" {
                     "Identify which region had activity",
                     "Check what resources were created",
                     "Verify the user identity",
-                    "Check for patterns indicating automation or cryptomining"
+                    "Check for patterns indicating automation or cryptomining",
                 ],
                 containment_actions=[
                     "Terminate resources in unused regions",
                     "Review and rotate credentials",
                     "Enable GuardDuty in affected region",
-                    "Set up Service Control Policies"
-                ]
+                    "Set up Service Control Policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Adjust the region filter list to match your organisation's approved regions",
@@ -373,9 +373,11 @@ resource "aws_cloudwatch_metric_alarm" "unused_region" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20 depending on log volume",
-            prerequisites=["CloudTrail enabled", "CloudTrail logs streamed to CloudWatch Logs"]
+            prerequisites=[
+                "CloudTrail enabled",
+                "CloudTrail logs streamed to CloudWatch Logs",
+            ],
         ),
-
         # Strategy 3: GCP - Unused Region Activity Detection
         DetectionStrategy(
             strategy_id="t1535-gcp-unusedregion",
@@ -388,7 +390,7 @@ resource "aws_cloudwatch_metric_alarm" "unused_region" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName=~"compute.instances.insert|storage.buckets.create|cloudfunctions.functions.create"
 resource.labels.zone!~"europe-west2|us-central1"''',
-                gcp_terraform_template='''# GCP: Detect activity in unused regions
+                gcp_terraform_template="""# GCP: Detect activity in unused regions
 
 variable "project_id" {
   type        = string
@@ -471,7 +473,7 @@ resource "google_monitoring_alert_policy" "unused_region" {
   documentation {
     content = "Resource creation detected in a region not typically used by the organisation. Investigate immediately for potential unauthorised activity or cryptomining."
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Activity in Unused Region",
                 alert_description_template="Resource created in region not normally used by the organisation.",
@@ -481,15 +483,15 @@ resource "google_monitoring_alert_policy" "unused_region" {
                     "Review the principal that initiated the activity",
                     "Check for cryptomining indicators (large machine types)",
                     "Verify if Security Command Centre is enabled",
-                    "Review billing data for unexpected costs"
+                    "Review billing data for unexpected costs",
                 ],
                 containment_actions=[
                     "Delete unauthorised resources in unused regions",
                     "Set organisation policy constraints to restrict regions",
                     "Enable Security Command Centre in all regions",
                     "Review and rotate compromised credentials",
-                    "Set up budget alerts per region"
-                ]
+                    "Set up budget alerts per region",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Define allowed regions for your organisation and adjust the logging filter",
@@ -498,11 +500,14 @@ resource "google_monitoring_alert_policy" "unused_region" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-15 depending on log volume",
-            prerequisites=["Cloud Audit Logs enabled", "Cloud Logging API enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled", "Cloud Logging API enabled"],
+        ),
     ],
-
-    recommended_order=["t1535-aws-unusedregion", "t1535-aws-cloudwatch", "t1535-gcp-unusedregion"],
+    recommended_order=[
+        "t1535-aws-unusedregion",
+        "t1535-aws-cloudwatch",
+        "t1535-gcp-unusedregion",
+    ],
     total_effort_hours=4.0,
-    coverage_improvement="+12% improvement for Defence Evasion tactic"
+    coverage_improvement="+12% improvement for Defence Evasion tactic",
 )

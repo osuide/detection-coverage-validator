@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Template Injection",
     tactic_ids=["TA0005"],
     mitre_url="https://attack.mitre.org/techniques/T1221/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries manipulate document templates in Microsoft Office files (.docx, .xlsx, .pptx, .rtf) "
@@ -40,7 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Can harvest credentials via forced authentication",
             "Bypasses email security gateways",
             "Appears as legitimate document template",
-            "Difficult to detect without dynamic analysis"
+            "Difficult to detect without dynamic analysis",
         ],
         known_threat_actors=[
             "APT28 (Fancy Bear)",
@@ -50,33 +49,33 @@ TEMPLATE = RemediationTemplate(
             "Lazarus Group",
             "Inception",
             "Confucius",
-            "Tropic Trooper"
+            "Tropic Trooper",
         ],
         recent_campaigns=[
             Campaign(
                 name="Lazarus Operation Dream Job",
                 year=2024,
                 description="Used DOCX files to retrieve malicious DOTM templates targeting cryptocurrency and technology sectors",
-                reference_url="https://attack.mitre.org/groups/G0032/"
+                reference_url="https://attack.mitre.org/groups/G0032/",
             ),
             Campaign(
                 name="Gamaredon Template Injection Campaign",
                 year=2024,
                 description="Extensively used DOCX and RTF template injection with malicious macros injected into existing documents",
-                reference_url="https://attack.mitre.org/groups/G0047/"
+                reference_url="https://attack.mitre.org/groups/G0047/",
             ),
             Campaign(
                 name="APT28 Weaponised Documents",
                 year=2023,
                 description="Used weaponised Word documents abusing remote template functions for espionage operations",
-                reference_url="https://attack.mitre.org/groups/G0007/"
+                reference_url="https://attack.mitre.org/groups/G0007/",
             ),
             Campaign(
                 name="DarkHydrus Credential Harvesting",
                 year=2023,
                 description="Deployed Phishery tool to inject malicious URLs into documents for credential harvesting",
-                reference_url="https://attack.mitre.org/groups/G0079/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0079/",
+            ),
         ],
         prevalence="moderate",
         trend="increasing",
@@ -93,13 +92,12 @@ TEMPLATE = RemediationTemplate(
             "Data breach and espionage",
             "Bypassed email security controls",
             "Difficult post-compromise attribution",
-            "Potential regulatory violations"
+            "Potential regulatory violations",
         ],
         typical_attack_phase="initial_access",
         often_precedes=["T1078.004", "T1552.001", "T1059.001", "T1087.004"],
-        often_follows=["T1566.001", "T1566.002"]
+        often_follows=["T1566.001", "T1566.002"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1221-aws-s3-document-analysis",
@@ -114,9 +112,9 @@ TEMPLATE = RemediationTemplate(
             implementation=DetectionImplementation(
                 guardduty_finding_types=[
                     "Execution:S3/MaliciousFile",
-                    "Impact:S3/MaliciousIPCaller"
+                    "Impact:S3/MaliciousIPCaller",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect malicious documents with template injection in S3
 
 Parameters:
@@ -176,8 +174,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref MaliciousDocumentTopic''',
-                terraform_template='''# AWS: Detect malicious documents with template injection in S3
+            Resource: !Ref MaliciousDocumentTopic""",
+                terraform_template="""# AWS: Detect malicious documents with template injection in S3
 
 variable "alert_email" {
   type        = string
@@ -248,7 +246,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Resource  = aws_sns_topic.malicious_documents.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="AWS GuardDuty: Malicious Document Detected",
                 alert_description_template=(
@@ -263,7 +261,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Analyse document metadata and external template references",
                     "Review email logs if document was sent via phishing campaign",
                     "Check for network connections to external template URLs",
-                    "Identify any systems that may have opened the document"
+                    "Identify any systems that may have opened the document",
                 ],
                 containment_actions=[
                     "Quarantine or delete the malicious document immediately",
@@ -272,8 +270,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Review and restrict bucket access policies",
                     "Scan other S3 buckets for similar documents",
                     "Block external template URLs at network perimeter",
-                    "Alert users who may have accessed the document"
-                ]
+                    "Alert users who may have accessed the document",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="GuardDuty malware detection has high accuracy; verify template references",
@@ -282,9 +280,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$4 per million events analysed",
-            prerequisites=["AWS GuardDuty with S3 protection enabled", "S3 buckets configured for monitoring"]
+            prerequisites=[
+                "AWS GuardDuty with S3 protection enabled",
+                "S3 buckets configured for monitoring",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1221-aws-vpc-flow-template-fetch",
             name="AWS VPC Flow Logs: External Template Fetch Detection",
@@ -296,13 +296,13 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcaddr, dstaddr, dstport, protocol, action
+                query="""fields @timestamp, srcaddr, dstaddr, dstport, protocol, action
 | filter action = "ACCEPT"
 | filter dstport in [80, 443, 445]
 | stats count(*) as connections by srcaddr, dstaddr, dstport, bin(5m)
 | filter connections > 3
-| sort @timestamp desc''',
-                terraform_template='''# AWS: Detect external template fetch via VPC Flow Logs
+| sort @timestamp desc""",
+                terraform_template="""# AWS: Detect external template fetch via VPC Flow Logs
 
 variable "vpc_flow_log_group" {
   type        = string
@@ -353,7 +353,7 @@ resource "aws_cloudwatch_metric_alarm" "template_fetch_alarm" {
   threshold           = 10
   alarm_description   = "Detects potential template injection activity via network connections"
   alarm_actions       = [aws_sns_topic.template_fetch_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="AWS VPC: Suspicious Template Fetch Activity",
                 alert_description_template=(
@@ -367,7 +367,7 @@ resource "aws_cloudwatch_metric_alarm" "template_fetch_alarm" {
                     "Examine CloudTrail for related API activity from the source",
                     "Review instance logs for Office application activity",
                     "Check for recently opened Office documents on the system",
-                    "Analyse network traffic captures if available"
+                    "Analyse network traffic captures if available",
                 ],
                 containment_actions=[
                     "Isolate the affected workstation or EC2 instance",
@@ -376,8 +376,8 @@ resource "aws_cloudwatch_metric_alarm" "template_fetch_alarm" {
                     "Terminate the instance if compromise is confirmed",
                     "Review and remove malicious documents from file shares",
                     "Force password reset for affected user accounts",
-                    "Scan related systems for similar activity"
-                ]
+                    "Scan related systems for similar activity",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal document template sources; whitelist legitimate Microsoft template servers",
@@ -386,9 +386,8 @@ resource "aws_cloudwatch_metric_alarm" "template_fetch_alarm" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-15 depending on traffic volume",
-            prerequisites=["VPC Flow Logs enabled", "CloudTrail logging enabled"]
+            prerequisites=["VPC Flow Logs enabled", "CloudTrail logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1221-aws-workspaces-monitoring",
             name="AWS WorkSpaces Document Security Monitoring",
@@ -400,11 +399,11 @@ resource "aws_cloudwatch_metric_alarm" "template_fetch_alarm" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.arn, sourceIPAddress, requestParameters
+                query="""fields @timestamp, eventName, userIdentity.arn, sourceIPAddress, requestParameters
 | filter eventSource = "workspaces.amazonaws.com"
 | filter eventName in ["CreateWorkspaces", "RebuildWorkspaces", "RestoreWorkspace"]
-| sort @timestamp desc''',
-                terraform_template='''# AWS: Monitor WorkSpaces for template injection indicators
+| sort @timestamp desc""",
+                terraform_template="""# AWS: Monitor WorkSpaces for template injection indicators
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -454,7 +453,7 @@ resource "aws_cloudwatch_metric_alarm" "workspaces_alarm" {
   threshold           = 0
   alarm_description   = "Alert on suspicious WorkSpaces activity that may indicate compromise"
   alarm_actions       = [aws_sns_topic.workspaces_alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="AWS WorkSpaces: Suspicious Activity Detected",
                 alert_description_template=(
@@ -467,7 +466,7 @@ resource "aws_cloudwatch_metric_alarm" "workspaces_alarm" {
                     "Review WorkSpaces Directory logs for authentication events",
                     "Examine recent document access patterns on the WorkSpace",
                     "Check for unusual file downloads or network connections",
-                    "Review user behaviour analytics for anomalies"
+                    "Review user behaviour analytics for anomalies",
                 ],
                 containment_actions=[
                     "Isolate affected WorkSpace from network",
@@ -475,8 +474,8 @@ resource "aws_cloudwatch_metric_alarm" "workspaces_alarm" {
                     "Force password reset for affected users",
                     "Rebuild WorkSpace from clean image if compromised",
                     "Review security group rules for WorkSpaces",
-                    "Enable enhanced monitoring for affected WorkSpaces"
-                ]
+                    "Enable enhanced monitoring for affected WorkSpaces",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Normal administrative WorkSpaces operations will trigger; correlate with security incidents",
@@ -485,9 +484,11 @@ resource "aws_cloudwatch_metric_alarm" "workspaces_alarm" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["AWS WorkSpaces deployed", "CloudTrail enabled for WorkSpaces events"]
+            prerequisites=[
+                "AWS WorkSpaces deployed",
+                "CloudTrail enabled for WorkSpaces events",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1221-gcp-cloud-storage-document-scan",
             name="GCP Cloud Storage Malicious Document Detection",
@@ -504,7 +505,7 @@ resource "aws_cloudwatch_metric_alarm" "workspaces_alarm" {
 protoPayload.methodName="storage.objects.create"
 protoPayload.resourceName=~".*\\.(docx|xlsx|pptx|rtf|doc|xls|ppt)$"''',
                 scc_finding_categories=["MALWARE", "SUSPICIOUS_BINARY"],
-                gcp_terraform_template='''# GCP: Detect malicious documents in Cloud Storage
+                gcp_terraform_template="""# GCP: Detect malicious documents in Cloud Storage
 
 variable "project_id" {
   type        = string
@@ -573,7 +574,7 @@ resource "google_monitoring_alert_policy" "document_alert" {
     content   = "Office document uploaded to Cloud Storage. Review for template injection and other malicious content."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP Cloud Storage: Suspicious Document Upload",
                 alert_description_template=(
@@ -587,7 +588,7 @@ resource "google_monitoring_alert_policy" "document_alert" {
                     "Download and analyse document in isolated environment",
                     "Extract and examine template references from document XML",
                     "Check external URLs against threat intelligence feeds",
-                    "Review user's recent activity for other suspicious uploads"
+                    "Review user's recent activity for other suspicious uploads",
                 ],
                 containment_actions=[
                     "Delete or quarantine the malicious document immediately",
@@ -596,8 +597,8 @@ resource "google_monitoring_alert_policy" "document_alert" {
                     "Review and restrict bucket IAM permissions",
                     "Block malicious template URLs at Cloud Armor or firewall",
                     "Scan other buckets for similar documents",
-                    "Alert users who may have downloaded the document"
-                ]
+                    "Alert users who may have downloaded the document",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Legitimate document uploads are common; focus on anomalous sources and external template references",
@@ -606,9 +607,11 @@ resource "google_monitoring_alert_policy" "document_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$15-30 depending on SCC tier",
-            prerequisites=["Security Command Centre enabled", "Cloud Storage audit logging enabled"]
+            prerequisites=[
+                "Security Command Centre enabled",
+                "Cloud Storage audit logging enabled",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1221-gcp-chronicle-network-analysis",
             name="GCP Chronicle: Template Fetch Network Analysis",
@@ -621,7 +624,7 @@ resource "google_monitoring_alert_policy" "document_alert" {
             gcp_service="chronicle",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''# Chronicle YARA-L Rule for Template Injection
+                gcp_logging_query="""# Chronicle YARA-L Rule for Template Injection
 rule template_injection_network_activity {
   meta:
     author = "Security Team"
@@ -635,8 +638,8 @@ rule template_injection_network_activity {
 
   condition:
     $network
-}''',
-                gcp_terraform_template='''# GCP: Chronicle-based template injection detection
+}""",
+                gcp_terraform_template="""# GCP: Chronicle-based template injection detection
 
 variable "project_id" {
   type        = string
@@ -687,7 +690,7 @@ resource "google_pubsub_subscription" "chronicle_findings_sub" {
   push_config {
     push_endpoint = "https://example.com/chronicle-webhook"  # Replace with your endpoint
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP Chronicle: Template Injection Network Activity",
                 alert_description_template=(
@@ -701,7 +704,7 @@ resource "google_pubsub_subscription" "chronicle_findings_sub" {
                     "Review recent document access on the affected endpoint",
                     "Examine process execution history for Office applications",
                     "Check for credential access attempts via SMB connections",
-                    "Correlate with other security events for the user/endpoint"
+                    "Correlate with other security events for the user/endpoint",
                 ],
                 containment_actions=[
                     "Isolate the affected endpoint from the network",
@@ -710,8 +713,8 @@ resource "google_pubsub_subscription" "chronicle_findings_sub" {
                     "Force user password reset and session revocation",
                     "Review and remove unauthorised network access rules",
                     "Deploy endpoint detection and response (EDR) for deeper analysis",
-                    "Hunt for similar activity across other endpoints"
-                ]
+                    "Hunt for similar activity across other endpoints",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist legitimate Microsoft template servers; focus on unknown destinations",
@@ -720,17 +723,19 @@ resource "google_pubsub_subscription" "chronicle_findings_sub" {
             implementation_effort=EffortLevel.HIGH,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$50-100 depending on Chronicle tier",
-            prerequisites=["Chronicle Security Operations enabled", "Endpoint telemetry collection configured"]
-        )
+            prerequisites=[
+                "Chronicle Security Operations enabled",
+                "Endpoint telemetry collection configured",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1221-aws-s3-document-analysis",
         "t1221-gcp-cloud-storage-document-scan",
         "t1221-aws-vpc-flow-template-fetch",
         "t1221-gcp-chronicle-network-analysis",
-        "t1221-aws-workspaces-monitoring"
+        "t1221-aws-workspaces-monitoring",
     ],
     total_effort_hours=7.5,
-    coverage_improvement="+25% improvement for Defence Evasion tactic"
+    coverage_improvement="+25% improvement for Defence Evasion tactic",
 )

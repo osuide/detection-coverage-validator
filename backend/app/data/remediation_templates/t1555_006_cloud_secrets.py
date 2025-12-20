@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Credentials from Password Stores: Cloud Secrets Management Stores",
     tactic_ids=["TA0006"],
     mitre_url="https://attack.mitre.org/techniques/T1555/006/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries access cloud secrets managers (AWS Secrets Manager, GCP Secret Manager) "
@@ -35,7 +34,7 @@ TEMPLATE = RemediationTemplate(
             "Database passwords often stored here",
             "API keys and tokens accessible",
             "Single access can yield many secrets",
-            "Lateral movement enabler"
+            "Lateral movement enabler",
         ],
         known_threat_actors=["HAFNIUM", "Storm-0501"],
         recent_campaigns=[
@@ -43,14 +42,14 @@ TEMPLATE = RemediationTemplate(
                 name="HAFNIUM Azure Key Vault",
                 year=2024,
                 description="Moved laterally from on-premises to steal passwords from Azure Key Vaults",
-                reference_url="https://attack.mitre.org/groups/G0125/"
+                reference_url="https://attack.mitre.org/groups/G0125/",
             ),
             Campaign(
                 name="Storm-0501 Key Vault Access",
                 year=2024,
                 description="Used Azure Key Vault operations to access encryption keys",
-                reference_url="https://attack.mitre.org/groups/G1053/"
-            )
+                reference_url="https://attack.mitre.org/groups/G1053/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -63,13 +62,12 @@ TEMPLATE = RemediationTemplate(
             "Credential theft enabling lateral movement",
             "Database access via stolen passwords",
             "API key compromise",
-            "Complete environment compromise possible"
+            "Complete environment compromise possible",
         ],
         typical_attack_phase="credential_access",
         often_precedes=["T1078.004", "T1530"],
-        often_follows=["T1098.003", "T1078.004"]
+        often_follows=["T1098.003", "T1078.004"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1555006-aws-secrets",
@@ -82,11 +80,9 @@ TEMPLATE = RemediationTemplate(
                 event_pattern={
                     "source": ["aws.secretsmanager"],
                     "detail-type": ["AWS API Call via CloudTrail"],
-                    "detail": {
-                        "eventName": ["GetSecretValue", "BatchGetSecretValue"]
-                    }
+                    "detail": {"eventName": ["GetSecretValue", "BatchGetSecretValue"]},
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect Secrets Manager access
 
 Parameters:
@@ -123,8 +119,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect Secrets Manager access
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect Secrets Manager access
 
 variable "alert_email" { type = string }
 
@@ -163,7 +159,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Secrets Manager Access",
                 alert_description_template="Secret {secretId} accessed by {userIdentity.arn}.",
@@ -171,14 +167,14 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Verify the access was authorised",
                     "Check which secrets were accessed",
                     "Review the accessing identity",
-                    "Check for unusual access patterns"
+                    "Check for unusual access patterns",
                 ],
                 containment_actions=[
                     "Rotate the accessed secrets",
                     "Review IAM permissions",
                     "Audit all secret access",
-                    "Check for credential use"
-                ]
+                    "Check for credential use",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known applications that access secrets",
@@ -187,9 +183,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1555006-gcp-secrets",
             name="GCP Secret Manager Access Detection",
@@ -200,7 +195,7 @@ resource "aws_sns_topic_policy" "allow_events" {
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName="google.cloud.secretmanager.v1.SecretManagerService.AccessSecretVersion"''',
-                gcp_terraform_template='''# GCP: Detect Secret Manager access
+                gcp_terraform_template="""# GCP: Detect Secret Manager access
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -235,7 +230,7 @@ resource "google_monitoring_alert_policy" "secret_access" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Secret Manager Access",
                 alert_description_template="Secret accessed from Secret Manager.",
@@ -243,14 +238,14 @@ resource "google_monitoring_alert_policy" "secret_access" {
                     "Verify access was authorised",
                     "Check which secrets accessed",
                     "Review accessing principal",
-                    "Check access patterns"
+                    "Check access patterns",
                 ],
                 containment_actions=[
                     "Rotate accessed secrets",
                     "Review IAM bindings",
                     "Audit secret access",
-                    "Check credential usage"
-                ]
+                    "Check credential usage",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known applications",
@@ -259,11 +254,10 @@ resource "google_monitoring_alert_policy" "secret_access" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled"],
+        ),
     ],
-
     recommended_order=["t1555006-aws-secrets", "t1555006-gcp-secrets"],
     total_effort_hours=1.5,
-    coverage_improvement="+18% improvement for Credential Access tactic"
+    coverage_improvement="+18% improvement for Credential Access tactic",
 )

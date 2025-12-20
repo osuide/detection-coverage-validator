@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Obtain Capabilities: Tool",
     tactic_ids=["TA0042"],
     mitre_url="https://attack.mitre.org/techniques/T1588/002/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries acquire software tools—whether open or closed source, free or "
@@ -40,32 +39,40 @@ TEMPLATE = RemediationTemplate(
             "Widely available for free or purchase",
             "Extensively documented with tutorials",
             "Can blend with legitimate admin tools",
-            "Cracked versions bypass licence restrictions"
+            "Cracked versions bypass licence restrictions",
         ],
         known_threat_actors=[
-            "APT29", "APT32", "APT41", "Lazarus Group", "FIN7",
-            "Wizard Spider", "Aquatic Panda", "Play", "Medusa Group",
-            "Scattered Spider", "UNC3890"
+            "APT29",
+            "APT32",
+            "APT41",
+            "Lazarus Group",
+            "FIN7",
+            "Wizard Spider",
+            "Aquatic Panda",
+            "Play",
+            "Medusa Group",
+            "Scattered Spider",
+            "UNC3890",
         ],
         recent_campaigns=[
             Campaign(
                 name="C0027 - Scattered Spider Operations",
                 year=2023,
                 description="Acquired LINpeas, aws_consoler, Level RMM, and RustScan for cloud infrastructure compromise",
-                reference_url="https://attack.mitre.org/campaigns/C0027/"
+                reference_url="https://attack.mitre.org/campaigns/C0027/",
             ),
             Campaign(
                 name="C0010 - UNC3890 Operations",
                 year=2022,
                 description="Obtained Metasploit, Unicorn, and NorthStar C2 for advanced persistent access",
-                reference_url="https://attack.mitre.org/campaigns/C0010/"
+                reference_url="https://attack.mitre.org/campaigns/C0010/",
             ),
             Campaign(
                 name="Operation Wocao",
                 year=2020,
                 description="Used JexBoss, KeeThief, and BloodHound for network reconnaissance and credential theft",
-                reference_url="https://attack.mitre.org/techniques/T1588/002/"
-            )
+                reference_url="https://attack.mitre.org/techniques/T1588/002/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -79,13 +86,12 @@ TEMPLATE = RemediationTemplate(
             "Enables credential theft and lateral movement",
             "Facilitates ransomware deployment",
             "Supports long-term persistent access",
-            "Enables cloud infrastructure compromise"
+            "Enables cloud infrastructure compromise",
         ],
         typical_attack_phase="resource_development",
         often_precedes=["T1059", "T1003", "T1078", "T1069"],
-        often_follows=["T1583", "T1584"]
+        often_follows=["T1583", "T1584"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1588-002-aws-guardduty",
@@ -95,12 +101,12 @@ TEMPLATE = RemediationTemplate(
             aws_service="guardduty",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, detail.type, detail.service.action.actionType, detail.resource.instanceDetails.instanceId
+                query="""fields @timestamp, detail.type, detail.service.action.actionType, detail.resource.instanceDetails.instanceId
 | filter detail.type like /CryptoCurrency|Backdoor|Trojan|Behavior/
 | filter detail.service.action.actionType = "NETWORK_CONNECTION"
 | stats count(*) as findings by detail.resource.instanceDetails.instanceId, detail.type, bin(1h)
-| sort findings desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort findings desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect malicious tool execution via GuardDuty
 
 Parameters:
@@ -152,8 +158,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref SecurityAlertTopic''',
-                terraform_template='''# Detect malicious tool execution via GuardDuty
+            Resource: !Ref SecurityAlertTopic""",
+                terraform_template="""# Detect malicious tool execution via GuardDuty
 
 variable "alert_email" {
   description = "Email address for security alerts"
@@ -209,7 +215,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Resource  = aws_sns_topic.security_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Malicious Tool Activity Detected",
                 alert_description_template="GuardDuty detected suspicious tool behaviour on instance {instanceId}.",
@@ -218,15 +224,15 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Examine process execution history on affected instance",
                     "Check for known tool signatures (Mimikatz, Cobalt Strike watermarks)",
                     "Review network connections and data exfiltration attempts",
-                    "Analyse authentication logs for credential access"
+                    "Analyse authentication logs for credential access",
                 ],
                 containment_actions=[
                     "Isolate affected instances from network",
                     "Terminate suspicious processes",
                     "Rotate credentials accessed by affected systems",
                     "Review IAM permissions for compromised resources",
-                    "Snapshot instance for forensic analysis"
-                ]
+                    "Snapshot instance for forensic analysis",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="GuardDuty findings are pre-tuned by AWS threat intelligence",
@@ -235,9 +241,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$0 (GuardDuty charges apply separately)",
-            prerequisites=["AWS GuardDuty enabled"]
+            prerequisites=["AWS GuardDuty enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1588-002-aws-s3-download",
             name="AWS S3 Suspicious Tool Downloads",
@@ -246,12 +251,12 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             aws_service="cloudtrail",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, requestParameters.bucketName, requestParameters.key
+                query="""fields @timestamp, userIdentity.principalId, requestParameters.bucketName, requestParameters.key
 | filter eventName = "GetObject"
 | filter requestParameters.key like /mimikatz|cobalt|meterpreter|empire|bloodhound|sharphound|rubeus|powersploit|invoke-/i
 | stats count(*) as downloads by userIdentity.principalId, requestParameters.key, bin(1h)
-| sort downloads desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort downloads desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect suspicious tool downloads from S3
 
 Parameters:
@@ -299,8 +304,8 @@ Resources:
       EvaluationPeriods: 1
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching''',
-                terraform_template='''# Detect suspicious tool downloads from S3
+      TreatMissingData: notBreaching""",
+                terraform_template="""# Detect suspicious tool downloads from S3
 
 variable "cloudtrail_log_group" {
   description = "CloudTrail log group name"
@@ -350,7 +355,7 @@ resource "aws_cloudwatch_metric_alarm" "tool_downloads" {
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.tool_download_alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Suspicious Tool Download from S3",
                 alert_description_template="User {principalId} downloaded potential attack tool: {key}",
@@ -359,15 +364,15 @@ resource "aws_cloudwatch_metric_alarm" "tool_downloads" {
                     "Review CloudTrail logs for associated activity",
                     "Check if tool was executed on EC2 instances",
                     "Examine destination IP addresses and data transfers",
-                    "Review S3 bucket access policies and permissions"
+                    "Review S3 bucket access policies and permissions",
                 ],
                 containment_actions=[
                     "Suspend compromised IAM credentials",
                     "Remove suspicious files from S3",
                     "Review and restrict S3 bucket access policies",
                     "Scan instances for tool execution evidence",
-                    "Enable S3 Object Lock for critical buckets"
-                ]
+                    "Enable S3 Object Lock for critical buckets",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude security team buckets and legitimate penetration testing activities",
@@ -376,9 +381,8 @@ resource "aws_cloudwatch_metric_alarm" "tool_downloads" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail with S3 data events enabled"]
+            prerequisites=["CloudTrail with S3 data events enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1588-002-gcp-asset-inventory",
             name="GCP Asset Inventory Suspicious Software",
@@ -388,15 +392,15 @@ resource "aws_cloudwatch_metric_alarm" "tool_downloads" {
             gcp_service="cloud_asset_inventory",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 protoPayload.methodName="v1.compute.instances.insert"
 protoPayload.request.metadata.items.key="startup-script"
 (protoPayload.request.metadata.items.value=~"mimikatz" OR
  protoPayload.request.metadata.items.value=~"cobalt" OR
  protoPayload.request.metadata.items.value=~"meterpreter" OR
  protoPayload.request.metadata.items.value=~"bloodhound" OR
- protoPayload.request.metadata.items.value=~"empire")''',
-                gcp_terraform_template='''# GCP: Detect suspicious tool installation
+ protoPayload.request.metadata.items.value=~"empire")""",
+                gcp_terraform_template="""# GCP: Detect suspicious tool installation
 
 variable "project_id" {
   description = "GCP project ID"
@@ -473,7 +477,7 @@ resource "google_monitoring_alert_policy" "tool_installation" {
   alert_strategy {
     auto_close = "86400s"  # 24 hours
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Suspicious Tool Installation Detected",
                 alert_description_template="Known attack tool detected on GCP instance in startup script.",
@@ -482,15 +486,15 @@ resource "google_monitoring_alert_policy" "tool_installation" {
                     "Examine instance metadata and startup scripts",
                     "Check for network connections from instance",
                     "Review IAM permissions for instance service account",
-                    "Analyse other instances in same project for similar activity"
+                    "Analyse other instances in same project for similar activity",
                 ],
                 containment_actions=[
                     "Stop affected GCP instances immediately",
                     "Disable compromised service accounts",
                     "Review and restrict VPC firewall rules",
                     "Take instance snapshots for forensics",
-                    "Audit project-wide IAM permissions"
-                ]
+                    "Audit project-wide IAM permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Exclude authorised security testing projects",
@@ -499,9 +503,8 @@ resource "google_monitoring_alert_policy" "tool_installation" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Logging API enabled", "Compute Engine API enabled"]
+            prerequisites=["Cloud Logging API enabled", "Compute Engine API enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1588-002-gcp-storage-download",
             name="GCP Cloud Storage Suspicious Downloads",
@@ -511,7 +514,7 @@ resource "google_monitoring_alert_policy" "tool_installation" {
             gcp_service="cloud_storage",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gcs_bucket"
+                gcp_logging_query="""resource.type="gcs_bucket"
 protoPayload.methodName="storage.objects.get"
 (protoPayload.resourceName=~"mimikatz" OR
  protoPayload.resourceName=~"cobalt" OR
@@ -519,8 +522,8 @@ protoPayload.methodName="storage.objects.get"
  protoPayload.resourceName=~"bloodhound" OR
  protoPayload.resourceName=~"sharphound" OR
  protoPayload.resourceName=~"rubeus" OR
- protoPayload.resourceName=~"powersploit")''',
-                gcp_terraform_template='''# GCP: Detect suspicious tool downloads from Cloud Storage
+ protoPayload.resourceName=~"powersploit")""",
+                gcp_terraform_template="""# GCP: Detect suspicious tool downloads from Cloud Storage
 
 variable "project_id" {
   description = "GCP project ID"
@@ -585,7 +588,7 @@ resource "google_monitoring_alert_policy" "storage_downloads" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Suspicious Tool Downloaded from Cloud Storage",
                 alert_description_template="Known attack tool downloaded from Cloud Storage bucket.",
@@ -594,15 +597,15 @@ resource "google_monitoring_alert_policy" "storage_downloads" {
                     "Review access logs for the storage bucket",
                     "Check where the file was downloaded to (instance, local)",
                     "Examine other activity from the same principal",
-                    "Review bucket IAM policies and permissions"
+                    "Review bucket IAM policies and permissions",
                 ],
                 containment_actions=[
                     "Suspend compromised user accounts",
                     "Remove suspicious objects from buckets",
                     "Restrict bucket access with IAM conditions",
                     "Enable uniform bucket-level access",
-                    "Review and rotate service account keys"
-                ]
+                    "Review and rotate service account keys",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude security research and authorised red team storage locations",
@@ -611,16 +614,15 @@ resource "google_monitoring_alert_policy" "storage_downloads" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",
             estimated_monthly_cost="$5-15",
-            prerequisites=["Cloud Storage data access logs enabled"]
-        )
+            prerequisites=["Cloud Storage data access logs enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1588-002-aws-guardduty",
         "t1588-002-gcp-asset-inventory",
         "t1588-002-aws-s3-download",
-        "t1588-002-gcp-storage-download"
+        "t1588-002-gcp-storage-download",
     ],
     total_effort_hours=3.0,
-    coverage_improvement="+15% improvement for Resource Development tactic"
+    coverage_improvement="+15% improvement for Resource Development tactic",
 )

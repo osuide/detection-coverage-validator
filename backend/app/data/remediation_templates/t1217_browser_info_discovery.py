@@ -25,7 +25,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Browser Information Discovery",
     tactic_ids=["TA0007"],
     mitre_url="https://attack.mitre.org/techniques/T1217/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries enumerate browser data to gather intelligence about compromised "
@@ -44,30 +43,28 @@ TEMPLATE = RemediationTemplate(
             "Identifies cryptocurrency wallet extensions",
             "Discovers two-factor authentication extensions",
             "Maps user interests and behaviour patterns",
-            "Uncovers cloud service accounts and portals"
+            "Uncovers cloud service accounts and portals",
         ],
-        known_threat_actors=[
-            "APT38", "Volt Typhoon", "OilRig", "Scattered Spider"
-        ],
+        known_threat_actors=["APT38", "Volt Typhoon", "OilRig", "Scattered Spider"],
         recent_campaigns=[
             Campaign(
                 name="OilRig Juicy Mix Campaign",
                 year=2023,
                 description="Deployed specialised tools (CDumper for Chrome, EDumper for Edge, MKG) to harvest cookies, history, and credentials from browsers",
-                reference_url="https://attack.mitre.org/groups/G0049/"
+                reference_url="https://attack.mitre.org/groups/G0049/",
             ),
             Campaign(
                 name="Volt Typhoon Infrastructure Reconnaissance",
                 year=2024,
                 description="Targeted network administrators' browsing histories to map critical infrastructure and internal systems",
-                reference_url="https://attack.mitre.org/groups/G1017/"
+                reference_url="https://attack.mitre.org/groups/G1017/",
             ),
             Campaign(
                 name="Scattered Spider Infostealer Campaign",
                 year=2024,
                 description="Utilised infostealer malware like Raccoon Stealer to extract browser histories and credentials from compromised endpoints",
-                reference_url="https://attack.mitre.org/groups/G1015/"
-            )
+                reference_url="https://attack.mitre.org/groups/G1015/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -85,13 +82,12 @@ TEMPLATE = RemediationTemplate(
             "Discovery of internal network topology",
             "Theft of cryptocurrency wallet credentials",
             "Compromise of two-factor authentication secrets",
-            "Data exfiltration of sensitive browsing history"
+            "Data exfiltration of sensitive browsing history",
         ],
         typical_attack_phase="discovery",
         often_precedes=["T1555", "T1539", "T1078"],
-        often_follows=["T1059", "T1204.002"]
+        often_follows=["T1059", "T1204.002"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - Windows Browser File Access
         DetectionStrategy(
@@ -102,15 +98,15 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query=r'''fields @timestamp, @message
+                query=r"""fields @timestamp, @message
 | filter @logStream like /windows-file-access/
 | filter @message like /Chrome\\User Data|Firefox\\Profiles|Edge\\User Data|Safari\\LocalStorage/
 | filter @message like /\.sqlite|\.db|Bookmarks|History|Cookies|Login Data|Web Data/
 | parse @message "* * *" as timestamp, hostname, file_path
 | stats count(*) as access_count by hostname, bin(5m)
 | filter access_count > 10
-| sort access_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort access_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect Windows browser information discovery on EC2
 
 Parameters:
@@ -162,8 +158,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching''',
-                terraform_template='''# AWS: Detect Windows browser information discovery
+      TreatMissingData: notBreaching""",
+                terraform_template="""# AWS: Detect Windows browser information discovery
 
 variable "alert_email" {
   type        = string
@@ -213,7 +209,7 @@ resource "aws_cloudwatch_metric_alarm" "browser_discovery" {
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Windows Browser Information Discovery Detected",
                 alert_description_template="Bulk browser file access detected on {hostname}, indicating potential browser data enumeration.",
@@ -224,7 +220,7 @@ resource "aws_cloudwatch_metric_alarm" "browser_discovery" {
                     "Check for infostealer malware signatures (RedLine, Lumma, Raccoon)",
                     "Examine process ancestry to identify execution source",
                     "Search for data exfiltration attempts (network connections, file uploads)",
-                    "Review CloudTrail for related API calls and S3 uploads"
+                    "Review CloudTrail for related API calls and S3 uploads",
                 ],
                 containment_actions=[
                     "Isolate the instance to prevent credential use and lateral movement",
@@ -233,8 +229,8 @@ resource "aws_cloudwatch_metric_alarm" "browser_discovery" {
                     "Scan for malware using EDR or antivirus solutions",
                     "Review and rotate credentials for discovered accounts",
                     "Enable credential guard on Windows systems",
-                    "Implement application allow-listing to prevent infostealers"
-                ]
+                    "Implement application allow-listing to prevent infostealers",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning=(
@@ -257,10 +253,9 @@ resource "aws_cloudwatch_metric_alarm" "browser_discovery" {
                 "CloudWatch Agent installed on EC2 instances",
                 "Windows Object Access Auditing enabled",
                 "File system audit logs forwarded to CloudWatch",
-                "SACL configured for browser profile directories"
-            ]
+                "SACL configured for browser profile directories",
+            ],
         ),
-
         # Strategy 2: AWS - Linux Browser File Access
         DetectionStrategy(
             strategy_id="t1217-aws-linux",
@@ -270,15 +265,15 @@ resource "aws_cloudwatch_metric_alarm" "browser_discovery" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message
+                query="""fields @timestamp, @message
 | filter @logStream like /linux-file-access/
 | filter @message like /.config\\/google-chrome|.mozilla\\/firefox|.config\\/chromium|Library\\/Application Support\\/Google\\/Chrome/
 | filter @message like /\\.sqlite|\\.db|Bookmarks|History|Cookies|Login Data/
 | parse @message "* * *" as timestamp, hostname, file_path
 | stats count(*) as access_count by hostname, bin(5m)
 | filter access_count > 8
-| sort access_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort access_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect Linux browser information discovery on EC2
 
 Parameters:
@@ -330,8 +325,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching''',
-                terraform_template='''# AWS: Detect Linux browser information discovery
+      TreatMissingData: notBreaching""",
+                terraform_template="""# AWS: Detect Linux browser information discovery
 
 variable "alert_email" {
   type        = string
@@ -381,7 +376,7 @@ resource "aws_cloudwatch_metric_alarm" "browser_discovery" {
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Linux Browser Information Discovery Detected",
                 alert_description_template="Bulk browser file access detected on {hostname}, indicating potential browser data enumeration.",
@@ -392,7 +387,7 @@ resource "aws_cloudwatch_metric_alarm" "browser_discovery" {
                     "Examine process details via ps and /proc inspection",
                     "Search for known infostealer indicators",
                     "Check network connections for data exfiltration",
-                    "Review bash history for suspicious commands"
+                    "Review bash history for suspicious commands",
                 ],
                 containment_actions=[
                     "Isolate the instance to prevent credential misuse",
@@ -401,8 +396,8 @@ resource "aws_cloudwatch_metric_alarm" "browser_discovery" {
                     "Scan for malware and rootkits",
                     "Review SSH keys and authorised_keys files",
                     "Enable SELinux or AppArmor policies for browser directories",
-                    "Implement file integrity monitoring for browser profiles"
-                ]
+                    "Implement file integrity monitoring for browser profiles",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning=(
@@ -425,10 +420,9 @@ resource "aws_cloudwatch_metric_alarm" "browser_discovery" {
                 "CloudWatch Agent installed on EC2 instances",
                 "auditd configured with file watch rules",
                 "File access events forwarded to CloudWatch",
-                "Audit rules for ~/.config and ~/.mozilla directories"
-            ]
+                "Audit rules for ~/.config and ~/.mozilla directories",
+            ],
         ),
-
         # Strategy 3: AWS - Process-Based Browser Discovery
         DetectionStrategy(
             strategy_id="t1217-aws-process",
@@ -438,15 +432,15 @@ resource "aws_cloudwatch_metric_alarm" "browser_discovery" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query=r'''fields @timestamp, @message
+                query=r"""fields @timestamp, @message
 | filter @logStream like /process-monitoring/
 | filter @message like /powershell.exe|cmd.exe|python|perl|bash|sh/
 | filter @message like /Chrome.*History|Firefox.*cookies.sqlite|Edge.*Bookmarks|sqlite3.*Login Data/
 | parse @message "* * * *" as timestamp, hostname, process, cmdline
 | stats count(*) as browser_access by hostname, process, bin(10m)
 | filter browser_access > 5
-| sort browser_access desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort browser_access desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect browser discovery via process monitoring
 
 Parameters:
@@ -498,8 +492,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching''',
-                terraform_template='''# AWS: Detect browser discovery via process monitoring
+      TreatMissingData: notBreaching""",
+                terraform_template="""# AWS: Detect browser discovery via process monitoring
 
 variable "alert_email" {
   type        = string
@@ -549,7 +543,7 @@ resource "aws_cloudwatch_metric_alarm" "process_discovery" {
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Browser Data Enumeration Process Detected",
                 alert_description_template="Process {process} on {hostname} is enumerating browser data across multiple browsers.",
@@ -560,7 +554,7 @@ resource "aws_cloudwatch_metric_alarm" "process_discovery" {
                     "Check process hashes against threat intelligence feeds",
                     "Examine network connections from the process",
                     "Search for similar activity on other instances",
-                    "Review user account activity and login history"
+                    "Review user account activity and login history",
                 ],
                 containment_actions=[
                     "Kill the suspicious process immediately",
@@ -569,8 +563,8 @@ resource "aws_cloudwatch_metric_alarm" "process_discovery" {
                     "Reset credentials for all users on the system",
                     "Scan for persistence mechanisms (scheduled tasks, registry keys)",
                     "Review outbound network traffic for data exfiltration",
-                    "Deploy EDR agent if not already present"
-                ]
+                    "Deploy EDR agent if not already present",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning=(
@@ -593,10 +587,9 @@ resource "aws_cloudwatch_metric_alarm" "process_discovery" {
                 "CloudWatch Agent with process monitoring enabled",
                 "Process command line logging configured",
                 "Sysmon or equivalent process monitoring tool",
-                "Windows Security Event Log forwarding (Event ID 4688)"
-            ]
+                "Windows Security Event Log forwarding (Event ID 4688)",
+            ],
         ),
-
         # Strategy 4: GCP - Browser File Access Detection
         DetectionStrategy(
             strategy_id="t1217-gcp-file-access",
@@ -607,7 +600,7 @@ resource "aws_cloudwatch_metric_alarm" "process_discovery" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 (jsonPayload.file_path=~".*\\.config/google-chrome.*" OR
  jsonPayload.file_path=~".*\\.mozilla/firefox.*" OR
  jsonPayload.file_path=~".*Library/Application Support/Google/Chrome.*" OR
@@ -618,8 +611,8 @@ resource "aws_cloudwatch_metric_alarm" "process_discovery" {
  jsonPayload.file_name=~".*History.*" OR
  jsonPayload.file_name=~".*Cookies.*" OR
  jsonPayload.file_name=~".*Login Data.*")
-severity>=DEFAULT''',
-                gcp_terraform_template='''# GCP: Detect browser information discovery
+severity>=DEFAULT""",
+                gcp_terraform_template="""# GCP: Detect browser information discovery
 
 variable "project_id" {
   type        = string
@@ -717,7 +710,7 @@ resource "google_monitoring_alert_policy" "browser_discovery" {
       - Create instance snapshot for forensic analysis
     EOT
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Browser Information Discovery Detected",
                 alert_description_template="Bulk browser file access detected on GCP instance, indicating potential browser data enumeration.",
@@ -728,7 +721,7 @@ resource "google_monitoring_alert_policy" "browser_discovery" {
                     "Examine network traffic for exfiltration indicators",
                     "Review OS Login and SSH authentication logs",
                     "Check for unusual service account activity",
-                    "Correlate with VPC Flow Logs for network reconnaissance"
+                    "Correlate with VPC Flow Logs for network reconnaissance",
                 ],
                 containment_actions=[
                     "Isolate instance using VPC firewall rules",
@@ -737,8 +730,8 @@ resource "google_monitoring_alert_policy" "browser_discovery" {
                     "Scan for malware using Cloud Security Command Center",
                     "Review and revoke suspicious SSH keys",
                     "Enable VPC Service Controls to prevent data exfiltration",
-                    "Deploy OS Config for vulnerability assessment"
-                ]
+                    "Deploy OS Config for vulnerability assessment",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning=(
@@ -761,10 +754,9 @@ resource "google_monitoring_alert_policy" "browser_discovery" {
                 "Ops Agent installed on Compute Engine instances",
                 "File access monitoring enabled in Ops Agent configuration",
                 "Cloud Logging API enabled",
-                "Appropriate IAM permissions for log-based metrics"
-            ]
+                "Appropriate IAM permissions for log-based metrics",
+            ],
         ),
-
         # Strategy 5: GCP - Browser Discovery Process Detection
         DetectionStrategy(
             strategy_id="t1217-gcp-process",
@@ -775,11 +767,11 @@ resource "google_monitoring_alert_policy" "browser_discovery" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 jsonPayload.process_name=~"(powershell|python|perl|bash|sh|cmd)"
 jsonPayload.command_line=~"(Chrome.*sqlite|Firefox.*cookies|Bookmarks|History|Login Data|Web Data)"
-severity>=DEFAULT''',
-                gcp_terraform_template='''# GCP: Detect browser enumeration processes
+severity>=DEFAULT""",
+                gcp_terraform_template="""# GCP: Detect browser enumeration processes
 
 variable "project_id" {
   type        = string
@@ -877,7 +869,7 @@ resource "google_monitoring_alert_policy" "browser_enum_process" {
       5. Scan for malware and persistence
     EOT
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Browser Enumeration Process Detected",
                 alert_description_template="Process {process_name} detected accessing browser data on GCP instance.",
@@ -888,7 +880,7 @@ resource "google_monitoring_alert_policy" "browser_enum_process" {
                     "Examine process network connections",
                     "Review Cloud Logging for process creation events",
                     "Search for similar activity across other instances",
-                    "Check for lateral movement indicators"
+                    "Check for lateral movement indicators",
                 ],
                 containment_actions=[
                     "Terminate the suspicious process immediately",
@@ -897,8 +889,8 @@ resource "google_monitoring_alert_policy" "browser_enum_process" {
                     "Reset all user credentials and service account keys",
                     "Scan for malware using VirusTotal or ClamAV",
                     "Review startup scripts and cron jobs for persistence",
-                    "Enable Security Command Center for ongoing monitoring"
-                ]
+                    "Enable Security Command Center for ongoing monitoring",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning=(
@@ -921,18 +913,17 @@ resource "google_monitoring_alert_policy" "browser_enum_process" {
                 "Ops Agent installed with process monitoring enabled",
                 "Process command line logging configured",
                 "Cloud Logging API enabled",
-                "Sufficient log retention period (90+ days recommended)"
-            ]
-        )
+                "Sufficient log retention period (90+ days recommended)",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1217-aws-process",
         "t1217-gcp-process",
         "t1217-aws-windows",
         "t1217-aws-linux",
-        "t1217-gcp-file-access"
+        "t1217-gcp-file-access",
     ],
     total_effort_hours=14.0,
-    coverage_improvement="+7% improvement for Discovery tactic"
+    coverage_improvement="+7% improvement for Discovery tactic",
 )

@@ -146,8 +146,9 @@ class EmailService:
         if text_body is None:
             # Generate plain text from HTML (basic strip)
             import re
-            text_body = re.sub(r'<[^>]+>', '', html_body)
-            text_body = re.sub(r'\s+', ' ', text_body).strip()
+
+            text_body = re.sub(r"<[^>]+>", "", html_body)
+            text_body = re.sub(r"\s+", " ", text_body).strip()
 
         try:
             response = self.client.send_email(

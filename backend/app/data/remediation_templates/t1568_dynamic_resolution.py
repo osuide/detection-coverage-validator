@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Dynamic Resolution",
     tactic_ids=["TA0011"],  # Command and Control
     mitre_url="https://attack.mitre.org/techniques/T1568/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries dynamically establish connections to command and control infrastructure "
@@ -40,40 +39,40 @@ TEMPLATE = RemediationTemplate(
             "Enables rapid rotation of C2 endpoints",
             "Blends with legitimate dynamic DNS usage",
             "Bypasses signature-based network security controls",
-            "Facilitates long-term persistent access"
+            "Facilitates long-term persistent access",
         ],
         known_threat_actors=[
             "APT29",
             "Gamaredon Group",
             "Transparent Tribe",
             "BITTER",
-            "RedEcho"
+            "RedEcho",
         ],
         recent_campaigns=[
             Campaign(
                 name="SolarWinds Compromise (C0024)",
                 year=2020,
                 description="APT29 deployed SUNBURST malware which used dynamic DNS resolution to construct and resolve randomly-generated subdomains for C2 communications",
-                reference_url="https://attack.mitre.org/campaigns/C0024/"
+                reference_url="https://attack.mitre.org/campaigns/C0024/",
             ),
             Campaign(
                 name="Operation Spalax",
                 year=2024,
                 description="Gamaredon Group leveraged dynamic DNS services including Duck DNS and DNS Exit for malicious infrastructure operations",
-                reference_url="https://attack.mitre.org/groups/G0047/"
+                reference_url="https://attack.mitre.org/groups/G0047/",
             ),
             Campaign(
                 name="Operation Dust Storm",
                 year=2023,
                 description="Transparent Tribe utilised multiple free dynamic DNS providers including No-IP, Oray, and 3322 for C2 communications",
-                reference_url="https://attack.mitre.org/groups/G0134/"
+                reference_url="https://attack.mitre.org/groups/G0134/",
             ),
             Campaign(
                 name="BITTER Dynamic DNS Campaign",
                 year=2023,
                 description="BITTER APT group employed dynamic DNS services for command and control infrastructure across targeted operations",
-                reference_url="https://attack.mitre.org/groups/G1002/"
-            )
+                reference_url="https://attack.mitre.org/groups/G1002/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -92,13 +91,12 @@ TEMPLATE = RemediationTemplate(
             "Increased incident response complexity and costs",
             "Potential for data exfiltration over extended periods",
             "Reduced effectiveness of threat intelligence feeds",
-            "Compliance violations from undetected malicious traffic"
+            "Compliance violations from undetected malicious traffic",
         ],
         typical_attack_phase="command_and_control",
         often_precedes=["T1041", "T1567", "T1071"],  # Exfiltration and C2 techniques
-        often_follows=["T1078.004", "T1190", "T1566"]  # Initial Access techniques
+        often_follows=["T1078.004", "T1190", "T1566"],  # Initial Access techniques
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - Domain Generation Algorithm (DGA) Detection
         DetectionStrategy(
@@ -109,15 +107,15 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query=r'''fields @timestamp, query_name, query_type, srcaddr, rcode
+                query=r"""fields @timestamp, query_name, query_type, srcaddr, rcode
 | filter query_type in ["A", "AAAA"]
 | filter query_name like /[a-z]{10,}\.(?:com|net|org|info|biz)$/
 | filter query_name like /[bcdfghjklmnpqrstvwxyz]{5,}/
 | stats count() as query_count, count_distinct(query_name) as unique_domains by srcaddr, bin(5m)
 | filter query_count > 20 and unique_domains > 15
 | sort query_count desc
-| limit 100''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| limit 100""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect DGA domain queries indicating potential malware C2 activity
 
 Parameters:
@@ -179,8 +177,8 @@ Resources:
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect DGA domain queries indicating malware C2
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect DGA domain queries indicating malware C2
 
 variable "alert_email" {
   type        = string
@@ -229,7 +227,7 @@ resource "aws_cloudwatch_metric_alarm" "dga_detection" {
   statistic           = "Sum"
   threshold           = 50
   alarm_actions       = [aws_sns_topic.dga_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Domain Generation Algorithm (DGA) Activity Detected",
                 alert_description_template="DGA-like behaviour detected from {srcaddr}: {query_count} queries to {unique_domains} unique pseudo-random domains. This may indicate malware C2 activity.",
@@ -240,7 +238,7 @@ resource "aws_cloudwatch_metric_alarm" "dga_detection" {
                     "Analyse query timing patterns (steady stream vs bursts)",
                     "Examine instance processes and running applications",
                     "Correlate with endpoint detection and response (EDR) alerts",
-                    "Check threat intelligence feeds for known DGA families"
+                    "Check threat intelligence feeds for known DGA families",
                 ],
                 containment_actions=[
                     "Isolate the source instance from the network immediately",
@@ -249,8 +247,8 @@ resource "aws_cloudwatch_metric_alarm" "dga_detection" {
                     "Revoke instance IAM credentials and rotate any exposed secrets",
                     "Review security group rules and restrict egress traffic",
                     "Deploy endpoint detection and response (EDR) for detailed analysis",
-                    "Implement DNS sinkholing for known malware families"
-                ]
+                    "Implement DNS sinkholing for known malware families",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude legitimate services that generate similar patterns (CDNs, analytics). Establish baseline for normal DNS query patterns per instance type.",
@@ -259,9 +257,11 @@ resource "aws_cloudwatch_metric_alarm" "dga_detection" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$15-30",
-            prerequisites=["Route 53 Resolver Query Logging enabled", "CloudTrail enabled"]
+            prerequisites=[
+                "Route 53 Resolver Query Logging enabled",
+                "CloudTrail enabled",
+            ],
         ),
-
         # Strategy 2: AWS - Dynamic DNS Provider Detection
         DetectionStrategy(
             strategy_id="t1568-aws-ddns",
@@ -271,7 +271,7 @@ resource "aws_cloudwatch_metric_alarm" "dga_detection" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query=r'''fields @timestamp, query_name, srcaddr, query_type
+                query=r"""fields @timestamp, query_name, srcaddr, query_type
 | filter query_name like /\.no-ip\.(com|org|net|biz|info)$/
    or query_name like /\.duckdns\.org$/
    or query_name like /\.ddns\.net$/
@@ -282,8 +282,8 @@ resource "aws_cloudwatch_metric_alarm" "dga_detection" {
    or query_name like /\.dnsexit\.com$/
 | stats count() as query_count by srcaddr, query_name, bin(5m)
 | filter query_count > 5
-| sort query_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort query_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect usage of dynamic DNS providers for C2
 
 Parameters:
@@ -347,8 +347,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect usage of dynamic DNS providers
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect usage of dynamic DNS providers
 
 variable "alert_email" {
   type        = string
@@ -403,7 +403,7 @@ resource "aws_cloudwatch_metric_alarm" "ddns_detection" {
   statistic           = "Sum"
   threshold           = 5
   alarm_actions       = [aws_sns_topic.ddns_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Dynamic DNS Provider Usage Detected",
                 alert_description_template="Instance {srcaddr} queried dynamic DNS domain {query_name}. Dynamic DNS services are commonly used by threat actors for C2 infrastructure.",
@@ -414,7 +414,7 @@ resource "aws_cloudwatch_metric_alarm" "ddns_detection" {
                     "Check for any legitimate business use of dynamic DNS",
                     "Analyse CloudTrail logs for suspicious API activity",
                     "Examine instance for malware or unauthorised software",
-                    "Check threat intelligence for the specific domain"
+                    "Check threat intelligence for the specific domain",
                 ],
                 containment_actions=[
                     "Block dynamic DNS domains via Route 53 Resolver DNS Firewall",
@@ -423,8 +423,8 @@ resource "aws_cloudwatch_metric_alarm" "ddns_detection" {
                     "Revoke instance credentials and rotate secrets",
                     "Create forensic snapshots for investigation",
                     "Implement DNS filtering for known dynamic DNS providers",
-                    "Enable GuardDuty for enhanced threat detection"
-                ]
+                    "Enable GuardDuty for enhanced threat detection",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Verify legitimate use cases for dynamic DNS in your environment. Some IoT devices and remote access solutions may use dynamic DNS legitimately.",
@@ -433,9 +433,11 @@ resource "aws_cloudwatch_metric_alarm" "ddns_detection" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Route 53 Resolver Query Logging enabled", "VPC DNS logging enabled"]
+            prerequisites=[
+                "Route 53 Resolver Query Logging enabled",
+                "VPC DNS logging enabled",
+            ],
         ),
-
         # Strategy 3: AWS - Fast Flux DNS Detection
         DetectionStrategy(
             strategy_id="t1568-aws-fastflux",
@@ -445,13 +447,13 @@ resource "aws_cloudwatch_metric_alarm" "ddns_detection" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, query_name, answers.Rdata as ip_address, srcaddr
+                query="""fields @timestamp, query_name, answers.Rdata as ip_address, srcaddr
 | filter query_type = "A"
 | stats count_distinct(ip_address) as unique_ips, count() as query_count by query_name, bin(10m)
 | filter unique_ips > 5 and query_count > 10
 | sort unique_ips desc
-| limit 100''',
-                terraform_template='''# Detect Fast Flux DNS patterns
+| limit 100""",
+                terraform_template="""# Detect Fast Flux DNS patterns
 
 variable "alert_email" {
   type        = string
@@ -504,7 +506,7 @@ resource "aws_cloudwatch_metric_alarm" "fastflux_detection" {
   statistic           = "Sum"
   threshold           = 100
   alarm_actions       = [aws_sns_topic.fastflux_alerts.arn]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Fast Flux DNS Activity Detected",
                 alert_description_template="Fast Flux behaviour detected for domain {query_name}: {unique_ips} unique IP addresses in 10 minutes. This indicates potential malicious infrastructure.",
@@ -515,7 +517,7 @@ resource "aws_cloudwatch_metric_alarm" "fastflux_detection" {
                     "Identify all instances querying this domain",
                     "Check threat intelligence feeds for the domain and IPs",
                     "Examine network traffic to the resolved IP addresses",
-                    "Review instance processes and running applications"
+                    "Review instance processes and running applications",
                 ],
                 containment_actions=[
                     "Block the domain via Route 53 Resolver DNS Firewall",
@@ -524,8 +526,8 @@ resource "aws_cloudwatch_metric_alarm" "fastflux_detection" {
                     "Create network ACL rules to prevent connections",
                     "Deploy DNS sinkhole for the domain",
                     "Review and revoke credentials for affected instances",
-                    "Enable enhanced network monitoring and logging"
-                ]
+                    "Enable enhanced network monitoring and logging",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude legitimate CDN and load-balanced services that may have multiple IPs. Consider geographic distribution patterns as additional context.",
@@ -534,9 +536,11 @@ resource "aws_cloudwatch_metric_alarm" "fastflux_detection" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$20-40",
-            prerequisites=["Route 53 Resolver Query Logging enabled", "CloudWatch Logs Insights"]
+            prerequisites=[
+                "Route 53 Resolver Query Logging enabled",
+                "CloudWatch Logs Insights",
+            ],
         ),
-
         # Strategy 4: AWS - GuardDuty C2 Domain Detection
         DetectionStrategy(
             strategy_id="t1568-aws-guardduty",
@@ -551,9 +555,9 @@ resource "aws_cloudwatch_metric_alarm" "fastflux_detection" {
                     "Backdoor:EC2/C&CActivity.B",
                     "Trojan:EC2/DNSDataExfiltration",
                     "Trojan:EC2/DGADomainRequest.B",
-                    "Trojan:EC2/DGADomainRequest.C!DNS"
+                    "Trojan:EC2/DGADomainRequest.C!DNS",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty detection for malicious domains and DGA activity
 
 Parameters:
@@ -608,8 +612,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# GuardDuty detection for malicious domains
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# GuardDuty detection for malicious domains
 
 variable "alert_email" {
   type        = string
@@ -668,7 +672,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.guardduty_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GuardDuty: Malicious Domain Communication Detected",
                 alert_description_template="GuardDuty detected {type} on instance {resource.instanceDetails.instanceId}. The instance communicated with known malicious infrastructure.",
@@ -679,7 +683,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Review CloudTrail logs for API activity from the instance",
                     "Examine VPC Flow Logs for all network connections",
                     "Analyse instance processes and memory for malware artefacts",
-                    "Check for lateral movement from the compromised instance"
+                    "Check for lateral movement from the compromised instance",
                 ],
                 containment_actions=[
                     "Isolate the affected instance immediately",
@@ -689,8 +693,8 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Block destination IPs via security groups and NACLs",
                     "Review and rotate all secrets accessible from the instance",
                     "Deploy replacement instance from clean, verified AMI",
-                    "Implement automated remediation via Security Hub"
-                ]
+                    "Implement automated remediation via Security Hub",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="GuardDuty uses advanced threat intelligence with low false positive rates. Review and suppress findings for known security testing.",
@@ -699,9 +703,12 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$30-100 depending on data volume",
-            prerequisites=["GuardDuty enabled", "VPC Flow Logs enabled", "DNS Logs enabled"]
+            prerequisites=[
+                "GuardDuty enabled",
+                "VPC Flow Logs enabled",
+                "DNS Logs enabled",
+            ],
         ),
-
         # Strategy 5: GCP - DGA and Dynamic DNS Detection
         DetectionStrategy(
             strategy_id="t1568-gcp-dga",
@@ -716,7 +723,7 @@ resource "aws_sns_topic_policy" "allow_events" {
 (protoPayload.queryName=~"[a-z]{10,}\.(com|net|org|info|biz)$"
 OR protoPayload.queryName=~"(no-ip|duckdns|ddns|dyndns|3322|dnsexit)\.")
 protoPayload.responseCode="NXDOMAIN"''',
-                gcp_terraform_template='''# GCP: DGA and Dynamic DNS detection
+                gcp_terraform_template="""# GCP: DGA and Dynamic DNS detection
 
 variable "project_id" {
   type        = string
@@ -791,7 +798,7 @@ resource "google_monitoring_alert_policy" "dga_detection" {
   documentation {
     content = "DGA or dynamic DNS activity detected. Investigate source VM for potential malware."
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: DGA or Dynamic DNS Activity Detected",
                 alert_description_template="Suspicious domain query patterns detected indicating potential DGA malware or dynamic DNS C2 activity.",
@@ -802,7 +809,7 @@ resource "google_monitoring_alert_policy" "dga_detection" {
                     "Analyse query timing and frequency patterns",
                     "Examine VM metadata and startup scripts",
                     "Review Cloud Audit Logs for suspicious API activity",
-                    "Check Security Command Centre for related findings"
+                    "Check Security Command Centre for related findings",
                 ],
                 containment_actions=[
                     "Isolate the source VM using VPC firewall rules",
@@ -811,8 +818,8 @@ resource "google_monitoring_alert_policy" "dga_detection" {
                     "Revoke service account credentials",
                     "Review and restrict IAM permissions",
                     "Enable VPC Service Controls to prevent data exfiltration",
-                    "Deploy replacement VM from verified image"
-                ]
+                    "Deploy replacement VM from verified image",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude legitimate services with random-looking domain names. Establish baseline DNS patterns per workload type.",
@@ -821,9 +828,8 @@ resource "google_monitoring_alert_policy" "dga_detection" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$15-30",
-            prerequisites=["Cloud DNS logging enabled", "VPC Flow Logs enabled"]
+            prerequisites=["Cloud DNS logging enabled", "VPC Flow Logs enabled"],
         ),
-
         # Strategy 6: GCP - Security Command Centre Threat Detection
         DetectionStrategy(
             strategy_id="t1568-gcp-scc",
@@ -839,9 +845,9 @@ resource "google_monitoring_alert_policy" "dga_detection" {
                     "Malware: Bad IP",
                     "Malware: Cryptomining Bad Domain",
                     "Persistence: IAM Anomalous Grant",
-                    "Initial Access: Suspicious Login"
+                    "Initial Access: Suspicious Login",
                 ],
-                gcp_terraform_template='''# GCP: Security Command Centre for C2 detection
+                gcp_terraform_template="""# GCP: Security Command Centre for C2 detection
 
 variable "organization_id" {
   type        = string
@@ -896,7 +902,7 @@ resource "google_logging_project_sink" "scc_findings" {
 
 # Note: SCC notification configs require organisation-level permissions
 # Configure via: gcloud scc notifications create --organization=ORG_ID
-# Or use google_scc_notification_config with appropriate permissions''',
+# Or use google_scc_notification_config with appropriate permissions""",
                 alert_severity="critical",
                 alert_title="GCP: Malicious Domain Communication Detected",
                 alert_description_template="Security Command Centre detected {category} on {resourceName}. This indicates potential C2 activity or malware infection.",
@@ -907,7 +913,7 @@ resource "google_logging_project_sink" "scc_findings" {
                     "Review VPC Flow Logs for network connections",
                     "Analyse Cloud DNS query logs for the timeframe",
                     "Examine VM instance metadata and configurations",
-                    "Check for lateral movement across projects or organisations"
+                    "Check for lateral movement across projects or organisations",
                 ],
                 containment_actions=[
                     "Isolate affected resources immediately using VPC firewall rules",
@@ -917,8 +923,8 @@ resource "google_logging_project_sink" "scc_findings" {
                     "Enable VPC Service Controls perimeter for affected projects",
                     "Review and rotate any exposed credentials or secrets",
                     "Apply organisation policy constraints to prevent recurrence",
-                    "Enable Enhanced SCC features for advanced detection"
-                ]
+                    "Enable Enhanced SCC features for advanced detection",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Review findings for legitimate security tools and development environments. Configure SCC muting rules for validated benign activities.",
@@ -927,18 +933,21 @@ resource "google_logging_project_sink" "scc_findings" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$50-150 depending on assets",
-            prerequisites=["Security Command Centre enabled", "Event Threat Detection enabled", "VPC Flow Logs enabled"]
-        )
+            prerequisites=[
+                "Security Command Centre enabled",
+                "Event Threat Detection enabled",
+                "VPC Flow Logs enabled",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1568-aws-guardduty",
         "t1568-gcp-scc",
         "t1568-aws-ddns",
         "t1568-aws-dga",
         "t1568-gcp-dga",
-        "t1568-aws-fastflux"
+        "t1568-aws-fastflux",
     ],
     total_effort_hours=8.0,
-    coverage_improvement="+30% improvement for Command and Control tactic detection"
+    coverage_improvement="+30% improvement for Command and Control tactic detection",
 )

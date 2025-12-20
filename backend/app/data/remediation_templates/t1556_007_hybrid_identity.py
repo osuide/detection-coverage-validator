@@ -24,7 +24,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Modify Authentication Process: Hybrid Identity",
     tactic_ids=["TA0006", "TA0005", "TA0003"],
     mitre_url="https://attack.mitre.org/techniques/T1556/007/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries modify cloud authentication processes connected to on-premises user "
@@ -41,7 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Allows credential theft from hybrid identity synchronisation",
             "Difficult to detect without specific monitoring of hybrid components",
             "Provides access to both cloud and on-premises resources",
-            "Often overlooked during incident response"
+            "Often overlooked during incident response",
         ],
         known_threat_actors=["APT29"],
         recent_campaigns=[
@@ -49,7 +48,7 @@ TEMPLATE = RemediationTemplate(
                 name="APT29 AD FS Compromise",
                 year=2024,
                 description="Modified AD FS configuration files to load malicious DLLs, enabling persistent access to federated services",
-                reference_url="https://attack.mitre.org/groups/G0016/"
+                reference_url="https://attack.mitre.org/groups/G0016/",
             )
         ],
         prevalence="rare",
@@ -66,13 +65,12 @@ TEMPLATE = RemediationTemplate(
             "Mass credential theft from hybrid synchronisation services",
             "Compromise of federated identity trust relationships",
             "Severe compliance violations (SOC 2, ISO 27001, FedRAMP)",
-            "Potential for organisation-wide identity infrastructure compromise"
+            "Potential for organisation-wide identity infrastructure compromise",
         ],
         typical_attack_phase="persistence",
         often_precedes=["T1078.004", "T1530", "T1537", "T1087.004"],
-        often_follows=["T1078.004", "T1098.001", "T1484"]
+        often_follows=["T1078.004", "T1098.001", "T1484"],
     ),
-
     detection_strategies=[
         # Strategy 1: Azure AD Connect PTA Agent Registration
         DetectionStrategy(
@@ -83,13 +81,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''# This detection is for Azure Entra ID audit logs exported to CloudWatch
+                query="""# This detection is for Azure Entra ID audit logs exported to CloudWatch
 fields @timestamp, activityDisplayName, initiatedBy.user.userPrincipalName, targetResources
 | filter activityDisplayName = "Register connector"
 | filter targetResources.0.type = "ServicePrincipal"
 | filter targetResources.0.displayName like /PTA|PassthroughAuthentication/
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect unauthorised Azure AD PTA agent registration (requires Azure logs in CloudWatch)
 
 Parameters:
@@ -133,8 +131,8 @@ Resources:
       Threshold: 0
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
-        - !Ref AlertTopic''',
-                terraform_template='''# Detect unauthorised Azure AD PTA agent registration
+        - !Ref AlertTopic""",
+                terraform_template="""# Detect unauthorised Azure AD PTA agent registration
 
 variable "azure_audit_log_group" {
   type        = string
@@ -181,7 +179,7 @@ resource "aws_cloudwatch_metric_alarm" "pta_agent" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.pta_alerts.arn]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Unauthorised PTA Agent Registered",
                 alert_description_template=(
@@ -194,7 +192,7 @@ resource "aws_cloudwatch_metric_alarm" "pta_agent" {
                     "Review Azure Entra ID audit logs for Global Administrator activity",
                     "Check for other suspicious identity configuration changes",
                     "Examine the registering user's recent activity and source IP",
-                    "Review all currently registered PTA agents in Azure portal"
+                    "Review all currently registered PTA agents in Azure portal",
                 ],
                 containment_actions=[
                     "Immediately unregister unauthorised PTA agent from Azure portal",
@@ -202,8 +200,8 @@ resource "aws_cloudwatch_metric_alarm" "pta_agent" {
                     "Reset credentials for Global Administrator accounts",
                     "Enable MFA for all privileged accounts if not already enabled",
                     "Review and revoke active Azure AD sessions",
-                    "Conduct forensic analysis of compromised PTA server"
-                ]
+                    "Conduct forensic analysis of compromised PTA server",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="PTA agent registrations are extremely rare; all events warrant investigation",
@@ -212,9 +210,11 @@ resource "aws_cloudwatch_metric_alarm" "pta_agent" {
             implementation_effort=EffortLevel.HIGH,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Azure Entra ID audit logs exported to CloudWatch", "Hybrid identity setup"]
+            prerequisites=[
+                "Azure Entra ID audit logs exported to CloudWatch",
+                "Hybrid identity setup",
+            ],
         ),
-
         # Strategy 2: AD FS Configuration File Modifications
         DetectionStrategy(
             strategy_id="t1556007-adfs-config-change",
@@ -224,13 +224,13 @@ resource "aws_cloudwatch_metric_alarm" "pta_agent" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''# This detection is for Windows Server logs from AD FS servers sent to CloudWatch
+                query="""# This detection is for Windows Server logs from AD FS servers sent to CloudWatch
 fields @timestamp, EventID, TargetFilename, User, Computer
 | filter Computer like /ADFS/
 | filter TargetFilename like /Microsoft.IdentityServer.Servicehost|FederationMetadata.xml|Microsoft.IdentityServer.dll/
 | filter EventID in [4663, 4670, 4660, 5145]
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect AD FS configuration file modifications (requires Windows logs in CloudWatch)
 
 Parameters:
@@ -274,8 +274,8 @@ Resources:
       Threshold: 0
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
-        - !Ref AlertTopic''',
-                terraform_template='''# Detect AD FS configuration file modifications
+        - !Ref AlertTopic""",
+                terraform_template="""# Detect AD FS configuration file modifications
 
 variable "adfs_log_group" {
   type        = string
@@ -322,7 +322,7 @@ resource "aws_cloudwatch_metric_alarm" "adfs_config" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.adfs_alerts.arn]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="AD FS Configuration Modified",
                 alert_description_template=(
@@ -335,7 +335,7 @@ resource "aws_cloudwatch_metric_alarm" "adfs_config" {
                     "Review who made the modification and their access history",
                     "Examine AD FS service host process for loaded modules",
                     "Check AD FS event logs for unusual token issuance patterns",
-                    "Review federation metadata for unauthorised changes"
+                    "Review federation metadata for unauthorised changes",
                 ],
                 containment_actions=[
                     "Immediately isolate the AD FS server from network",
@@ -344,8 +344,8 @@ resource "aws_cloudwatch_metric_alarm" "adfs_config" {
                     "Reset AD FS service account credentials",
                     "Revoke all active federated authentication tokens",
                     "Conduct full forensic analysis of AD FS server",
-                    "Review and reset signing certificates if compromised"
-                ]
+                    "Review and reset signing certificates if compromised",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Exclude planned maintenance windows and authorised patching activities",
@@ -354,9 +354,11 @@ resource "aws_cloudwatch_metric_alarm" "adfs_config" {
             implementation_effort=EffortLevel.HIGH,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$15-25",
-            prerequisites=["AD FS servers logging to CloudWatch", "Windows object access auditing enabled"]
+            prerequisites=[
+                "AD FS servers logging to CloudWatch",
+                "Windows object access auditing enabled",
+            ],
         ),
-
         # Strategy 3: AWS IAM Identity Center (SSO) Federation Changes
         DetectionStrategy(
             strategy_id="t1556007-aws-sso-federation",
@@ -375,11 +377,11 @@ resource "aws_cloudwatch_metric_alarm" "adfs_config" {
                             "CreateIdentitySource",
                             "DeleteIdentitySource",
                             "UpdateApplication",
-                            "AttachManagedPolicyToPermissionSet"
+                            "AttachManagedPolicyToPermissionSet",
                         ]
-                    }
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect IAM Identity Center federation changes
 
 Parameters:
@@ -427,8 +429,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect IAM Identity Center federation changes
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect IAM Identity Center federation changes
 
 variable "alert_email" {
   type = string
@@ -482,7 +484,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.sso_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="IAM Identity Center Federation Modified",
                 alert_description_template=(
@@ -495,7 +497,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Check who made the change and from which source IP",
                     "Review CloudTrail for other SSO configuration changes",
                     "Examine permission set modifications around the same time",
-                    "Check for new SAML or OIDC identity provider configurations"
+                    "Check for new SAML or OIDC identity provider configurations",
                 ],
                 containment_actions=[
                     "Revert identity source to known good configuration",
@@ -503,8 +505,8 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Disable compromised IAM Identity Center instance if needed",
                     "Reset credentials for accounts with SSO admin access",
                     "Review and revoke active SSO sessions",
-                    "Enable CloudTrail insights for unusual SSO API activity"
-                ]
+                    "Enable CloudTrail insights for unusual SSO API activity",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Federation changes should be rare and well-documented",
@@ -513,9 +515,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled", "IAM Identity Center configured"]
+            prerequisites=["CloudTrail enabled", "IAM Identity Center configured"],
         ),
-
         # Strategy 4: Suspicious DLL Loads in LSASS
         DetectionStrategy(
             strategy_id="t1556007-lsass-dll-load",
@@ -525,13 +526,13 @@ resource "aws_sns_topic_policy" "allow_events" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''# This detection is for Sysmon logs (Event ID 7) from hybrid identity servers
+                query="""# This detection is for Sysmon logs (Event ID 7) from hybrid identity servers
 fields @timestamp, EventID, ImageLoaded, Signed, Signature, ProcessName, Computer
 | filter EventID = 7
 | filter ProcessName like /lsass.exe|Microsoft.IdentityServer.ServiceHost.exe|AzureADConnectAuthenticationAgentService.exe/
 | filter Signed = "false" or Signature = ""
-| sort @timestamp desc''',
-                terraform_template='''# Detect suspicious DLL loads in hybrid identity processes
+| sort @timestamp desc""",
+                terraform_template="""# Detect suspicious DLL loads in hybrid identity processes
 
 variable "hybrid_identity_log_group" {
   type        = string
@@ -578,7 +579,7 @@ resource "aws_cloudwatch_metric_alarm" "dll_load" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.dll_alerts.arn]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Suspicious DLL Loaded in Identity Process",
                 alert_description_template=(
@@ -591,7 +592,7 @@ resource "aws_cloudwatch_metric_alarm" "dll_load" {
                     "Review when the DLL was created or modified",
                     "Examine process tree and parent process",
                     "Check for other unsigned DLLs in system directories",
-                    "Review recent authentication events for anomalies"
+                    "Review recent authentication events for anomalies",
                 ],
                 containment_actions=[
                     "Immediately isolate the affected server",
@@ -600,8 +601,8 @@ resource "aws_cloudwatch_metric_alarm" "dll_load" {
                     "Reset credentials for all hybrid identity sync accounts",
                     "Conduct memory dump analysis of affected processes",
                     "Review all authentication events since DLL load time",
-                    "Force password reset for all synchronised accounts"
-                ]
+                    "Force password reset for all synchronised accounts",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known legitimate unsigned DLLs; investigate all others",
@@ -610,9 +611,11 @@ resource "aws_cloudwatch_metric_alarm" "dll_load" {
             implementation_effort=EffortLevel.HIGH,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Sysmon deployed on hybrid identity servers", "Sysmon logs in CloudWatch"]
+            prerequisites=[
+                "Sysmon deployed on hybrid identity servers",
+                "Sysmon logs in CloudWatch",
+            ],
         ),
-
         # Strategy 5: GCP Workspace Directory Sync Configuration Changes
         DetectionStrategy(
             strategy_id="t1556007-gcp-directory-sync",
@@ -626,7 +629,7 @@ resource "aws_cloudwatch_metric_alarm" "dll_load" {
                 gcp_logging_query='''protoPayload.serviceName="admin.googleapis.com"
 protoPayload.methodName=~"google.admin.AdminService.changeSamlSsoSettings|google.admin.AdminService.changeApplicationSettings"
 OR protoPayload.metadata.event.eventName="SSO_PROFILE_UPDATED"''',
-                gcp_terraform_template='''# GCP: Detect Directory Sync and SSO configuration changes
+                gcp_terraform_template="""# GCP: Detect Directory Sync and SSO configuration changes
 
 variable "project_id" {
   type = string
@@ -680,7 +683,7 @@ resource "google_monitoring_alert_policy" "sso_config" {
   documentation {
     content = "Hybrid identity or SAML SSO configuration was modified. Verify this change was authorised."
   }
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GCP: Hybrid Identity Configuration Modified",
                 alert_description_template=(
@@ -693,7 +696,7 @@ resource "google_monitoring_alert_policy" "sso_config" {
                     "Check who made the change (principalEmail)",
                     "Review other administrative actions by the same actor",
                     "Check for unauthorised SAML identity provider additions",
-                    "Examine recent authentication patterns for anomalies"
+                    "Examine recent authentication patterns for anomalies",
                 ],
                 containment_actions=[
                     "Revert SSO configuration to known good state",
@@ -701,8 +704,8 @@ resource "google_monitoring_alert_policy" "sso_config" {
                     "Disable directory sync temporarily if compromised",
                     "Reset credentials for super admin accounts",
                     "Review and revoke active SSO sessions",
-                    "Enable organisation policy constraints for SSO changes"
-                ]
+                    "Enable organisation policy constraints for SSO changes",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="SSO configuration changes should be rare and documented",
@@ -711,17 +714,20 @@ resource "google_monitoring_alert_policy" "sso_config" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Google Workspace", "Admin audit logs enabled", "SSO configured"]
-        )
+            prerequisites=[
+                "Google Workspace",
+                "Admin audit logs enabled",
+                "SSO configured",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1556007-aws-sso-federation",
         "t1556007-gcp-directory-sync",
         "t1556007-azure-pta-agent",
         "t1556007-adfs-config-change",
-        "t1556007-lsass-dll-load"
+        "t1556007-lsass-dll-load",
     ],
     total_effort_hours=8.5,
-    coverage_improvement="+25% improvement for Credential Access and Persistence tactics in hybrid environments"
+    coverage_improvement="+25% improvement for Credential Access and Persistence tactics in hybrid environments",
 )

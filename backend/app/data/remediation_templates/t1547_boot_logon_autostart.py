@@ -24,7 +24,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Boot or Logon Autostart Execution",
     tactic_ids=["TA0003", "TA0004"],  # Persistence, Privilege Escalation
     mitre_url="https://attack.mitre.org/techniques/T1547/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries configure system settings to automatically execute programs during "
@@ -40,34 +39,43 @@ TEMPLATE = RemediationTemplate(
             "Difficult to detect without baseline monitoring",
             "Blends with legitimate startup configurations",
             "Persists across container restarts and deployments",
-            "Enables long-term access to cloud resources"
+            "Enables long-term access to cloud resources",
         ],
-        known_threat_actors=["APT42", "BoxCaon", "Dtrack", "Mis-Type", "Misdat", "xCaon", "TeamTNT", "Kinsing"],
+        known_threat_actors=[
+            "APT42",
+            "BoxCaon",
+            "Dtrack",
+            "Mis-Type",
+            "Misdat",
+            "xCaon",
+            "TeamTNT",
+            "Kinsing",
+        ],
         recent_campaigns=[
             Campaign(
                 name="APT42 Registry Persistence",
                 year=2024,
                 description="APT42 modified Registry keys to establish persistence, enabling automatic execution of malicious payloads on system startup",
-                reference_url="https://attack.mitre.org/groups/G1004/"
+                reference_url="https://attack.mitre.org/groups/G1004/",
             ),
             Campaign(
                 name="BoxCaon Startup Key Modification",
                 year=2024,
                 description="BoxCaon set registry keys pointing to malware executables for automatic execution during system boot",
-                reference_url="https://attack.mitre.org/software/S0651/"
+                reference_url="https://attack.mitre.org/software/S0651/",
             ),
             Campaign(
                 name="Dtrack Persistent File Creation",
                 year=2024,
                 description="Dtrack created persistent files configured for automatic execution on system startup",
-                reference_url="https://attack.mitre.org/software/S0567/"
+                reference_url="https://attack.mitre.org/software/S0567/",
             ),
             Campaign(
                 name="Container Restart Persistence",
                 year=2024,
                 description="Adversaries modify container restart policies and entrypoints to maintain persistence across container lifecycle events",
-                reference_url="https://attack.mitre.org/techniques/T1547/"
-            )
+                reference_url="https://attack.mitre.org/techniques/T1547/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -84,13 +92,12 @@ TEMPLATE = RemediationTemplate(
             "Cryptomining resource abuse",
             "Backdoor re-establishment after remediation",
             "Data exfiltration infrastructure",
-            "Auto-scaling propagation of compromise"
+            "Auto-scaling propagation of compromise",
         ],
         typical_attack_phase="persistence",
         often_precedes=["T1496.001", "T1053", "T1059.009"],
-        often_follows=["T1078.004", "T1190", "T1068", "T1611"]
+        often_follows=["T1078.004", "T1190", "T1068", "T1611"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1547-aws-ec2-userdata",
@@ -100,12 +107,12 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.principalId, requestParameters.instanceId, requestParameters.userData
+                query="""fields @timestamp, eventName, userIdentity.principalId, requestParameters.instanceId, requestParameters.userData
 | filter eventSource = "ec2.amazonaws.com"
 | filter eventName = "ModifyInstanceAttribute" or eventName = "RunInstances"
 | filter requestParameters.userData like /curl|wget|bash|python|sh|cron|systemd/
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect EC2 user data modifications for persistence
 
 Parameters:
@@ -147,8 +154,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       AlarmActions: [!Ref AlertTopic]
-      AlarmDescription: Detects modifications to EC2 user data''',
-                terraform_template='''# Detect EC2 user data modifications for persistence
+      AlarmDescription: Detects modifications to EC2 user data""",
+                terraform_template="""# Detect EC2 user data modifications for persistence
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -188,7 +195,7 @@ resource "aws_cloudwatch_metric_alarm" "userdata_mod" {
   threshold           = 2
   alarm_actions       = [aws_sns_topic.alerts.arn]
   alarm_description   = "Detects modifications to EC2 user data for persistence"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Suspicious EC2 User Data Modification",
                 alert_description_template="EC2 user data modified for instance {instanceId} by {principalId}.",
@@ -198,7 +205,7 @@ resource "aws_cloudwatch_metric_alarm" "userdata_mod" {
                     "Verify modification was authorised",
                     "Review principal's recent activity",
                     "Check for malicious scripts or backdoors",
-                    "Inspect startup scripts for persistence mechanisms"
+                    "Inspect startup scripts for persistence mechanisms",
                 ],
                 containment_actions=[
                     "Remove malicious user data scripts",
@@ -206,8 +213,8 @@ resource "aws_cloudwatch_metric_alarm" "userdata_mod" {
                     "Revoke unauthorised EC2 permissions",
                     "Implement launch template approval workflow",
                     "Enable IMDSv2 to prevent metadata abuse",
-                    "Review and restrict IAM roles"
-                ]
+                    "Review and restrict IAM roles",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised CI/CD pipelines and deployment automation tools",
@@ -216,9 +223,8 @@ resource "aws_cloudwatch_metric_alarm" "userdata_mod" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled", "CloudWatch Logs Insights"]
+            prerequisites=["CloudTrail enabled", "CloudWatch Logs Insights"],
         ),
-
         DetectionStrategy(
             strategy_id="t1547-aws-launch-template",
             name="AWS Launch Template Modification Detection",
@@ -227,11 +233,11 @@ resource "aws_cloudwatch_metric_alarm" "userdata_mod" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.principalId, requestParameters.launchTemplateName, responseElements.launchTemplateVersion
+                query="""fields @timestamp, eventName, userIdentity.principalId, requestParameters.launchTemplateName, responseElements.launchTemplateVersion
 | filter eventSource = "ec2.amazonaws.com"
 | filter eventName = "CreateLaunchTemplateVersion" or eventName = "ModifyLaunchTemplate"
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect EC2 launch template modifications
 
 Parameters:
@@ -272,8 +278,8 @@ Resources:
       Threshold: 2
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect EC2 launch template modifications
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect EC2 launch template modifications
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -313,7 +319,7 @@ resource "aws_cloudwatch_metric_alarm" "launch_template" {
   threshold           = 2
   alarm_actions       = [aws_sns_topic.alerts.arn]
   alarm_description   = "Detects launch template modifications"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Suspicious Launch Template Modification",
                 alert_description_template="Launch template {launchTemplateName} modified by {principalId}.",
@@ -323,7 +329,7 @@ resource "aws_cloudwatch_metric_alarm" "launch_template" {
                     "Verify modification was authorised",
                     "Review auto-scaling groups using this template",
                     "Check for malicious startup scripts",
-                    "Inspect IAM roles and security groups"
+                    "Inspect IAM roles and security groups",
                 ],
                 containment_actions=[
                     "Revert to previous launch template version",
@@ -331,8 +337,8 @@ resource "aws_cloudwatch_metric_alarm" "launch_template" {
                     "Revoke unauthorised EC2 permissions",
                     "Implement change approval workflow",
                     "Review all instances launched from template",
-                    "Terminate compromised instances"
-                ]
+                    "Terminate compromised instances",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised infrastructure teams and CI/CD systems",
@@ -341,9 +347,8 @@ resource "aws_cloudwatch_metric_alarm" "launch_template" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled", "CloudWatch Logs"]
+            prerequisites=["CloudTrail enabled", "CloudWatch Logs"],
         ),
-
         DetectionStrategy(
             strategy_id="t1547-aws-asg-config",
             name="AWS Auto Scaling Group Configuration Changes",
@@ -352,11 +357,11 @@ resource "aws_cloudwatch_metric_alarm" "launch_template" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.principalId, requestParameters.autoScalingGroupName, requestParameters.launchTemplate
+                query="""fields @timestamp, eventName, userIdentity.principalId, requestParameters.autoScalingGroupName, requestParameters.launchTemplate
 | filter eventSource = "autoscaling.amazonaws.com"
 | filter eventName = "UpdateAutoScalingGroup" or eventName = "CreateAutoScalingGroup"
-| sort @timestamp desc''',
-                terraform_template='''# Detect Auto Scaling Group configuration changes
+| sort @timestamp desc""",
+                terraform_template="""# Detect Auto Scaling Group configuration changes
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -396,7 +401,7 @@ resource "aws_cloudwatch_metric_alarm" "asg_config" {
   threshold           = 3
   alarm_actions       = [aws_sns_topic.alerts.arn]
   alarm_description   = "Detects Auto Scaling Group configuration changes"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Auto Scaling Group Configuration Changed",
                 alert_description_template="ASG {autoScalingGroupName} configuration modified by {principalId}.",
@@ -406,7 +411,7 @@ resource "aws_cloudwatch_metric_alarm" "asg_config" {
                     "Verify modification was authorised",
                     "Review user data in associated templates",
                     "Check scaling policies and triggers",
-                    "Inspect recently launched instances"
+                    "Inspect recently launched instances",
                 ],
                 containment_actions=[
                     "Revert ASG to previous configuration",
@@ -414,8 +419,8 @@ resource "aws_cloudwatch_metric_alarm" "asg_config" {
                     "Suspend auto-scaling activities temporarily",
                     "Revoke unauthorised ASG permissions",
                     "Implement configuration change approval",
-                    "Review all ASG-launched instances"
-                ]
+                    "Review all ASG-launched instances",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist scheduled scaling operations and authorised DevOps tools",
@@ -424,9 +429,8 @@ resource "aws_cloudwatch_metric_alarm" "asg_config" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1547-aws-ssm-run-command",
             name="AWS Systems Manager Run Command Persistence Detection",
@@ -435,12 +439,12 @@ resource "aws_cloudwatch_metric_alarm" "asg_config" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.principalId, requestParameters.documentName, requestParameters.instanceIds.0
+                query="""fields @timestamp, eventName, userIdentity.principalId, requestParameters.documentName, requestParameters.instanceIds.0
 | filter eventSource = "ssm.amazonaws.com"
 | filter eventName = "SendCommand"
 | filter requestParameters.documentName like /cron|systemd|rc.local|init.d|startup/
-| sort @timestamp desc''',
-                terraform_template='''# Detect SSM Run Command for persistence
+| sort @timestamp desc""",
+                terraform_template="""# Detect SSM Run Command for persistence
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -480,7 +484,7 @@ resource "aws_cloudwatch_metric_alarm" "ssm_persistence" {
   threshold           = 5
   alarm_actions       = [aws_sns_topic.alerts.arn]
   alarm_description   = "Detects SSM Run Command for persistence"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="SSM Run Command Persistence Detected",
                 alert_description_template="SSM command {documentName} executed on instances by {principalId}.",
@@ -490,7 +494,7 @@ resource "aws_cloudwatch_metric_alarm" "ssm_persistence" {
                     "Verify command execution was authorised",
                     "Review command output and results",
                     "Check affected instances for persistence",
-                    "Inspect cron jobs and systemd services"
+                    "Inspect cron jobs and systemd services",
                 ],
                 containment_actions=[
                     "Terminate unauthorised SSM commands",
@@ -498,8 +502,8 @@ resource "aws_cloudwatch_metric_alarm" "ssm_persistence" {
                     "Revoke excessive SSM permissions",
                     "Review and clean affected instances",
                     "Implement command approval workflow",
-                    "Enable SSM Session Manager logging"
-                ]
+                    "Enable SSM Session Manager logging",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised configuration management and patching operations",
@@ -508,9 +512,8 @@ resource "aws_cloudwatch_metric_alarm" "ssm_persistence" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["CloudTrail enabled", "SSM logging enabled"]
+            prerequisites=["CloudTrail enabled", "SSM logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1547-gcp-startup-script",
             name="GCP Compute Engine Startup Script Modification",
@@ -524,7 +527,7 @@ resource "aws_cloudwatch_metric_alarm" "ssm_persistence" {
 (protoPayload.methodName="v1.compute.instances.insert" OR
  protoPayload.methodName="v1.compute.instances.setMetadata")
 protoPayload.request.metadata.items.key="startup-script"''',
-                gcp_terraform_template='''# GCP: Detect startup script modifications
+                gcp_terraform_template="""# GCP: Detect startup script modifications
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -576,7 +579,7 @@ resource "google_monitoring_alert_policy" "startup_script" {
     content   = "VM startup script modification detected. Review script content for persistence mechanisms."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Startup Script Modified",
                 alert_description_template="VM startup script modification detected.",
@@ -586,7 +589,7 @@ resource "google_monitoring_alert_policy" "startup_script" {
                     "Verify modification was authorised",
                     "Review instance metadata",
                     "Check for malicious commands or backdoors",
-                    "Inspect shutdown scripts as well"
+                    "Inspect shutdown scripts as well",
                 ],
                 containment_actions=[
                     "Remove malicious startup scripts",
@@ -594,8 +597,8 @@ resource "google_monitoring_alert_policy" "startup_script" {
                     "Update instance templates with clean scripts",
                     "Revoke unauthorised Compute permissions",
                     "Implement metadata change approval",
-                    "Review all instances from same template"
-                ]
+                    "Review all instances from same template",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised deployment pipelines and infrastructure automation",
@@ -604,9 +607,8 @@ resource "google_monitoring_alert_policy" "startup_script" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1547-gcp-instance-template",
             name="GCP Instance Template Modification Detection",
@@ -618,7 +620,7 @@ resource "google_monitoring_alert_policy" "startup_script" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.serviceName="compute.googleapis.com"
 protoPayload.methodName="v1.compute.instanceTemplates.insert"''',
-                gcp_terraform_template='''# GCP: Detect instance template modifications
+                gcp_terraform_template="""# GCP: Detect instance template modifications
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -668,7 +670,7 @@ resource "google_monitoring_alert_policy" "instance_template" {
     content   = "Instance template modification detected. Review template configuration for persistence mechanisms."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Instance Template Modified",
                 alert_description_template="Instance template modification detected.",
@@ -678,7 +680,7 @@ resource "google_monitoring_alert_policy" "instance_template" {
                     "Verify template creation was authorised",
                     "Review service accounts and scopes",
                     "Check for malicious configurations",
-                    "Inspect recently created instances"
+                    "Inspect recently created instances",
                 ],
                 containment_actions=[
                     "Delete unauthorised instance templates",
@@ -686,8 +688,8 @@ resource "google_monitoring_alert_policy" "instance_template" {
                     "Terminate instances from compromised templates",
                     "Revoke unauthorised template permissions",
                     "Implement template approval workflow",
-                    "Review all deployments using template"
-                ]
+                    "Review all deployments using template",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised infrastructure teams and deployment systems",
@@ -696,9 +698,8 @@ resource "google_monitoring_alert_policy" "instance_template" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1547-gcp-managed-instance-group",
             name="GCP Managed Instance Group Configuration Changes",
@@ -708,11 +709,11 @@ resource "google_monitoring_alert_policy" "instance_template" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''protoPayload.serviceName="compute.googleapis.com"
+                gcp_logging_query="""protoPayload.serviceName="compute.googleapis.com"
 (protoPayload.methodName=~"instanceGroupManagers.insert" OR
  protoPayload.methodName=~"instanceGroupManagers.patch" OR
- protoPayload.methodName=~"instanceGroupManagers.setInstanceTemplate")''',
-                gcp_terraform_template='''# GCP: Detect Managed Instance Group changes
+ protoPayload.methodName=~"instanceGroupManagers.setInstanceTemplate")""",
+                gcp_terraform_template="""# GCP: Detect Managed Instance Group changes
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -764,7 +765,7 @@ resource "google_monitoring_alert_policy" "mig_changes" {
     content   = "Managed Instance Group configuration changed. Review template and instances for persistence."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Managed Instance Group Modified",
                 alert_description_template="Managed Instance Group configuration changed.",
@@ -774,7 +775,7 @@ resource "google_monitoring_alert_policy" "mig_changes" {
                     "Verify modification was authorised",
                     "Review auto-scaling policies",
                     "Check startup scripts in template",
-                    "Inspect recently created instances"
+                    "Inspect recently created instances",
                 ],
                 containment_actions=[
                     "Revert to previous instance template",
@@ -782,8 +783,8 @@ resource "google_monitoring_alert_policy" "mig_changes" {
                     "Suspend auto-scaling temporarily",
                     "Revoke unauthorised MIG permissions",
                     "Implement configuration change approval",
-                    "Review all MIG instances"
-                ]
+                    "Review all MIG instances",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist scheduled operations and authorised deployment tools",
@@ -792,9 +793,8 @@ resource "google_monitoring_alert_policy" "mig_changes" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1547-gcp-os-login",
             name="GCP OS Login SSH Key Addition Detection",
@@ -806,7 +806,7 @@ resource "google_monitoring_alert_policy" "mig_changes" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.serviceName="oslogin.googleapis.com"
 protoPayload.methodName="google.cloud.oslogin.v1.OsLoginService.ImportSshPublicKey"''',
-                gcp_terraform_template='''# GCP: Detect OS Login SSH key additions
+                gcp_terraform_template="""# GCP: Detect OS Login SSH key additions
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -856,7 +856,7 @@ resource "google_monitoring_alert_policy" "ssh_key_add" {
     content   = "SSH public key imported via OS Login. Verify authorisation and review for persistence."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: SSH Key Added via OS Login",
                 alert_description_template="SSH public key imported via OS Login.",
@@ -866,7 +866,7 @@ resource "google_monitoring_alert_policy" "ssh_key_add" {
                     "Check for subsequent SSH connections",
                     "Review user's recent activity",
                     "Check if key is used across multiple projects",
-                    "Inspect for unauthorised access patterns"
+                    "Inspect for unauthorised access patterns",
                 ],
                 containment_actions=[
                     "Remove unauthorised SSH keys",
@@ -874,8 +874,8 @@ resource "google_monitoring_alert_policy" "ssh_key_add" {
                     "Enable 2FA for OS Login",
                     "Review all SSH keys for user",
                     "Implement key approval process",
-                    "Monitor SSH access patterns"
-                ]
+                    "Monitor SSH access patterns",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Normal for developers adding their SSH keys, baseline per user",
@@ -884,20 +884,19 @@ resource "google_monitoring_alert_policy" "ssh_key_add" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled", "OS Login enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled", "OS Login enabled"],
+        ),
     ],
-
     recommended_order=[
-        "t1547-aws-ec2-userdata",          # Most common AWS persistence
-        "t1547-aws-launch-template",       # Template-based propagation
-        "t1547-gcp-startup-script",        # Most common GCP persistence
-        "t1547-aws-asg-config",            # Auto-scaling persistence
-        "t1547-gcp-instance-template",     # GCP template propagation
-        "t1547-gcp-managed-instance-group", # GCP auto-scaling
-        "t1547-aws-ssm-run-command",       # SSM-based persistence
-        "t1547-gcp-os-login"               # SSH key persistence
+        "t1547-aws-ec2-userdata",  # Most common AWS persistence
+        "t1547-aws-launch-template",  # Template-based propagation
+        "t1547-gcp-startup-script",  # Most common GCP persistence
+        "t1547-aws-asg-config",  # Auto-scaling persistence
+        "t1547-gcp-instance-template",  # GCP template propagation
+        "t1547-gcp-managed-instance-group",  # GCP auto-scaling
+        "t1547-aws-ssm-run-command",  # SSM-based persistence
+        "t1547-gcp-os-login",  # SSH key persistence
     ],
     total_effort_hours=9.0,
-    coverage_improvement="+12% improvement for Persistence and Privilege Escalation tactics"
+    coverage_improvement="+12% improvement for Persistence and Privilege Escalation tactics",
 )

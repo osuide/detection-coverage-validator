@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Supply Chain Compromise",
     tactic_ids=["TA0001"],
     mitre_url="https://attack.mitre.org/techniques/T1195/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries manipulate products or delivery mechanisms before they reach end consumers "
@@ -39,7 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Bypasses traditional security controls",
             "Leverages trusted distribution channels",
             "Provides persistent access across deployments",
-            "Automated deployment systems propagate malicious code"
+            "Automated deployment systems propagate malicious code",
         ],
         known_threat_actors=["Ember Bear", "OilRig", "Sandworm Team"],
         recent_campaigns=[
@@ -47,26 +46,26 @@ TEMPLATE = RemediationTemplate(
                 name="CCleaner Supply Chain Attack",
                 year=2017,
                 description="Malicious code injected into legitimate CCleaner software distribution, affecting millions of users",
-                reference_url="https://attack.mitre.org/techniques/T1195/"
+                reference_url="https://attack.mitre.org/techniques/T1195/",
             ),
             Campaign(
                 name="SolarWinds SUNBURST",
                 year=2020,
                 description="Sophisticated supply chain compromise injecting backdoor into SolarWinds Orion platform updates",
-                reference_url="https://attack.mitre.org/campaigns/C0024/"
+                reference_url="https://attack.mitre.org/campaigns/C0024/",
             ),
             Campaign(
                 name="3CX Desktop Application",
                 year=2023,
                 description="Double supply chain compromise leveraging initial access to insert malware in VoIP application",
-                reference_url="https://attack.mitre.org/techniques/T1195/"
+                reference_url="https://attack.mitre.org/techniques/T1195/",
             ),
             Campaign(
                 name="Node.js Package Attack",
                 year=2024,
                 description="Compromised open-source dependencies targeting Bitcoin wallet users",
-                reference_url="https://attack.mitre.org/techniques/T1195/"
-            )
+                reference_url="https://attack.mitre.org/techniques/T1195/",
+            ),
         ],
         prevalence="uncommon",
         trend="increasing",
@@ -82,13 +81,12 @@ TEMPLATE = RemediationTemplate(
             "Data breach across multiple systems",
             "Supply chain trust erosion",
             "Compliance violations and regulatory scrutiny",
-            "Difficult and costly remediation"
+            "Difficult and costly remediation",
         ],
         typical_attack_phase="initial_access",
         often_precedes=["T1078.004", "T1530", "T1552.005", "T1525", "T1098"],
-        often_follows=[]
+        often_follows=[],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1195-aws-lambda-layer",
@@ -106,11 +104,11 @@ TEMPLATE = RemediationTemplate(
                             "PublishLayerVersion",
                             "DeleteLayerVersion",
                             "AddLayerVersionPermission",
-                            "RemoveLayerVersionPermission"
+                            "RemoveLayerVersionPermission",
                         ]
-                    }
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect Lambda layer modifications for supply chain monitoring (T1195)
 
 Parameters:
@@ -189,8 +187,8 @@ Resources:
                 - events.amazonaws.com
                 - cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# AWS: Detect Lambda layer and dependency changes (T1195)
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# AWS: Detect Lambda layer and dependency changes (T1195)
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -278,7 +276,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource = aws_sns_topic.supply_chain_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Supply Chain: Lambda Layer or Dependency Modified",
                 alert_description_template=(
@@ -293,7 +291,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Compare layer hash against known-good baseline",
                     "Review deployment pipeline for compromise indicators",
                     "Check for similar modifications across other layers",
-                    "Scan layer dependencies for known vulnerabilities"
+                    "Scan layer dependencies for known vulnerabilities",
                 ],
                 containment_actions=[
                     "Delete unauthorised layer versions immediately",
@@ -302,8 +300,8 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Implement layer version pinning in deployments",
                     "Require approval workflow for layer publications",
                     "Enable AWS Signer for code signing enforcement",
-                    "Review and rotate any credentials in affected functions"
-                ]
+                    "Review and rotate any credentials in affected functions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist CI/CD pipeline roles and service accounts; filter expected deployment times",
@@ -312,9 +310,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-15 depending on Lambda activity",
-            prerequisites=["CloudTrail enabled", "Lambda functions in use"]
+            prerequisites=["CloudTrail enabled", "Lambda functions in use"],
         ),
-
         DetectionStrategy(
             strategy_id="t1195-aws-ecr-integrity",
             name="AWS ECR Container Image Integrity Monitoring",
@@ -328,10 +325,10 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "detail-type": ["ECR Image Action"],
                     "detail": {
                         "action-type": ["PUSH", "DELETE"],
-                        "result": ["SUCCESS"]
-                    }
+                        "result": ["SUCCESS"],
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Monitor ECR for supply chain compromise indicators (T1195)
 
 Parameters:
@@ -382,8 +379,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# AWS: Monitor ECR image integrity (T1195)
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# AWS: Monitor ECR image integrity (T1195)
 
 variable "alert_email" {
   type = string
@@ -444,7 +441,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.ecr_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Supply Chain: ECR Image Push Detected",
                 alert_description_template=(
@@ -459,7 +456,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Verify pushing principal is legitimate CI/CD system",
                     "Review image for backdoors or malicious code",
                     "Check all deployments using the image",
-                    "Validate image signing status if enabled"
+                    "Validate image signing status if enabled",
                 ],
                 containment_actions=[
                     "Delete unauthorised or suspicious images",
@@ -468,8 +465,8 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Implement lifecycle policies to retain only signed images",
                     "Restrict ECR push permissions to CI/CD roles only",
                     "Enable ECR replication to backup trusted images",
-                    "Quarantine affected container deployments"
-                ]
+                    "Quarantine affected container deployments",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist CI/CD pipeline identities; filter expected deployment windows",
@@ -478,9 +475,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-45 minutes",
             estimated_monthly_cost="$2-10 depending on image activity",
-            prerequisites=["ECR repositories in use", "EventBridge enabled"]
+            prerequisites=["ECR repositories in use", "EventBridge enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1195-aws-codebuild",
             name="AWS CodeBuild and CodePipeline Compromise Detection",
@@ -489,14 +485,14 @@ resource "aws_sns_topic_policy" "allow_events" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query=r'''fields @timestamp, eventName, userIdentity.principalId, requestParameters.projectName, requestParameters.source.location
+                query=r"""fields @timestamp, eventName, userIdentity.principalId, requestParameters.projectName, requestParameters.source.location
 | filter eventSource = "codebuild.amazonaws.com"
 | filter eventName in ["UpdateProject", "CreateProject", "BatchGetProjects"]
 | filter requestParameters.source.location not like /github\.com\/your-org/
 | stats count(*) as modifications by userIdentity.principalId, requestParameters.projectName, bin(1h)
 | filter modifications > 0
-| sort @timestamp desc''',
-                terraform_template='''# AWS: Monitor CodeBuild for supply chain compromise (T1195)
+| sort @timestamp desc""",
+                terraform_template="""# AWS: Monitor CodeBuild for supply chain compromise (T1195)
 
 variable "cloudtrail_log_group" {
   type = string
@@ -562,7 +558,7 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
       Resource  = aws_sns_topic.codebuild_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Supply Chain: CodeBuild Project Modified",
                 alert_description_template=(
@@ -577,7 +573,7 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
                     "Review build artifacts for backdoors",
                     "Check privileged mode and service role changes",
                     "Audit all builds executed since modification",
-                    "Review CloudWatch Logs for build process anomalies"
+                    "Review CloudWatch Logs for build process anomalies",
                 ],
                 containment_actions=[
                     "Revert CodeBuild project to known-good configuration",
@@ -586,8 +582,8 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
                     "Rotate service role credentials",
                     "Enable build project version control",
                     "Require approval for buildspec changes",
-                    "Implement CodeBuild project immutability controls"
-                ]
+                    "Implement CodeBuild project immutability controls",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised DevOps team members and deployment automation",
@@ -596,9 +592,12 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-1.5 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["CloudTrail enabled", "CodeBuild in use", "CloudTrail logs in CloudWatch"]
+            prerequisites=[
+                "CloudTrail enabled",
+                "CodeBuild in use",
+                "CloudTrail logs in CloudWatch",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1195-gcp-artifact-registry",
             name="GCP Artifact Registry Supply Chain Monitoring",
@@ -608,14 +607,14 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="artifact_registry"
+                gcp_logging_query="""resource.type="artifact_registry"
 (protoPayload.methodName=~"google.devtools.artifactregistry.v1.ArtifactRegistry.CreateRepository"
 OR protoPayload.methodName=~"google.devtools.artifactregistry.v1.ArtifactRegistry.UpdateRepository"
 OR protoPayload.methodName=~"google.devtools.artifactregistry.v1.ArtifactRegistry.ImportAptArtifacts"
 OR protoPayload.methodName=~"google.devtools.artifactregistry.v1.ArtifactRegistry.UploadAptArtifact"
 OR protoPayload.methodName=~"docker.upload")
-severity>=WARNING''',
-                gcp_terraform_template='''# GCP: Monitor Artifact Registry for supply chain compromise (T1195)
+severity>=WARNING""",
+                gcp_terraform_template="""# GCP: Monitor Artifact Registry for supply chain compromise (T1195)
 
 variable "project_id" {
   type        = string
@@ -688,7 +687,7 @@ resource "google_monitoring_alert_policy" "artifact_alert" {
     content   = "Artifact Registry activity detected that may indicate supply chain compromise. Investigate immediately."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Artifact Registry Supply Chain Activity",
                 alert_description_template=(
@@ -703,7 +702,7 @@ resource "google_monitoring_alert_policy" "artifact_alert" {
                     "Scan artifact for vulnerabilities using Container Analysis",
                     "Review all deployments using the artifact",
                     "Check repository IAM permissions for unauthorised access",
-                    "Compare artifact hash against known-good baseline"
+                    "Compare artifact hash against known-good baseline",
                 ],
                 containment_actions=[
                     "Delete unauthorised artifacts immediately",
@@ -712,8 +711,8 @@ resource "google_monitoring_alert_policy" "artifact_alert" {
                     "Implement VPC Service Controls around Artifact Registry",
                     "Restrict repository write access to CI/CD service accounts",
                     "Enable vulnerability scanning for all repositories",
-                    "Quarantine workloads using suspicious artifacts"
-                ]
+                    "Quarantine workloads using suspicious artifacts",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist CI/CD service accounts; filter expected deployment schedules",
@@ -722,9 +721,8 @@ resource "google_monitoring_alert_policy" "artifact_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-1.5 hours",
             estimated_monthly_cost="$10-25",
-            prerequisites=["Cloud Audit Logs enabled", "Artifact Registry in use"]
+            prerequisites=["Cloud Audit Logs enabled", "Artifact Registry in use"],
         ),
-
         DetectionStrategy(
             strategy_id="t1195-gcp-cloud-build",
             name="GCP Cloud Build Pipeline Integrity Monitoring",
@@ -734,14 +732,14 @@ resource "google_monitoring_alert_policy" "artifact_alert" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="cloud_build"
+                gcp_logging_query="""resource.type="cloud_build"
 (protoPayload.methodName=~"google.devtools.cloudbuild.v1.CloudBuild.CreateBuildTrigger"
 OR protoPayload.methodName=~"google.devtools.cloudbuild.v1.CloudBuild.UpdateBuildTrigger"
 OR protoPayload.methodName=~"google.devtools.cloudbuild.v1.CloudBuild.RunBuildTrigger")
 OR (resource.type="build"
     jsonPayload.status=~"SUCCESS|FAILURE"
-    jsonPayload.source.repoSource.repoName!~"github_your-org.*")''',
-                gcp_terraform_template='''# GCP: Monitor Cloud Build for supply chain compromise (T1195)
+    jsonPayload.source.repoSource.repoName!~"github_your-org.*")""",
+                gcp_terraform_template="""# GCP: Monitor Cloud Build for supply chain compromise (T1195)
 
 variable "project_id" {
   type        = string
@@ -850,7 +848,7 @@ resource "google_monitoring_alert_policy" "suspicious_source" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GCP: Cloud Build Configuration Compromised",
                 alert_description_template=(
@@ -865,7 +863,7 @@ resource "google_monitoring_alert_policy" "suspicious_source" {
                     "Review service account permissions changes",
                     "Audit all builds executed since modification",
                     "Check build artifacts for backdoors or malware",
-                    "Review build logs for unusual commands or network activity"
+                    "Review build logs for unusual commands or network activity",
                 ],
                 containment_actions=[
                     "Revert build trigger to known-good configuration",
@@ -874,8 +872,8 @@ resource "google_monitoring_alert_policy" "suspicious_source" {
                     "Rotate service account keys used by builds",
                     "Enable Binary Authorization for deployments",
                     "Require manual approval for build trigger changes",
-                    "Implement Cloud Build trigger versioning"
-                ]
+                    "Implement Cloud Build trigger versioning",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised DevOps team members; filter expected repository patterns",
@@ -884,9 +882,8 @@ resource "google_monitoring_alert_policy" "suspicious_source" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Audit Logs enabled", "Cloud Build in use"]
+            prerequisites=["Cloud Audit Logs enabled", "Cloud Build in use"],
         ),
-
         DetectionStrategy(
             strategy_id="t1195-gcp-gcr-integrity",
             name="GCP Container Registry Image Verification",
@@ -896,12 +893,12 @@ resource "google_monitoring_alert_policy" "suspicious_source" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gcs_bucket"
+                gcp_logging_query="""resource.type="gcs_bucket"
 resource.labels.bucket_name=~".*artifacts.*gcr.io"
 protoPayload.methodName="storage.objects.create"
 protoPayload.resourceName=~".*/manifests/.*"
-severity>=NOTICE''',
-                gcp_terraform_template='''# GCP: Monitor GCR image uploads (T1195 - legacy GCR)
+severity>=NOTICE""",
+                gcp_terraform_template="""# GCP: Monitor GCR image uploads (T1195 - legacy GCR)
 
 variable "project_id" {
   type        = string
@@ -969,7 +966,7 @@ resource "google_monitoring_alert_policy" "gcr_activity" {
     content   = "Container image pushed to GCR. Verify authorisation and scan for vulnerabilities. Consider migrating to Artifact Registry for enhanced security features."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: GCR Image Upload Detected",
                 alert_description_template=(
@@ -984,7 +981,7 @@ resource "google_monitoring_alert_policy" "gcr_activity" {
                     "Verify pushing identity is legitimate CI/CD",
                     "Review all deployments using the image",
                     "Compare image digest against known-good baseline",
-                    "Consider migrating to Artifact Registry for better controls"
+                    "Consider migrating to Artifact Registry for better controls",
                 ],
                 containment_actions=[
                     "Delete unauthorised images from GCR",
@@ -993,8 +990,8 @@ resource "google_monitoring_alert_policy" "gcr_activity" {
                     "Restrict GCS bucket permissions on GCR storage",
                     "Implement image signing requirements",
                     "Enable vulnerability scanning via Container Analysis",
-                    "Quarantine pods using suspicious images"
-                ]
+                    "Quarantine pods using suspicious images",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist CI/CD service accounts; consider migrating to Artifact Registry",
@@ -1003,18 +1000,17 @@ resource "google_monitoring_alert_policy" "gcr_activity" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes - 1 hour",
             estimated_monthly_cost="$5-15",
-            prerequisites=["Cloud Audit Logs enabled", "GCR in use (legacy)"]
-        )
+            prerequisites=["Cloud Audit Logs enabled", "GCR in use (legacy)"],
+        ),
     ],
-
     recommended_order=[
         "t1195-aws-ecr-integrity",
         "t1195-gcp-artifact-registry",
         "t1195-aws-codebuild",
         "t1195-gcp-cloud-build",
         "t1195-aws-lambda-layer",
-        "t1195-gcp-gcr-integrity"
+        "t1195-gcp-gcr-integrity",
     ],
     total_effort_hours=7.0,
-    coverage_improvement="+30% improvement for Initial Access tactic"
+    coverage_improvement="+30% improvement for Initial Access tactic",
 )

@@ -47,9 +47,7 @@ class SchedulerService:
             },
         )
         self._engine = create_async_engine(settings.database_url)
-        self._session_factory = async_sessionmaker(
-            self._engine, expire_on_commit=False
-        )
+        self._session_factory = async_sessionmaker(self._engine, expire_on_commit=False)
         self._initialized = True
 
     @property

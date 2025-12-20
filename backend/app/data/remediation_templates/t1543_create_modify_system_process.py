@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Create or Modify System Process",
     tactic_ids=["TA0003", "TA0004"],  # Persistence, Privilege Escalation
     mitre_url="https://attack.mitre.org/techniques/T1543/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries establish persistence by creating or modifying system-level processes "
@@ -39,7 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Difficult to detect without baseline monitoring",
             "Survives user logout and session termination",
             "Can be disguised as legitimate system services",
-            "Enables long-term access to compromised environments"
+            "Enables long-term access to compromised environments",
         ],
         known_threat_actors=["TeamTNT", "Kinsing"],
         recent_campaigns=[
@@ -47,20 +46,20 @@ TEMPLATE = RemediationTemplate(
                 name="Exaramel Linux Daemon Persistence",
                 year=2024,
                 description="Exaramel for Linux achieves persistence via Upstart or System V when running as root, creating system services for backdoor execution",
-                reference_url="https://attack.mitre.org/software/S0401/"
+                reference_url="https://attack.mitre.org/software/S0401/",
             ),
             Campaign(
                 name="LITTLELAMB.WOOLTEA Daemon Operations",
                 year=2024,
                 description="LITTLELAMB.WOOLTEA initialises as a daemon for persistent background operation in compromised environments",
-                reference_url="https://attack.mitre.org/software/S1084/"
+                reference_url="https://attack.mitre.org/software/S1084/",
             ),
             Campaign(
                 name="Container Service Persistence",
                 year=2024,
                 description="Adversaries modify container restart policies and service definitions to maintain persistence across container restarts",
-                reference_url="https://attack.mitre.org/techniques/T1543/005/"
-            )
+                reference_url="https://attack.mitre.org/techniques/T1543/005/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -76,13 +75,12 @@ TEMPLATE = RemediationTemplate(
             "Cryptomining resource abuse",
             "Backdoor installation",
             "Data exfiltration infrastructure",
-            "Compliance violations"
+            "Compliance violations",
         ],
         typical_attack_phase="persistence",
         often_precedes=["T1496.001", "T1053", "T1068"],
-        often_follows=["T1078.004", "T1190", "T1068"]
+        often_follows=["T1078.004", "T1190", "T1068"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1543-aws-ecs",
@@ -92,12 +90,12 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.principalId, requestParameters.taskDefinition, requestParameters.containerDefinitions.0.command
+                query="""fields @timestamp, eventName, userIdentity.principalId, requestParameters.taskDefinition, requestParameters.containerDefinitions.0.command
 | filter eventSource = "ecs.amazonaws.com"
 | filter eventName = "RegisterTaskDefinition" or eventName = "UpdateService"
 | filter requestParameters.containerDefinitions.0.command like /systemd|init|cron|service/
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect ECS task definition modifications for persistence
 
 Parameters:
@@ -138,8 +136,8 @@ Resources:
       Threshold: 3
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect ECS task definition modifications for persistence
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect ECS task definition modifications for persistence
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -179,7 +177,7 @@ resource "aws_cloudwatch_metric_alarm" "task_def_mod" {
   threshold           = 3
   alarm_actions       = [aws_sns_topic.alerts.arn]
   alarm_description   = "Detects suspicious ECS task definition modifications"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Suspicious ECS Task Definition Modification",
                 alert_description_template="ECS task definition modified: {taskDefinition} by {principalId}.",
@@ -189,7 +187,7 @@ resource "aws_cloudwatch_metric_alarm" "task_def_mod" {
                     "Verify modification was authorised",
                     "Review principal's recent activity",
                     "Check restart policies and service configurations",
-                    "Inspect container entry points and commands"
+                    "Inspect container entry points and commands",
                 ],
                 containment_actions=[
                     "Rollback to previous task definition version",
@@ -197,8 +195,8 @@ resource "aws_cloudwatch_metric_alarm" "task_def_mod" {
                     "Implement task definition approval workflow",
                     "Enable ECS Exec logging and audit",
                     "Review and restrict IAM roles",
-                    "Implement service control policies"
-                ]
+                    "Implement service control policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised CI/CD pipelines and deployment roles",
@@ -207,9 +205,8 @@ resource "aws_cloudwatch_metric_alarm" "task_def_mod" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["CloudTrail enabled", "CloudWatch Logs Insights"]
+            prerequisites=["CloudTrail enabled", "CloudWatch Logs Insights"],
         ),
-
         DetectionStrategy(
             strategy_id="t1543-aws-lambda",
             name="AWS Lambda Function Modification Detection",
@@ -218,11 +215,11 @@ resource "aws_cloudwatch_metric_alarm" "task_def_mod" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.principalId, requestParameters.functionName, responseElements.functionArn
+                query="""fields @timestamp, eventName, userIdentity.principalId, requestParameters.functionName, responseElements.functionArn
 | filter eventSource = "lambda.amazonaws.com"
 | filter eventName = "UpdateFunctionCode20150331v2" or eventName = "UpdateFunctionConfiguration20150331v2" or eventName = "CreateEventSourceMapping20150331"
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect Lambda function modifications for persistence
 
 Parameters:
@@ -263,8 +260,8 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect Lambda function modifications for persistence
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect Lambda function modifications for persistence
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -304,7 +301,7 @@ resource "aws_cloudwatch_metric_alarm" "lambda_mod" {
   threshold           = 5
   alarm_actions       = [aws_sns_topic.alerts.arn]
   alarm_description   = "Detects suspicious Lambda function modifications"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Suspicious Lambda Function Modification",
                 alert_description_template="Lambda function modified: {functionName} by {principalId}.",
@@ -314,7 +311,7 @@ resource "aws_cloudwatch_metric_alarm" "lambda_mod" {
                     "Verify modification was authorised",
                     "Review environment variables for credentials",
                     "Check function execution role permissions",
-                    "Inspect function layers and dependencies"
+                    "Inspect function layers and dependencies",
                 ],
                 containment_actions=[
                     "Rollback to previous function version",
@@ -322,8 +319,8 @@ resource "aws_cloudwatch_metric_alarm" "lambda_mod" {
                     "Revoke excessive Lambda permissions",
                     "Enable Lambda function versioning",
                     "Implement deployment approval process",
-                    "Review and restrict execution roles"
-                ]
+                    "Review and restrict execution roles",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known deployment services and CI/CD tools",
@@ -332,9 +329,8 @@ resource "aws_cloudwatch_metric_alarm" "lambda_mod" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled", "Lambda execution logs enabled"]
+            prerequisites=["CloudTrail enabled", "Lambda execution logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1543-aws-eks",
             name="AWS EKS SystemD Service Creation Detection",
@@ -343,12 +339,12 @@ resource "aws_cloudwatch_metric_alarm" "lambda_mod" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, user.username, objectRef.namespace, objectRef.name, requestObject.spec.containers.0.command
+                query="""fields @timestamp, user.username, objectRef.namespace, objectRef.name, requestObject.spec.containers.0.command
 | filter objectRef.resource = "pods"
 | filter verb = "create"
 | filter requestObject.spec.containers.0.command.0 like /systemctl|systemd|init.d|service|cron/
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect systemd service creation in EKS containers
 
 Parameters:
@@ -378,8 +374,8 @@ Resources:
         fields @timestamp, user.username, objectRef.name, requestObject.spec.containers.0.command
         | filter objectRef.resource = "pods"
         | filter verb = "create"
-        | filter requestObject.spec.containers.0.command.0 like /systemctl|systemd|init.d|service|cron/''',
-                terraform_template='''# Detect systemd service creation in EKS
+        | filter requestObject.spec.containers.0.command.0 like /systemctl|systemd|init.d|service|cron/""",
+                terraform_template="""# Detect systemd service creation in EKS
 
 variable "eks_cluster_name" { type = string }
 variable "alert_email" { type = string }
@@ -433,7 +429,7 @@ resource "aws_cloudwatch_metric_alarm" "system_process" {
   statistic           = "Sum"
   threshold           = 2
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Suspicious System Process Creation in EKS",
                 alert_description_template="System process creation detected in namespace {namespace} by {username}.",
@@ -443,7 +439,7 @@ resource "aws_cloudwatch_metric_alarm" "system_process" {
                     "Verify deploying user's authorisation",
                     "Inspect for systemd/init process references",
                     "Check container restart policies",
-                    "Review pod lifecycle hooks"
+                    "Review pod lifecycle hooks",
                 ],
                 containment_actions=[
                     "Delete unauthorised pods",
@@ -451,8 +447,8 @@ resource "aws_cloudwatch_metric_alarm" "system_process" {
                     "Use admission controllers to block system processes",
                     "Restrict CAP_SYS_ADMIN capability",
                     "Enable seccomp profiles",
-                    "Review and restrict RBAC permissions"
-                ]
+                    "Review and restrict RBAC permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist legitimate system pods in kube-system namespace",
@@ -461,9 +457,8 @@ resource "aws_cloudwatch_metric_alarm" "system_process" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["EKS control plane logging enabled", "Audit logs enabled"]
+            prerequisites=["EKS control plane logging enabled", "Audit logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1543-gcp-cloud-run",
             name="GCP Cloud Run Service Modification Detection",
@@ -473,11 +468,11 @@ resource "aws_cloudwatch_metric_alarm" "system_process" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''protoPayload.serviceName="run.googleapis.com"
+                gcp_logging_query="""protoPayload.serviceName="run.googleapis.com"
 protoPayload.methodName=~"google.cloud.run.v1.Services.CreateService|google.cloud.run.v1.Services.ReplaceService"
 (protoPayload.request.spec.template.spec.containers.command=~"systemd|init|cron|service"
-OR protoPayload.request.spec.template.metadata.annotations."run.googleapis.com/execution-environment"="gen2")''',
-                gcp_terraform_template='''# GCP: Detect Cloud Run service modifications
+OR protoPayload.request.spec.template.metadata.annotations."run.googleapis.com/execution-environment"="gen2")""",
+                gcp_terraform_template="""# GCP: Detect Cloud Run service modifications
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -527,7 +522,7 @@ resource "google_monitoring_alert_policy" "cloud_run_mod" {
     content   = "Cloud Run service modification detected. Review service configuration changes."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Cloud Run Service Modified",
                 alert_description_template="Cloud Run service modification detected.",
@@ -537,7 +532,7 @@ resource "google_monitoring_alert_policy" "cloud_run_mod" {
                     "Verify modification was authorised",
                     "Review service account permissions",
                     "Check environment variables for credentials",
-                    "Inspect ingress and scaling settings"
+                    "Inspect ingress and scaling settings",
                 ],
                 containment_actions=[
                     "Rollback to previous service revision",
@@ -545,8 +540,8 @@ resource "google_monitoring_alert_policy" "cloud_run_mod" {
                     "Require deployment approvals",
                     "Implement Binary Authorization",
                     "Use Org Policies to restrict modifications",
-                    "Review service account permissions"
-                ]
+                    "Review service account permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist CI/CD service accounts and authorised deployers",
@@ -555,9 +550,8 @@ resource "google_monitoring_alert_policy" "cloud_run_mod" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1543-gcp-gke",
             name="GCP GKE System Process Detection",
@@ -571,7 +565,7 @@ resource "google_monitoring_alert_policy" "cloud_run_mod" {
 protoPayload.resourceName=~"pods"
 protoPayload.methodName="create"
 protoPayload.request.spec.containers.command=~"systemctl|systemd|init.d|service|cron"''',
-                gcp_terraform_template='''# GCP: Detect GKE system process creation
+                gcp_terraform_template="""# GCP: Detect GKE system process creation
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -641,7 +635,7 @@ resource "google_gke_hub_feature" "policycontroller" {
       }
     }
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Suspicious GKE System Process Creation",
                 alert_description_template="System process creation detected in GKE cluster.",
@@ -651,7 +645,7 @@ resource "google_gke_hub_feature" "policycontroller" {
                     "Verify deploying service account",
                     "Inspect for systemd/init references",
                     "Check restart policies and lifecycle hooks",
-                    "Review RBAC permissions"
+                    "Review RBAC permissions",
                 ],
                 containment_actions=[
                     "Delete unauthorised pods",
@@ -659,8 +653,8 @@ resource "google_gke_hub_feature" "policycontroller" {
                     "Use admission controllers to block system processes",
                     "Implement Policy Controller constraints",
                     "Restrict privileged containers",
-                    "Review service account permissions"
-                ]
+                    "Review service account permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist system namespaces (kube-system, gke-system)",
@@ -669,9 +663,8 @@ resource "google_gke_hub_feature" "policycontroller" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$10-25",
-            prerequisites=["GKE audit logging enabled", "Cloud Logging API enabled"]
+            prerequisites=["GKE audit logging enabled", "Cloud Logging API enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1543-gcp-cloud-functions",
             name="GCP Cloud Functions Modification Detection",
@@ -683,7 +676,7 @@ resource "google_gke_hub_feature" "policycontroller" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.serviceName="cloudfunctions.googleapis.com"
 protoPayload.methodName=~"google.cloud.functions.v1.CloudFunctionsService.CreateFunction|google.cloud.functions.v1.CloudFunctionsService.UpdateFunction"''',
-                gcp_terraform_template='''# GCP: Detect Cloud Functions modifications
+                gcp_terraform_template="""# GCP: Detect Cloud Functions modifications
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -733,7 +726,7 @@ resource "google_monitoring_alert_policy" "function_mod" {
     content   = "Cloud Function modification detected. Review function configuration and code."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Cloud Function Modified",
                 alert_description_template="Cloud Function modification detected.",
@@ -743,7 +736,7 @@ resource "google_monitoring_alert_policy" "function_mod" {
                     "Verify modification was authorised",
                     "Review environment variables",
                     "Check service account permissions",
-                    "Inspect function dependencies"
+                    "Inspect function dependencies",
                 ],
                 containment_actions=[
                     "Rollback to previous function version",
@@ -751,8 +744,8 @@ resource "google_monitoring_alert_policy" "function_mod" {
                     "Remove suspicious event triggers",
                     "Require deployment approvals",
                     "Implement Org Policies",
-                    "Review service account permissions"
-                ]
+                    "Review service account permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist CI/CD service accounts",
@@ -761,18 +754,17 @@ resource "google_monitoring_alert_policy" "function_mod" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1543-aws-lambda",
         "t1543-gcp-cloud-functions",
         "t1543-aws-ecs",
         "t1543-gcp-cloud-run",
         "t1543-aws-eks",
-        "t1543-gcp-gke"
+        "t1543-gcp-gke",
     ],
     total_effort_hours=9.0,
-    coverage_improvement="+15% improvement for Persistence and Privilege Escalation tactics"
+    coverage_improvement="+15% improvement for Persistence and Privilege Escalation tactics",
 )

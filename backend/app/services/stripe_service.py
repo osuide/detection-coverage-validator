@@ -11,8 +11,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.models.billing import (
-    Subscription, Invoice, AccountTier, SubscriptionStatus,
-    STRIPE_PRICES
+    Subscription,
+    Invoice,
+    AccountTier,
+    SubscriptionStatus,
+    STRIPE_PRICES,
 )
 from app.models.user import Organization
 
@@ -31,7 +34,7 @@ class StripeService:
         db: AsyncSession,
         organization: Organization,
         email: str,
-        name: Optional[str] = None
+        name: Optional[str] = None,
     ) -> str:
         """Get or create a Stripe customer for an organization."""
         # Check if organization already has a subscription with customer ID
@@ -51,12 +54,20 @@ class StripeService:
                 metadata={
                     "organization_id": str(organization.id),
                     "organization_slug": organization.slug,
-                }
+                },
             )
-            logger.info("stripe_customer_created", customer_id=customer.id, org_id=str(organization.id))
+            logger.info(
+                "stripe_customer_created",
+                customer_id=customer.id,
+                org_id=str(organization.id),
+            )
             return customer.id
         except stripe.error.StripeError as e:
-            logger.error("stripe_customer_creation_failed", error=str(e), org_id=str(organization.id))
+            logger.error(
+                "stripe_customer_creation_failed",
+                error=str(e),
+                org_id=str(organization.id),
+            )
             raise
 
     @staticmethod
@@ -66,7 +77,7 @@ class StripeService:
         success_url: str,
         cancel_url: str,
         customer_email: str,
-        additional_accounts: int = 0
+        additional_accounts: int = 0,
     ) -> Dict[str, Any]:
         """Create a Stripe Checkout session for subscription."""
         result = await db.execute(
@@ -91,45 +102,55 @@ class StripeService:
 
         # Base subscription
         if settings.stripe_price_id_subscriber:
-            line_items.append({
-                "price": settings.stripe_price_id_subscriber,
-                "quantity": 1,
-            })
+            line_items.append(
+                {
+                    "price": settings.stripe_price_id_subscriber,
+                    "quantity": 1,
+                }
+            )
         else:
             # Fallback for development - create price inline
-            line_items.append({
-                "price_data": {
-                    "currency": "usd",
-                    "product_data": {
-                        "name": "Detection Coverage Validator - Subscriber",
-                        "description": "Monthly subscription with unlimited scans, 3 cloud accounts, and full features",
+            line_items.append(
+                {
+                    "price_data": {
+                        "currency": "usd",
+                        "product_data": {
+                            "name": "Detection Coverage Validator - Subscriber",
+                            "description": "Monthly subscription with unlimited scans, 3 cloud accounts, and full features",
+                        },
+                        "unit_amount": STRIPE_PRICES["subscriber_monthly"],
+                        "recurring": {"interval": "month"},
                     },
-                    "unit_amount": STRIPE_PRICES['subscriber_monthly'],
-                    "recurring": {"interval": "month"},
-                },
-                "quantity": 1,
-            })
+                    "quantity": 1,
+                }
+            )
 
         # Additional accounts
         if additional_accounts > 0:
             if settings.stripe_price_id_additional_account:
-                line_items.append({
-                    "price": settings.stripe_price_id_additional_account,
-                    "quantity": additional_accounts,
-                })
+                line_items.append(
+                    {
+                        "price": settings.stripe_price_id_additional_account,
+                        "quantity": additional_accounts,
+                    }
+                )
             else:
-                line_items.append({
-                    "price_data": {
-                        "currency": "usd",
-                        "product_data": {
-                            "name": "Additional Cloud Account",
-                            "description": "Add more cloud accounts to your subscription",
+                line_items.append(
+                    {
+                        "price_data": {
+                            "currency": "usd",
+                            "product_data": {
+                                "name": "Additional Cloud Account",
+                                "description": "Add more cloud accounts to your subscription",
+                            },
+                            "unit_amount": STRIPE_PRICES[
+                                "additional_account_subscriber"
+                            ],
+                            "recurring": {"interval": "month"},
                         },
-                        "unit_amount": STRIPE_PRICES['additional_account_subscriber'],
-                        "recurring": {"interval": "month"},
-                    },
-                    "quantity": additional_accounts,
-                })
+                        "quantity": additional_accounts,
+                    }
+                )
 
         try:
             checkout_params = {
@@ -156,7 +177,11 @@ class StripeService:
 
             session = stripe.checkout.Session.create(**checkout_params)
 
-            logger.info("stripe_checkout_created", session_id=session.id, org_id=str(organization_id))
+            logger.info(
+                "stripe_checkout_created",
+                session_id=session.id,
+                org_id=str(organization_id),
+            )
 
             return {
                 "checkout_url": session.url,
@@ -164,14 +189,14 @@ class StripeService:
             }
 
         except stripe.error.StripeError as e:
-            logger.error("stripe_checkout_failed", error=str(e), org_id=str(organization_id))
+            logger.error(
+                "stripe_checkout_failed", error=str(e), org_id=str(organization_id)
+            )
             raise
 
     @staticmethod
     async def create_portal_session(
-        db: AsyncSession,
-        organization_id: UUID,
-        return_url: str
+        db: AsyncSession, organization_id: UUID, return_url: str
     ) -> Dict[str, Any]:
         """Create a Stripe Customer Portal session for managing subscription."""
         sub_result = await db.execute(
@@ -193,13 +218,14 @@ class StripeService:
             }
 
         except stripe.error.StripeError as e:
-            logger.error("stripe_portal_failed", error=str(e), org_id=str(organization_id))
+            logger.error(
+                "stripe_portal_failed", error=str(e), org_id=str(organization_id)
+            )
             raise
 
     @staticmethod
     async def handle_checkout_completed(
-        db: AsyncSession,
-        session: Dict[str, Any]
+        db: AsyncSession, session: Dict[str, Any]
     ) -> None:
         """Handle checkout.session.completed webhook event."""
         organization_id = UUID(session["metadata"]["organization_id"])
@@ -238,23 +264,28 @@ class StripeService:
             logger.warning("stripe_subscription_fetch_failed", error=str(e))
 
         await db.commit()
-        logger.info("subscription_activated", org_id=str(organization_id), tier="subscriber")
+        logger.info(
+            "subscription_activated", org_id=str(organization_id), tier="subscriber"
+        )
 
     @staticmethod
     async def handle_subscription_updated(
-        db: AsyncSession,
-        stripe_subscription: Dict[str, Any]
+        db: AsyncSession, stripe_subscription: Dict[str, Any]
     ) -> None:
         """Handle customer.subscription.updated webhook event."""
         subscription_id = stripe_subscription["id"]
 
         result = await db.execute(
-            select(Subscription).where(Subscription.stripe_subscription_id == subscription_id)
+            select(Subscription).where(
+                Subscription.stripe_subscription_id == subscription_id
+            )
         )
         subscription = result.scalar_one_or_none()
 
         if not subscription:
-            logger.warning("subscription_not_found", stripe_subscription_id=subscription_id)
+            logger.warning(
+                "subscription_not_found", stripe_subscription_id=subscription_id
+            )
             return
 
         # Update status
@@ -265,8 +296,7 @@ class StripeService:
             "unpaid": SubscriptionStatus.UNPAID,
         }
         subscription.status = status_map.get(
-            stripe_subscription["status"],
-            SubscriptionStatus.ACTIVE
+            stripe_subscription["status"], SubscriptionStatus.ACTIVE
         )
 
         # Update period
@@ -277,7 +307,9 @@ class StripeService:
             stripe_subscription["current_period_end"], tz=timezone.utc
         )
 
-        subscription.cancel_at_period_end = stripe_subscription.get("cancel_at_period_end", False)
+        subscription.cancel_at_period_end = stripe_subscription.get(
+            "cancel_at_period_end", False
+        )
 
         if stripe_subscription.get("canceled_at"):
             subscription.canceled_at = datetime.fromtimestamp(
@@ -285,23 +317,30 @@ class StripeService:
             )
 
         await db.commit()
-        logger.info("subscription_updated", subscription_id=str(subscription.id), status=subscription.status.value)
+        logger.info(
+            "subscription_updated",
+            subscription_id=str(subscription.id),
+            status=subscription.status.value,
+        )
 
     @staticmethod
     async def handle_subscription_deleted(
-        db: AsyncSession,
-        stripe_subscription: Dict[str, Any]
+        db: AsyncSession, stripe_subscription: Dict[str, Any]
     ) -> None:
         """Handle customer.subscription.deleted webhook event."""
         subscription_id = stripe_subscription["id"]
 
         result = await db.execute(
-            select(Subscription).where(Subscription.stripe_subscription_id == subscription_id)
+            select(Subscription).where(
+                Subscription.stripe_subscription_id == subscription_id
+            )
         )
         subscription = result.scalar_one_or_none()
 
         if not subscription:
-            logger.warning("subscription_not_found", stripe_subscription_id=subscription_id)
+            logger.warning(
+                "subscription_not_found", stripe_subscription_id=subscription_id
+            )
             return
 
         # Downgrade to free tier
@@ -313,21 +352,23 @@ class StripeService:
         logger.info("subscription_canceled", subscription_id=str(subscription.id))
 
     @staticmethod
-    async def handle_invoice_paid(
-        db: AsyncSession,
-        invoice: Dict[str, Any]
-    ) -> None:
+    async def handle_invoice_paid(db: AsyncSession, invoice: Dict[str, Any]) -> None:
         """Handle invoice.paid webhook event."""
         stripe_customer_id = invoice["customer"]
 
         # Find subscription by customer ID
         result = await db.execute(
-            select(Subscription).where(Subscription.stripe_customer_id == stripe_customer_id)
+            select(Subscription).where(
+                Subscription.stripe_customer_id == stripe_customer_id
+            )
         )
         subscription = result.scalar_one_or_none()
 
         if not subscription:
-            logger.warning("subscription_not_found_for_invoice", stripe_customer_id=stripe_customer_id)
+            logger.warning(
+                "subscription_not_found_for_invoice",
+                stripe_customer_id=stripe_customer_id,
+            )
             return
 
         # Create invoice record
@@ -339,25 +380,38 @@ class StripeService:
             status=invoice["status"],
             invoice_pdf_url=invoice.get("invoice_pdf"),
             hosted_invoice_url=invoice.get("hosted_invoice_url"),
-            period_start=datetime.fromtimestamp(invoice["period_start"], tz=timezone.utc) if invoice.get("period_start") else None,
-            period_end=datetime.fromtimestamp(invoice["period_end"], tz=timezone.utc) if invoice.get("period_end") else None,
+            period_start=(
+                datetime.fromtimestamp(invoice["period_start"], tz=timezone.utc)
+                if invoice.get("period_start")
+                else None
+            ),
+            period_end=(
+                datetime.fromtimestamp(invoice["period_end"], tz=timezone.utc)
+                if invoice.get("period_end")
+                else None
+            ),
             paid_at=datetime.now(timezone.utc),
         )
         db.add(new_invoice)
         await db.commit()
 
-        logger.info("invoice_recorded", invoice_id=str(new_invoice.id), amount=invoice["amount_paid"])
+        logger.info(
+            "invoice_recorded",
+            invoice_id=str(new_invoice.id),
+            amount=invoice["amount_paid"],
+        )
 
     @staticmethod
     async def handle_invoice_payment_failed(
-        db: AsyncSession,
-        invoice: Dict[str, Any]
+        db: AsyncSession, invoice: Dict[str, Any]
     ) -> None:
         """Handle invoice.payment_failed webhook event."""
         stripe_customer_id = invoice["customer"]
 
         result = await db.execute(
-            select(Subscription).where(Subscription.stripe_customer_id == stripe_customer_id)
+            select(Subscription).where(
+                Subscription.stripe_customer_id == stripe_customer_id
+            )
         )
         subscription = result.scalar_one_or_none()
 
@@ -368,8 +422,7 @@ class StripeService:
 
     @staticmethod
     async def get_subscription_info(
-        db: AsyncSession,
-        organization_id: UUID
+        db: AsyncSession, organization_id: UUID
     ) -> Dict[str, Any]:
         """Get subscription info for an organization."""
         result = await db.execute(
@@ -397,23 +450,37 @@ class StripeService:
             "tier": subscription.tier.value,
             "status": subscription.status.value,
             "free_scan_used": subscription.free_scan_used,
-            "free_scan_at": subscription.free_scan_at.isoformat() if subscription.free_scan_at else None,
-            "free_scan_expires_at": subscription.free_scan_expires_at.isoformat() if subscription.free_scan_expires_at else None,
+            "free_scan_at": (
+                subscription.free_scan_at.isoformat()
+                if subscription.free_scan_at
+                else None
+            ),
+            "free_scan_expires_at": (
+                subscription.free_scan_expires_at.isoformat()
+                if subscription.free_scan_expires_at
+                else None
+            ),
             "can_scan": subscription.can_scan,
             "included_accounts": subscription.included_accounts,
             "additional_accounts": subscription.additional_accounts,
             "total_accounts_allowed": subscription.total_accounts_allowed,
-            "current_period_start": subscription.current_period_start.isoformat() if subscription.current_period_start else None,
-            "current_period_end": subscription.current_period_end.isoformat() if subscription.current_period_end else None,
+            "current_period_start": (
+                subscription.current_period_start.isoformat()
+                if subscription.current_period_start
+                else None
+            ),
+            "current_period_end": (
+                subscription.current_period_end.isoformat()
+                if subscription.current_period_end
+                else None
+            ),
             "cancel_at_period_end": subscription.cancel_at_period_end,
             "has_stripe": bool(subscription.stripe_subscription_id),
         }
 
     @staticmethod
     async def get_invoices(
-        db: AsyncSession,
-        organization_id: UUID,
-        limit: int = 10
+        db: AsyncSession, organization_id: UUID, limit: int = 10
     ) -> list:
         """Get recent invoices for an organization."""
         result = await db.execute(
@@ -434,7 +501,9 @@ class StripeService:
                 "status": inv.status,
                 "invoice_pdf_url": inv.invoice_pdf_url,
                 "hosted_invoice_url": inv.hosted_invoice_url,
-                "period_start": inv.period_start.isoformat() if inv.period_start else None,
+                "period_start": (
+                    inv.period_start.isoformat() if inv.period_start else None
+                ),
                 "period_end": inv.period_end.isoformat() if inv.period_end else None,
                 "paid_at": inv.paid_at.isoformat() if inv.paid_at else None,
                 "created_at": inv.created_at.isoformat(),

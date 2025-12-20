@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Container Administration Command",
     tactic_ids=["TA0002"],
     mitre_url="https://attack.mitre.org/techniques/T1609/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries abuse container administration services such as Docker daemon, "
@@ -36,28 +35,34 @@ TEMPLATE = RemediationTemplate(
             "Commands run with container privileges",
             "Hard to distinguish from normal operations",
             "Direct access to running workloads",
-            "Can pivot across containers"
+            "Can pivot across containers",
         ],
-        known_threat_actors=["TeamTNT", "Siloscape", "Kinsing", "Peirates", "Hildegard"],
+        known_threat_actors=[
+            "TeamTNT",
+            "Siloscape",
+            "Kinsing",
+            "Peirates",
+            "Hildegard",
+        ],
         recent_campaigns=[
             Campaign(
                 name="TeamTNT Hildegard Campaign",
                 year=2024,
                 description="Executed Hildegard malware through kubelet API run commands",
-                reference_url="https://attack.mitre.org/software/S0601/"
+                reference_url="https://attack.mitre.org/software/S0601/",
             ),
             Campaign(
                 name="Siloscape Cluster Compromise",
                 year=2024,
                 description="Transmitted kubectl commands via IRC to compromise Kubernetes clusters",
-                reference_url="https://attack.mitre.org/software/S0623/"
+                reference_url="https://attack.mitre.org/software/S0623/",
             ),
             Campaign(
                 name="Kinsing Container Deployment",
                 year=2024,
                 description="Deployed via Ubuntu container entry points running shell scripts",
-                reference_url="https://attack.mitre.org/software/S0599/"
-            )
+                reference_url="https://attack.mitre.org/software/S0599/",
+            ),
         ],
         prevalence="moderate",
         trend="increasing",
@@ -72,13 +77,12 @@ TEMPLATE = RemediationTemplate(
             "Container compromise",
             "Lateral movement in cluster",
             "Data exfiltration",
-            "Cryptomining deployment"
+            "Cryptomining deployment",
         ],
         typical_attack_phase="execution",
         often_precedes=["T1496.001", "T1530", "T1552.001"],
-        often_follows=["T1190", "T1078.004", "T1552.005"]
+        often_follows=["T1190", "T1078.004", "T1552.005"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1609-aws-ecs-exec",
@@ -88,11 +92,11 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.arn, requestParameters.cluster, requestParameters.task, requestParameters.container
+                query="""fields @timestamp, eventName, userIdentity.arn, requestParameters.cluster, requestParameters.task, requestParameters.container
 | filter eventSource = "ecs.amazonaws.com"
 | filter eventName = "ExecuteCommand"
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect ECS container exec commands
 
 Parameters:
@@ -152,8 +156,8 @@ Resources:
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect ECS container exec commands
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect ECS container exec commands
 
 variable "cloudtrail_log_group" {
   description = "CloudTrail log group name"
@@ -217,7 +221,7 @@ resource "aws_sns_topic_policy" "ecs_exec_alerts" {
       Resource  = aws_sns_topic.ecs_exec_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="ECS Container Exec Command Executed",
                 alert_description_template="User {userIdentity.arn} executed command in ECS container {container} on task {task}.",
@@ -226,15 +230,15 @@ resource "aws_sns_topic_policy" "ecs_exec_alerts" {
                     "Review the command executed (check ECS audit logs)",
                     "Check if exec was from expected IP/location",
                     "Examine container for malicious activity",
-                    "Review user's recent activity for anomalies"
+                    "Review user's recent activity for anomalies",
                 ],
                 containment_actions=[
                     "Disable ECS exec if not required",
                     "Restrict exec permissions via IAM",
                     "Rotate credentials if compromised",
                     "Isolate affected containers",
-                    "Enable ECS task audit logging"
-                ]
+                    "Enable ECS task audit logging",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised DevOps roles and scheduled maintenance windows",
@@ -243,9 +247,8 @@ resource "aws_sns_topic_policy" "ecs_exec_alerts" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled", "ECS exec enabled"]
+            prerequisites=["CloudTrail enabled", "ECS exec enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1609-gcp-gke-exec",
             name="GCP GKE Exec Command Detection",
@@ -258,7 +261,7 @@ resource "aws_sns_topic_policy" "ecs_exec_alerts" {
                 gcp_logging_query='''resource.type="k8s_cluster"
 protoPayload.methodName="io.k8s.core.v1.pods.exec.create"
 OR protoPayload.methodName="io.k8s.core.v1.pods.attach.create"''',
-                gcp_terraform_template='''# GCP: Detect kubectl exec commands in GKE
+                gcp_terraform_template="""# GCP: Detect kubectl exec commands in GKE
 
 variable "project_id" {
   description = "GCP project ID"
@@ -341,7 +344,7 @@ resource "google_monitoring_alert_policy" "kubectl_exec" {
     content   = "kubectl exec command detected in GKE cluster. Investigate user activity and command executed."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: GKE Container Exec Command Detected",
                 alert_description_template="kubectl exec command executed in cluster by {principalEmail} on pod {resourceName}.",
@@ -350,15 +353,15 @@ resource "google_monitoring_alert_policy" "kubectl_exec" {
                     "Review the command executed in audit logs",
                     "Check source IP and location",
                     "Examine pod for suspicious activity",
-                    "Review user's recent Kubernetes API calls"
+                    "Review user's recent Kubernetes API calls",
                 ],
                 containment_actions=[
                     "Revoke user's cluster access if unauthorised",
                     "Use Pod Security Policies to restrict exec",
                     "Enable Binary Authorization",
                     "Implement RBAC restrictions",
-                    "Delete compromised pods"
-                ]
+                    "Delete compromised pods",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist service accounts used by authorised DevOps teams",
@@ -367,9 +370,8 @@ resource "google_monitoring_alert_policy" "kubectl_exec" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["GKE audit logging enabled", "Cloud Audit Logs enabled"]
+            prerequisites=["GKE audit logging enabled", "Cloud Audit Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1609-aws-eks-exec",
             name="AWS EKS Exec Command Detection",
@@ -378,12 +380,12 @@ resource "google_monitoring_alert_policy" "kubectl_exec" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, objectRef.namespace, objectRef.name, user.username, sourceIPs.0
+                query="""fields @timestamp, objectRef.namespace, objectRef.name, user.username, sourceIPs.0
 | filter objectRef.resource = "pods"
 | filter verb = "create"
 | filter objectRef.subresource = "exec" or objectRef.subresource = "attach"
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect EKS kubectl exec commands
 
 Parameters:
@@ -443,8 +445,8 @@ Resources:
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect EKS kubectl exec commands
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect EKS kubectl exec commands
 
 variable "eks_audit_log_group" {
   description = "EKS cluster audit log group name"
@@ -508,7 +510,7 @@ resource "aws_sns_topic_policy" "eks_exec_alerts" {
       Resource  = aws_sns_topic.eks_exec_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="EKS kubectl Exec Command Executed",
                 alert_description_template="kubectl exec executed by {user.username} on pod {objectRef.name} in namespace {objectRef.namespace}.",
@@ -517,15 +519,15 @@ resource "aws_sns_topic_policy" "eks_exec_alerts" {
                     "Review command executed in audit logs",
                     "Check source IP matches expected location",
                     "Examine pod for malicious processes",
-                    "Review user's recent Kubernetes operations"
+                    "Review user's recent Kubernetes operations",
                 ],
                 containment_actions=[
                     "Revoke user's cluster access",
                     "Use RBAC to restrict exec permissions",
                     "Enable Pod Security Standards",
                     "Isolate affected pods",
-                    "Rotate service account tokens"
-                ]
+                    "Rotate service account tokens",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist service accounts for CI/CD and monitoring",
@@ -534,9 +536,11 @@ resource "aws_sns_topic_policy" "eks_exec_alerts" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$3-7",
-            prerequisites=["EKS control plane logging enabled", "CloudWatch Logs configured"]
+            prerequisites=[
+                "EKS control plane logging enabled",
+                "CloudWatch Logs configured",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1609-docker-exec",
             name="Docker Exec Command Detection",
@@ -545,10 +549,10 @@ resource "aws_sns_topic_policy" "eks_exec_alerts" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message
+                query="""fields @timestamp, @message
 | filter @message like /docker exec/
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect docker exec commands (requires CloudWatch agent)
 
 Parameters:
@@ -608,8 +612,8 @@ Resources:
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect docker exec commands (requires audit logging)
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect docker exec commands (requires audit logging)
 
 variable "system_log_group" {
   description = "EC2 system log group name"
@@ -673,7 +677,7 @@ resource "aws_sns_topic_policy" "docker_exec_alerts" {
       Resource  = aws_sns_topic.docker_exec_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Docker Exec Command Detected",
                 alert_description_template="docker exec command executed on host.",
@@ -682,15 +686,15 @@ resource "aws_sns_topic_policy" "docker_exec_alerts" {
                     "Review command and container targeted",
                     "Check if action was authorised",
                     "Examine container for malicious activity",
-                    "Review host audit logs for context"
+                    "Review host audit logs for context",
                 ],
                 containment_actions=[
                     "Restrict Docker socket access",
                     "Use read-only containers where possible",
                     "Implement Docker authorisation plugins",
                     "Enable comprehensive audit logging",
-                    "Isolate affected containers"
-                ]
+                    "Isolate affected containers",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Requires comprehensive audit logging; whitelist authorised operations",
@@ -699,16 +703,18 @@ resource "aws_sns_topic_policy" "docker_exec_alerts" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["Docker audit logging enabled", "CloudWatch agent configured"]
-        )
+            prerequisites=[
+                "Docker audit logging enabled",
+                "CloudWatch agent configured",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1609-aws-ecs-exec",
         "t1609-gcp-gke-exec",
         "t1609-aws-eks-exec",
-        "t1609-docker-exec"
+        "t1609-docker-exec",
     ],
     total_effort_hours=5.0,
-    coverage_improvement="+18% improvement for Execution tactic"
+    coverage_improvement="+18% improvement for Execution tactic",
 )

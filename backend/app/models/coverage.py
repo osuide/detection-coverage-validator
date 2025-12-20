@@ -57,4 +57,6 @@ class CoverageSnapshot(Base):
     )
 
     def __repr__(self) -> str:
-        return f"<CoverageSnapshot {self.cloud_account_id} ({self.coverage_percent:.1f}%)>"
+        return (
+            f"<CoverageSnapshot {self.cloud_account_id} ({self.coverage_percent:.1f}%)>"
+        )

@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Phishing",
     tactic_ids=["TA0001"],
     mitre_url="https://attack.mitre.org/techniques/T1566/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries send phishing messages via email or third-party services "
@@ -39,28 +38,36 @@ TEMPLATE = RemediationTemplate(
             "Low technical barrier for attackers",
             "Can scale to mass campaigns",
             "Effective against multi-factor authentication",
-            "Thread hijacking increases legitimacy"
+            "Thread hijacking increases legitimacy",
         ],
-        known_threat_actors=["APT29 (Cozy Bear)", "Kimsuky", "LAPSUS$", "Scattered Spider", "GOLD SOUTHFIELD", "Sea Turtle", "INC Ransom"],
+        known_threat_actors=[
+            "APT29 (Cozy Bear)",
+            "Kimsuky",
+            "LAPSUS$",
+            "Scattered Spider",
+            "GOLD SOUTHFIELD",
+            "Sea Turtle",
+            "INC Ransom",
+        ],
         recent_campaigns=[
             Campaign(
                 name="LAPSUS$ Credential Phishing",
                 year=2022,
                 description="Phishing campaigns targeting Microsoft, Nvidia, and Samsung employees to steal credentials",
-                reference_url="https://www.microsoft.com/security/blog/2022/03/22/dev-0537-criminal-actor-targeting-organizations-for-data-exfiltration/"
+                reference_url="https://www.microsoft.com/security/blog/2022/03/22/dev-0537-criminal-actor-targeting-organizations-for-data-exfiltration/",
             ),
             Campaign(
                 name="Scattered Spider Callback Phishing",
                 year=2024,
                 description="Callback phishing directing victims to call numbers that led to credential harvesting and MFA bypass",
-                reference_url="https://attack.mitre.org/groups/G1015/"
+                reference_url="https://attack.mitre.org/groups/G1015/",
             ),
             Campaign(
                 name="APT29 COVID-19 Phishing",
                 year=2020,
                 description="Spearphishing campaigns targeting healthcare organisations during pandemic using malicious attachments",
-                reference_url="https://attack.mitre.org/groups/G0016/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0016/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -77,13 +84,12 @@ TEMPLATE = RemediationTemplate(
             "Ransomware deployment",
             "Business email compromise",
             "Regulatory violations (GDPR, HIPAA)",
-            "Reputation damage"
+            "Reputation damage",
         ],
         typical_attack_phase="initial_access",
         often_precedes=["T1078.004", "T1114.003", "T1110", "T1621"],
-        often_follows=[]
+        often_follows=[],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1566-aws-ses-analysis",
@@ -96,13 +102,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, mail.destination, mail.source, mail.commonHeaders.subject, eventType
+                query="""fields @timestamp, mail.destination, mail.source, mail.commonHeaders.subject, eventType
 | filter eventSource = "ses.amazonaws.com"
 | filter eventType in ["Bounce", "Complaint", "Reject"]
 | stats count(*) as suspicious_events by mail.source, bin(1h)
 | filter suspicious_events > 5
-| sort suspicious_events desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort suspicious_events desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: AWS SES phishing detection with SNS alerts
 
 Parameters:
@@ -151,8 +157,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref PhishingAlertTopic''',
-                terraform_template='''# AWS SES phishing detection with alerts
+            Resource: !Ref PhishingAlertTopic""",
+                terraform_template="""# AWS SES phishing detection with alerts
 
 variable "alert_email" {
   type        = string
@@ -203,7 +209,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Resource  = aws_sns_topic.phishing_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="AWS SES: Suspicious Email Activity Detected",
                 alert_description_template=(
@@ -217,15 +223,15 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Analyse email content and attachments if available",
                     "Verify if any recipients clicked links or opened attachments",
                     "Check for similar emails from the same source",
-                    "Review recipient list for targeted individuals"
+                    "Review recipient list for targeted individuals",
                 ],
                 containment_actions=[
                     "Block sender address and domain in SES",
                     "Update email filtering rules to catch similar patterns",
                     "Notify affected users if emails were delivered",
                     "Review and strengthen email authentication (SPF/DKIM/DMARC)",
-                    "Consider implementing AWS SES receipt rules for filtering"
-                ]
+                    "Consider implementing AWS SES receipt rules for filtering",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Legitimate marketing emails may trigger bounces; whitelist known senders",
@@ -234,9 +240,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["AWS SES configured", "SES event publishing enabled"]
+            prerequisites=["AWS SES configured", "SES event publishing enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1566-aws-guardduty-malware",
             name="GuardDuty Malware Detection in S3",
@@ -251,9 +256,9 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                 guardduty_finding_types=[
                     "Discovery:S3/MaliciousIPCaller",
                     "Impact:S3/MaliciousIPCaller",
-                    "Execution:S3/MaliciousFile"
+                    "Execution:S3/MaliciousFile",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty malware protection for phishing detection
 
 Parameters:
@@ -305,8 +310,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref MalwareAlertTopic''',
-                terraform_template='''# GuardDuty malware protection for phishing detection
+            Resource: !Ref MalwareAlertTopic""",
+                terraform_template="""# GuardDuty malware protection for phishing detection
 
 variable "alert_email" { type = string }
 
@@ -366,7 +371,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Resource  = aws_sns_topic.malware_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GuardDuty: Malicious File Detected in S3",
                 alert_description_template=(
@@ -379,7 +384,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Analyse the malicious file if safe to do so",
                     "Review other objects in the same bucket",
                     "Check CloudTrail for related API activity",
-                    "Identify any users who may have downloaded the file"
+                    "Identify any users who may have downloaded the file",
                 ],
                 containment_actions=[
                     "Quarantine or delete the malicious object immediately",
@@ -387,8 +392,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Rotate credentials used to upload the file",
                     "Review and restrict bucket permissions",
                     "Enable S3 Block Public Access",
-                    "Scan other buckets for similar content"
-                ]
+                    "Scan other buckets for similar content",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="GuardDuty malware detection is highly accurate",
@@ -397,9 +402,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$4 per million events",
-            prerequisites=["AWS account with GuardDuty permissions"]
+            prerequisites=["AWS account with GuardDuty permissions"],
         ),
-
         DetectionStrategy(
             strategy_id="t1566-aws-workmail-rules",
             name="AWS WorkMail Suspicious Rule Detection",
@@ -411,11 +415,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.arn, requestParameters
+                query="""fields @timestamp, eventName, userIdentity.arn, requestParameters
 | filter eventSource = "workmail.amazonaws.com"
 | filter eventName in ["CreateInboxRule", "UpdateInboxRule", "PutMailboxPermissions"]
-| sort @timestamp desc''',
-                terraform_template='''# Detect suspicious WorkMail rule changes
+| sort @timestamp desc""",
+                terraform_template="""# Detect suspicious WorkMail rule changes
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -453,7 +457,7 @@ resource "aws_cloudwatch_metric_alarm" "rule_change" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="WorkMail: Email Rule Modified",
                 alert_description_template=(
@@ -465,14 +469,14 @@ resource "aws_cloudwatch_metric_alarm" "rule_change" {
                     "Check if the rule forwards emails externally",
                     "Verify the user who created the rule",
                     "Check for rules that auto-delete certain emails",
-                    "Review other rules for the same user"
+                    "Review other rules for the same user",
                 ],
                 containment_actions=[
                     "Delete suspicious rules immediately",
                     "Review all mailbox rules organisation-wide",
                     "Restrict rule creation permissions",
-                    "Reset credentials if compromise suspected"
-                ]
+                    "Reset credentials if compromise suspected",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Users rarely create email rules; investigate all occurrences",
@@ -481,9 +485,8 @@ resource "aws_cloudwatch_metric_alarm" "rule_change" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled for WorkMail events"]
+            prerequisites=["CloudTrail enabled for WorkMail events"],
         ),
-
         DetectionStrategy(
             strategy_id="t1566-gcp-gmail-api",
             name="GCP Workspace Phishing Detection",
@@ -496,14 +499,14 @@ resource "aws_cloudwatch_metric_alarm" "rule_change" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''protoPayload.serviceName="admin.googleapis.com"
+                gcp_logging_query="""protoPayload.serviceName="admin.googleapis.com"
 AND (
   protoPayload.methodName=~"gmail.*forward"
   OR protoPayload.methodName=~"SUSPICIOUS_LOGIN"
   OR protoPayload.methodName=~"CHANGE_EMAIL_SETTINGS"
   OR protoPayload.eventName=~"phish"
-)''',
-                gcp_terraform_template='''# GCP: Workspace phishing detection
+)""",
+                gcp_terraform_template="""# GCP: Workspace phishing detection
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -557,7 +560,7 @@ resource "google_monitoring_alert_policy" "phishing_alert" {
   alert_strategy {
     auto_close = "604800s"  # 7 days
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP Workspace: Phishing Activity Detected",
                 alert_description_template=(
@@ -570,15 +573,15 @@ resource "google_monitoring_alert_policy" "phishing_alert" {
                     "Verify user login location and device",
                     "Review recent email activity for the affected user",
                     "Check for unusual email send patterns",
-                    "Look for credential sharing or delegation changes"
+                    "Look for credential sharing or delegation changes",
                 ],
                 containment_actions=[
                     "Suspend affected user account if compromise confirmed",
                     "Remove unauthorised email forwarding rules",
                     "Reset user password and revoke sessions",
                     "Enable enhanced security features for affected users",
-                    "Review organisation-wide email security settings"
-                ]
+                    "Review organisation-wide email security settings",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Legitimate forwarding rules exist; baseline normal activity",
@@ -587,9 +590,8 @@ resource "google_monitoring_alert_policy" "phishing_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Google Workspace with audit logging enabled"]
+            prerequisites=["Google Workspace with audit logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1566-gcp-safe-browsing",
             name="GCP Web Risk API for Malicious URLs",
@@ -605,7 +607,7 @@ resource "google_monitoring_alert_policy" "phishing_alert" {
                 gcp_logging_query='''resource.type="cloud_function"
 protoPayload.methodName="webrisk.uris.search"
 jsonPayload.threat_types!=""''',
-                gcp_terraform_template='''# GCP: Web Risk API for malicious URL detection
+                gcp_terraform_template="""# GCP: Web Risk API for malicious URL detection
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -655,7 +657,7 @@ resource "google_monitoring_alert_policy" "malicious_url_alert" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Malicious URL Detected via Web Risk",
                 alert_description_template=(
@@ -667,14 +669,14 @@ resource "google_monitoring_alert_policy" "malicious_url_alert" {
                     "Identify source of the URL (email, upload, etc.)",
                     "Check if URL was accessed by any users",
                     "Search logs for other instances of the domain",
-                    "Analyse threat type (phishing, malware, etc.)"
+                    "Analyse threat type (phishing, malware, etc.)",
                 ],
                 containment_actions=[
                     "Block domain at organisation firewall/proxy",
                     "Add to blocklist in email gateway",
                     "Notify users who may have clicked the link",
-                    "Scan systems for compromise if clicked"
-                ]
+                    "Scan systems for compromise if clicked",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Google Web Risk is highly accurate",
@@ -683,17 +685,16 @@ resource "google_monitoring_alert_policy" "malicious_url_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$5-15 depending on query volume",
-            prerequisites=["Web Risk API enabled", "Cloud Functions configured"]
-        )
+            prerequisites=["Web Risk API enabled", "Cloud Functions configured"],
+        ),
     ],
-
     recommended_order=[
         "t1566-aws-guardduty-malware",
         "t1566-gcp-gmail-api",
         "t1566-aws-ses-analysis",
         "t1566-gcp-safe-browsing",
-        "t1566-aws-workmail-rules"
+        "t1566-aws-workmail-rules",
     ],
     total_effort_hours=6.0,
-    coverage_improvement="+30% improvement for Initial Access tactic"
+    coverage_improvement="+30% improvement for Initial Access tactic",
 )

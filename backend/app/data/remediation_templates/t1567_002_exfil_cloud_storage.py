@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Exfiltration Over Web Service: Exfiltration to Cloud Storage",
     tactic_ids=["TA0010"],
     mitre_url="https://attack.mitre.org/techniques/T1567/002/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries steal data by uploading it to cloud storage services rather than "
@@ -39,34 +38,41 @@ TEMPLATE = RemediationTemplate(
             "Cloud storage services rarely blocked by firewalls",
             "High bandwidth for large data transfers",
             "Tools like rclone enable automated bulk exfiltration",
-            "Hard to distinguish from legitimate cloud service use"
+            "Hard to distinguish from legitimate cloud service use",
         ],
-        known_threat_actors=["Scattered Spider", "Lazarus Group", "APT41", "OilRig", "Indrik Spider", "Storm-0501"],
+        known_threat_actors=[
+            "Scattered Spider",
+            "Lazarus Group",
+            "APT41",
+            "OilRig",
+            "Indrik Spider",
+            "Storm-0501",
+        ],
         recent_campaigns=[
             Campaign(
                 name="Scattered Spider Rclone Exfiltration",
                 year=2024,
                 description="Scattered Spider and Storm-0501 utilised Rclone for bulk exfiltration to cloud storage",
-                reference_url="https://attack.mitre.org/techniques/T1567/002/"
+                reference_url="https://attack.mitre.org/techniques/T1567/002/",
             ),
             Campaign(
                 name="Lazarus Group Dropbox dbxcli",
                 year=2024,
                 description="Lazarus Group employed custom dbxcli builds targeting Dropbox for data exfiltration",
-                reference_url="https://attack.mitre.org/groups/G0032/"
+                reference_url="https://attack.mitre.org/groups/G0032/",
             ),
             Campaign(
                 name="APT41 DUST OneDrive",
                 year=2024,
                 description="APT41 exfiltrated data through OneDrive during the DUST campaign",
-                reference_url="https://attack.mitre.org/groups/G0096/"
+                reference_url="https://attack.mitre.org/groups/G0096/",
             ),
             Campaign(
                 name="OilRig Microsoft Graph API",
                 year=2024,
                 description="OilRig developed specialised tools (ODAgent, OilBooster) leveraging Microsoft Graph API for OneDrive access",
-                reference_url="https://attack.mitre.org/groups/G0049/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0049/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -83,13 +89,17 @@ TEMPLATE = RemediationTemplate(
             "Customer data and PII exposure",
             "Regulatory compliance violations (GDPR, HIPAA)",
             "Reputational damage from data breaches",
-            "Potential ransomware precursor (data for double extortion)"
+            "Potential ransomware precursor (data for double extortion)",
         ],
         typical_attack_phase="exfiltration",
         often_precedes=["T1486"],  # Data Encrypted for Impact (ransomware)
-        often_follows=["T1074", "T1560", "T1530", "T1552.001"]  # Data staged, archived, from cloud storage, credentials
+        often_follows=[
+            "T1074",
+            "T1560",
+            "T1530",
+            "T1552.001",
+        ],  # Data staged, archived, from cloud storage, credentials
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - Rclone and Cloud Upload Tool Detection
         DetectionStrategy(
@@ -100,14 +110,14 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userAgent, requestParameters.bucketName, userIdentity.arn
+                query="""fields @timestamp, eventName, userAgent, requestParameters.bucketName, userIdentity.arn
 | filter eventSource = "s3.amazonaws.com"
 | filter userAgent like /rclone|curl|wget|aws-cli|gsutil|azcopy/
 | filter requestParameters.bucketName not like /your-org-prefix/
 | stats count() as upload_count by userIdentity.arn, userAgent, requestParameters.bucketName, bin(1h)
 | filter upload_count > 10
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect cloud storage upload tools (rclone, curl, wget)
 
 Parameters:
@@ -167,8 +177,8 @@ Resources:
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect cloud storage upload tools (rclone, curl, wget)
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect cloud storage upload tools (rclone, curl, wget)
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -216,7 +226,7 @@ resource "aws_cloudwatch_metric_alarm" "upload_tool_alert" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Cloud Storage Upload Tool Detected",
                 alert_description_template="Upload tool ({userAgent}) detected uploading to external storage by {userIdentity.arn}.",
@@ -226,7 +236,7 @@ resource "aws_cloudwatch_metric_alarm" "upload_tool_alert" {
                     "Check for data staging or compression activities",
                     "Verify if rclone/curl/wget is authorised software",
                     "Review CloudTrail for PutObject events to external buckets",
-                    "Check for credential theft that may have enabled access"
+                    "Check for credential theft that may have enabled access",
                 ],
                 containment_actions=[
                     "Terminate the instance or revoke user credentials immediately",
@@ -234,8 +244,8 @@ resource "aws_cloudwatch_metric_alarm" "upload_tool_alert" {
                     "Review and remove any rclone configuration files",
                     "Enable S3 Block Public Access organisation-wide",
                     "Implement application allowlisting to prevent unauthorised tools",
-                    "Review DLP policies for cloud storage services"
-                ]
+                    "Review DLP policies for cloud storage services",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised backup/DevOps instances using rclone. Filter legitimate curl/wget usage from known automation.",
@@ -244,9 +254,11 @@ resource "aws_cloudwatch_metric_alarm" "upload_tool_alert" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail logging S3 data events", "CloudWatch Logs Insights enabled"]
+            prerequisites=[
+                "CloudTrail logging S3 data events",
+                "CloudWatch Logs Insights enabled",
+            ],
         ),
-
         # Strategy 2: AWS - Large HTTPS POST to Cloud Storage Domains
         DetectionStrategy(
             strategy_id="t1567_002-aws-vpc-cloud-domains",
@@ -256,14 +268,14 @@ resource "aws_cloudwatch_metric_alarm" "upload_tool_alert" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcAddr, dstAddr, bytes, dstPort
+                query="""fields @timestamp, srcAddr, dstAddr, bytes, dstPort
 | filter dstPort = 443
 | filter bytes > 10485760
 | filter dstAddr in ["api.dropbox.com", "content.dropboxapi.com", "www.googleapis.com", "graph.microsoft.com", "g.api.mega.co.nz"]
 | stats sum(bytes) as total_bytes by srcAddr, dstAddr, bin(5m)
 | filter total_bytes > 104857600
-| sort total_bytes desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort total_bytes desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect large HTTPS uploads to cloud storage services
 
 Parameters:
@@ -323,8 +335,8 @@ Resources:
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect large HTTPS uploads to cloud storage services
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect large HTTPS uploads to cloud storage services
 
 variable "vpc_flow_log_group" {
   type        = string
@@ -372,7 +384,7 @@ resource "aws_cloudwatch_metric_alarm" "large_upload_alert" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Large HTTPS Upload to Cloud Storage",
                 alert_description_template="Large HTTPS upload ({total_bytes} bytes) detected from {srcAddr} to {dstAddr}.",
@@ -382,7 +394,7 @@ resource "aws_cloudwatch_metric_alarm" "large_upload_alert" {
                     "Review what processes were running on source instance",
                     "Check for data staging, archiving, or compression",
                     "Verify if cloud storage service use is authorised",
-                    "Review user activity and authentication logs"
+                    "Review user activity and authentication logs",
                 ],
                 containment_actions=[
                     "Isolate the source instance in a quarantine security group",
@@ -390,8 +402,8 @@ resource "aws_cloudwatch_metric_alarm" "large_upload_alert" {
                     "Revoke credentials that may have been used",
                     "Enable enhanced DLP controls for cloud storage services",
                     "Review and update acceptable use policies",
-                    "Implement DNS-based filtering for cloud storage services"
-                ]
+                    "Implement DNS-based filtering for cloud storage services",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised backup systems, legitimate Dropbox/Drive usage by specific IPs. Adjust byte thresholds based on baseline.",
@@ -400,9 +412,8 @@ resource "aws_cloudwatch_metric_alarm" "large_upload_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$15-30",
-            prerequisites=["VPC Flow Logs enabled and sent to CloudWatch"]
+            prerequisites=["VPC Flow Logs enabled and sent to CloudWatch"],
         ),
-
         # Strategy 3: AWS - EC2 Instance Profile API Calls to External Services
         DetectionStrategy(
             strategy_id="t1567_002-aws-instance-external-api",
@@ -415,9 +426,9 @@ resource "aws_cloudwatch_metric_alarm" "large_upload_alert" {
                 guardduty_finding_types=[
                     "Exfiltration:S3/MaliciousIPCaller",
                     "Exfiltration:S3/ObjectRead.Unusual",
-                    "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.OutsideAWS"
+                    "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.OutsideAWS",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect EC2 instances making external API calls
 
 Parameters:
@@ -467,8 +478,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect EC2 instances making external API calls via GuardDuty
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect EC2 instances making external API calls via GuardDuty
 
 variable "alert_email" {
   type        = string
@@ -522,7 +533,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GuardDuty: EC2 Exfiltration Detected",
                 alert_description_template="GuardDuty detected potential exfiltration activity from EC2 instance.",
@@ -532,7 +543,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Check what processes are running on the instance",
                     "Review CloudTrail for API activity from instance credentials",
                     "Verify if external API calls are authorised",
-                    "Check for compromise indicators (unusual processes, network connections)"
+                    "Check for compromise indicators (unusual processes, network connections)",
                 ],
                 containment_actions=[
                     "Isolate the EC2 instance immediately",
@@ -540,8 +551,8 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Terminate the instance if compromised",
                     "Review and rotate any credentials that may have been exposed",
                     "Enable IMDSv2 to prevent credential theft",
-                    "Review security group rules and restrict egress"
-                ]
+                    "Review security group rules and restrict egress",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="GuardDuty's ML baselines reduce false positives. Whitelist known external integrations.",
@@ -550,9 +561,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-15 (GuardDuty costs extra)",
-            prerequisites=["Amazon GuardDuty enabled"]
+            prerequisites=["Amazon GuardDuty enabled"],
         ),
-
         # Strategy 4: GCP - Cloud Storage Upload to External Buckets
         DetectionStrategy(
             strategy_id="t1567_002-gcp-storage-upload",
@@ -566,7 +576,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                 gcp_logging_query='''resource.type="gce_instance"
 protoPayload.methodName="storage.objects.create"
 NOT protoPayload.resourceName=~"projects/YOUR-PROJECT-ID/.*"''',
-                gcp_terraform_template='''# GCP: Detect uploads to external cloud storage
+                gcp_terraform_template="""# GCP: Detect uploads to external cloud storage
 
 variable "project_id" {
   type        = string
@@ -623,7 +633,7 @@ resource "google_monitoring_alert_policy" "external_upload" {
   alert_strategy {
     auto_close = "604800s"  # 7 days
   }
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GCP: External Cloud Storage Upload Detected",
                 alert_description_template="GCE instance uploaded data to external Cloud Storage bucket.",
@@ -633,7 +643,7 @@ resource "google_monitoring_alert_policy" "external_upload" {
                     "Check what service account was used",
                     "Review instance logs for rclone, gsutil, or other tools",
                     "Verify if external storage access is authorised",
-                    "Check for data staging or compression activities"
+                    "Check for data staging or compression activities",
                 ],
                 containment_actions=[
                     "Stop the GCE instance immediately",
@@ -641,8 +651,8 @@ resource "google_monitoring_alert_policy" "external_upload" {
                     "Enable VPC Service Controls to restrict data egress",
                     "Review and update firewall rules to block cloud storage",
                     "Implement organisation policies to restrict external access",
-                    "Enable DLP API scanning for sensitive data"
-                ]
+                    "Enable DLP API scanning for sensitive data",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised cross-project data sharing, backup systems, and legitimate gsutil usage.",
@@ -651,9 +661,10 @@ resource "google_monitoring_alert_policy" "external_upload" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Audit Logs enabled for Compute Engine and Cloud Storage"]
+            prerequisites=[
+                "Cloud Audit Logs enabled for Compute Engine and Cloud Storage"
+            ],
         ),
-
         # Strategy 5: GCP - VPC Flow Logs Large HTTPS Uploads
         DetectionStrategy(
             strategy_id="t1567_002-gcp-vpc-https",
@@ -664,11 +675,11 @@ resource "google_monitoring_alert_policy" "external_upload" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_subnetwork"
+                gcp_logging_query="""resource.type="gce_subnetwork"
 logName="projects/YOUR-PROJECT/logs/compute.googleapis.com%2Fvpc_flows"
 jsonPayload.connection.dest_port=443
-jsonPayload.bytes_sent>10485760''',
-                gcp_terraform_template='''# GCP: Detect large HTTPS uploads via VPC Flow Logs
+jsonPayload.bytes_sent>10485760""",
+                gcp_terraform_template="""# GCP: Detect large HTTPS uploads via VPC Flow Logs
 
 variable "project_id" {
   type        = string
@@ -732,7 +743,7 @@ resource "google_monitoring_alert_policy" "https_upload" {
   alert_strategy {
     auto_close = "604800s"  # 7 days
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Large HTTPS Upload Detected",
                 alert_description_template="Large HTTPS upload ({bytes_sent} bytes) detected from GCE instance.",
@@ -742,7 +753,7 @@ resource "google_monitoring_alert_policy" "https_upload" {
                     "Review instance processes and running containers",
                     "Check for rclone, curl, wget, or other upload tools",
                     "Verify if large upload is legitimate (backups, data sharing)",
-                    "Review user activity and service account usage"
+                    "Review user activity and service account usage",
                 ],
                 containment_actions=[
                     "Isolate the instance using firewall rules",
@@ -750,8 +761,8 @@ resource "google_monitoring_alert_policy" "https_upload" {
                     "Stop the instance if compromise confirmed",
                     "Enable VPC Service Controls for data egress prevention",
                     "Review and rotate service account keys",
-                    "Implement Cloud Armor for web application protection"
-                ]
+                    "Implement Cloud Armor for web application protection",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal upload volumes. Whitelist authorised backup systems and CDN uploads.",
@@ -760,17 +771,16 @@ resource "google_monitoring_alert_policy" "https_upload" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$15-30",
-            prerequisites=["VPC Flow Logs enabled on subnets"]
-        )
+            prerequisites=["VPC Flow Logs enabled on subnets"],
+        ),
     ],
-
     recommended_order=[
         "t1567_002-aws-upload-tools",
         "t1567_002-aws-instance-external-api",
         "t1567_002-gcp-storage-upload",
         "t1567_002-aws-vpc-cloud-domains",
-        "t1567_002-gcp-vpc-https"
+        "t1567_002-gcp-vpc-https",
     ],
     total_effort_hours=6.5,
-    coverage_improvement="+28% improvement for Exfiltration tactic"
+    coverage_improvement="+28% improvement for Exfiltration tactic",
 )

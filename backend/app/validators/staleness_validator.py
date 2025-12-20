@@ -91,25 +91,27 @@ class StalenessValidator(BaseValidator):
             return score, issues
 
         if days_since_update > self.CONFIG_STALENESS_CRITICAL:
-            issues.append({
-                "message": f"Detection config not updated in {days_since_update} days",
-                "severity": ValidationSeverity.CRITICAL,
-                "code": "STALE_CONFIG_CRITICAL",
-                "details": {"days_since_update": days_since_update},
-            })
+            issues.append(
+                {
+                    "message": f"Detection config not updated in {days_since_update} days",
+                    "severity": ValidationSeverity.CRITICAL,
+                    "code": "STALE_CONFIG_CRITICAL",
+                    "details": {"days_since_update": days_since_update},
+                }
+            )
             score = 0.3
         elif days_since_update > self.CONFIG_STALENESS_WARNING:
-            issues.append({
-                "message": f"Detection config not updated in {days_since_update} days",
-                "severity": ValidationSeverity.WARNING,
-                "code": "STALE_CONFIG_WARNING",
-                "details": {"days_since_update": days_since_update},
-            })
+            issues.append(
+                {
+                    "message": f"Detection config not updated in {days_since_update} days",
+                    "severity": ValidationSeverity.WARNING,
+                    "code": "STALE_CONFIG_WARNING",
+                    "details": {"days_since_update": days_since_update},
+                }
+            )
             score = 0.6
 
-        return score, [
-            self._issue_dict_to_issue(i) for i in issues
-        ]
+        return score, [self._issue_dict_to_issue(i) for i in issues]
 
     def _check_trigger_staleness(
         self,
@@ -132,36 +134,46 @@ class StalenessValidator(BaseValidator):
 
         if last_triggered is None:
             # Detection has never triggered
-            issues.append({
-                "message": "Detection has never triggered - may be misconfigured or unnecessary",
-                "severity": ValidationSeverity.WARNING,
-                "code": "NEVER_TRIGGERED",
-                "details": {},
-            })
+            issues.append(
+                {
+                    "message": "Detection has never triggered - may be misconfigured or unnecessary",
+                    "severity": ValidationSeverity.WARNING,
+                    "code": "NEVER_TRIGGERED",
+                    "details": {},
+                }
+            )
             score = 0.7
         else:
             days_since_trigger = self._days_since(last_triggered, now)
 
-            if days_since_trigger and days_since_trigger > self.TRIGGER_STALENESS_CRITICAL:
-                issues.append({
-                    "message": f"Detection hasn't triggered in {days_since_trigger} days",
-                    "severity": ValidationSeverity.WARNING,
-                    "code": "STALE_TRIGGER",
-                    "details": {"days_since_trigger": days_since_trigger},
-                })
+            if (
+                days_since_trigger
+                and days_since_trigger > self.TRIGGER_STALENESS_CRITICAL
+            ):
+                issues.append(
+                    {
+                        "message": f"Detection hasn't triggered in {days_since_trigger} days",
+                        "severity": ValidationSeverity.WARNING,
+                        "code": "STALE_TRIGGER",
+                        "details": {"days_since_trigger": days_since_trigger},
+                    }
+                )
                 score = 0.6
-            elif days_since_trigger and days_since_trigger > self.TRIGGER_STALENESS_WARNING:
-                issues.append({
-                    "message": f"Detection hasn't triggered in {days_since_trigger} days",
-                    "severity": ValidationSeverity.INFO,
-                    "code": "TRIGGER_AGING",
-                    "details": {"days_since_trigger": days_since_trigger},
-                })
+            elif (
+                days_since_trigger
+                and days_since_trigger > self.TRIGGER_STALENESS_WARNING
+            ):
+                issues.append(
+                    {
+                        "message": f"Detection hasn't triggered in {days_since_trigger} days",
+                        "severity": ValidationSeverity.INFO,
+                        "code": "TRIGGER_AGING",
+                        "details": {"days_since_trigger": days_since_trigger},
+                    }
+                )
                 score = 0.8
 
-        return score, [
-            self._issue_dict_to_issue(i) for i in issues
-        ]
+        return score, [self._issue_dict_to_issue(i) for i in issues]
 
     def _is_new_detection(self, detection: Any, now: datetime) -> bool:
         """Check if detection was recently discovered."""
@@ -170,9 +182,14 @@ class StalenessValidator(BaseValidator):
             return False
 
         days_since_discovery = self._days_since(discovered_at, now)
-        return days_since_discovery is not None and days_since_discovery <= self.NEW_DETECTION_GRACE_PERIOD
+        return (
+            days_since_discovery is not None
+            and days_since_discovery <= self.NEW_DETECTION_GRACE_PERIOD
+        )
 
-    def _days_since(self, timestamp: Optional[datetime], now: datetime) -> Optional[int]:
+    def _days_since(
+        self, timestamp: Optional[datetime], now: datetime
+    ) -> Optional[int]:
         """Calculate days since a timestamp."""
         if not timestamp:
             return None
@@ -189,6 +206,7 @@ class StalenessValidator(BaseValidator):
     def _issue_dict_to_issue(self, issue_dict: dict) -> Any:
         """Convert issue dict to ValidationIssue-compatible format."""
         from app.validators.base_validator import ValidationIssue
+
         return ValidationIssue(
             message=issue_dict["message"],
             severity=issue_dict["severity"],

@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Permission Groups Discovery",
     tactic_ids=["TA0007"],
     mitre_url="https://attack.mitre.org/techniques/T1069/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries attempt to discover group and permission settings to identify "
@@ -40,11 +39,17 @@ TEMPLATE = RemediationTemplate(
             "Maps administrative boundaries",
             "Enables targeted privilege escalation",
             "Informs lateral movement planning",
-            "Discovers role trust relationships"
+            "Discovers role trust relationships",
         ],
         known_threat_actors=[
-            "APT3", "APT29", "APT41", "TA505", "Scattered Spider",
-            "Volt Typhoon", "FIN13", "TeamTNT"
+            "APT3",
+            "APT29",
+            "APT41",
+            "TA505",
+            "Scattered Spider",
+            "Volt Typhoon",
+            "FIN13",
+            "TeamTNT",
         ],
         recent_campaigns=[
             Campaign(
@@ -54,7 +59,7 @@ TEMPLATE = RemediationTemplate(
                     "APT29 used PowerShell's Get-ManagementRoleAssignment cmdlet to "
                     "enumerate Exchange management role assignments during the SolarWinds campaign."
                 ),
-                reference_url="https://attack.mitre.org/campaigns/C0024/"
+                reference_url="https://attack.mitre.org/campaigns/C0024/",
             ),
             Campaign(
                 name="Cloud Group Enumeration Attacks",
@@ -63,8 +68,8 @@ TEMPLATE = RemediationTemplate(
                     "Systematic enumeration of cloud IAM groups and roles to identify "
                     "privilege escalation paths in compromised cloud environments."
                 ),
-                reference_url="https://www.datadoghq.com/state-of-cloud-security/"
-            )
+                reference_url="https://www.datadoghq.com/state-of-cloud-security/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -81,13 +86,12 @@ TEMPLATE = RemediationTemplate(
             "Enables targeted attacks on high-value groups",
             "Indicates active reconnaissance activity",
             "Provides early warning opportunity",
-            "Precursor to privilege escalation"
+            "Precursor to privilege escalation",
         ],
         typical_attack_phase="discovery",
         often_precedes=["T1098", "T1098.003", "T1078.004", "T1069.003"],
-        often_follows=["T1087", "T1087.004", "T1078"]
+        often_follows=["T1087", "T1087.004", "T1078"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - IAM Group/Role Enumeration
         DetectionStrategy(
@@ -102,15 +106,15 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.arn, sourceIPAddress, userAgent
+                query="""fields @timestamp, eventName, userIdentity.arn, sourceIPAddress, userAgent
 | filter eventSource = "iam.amazonaws.com"
 | filter eventName in ["ListGroups", "ListRoles", "ListUsers", "ListGroupsForUser",
     "ListAttachedGroupPolicies", "ListRolePolicies", "ListUserPolicies",
     "GetGroupPolicy", "GetRolePolicy", "GetUserPolicy", "ListPolicies"]
 | stats count(*) as enum_count by userIdentity.arn, sourceIPAddress, bin(1h)
 | filter enum_count > 20
-| sort enum_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort enum_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect IAM permission groups discovery attempts
 
 Parameters:
@@ -166,8 +170,8 @@ Outputs:
     Value: !GetAtt GroupEnumerationAlarm.Arn
   TopicArn:
     Description: SNS Topic ARN
-    Value: !Ref GroupDiscoveryAlertTopic''',
-                terraform_template='''# AWS: Detect IAM permission groups discovery
+    Value: !Ref GroupDiscoveryAlertTopic""",
+                terraform_template="""# AWS: Detect IAM permission groups discovery
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -233,7 +237,7 @@ output "alarm_arn" {
 output "topic_arn" {
   description = "SNS Topic ARN"
   value       = aws_sns_topic.group_discovery_alerts.arn
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="IAM Permission Groups Discovery Detected",
                 alert_description_template=(
@@ -248,7 +252,7 @@ output "topic_arn" {
                     "Check what specific groups and roles were enumerated",
                     "Look for follow-on privilege escalation attempts (T1098, T1098.003)",
                     "Review CloudTrail logs for other suspicious activities from the same principal",
-                    "Verify whether the principal has legitimate need for broad IAM visibility"
+                    "Verify whether the principal has legitimate need for broad IAM visibility",
                 ],
                 containment_actions=[
                     "Review and restrict the principal's IAM permissions if unauthorised",
@@ -257,8 +261,8 @@ output "topic_arn" {
                     "Consider implementing IAM Access Analyzer",
                     "Audit group memberships and role assignments",
                     "Apply least privilege principles to IAM read permissions",
-                    "Document legitimate security scanning activity for future reference"
-                ]
+                    "Document legitimate security scanning activity for future reference",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning=(
@@ -278,10 +282,9 @@ output "topic_arn" {
             prerequisites=[
                 "CloudTrail enabled with management events",
                 "CloudTrail logs delivered to CloudWatch Logs",
-                "SNS topic and email subscription configured"
-            ]
+                "SNS topic and email subscription configured",
+            ],
         ),
-
         # Strategy 2: GCP - IAM Group/Role Enumeration
         DetectionStrategy(
             strategy_id="t1069-gcp-groupenum",
@@ -298,7 +301,7 @@ output "topic_arn" {
                 gcp_logging_query='''resource.type="audited_resource"
 protoPayload.methodName=~"(ListGroups|GetGroup|ListMembers|GetIamPolicy|ListRoles|GetRole|TestIamPermissions|QueryGrantableRoles)"
 protoPayload.serviceName="iam.googleapis.com" OR protoPayload.serviceName="cloudresourcemanager.googleapis.com"''',
-                gcp_terraform_template='''# GCP: Detect IAM permission groups discovery
+                gcp_terraform_template="""# GCP: Detect IAM permission groups discovery
 
 variable "project_id" {
   type        = string
@@ -400,7 +403,7 @@ output "metric_name" {
 output "alert_policy_name" {
   description = "Alert policy name"
   value       = google_monitoring_alert_policy.iam_group_enumeration.name
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: IAM Permission Groups Discovery Detected",
                 alert_description_template=(
@@ -414,7 +417,7 @@ output "alert_policy_name" {
                     "Check what specific resources were queried (projects, folders, organisation)",
                     "Look for follow-on privilege escalation or role binding modifications",
                     "Review Cloud Audit Logs for other suspicious activities from the same principal",
-                    "Verify whether the principal has legitimate need for broad IAM visibility"
+                    "Verify whether the principal has legitimate need for broad IAM visibility",
                 ],
                 containment_actions=[
                     "Review and restrict the principal's IAM permissions if unauthorised",
@@ -423,8 +426,8 @@ output "alert_policy_name" {
                     "Consider implementing IAM Conditions to restrict enumeration",
                     "Enable VPC Service Controls for additional protection",
                     "Apply least privilege principles to IAM read permissions",
-                    "Document legitimate security scanning for future reference"
-                ]
+                    "Document legitimate security scanning for future reference",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning=(
@@ -445,10 +448,9 @@ output "alert_policy_name" {
                 "Cloud Audit Logs enabled (Admin Read, Data Read)",
                 "Cloud Logging API enabled",
                 "Cloud Monitoring API enabled",
-                "Appropriate IAM permissions for log-based metrics"
-            ]
+                "Appropriate IAM permissions for log-based metrics",
+            ],
         ),
-
         # Strategy 3: AWS - Cross-Account Group Enumeration
         DetectionStrategy(
             strategy_id="t1069-aws-crossaccount",
@@ -461,13 +463,13 @@ output "alert_policy_name" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.arn, recipientAccountId, sourceIPAddress
+                query="""fields @timestamp, eventName, userIdentity.arn, recipientAccountId, sourceIPAddress
 | filter eventSource = "sts.amazonaws.com"
 | filter eventName = "AssumeRole"
 | stats count(*) as assume_count by userIdentity.arn, bin(1h)
 | filter assume_count > 10
-| sort assume_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort assume_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect cross-account permission enumeration
 
 Parameters:
@@ -521,8 +523,8 @@ Outputs:
   AlarmArn:
     Value: !GetAtt CrossAccountEnumAlarm.Arn
   TopicArn:
-    Value: !Ref CrossAccountAlertTopic''',
-                terraform_template='''# AWS: Detect cross-account permission enumeration
+    Value: !Ref CrossAccountAlertTopic""",
+                terraform_template="""# AWS: Detect cross-account permission enumeration
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -586,7 +588,7 @@ output "alarm_arn" {
 
 output "topic_arn" {
   value = aws_sns_topic.cross_account_alerts.arn
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Cross-Account Permission Enumeration Detected",
                 alert_description_template=(
@@ -599,7 +601,7 @@ output "topic_arn" {
                     "Review the trust policies of the assumed roles",
                     "Look for subsequent enumeration or privilege escalation in target accounts",
                     "Check for data exfiltration attempts after role assumption",
-                    "Verify the source principal has legitimate need for cross-account access"
+                    "Verify the source principal has legitimate need for cross-account access",
                 ],
                 containment_actions=[
                     "Review and restrict cross-account trust relationships",
@@ -607,8 +609,8 @@ output "topic_arn" {
                     "Add condition keys to role trust policies (IP, MFA)",
                     "Monitor assumed roles for suspicious activity",
                     "Consider implementing AWS Control Tower guardrails",
-                    "Audit and document all legitimate cross-account access patterns"
-                ]
+                    "Audit and document all legitimate cross-account access patterns",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning=(
@@ -626,16 +628,15 @@ output "topic_arn" {
             prerequisites=[
                 "CloudTrail enabled across all accounts",
                 "Multi-account CloudTrail aggregation configured",
-                "STS events logged in CloudWatch"
-            ]
-        )
+                "STS events logged in CloudWatch",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1069-aws-groupenum",
         "t1069-gcp-groupenum",
-        "t1069-aws-crossaccount"
+        "t1069-aws-crossaccount",
     ],
     total_effort_hours=4.0,
-    coverage_improvement="+15% improvement for Discovery tactic coverage"
+    coverage_improvement="+15% improvement for Discovery tactic coverage",
 )

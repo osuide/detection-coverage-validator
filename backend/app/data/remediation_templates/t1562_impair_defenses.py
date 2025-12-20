@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Impair Defences",
     tactic_ids=["TA0005"],
     mitre_url="https://attack.mitre.org/techniques/T1562/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries modify victim environment components to disable or hinder defensive mechanisms. "
@@ -41,28 +40,35 @@ TEMPLATE = RemediationTemplate(
             "Often performed early in attack chain",
             "Single API call can disable multiple protections",
             "Makes incident investigation difficult",
-            "Enables persistent access without detection"
+            "Enables persistent access without detection",
         ],
-        known_threat_actors=["BlackByte", "Magic Hound", "APT29", "Scattered Spider", "TeamTNT", "BOLDMOVE"],
+        known_threat_actors=[
+            "BlackByte",
+            "Magic Hound",
+            "APT29",
+            "Scattered Spider",
+            "TeamTNT",
+            "BOLDMOVE",
+        ],
         recent_campaigns=[
             Campaign(
                 name="BlackByte Kernel Notify Routine Removal",
                 year=2024,
                 description="Removed Kernel Notify Routines to bypass endpoint detection and response systems",
-                reference_url="https://attack.mitre.org/groups/G1043/"
+                reference_url="https://attack.mitre.org/groups/G1043/",
             ),
             Campaign(
                 name="Magic Hound LSA Protection Bypass",
                 year=2024,
                 description="Disabled LSA protection using registry modifications to weaken Windows security controls and enable credential theft",
-                reference_url="https://attack.mitre.org/groups/G0059/"
+                reference_url="https://attack.mitre.org/groups/G0059/",
             ),
             Campaign(
                 name="Cloud Defence Evasion Campaign",
                 year=2024,
                 description="Multiple threat actors observed disabling CloudTrail, GuardDuty, and Security Hub immediately after initial compromise",
-                reference_url="https://www.datadoghq.com/state-of-cloud-security/"
-            )
+                reference_url="https://www.datadoghq.com/state-of-cloud-security/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -79,13 +85,12 @@ TEMPLATE = RemediationTemplate(
             "Compliance violations and audit failures",
             "Extended attacker dwell time",
             "Increased breach severity",
-            "Regulatory fines for logging gaps"
+            "Regulatory fines for logging gaps",
         ],
         typical_attack_phase="defence_evasion",
         often_precedes=["T1530", "T1537", "T1078.004", "T1486", "T1485"],
-        often_follows=["T1078.004", "T1528", "T1098"]
+        often_follows=["T1078.004", "T1528", "T1098"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - GuardDuty Suspension
         DetectionStrategy(
@@ -106,11 +111,11 @@ TEMPLATE = RemediationTemplate(
                             "DisassociateFromMasterAccount",
                             "UpdateDetector",
                             "DeleteIPSet",
-                            "DeleteThreatIntelSet"
+                            "DeleteThreatIntelSet",
                         ]
-                    }
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect GuardDuty modifications
 
 Parameters:
@@ -159,8 +164,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect GuardDuty modifications
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect GuardDuty modifications
 
 variable "alert_email" {
   type        = string
@@ -215,7 +220,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GuardDuty Security Service Modified",
                 alert_description_template="GuardDuty detector was modified or disabled by {userIdentity.principalId}.",
@@ -225,7 +230,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Check if detector is still active",
                     "Review GuardDuty findings before modification",
                     "Examine other concurrent suspicious activity",
-                    "Check for credential compromise indicators"
+                    "Check for credential compromise indicators",
                 ],
                 containment_actions=[
                     "Immediately re-enable GuardDuty detector",
@@ -233,8 +238,8 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Review and rotate potentially compromised credentials",
                     "Enable GuardDuty in all regions",
                     "Implement SCPs to prevent GuardDuty deletion",
-                    "Review all security service states"
-                ]
+                    "Review all security service states",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised security automation roles",
@@ -243,9 +248,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled", "GuardDuty enabled"]
+            prerequisites=["CloudTrail enabled", "GuardDuty enabled"],
         ),
-
         # Strategy 2: AWS - Security Hub Disabled
         DetectionStrategy(
             strategy_id="t1562-aws-securityhub",
@@ -263,11 +267,11 @@ resource "aws_sns_topic_policy" "allow_events" {
                             "DisableSecurityHub",
                             "DisableImportFindingsForProduct",
                             "BatchDisableStandards",
-                            "UpdateSecurityHubConfiguration"
+                            "UpdateSecurityHubConfiguration",
                         ]
-                    }
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect Security Hub modifications
 
 Parameters:
@@ -310,8 +314,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect Security Hub modifications
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect Security Hub modifications
 
 variable "alert_email" { type = string }
 
@@ -359,7 +363,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Security Hub Disabled or Modified",
                 alert_description_template="Security Hub was disabled or modified by {userIdentity.arn}.",
@@ -368,15 +372,15 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Check if Security Hub is still active",
                     "Review recent Security Hub findings",
                     "Verify which standards were disabled",
-                    "Check for other security service changes"
+                    "Check for other security service changes",
                 ],
                 containment_actions=[
                     "Re-enable Security Hub immediately",
                     "Re-enable all security standards",
                     "Isolate compromised credentials",
                     "Review IAM policies for Security Hub permissions",
-                    "Implement SCPs to prevent deletion"
-                ]
+                    "Implement SCPs to prevent deletion",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised security team roles",
@@ -385,9 +389,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         # Strategy 3: AWS - CloudWatch Agent Termination
         DetectionStrategy(
             strategy_id="t1562-aws-cwagent",
@@ -397,7 +400,7 @@ resource "aws_sns_topic_policy" "allow_events" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect CloudWatch agent stops
 
 Parameters:
@@ -432,8 +435,8 @@ Resources:
 
 Outputs:
   AlarmName:
-    Value: !Ref AgentStopAlarm''',
-                terraform_template='''# Detect CloudWatch agent stops
+    Value: !Ref AgentStopAlarm""",
+                terraform_template="""# Detect CloudWatch agent stops
 
 variable "alert_email" { type = string }
 
@@ -461,7 +464,7 @@ resource "aws_cloudwatch_metric_alarm" "agent_stop" {
   threshold           = 0
   treat_missing_data  = "breaching"
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="CloudWatch Agent Stopped",
                 alert_description_template="CloudWatch agent on instance has stopped reporting metrics.",
@@ -470,15 +473,15 @@ resource "aws_cloudwatch_metric_alarm" "agent_stop" {
                     "Check instance system logs",
                     "Verify agent process status",
                     "Review recent API calls on the instance",
-                    "Check for signs of tampering or malware"
+                    "Check for signs of tampering or malware",
                 ],
                 containment_actions=[
                     "Restart CloudWatch agent",
                     "Investigate instance for compromise",
                     "Review IAM instance profile permissions",
                     "Enable SSM for remote management",
-                    "Consider isolating suspicious instances"
-                ]
+                    "Consider isolating suspicious instances",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Account for planned maintenance windows",
@@ -487,9 +490,8 @@ resource "aws_cloudwatch_metric_alarm" "agent_stop" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudWatch Agent installed on instances"]
+            prerequisites=["CloudWatch Agent installed on instances"],
         ),
-
         # Strategy 4: GCP - Security Command Centre Disabled
         DetectionStrategy(
             strategy_id="t1562-gcp-scc",
@@ -503,7 +505,7 @@ resource "aws_cloudwatch_metric_alarm" "agent_stop" {
                 gcp_logging_query='''protoPayload.serviceName="securitycenter.googleapis.com"
 protoPayload.methodName=~"(UpdateOrganizationSettings|UpdateSource|DeleteNotificationConfig)"
 severity="NOTICE"''',
-                gcp_terraform_template='''# GCP: Detect Security Command Centre modifications
+                gcp_terraform_template="""# GCP: Detect Security Command Centre modifications
 
 variable "project_id" {
   type = string
@@ -556,7 +558,7 @@ resource "google_monitoring_alert_policy" "scc_mod" {
   alert_strategy {
     auto_close = "604800s"
   }
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GCP: Security Command Centre Modified",
                 alert_description_template="Security Command Centre configuration was changed.",
@@ -565,15 +567,15 @@ resource "google_monitoring_alert_policy" "scc_mod" {
                     "Identify the principal making the change",
                     "Check if findings are still being generated",
                     "Verify notification configs are active",
-                    "Review recent security findings before change"
+                    "Review recent security findings before change",
                 ],
                 containment_actions=[
                     "Restore SCC configuration",
                     "Re-enable disabled security services",
                     "Lock down SCC permissions",
                     "Review service account permissions",
-                    "Enable organisation policy constraints"
-                ]
+                    "Enable organisation policy constraints",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised security team accounts",
@@ -582,9 +584,11 @@ resource "google_monitoring_alert_policy" "scc_mod" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled", "Security Command Centre enabled"]
+            prerequisites=[
+                "Cloud Audit Logs enabled",
+                "Security Command Centre enabled",
+            ],
         ),
-
         # Strategy 5: GCP - Ops Agent Disabled
         DetectionStrategy(
             strategy_id="t1562-gcp-opsagent",
@@ -599,7 +603,7 @@ resource "google_monitoring_alert_policy" "scc_mod" {
 jsonPayload.message=~"(stopping|stopped|removed|disabled).*agent"
 OR protoPayload.methodName="compute.instances.stop"
 OR protoPayload.request.metadata.items.key="enable-oslogin" AND protoPayload.request.metadata.items.value="false"''',
-                gcp_terraform_template='''# GCP: Detect Ops Agent disablement
+                gcp_terraform_template="""# GCP: Detect Ops Agent disablement
 
 variable "project_id" {
   type = string
@@ -648,7 +652,7 @@ resource "google_monitoring_alert_policy" "agent_stop" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Ops Agent Stopped or Disabled",
                 alert_description_template="Ops Agent has been stopped or removed from instance.",
@@ -657,15 +661,15 @@ resource "google_monitoring_alert_policy" "agent_stop" {
                     "Check instance serial console logs",
                     "Review SSH access logs",
                     "Verify agent installation status",
-                    "Check for signs of tampering"
+                    "Check for signs of tampering",
                 ],
                 containment_actions=[
                     "Reinstall and restart Ops Agent",
                     "Investigate instance for compromise",
                     "Review IAM permissions on instance",
                     "Enable OS Login for better auditing",
-                    "Consider instance isolation"
-                ]
+                    "Consider instance isolation",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude planned maintenance and agent updates",
@@ -674,9 +678,8 @@ resource "google_monitoring_alert_policy" "agent_stop" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Ops Agent installed", "Cloud Logging enabled"]
+            prerequisites=["Ops Agent installed", "Cloud Logging enabled"],
         ),
-
         # Strategy 6: Multi-Cloud - Security Service State Monitoring
         DetectionStrategy(
             strategy_id="t1562-multicloud-state",
@@ -691,7 +694,7 @@ resource "google_monitoring_alert_policy" "agent_stop" {
 fields @timestamp, configurationItem.resourceType, configurationItem.configuration.status
 | filter configurationItem.resourceType in ["AWS::GuardDuty::Detector", "AWS::SecurityHub::Hub", "AWS::CloudTrail::Trail"]
 | filter configurationItem.configuration.status != "ENABLED"''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Monitor security service state
 
 Parameters:
@@ -741,8 +744,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Monitor security service state with AWS Config
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Monitor security service state with AWS Config
 
 variable "alert_email" { type = string }
 
@@ -800,8 +803,8 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
-                gcp_terraform_template='''# GCP: Monitor security service state with Cloud Asset Inventory
+}""",
+                gcp_terraform_template="""# GCP: Monitor security service state with Cloud Asset Inventory
 
 variable "project_id" { type = string }
 variable "organization_id" { type = string }
@@ -844,7 +847,7 @@ resource "google_monitoring_alert_policy" "service_state" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Security Service State Changed - Service Disabled",
                 alert_description_template="Security service state changed to non-compliant or disabled.",
@@ -853,15 +856,15 @@ resource "google_monitoring_alert_policy" "service_state" {
                     "Check AWS Config timeline for state changes",
                     "Review who disabled the service",
                     "Verify current state of all security services",
-                    "Check for other concurrent suspicious changes"
+                    "Check for other concurrent suspicious changes",
                 ],
                 containment_actions=[
                     "Re-enable all disabled security services",
                     "Lock down permissions using SCPs",
                     "Rotate compromised credentials",
                     "Enable AWS Config remediation actions",
-                    "Review and harden IAM policies"
-                ]
+                    "Review and harden IAM policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised security operations",
@@ -870,18 +873,20 @@ resource "google_monitoring_alert_policy" "service_state" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["AWS Config enabled", "Cloud Asset Inventory enabled for GCP"]
-        )
+            prerequisites=[
+                "AWS Config enabled",
+                "Cloud Asset Inventory enabled for GCP",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1562-aws-guardduty",
         "t1562-aws-securityhub",
         "t1562-gcp-scc",
         "t1562-multicloud-state",
         "t1562-aws-cwagent",
-        "t1562-gcp-opsagent"
+        "t1562-gcp-opsagent",
     ],
     total_effort_hours=5.5,
-    coverage_improvement="+30% improvement for Defence Evasion tactic"
+    coverage_improvement="+30% improvement for Defence Evasion tactic",
 )

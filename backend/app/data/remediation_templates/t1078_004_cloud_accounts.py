@@ -21,7 +21,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Valid Accounts: Cloud Accounts",
     tactic_ids=["TA0001", "TA0003", "TA0004", "TA0005"],
     mitre_url="https://attack.mitre.org/techniques/T1078/004/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries obtain and abuse credentials of existing cloud accounts "
@@ -34,28 +33,34 @@ TEMPLATE = RemediationTemplate(
             "Activity blends with normal user behaviour",
             "No malware signatures to detect",
             "Access often persists until password rotation",
-            "Can escalate privileges if account has excessive permissions"
+            "Can escalate privileges if account has excessive permissions",
         ],
-        known_threat_actors=["APT29 (Cozy Bear)", "APT33 (Elfin)", "Scattered Spider", "Lapsus$", "UNC2452"],
+        known_threat_actors=[
+            "APT29 (Cozy Bear)",
+            "APT33 (Elfin)",
+            "Scattered Spider",
+            "Lapsus$",
+            "UNC2452",
+        ],
         recent_campaigns=[
             Campaign(
                 name="SolarWinds/SUNBURST",
                 year=2020,
                 description="APT29 used compromised cloud credentials to access victim environments",
-                reference_url="https://www.mandiant.com/resources/sunburst-additional-technical-details"
+                reference_url="https://www.mandiant.com/resources/sunburst-additional-technical-details",
             ),
             Campaign(
                 name="Lapsus$ Attacks",
                 year=2022,
                 description="Purchased credentials from initial access brokers to compromise Microsoft, Nvidia, Samsung",
-                reference_url="https://www.microsoft.com/security/blog/2022/03/22/dev-0537-criminal-actor-targeting-organizations-for-data-exfiltration/"
+                reference_url="https://www.microsoft.com/security/blog/2022/03/22/dev-0537-criminal-actor-targeting-organizations-for-data-exfiltration/",
             ),
             Campaign(
                 name="Scattered Spider",
                 year=2023,
                 description="Social engineering and SIM swapping to obtain cloud credentials for ransomware deployment",
-                reference_url="https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-320a"
-            )
+                reference_url="https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-320a",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -70,13 +75,12 @@ TEMPLATE = RemediationTemplate(
             "Data exfiltration without triggering traditional security controls",
             "Lateral movement to connected systems",
             "Ransomware deployment",
-            "Regulatory compliance violations (GDPR, HIPAA)"
+            "Regulatory compliance violations (GDPR, HIPAA)",
         ],
         typical_attack_phase="initial_access",
         often_precedes=["T1087", "T1069", "T1530"],
-        often_follows=["T1566", "T1110", "T1552"]
+        often_follows=["T1566", "T1110", "T1552"],
     ),
-
     detection_strategies=[
         # Strategy 1: GuardDuty
         DetectionStrategy(
@@ -94,9 +98,9 @@ TEMPLATE = RemediationTemplate(
                     "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.OutsideAWS",
                     "UnauthorizedAccess:IAMUser/MaliciousIPCaller.Custom",
                     "InitialAccess:IAMUser/AnomalousBehavior",
-                    "CredentialAccess:IAMUser/AnomalousBehavior"
+                    "CredentialAccess:IAMUser/AnomalousBehavior",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty + email alerts for credential abuse
 
 Parameters:
@@ -143,8 +147,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# GuardDuty + email alerts for credential abuse
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# GuardDuty + email alerts for credential abuse
 
 variable "alert_email" {
   type = string
@@ -197,7 +201,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GuardDuty: Suspicious Credential Activity",
                 alert_description_template=(
@@ -210,14 +214,14 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Check CloudTrail for all API calls from the affected principal in the last 24 hours",
                     "Verify if the source IP is known/expected for this user",
                     "Contact the user to confirm if activity was legitimate",
-                    "Review IAM permissions to assess potential blast radius"
+                    "Review IAM permissions to assess potential blast radius",
                 ],
                 containment_actions=[
                     "Disable the IAM user's console access and access keys",
                     "Rotate all access keys for the affected user",
                     "Enable MFA if not already enabled",
-                    "Review and revoke any sessions using AWS STS"
-                ]
+                    "Review and revoke any sessions using AWS STS",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Add trusted IPs to GuardDuty IP lists; suppress findings for known CI/CD systems",
@@ -226,9 +230,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$4 per million events analysed",
-            prerequisites=["AWS account with appropriate IAM permissions"]
+            prerequisites=["AWS account with appropriate IAM permissions"],
         ),
-
         # Strategy 2: Impossible Travel
         DetectionStrategy(
             strategy_id="t1078004-impossible-travel",
@@ -240,14 +243,14 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             detection_type=DetectionType.CLOUDWATCH_QUERY,
             aws_service="cloudwatch",
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn as user, sourceIPAddress, eventName
+                query="""fields @timestamp, userIdentity.arn as user, sourceIPAddress, eventName
 | filter eventName = "ConsoleLogin" and responseElements.ConsoleLogin = "Success"
 | stats earliest(@timestamp) as first_login, latest(@timestamp) as last_login,
         count(*) as login_count, count_distinct(sourceIPAddress) as unique_ips
   by user, bin(1h) as hour_window
 | filter unique_ips > 1
-| sort last_login desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort last_login desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Impossible travel detection for T1078.004
 
 Parameters:
@@ -272,7 +275,7 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
-        - !Ref SNSTopicArn''',
+        - !Ref SNSTopicArn""",
                 alert_severity="high",
                 alert_title="Impossible Travel: Multiple Login Locations",
                 alert_description_template=(
@@ -284,13 +287,13 @@ Resources:
                     "Geolocate the IPs to determine physical distance",
                     "Check if any IPs are known VPN or corporate egress points",
                     "Review all API calls made from each IP address",
-                    "Contact the user to verify login locations"
+                    "Contact the user to verify login locations",
                 ],
                 containment_actions=[
                     "Force logout all active sessions for the user",
                     "Temporarily disable console access",
-                    "Require password reset with MFA verification"
-                ]
+                    "Require password reset with MFA verification",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known VPN exit nodes and corporate proxies",
@@ -299,9 +302,11 @@ Resources:
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$5-20 depending on log volume",
-            prerequisites=["CloudTrail enabled", "CloudTrail logs sent to CloudWatch Logs"]
+            prerequisites=[
+                "CloudTrail enabled",
+                "CloudTrail logs sent to CloudWatch Logs",
+            ],
         ),
-
         # Strategy 3: Off-Hours Access
         DetectionStrategy(
             strategy_id="t1078004-off-hours",
@@ -317,12 +322,10 @@ Resources:
                     "detail-type": ["AWS Console Sign In via CloudTrail"],
                     "detail": {
                         "eventName": ["ConsoleLogin"],
-                        "responseElements": {
-                            "ConsoleLogin": ["Success"]
-                        }
-                    }
+                        "responseElements": {"ConsoleLogin": ["Success"]},
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Off-hours console access detection
 
 Parameters:
@@ -349,7 +352,7 @@ Resources:
       State: ENABLED
       Targets:
         - Id: SNSAlert
-          Arn: !Ref SNSTopicArn''',
+          Arn: !Ref SNSTopicArn""",
                 alert_severity="medium",
                 alert_title="Off-Hours Console Login",
                 alert_description_template=(
@@ -360,12 +363,12 @@ Resources:
                     "Verify if the user has a legitimate reason to work outside hours",
                     "Check if the user is in a different timezone",
                     "Review all actions taken during the session",
-                    "Compare with user's historical login patterns"
+                    "Compare with user's historical login patterns",
                 ],
                 containment_actions=[
                     "Contact the user immediately via out-of-band communication",
-                    "If unverified, disable the user's access"
-                ]
+                    "If unverified, disable the user's access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Create exceptions for on-call personnel and users in different timezones",
@@ -374,9 +377,8 @@ Resources:
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled", "EventBridge configured"]
+            prerequisites=["CloudTrail enabled", "EventBridge configured"],
         ),
-
         # Strategy 4: First-Time API Caller
         DetectionStrategy(
             strategy_id="t1078004-first-time-api",
@@ -388,13 +390,13 @@ Resources:
             detection_type=DetectionType.CLOUDWATCH_QUERY,
             aws_service="cloudwatch",
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn as user, eventSource, eventName, sourceIPAddress
+                query="""fields @timestamp, userIdentity.arn as user, eventSource, eventName, sourceIPAddress
 | filter eventSource in ["iam.amazonaws.com", "kms.amazonaws.com", "secretsmanager.amazonaws.com"]
 | filter eventName in ["CreateUser", "CreateAccessKey", "AttachUserPolicy", "AttachRolePolicy",
     "CreateKey", "Decrypt", "GetSecretValue", "CreateSecret"]
 | stats count(*) as call_count, earliest(@timestamp) as first_seen by user, eventName
 | filter call_count = 1 and first_seen > ago(24h)
-| sort first_seen desc''',
+| sort first_seen desc""",
                 alert_severity="medium",
                 alert_title="First-Time Sensitive API Call",
                 alert_description_template=(
@@ -405,12 +407,12 @@ Resources:
                     "Verify if the user's role requires this API access",
                     "Check if this correlates with any recent permission changes",
                     "Review the context of the API call (parameters, resources affected)",
-                    "Look for other unusual activity from this user"
+                    "Look for other unusual activity from this user",
                 ],
                 containment_actions=[
                     "Review and potentially revoke any resources created",
-                    "Audit permissions granted or keys created"
-                ]
+                    "Audit permissions granted or keys created",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Build a baseline of normal API usage per user over 30 days",
@@ -419,16 +421,15 @@ Resources:
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$10-30",
-            prerequisites=["CloudTrail enabled", "Baseline period for comparison"]
-        )
+            prerequisites=["CloudTrail enabled", "Baseline period for comparison"],
+        ),
     ],
-
     recommended_order=[
         "t1078004-guardduty",
         "t1078004-impossible-travel",
         "t1078004-off-hours",
-        "t1078004-first-time-api"
+        "t1078004-first-time-api",
     ],
     total_effort_hours=6.0,
-    coverage_improvement="+25% improvement for Credential Access tactic"
+    coverage_improvement="+25% improvement for Credential Access tactic",
 )

@@ -19,6 +19,7 @@ router = APIRouter(prefix="/organizations", tags=["Admin Organizations"])
 
 class OrganizationListItem(BaseModel):
     """Organization list item."""
+
     id: str
     name: str
     slug: str
@@ -31,6 +32,7 @@ class OrganizationListItem(BaseModel):
 
 class OrganizationListResponse(BaseModel):
     """Organization list response."""
+
     items: list[OrganizationListItem]
     total: int
     page: int
@@ -39,6 +41,7 @@ class OrganizationListResponse(BaseModel):
 
 class OrganizationDetailResponse(BaseModel):
     """Organization detail response."""
+
     id: str
     name: str
     slug: str
@@ -62,6 +65,7 @@ class OrganizationDetailResponse(BaseModel):
 
 class SuspendOrgRequest(BaseModel):
     """Suspend organization request."""
+
     reason: str
 
 
@@ -81,8 +85,8 @@ async def list_organizations(
 
     if search:
         query = query.where(
-            Organization.name.ilike(f"%{search}%") |
-            Organization.slug.ilike(f"%{search}%")
+            Organization.name.ilike(f"%{search}%")
+            | Organization.slug.ilike(f"%{search}%")
         )
 
     if is_active is not None:
@@ -119,15 +123,17 @@ async def list_organizations(
         if tier and tier_value != tier:
             continue
 
-        items.append(OrganizationListItem(
-            id=str(org.id),
-            name=org.name,
-            slug=org.slug,
-            is_active=org.is_active,
-            user_count=user_count,
-            tier=tier_value,
-            created_at=org.created_at.isoformat() if org.created_at else "",
-        ))
+        items.append(
+            OrganizationListItem(
+                id=str(org.id),
+                name=org.name,
+                slug=org.slug,
+                is_active=org.is_active,
+                user_count=user_count,
+                tier=tier_value,
+                created_at=org.created_at.isoformat() if org.created_at else "",
+            )
+        )
 
     return OrganizationListResponse(
         items=items,
@@ -144,15 +150,12 @@ async def get_organization(
     db: AsyncSession = Depends(get_db),
 ):
     """Get organization details."""
-    result = await db.execute(
-        select(Organization).where(Organization.id == org_id)
-    )
+    result = await db.execute(select(Organization).where(Organization.id == org_id))
     org = result.scalar_one_or_none()
 
     if not org:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Organization not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found"
         )
 
     # Get subscription
@@ -186,6 +189,7 @@ async def get_organization(
 
     # Get cloud account count
     from app.models.cloud_account import CloudAccount
+
     account_count_result = await db.execute(
         select(func.count()).where(CloudAccount.organization_id == org.id)
     )
@@ -193,6 +197,7 @@ async def get_organization(
 
     # Get scan count
     from app.models.scan import Scan
+
     scan_count_result = await db.execute(
         select(func.count())
         .select_from(Scan)
@@ -203,6 +208,7 @@ async def get_organization(
 
     # Get detection count
     from app.models.detection import Detection
+
     detection_count_result = await db.execute(
         select(func.count())
         .select_from(Detection)
@@ -236,21 +242,18 @@ async def suspend_organization(
     db: AsyncSession = Depends(get_db),
 ):
     """Suspend an organization."""
-    result = await db.execute(
-        select(Organization).where(Organization.id == org_id)
-    )
+    result = await db.execute(select(Organization).where(Organization.id == org_id))
     org = result.scalar_one_or_none()
 
     if not org:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Organization not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found"
         )
 
     if not org.is_active:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Organization is already suspended"
+            detail="Organization is already suspended",
         )
 
     org.is_active = False
@@ -272,21 +275,18 @@ async def unsuspend_organization(
     db: AsyncSession = Depends(get_db),
 ):
     """Unsuspend an organization."""
-    result = await db.execute(
-        select(Organization).where(Organization.id == org_id)
-    )
+    result = await db.execute(select(Organization).where(Organization.id == org_id))
     org = result.scalar_one_or_none()
 
     if not org:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Organization not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found"
         )
 
     if org.is_active:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Organization is already active"
+            detail="Organization is already active",
         )
 
     org.is_active = True

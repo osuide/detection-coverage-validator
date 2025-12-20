@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Abuse Elevation Control Mechanism: Temporary Elevated Cloud Access",
     tactic_ids=["TA0004", "TA0005"],  # Privilege Escalation, Defense Evasion
     mitre_url="https://attack.mitre.org/techniques/T1548/005/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries exploit permission configurations in cloud environments "
@@ -37,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Just-in-time access may lack approval controls",
             "Service account impersonation enables lateral movement",
             "PassRole/iam.serviceAccountUser widely granted",
-            "Temporary tokens harder to trace"
+            "Temporary tokens harder to trace",
         ],
         known_threat_actors=[],  # No specific threat actors documented in MITRE
         recent_campaigns=[
@@ -45,7 +44,7 @@ TEMPLATE = RemediationTemplate(
                 name="StellarParticle Privilege Escalation",
                 year=2023,
                 description="CrowdStrike analysis documented use of temporary privilege escalation techniques",
-                reference_url="https://attack.mitre.org/techniques/T1548/005/"
+                reference_url="https://attack.mitre.org/techniques/T1548/005/",
             )
         ],
         prevalence="uncommon",
@@ -59,13 +58,12 @@ TEMPLATE = RemediationTemplate(
             "Unauthorised privilege escalation",
             "Lateral movement enabler",
             "Data access beyond authorisation",
-            "Compliance violations"
+            "Compliance violations",
         ],
         typical_attack_phase="privilege_escalation",
         often_precedes=["T1078.004", "T1530", "T1213.003"],
-        often_follows=["T1078.004", "T1098.003"]
+        often_follows=["T1078.004", "T1098.003"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1548-005-aws-passrole",
@@ -75,13 +73,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, requestParameters.roleName, sourceIPAddress
+                query="""fields @timestamp, userIdentity.principalId, requestParameters.roleName, sourceIPAddress
 | filter eventName = "PassRole" or eventName = "AssumeRole"
 | filter requestParameters.roleName like /Admin|PowerUser|FullAccess/
 | stats count(*) as attempts by userIdentity.principalId, requestParameters.roleName, bin(1h)
 | filter attempts > 5
-| sort attempts desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort attempts desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect AWS PassRole and AssumeRole privilege escalation
 
 Parameters:
@@ -119,8 +117,8 @@ Resources:
       Threshold: 10
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect AWS PassRole and AssumeRole privilege escalation
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect AWS PassRole and AssumeRole privilege escalation
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -157,7 +155,7 @@ resource "aws_cloudwatch_metric_alarm" "privilege_escalation" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="AWS Privilege Escalation Detected",
                 alert_description_template="Suspicious PassRole/AssumeRole activity from {principalId}.",
@@ -166,15 +164,15 @@ resource "aws_cloudwatch_metric_alarm" "privilege_escalation" {
                     "Check if roles grant elevated privileges",
                     "Verify identity making the requests",
                     "Check for subsequent suspicious activity",
-                    "Review resources created with passed roles"
+                    "Review resources created with passed roles",
                 ],
                 containment_actions=[
                     "Revoke suspicious IAM sessions",
                     "Remove PassRole permissions if not required",
                     "Add SCPs to restrict role assumption",
                     "Enable approval workflow for sensitive roles",
-                    "Review and delete unauthorised resources"
-                ]
+                    "Review and delete unauthorised resources",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Filter legitimate automation accounts and known admin activities",
@@ -183,9 +181,8 @@ resource "aws_cloudwatch_metric_alarm" "privilege_escalation" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-60 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail with CloudWatch Logs integration"]
+            prerequisites=["CloudTrail with CloudWatch Logs integration"],
         ),
-
         DetectionStrategy(
             strategy_id="t1548-005-aws-sts-token",
             name="AWS STS Token Creation Monitoring",
@@ -194,12 +191,12 @@ resource "aws_cloudwatch_metric_alarm" "privilege_escalation" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, requestParameters.roleArn, userAgent
+                query="""fields @timestamp, userIdentity.principalId, requestParameters.roleArn, userAgent
 | filter eventName = "GetSessionToken" or eventName = "GetFederationToken" or eventName = "AssumeRoleWithSAML" or eventName = "AssumeRoleWithWebIdentity"
 | stats count(*) as tokens by userIdentity.principalId, requestParameters.roleArn, bin(1h)
 | filter tokens > 20
-| sort tokens desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort tokens desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect suspicious AWS STS temporary token creation
 
 Parameters:
@@ -237,8 +234,8 @@ Resources:
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect suspicious AWS STS temporary token creation
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect suspicious AWS STS temporary token creation
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -275,7 +272,7 @@ resource "aws_cloudwatch_metric_alarm" "sts_token_spike" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Suspicious STS Token Creation",
                 alert_description_template="High volume of temporary credentials created by {principalId}.",
@@ -284,15 +281,15 @@ resource "aws_cloudwatch_metric_alarm" "sts_token_spike" {
                     "Check identity requesting tokens",
                     "Verify roles being assumed",
                     "Check for unusual source IPs",
-                    "Review subsequent API activity with tokens"
+                    "Review subsequent API activity with tokens",
                 ],
                 containment_actions=[
                     "Revoke active sessions if malicious",
                     "Review and restrict STS permissions",
                     "Add MFA requirements for sensitive roles",
                     "Review CloudTrail for token usage",
-                    "Update IAM policies to limit token duration"
-                ]
+                    "Update IAM policies to limit token duration",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal token creation rates and exclude legitimate automation",
@@ -301,9 +298,8 @@ resource "aws_cloudwatch_metric_alarm" "sts_token_spike" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-60 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail with CloudWatch Logs integration"]
+            prerequisites=["CloudTrail with CloudWatch Logs integration"],
         ),
-
         DetectionStrategy(
             strategy_id="t1548-005-gcp-impersonation",
             name="GCP Service Account Impersonation Detection",
@@ -316,7 +312,7 @@ resource "aws_cloudwatch_metric_alarm" "sts_token_spike" {
                 gcp_logging_query='''protoPayload.methodName=("GenerateAccessToken" OR "GenerateIdToken" OR "SignJwt" OR "SignBlob")
 protoPayload.authenticationInfo.principalEmail!=""
 severity="NOTICE"''',
-                gcp_terraform_template='''# GCP: Detect service account impersonation
+                gcp_terraform_template="""# GCP: Detect service account impersonation
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -356,7 +352,7 @@ resource "google_monitoring_alert_policy" "sa_impersonation_alert" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Service Account Impersonation",
                 alert_description_template="Service account token generation detected from {principalEmail}.",
@@ -365,15 +361,15 @@ resource "google_monitoring_alert_policy" "sa_impersonation_alert" {
                     "Check principal requesting tokens",
                     "Verify service account permissions",
                     "Check for domain-wide delegation",
-                    "Review subsequent API calls with impersonated credentials"
+                    "Review subsequent API calls with impersonated credentials",
                 ],
                 containment_actions=[
                     "Revoke service account keys if compromised",
                     "Remove iam.serviceAccountTokenCreator role",
                     "Disable domain-wide delegation if not required",
                     "Add conditions to IAM policies",
-                    "Review and rotate service account keys"
-                ]
+                    "Review and rotate service account keys",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude legitimate service automation and CI/CD pipelines",
@@ -382,9 +378,8 @@ resource "google_monitoring_alert_policy" "sa_impersonation_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Audit Logs enabled for IAM"]
+            prerequisites=["Cloud Audit Logs enabled for IAM"],
         ),
-
         DetectionStrategy(
             strategy_id="t1548-005-gcp-serviceaccount-user",
             name="GCP Service Account User Role Assignment",
@@ -397,7 +392,7 @@ resource "google_monitoring_alert_policy" "sa_impersonation_alert" {
                 gcp_logging_query='''protoPayload.methodName="google.iam.admin.v1.SetIamPolicy"
 protoPayload.request.policy.bindings.role="roles/iam.serviceAccountUser"
 severity="NOTICE"''',
-                gcp_terraform_template='''# GCP: Detect iam.serviceAccountUser role assignment
+                gcp_terraform_template="""# GCP: Detect iam.serviceAccountUser role assignment
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -437,7 +432,7 @@ resource "google_monitoring_alert_policy" "sa_user_role_alert" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Service Account User Role Assigned",
                 alert_description_template="iam.serviceAccountUser role granted, enabling service account attachment.",
@@ -446,15 +441,15 @@ resource "google_monitoring_alert_policy" "sa_user_role_alert" {
                     "Check who granted the role",
                     "Verify if assignment is legitimate",
                     "Check service account permissions",
-                    "Monitor for resource creation with service account"
+                    "Monitor for resource creation with service account",
                 ],
                 containment_actions=[
                     "Revoke unnecessary iam.serviceAccountUser roles",
                     "Review and restrict service account usage",
                     "Add organisation policy constraints",
                     "Enable approval workflows for sensitive roles",
-                    "Review resources created with the service account"
-                ]
+                    "Review resources created with the service account",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Alert on all assignments, review for legitimacy",
@@ -463,16 +458,15 @@ resource "google_monitoring_alert_policy" "sa_user_role_alert" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-60 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled for IAM"]
-        )
+            prerequisites=["Cloud Audit Logs enabled for IAM"],
+        ),
     ],
-
     recommended_order=[
         "t1548-005-aws-passrole",
         "t1548-005-gcp-impersonation",
         "t1548-005-aws-sts-token",
-        "t1548-005-gcp-serviceaccount-user"
+        "t1548-005-gcp-serviceaccount-user",
     ],
     total_effort_hours=4.0,
-    coverage_improvement="+25% improvement for Privilege Escalation tactic"
+    coverage_improvement="+25% improvement for Privilege Escalation tactic",
 )

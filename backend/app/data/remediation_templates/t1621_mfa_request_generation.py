@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Multi-Factor Authentication Request Generation",
     tactic_ids=["TA0006"],
     mitre_url="https://attack.mitre.org/techniques/T1621/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries exploit MFA mechanisms by generating repeated authentication "
@@ -35,7 +34,7 @@ TEMPLATE = RemediationTemplate(
             "Users may accept to stop notifications",
             "Push notifications easy to spam",
             "No technical bypass needed",
-            "Effective against distracted users"
+            "Effective against distracted users",
         ],
         known_threat_actors=["APT29", "Scattered Spider", "LAPSUS$"],
         recent_campaigns=[
@@ -43,20 +42,20 @@ TEMPLATE = RemediationTemplate(
                 name="Scattered Spider MFA Bombing",
                 year=2024,
                 description="Continuously sent MFA messages until victims accepted",
-                reference_url="https://attack.mitre.org/groups/G1015/"
+                reference_url="https://attack.mitre.org/groups/G1015/",
             ),
             Campaign(
                 name="LAPSUS$ MFA Fatigue",
                 year=2022,
                 description="Spammed targets with MFA prompts hoping users would approve",
-                reference_url="https://attack.mitre.org/groups/G1004/"
+                reference_url="https://attack.mitre.org/groups/G1004/",
             ),
             Campaign(
                 name="APT29 MFA Abuse",
                 year=2024,
                 description="Repeated MFA requests to gain access to victim accounts",
-                reference_url="https://attack.mitre.org/groups/G0016/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0016/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -69,13 +68,12 @@ TEMPLATE = RemediationTemplate(
             "MFA bypass leading to account takeover",
             "User frustration and support tickets",
             "False sense of MFA security",
-            "Potential compliance failures"
+            "Potential compliance failures",
         ],
         typical_attack_phase="credential_access",
         often_precedes=["T1078.004", "T1530"],
-        often_follows=["T1110", "T1528"]
+        often_follows=["T1110", "T1528"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1621-aws-cognito-mfa",
@@ -85,14 +83,14 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.userName, sourceIPAddress
+                query="""fields @timestamp, eventName, userIdentity.userName, sourceIPAddress
 | filter eventSource = "cognito-idp.amazonaws.com"
 | filter eventName in ["RespondToAuthChallenge", "AdminRespondToAuthChallenge"]
 | filter errorCode like /NotAuthorized|InvalidParameter/
 | stats count(*) as failures by userIdentity.userName, sourceIPAddress, bin(10m)
 | filter failures > 5
-| sort failures desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort failures desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect MFA fatigue attacks
 
 Parameters:
@@ -130,8 +128,8 @@ Resources:
       Threshold: 10
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect MFA fatigue attacks
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect MFA fatigue attacks
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -168,7 +166,7 @@ resource "aws_cloudwatch_metric_alarm" "mfa_fatigue" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="MFA Fatigue Attack Detected",
                 alert_description_template="Multiple MFA challenges for user {userName} in short period.",
@@ -176,14 +174,14 @@ resource "aws_cloudwatch_metric_alarm" "mfa_fatigue" {
                     "Verify if user expected MFA prompts",
                     "Check source IP for suspicious location",
                     "Review if login was eventually successful",
-                    "Check for credential compromise"
+                    "Check for credential compromise",
                 ],
                 containment_actions=[
                     "Lock the affected account",
                     "Reset user credentials",
                     "Enable number matching MFA",
-                    "Contact user to verify"
-                ]
+                    "Contact user to verify",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Adjust threshold based on normal MFA retry patterns",
@@ -192,9 +190,8 @@ resource "aws_cloudwatch_metric_alarm" "mfa_fatigue" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail logging Cognito events"]
+            prerequisites=["CloudTrail logging Cognito events"],
         ),
-
         DetectionStrategy(
             strategy_id="t1621-gcp-mfa",
             name="GCP Workspace MFA Fatigue Detection",
@@ -206,7 +203,7 @@ resource "aws_cloudwatch_metric_alarm" "mfa_fatigue" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.serviceName="login.googleapis.com"
 protoPayload.methodName=~"2sv|challenge"''',
-                gcp_terraform_template='''# GCP: Detect MFA fatigue attacks
+                gcp_terraform_template="""# GCP: Detect MFA fatigue attacks
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -242,7 +239,7 @@ resource "google_monitoring_alert_policy" "mfa_fatigue" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: MFA Fatigue Attack",
                 alert_description_template="Multiple MFA challenges detected.",
@@ -250,14 +247,14 @@ resource "google_monitoring_alert_policy" "mfa_fatigue" {
                     "Check if user expected prompts",
                     "Review login source location",
                     "Check for credential compromise",
-                    "Verify account status"
+                    "Verify account status",
                 ],
                 containment_actions=[
                     "Suspend the account",
                     "Reset credentials",
                     "Enable phishing-resistant MFA",
-                    "Contact user"
-                ]
+                    "Contact user",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Adjust threshold for your environment",
@@ -266,11 +263,10 @@ resource "google_monitoring_alert_policy" "mfa_fatigue" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Workspace audit logs enabled"]
-        )
+            prerequisites=["Workspace audit logs enabled"],
+        ),
     ],
-
     recommended_order=["t1621-aws-cognito-mfa", "t1621-gcp-mfa"],
     total_effort_hours=2.0,
-    coverage_improvement="+15% improvement for Credential Access tactic"
+    coverage_improvement="+15% improvement for Credential Access tactic",
 )

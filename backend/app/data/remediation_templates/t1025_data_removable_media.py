@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Data from Removable Media",
     tactic_ids=["TA0009"],
     mitre_url="https://attack.mitre.org/techniques/T1025/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries search connected removable media on compromised systems to locate files of interest. "
@@ -37,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Users may store backups, archives, or confidential data on external drives",
             "Cloud instances can mount external EBS volumes or attach storage from other accounts",
             "Imported disk images and snapshots may contain historical sensitive data",
-            "Automated scripts can quickly enumerate and exfiltrate data from attached media"
+            "Automated scripts can quickly enumerate and exfiltrate data from attached media",
         ],
         known_threat_actors=[
             "APT28",
@@ -46,27 +45,27 @@ TEMPLATE = RemediationTemplate(
             "Turla",
             "Prikormka",
             "Ramsay",
-            "USBStealer"
+            "USBStealer",
         ],
         recent_campaigns=[
             Campaign(
                 name="Turla USB Collection",
                 year=2023,
                 description="Advanced USB data collection and exfiltration from air-gapped networks using removable media",
-                reference_url="https://www.mandiant.com/resources/blog/turla-galaxy-opportunity"
+                reference_url="https://www.mandiant.com/resources/blog/turla-galaxy-opportunity",
             ),
             Campaign(
                 name="Gamaredon USB Reconnaissance",
                 year=2022,
                 description="Targeted collection of files from USB devices connected to compromised Ukrainian government systems",
-                reference_url="https://www.microsoft.com/security/blog/2022/02/04/actinium-targets-ukrainian-organizations/"
+                reference_url="https://www.microsoft.com/security/blog/2022/02/04/actinium-targets-ukrainian-organizations/",
             ),
             Campaign(
                 name="Ramsay Framework",
                 year=2020,
                 description="Specialised malware designed to collect and exfiltrate sensitive documents from air-gapped networks via removable media",
-                reference_url="https://www.welivesecurity.com/2020/05/13/ramsay-cyberespionage-toolkit-airgapped-networks/"
-            )
+                reference_url="https://www.welivesecurity.com/2020/05/13/ramsay-cyberespionage-toolkit-airgapped-networks/",
+            ),
         ],
         prevalence="uncommon",
         trend="stable",
@@ -83,13 +82,12 @@ TEMPLATE = RemediationTemplate(
             "Potential data breach from backup drives or archives",
             "Intellectual property theft from development/testing media",
             "Compromise of air-gapped or isolated network data",
-            "Regulatory compliance violations if sensitive data is exfiltrated"
+            "Regulatory compliance violations if sensitive data is exfiltrated",
         ],
         typical_attack_phase="collection",
         often_precedes=["T1567", "T1048", "T1041"],
-        often_follows=["T1082", "T1083", "T1005"]
+        often_follows=["T1082", "T1083", "T1005"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - EBS Volume Attachment Monitoring
         DetectionStrategy(
@@ -103,15 +101,15 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn as user, requestParameters.volumeId as volume,
+                query="""fields @timestamp, userIdentity.arn as user, requestParameters.volumeId as volume,
        requestParameters.instanceId as instance, responseElements.attachTime,
        sourceIPAddress
 | filter eventSource = "ec2.amazonaws.com"
 | filter eventName = "AttachVolume"
 | stats count(*) as attach_count by user, instance, volume, bin(1h) as hour_window
 | filter attach_count >= 3
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Monitor EBS volume attachments for T1025 detection
 
 Parameters:
@@ -170,8 +168,8 @@ Resources:
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Monitor EBS volume attachments for T1025 detection
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Monitor EBS volume attachments for T1025 detection
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -233,7 +231,7 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
       Resource  = aws_sns_topic.volume_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Suspicious EBS Volume Attachment Activity",
                 alert_description_template=(
@@ -247,15 +245,15 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
                     "Review the instance's recent activity and network connections",
                     "Check CloudWatch Logs for file access patterns on the volume",
                     "Determine if the user has legitimate need to attach volumes",
-                    "Examine the volume for sensitive data or unusual contents"
+                    "Examine the volume for sensitive data or unusual contents",
                 ],
                 containment_actions=[
                     "Detach suspicious volumes from instances",
                     "Create snapshot of volume for forensic analysis",
                     "Revoke IAM permissions for unauthorized volume operations",
                     "Isolate the instance using security group modifications",
-                    "Review and restrict EBS volume attachment policies"
-                ]
+                    "Review and restrict EBS volume attachment policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal volume operations; exclude infrastructure automation roles and backup systems",
@@ -264,9 +262,8 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-15",
-            prerequisites=["CloudTrail enabled", "CloudWatch Logs configured"]
+            prerequisites=["CloudTrail enabled", "CloudWatch Logs configured"],
         ),
-
         # Strategy 2: AWS - Snapshot Import and Access
         DetectionStrategy(
             strategy_id="t1025-aws-snapshot-import",
@@ -279,7 +276,7 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn as user, eventName,
+                query="""fields @timestamp, userIdentity.arn as user, eventName,
        requestParameters.snapshotId as snapshot,
        requestParameters.description, sourceIPAddress
 | filter eventSource = "ec2.amazonaws.com"
@@ -287,8 +284,8 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
 | filter requestParameters.snapshotId like /snap-/
 | stats count(*) as operation_count by user, snapshot, bin(1h) as hour_window
 | filter operation_count >= 2
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect snapshot import and access for T1025
 
 Parameters:
@@ -345,8 +342,8 @@ Resources:
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect snapshot import and access for T1025
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect snapshot import and access for T1025
 
 variable "cloudtrail_log_group" {
   type = string
@@ -406,7 +403,7 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
       Resource  = aws_sns_topic.snapshot_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Snapshot Import Activity Detected",
                 alert_description_template=(
@@ -420,15 +417,15 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
                     "Check if volumes were created from the snapshot",
                     "Examine instances that accessed volumes from imported snapshots",
                     "Verify the business justification for the snapshot import",
-                    "Review data classification of the snapshot contents"
+                    "Review data classification of the snapshot contents",
                 ],
                 containment_actions=[
                     "Remove snapshot sharing permissions",
                     "Delete imported snapshots if unauthorized",
                     "Revoke access for the user performing imports",
                     "Review and restrict snapshot import policies",
-                    "Implement snapshot encryption requirements"
-                ]
+                    "Implement snapshot encryption requirements",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist disaster recovery and migration workflows; exclude known backup account IDs",
@@ -437,9 +434,8 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled", "CloudWatch Logs configured"]
+            prerequisites=["CloudTrail enabled", "CloudWatch Logs configured"],
         ),
-
         # Strategy 3: AWS - Systems Manager Session Manager File Access
         DetectionStrategy(
             strategy_id="t1025-aws-ssm-file-access",
@@ -452,14 +448,14 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn as user, requestParameters.target as instance,
+                query="""fields @timestamp, userIdentity.arn as user, requestParameters.target as instance,
        eventName, responseElements.sessionId
 | filter eventSource = "ssm.amazonaws.com"
 | filter eventName in ["StartSession", "ResumeSession"]
 | stats count(*) as session_count by user, instance, bin(1h) as hour_window
 | filter session_count >= 3
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Monitor SSM Session Manager for file enumeration
 
 Parameters:
@@ -516,8 +512,8 @@ Resources:
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Monitor SSM Session Manager for file enumeration
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Monitor SSM Session Manager for file enumeration
 
 variable "cloudtrail_log_group" {
   type = string
@@ -577,7 +573,7 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
       Resource  = aws_sns_topic.ssm_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="low",
                 alert_title="Unusual SSM Session Activity",
                 alert_description_template=(
@@ -591,15 +587,15 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
                     "Identify which volumes or directories were accessed",
                     "Verify the user's authorization to access the instance",
                     "Examine any data transfers that occurred during sessions",
-                    "Review the instance's attached volumes and their sources"
+                    "Review the instance's attached volumes and their sources",
                 ],
                 containment_actions=[
                     "Terminate active SSM sessions if suspicious",
                     "Revoke SSM access for the user if unauthorized",
                     "Enable SSM session logging to S3 for detailed audit trail",
                     "Implement SSM session document restrictions",
-                    "Review and update IAM policies for SSM access"
-                ]
+                    "Review and update IAM policies for SSM access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Baseline normal administrative access patterns; exclude DevOps and support teams",
@@ -608,9 +604,8 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled", "SSM Session Manager enabled"]
+            prerequisites=["CloudTrail enabled", "SSM Session Manager enabled"],
         ),
-
         # Strategy 4: GCP - Persistent Disk Attachment Monitoring
         DetectionStrategy(
             strategy_id="t1025-gcp-disk-attach",
@@ -628,7 +623,7 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
 protoPayload.methodName="v1.compute.instances.attachDisk"
 OR protoPayload.methodName="beta.compute.instances.attachDisk"
 OR protoPayload.methodName="v1.compute.disks.insert"''',
-                gcp_terraform_template='''# GCP: Monitor persistent disk attachments
+                gcp_terraform_template="""# GCP: Monitor persistent disk attachments
 
 variable "project_id" {
   type = string
@@ -688,7 +683,7 @@ resource "google_monitoring_alert_policy" "disk_attach_alert" {
       period = "3600s"
     }
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Persistent Disk Attachment Activity",
                 alert_description_template=(
@@ -701,15 +696,15 @@ resource "google_monitoring_alert_policy" "disk_attach_alert" {
                     "Check if the disk originated from a trusted source",
                     "Examine instance activity logs for file access patterns",
                     "Verify business justification for the disk attachment",
-                    "Review disk sharing permissions across projects"
+                    "Review disk sharing permissions across projects",
                 ],
                 containment_actions=[
                     "Detach suspicious disks from instances",
                     "Create disk snapshot for forensic analysis",
                     "Revoke service account permissions if compromised",
                     "Implement VPC Service Controls to restrict cross-project access",
-                    "Review and update compute IAM policies"
-                ]
+                    "Review and update compute IAM policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal disk operations; exclude infrastructure automation service accounts",
@@ -718,9 +713,8 @@ resource "google_monitoring_alert_policy" "disk_attach_alert" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-15",
-            prerequisites=["Cloud Audit Logs enabled for Compute Engine"]
+            prerequisites=["Cloud Audit Logs enabled for Compute Engine"],
         ),
-
         # Strategy 5: GCP - Disk Image Import Detection
         DetectionStrategy(
             strategy_id="t1025-gcp-image-import",
@@ -738,7 +732,7 @@ resource "google_monitoring_alert_policy" "disk_attach_alert" {
 protoPayload.methodName="v1.compute.images.insert"
 OR protoPayload.methodName="beta.compute.images.import"
 OR protoPayload.methodName="v1.compute.images.create"''',
-                gcp_terraform_template='''# GCP: Monitor disk image imports
+                gcp_terraform_template="""# GCP: Monitor disk image imports
 
 variable "project_id" {
   type = string
@@ -797,7 +791,7 @@ resource "google_monitoring_alert_policy" "image_import_alert" {
       period = "3600s"
     }
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Disk Image Import Activity",
                 alert_description_template=(
@@ -810,15 +804,15 @@ resource "google_monitoring_alert_policy" "image_import_alert" {
                     "Check if the image source is from a trusted location",
                     "Examine if instances were created from the imported image",
                     "Verify the business justification for the import",
-                    "Review image sharing permissions and access controls"
+                    "Review image sharing permissions and access controls",
                 ],
                 containment_actions=[
                     "Delete imported images if unauthorized",
                     "Revoke service account credentials if compromised",
                     "Implement organisation policy constraints on image sources",
                     "Review and restrict image import permissions",
-                    "Enable image encryption requirements"
-                ]
+                    "Enable image encryption requirements",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist migration and disaster recovery workflows; document legitimate image sources",
@@ -827,17 +821,16 @@ resource "google_monitoring_alert_policy" "image_import_alert" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled for Compute Engine"]
-        )
+            prerequisites=["Cloud Audit Logs enabled for Compute Engine"],
+        ),
     ],
-
     recommended_order=[
         "t1025-aws-volume-attach",
         "t1025-gcp-disk-attach",
         "t1025-aws-snapshot-import",
         "t1025-gcp-image-import",
-        "t1025-aws-ssm-file-access"
+        "t1025-aws-ssm-file-access",
     ],
     total_effort_hours=5.0,
-    coverage_improvement="+22% improvement for Collection tactic"
+    coverage_improvement="+22% improvement for Collection tactic",
 )

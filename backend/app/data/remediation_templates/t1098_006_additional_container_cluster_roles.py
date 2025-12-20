@@ -21,7 +21,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Account Manipulation: Additional Container Cluster Roles",
     tactic_ids=["TA0003", "TA0004"],
     mitre_url="https://attack.mitre.org/techniques/T1098/006/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries add additional roles or permissions to compromised user or "
@@ -36,7 +35,7 @@ TEMPLATE = RemediationTemplate(
             "Enables privilege escalation",
             "Difficult to detect without audit logging",
             "Can grant cluster-admin privileges",
-            "Works across cloud-native RBAC systems"
+            "Works across cloud-native RBAC systems",
         ],
         known_threat_actors=[],
         recent_campaigns=[],
@@ -54,13 +53,12 @@ TEMPLATE = RemediationTemplate(
             "Privilege escalation risk",
             "Unauthorised workload deployment",
             "Sensitive data access",
-            "Compliance violations"
+            "Compliance violations",
         ],
         typical_attack_phase="persistence",
         often_precedes=["T1078.004", "T1610", "T1613"],
-        often_follows=["T1078", "T1552.007"]
+        often_follows=["T1078", "T1552.007"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1098-006-aws-eks-rbac",
@@ -70,7 +68,7 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, user.username, objectRef.name, objectRef.namespace, verb, responseStatus.code
+                query="""fields @timestamp, user.username, objectRef.name, objectRef.namespace, verb, responseStatus.code
 | filter kubernetes.audit.k8s.io/v1
 | filter objectRef.resource = "rolebindings" or objectRef.resource = "clusterrolebindings"
 | filter verb = "create" or verb = "update" or verb = "patch"
@@ -78,8 +76,8 @@ TEMPLATE = RemediationTemplate(
 | filter user.username != "system:serviceaccount:kube-system:*"
 | stats count(*) as modifications by user.username, objectRef.resource, bin(5m)
 | filter modifications > 0
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect RBAC modifications in EKS clusters
 
 Parameters:
@@ -122,8 +120,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect RBAC modifications in EKS clusters
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect RBAC modifications in EKS clusters
 
 variable "eks_audit_log_group" {
   type        = string
@@ -170,7 +168,7 @@ resource "aws_cloudwatch_metric_alarm" "rbac_modification_alert" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
   alarm_actions       = [aws_sns_topic.eks_rbac_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Suspicious EKS RBAC Modification Detected",
                 alert_description_template="Suspicious RoleBinding/ClusterRoleBinding modification by {username} in namespace {namespace}.",
@@ -179,15 +177,15 @@ resource "aws_cloudwatch_metric_alarm" "rbac_modification_alert" {
                     "Check if the role assignment is from a known IP address",
                     "Verify the role being assigned (e.g., cluster-admin)",
                     "Check for other suspicious activities from the same account",
-                    "Review EKS audit logs for authentication source"
+                    "Review EKS audit logs for authentication source",
                 ],
                 containment_actions=[
                     "Delete unauthorised RoleBindings/ClusterRoleBindings",
                     "Revoke credentials for compromised service accounts",
                     "Review and restrict RBAC create/update permissions",
                     "Enable MFA for cluster access",
-                    "Rotate cluster credentials if compromise confirmed"
-                ]
+                    "Rotate cluster credentials if compromise confirmed",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude known CI/CD service accounts and automation tools from alerts",
@@ -196,9 +194,8 @@ resource "aws_cloudwatch_metric_alarm" "rbac_modification_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$10-25",
-            prerequisites=["EKS control plane logging enabled for audit logs"]
+            prerequisites=["EKS control plane logging enabled for audit logs"],
         ),
-
         DetectionStrategy(
             strategy_id="t1098-006-aws-eks-clusteradmin",
             name="AWS EKS Cluster-Admin Role Assignment Detection",
@@ -207,14 +204,14 @@ resource "aws_cloudwatch_metric_alarm" "rbac_modification_alert" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, user.username, requestObject.roleRef.name, objectRef.name, objectRef.namespace
+                query="""fields @timestamp, user.username, requestObject.roleRef.name, objectRef.name, objectRef.namespace
 | filter kubernetes.audit.k8s.io/v1
 | filter objectRef.resource = "clusterrolebindings"
 | filter verb = "create"
 | filter requestObject.roleRef.name like /cluster-admin|admin|edit|system:/
 | filter user.username != "system:masters"
-| sort @timestamp desc''',
-                terraform_template='''# Detect cluster-admin role assignments in EKS
+| sort @timestamp desc""",
+                terraform_template="""# Detect cluster-admin role assignments in EKS
 
 variable "eks_audit_log_group" {
   type        = string
@@ -261,7 +258,7 @@ resource "aws_cloudwatch_metric_alarm" "cluster_admin_alert" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
   alarm_actions       = [aws_sns_topic.cluster_admin_alerts.arn]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Critical: Cluster-Admin Role Assigned in EKS",
                 alert_description_template="Cluster-admin role assigned to {subject} by {username}.",
@@ -270,15 +267,15 @@ resource "aws_cloudwatch_metric_alarm" "cluster_admin_alert" {
                     "Verify if assignment was authorised and expected",
                     "Check source IP and authentication method",
                     "Review all recent actions by the assigned account",
-                    "Audit recent cluster changes for other persistence mechanisms"
+                    "Audit recent cluster changes for other persistence mechanisms",
                 ],
                 containment_actions=[
                     "Immediately delete unauthorised ClusterRoleBinding",
                     "Suspend the assigned user or service account",
                     "Rotate cluster credentials and API tokens",
                     "Review all cluster resources for tampering",
-                    "Implement RBAC approval workflow"
-                ]
+                    "Implement RBAC approval workflow",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Cluster-admin assignments should be rare and pre-authorised",
@@ -287,9 +284,8 @@ resource "aws_cloudwatch_metric_alarm" "cluster_admin_alert" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["EKS control plane logging enabled for audit logs"]
+            prerequisites=["EKS control plane logging enabled for audit logs"],
         ),
-
         DetectionStrategy(
             strategy_id="t1098-006-gcp-gke-rbac",
             name="GCP GKE RBAC Modification Detection",
@@ -303,7 +299,7 @@ resource "aws_cloudwatch_metric_alarm" "cluster_admin_alert" {
 protoPayload.methodName=~"io.k8s.authorization.rbac.v1.*.(cluster)?rolebindings.(create|update|patch)"
 protoPayload.response.code=201 OR protoPayload.response.code=200
 NOT protoPayload.authenticationInfo.principalEmail=~"system:serviceaccount:kube-system:.*"''',
-                gcp_terraform_template='''# GCP: Detect RBAC modifications in GKE clusters
+                gcp_terraform_template="""# GCP: Detect RBAC modifications in GKE clusters
 
 variable "project_id" {
   type        = string
@@ -360,7 +356,7 @@ resource "google_monitoring_alert_policy" "gke_rbac_alert" {
   alert_strategy {
     auto_close = "604800s"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Suspicious GKE RBAC Modification",
                 alert_description_template="Suspicious RoleBinding/ClusterRoleBinding modification in GKE cluster.",
@@ -369,15 +365,15 @@ resource "google_monitoring_alert_policy" "gke_rbac_alert" {
                     "Check if the modification originated from expected CI/CD pipelines",
                     "Verify the role being assigned and its permissions",
                     "Check GKE audit logs for authentication source and IP",
-                    "Review subject (user/serviceAccount) receiving permissions"
+                    "Review subject (user/serviceAccount) receiving permissions",
                 ],
                 containment_actions=[
                     "Delete unauthorised RoleBindings/ClusterRoleBindings",
                     "Revoke compromised service account credentials",
                     "Review IAM permissions for cluster access",
                     "Enable Binary Authorisation for workload validation",
-                    "Implement RBAC change approval workflow"
-                ]
+                    "Implement RBAC change approval workflow",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude known automation service accounts and approved deployment pipelines",
@@ -386,9 +382,8 @@ resource "google_monitoring_alert_policy" "gke_rbac_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$10-25",
-            prerequisites=["GKE audit logging enabled"]
+            prerequisites=["GKE audit logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1098-006-gcp-gke-clusteradmin",
             name="GCP GKE Cluster-Admin Role Assignment Detection",
@@ -398,11 +393,11 @@ resource "google_monitoring_alert_policy" "gke_rbac_alert" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="k8s_cluster"
+                gcp_logging_query="""resource.type="k8s_cluster"
 protoPayload.methodName="io.k8s.authorization.rbac.v1.clusterrolebindings.create"
 protoPayload.request.roleRef.name="cluster-admin"
-protoPayload.response.code=201''',
-                gcp_terraform_template='''# GCP: Detect cluster-admin role assignments in GKE
+protoPayload.response.code=201""",
+                gcp_terraform_template="""# GCP: Detect cluster-admin role assignments in GKE
 
 variable "project_id" {
   type        = string
@@ -459,7 +454,7 @@ resource "google_monitoring_alert_policy" "cluster_admin_alert" {
   alert_strategy {
     auto_close = "604800s"
   }
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GCP: Critical - Cluster-Admin Role Assigned in GKE",
                 alert_description_template="Cluster-admin role assigned in GKE cluster - immediate investigation required.",
@@ -468,15 +463,15 @@ resource "google_monitoring_alert_policy" "cluster_admin_alert" {
                     "Identify the subject (user/serviceAccount) that received privileges",
                     "Verify if assignment was authorised through change control",
                     "Check source IP and authentication method from audit logs",
-                    "Review all recent cluster modifications and deployments"
+                    "Review all recent cluster modifications and deployments",
                 ],
                 containment_actions=[
                     "Immediately delete unauthorised ClusterRoleBinding",
                     "Disable the assigned service account or user",
                     "Rotate cluster credentials and service account keys",
                     "Review all cluster workloads for malicious containers",
-                    "Enable Binary Authorisation and implement RBAC approval workflow"
-                ]
+                    "Enable Binary Authorisation and implement RBAC approval workflow",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Cluster-admin assignments should be extremely rare and pre-approved",
@@ -485,16 +480,15 @@ resource "google_monitoring_alert_policy" "cluster_admin_alert" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["GKE audit logging enabled"]
-        )
+            prerequisites=["GKE audit logging enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1098-006-aws-eks-clusteradmin",
         "t1098-006-gcp-gke-clusteradmin",
         "t1098-006-aws-eks-rbac",
-        "t1098-006-gcp-gke-rbac"
+        "t1098-006-gcp-gke-rbac",
     ],
     total_effort_hours=8.0,
-    coverage_improvement="+25% improvement for Persistence and Privilege Escalation tactics in container environments"
+    coverage_improvement="+25% improvement for Persistence and Privilege Escalation tactics in container environments",
 )

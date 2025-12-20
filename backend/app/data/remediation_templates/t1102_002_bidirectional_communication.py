@@ -24,7 +24,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Web Service: Bidirectional Communication",
     tactic_ids=["TA0011"],
     mitre_url="https://attack.mitre.org/techniques/T1102/002/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries leverage legitimate external web services for bidirectional "
@@ -42,27 +41,38 @@ TEMPLATE = RemediationTemplate(
             "Leverages trusted platforms",
             "No dedicated infrastructure required",
             "Difficult to block without impacting business",
-            "Often bypasses traditional network controls"
+            "Often bypasses traditional network controls",
         ],
         known_threat_actors=[
-            "APT12", "APT28", "APT29", "APT37", "APT39",
-            "Carbanak", "FIN7", "Gamaredon Group", "Kimsuky",
-            "Lazarus Group", "Magic Hound", "MuddyWater",
-            "Sandworm Team", "Turla", "ZIRCONIUM"
+            "APT12",
+            "APT28",
+            "APT29",
+            "APT37",
+            "APT39",
+            "Carbanak",
+            "FIN7",
+            "Gamaredon Group",
+            "Kimsuky",
+            "Lazarus Group",
+            "Magic Hound",
+            "MuddyWater",
+            "Sandworm Team",
+            "Turla",
+            "ZIRCONIUM",
         ],
         recent_campaigns=[
             Campaign(
                 name="Operation Ghost",
                 year=2024,
                 description="APT29 used social media platforms to hide communications to C2 servers",
-                reference_url="https://attack.mitre.org/groups/G0016/"
+                reference_url="https://attack.mitre.org/groups/G0016/",
             ),
             Campaign(
                 name="Lazarus GitHub C2",
                 year=2024,
                 description="Lazarus Group used GitHub as C2, pulling hosted image payloads then committing command execution output to files",
-                reference_url="https://attack.mitre.org/groups/G0032/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0032/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -77,13 +87,12 @@ TEMPLATE = RemediationTemplate(
             "Data exfiltration via trusted services",
             "Persistent access to environment",
             "Difficult to block without business impact",
-            "Extended dwell time due to evasion"
+            "Extended dwell time due to evasion",
         ],
         typical_attack_phase="command_and_control",
         often_precedes=["T1041", "T1567.002", "T1071.001"],
-        often_follows=["T1566.001", "T1204.002", "T1059"]
+        often_follows=["T1566.001", "T1204.002", "T1059"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1102-002-aws-process-network",
@@ -93,13 +102,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, eventName, sourceIPAddress, requestParameters
+                query="""fields @timestamp, userIdentity.principalId, eventName, sourceIPAddress, requestParameters
 | filter eventName = "RunInstances" or eventName = "StartInstances"
 | filter requestParameters.instanceType like /t2.|t3./
 | stats count(*) as launches by userIdentity.principalId, sourceIPAddress, bin(1h)
 | filter launches > 5
-| sort launches desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort launches desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect suspicious process-to-web-service communications
 
 Parameters:
@@ -144,8 +153,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 2
       AlarmActions: [!Ref AlertTopic]
-      TreatMissingData: notBreaching''',
-                terraform_template='''# AWS: Detect suspicious process-to-web-service communications
+      TreatMissingData: notBreaching""",
+                terraform_template="""# AWS: Detect suspicious process-to-web-service communications
 
 variable "vpc_flow_log_group" {
   description = "VPC Flow Logs CloudWatch Log Group"
@@ -194,7 +203,7 @@ resource "aws_cloudwatch_metric_alarm" "suspicious_web_service_traffic" {
   evaluation_periods  = 2
   alarm_actions       = [aws_sns_topic.web_service_c2_alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Suspicious Web Service C2 Activity Detected",
                 alert_description_template="Suspicious process initiated high-volume HTTPS connections to web services from {principalId}.",
@@ -204,7 +213,7 @@ resource "aws_cloudwatch_metric_alarm" "suspicious_web_service_traffic" {
                     "Review upload/download patterns and data volumes",
                     "Examine process parent-child relationships",
                     "Check for non-interactive or scripted behaviour",
-                    "Review CloudTrail for API calls to cloud storage services"
+                    "Review CloudTrail for API calls to cloud storage services",
                 ],
                 containment_actions=[
                     "Isolate affected EC2 instance via security group modification",
@@ -212,8 +221,8 @@ resource "aws_cloudwatch_metric_alarm" "suspicious_web_service_traffic" {
                     "Terminate malicious processes",
                     "Capture forensic snapshot of instance",
                     "Review IAM credentials for compromise",
-                    "Block API access to cloud storage services if needed"
-                ]
+                    "Block API access to cloud storage services if needed",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Tune thresholds based on legitimate web service usage. Whitelist known automation tools and CI/CD systems.",
@@ -222,9 +231,8 @@ resource "aws_cloudwatch_metric_alarm" "suspicious_web_service_traffic" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$10-25",
-            prerequisites=["VPC Flow Logs enabled", "CloudWatch Logs Insights"]
+            prerequisites=["VPC Flow Logs enabled", "CloudWatch Logs Insights"],
         ),
-
         DetectionStrategy(
             strategy_id="t1102-002-aws-guardduty",
             name="AWS GuardDuty C2 Domain Detection",
@@ -233,14 +241,14 @@ resource "aws_cloudwatch_metric_alarm" "suspicious_web_service_traffic" {
             aws_service="guardduty",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, service.action.networkConnectionAction.remoteIpDetails.organization.asn,
+                query="""fields @timestamp, service.action.networkConnectionAction.remoteIpDetails.organization.asn,
        service.action.networkConnectionAction.remotePortDetails.port,
        severity, title
 | filter type like /Backdoor|CryptoCurrency|Trojan/
 | filter service.action.networkConnectionAction.remotePortDetails.port = 443
 | stats count(*) as detections by service.action.networkConnectionAction.remoteIpDetails.organization.asn, bin(1h)
-| sort detections desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort detections desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty findings alerting for C2 activity
 
 Parameters:
@@ -290,8 +298,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref GuardDutyAlertTopic''',
-                terraform_template='''# AWS: GuardDuty C2 domain detection
+            Resource: !Ref GuardDutyAlertTopic""",
+                terraform_template="""# AWS: GuardDuty C2 domain detection
 
 variable "alert_email" {
   description = "Email for GuardDuty C2 alerts"
@@ -349,7 +357,7 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
       Resource = aws_sns_topic.guardduty_c2_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GuardDuty: C2 Communication Detected",
                 alert_description_template="GuardDuty detected C2 communication: {title}",
@@ -359,7 +367,7 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
                     "Check remote IP/domain reputation",
                     "Review CloudTrail for related API activity",
                     "Examine process and network connections on instance",
-                    "Check for persistence mechanisms"
+                    "Check for persistence mechanisms",
                 ],
                 containment_actions=[
                     "Isolate affected resource immediately",
@@ -367,8 +375,8 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
                     "Revoke IAM credentials if compromised",
                     "Capture forensic evidence",
                     "Terminate compromised instances",
-                    "Review related resources for lateral movement"
-                ]
+                    "Review related resources for lateral movement",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="GuardDuty threat intelligence is highly accurate. Review findings context for verification.",
@@ -377,9 +385,8 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-15 (GuardDuty costs vary by usage)",
-            prerequisites=["AWS GuardDuty enabled"]
+            prerequisites=["AWS GuardDuty enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1102-002-gcp-cloud-storage",
             name="GCP Cloud Storage API C2 Detection",
@@ -393,7 +400,7 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
 protoPayload.methodName=~"storage.objects.(create|get|update)"
 severity="INFO"
 protoPayload.authenticationInfo.principalEmail!~"gserviceaccount.com$"''',
-                gcp_terraform_template='''# GCP: Detect Cloud Storage C2 activity
+                gcp_terraform_template="""# GCP: Detect Cloud Storage C2 activity
 
 variable "project_id" {
   description = "GCP Project ID"
@@ -467,7 +474,7 @@ resource "google_monitoring_alert_policy" "storage_c2_alerts" {
   alert_strategy {
     auto_close = "1800s"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Suspicious Cloud Storage C2 Activity",
                 alert_description_template="High-volume Cloud Storage API activity detected from {principal_email}.",
@@ -477,7 +484,7 @@ resource "google_monitoring_alert_policy" "storage_c2_alerts" {
                     "Check principal identity and authentication method",
                     "Review uploaded/downloaded object contents",
                     "Examine timing patterns (automated vs manual)",
-                    "Check for associated Compute Engine or Cloud Functions activity"
+                    "Check for associated Compute Engine or Cloud Functions activity",
                 ],
                 containment_actions=[
                     "Revoke IAM permissions for suspicious principal",
@@ -485,8 +492,8 @@ resource "google_monitoring_alert_policy" "storage_c2_alerts" {
                     "Review and delete malicious objects",
                     "Block egress to external destinations if needed",
                     "Rotate compromised service account keys",
-                    "Enable VPC Service Controls for additional protection"
-                ]
+                    "Enable VPC Service Controls for additional protection",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate automation and CI/CD service accounts. Adjust thresholds based on normal usage patterns.",
@@ -495,9 +502,8 @@ resource "google_monitoring_alert_policy" "storage_c2_alerts" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Audit Logs enabled", "Cloud Monitoring configured"]
+            prerequisites=["Cloud Audit Logs enabled", "Cloud Monitoring configured"],
         ),
-
         DetectionStrategy(
             strategy_id="t1102-002-gcp-dns",
             name="GCP DNS Query Analysis for Web Service C2",
@@ -510,7 +516,7 @@ resource "google_monitoring_alert_policy" "storage_c2_alerts" {
                 gcp_logging_query='''resource.type="dns_query"
 jsonPayload.queryName=~"(github|gitlab|dropbox|pastebin|telegram|discord|slack)\\..*"
 jsonPayload.responseCode="NOERROR"''',
-                gcp_terraform_template='''# GCP: DNS-based web service C2 detection
+                gcp_terraform_template="""# GCP: DNS-based web service C2 detection
 
 variable "project_id" {
   description = "GCP Project ID"
@@ -589,7 +595,7 @@ resource "google_monitoring_alert_policy" "dns_web_service_c2" {
   alert_strategy {
     auto_close = "1800s"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: DNS Queries to Web Service C2 Domains",
                 alert_description_template="High-volume DNS queries to web service domains from {source_ip}.",
@@ -599,7 +605,7 @@ resource "google_monitoring_alert_policy" "dns_web_service_c2" {
                     "Check query frequency and timing",
                     "Examine destination domains (GitHub, Dropbox, Telegram, etc.)",
                     "Review associated network connections",
-                    "Check for data transfer volumes"
+                    "Check for data transfer volumes",
                 ],
                 containment_actions=[
                     "Isolate affected Compute Engine instances",
@@ -607,8 +613,8 @@ resource "google_monitoring_alert_policy" "dns_web_service_c2" {
                     "Review and terminate malicious processes",
                     "Implement DNS firewall policies",
                     "Enable Cloud DNS Security (DNSSEC)",
-                    "Review VPC firewall rules"
-                ]
+                    "Review VPC firewall rules",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="High false positive rate due to legitimate use of these services. Correlate with other indicators and whitelist known legitimate usage.",
@@ -617,16 +623,15 @@ resource "google_monitoring_alert_policy" "dns_web_service_c2" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["Cloud DNS Logging enabled", "VPC Flow Logs"]
-        )
+            prerequisites=["Cloud DNS Logging enabled", "VPC Flow Logs"],
+        ),
     ],
-
     recommended_order=[
         "t1102-002-aws-guardduty",
         "t1102-002-gcp-cloud-storage",
         "t1102-002-aws-process-network",
-        "t1102-002-gcp-dns"
+        "t1102-002-gcp-dns",
     ],
     total_effort_hours=7.0,
-    coverage_improvement="+25% improvement for Command and Control tactic"
+    coverage_improvement="+25% improvement for Command and Control tactic",
 )

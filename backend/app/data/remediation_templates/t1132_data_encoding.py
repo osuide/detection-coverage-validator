@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Data Encoding",
     tactic_ids=["TA0011"],  # Command and Control
     mitre_url="https://attack.mitre.org/techniques/T1132/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries encode command and control traffic to make detection more difficult. "
@@ -40,37 +39,34 @@ TEMPLATE = RemediationTemplate(
             "Evades content inspection and data loss prevention tools",
             "Enables exfiltration of sensitive data without detection",
             "Allows commands to pass through security controls",
-            "Compression reduces network footprint and improves stealth"
+            "Compression reduces network footprint and improves stealth",
         ],
-        known_threat_actors=[
-            "Velvet Ant",
-            "APT groups using encoded C2"
-        ],
+        known_threat_actors=["Velvet Ant", "APT groups using encoded C2"],
         recent_campaigns=[
             Campaign(
                 name="Velvet Ant F5 BIG-IP Compromise",
                 year=2024,
                 description="Velvet Ant sent commands to compromised F5 BIG-IP devices in an encoded format requiring a passkey before interpretation",
-                reference_url="https://attack.mitre.org/groups/G1047/"
+                reference_url="https://attack.mitre.org/groups/G1047/",
             ),
             Campaign(
                 name="BADNEWS Base64 Encoding",
                 year=2023,
                 description="BADNEWS malware converts encrypted C2 data to hexadecimal format, then encodes it as base64 for transmission",
-                reference_url="https://attack.mitre.org/software/S0128/"
+                reference_url="https://attack.mitre.org/software/S0128/",
             ),
             Campaign(
                 name="H1N1 Modified Base64",
                 year=2023,
                 description="H1N1 malware uses altered base64 obfuscation for C2 traffic to evade detection",
-                reference_url="https://attack.mitre.org/software/S0132/"
+                reference_url="https://attack.mitre.org/software/S0132/",
             ),
             Campaign(
                 name="Ursnif URL Encoding",
                 year=2022,
                 description="Ursnif banking trojan employs encoded data in HTTP URLs for command and control communications",
-                reference_url="https://attack.mitre.org/software/S0386/"
-            )
+                reference_url="https://attack.mitre.org/software/S0386/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -88,13 +84,15 @@ TEMPLATE = RemediationTemplate(
             "Data exfiltration through encoded channels",
             "Prolonged adversary persistence in environment",
             "Bypassed security controls and monitoring",
-            "Compliance violations from undetected malicious activity"
+            "Compliance violations from undetected malicious activity",
         ],
         typical_attack_phase="command_and_control",
         often_precedes=["T1041", "T1048", "T1567"],  # Exfiltration techniques
-        often_follows=["T1071", "T1573"]  # Application Layer Protocol, Encrypted Channel
+        often_follows=[
+            "T1071",
+            "T1573",
+        ],  # Application Layer Protocol, Encrypted Channel
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - Base64 Encoding in HTTP Traffic
         DetectionStrategy(
@@ -105,15 +103,15 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message
+                query="""fields @timestamp, @message
 | filter @message like /[A-Za-z0-9+/]{100,}={0,2}/
 | filter @message like /POST|GET|PUT/
 | parse @message /(?<method>GET|POST|PUT)[ ]+(?<uri>[^ ]+)[ ]+HTTP/
 | parse @message /(?<base64_data>[A-Za-z0-9+/]{100,}={0,2})/
 | stats count() as encoded_requests by sourceIP, uri, bin(5m)
 | filter encoded_requests > 20
-| sort encoded_requests desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort encoded_requests desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect Base64 encoded HTTP traffic for C2 detection
 
 Parameters:
@@ -159,8 +157,8 @@ Resources:
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
-        - !Ref AlertTopic''',
-                terraform_template='''# Detect Base64 encoded HTTP traffic
+        - !Ref AlertTopic""",
+                terraform_template="""# Detect Base64 encoded HTTP traffic
 
 variable "alert_email" {
   type        = string
@@ -208,7 +206,7 @@ resource "aws_cloudwatch_metric_alarm" "base64_traffic" {
   statistic           = "Sum"
   threshold           = 50
   alarm_actions       = [aws_sns_topic.base64_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="High Volume Base64 Encoded HTTP Traffic Detected",
                 alert_description_template="Unusual volume of Base64 encoded HTTP traffic detected from {sourceIP}. May indicate encoded C2 communications.",
@@ -219,7 +217,7 @@ resource "aws_cloudwatch_metric_alarm" "base64_traffic" {
                     "Check for unusual user agents or HTTP headers",
                     "Analyse destination IPs and domains for reputation",
                     "Correlate with other suspicious activities from source",
-                    "Review process list and running applications on instance"
+                    "Review process list and running applications on instance",
                 ],
                 containment_actions=[
                     "Isolate the source instance from network",
@@ -227,8 +225,8 @@ resource "aws_cloudwatch_metric_alarm" "base64_traffic" {
                     "Enable AWS WAF with Base64 decoding rules",
                     "Deploy network intrusion detection systems",
                     "Review and restrict instance IAM permissions",
-                    "Implement content inspection at application layer"
-                ]
+                    "Implement content inspection at application layer",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist legitimate applications using Base64 (APIs, file uploads, authentication). Establish baselines for expected encoding patterns.",
@@ -237,9 +235,8 @@ resource "aws_cloudwatch_metric_alarm" "base64_traffic" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-25",
-            prerequisites=["Application logs in CloudWatch", "VPC Flow Logs enabled"]
+            prerequisites=["Application logs in CloudWatch", "VPC Flow Logs enabled"],
         ),
-
         # Strategy 2: AWS - Encoded DNS Queries
         DetectionStrategy(
             strategy_id="t1132-aws-dns-encoding",
@@ -249,14 +246,14 @@ resource "aws_cloudwatch_metric_alarm" "base64_traffic" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, query_name, query_type, srcaddr
+                query="""fields @timestamp, query_name, query_type, srcaddr
 | filter query_name like /[A-Za-z0-9]{32,}[.]/
 | filter query_name like /[A-Fa-f0-9]{40,}[.]/ or query_name like /[A-Za-z0-9+/]{40,}[.]/
 | stats count() as query_count, avg(length(query_name)) as avg_length,
         count_distinct(query_name) as unique_queries by srcaddr, bin(5m)
 | filter query_count > 50 or avg_length > 60
-| sort query_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort query_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect encoded data in DNS queries for C2 and tunnelling detection
 
 Parameters:
@@ -305,8 +302,8 @@ Resources:
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
-        - !Ref AlertTopic''',
-                terraform_template='''# Detect encoded data in DNS queries
+        - !Ref AlertTopic""",
+                terraform_template="""# Detect encoded data in DNS queries
 
 variable "alert_email" {
   type        = string
@@ -355,7 +352,7 @@ resource "aws_cloudwatch_metric_alarm" "encoded_dns" {
   statistic           = "Sum"
   threshold           = 50
   alarm_actions       = [aws_sns_topic.dns_encoding_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Encoded DNS Queries Detected",
                 alert_description_template="Encoded or suspicious DNS queries detected from {srcaddr}. Query pattern may indicate DNS tunnelling with encoded C2 data.",
@@ -366,7 +363,7 @@ resource "aws_cloudwatch_metric_alarm" "encoded_dns" {
                     "Review query frequency and timing patterns",
                     "Check destination DNS servers for legitimacy",
                     "Examine instance processes and network connections",
-                    "Correlate with threat intelligence on DNS tunnelling domains"
+                    "Correlate with threat intelligence on DNS tunnelling domains",
                 ],
                 containment_actions=[
                     "Isolate the source instance immediately",
@@ -374,8 +371,8 @@ resource "aws_cloudwatch_metric_alarm" "encoded_dns" {
                     "Implement DNS sinkholing for identified C2 domains",
                     "Restrict DNS resolver access to approved servers only",
                     "Enable enhanced DNS query logging across all VPCs",
-                    "Review instance security and IAM permissions"
-                ]
+                    "Review instance security and IAM permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate services with long DNS queries (CDNs, monitoring tools). Tune query length thresholds based on environment.",
@@ -384,9 +381,8 @@ resource "aws_cloudwatch_metric_alarm" "encoded_dns" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$15-30",
-            prerequisites=["Route 53 Query Logging enabled", "VPC DNS resolver in use"]
+            prerequisites=["Route 53 Query Logging enabled", "VPC DNS resolver in use"],
         ),
-
         # Strategy 3: AWS - Unusual Encoding Utilities Detection
         DetectionStrategy(
             strategy_id="t1132-aws-encoding-tools",
@@ -396,12 +392,12 @@ resource "aws_cloudwatch_metric_alarm" "encoded_dns" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, requestParameters
+                query="""fields @timestamp, userIdentity.principalId, requestParameters
 | filter eventName in ["RunInstances", "SendCommand", "ExecuteCommand"]
 | filter requestParameters like /base64|xxd|openssl enc|gzip|gunzip|uuencode|uudecode/
 | stats count() as encoding_commands by userIdentity.principalId, eventName
-| sort encoding_commands desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort encoding_commands desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect execution of encoding utilities via CloudTrail
 
 Parameters:
@@ -459,8 +455,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect encoding utility execution
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect encoding utility execution
 
 variable "alert_email" {
   type        = string
@@ -523,7 +519,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.encoding_tools_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Encoding Utility Execution Detected",
                 alert_description_template="Encoding utility executed by {userIdentity.principalId} via {eventName}. May indicate preparation for encoded C2 or exfiltration.",
@@ -534,7 +530,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Check for subsequent network activity or file transfers",
                     "Review user's recent activity and access patterns",
                     "Analyse files being encoded or decoded",
-                    "Correlate with other suspicious activities"
+                    "Correlate with other suspicious activities",
                 ],
                 containment_actions=[
                     "Disable compromised credentials immediately",
@@ -542,8 +538,8 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Implement session manager logging and monitoring",
                     "Block unnecessary command execution capabilities",
                     "Enable OS-level process monitoring and EDR",
-                    "Review and audit all recent commands from user"
-                ]
+                    "Review and audit all recent commands from user",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist legitimate use cases (backup scripts, deployment automation, development activities). Document approved encoding usage.",
@@ -552,9 +548,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",
             estimated_monthly_cost="$5-15",
-            prerequisites=["CloudTrail enabled", "SSM Session Manager logging"]
+            prerequisites=["CloudTrail enabled", "SSM Session Manager logging"],
         ),
-
         # Strategy 4: GCP - Encoded HTTP Traffic Detection
         DetectionStrategy(
             strategy_id="t1132-gcp-http-encoding",
@@ -565,12 +560,12 @@ resource "aws_sns_topic_policy" "allow_events" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="http_load_balancer"
+                gcp_logging_query="""resource.type="http_load_balancer"
 httpRequest.requestUrl=~"[A-Za-z0-9+/]{100,}={0,2}"
 OR httpRequest.requestUrl=~"[A-Fa-f0-9]{100,}"
 | stats count() as encoded_requests by httpRequest.remoteIp, bin(5m)
-| encoded_requests > 20''',
-                gcp_terraform_template='''# GCP: Detect encoded HTTP traffic
+| encoded_requests > 20""",
+                gcp_terraform_template="""# GCP: Detect encoded HTTP traffic
 
 variable "project_id" {
   type        = string
@@ -634,7 +629,7 @@ resource "google_monitoring_alert_policy" "encoded_http" {
   documentation {
     content = "Encoded HTTP traffic detected. Investigate for potential C2 or data exfiltration activity."
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Encoded HTTP Traffic Detected",
                 alert_description_template="High volume of encoded HTTP traffic detected. May indicate encoded C2 communications or data exfiltration.",
@@ -645,7 +640,7 @@ resource "google_monitoring_alert_policy" "encoded_http" {
                     "Check destination URLs and IP reputation",
                     "Analyse Cloud Logging for application-level logs",
                     "Review VM instance metadata and configurations",
-                    "Correlate with other security findings"
+                    "Correlate with other security findings",
                 ],
                 containment_actions=[
                     "Isolate affected VM instances using firewall rules",
@@ -653,8 +648,8 @@ resource "google_monitoring_alert_policy" "encoded_http" {
                     "Create snapshots for forensic analysis",
                     "Revoke service account credentials",
                     "Enable VPC Service Controls for data exfiltration prevention",
-                    "Review and restrict egress firewall rules"
-                ]
+                    "Review and restrict egress firewall rules",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist legitimate API endpoints using encoding. Establish baselines for expected encoded traffic patterns.",
@@ -663,9 +658,8 @@ resource "google_monitoring_alert_policy" "encoded_http" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-25",
-            prerequisites=["Cloud Load Balancer logging enabled", "VPC Flow Logs"]
+            prerequisites=["Cloud Load Balancer logging enabled", "VPC Flow Logs"],
         ),
-
         # Strategy 5: GCP - Encoded DNS Query Detection
         DetectionStrategy(
             strategy_id="t1132-gcp-dns-encoding",
@@ -676,14 +670,14 @@ resource "google_monitoring_alert_policy" "encoded_http" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="dns_query"
+                gcp_logging_query="""resource.type="dns_query"
 (LENGTH(protoPayload.queryName) > 60
  OR protoPayload.queryName=~"[A-Za-z0-9]{40,}\\."
  OR protoPayload.queryName=~"[A-Fa-f0-9]{40,}\\.")
 | stats count() as query_count, avg(LENGTH(protoPayload.queryName)) as avg_length
   by sourceIP, bin(5m)
-| query_count > 50 OR avg_length > 60''',
-                gcp_terraform_template='''# GCP: Detect encoded DNS queries
+| query_count > 50 OR avg_length > 60""",
+                gcp_terraform_template="""# GCP: Detect encoded DNS queries
 
 variable "project_id" {
   type        = string
@@ -758,7 +752,7 @@ resource "google_monitoring_alert_policy" "encoded_dns" {
   documentation {
     content = "Encoded DNS queries detected. Investigate for DNS tunnelling or encoded C2 activity."
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Encoded DNS Queries Detected",
                 alert_description_template="Encoded or suspicious DNS queries detected. Query patterns may indicate DNS tunnelling with encoded C2 data.",
@@ -769,7 +763,7 @@ resource "google_monitoring_alert_policy" "encoded_dns" {
                     "Review query frequency and timing for tunnelling patterns",
                     "Check destination DNS servers and domain reputation",
                     "Examine VM processes and network connections",
-                    "Correlate with threat intelligence feeds"
+                    "Correlate with threat intelligence feeds",
                 ],
                 containment_actions=[
                     "Isolate source VM instances immediately",
@@ -777,8 +771,8 @@ resource "google_monitoring_alert_policy" "encoded_dns" {
                     "Implement DNS firewall rules via VPC",
                     "Restrict DNS resolver access to approved servers",
                     "Enable VPC Service Controls to prevent data exfiltration",
-                    "Review and revoke compromised credentials"
-                ]
+                    "Review and revoke compromised credentials",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate long DNS queries (CDNs, DDoS protection services). Tune query length thresholds based on baseline.",
@@ -787,9 +781,8 @@ resource "google_monitoring_alert_policy" "encoded_dns" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$15-30",
-            prerequisites=["Cloud DNS logging enabled", "VPC Flow Logs enabled"]
+            prerequisites=["Cloud DNS logging enabled", "VPC Flow Logs enabled"],
         ),
-
         # Strategy 6: GCP - Encoding Process Detection
         DetectionStrategy(
             strategy_id="t1132-gcp-encoding-tools",
@@ -800,15 +793,15 @@ resource "google_monitoring_alert_policy" "encoded_dns" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 logName=~"projects/.*/logs/syslog"
 (textPayload=~"base64"
  OR textPayload=~"xxd"
  OR textPayload=~"openssl enc"
  OR textPayload=~"gzip.*-c"
  OR textPayload=~"uuencode")
-severity>=WARNING''',
-                gcp_terraform_template='''# GCP: Detect encoding utility execution
+severity>=WARNING""",
+                gcp_terraform_template="""# GCP: Detect encoding utility execution
 
 variable "project_id" {
   type        = string
@@ -877,7 +870,7 @@ resource "google_monitoring_alert_policy" "encoding_tools" {
   documentation {
     content = "Encoding utility execution detected. Investigate for potential encoded C2 or data preparation for exfiltration."
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Encoding Utility Execution Detected",
                 alert_description_template="Encoding utilities executed on GCP instances. May indicate preparation for encoded C2 or exfiltration.",
@@ -888,7 +881,7 @@ resource "google_monitoring_alert_policy" "encoding_tools" {
                     "Check for subsequent network activity or transfers",
                     "Review user activity and authentication logs",
                     "Analyse files being encoded or decoded",
-                    "Correlate with other suspicious activities"
+                    "Correlate with other suspicious activities",
                 ],
                 containment_actions=[
                     "Isolate affected VM instances",
@@ -896,8 +889,8 @@ resource "google_monitoring_alert_policy" "encoding_tools" {
                     "Enable OS Config for patch management and compliance",
                     "Deploy endpoint detection and response (EDR) agents",
                     "Review and restrict IAM permissions",
-                    "Implement application whitelisting where possible"
-                ]
+                    "Implement application whitelisting where possible",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist legitimate encoding usage (backup scripts, application deployment, development). Document approved use cases.",
@@ -906,18 +899,20 @@ resource "google_monitoring_alert_policy" "encoding_tools" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Logging agent installed on VMs", "OS logging enabled"]
-        )
+            prerequisites=[
+                "Cloud Logging agent installed on VMs",
+                "OS logging enabled",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1132-aws-dns-encoding",
         "t1132-gcp-dns-encoding",
         "t1132-aws-base64-http",
         "t1132-gcp-http-encoding",
         "t1132-aws-encoding-tools",
-        "t1132-gcp-encoding-tools"
+        "t1132-gcp-encoding-tools",
     ],
     total_effort_hours=8.5,
-    coverage_improvement="+18% improvement for Command and Control tactic detection"
+    coverage_improvement="+18% improvement for Command and Control tactic detection",
 )

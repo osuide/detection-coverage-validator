@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="System Information Discovery",
     tactic_ids=["TA0007"],
     mitre_url="https://attack.mitre.org/techniques/T1082/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries collect detailed operating system and hardware information "
@@ -38,7 +37,7 @@ TEMPLATE = RemediationTemplate(
             "Reveals hardware capabilities and resources",
             "Helps select compatible payloads",
             "Informs privilege escalation tactics",
-            "Essential for targeted exploitation"
+            "Essential for targeted exploitation",
         ],
         known_threat_actors=[
             "admin@338",
@@ -50,21 +49,21 @@ TEMPLATE = RemediationTemplate(
             "Lazarus Group",
             "MuddyWater",
             "Mustang Panda",
-            "OilRig"
+            "OilRig",
         ],
         recent_campaigns=[
             Campaign(
                 name="Cloud Instance Profiling",
                 year=2024,
                 description="Adversaries enumerate EC2/GCE metadata and system information to select appropriate malware variants",
-                reference_url="https://unit42.paloaltonetworks.com/2025-cloud-security-alert-trends/"
+                reference_url="https://unit42.paloaltonetworks.com/2025-cloud-security-alert-trends/",
             ),
             Campaign(
                 name="Container Environment Fingerprinting",
                 year=2024,
                 description="Attackers probe container environments to identify escape opportunities and host system details",
-                reference_url="https://www.datadoghq.com/state-of-cloud-security/"
-            )
+                reference_url="https://www.datadoghq.com/state-of-cloud-security/",
+            ),
         ],
         prevalence="very_common",
         trend="stable",
@@ -78,13 +77,12 @@ TEMPLATE = RemediationTemplate(
             "Indicates active reconnaissance phase",
             "Precursor to targeted exploitation",
             "Early detection opportunity",
-            "May reveal vulnerable systems"
+            "May reveal vulnerable systems",
         ],
         typical_attack_phase="discovery",
         often_precedes=["T1059", "T1203", "T1068", "T1105"],
-        often_follows=["T1078.004", "T1190", "T1566"]
+        often_follows=["T1078.004", "T1190", "T1566"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - EC2 Metadata Service Access
         DetectionStrategy(
@@ -95,13 +93,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn, eventName, requestParameters
+                query="""fields @timestamp, userIdentity.arn, eventName, requestParameters
 | filter eventSource = "ec2.amazonaws.com"
 | filter eventName in ["DescribeInstances", "DescribeInstanceAttribute", "DescribeInstanceTypes"]
 | stats count(*) as query_count by userIdentity.arn, sourceIPAddress, bin(1h)
 | filter query_count > 30
-| sort query_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort query_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect system information discovery via EC2 API calls
 
 Parameters:
@@ -142,8 +140,8 @@ Resources:
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect system information discovery via EC2 API
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect system information discovery via EC2 API
 
 variable "cloudtrail_log_group" {
   type = string
@@ -188,7 +186,7 @@ resource "aws_cloudwatch_metric_alarm" "system_info" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="low",
                 alert_title="System Information Discovery Detected",
                 alert_description_template="Excessive EC2 instance enumeration from {userIdentity.arn}.",
@@ -197,14 +195,14 @@ resource "aws_cloudwatch_metric_alarm" "system_info" {
                     "Check if this is authorised monitoring or scanning",
                     "Review what system information was accessed",
                     "Look for follow-on exploitation attempts",
-                    "Check instance metadata service logs"
+                    "Check instance metadata service logs",
                 ],
                 containment_actions=[
                     "Review principal's permissions and legitimacy",
                     "Monitor for suspicious command execution",
                     "Check for exploit attempts or malware",
-                    "Consider restricting describe permissions"
-                ]
+                    "Consider restricting describe permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist monitoring tools, auto-scaling, and infrastructure automation",
@@ -213,9 +211,8 @@ resource "aws_cloudwatch_metric_alarm" "system_info" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail logging to CloudWatch"]
+            prerequisites=["CloudTrail logging to CloudWatch"],
         ),
-
         # Strategy 2: AWS - Systems Manager Inventory
         DetectionStrategy(
             strategy_id="t1082-aws-ssm",
@@ -225,13 +222,13 @@ resource "aws_cloudwatch_metric_alarm" "system_info" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.arn, requestParameters
+                query="""fields @timestamp, eventName, userIdentity.arn, requestParameters
 | filter eventSource = "ssm.amazonaws.com"
 | filter eventName in ["GetInventory", "DescribeInstanceInformation", "ListInventoryEntries"]
 | stats count(*) as query_count by userIdentity.arn, bin(1h)
 | filter query_count > 20
-| sort query_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort query_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect system information access via SSM
 
 Parameters:
@@ -272,8 +269,8 @@ Resources:
       Threshold: 30
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect SSM inventory access
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect SSM inventory access
 
 variable "cloudtrail_log_group" {
   type = string
@@ -318,7 +315,7 @@ resource "aws_cloudwatch_metric_alarm" "ssm_inventory" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="SSM Inventory Access Detected",
                 alert_description_template="Bulk access to Systems Manager inventory from {userIdentity.arn}.",
@@ -326,14 +323,14 @@ resource "aws_cloudwatch_metric_alarm" "ssm_inventory" {
                     "Identify who accessed SSM inventory",
                     "Determine if access is authorised",
                     "Review what system details were retrieved",
-                    "Check for correlation with other suspicious activity"
+                    "Check for correlation with other suspicious activity",
                 ],
                 containment_actions=[
                     "Review principal's SSM permissions",
                     "Monitor for follow-on command execution",
                     "Check for lateral movement attempts",
-                    "Audit SSM Run Command history"
-                ]
+                    "Audit SSM Run Command history",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist patch management and inventory tools",
@@ -342,9 +339,8 @@ resource "aws_cloudwatch_metric_alarm" "ssm_inventory" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail logging to CloudWatch", "SSM enabled"]
+            prerequisites=["CloudTrail logging to CloudWatch", "SSM enabled"],
         ),
-
         # Strategy 3: GCP - Compute Instance Metadata Enumeration
         DetectionStrategy(
             strategy_id="t1082-gcp-compute",
@@ -356,7 +352,7 @@ resource "aws_cloudwatch_metric_alarm" "ssm_inventory" {
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName=~"(compute.instances.get|compute.instances.list|compute.zones.list|compute.machineTypes.list)"''',
-                gcp_terraform_template='''# GCP: Detect system information discovery
+                gcp_terraform_template="""# GCP: Detect system information discovery
 
 variable "project_id" {
   type = string
@@ -404,7 +400,7 @@ resource "google_monitoring_alert_policy" "system_info" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="low",
                 alert_title="GCP: System Information Discovery",
                 alert_description_template="Excessive compute instance enumeration detected.",
@@ -413,14 +409,14 @@ resource "google_monitoring_alert_policy" "system_info" {
                     "Check if this is authorised monitoring",
                     "Review what instance details were accessed",
                     "Look for suspicious follow-on activity",
-                    "Check metadata server access logs"
+                    "Check metadata server access logs",
                 ],
                 containment_actions=[
                     "Review principal's permissions",
                     "Monitor for command execution on instances",
                     "Check for exploitation attempts",
-                    "Consider IAM Conditions to restrict access"
-                ]
+                    "Consider IAM Conditions to restrict access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist monitoring tools and auto-scaling services",
@@ -429,9 +425,8 @@ resource "google_monitoring_alert_policy" "system_info" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled"],
         ),
-
         # Strategy 4: GCP - OS Config Inventory
         DetectionStrategy(
             strategy_id="t1082-gcp-osconfig",
@@ -444,7 +439,7 @@ resource "google_monitoring_alert_policy" "system_info" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName=~"(osconfig.*.Inventory|osconfig.*.PatchJob)"
 protoPayload.serviceName="osconfig.googleapis.com"''',
-                gcp_terraform_template='''# GCP: Detect OS Config inventory access
+                gcp_terraform_template="""# GCP: Detect OS Config inventory access
 
 variable "project_id" {
   type = string
@@ -493,7 +488,7 @@ resource "google_monitoring_alert_policy" "os_inventory" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: OS Inventory Access Detected",
                 alert_description_template="Bulk access to OS Config inventory detected.",
@@ -501,14 +496,14 @@ resource "google_monitoring_alert_policy" "os_inventory" {
                     "Identify who accessed OS inventory",
                     "Verify if access is authorised",
                     "Review what system details were retrieved",
-                    "Check for correlated suspicious activity"
+                    "Check for correlated suspicious activity",
                 ],
                 containment_actions=[
                     "Review principal's permissions",
                     "Monitor for command execution",
                     "Check for lateral movement",
-                    "Audit recent OS Config activity"
-                ]
+                    "Audit recent OS Config activity",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist patch management tools",
@@ -517,16 +512,15 @@ resource "google_monitoring_alert_policy" "os_inventory" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Cloud Audit Logs enabled", "OS Config API enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled", "OS Config API enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1082-aws-metadata",
         "t1082-aws-ssm",
         "t1082-gcp-compute",
-        "t1082-gcp-osconfig"
+        "t1082-gcp-osconfig",
     ],
     total_effort_hours=4.0,
-    coverage_improvement="+8% improvement for Discovery tactic"
+    coverage_improvement="+8% improvement for Discovery tactic",
 )

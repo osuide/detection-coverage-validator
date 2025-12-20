@@ -16,6 +16,7 @@ router = APIRouter(prefix="/audit-logs", tags=["Admin Audit Logs"])
 
 class AuditLogResponse(BaseModel):
     """Audit log response."""
+
     id: str
     admin_id: str
     admin_email: str
@@ -32,6 +33,7 @@ class AuditLogResponse(BaseModel):
 
 class AuditLogsListResponse(BaseModel):
     """Audit logs list response."""
+
     logs: list[AuditLogResponse]
     total: int
     page: int
@@ -58,7 +60,9 @@ async def list_audit_logs(
 
     if admin_email:
         query = query.where(AdminAuditLog.admin_email.ilike(f"%{admin_email}%"))
-        count_query = count_query.where(AdminAuditLog.admin_email.ilike(f"%{admin_email}%"))
+        count_query = count_query.where(
+            AdminAuditLog.admin_email.ilike(f"%{admin_email}%")
+        )
 
     # Get total count
     total_result = await db.execute(count_query)
@@ -66,7 +70,9 @@ async def list_audit_logs(
 
     # Get paginated logs
     offset = (page - 1) * per_page
-    query = query.order_by(AdminAuditLog.timestamp.desc()).offset(offset).limit(per_page)
+    query = (
+        query.order_by(AdminAuditLog.timestamp.desc()).offset(offset).limit(per_page)
+    )
     result = await db.execute(query)
     logs = result.scalars().all()
 

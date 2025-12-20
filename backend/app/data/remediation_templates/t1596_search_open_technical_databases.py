@@ -24,7 +24,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Search Open Technical Databases",
     tactic_ids=["TA0043"],  # Reconnaissance
     mitre_url="https://attack.mitre.org/techniques/T1596/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries leverage publicly accessible technical databases to gather "
@@ -39,7 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Freely available information",
             "Reveals infrastructure and technology stack",
             "Identifies potential vulnerabilities",
-            "Maps external attack surface"
+            "Maps external attack surface",
         ],
         known_threat_actors=["APT28", "Kimsuky"],
         recent_campaigns=[
@@ -47,14 +46,14 @@ TEMPLATE = RemediationTemplate(
                 name="APT28 LLM-Enhanced Reconnaissance",
                 year=2024,
                 description="Utilised large language models for script development and deployment in reconnaissance",
-                reference_url="https://attack.mitre.org/groups/G0007/"
+                reference_url="https://attack.mitre.org/groups/G0007/",
             ),
             Campaign(
                 name="Kimsuky Vulnerability Analysis",
                 year=2024,
                 description="Employed LLMs to analyse publicly disclosed vulnerabilities for targeting",
-                reference_url="https://attack.mitre.org/groups/G0094/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0094/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -69,13 +68,12 @@ TEMPLATE = RemediationTemplate(
             "Attack surface mapping",
             "Technology stack enumeration",
             "Enables social engineering",
-            "Identifies exposed services"
+            "Identifies exposed services",
         ],
         typical_attack_phase="reconnaissance",
         often_precedes=["T1598", "T1593", "T1595", "T1566"],
-        often_follows=[]
+        often_follows=[],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1596-aws-exposure",
@@ -85,13 +83,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''# Monitor Route53 query patterns that may indicate reconnaissance
+                query="""# Monitor Route53 query patterns that may indicate reconnaissance
 fields @timestamp, query_name, query_type, srcaddr
 | filter query_type in ["ANY", "AXFR", "TXT"]
 | stats count(*) as queries by srcaddr, bin(1h)
 | filter queries > 100
-| sort queries desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort queries desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Monitor for external reconnaissance indicators
 
 Parameters:
@@ -131,8 +129,8 @@ Resources:
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Monitor for external reconnaissance indicators
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Monitor for external reconnaissance indicators
 
 variable "route53_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -170,7 +168,7 @@ resource "aws_cloudwatch_metric_alarm" "dns_reconnaissance" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Potential DNS Reconnaissance Detected",
                 alert_description_template="Suspicious DNS query patterns detected from {srcaddr}.",
@@ -179,15 +177,15 @@ resource "aws_cloudwatch_metric_alarm" "dns_reconnaissance" {
                     "Check for zone transfer attempts (AXFR)",
                     "Review public DNS records for information exposure",
                     "Check threat intelligence for source IPs",
-                    "Assess what information is publicly available"
+                    "Assess what information is publicly available",
                 ],
                 containment_actions=[
                     "Disable DNS zone transfers to unauthorised hosts",
                     "Review and minimise DNS information exposure",
                     "Implement DNS query logging",
                     "Block malicious source IPs if identified",
-                    "Review public-facing records for sensitive data"
-                ]
+                    "Review public-facing records for sensitive data",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Legitimate DNS monitoring tools may trigger alerts",
@@ -196,9 +194,8 @@ resource "aws_cloudwatch_metric_alarm" "dns_reconnaissance" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["Route53 query logging enabled"]
+            prerequisites=["Route53 query logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1596-aws-certificate",
             name="AWS Certificate Transparency Monitoring",
@@ -209,18 +206,16 @@ resource "aws_cloudwatch_metric_alarm" "dns_reconnaissance" {
             implementation=DetectionImplementation(
                 event_pattern={
                     "source": ["aws.acm"],
-                    "detail-type": [
-                        "AWS API Call via CloudTrail"
-                    ],
+                    "detail-type": ["AWS API Call via CloudTrail"],
                     "detail": {
                         "eventName": [
                             "RequestCertificate",
                             "DescribeCertificate",
-                            "ListCertificates"
+                            "ListCertificates",
                         ]
-                    }
+                    },
                 },
-                terraform_template='''# Monitor certificate-related activity
+                terraform_template="""# Monitor certificate-related activity
 
 variable "alert_email" { type = string }
 
@@ -271,7 +266,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Resource = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="low",
                 alert_title="Certificate Activity Detected",
                 alert_description_template="ACM certificate operation: {eventName} by {userIdentity.principalId}.",
@@ -280,14 +275,14 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Verify legitimacy of certificate request",
                     "Check Certificate Transparency logs",
                     "Review domain validation methods",
-                    "Assess exposure of certificate information"
+                    "Assess exposure of certificate information",
                 ],
                 containment_actions=[
                     "Review public certificate transparency logs",
                     "Minimise sensitive information in certificates",
                     "Monitor for unauthorised certificate requests",
-                    "Implement certificate request approval workflows"
-                ]
+                    "Implement certificate request approval workflows",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Focus on unexpected certificate operations",
@@ -296,9 +291,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled for ACM"]
+            prerequisites=["CloudTrail enabled for ACM"],
         ),
-
         DetectionStrategy(
             strategy_id="t1596-gcp-asset",
             name="GCP Asset Inventory Monitoring",
@@ -310,7 +304,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''resource.type="cloud_dns_query"
 protoPayload.request.queryType=~"ANY|AXFR"''',
-                gcp_terraform_template='''# GCP: Monitor for reconnaissance indicators
+                gcp_terraform_template="""# GCP: Monitor for reconnaissance indicators
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -375,7 +369,7 @@ resource "google_monitoring_alert_policy" "dns_changes" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Potential DNS Reconnaissance",
                 alert_description_template="Suspicious DNS query patterns detected in GCP.",
@@ -384,15 +378,15 @@ resource "google_monitoring_alert_policy" "dns_changes" {
                     "Check for zone transfer attempts",
                     "Analyse query patterns and sources",
                     "Review public DNS information exposure",
-                    "Check Cloud Asset Inventory for exposed resources"
+                    "Check Cloud Asset Inventory for exposed resources",
                 ],
                 containment_actions=[
                     "Restrict DNS zone transfers",
                     "Review and minimise DNS information exposure",
                     "Enable Cloud DNS logging",
                     "Review public asset inventory",
-                    "Implement least-privilege DNS policies"
-                ]
+                    "Implement least-privilege DNS policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Filter legitimate monitoring and automation",
@@ -401,9 +395,8 @@ resource "google_monitoring_alert_policy" "dns_changes" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud DNS query logging enabled"]
+            prerequisites=["Cloud DNS query logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1596-preventive",
             name="Preventive: Minimise External Information Exposure",
@@ -412,7 +405,7 @@ resource "google_monitoring_alert_policy" "dns_changes" {
             aws_service="config",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                terraform_template='''# Preventive measures to minimise reconnaissance value
+                terraform_template="""# Preventive measures to minimise reconnaissance value
 
 variable "alert_email" { type = string }
 
@@ -490,8 +483,8 @@ resource "aws_iam_role" "config" {
 resource "aws_iam_role_policy_attachment" "config" {
   role       = aws_iam_role.config.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/ConfigRole"
-}''',
-                gcp_terraform_template='''# GCP: Preventive measures to minimise reconnaissance value
+}""",
+                gcp_terraform_template="""# GCP: Preventive measures to minimise reconnaissance value
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -548,7 +541,7 @@ resource "google_monitoring_alert_policy" "exposure_alert" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Public Resource Exposure Detected",
                 alert_description_template="Resource configuration may expose information to reconnaissance.",
@@ -558,7 +551,7 @@ resource "google_monitoring_alert_policy" "exposure_alert" {
                     "Check Certificate Transparency logs",
                     "Assess WHOIS information exposure",
                     "Review cloud storage bucket permissions",
-                    "Audit security group and firewall rules"
+                    "Audit security group and firewall rules",
                 ],
                 containment_actions=[
                     "Remove unnecessary public access",
@@ -566,8 +559,8 @@ resource "google_monitoring_alert_policy" "exposure_alert" {
                     "Minimise information in public certificates",
                     "Use privacy protection for WHOIS",
                     "Restrict public-facing services to minimum required",
-                    "Implement security group least-privilege rules"
-                ]
+                    "Implement security group least-privilege rules",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Focus on unexpected public exposure",
@@ -576,16 +569,15 @@ resource "google_monitoring_alert_policy" "exposure_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="3-4 hours",
             estimated_monthly_cost="$15-30",
-            prerequisites=["AWS Config or GCP Cloud Asset Inventory enabled"]
-        )
+            prerequisites=["AWS Config or GCP Cloud Asset Inventory enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1596-preventive",
         "t1596-aws-exposure",
         "t1596-gcp-asset",
-        "t1596-aws-certificate"
+        "t1596-aws-certificate",
     ],
     total_effort_hours=8.0,
-    coverage_improvement="+15% improvement for Reconnaissance tactic (preventive controls)"
+    coverage_improvement="+15% improvement for Reconnaissance tactic (preventive controls)",
 )

@@ -24,7 +24,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Cloud Storage Object Discovery",
     tactic_ids=["TA0007"],
     mitre_url="https://attack.mitre.org/techniques/T1619/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries enumerate objects in cloud storage infrastructure using APIs "
@@ -37,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Reveals file structures and naming patterns",
             "Helps prioritise exfiltration targets",
             "Can reveal sensitive file types",
-            "Precedes data theft (T1530)"
+            "Precedes data theft (T1530)",
         ],
         known_threat_actors=["Pacu users", "Peirates operators"],
         recent_campaigns=[
@@ -45,7 +44,7 @@ TEMPLATE = RemediationTemplate(
                 name="S3 Bucket Enumeration",
                 year=2024,
                 description="305% increase in suspicious storage downloads reported by Unit 42",
-                reference_url="https://unit42.paloaltonetworks.com/2025-cloud-security-alert-trends/"
+                reference_url="https://unit42.paloaltonetworks.com/2025-cloud-security-alert-trends/",
             )
         ],
         prevalence="common",
@@ -59,13 +58,12 @@ TEMPLATE = RemediationTemplate(
             "Reveals sensitive data locations",
             "Precursor to data exfiltration",
             "Early warning opportunity",
-            "Indicates compromised credentials"
+            "Indicates compromised credentials",
         ],
         typical_attack_phase="discovery",
         often_precedes=["T1530", "T1537"],
-        often_follows=["T1078.004", "T1580"]
+        often_follows=["T1078.004", "T1580"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - S3 ListObjects Detection
         DetectionStrategy(
@@ -76,13 +74,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, requestParameters.bucketName, userIdentity.arn, sourceIPAddress
+                query="""fields @timestamp, eventName, requestParameters.bucketName, userIdentity.arn, sourceIPAddress
 | filter eventSource = "s3.amazonaws.com"
 | filter eventName in ["ListObjects", "ListObjectsV2", "ListBucket"]
 | stats count(*) as list_calls by userIdentity.arn, requestParameters.bucketName, bin(1h)
 | filter list_calls > 100
-| sort list_calls desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort list_calls desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect S3 object enumeration
 
 Parameters:
@@ -120,8 +118,8 @@ Resources:
       Threshold: 500
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect S3 object enumeration
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect S3 object enumeration
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -158,7 +156,7 @@ resource "aws_cloudwatch_metric_alarm" "s3_enum" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="S3 Object Enumeration Detected",
                 alert_description_template="High volume S3 ListObjects calls from {userIdentity.arn} on bucket {bucketName}.",
@@ -166,14 +164,14 @@ resource "aws_cloudwatch_metric_alarm" "s3_enum" {
                     "Identify who is enumerating objects",
                     "Check which buckets were listed",
                     "Review if legitimate application behaviour",
-                    "Check for subsequent GetObject calls"
+                    "Check for subsequent GetObject calls",
                 ],
                 containment_actions=[
                     "Review IAM permissions for S3 list",
                     "Enable S3 Object Lock if not set",
                     "Check for data exfiltration",
-                    "Consider bucket policies to restrict listing"
-                ]
+                    "Consider bucket policies to restrict listing",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist backup tools and CDN refresh processes",
@@ -182,9 +180,8 @@ resource "aws_cloudwatch_metric_alarm" "s3_enum" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-15",
-            prerequisites=["CloudTrail S3 data events enabled"]
+            prerequisites=["CloudTrail S3 data events enabled"],
         ),
-
         # Strategy 2: GCP - GCS Object Listing
         DetectionStrategy(
             strategy_id="t1619-gcp-gcslist",
@@ -197,7 +194,7 @@ resource "aws_cloudwatch_metric_alarm" "s3_enum" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''resource.type="gcs_bucket"
 protoPayload.methodName="storage.objects.list"''',
-                gcp_terraform_template='''# GCP: Detect GCS object enumeration
+                gcp_terraform_template="""# GCP: Detect GCS object enumeration
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -236,7 +233,7 @@ resource "google_monitoring_alert_policy" "gcs_enum" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: GCS Object Enumeration",
                 alert_description_template="High volume GCS object listing detected.",
@@ -244,13 +241,13 @@ resource "google_monitoring_alert_policy" "gcs_enum" {
                     "Identify the enumerating principal",
                     "Check which buckets were listed",
                     "Review for subsequent object access",
-                    "Verify legitimate application behaviour"
+                    "Verify legitimate application behaviour",
                 ],
                 containment_actions=[
                     "Review IAM permissions",
                     "Enable VPC Service Controls",
-                    "Check for data exfiltration"
-                ]
+                    "Check for data exfiltration",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist backup and CDN processes",
@@ -259,11 +256,10 @@ resource "google_monitoring_alert_policy" "gcs_enum" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Cloud Audit Logs with data access enabled"]
-        )
+            prerequisites=["Cloud Audit Logs with data access enabled"],
+        ),
     ],
-
     recommended_order=["t1619-aws-s3list", "t1619-gcp-gcslist"],
     total_effort_hours=2.0,
-    coverage_improvement="+15% improvement for Discovery tactic"
+    coverage_improvement="+15% improvement for Discovery tactic",
 )

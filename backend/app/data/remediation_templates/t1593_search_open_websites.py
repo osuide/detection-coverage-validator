@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Search Open Websites/Domains",
     tactic_ids=["TA0043"],
     mitre_url="https://attack.mitre.org/techniques/T1593/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries search publicly available websites and domains to gather "
@@ -39,28 +38,35 @@ TEMPLATE = RemediationTemplate(
             "Difficult to detect or prevent",
             "Publicly accessible information",
             "Enables targeted phishing campaigns",
-            "May reveal credentials in repositories"
+            "May reveal credentials in repositories",
         ],
-        known_threat_actors=["Kimsuky", "Mustang Panda", "Sandworm Team", "Star Blizzard", "Volt Typhoon", "Contagious Interview"],
+        known_threat_actors=[
+            "Kimsuky",
+            "Mustang Panda",
+            "Sandworm Team",
+            "Star Blizzard",
+            "Volt Typhoon",
+            "Contagious Interview",
+        ],
         recent_campaigns=[
             Campaign(
                 name="Kimsuky LLM-Powered Research",
                 year=2024,
                 description="Used large language models to identify think tanks and government organisations with relevant information",
-                reference_url="https://attack.mitre.org/groups/G0094/"
+                reference_url="https://attack.mitre.org/groups/G0094/",
             ),
             Campaign(
                 name="Sandworm Ukrainian EDRPOU Research",
                 year=2023,
                 description="Researched Ukrainian EDRPOU identifiers and third-party sites to create credible spear-phishing campaigns",
-                reference_url="https://attack.mitre.org/groups/G0034/"
+                reference_url="https://attack.mitre.org/groups/G0034/",
             ),
             Campaign(
                 name="Contagious Interview IOC Research",
                 year=2024,
                 description="Reviewed IOC repositories including VirusTotal and MalTrail for reconnaissance",
-                reference_url="https://attack.mitre.org/groups/G1052/"
-            )
+                reference_url="https://attack.mitre.org/groups/G1052/",
+            ),
         ],
         prevalence="very_common",
         trend="increasing",
@@ -75,13 +81,12 @@ TEMPLATE = RemediationTemplate(
             "Credential exposure in repositories",
             "Organisational intelligence gathering",
             "Attack surface enumeration",
-            "Social engineering preparation"
+            "Social engineering preparation",
         ],
         typical_attack_phase="reconnaissance",
         often_precedes=["T1566", "T1078", "T1589", "T1598"],
-        often_follows=[]
+        often_follows=[],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1593-aws-repo-monitor",
@@ -91,13 +96,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="codeartifact",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''# This is a preventive control - use git-secrets or similar tools
+                query="""# This is a preventive control - use git-secrets or similar tools
 # Example git-secrets patterns to detect AWS credentials:
 # Pattern: AWS API Key
 # Pattern: AWS Secret Key
 # Pattern: AWS Account ID
-# Scan commits for exposed credentials before they are pushed''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+# Scan commits for exposed credentials before they are pushed""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: EventBridge rule to monitor repository events
 
 Parameters:
@@ -154,8 +159,8 @@ Resources:
 Outputs:
   AlertTopicArn:
     Value: !Ref AlertTopic
-    Description: SNS Topic ARN for security alerts''',
-                terraform_template='''# Monitor AWS code repositories for security events
+    Description: SNS Topic ARN for security alerts""",
+                terraform_template="""# Monitor AWS code repositories for security events
 
 variable "alert_email" {
   type        = string
@@ -226,7 +231,7 @@ resource "aws_sns_topic_policy" "repo_alerts_policy" {
       Resource = aws_sns_topic.repo_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Repository Activity Detected",
                 alert_description_template="Code repository activity detected: {repositoryName}.",
@@ -235,15 +240,15 @@ resource "aws_sns_topic_policy" "repo_alerts_policy" {
                     "Scan for exposed credentials using git-secrets or truffleHog",
                     "Check repository permissions and access logs",
                     "Verify commit author identity",
-                    "Review for unusual push patterns"
+                    "Review for unusual push patterns",
                 ],
                 containment_actions=[
                     "Rotate any exposed credentials immediately",
                     "Remove sensitive data from git history",
                     "Implement pre-commit hooks (git-secrets)",
                     "Review and restrict repository access",
-                    "Enable branch protection rules"
-                ]
+                    "Enable branch protection rules",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="This monitors legitimate repository activity. Focus on credential scanning tools for actionable alerts.",
@@ -252,9 +257,8 @@ resource "aws_sns_topic_policy" "repo_alerts_policy" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$5-10",
-            prerequisites=["AWS CodeCommit or CodeArtifact in use"]
+            prerequisites=["AWS CodeCommit or CodeArtifact in use"],
         ),
-
         DetectionStrategy(
             strategy_id="t1593-gcp-repo-monitor",
             name="GCP: Source Repository Monitoring",
@@ -267,7 +271,7 @@ resource "aws_sns_topic_policy" "repo_alerts_policy" {
                 gcp_logging_query='''resource.type="sourcerepo.googleapis.com/Repo"
 protoPayload.methodName=~"google.devtools.source.*"
 protoPayload.methodName!="google.devtools.source.v1.RepoApi.GetRepo"''',
-                gcp_terraform_template='''# GCP: Monitor source repositories for security events
+                gcp_terraform_template="""# GCP: Monitor source repositories for security events
 
 variable "project_id" {
   type        = string
@@ -348,7 +352,7 @@ resource "google_logging_project_sink" "repo_audit_sink" {
   EOT
 
   unique_writer_identity = true
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Repository Activity Detected",
                 alert_description_template="Unusual activity in GCP source repository.",
@@ -357,15 +361,15 @@ resource "google_logging_project_sink" "repo_audit_sink" {
                     "Scan for secrets using gitleaks or truffleHog",
                     "Check IAM permissions on repository",
                     "Review access logs for unusual patterns",
-                    "Verify no credentials were exposed"
+                    "Verify no credentials were exposed",
                 ],
                 containment_actions=[
                     "Rotate exposed credentials",
                     "Remove secrets from repository history",
                     "Implement Secret Manager integration",
                     "Review and restrict repository IAM",
-                    "Enable pre-commit secret scanning"
-                ]
+                    "Enable pre-commit secret scanning",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Focus on credential scanning tools rather than activity monitoring",
@@ -374,9 +378,8 @@ resource "google_logging_project_sink" "repo_audit_sink" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Source Repositories in use"]
+            prerequisites=["Cloud Source Repositories in use"],
         ),
-
         DetectionStrategy(
             strategy_id="t1593-preventive-audit",
             name="Multi-Cloud: Preventive Security Audit",
@@ -386,14 +389,14 @@ resource "google_logging_project_sink" "repo_audit_sink" {
             gcp_service="n/a",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''# Preventive measures - no real-time query
+                query="""# Preventive measures - no real-time query
 # Regular audits should include:
 # 1. Public repository scans for credentials
 # 2. Social media monitoring for company mentions
 # 3. Search engine queries for exposed information
 # 4. Review of public-facing websites for sensitive data
-# 5. Third-party breach monitoring services''',
-                terraform_template='''# Multi-cloud preventive controls for information leakage
+# 5. Third-party breach monitoring services""",
+                terraform_template="""# Multi-cloud preventive controls for information leakage
 
 # AWS: Enable AWS Secrets Manager for credential storage
 resource "aws_secretsmanager_secret" "example" {
@@ -425,8 +428,8 @@ resource "aws_s3_bucket_public_access_block" "prevent_public" {
   block_public_policy     = true
   ignore_public_acls      = true
   restrict_public_buckets = true
-}''',
-                gcp_terraform_template='''# GCP: Preventive controls for information leakage
+}""",
+                gcp_terraform_template="""# GCP: Preventive controls for information leakage
 
 variable "project_id" {
   type = string
@@ -470,7 +473,7 @@ resource "google_access_context_manager_service_perimeter" "perimeter" {
       "secretmanager.googleapis.com"
     ]
   }
-}''',
+}""",
                 alert_severity="informational",
                 alert_title="Security Audit Required",
                 alert_description_template="Scheduled security audit for information leakage prevention.",
@@ -480,7 +483,7 @@ resource "google_access_context_manager_service_perimeter" "perimeter" {
                     "Monitor social media for organisational mentions",
                     "Check search engines for exposed documents",
                     "Review third-party breach databases",
-                    "Audit cloud storage for public access"
+                    "Audit cloud storage for public access",
                 ],
                 containment_actions=[
                     "Remove exposed credentials and rotate",
@@ -488,8 +491,8 @@ resource "google_access_context_manager_service_perimeter" "perimeter" {
                     "Implement pre-commit hooks organisation-wide",
                     "Enable Secret Manager/Vault for all credentials",
                     "Train developers on security best practices",
-                    "Implement data loss prevention (DLP) controls"
-                ]
+                    "Implement data loss prevention (DLP) controls",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Regular audits with manual review",
@@ -498,11 +501,18 @@ resource "google_access_context_manager_service_perimeter" "perimeter" {
             implementation_effort=EffortLevel.HIGH,
             implementation_time="4-8 hours initial setup, ongoing maintenance",
             estimated_monthly_cost="$0-50 depending on tools used",
-            prerequisites=["Organisational security programme", "Code repository access", "Secret scanning tools"]
-        )
+            prerequisites=[
+                "Organisational security programme",
+                "Code repository access",
+                "Secret scanning tools",
+            ],
+        ),
     ],
-
-    recommended_order=["t1593-preventive-audit", "t1593-aws-repo-monitor", "t1593-gcp-repo-monitor"],
+    recommended_order=[
+        "t1593-preventive-audit",
+        "t1593-aws-repo-monitor",
+        "t1593-gcp-repo-monitor",
+    ],
     total_effort_hours=8.0,
-    coverage_improvement="+15% improvement for Reconnaissance tactic (primarily preventive)"
+    coverage_improvement="+15% improvement for Reconnaissance tactic (primarily preventive)",
 )

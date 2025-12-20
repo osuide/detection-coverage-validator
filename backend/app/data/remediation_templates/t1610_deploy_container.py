@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Deploy Container",
     tactic_ids=["TA0005", "TA0002"],  # Defense Evasion, Execution
     mitre_url="https://attack.mitre.org/techniques/T1610/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries deploy containers to facilitate execution or bypass defences. "
@@ -37,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "ReplicaSets/DaemonSets enable multi-node deployment",
             "Can mount host filesystems for escape",
             "Bypasses traditional security controls",
-            "Malicious images can download malware at runtime"
+            "Malicious images can download malware at runtime",
         ],
         known_threat_actors=["TeamTNT", "Kinsing"],
         recent_campaigns=[
@@ -45,20 +44,20 @@ TEMPLATE = RemediationTemplate(
                 name="TeamTNT Container Deployments",
                 year=2024,
                 description="Deployed multiple container types for execution; transferred cryptocurrency mining software to Kubernetes clusters",
-                reference_url="https://attack.mitre.org/groups/G0139/"
+                reference_url="https://attack.mitre.org/groups/G0139/",
             ),
             Campaign(
                 name="Kinsing Ubuntu Containers",
                 year=2024,
                 description="Deployed via Ubuntu container to target container environments for cryptomining",
-                reference_url="https://attack.mitre.org/software/S0599/"
+                reference_url="https://attack.mitre.org/software/S0599/",
             ),
             Campaign(
                 name="Doki Container Malware",
                 year=2024,
                 description="Malware executed through deployed containers in cloud environments",
-                reference_url="https://attack.mitre.org/software/S0600/"
-            )
+                reference_url="https://attack.mitre.org/software/S0600/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -72,13 +71,12 @@ TEMPLATE = RemediationTemplate(
             "Host escape and lateral movement",
             "Cryptomining resource abuse",
             "Data exfiltration",
-            "Cluster-wide compromise"
+            "Cluster-wide compromise",
         ],
         typical_attack_phase="execution",
         often_precedes=["T1496.001", "T1530", "T1552.005"],
-        often_follows=["T1078.004", "T1190", "T1552.001"]
+        often_follows=["T1078.004", "T1190", "T1552.001"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1610-aws-ecs",
@@ -88,12 +86,12 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.principalId, requestParameters.taskDefinition
+                query="""fields @timestamp, eventName, userIdentity.principalId, requestParameters.taskDefinition
 | filter eventSource = "ecs.amazonaws.com"
 | filter eventName = "RunTask" or eventName = "RegisterTaskDefinition"
 | filter requestParameters.containerDefinitions.0.privileged = true or requestParameters.taskDefinition like /unknown/
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect suspicious ECS container deployments
 
 Parameters:
@@ -134,8 +132,8 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect suspicious ECS container deployments
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect suspicious ECS container deployments
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -175,7 +173,7 @@ resource "aws_cloudwatch_metric_alarm" "container_deploy" {
   threshold           = 5
   alarm_actions       = [aws_sns_topic.alerts.arn]
   alarm_description   = "Detects suspicious container deployment activity"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Suspicious Container Deployment Detected",
                 alert_description_template="Container deployment detected: {taskDefinition} by {principalId}.",
@@ -185,7 +183,7 @@ resource "aws_cloudwatch_metric_alarm" "container_deploy" {
                     "Verify deployment was authorised",
                     "Review principal's recent activity",
                     "Check for host namespace mounts",
-                    "Inspect container runtime parameters"
+                    "Inspect container runtime parameters",
                 ],
                 containment_actions=[
                     "Stop unauthorised tasks immediately",
@@ -193,8 +191,8 @@ resource "aws_cloudwatch_metric_alarm" "container_deploy" {
                     "Require task definition approval process",
                     "Enable ECS container image scanning",
                     "Implement service control policies",
-                    "Review and lock down IAM roles"
-                ]
+                    "Review and lock down IAM roles",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known CI/CD pipelines and authorised deployment roles",
@@ -203,9 +201,8 @@ resource "aws_cloudwatch_metric_alarm" "container_deploy" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["CloudTrail enabled", "CloudWatch Logs Insights"]
+            prerequisites=["CloudTrail enabled", "CloudWatch Logs Insights"],
         ),
-
         DetectionStrategy(
             strategy_id="t1610-aws-eks",
             name="AWS EKS Kubernetes Pod Deployment Detection",
@@ -214,11 +211,11 @@ resource "aws_cloudwatch_metric_alarm" "container_deploy" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, user.username, objectRef.namespace, objectRef.name, requestObject.spec.containers.0.securityContext.privileged
+                query="""fields @timestamp, user.username, objectRef.namespace, objectRef.name, requestObject.spec.containers.0.securityContext.privileged
 | filter objectRef.resource = "pods" or objectRef.resource = "daemonsets"
 | filter verb = "create"
 | filter requestObject.spec.containers.0.securityContext.privileged = true or objectRef.resource = "daemonsets"
-| sort @timestamp desc''',
+| sort @timestamp desc""",
                 cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect suspicious Kubernetes pod deployments in EKS
 
@@ -250,7 +247,7 @@ Resources:
         | filter objectRef.resource = "pods" or objectRef.resource = "daemonsets"
         | filter verb = "create"
         | filter requestObject.spec.containers.0.securityContext.privileged = true or objectRef.resource = "daemonsets"''',
-                terraform_template='''# Detect suspicious Kubernetes pod deployments
+                terraform_template="""# Detect suspicious Kubernetes pod deployments
 
 variable "eks_cluster_name" { type = string }
 variable "alert_email" { type = string }
@@ -304,7 +301,7 @@ resource "aws_cloudwatch_metric_alarm" "pod_deploy" {
   statistic           = "Sum"
   threshold           = 3
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Suspicious Kubernetes Pod Deployment",
                 alert_description_template="Pod deployment detected in namespace {namespace} by {username}.",
@@ -314,7 +311,7 @@ resource "aws_cloudwatch_metric_alarm" "pod_deploy" {
                     "Review deploying user's permissions",
                     "Check for DaemonSet deployments",
                     "Inspect pod for volume mounts to host filesystem",
-                    "Review pod network policies"
+                    "Review pod network policies",
                 ],
                 containment_actions=[
                     "Delete unauthorised pods/DaemonSets",
@@ -322,8 +319,8 @@ resource "aws_cloudwatch_metric_alarm" "pod_deploy" {
                     "Enforce Pod Security Standards",
                     "Require image signatures via admission webhook",
                     "Disable privileged containers via policy",
-                    "Enable Kubernetes audit logging"
-                ]
+                    "Enable Kubernetes audit logging",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known operators and system namespaces (kube-system, kube-public)",
@@ -332,9 +329,8 @@ resource "aws_cloudwatch_metric_alarm" "pod_deploy" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["EKS control plane logging enabled", "Audit logs enabled"]
+            prerequisites=["EKS control plane logging enabled", "Audit logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1610-gcp-gke",
             name="GCP GKE Container Deployment Detection",
@@ -344,12 +340,12 @@ resource "aws_cloudwatch_metric_alarm" "pod_deploy" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="k8s_cluster"
+                gcp_logging_query="""resource.type="k8s_cluster"
 protoPayload.resourceName=~"pods|daemonsets"
 protoPayload.methodName=~"create"
 (protoPayload.request.spec.containers.securityContext.privileged=true
-OR protoPayload.resourceName=~"daemonsets")''',
-                gcp_terraform_template='''# GCP: Detect GKE container deployments
+OR protoPayload.resourceName=~"daemonsets")""",
+                gcp_terraform_template="""# GCP: Detect GKE container deployments
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -414,7 +410,7 @@ resource "google_binary_authorization_policy" "policy" {
     enforcement_mode = "ENFORCED_BLOCK_AND_AUDIT_LOG"
     require_attestations_by = []
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Suspicious GKE Container Deployment",
                 alert_description_template="Container deployment detected in GKE cluster.",
@@ -424,7 +420,7 @@ resource "google_binary_authorization_policy" "policy" {
                     "Review deploying service account",
                     "Check for DaemonSet deployments",
                     "Inspect volume mounts",
-                    "Review RBAC permissions"
+                    "Review RBAC permissions",
                 ],
                 containment_actions=[
                     "Delete unauthorised pods",
@@ -432,8 +428,8 @@ resource "google_binary_authorization_policy" "policy" {
                     "Implement Pod Security Policies/Standards",
                     "Use admission controllers",
                     "Require image attestations",
-                    "Review service account permissions"
-                ]
+                    "Review service account permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist system namespaces and authorised service accounts",
@@ -442,9 +438,8 @@ resource "google_binary_authorization_policy" "policy" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$10-25",
-            prerequisites=["GKE audit logging enabled", "Cloud Logging API enabled"]
+            prerequisites=["GKE audit logging enabled", "Cloud Logging API enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1610-gcp-cloud-run",
             name="GCP Cloud Run Container Deployment Detection",
@@ -456,7 +451,7 @@ resource "google_binary_authorization_policy" "policy" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.serviceName="run.googleapis.com"
 protoPayload.methodName=~"google.cloud.run.v1.Services.CreateService|google.cloud.run.v1.Services.ReplaceService"''',
-                gcp_terraform_template='''# GCP: Detect Cloud Run deployments
+                gcp_terraform_template="""# GCP: Detect Cloud Run deployments
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -494,7 +489,7 @@ resource "google_monitoring_alert_policy" "cloud_run_deploy" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Cloud Run Container Deployed",
                 alert_description_template="Container service deployed to Cloud Run.",
@@ -503,15 +498,15 @@ resource "google_monitoring_alert_policy" "cloud_run_deploy" {
                     "Check container image source",
                     "Review deploying identity",
                     "Check service configuration",
-                    "Review IAM permissions"
+                    "Review IAM permissions",
                 ],
                 containment_actions=[
                     "Delete unauthorised services",
                     "Require deployment approvals",
                     "Use Binary Authorization",
                     "Implement Org Policies",
-                    "Review service account permissions"
-                ]
+                    "Review service account permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist CI/CD service accounts",
@@ -520,16 +515,15 @@ resource "google_monitoring_alert_policy" "cloud_run_deploy" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1610-aws-eks",
         "t1610-gcp-gke",
         "t1610-aws-ecs",
-        "t1610-gcp-cloud-run"
+        "t1610-gcp-cloud-run",
     ],
     total_effort_hours=6.0,
-    coverage_improvement="+18% improvement for Defense Evasion and Execution tactics"
+    coverage_improvement="+18% improvement for Defense Evasion and Execution tactics",
 )

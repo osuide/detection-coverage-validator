@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Revert Cloud Instance",
     tactic_ids=["TA0005"],
     mitre_url="https://attack.mitre.org/techniques/T1578/004/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries revert changes to cloud instances to conceal malicious activities "
@@ -38,7 +37,7 @@ TEMPLATE = RemediationTemplate(
             "Conceals unauthorised modifications",
             "Resets instances to clean state",
             "Exploits legitimate cloud features",
-            "Difficult to prevent without impacting operations"
+            "Difficult to prevent without impacting operations",
         ],
         known_threat_actors=[],
         recent_campaigns=[],
@@ -55,13 +54,12 @@ TEMPLATE = RemediationTemplate(
             "Impaired incident response",
             "Difficulty determining breach scope",
             "Compliance and audit challenges",
-            "Potential for repeated exploitation"
+            "Potential for repeated exploitation",
         ],
         typical_attack_phase="defense_evasion",
         often_precedes=[],
-        often_follows=["T1098", "T1556", "T1552"]
+        often_follows=["T1098", "T1556", "T1552"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1578-004-aws-snapshot-restore",
@@ -71,13 +69,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, requestParameters.instanceId, requestParameters.snapshotId, sourceIPAddress
+                query="""fields @timestamp, userIdentity.principalId, requestParameters.instanceId, requestParameters.snapshotId, sourceIPAddress
 | filter eventName = "CreateImage" or eventName = "CreateSnapshot" or eventName = "RestoreFromSnapshot" or eventName = "CreateVolume"
 | filter requestParameters.snapshotId like /snap-/
 | stats count(*) as restores by userIdentity.principalId, sourceIPAddress, bin(5m)
 | filter restores > 0
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect suspicious snapshot restoration activities
 
 Parameters:
@@ -124,8 +122,8 @@ Resources:
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
       AlarmActions: [!Ref AlertTopic]
-      TreatMissingData: notBreaching''',
-                terraform_template='''# AWS: Detect suspicious snapshot restoration activities
+      TreatMissingData: notBreaching""",
+                terraform_template="""# AWS: Detect suspicious snapshot restoration activities
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -175,7 +173,7 @@ resource "aws_cloudwatch_metric_alarm" "snapshot_restore" {
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Suspicious Snapshot Restoration Detected",
                 alert_description_template="Snapshot restoration activity detected from {principalId} at {sourceIPAddress}.",
@@ -186,7 +184,7 @@ resource "aws_cloudwatch_metric_alarm" "snapshot_restore" {
                     "Examine source IP and geolocation",
                     "Investigate what was on the instance before restore",
                     "Check for related suspicious CloudTrail events",
-                    "Review instance access logs before restoration"
+                    "Review instance access logs before restoration",
                 ],
                 containment_actions=[
                     "Isolate affected instances immediately",
@@ -194,8 +192,8 @@ resource "aws_cloudwatch_metric_alarm" "snapshot_restore" {
                     "Revoke credentials used for restoration",
                     "Enable snapshot deletion protection",
                     "Review and restrict snapshot permissions",
-                    "Implement stricter IAM policies for snapshot operations"
-                ]
+                    "Implement stricter IAM policies for snapshot operations",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Expected during disaster recovery, legitimate rollbacks, and scheduled maintenance. Create exceptions for authorised automation roles and maintenance windows.",
@@ -204,9 +202,8 @@ resource "aws_cloudwatch_metric_alarm" "snapshot_restore" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-60 minutes",
             estimated_monthly_cost="$5-15",
-            prerequisites=["CloudTrail enabled", "CloudTrail logs sent to CloudWatch"]
+            prerequisites=["CloudTrail enabled", "CloudTrail logs sent to CloudWatch"],
         ),
-
         DetectionStrategy(
             strategy_id="t1578-004-aws-rapid-snapshot",
             name="AWS Rapid Snapshot Creation and Restoration",
@@ -215,12 +212,12 @@ resource "aws_cloudwatch_metric_alarm" "snapshot_restore" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.principalId, requestParameters.instanceId, sourceIPAddress
+                query="""fields @timestamp, eventName, userIdentity.principalId, requestParameters.instanceId, sourceIPAddress
 | filter eventName = "CreateSnapshot" or eventName = "CreateImage" or eventName = "CreateVolume"
 | sort @timestamp asc
 | stats count(*) as operations by userIdentity.principalId, bin(10m)
-| filter operations > 2''',
-                terraform_template='''# AWS: Detect rapid snapshot creation and restoration sequences
+| filter operations > 2""",
+                terraform_template="""# AWS: Detect rapid snapshot creation and restoration sequences
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -270,7 +267,7 @@ resource "aws_cloudwatch_metric_alarm" "rapid_snapshot" {
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Rapid Snapshot Operations Detected",
                 alert_description_template="Multiple snapshot operations in short timeframe by {principalId}.",
@@ -280,15 +277,15 @@ resource "aws_cloudwatch_metric_alarm" "rapid_snapshot" {
                     "Review sequence: create snapshot → restore pattern",
                     "Examine time gaps between operations",
                     "Check for other suspicious activity by same principal",
-                    "Verify business justification for operations"
+                    "Verify business justification for operations",
                 ],
                 containment_actions=[
                     "Contact account owner to verify legitimacy",
                     "Temporarily restrict snapshot permissions if suspicious",
                     "Preserve forensic snapshots",
                     "Review IAM policies for excessive permissions",
-                    "Enable MFA for sensitive snapshot operations"
-                ]
+                    "Enable MFA for sensitive snapshot operations",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Common during automated backup processes and disaster recovery testing. Whitelist known automation roles and scheduled backup windows.",
@@ -297,9 +294,8 @@ resource "aws_cloudwatch_metric_alarm" "rapid_snapshot" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-60 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled", "CloudTrail logs sent to CloudWatch"]
+            prerequisites=["CloudTrail enabled", "CloudTrail logs sent to CloudWatch"],
         ),
-
         DetectionStrategy(
             strategy_id="t1578-004-aws-unusual-source",
             name="AWS Snapshot Operations from Unusual Locations",
@@ -308,12 +304,12 @@ resource "aws_cloudwatch_metric_alarm" "rapid_snapshot" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.principalId, sourceIPAddress, awsRegion
+                query="""fields @timestamp, eventName, userIdentity.principalId, sourceIPAddress, awsRegion
 | filter eventName = "CreateSnapshot" or eventName = "CreateImage" or eventName = "RestoreFromSnapshot" or eventName = "CreateVolume"
 | filter sourceIPAddress not like /^(10\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.|192\\.168\\.)/
 | stats count(*) as operations by sourceIPAddress, awsRegion, userIdentity.principalId
-| sort operations desc''',
-                terraform_template='''# AWS: Detect snapshot operations from unusual locations
+| sort operations desc""",
+                terraform_template="""# AWS: Detect snapshot operations from unusual locations
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -364,7 +360,7 @@ resource "aws_cloudwatch_metric_alarm" "external_snapshot" {
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Snapshot Operation from Unusual Location",
                 alert_description_template="Snapshot operation from unusual IP {sourceIPAddress} by {principalId}.",
@@ -374,7 +370,7 @@ resource "aws_cloudwatch_metric_alarm" "external_snapshot" {
                     "Verify if user typically works from this location",
                     "Review recent authentication events for account",
                     "Check for concurrent logins from multiple locations",
-                    "Examine other API calls from same source IP"
+                    "Examine other API calls from same source IP",
                 ],
                 containment_actions=[
                     "Verify account ownership immediately",
@@ -382,8 +378,8 @@ resource "aws_cloudwatch_metric_alarm" "external_snapshot" {
                     "Block source IP if confirmed malicious",
                     "Revoke active sessions for the account",
                     "Review and rotate access keys",
-                    "Implement IP allowlisting for sensitive operations"
-                ]
+                    "Implement IP allowlisting for sensitive operations",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Expected for remote workers, VPN changes, and cloud-based CI/CD systems. Maintain allowlist of known legitimate external IP ranges.",
@@ -392,9 +388,8 @@ resource "aws_cloudwatch_metric_alarm" "external_snapshot" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-60 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled", "CloudTrail logs sent to CloudWatch"]
+            prerequisites=["CloudTrail enabled", "CloudTrail logs sent to CloudWatch"],
         ),
-
         DetectionStrategy(
             strategy_id="t1578-004-gcp-snapshot-restore",
             name="GCP Compute Engine Snapshot Operations",
@@ -404,13 +399,13 @@ resource "aws_cloudwatch_metric_alarm" "external_snapshot" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_snapshot" OR resource.type="gce_disk"
+                gcp_logging_query="""resource.type="gce_snapshot" OR resource.type="gce_disk"
 (protoPayload.methodName="v1.compute.snapshots.insert" OR
  protoPayload.methodName="v1.compute.disks.createSnapshot" OR
  protoPayload.methodName="beta.compute.disks.createSnapshot" OR
  protoPayload.methodName="v1.compute.disks.insert")
-protoPayload.request.sourceDisk:*''',
-                gcp_terraform_template='''# GCP: Detect snapshot restoration activities
+protoPayload.request.sourceDisk:*""",
+                gcp_terraform_template="""# GCP: Detect snapshot restoration activities
 
 variable "project_id" {
   type        = string
@@ -484,7 +479,7 @@ resource "google_monitoring_alert_policy" "snapshot_restore" {
   alert_strategy {
     auto_close = "1800s"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Snapshot Restoration Detected",
                 alert_description_template="Snapshot operation detected in GCP project.",
@@ -494,7 +489,7 @@ resource "google_monitoring_alert_policy" "snapshot_restore" {
                     "Review snapshot source and creation time",
                     "Check for related suspicious activities",
                     "Examine audit logs for the affected instance",
-                    "Verify if operation aligns with change management"
+                    "Verify if operation aligns with change management",
                 ],
                 containment_actions=[
                     "Suspend suspicious service accounts",
@@ -502,8 +497,8 @@ resource "google_monitoring_alert_policy" "snapshot_restore" {
                     "Restrict snapshot permissions",
                     "Enable organisation policy constraints",
                     "Review IAM bindings for compute resources",
-                    "Implement VPC Service Controls for additional protection"
-                ]
+                    "Implement VPC Service Controls for additional protection",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Common during disaster recovery and scheduled maintenance. Create exceptions for authorised automation service accounts.",
@@ -512,9 +507,8 @@ resource "google_monitoring_alert_policy" "snapshot_restore" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-60 minutes",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Audit Logs enabled", "Cloud Monitoring API enabled"]
+            prerequisites=["Cloud Audit Logs enabled", "Cloud Monitoring API enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1578-004-gcp-rapid-snapshot",
             name="GCP Rapid Snapshot Activity Pattern",
@@ -527,7 +521,7 @@ resource "google_monitoring_alert_policy" "snapshot_restore" {
                 gcp_logging_query='''resource.type="gce_snapshot" OR resource.type="gce_disk"
 protoPayload.methodName:("compute.snapshots.insert" OR "compute.disks.createSnapshot" OR "compute.disks.insert")
 severity="NOTICE"''',
-                gcp_terraform_template='''# GCP: Detect rapid snapshot operation patterns
+                gcp_terraform_template="""# GCP: Detect rapid snapshot operation patterns
 
 variable "project_id" {
   type        = string
@@ -589,7 +583,7 @@ resource "google_monitoring_alert_policy" "rapid_snapshot" {
   alert_strategy {
     auto_close = "3600s"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Rapid Snapshot Operations",
                 alert_description_template="Multiple snapshot operations detected in short timeframe.",
@@ -599,15 +593,15 @@ resource "google_monitoring_alert_policy" "rapid_snapshot" {
                     "Check against scheduled maintenance",
                     "Verify automation patterns",
                     "Review time gaps between operations",
-                    "Check for other anomalous behaviour"
+                    "Check for other anomalous behaviour",
                 ],
                 containment_actions=[
                     "Verify legitimacy with account owners",
                     "Restrict permissions if suspicious",
                     "Review service account keys",
                     "Implement organisation policies",
-                    "Enable additional audit logging"
-                ]
+                    "Enable additional audit logging",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Expected during automated backup cycles and DR testing. Whitelist known automation patterns and service accounts.",
@@ -616,17 +610,16 @@ resource "google_monitoring_alert_policy" "rapid_snapshot" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-60 minutes",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Cloud Audit Logs enabled", "Cloud Monitoring API enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled", "Cloud Monitoring API enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1578-004-aws-snapshot-restore",
         "t1578-004-gcp-snapshot-restore",
         "t1578-004-aws-rapid-snapshot",
         "t1578-004-aws-unusual-source",
-        "t1578-004-gcp-rapid-snapshot"
+        "t1578-004-gcp-rapid-snapshot",
     ],
     total_effort_hours=3.0,
-    coverage_improvement="+15% improvement for Defense Evasion tactic"
+    coverage_improvement="+15% improvement for Defense Evasion tactic",
 )

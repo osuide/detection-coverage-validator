@@ -75,23 +75,25 @@ async def get_coverage(
         # Build recommended strategies list
         strategies = []
         for s in gap.get("recommended_strategies", []):
-            strategies.append(RecommendedStrategyItem(
-                strategy_id=s.get("strategy_id", ""),
-                name=s.get("name", ""),
-                detection_type=s.get("detection_type", ""),
-                aws_service=s.get("aws_service", ""),
-                implementation_effort=s.get("implementation_effort", ""),
-                estimated_time=s.get("estimated_time", ""),
-                detection_coverage=s.get("detection_coverage", ""),
-                has_query=s.get("has_query", False),
-                has_cloudformation=s.get("has_cloudformation", False),
-                has_terraform=s.get("has_terraform", False),
-                # GCP support
-                gcp_service=s.get("gcp_service"),
-                cloud_provider=s.get("cloud_provider"),
-                has_gcp_query=s.get("has_gcp_query", False),
-                has_gcp_terraform=s.get("has_gcp_terraform", False),
-            ))
+            strategies.append(
+                RecommendedStrategyItem(
+                    strategy_id=s.get("strategy_id", ""),
+                    name=s.get("name", ""),
+                    detection_type=s.get("detection_type", ""),
+                    aws_service=s.get("aws_service", ""),
+                    implementation_effort=s.get("implementation_effort", ""),
+                    estimated_time=s.get("estimated_time", ""),
+                    detection_coverage=s.get("detection_coverage", ""),
+                    has_query=s.get("has_query", False),
+                    has_cloudformation=s.get("has_cloudformation", False),
+                    has_terraform=s.get("has_terraform", False),
+                    # GCP support
+                    gcp_service=s.get("gcp_service"),
+                    cloud_provider=s.get("cloud_provider"),
+                    has_gcp_query=s.get("has_gcp_query", False),
+                    has_gcp_terraform=s.get("has_gcp_terraform", False),
+                )
+            )
 
         gap_list.append(
             GapItem(
@@ -206,8 +208,7 @@ async def get_technique_coverage(
 
     # Get all techniques with their tactics
     techniques_result = await db.execute(
-        select(Technique, Tactic)
-        .join(Tactic, Technique.tactic_id == Tactic.id)
+        select(Technique, Tactic).join(Tactic, Technique.tactic_id == Tactic.id)
     )
     techniques_with_tactics = techniques_result.all()
 
@@ -241,7 +242,9 @@ async def get_technique_coverage(
 
             detection_count = len(mappings)
             if mappings:
-                max_confidence = mappings[0][0].confidence  # First one has highest confidence
+                max_confidence = mappings[0][
+                    0
+                ].confidence  # First one has highest confidence
                 detection_names = [m[1] for m in mappings]  # Detection names
 
         # Determine status based on confidence threshold
@@ -252,16 +255,18 @@ async def get_technique_coverage(
         else:
             status = "uncovered"
 
-        technique_coverage.append({
-            "technique_id": technique.technique_id,
-            "technique_name": technique.name,
-            "tactic_id": tactic.tactic_id,
-            "tactic_name": tactic.name,
-            "detection_count": detection_count,
-            "max_confidence": round(max_confidence, 2) if max_confidence else 0.0,
-            "status": status,
-            "detection_names": detection_names,
-        })
+        technique_coverage.append(
+            {
+                "technique_id": technique.technique_id,
+                "technique_name": technique.name,
+                "tactic_id": tactic.tactic_id,
+                "tactic_name": tactic.name,
+                "detection_count": detection_count,
+                "max_confidence": round(max_confidence, 2) if max_confidence else 0.0,
+                "status": status,
+                "detection_names": detection_names,
+            }
+        )
 
     return {"techniques": technique_coverage}
 
@@ -303,23 +308,25 @@ async def calculate_coverage(
         # Build recommended strategies list
         strategies = []
         for s in gap.get("recommended_strategies", []):
-            strategies.append(RecommendedStrategyItem(
-                strategy_id=s.get("strategy_id", ""),
-                name=s.get("name", ""),
-                detection_type=s.get("detection_type", ""),
-                aws_service=s.get("aws_service", ""),
-                implementation_effort=s.get("implementation_effort", ""),
-                estimated_time=s.get("estimated_time", ""),
-                detection_coverage=s.get("detection_coverage", ""),
-                has_query=s.get("has_query", False),
-                has_cloudformation=s.get("has_cloudformation", False),
-                has_terraform=s.get("has_terraform", False),
-                # GCP support
-                gcp_service=s.get("gcp_service"),
-                cloud_provider=s.get("cloud_provider"),
-                has_gcp_query=s.get("has_gcp_query", False),
-                has_gcp_terraform=s.get("has_gcp_terraform", False),
-            ))
+            strategies.append(
+                RecommendedStrategyItem(
+                    strategy_id=s.get("strategy_id", ""),
+                    name=s.get("name", ""),
+                    detection_type=s.get("detection_type", ""),
+                    aws_service=s.get("aws_service", ""),
+                    implementation_effort=s.get("implementation_effort", ""),
+                    estimated_time=s.get("estimated_time", ""),
+                    detection_coverage=s.get("detection_coverage", ""),
+                    has_query=s.get("has_query", False),
+                    has_cloudformation=s.get("has_cloudformation", False),
+                    has_terraform=s.get("has_terraform", False),
+                    # GCP support
+                    gcp_service=s.get("gcp_service"),
+                    cloud_provider=s.get("cloud_provider"),
+                    has_gcp_query=s.get("has_gcp_query", False),
+                    has_gcp_terraform=s.get("has_gcp_terraform", False),
+                )
+            )
 
         gap_list.append(
             GapItem(

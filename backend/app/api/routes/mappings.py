@@ -32,12 +32,9 @@ async def list_mappings(
     db: AsyncSession = Depends(get_db),
 ):
     """List detection mappings with optional filters."""
-    query = (
-        select(DetectionMapping)
-        .options(
-            selectinload(DetectionMapping.detection),
-            selectinload(DetectionMapping.technique).selectinload(Technique.tactic),
-        )
+    query = select(DetectionMapping).options(
+        selectinload(DetectionMapping.detection),
+        selectinload(DetectionMapping.technique).selectinload(Technique.tactic),
     )
 
     if detection_id:
@@ -74,8 +71,16 @@ async def list_mappings(
                 detection_name=m.detection.name if m.detection else "",
                 technique_id=m.technique.technique_id if m.technique else "",
                 technique_name=m.technique.name if m.technique else "",
-                tactic_id=m.technique.tactic.tactic_id if m.technique and m.technique.tactic else "",
-                tactic_name=m.technique.tactic.name if m.technique and m.technique.tactic else "",
+                tactic_id=(
+                    m.technique.tactic.tactic_id
+                    if m.technique and m.technique.tactic
+                    else ""
+                ),
+                tactic_name=(
+                    m.technique.tactic.name
+                    if m.technique and m.technique.tactic
+                    else ""
+                ),
                 confidence=m.confidence,
                 mapping_source=m.mapping_source,
                 rationale=m.rationale,
@@ -140,9 +145,7 @@ async def list_tactics(
     db: AsyncSession = Depends(get_db),
 ):
     """List MITRE ATT&CK tactics."""
-    result = await db.execute(
-        select(Tactic).order_by(Tactic.display_order)
-    )
+    result = await db.execute(select(Tactic).order_by(Tactic.display_order))
     tactics = result.scalars().all()
 
     return [
@@ -202,10 +205,14 @@ async def remap_all_detections(
     for detection in detections:
         # Delete existing mappings for this detection
         await db.execute(
-            select(DetectionMapping).where(DetectionMapping.detection_id == detection.id)
+            select(DetectionMapping).where(
+                DetectionMapping.detection_id == detection.id
+            )
         )
         existing = await db.execute(
-            select(DetectionMapping).where(DetectionMapping.detection_id == detection.id)
+            select(DetectionMapping).where(
+                DetectionMapping.detection_id == detection.id
+            )
         )
         for old_mapping in existing.scalars().all():
             await db.delete(old_mapping)

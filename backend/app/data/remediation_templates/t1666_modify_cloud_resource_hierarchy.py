@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Modify Cloud Resource Hierarchy",
     tactic_ids=["TA0005"],  # Defense Evasion
     mitre_url="https://attack.mitre.org/techniques/T1666/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries modify hierarchical structures in cloud infrastructure "
@@ -39,7 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Bypasses organisational security guardrails",
             "Enables creation of unmonitored resources",
             "Evades centralised logging and monitoring",
-            "Difficult to detect without specific monitoring"
+            "Difficult to detect without specific monitoring",
         ],
         known_threat_actors=[],  # No specific threat actors documented in MITRE
         recent_campaigns=[],  # No specific campaigns documented in MITRE
@@ -57,13 +56,12 @@ TEMPLATE = RemediationTemplate(
             "Loss of centralised governance",
             "Creation of unmonitored resources",
             "Potential compliance violations",
-            "Extended attacker persistence"
+            "Extended attacker persistence",
         ],
         typical_attack_phase="defence_evasion",
         often_precedes=["T1578.002", "T1530", "T1537"],
-        often_follows=["T1078.004", "T1098.003"]
+        often_follows=["T1078.004", "T1098.003"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - LeaveOrganization Detection
         DetectionStrategy(
@@ -77,11 +75,9 @@ TEMPLATE = RemediationTemplate(
                 event_pattern={
                     "source": ["aws.organizations"],
                     "detail-type": ["AWS API Call via CloudTrail"],
-                    "detail": {
-                        "eventName": ["LeaveOrganization"]
-                    }
+                    "detail": {"eventName": ["LeaveOrganization"]},
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect AWS LeaveOrganization attempts
 
 Parameters:
@@ -121,8 +117,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect AWS LeaveOrganization attempts
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect AWS LeaveOrganization attempts
 
 variable "alert_email" {
   type = string
@@ -168,7 +164,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="AWS Account Leaving Organisation",
                 alert_description_template="Account {accountId} attempted to leave the AWS Organisation.",
@@ -177,15 +173,15 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Verify if the action was authorised",
                     "Check if Service Control Policies blocked the action",
                     "Review recent activity on the affected account",
-                    "Assess what security controls may have been bypassed"
+                    "Assess what security controls may have been bypassed",
                 ],
                 containment_actions=[
                     "Block LeaveOrganization via Service Control Policy",
                     "Revoke credentials of compromised principal",
                     "Re-invite the account to the organisation if removed",
                     "Review and strengthen IAM permissions",
-                    "Enable preventative SCPs across organisation"
-                ]
+                    "Enable preventative SCPs across organisation",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="LeaveOrganization should be rare; whitelist authorised account management processes",
@@ -194,9 +190,11 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled in organisation", "EventBridge in management account"]
+            prerequisites=[
+                "CloudTrail enabled in organisation",
+                "EventBridge in management account",
+            ],
         ),
-
         # Strategy 2: AWS - CreateAccount Monitoring
         DetectionStrategy(
             strategy_id="t1666-aws-create-account",
@@ -206,10 +204,10 @@ resource "aws_sns_topic_policy" "allow_events" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, requestParameters.accountName, responseElements.createAccountStatus.accountId
+                query="""fields @timestamp, userIdentity.principalId, requestParameters.accountName, responseElements.createAccountStatus.accountId
 | filter eventName = "CreateAccount"
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Monitor AWS CreateAccount API calls
 
 Parameters:
@@ -251,8 +249,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Monitor AWS CreateAccount API calls
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Monitor AWS CreateAccount API calls
 
 variable "organization_trail_log_group" {
   type        = string
@@ -298,7 +296,7 @@ resource "aws_cloudwatch_metric_alarm" "create_account" {
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="AWS Account Created in Organisation",
                 alert_description_template="New AWS account {accountName} created by {principalId}.",
@@ -307,15 +305,15 @@ resource "aws_cloudwatch_metric_alarm" "create_account" {
                     "Identify the principal that created the account",
                     "Review the account configuration and resources",
                     "Check if Service Control Policies apply to new account",
-                    "Assess if account creation was part of attack chain"
+                    "Assess if account creation was part of attack chain",
                 ],
                 containment_actions=[
                     "Suspend unauthorised new accounts",
                     "Apply restrictive Service Control Policies",
                     "Review and strengthen CreateAccount permissions",
                     "Enable preventative SCPs to block resource creation",
-                    "Audit all accounts in organisation"
-                ]
+                    "Audit all accounts in organisation",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised account creation processes and automation",
@@ -324,9 +322,8 @@ resource "aws_cloudwatch_metric_alarm" "create_account" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail organisation trail with CloudWatch Logs"]
+            prerequisites=["CloudTrail organisation trail with CloudWatch Logs"],
         ),
-
         # Strategy 3: AWS - MoveAccount Detection
         DetectionStrategy(
             strategy_id="t1666-aws-move-account",
@@ -339,11 +336,9 @@ resource "aws_cloudwatch_metric_alarm" "create_account" {
                 event_pattern={
                     "source": ["aws.organizations"],
                     "detail-type": ["AWS API Call via CloudTrail"],
-                    "detail": {
-                        "eventName": ["MoveAccount"]
-                    }
+                    "detail": {"eventName": ["MoveAccount"]},
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect AWS MoveAccount API calls
 
 Parameters:
@@ -383,8 +378,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect AWS MoveAccount API calls
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect AWS MoveAccount API calls
 
 variable "alert_email" {
   type = string
@@ -430,7 +425,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="AWS Account Moved Between OUs",
                 alert_description_template="Account {accountId} moved to different organisational unit.",
@@ -439,15 +434,15 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Verify if the move was authorised",
                     "Check Service Control Policy differences between OUs",
                     "Review the principal that initiated the move",
-                    "Assess security implications of new OU placement"
+                    "Assess security implications of new OU placement",
                 ],
                 containment_actions=[
                     "Move account back to appropriate OU",
                     "Review and restrict MoveAccount permissions",
                     "Audit organisational unit structure",
                     "Apply compensating controls if SCPs were bypassed",
-                    "Enable preventative controls via SCPs"
-                ]
+                    "Enable preventative controls via SCPs",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised organisational restructuring activities",
@@ -456,9 +451,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled in organisation"]
+            prerequisites=["CloudTrail enabled in organisation"],
         ),
-
         # Strategy 4: GCP - Project Transfer Detection
         DetectionStrategy(
             strategy_id="t1666-gcp-project-move",
@@ -471,7 +465,7 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName="SetIamPolicy" OR protoPayload.methodName="MoveProject"
 resource.type="project"''',
-                gcp_terraform_template='''# GCP: Detect project movement and hierarchy changes
+                gcp_terraform_template="""# GCP: Detect project movement and hierarchy changes
 
 variable "project_id" {
   type = string
@@ -520,7 +514,7 @@ resource "google_monitoring_alert_policy" "project_move" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Project Hierarchy Modified",
                 alert_description_template="GCP project hierarchy was modified or project was moved.",
@@ -529,15 +523,15 @@ resource "google_monitoring_alert_policy" "project_move" {
                     "Review source and destination folders/organisations",
                     "Verify the principal that initiated the change",
                     "Check organisation policy differences",
-                    "Assess security implications of new location"
+                    "Assess security implications of new location",
                 ],
                 containment_actions=[
                     "Move project back to authorised location",
                     "Review and restrict resourcemanager permissions",
                     "Audit folder and organisation structure",
                     "Apply organisation policies to enforce hierarchy",
-                    "Enable organisation policy constraints"
-                ]
+                    "Enable organisation policy constraints",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal project administration and whitelist authorised changes",
@@ -546,9 +540,8 @@ resource "google_monitoring_alert_policy" "project_move" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled"],
         ),
-
         # Strategy 5: GCP - Organisation Policy Changes
         DetectionStrategy(
             strategy_id="t1666-gcp-org-policy",
@@ -561,7 +554,7 @@ resource "google_monitoring_alert_policy" "project_move" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.serviceName="cloudresourcemanager.googleapis.com"
 protoPayload.methodName=~"SetOrgPolicy|DeleteOrgPolicy|ClearOrgPolicy"''',
-                gcp_terraform_template='''# GCP: Detect organisation policy modifications
+                gcp_terraform_template="""# GCP: Detect organisation policy modifications
 
 variable "project_id" {
   type = string
@@ -610,7 +603,7 @@ resource "google_monitoring_alert_policy" "org_policy" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GCP: Organisation Policy Modified",
                 alert_description_template="GCP organisation policy was modified or deleted.",
@@ -619,15 +612,15 @@ resource "google_monitoring_alert_policy" "org_policy" {
                     "Identify the principal making the change",
                     "Assess security impact of policy modification",
                     "Check if policy relaxation enables attacks",
-                    "Review recent resource creation activity"
+                    "Review recent resource creation activity",
                 ],
                 containment_actions=[
                     "Restore original organisation policies",
                     "Restrict orgpolicy permissions to minimal principals",
                     "Enable organisation policy constraints on policies",
                     "Review and audit all organisation-level changes",
-                    "Implement preventative controls via locked policies"
-                ]
+                    "Implement preventative controls via locked policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised policy management processes",
@@ -636,17 +629,16 @@ resource "google_monitoring_alert_policy" "org_policy" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1666-aws-leave-org",
         "t1666-gcp-org-policy",
         "t1666-aws-move-account",
         "t1666-gcp-project-move",
-        "t1666-aws-create-account"
+        "t1666-aws-create-account",
     ],
     total_effort_hours=3.5,
-    coverage_improvement="+20% improvement for Defence Evasion tactic"
+    coverage_improvement="+20% improvement for Defence Evasion tactic",
 )

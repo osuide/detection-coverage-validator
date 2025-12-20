@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Defacement: Internal Defacement",
     tactic_ids=["TA0040"],
     mitre_url="https://attack.mitre.org/techniques/T1491/001/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries modify systems within an organisation to intimidate or mislead users "
@@ -39,31 +38,37 @@ TEMPLATE = RemediationTemplate(
             "Demonstrates attacker control",
             "Often used in ransomware campaigns",
             "Forces acknowledgement of breach",
-            "Can disrupt business operations"
+            "Can disrupt business operations",
         ],
         known_threat_actors=[
-            "Black Basta", "BlackByte", "BlackCat", "Lazarus Group",
-            "Gamaredon Group", "INC Ransomware", "Qilin", "RansomHub"
+            "Black Basta",
+            "BlackByte",
+            "BlackCat",
+            "Lazarus Group",
+            "Gamaredon Group",
+            "INC Ransomware",
+            "Qilin",
+            "RansomHub",
         ],
         recent_campaigns=[
             Campaign(
                 name="Black Basta Ransomware",
                 year=2024,
                 description="Sets desktop wallpapers to ransom notes demanding payment",
-                reference_url="https://attack.mitre.org/software/S1070/"
+                reference_url="https://attack.mitre.org/software/S1070/",
             ),
             Campaign(
                 name="BlackCat (ALPHV) Campaigns",
                 year=2024,
                 description="Changes desktop wallpapers on compromised hosts to display ransom demands",
-                reference_url="https://attack.mitre.org/software/S1068/"
+                reference_url="https://attack.mitre.org/software/S1068/",
             ),
             Campaign(
                 name="Lazarus Group Operations",
                 year=2024,
                 description="Replaced wallpapers after rendering systems unbootable in destructive attacks",
-                reference_url="https://attack.mitre.org/groups/G0032/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0032/",
+            ),
         ],
         prevalence="moderate",
         trend="increasing",
@@ -78,13 +83,12 @@ TEMPLATE = RemediationTemplate(
             "Loss of system confidence",
             "Business operations disruption",
             "Reputational damage if publicised",
-            "Often precedes or accompanies ransomware"
+            "Often precedes or accompanies ransomware",
         ],
         typical_attack_phase="impact",
         often_precedes=[],
-        often_follows=["T1078.004", "T1486", "T1485", "T1078.001"]
+        often_follows=["T1078.004", "T1486", "T1485", "T1078.001"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1491-001-aws-s3-web",
@@ -94,15 +98,15 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, requestParameters.bucketName, requestParameters.key, userIdentity.arn
+                query="""fields @timestamp, eventName, requestParameters.bucketName, requestParameters.key, userIdentity.arn
 | filter eventSource = "s3.amazonaws.com"
 | filter eventName in ["PutObject", "DeleteObject", "PutBucketWebsite"]
 | filter requestParameters.bucketName like /website|www|static/
 | filter requestParameters.key like /index.html|login|home|banner/
 | stats count(*) as modifications by userIdentity.arn, requestParameters.bucketName, bin(5m)
 | filter modifications > 5
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect S3 website defacement attempts
 
 Parameters:
@@ -144,8 +148,8 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# AWS: Detect S3 website defacement
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# AWS: Detect S3 website defacement
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -191,7 +195,7 @@ resource "aws_cloudwatch_metric_alarm" "website_defacement" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.defacement_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Potential S3 Website Defacement",
                 alert_description_template="Multiple modifications to S3-hosted website files by {userIdentity.arn} in bucket {requestParameters.bucketName}.",
@@ -201,7 +205,7 @@ resource "aws_cloudwatch_metric_alarm" "website_defacement" {
                     "Compare current content with previous versions",
                     "Identify the user/role that made changes",
                     "Review CloudTrail for associated suspicious activity",
-                    "Check for ransom notes or offensive content"
+                    "Check for ransom notes or offensive content",
                 ],
                 containment_actions=[
                     "Immediately revoke the compromised credentials",
@@ -209,8 +213,8 @@ resource "aws_cloudwatch_metric_alarm" "website_defacement" {
                     "Enable MFA delete on the bucket",
                     "Review and restrict bucket policies",
                     "Enable S3 Object Lock if not already enabled",
-                    "Document defacement for incident response"
-                ]
+                    "Document defacement for incident response",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude known CI/CD roles and deployment windows. Adjust threshold based on normal deployment frequency.",
@@ -219,9 +223,11 @@ resource "aws_cloudwatch_metric_alarm" "website_defacement" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",
             estimated_monthly_cost="$3-8",
-            prerequisites=["CloudTrail S3 data events enabled", "S3 versioning enabled"]
+            prerequisites=[
+                "CloudTrail S3 data events enabled",
+                "S3 versioning enabled",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1491-001-aws-ec2-web",
             name="AWS EC2 Web Server File Modification Detection",
@@ -230,13 +236,13 @@ resource "aws_cloudwatch_metric_alarm" "website_defacement" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message
+                query="""fields @timestamp, @message
 | filter @message like /WRITE|CLOSE_WRITE|MODIFY/
 | filter @message like /index.html|login.html|index.php|default.aspx|banner/
 | stats count(*) as file_changes by bin(5m)
 | filter file_changes > 10
-| sort @timestamp desc''',
-                terraform_template='''# AWS: Detect EC2 web file modifications
+| sort @timestamp desc""",
+                terraform_template="""# AWS: Detect EC2 web file modifications
 # Requires installation of file integrity monitoring agent
 
 variable "alert_email" {
@@ -287,7 +293,7 @@ resource "aws_cloudwatch_metric_alarm" "web_defacement" {
 }
 
 # Note: Requires file integrity monitoring agent on EC2 instances
-# Example: auditd, OSSEC, or CloudWatch agent with file monitoring''',
+# Example: auditd, OSSEC, or CloudWatch agent with file monitoring""",
                 alert_severity="high",
                 alert_title="Potential EC2 Web Server Defacement",
                 alert_description_template="High volume of web file modifications detected on EC2 instances.",
@@ -297,7 +303,7 @@ resource "aws_cloudwatch_metric_alarm" "web_defacement" {
                     "Check SSH/RDP access logs",
                     "Review running processes on the instance",
                     "Check for unauthorised user accounts",
-                    "Examine web server access logs"
+                    "Examine web server access logs",
                 ],
                 containment_actions=[
                     "Isolate affected instances from network",
@@ -305,8 +311,8 @@ resource "aws_cloudwatch_metric_alarm" "web_defacement" {
                     "Terminate compromised instances if necessary",
                     "Deploy fresh instances from golden AMI",
                     "Review security group rules",
-                    "Rotate all credentials"
-                ]
+                    "Rotate all credentials",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude deployment times and automated update processes. Whitelist known administrative activities.",
@@ -315,9 +321,11 @@ resource "aws_cloudwatch_metric_alarm" "web_defacement" {
             implementation_effort=EffortLevel.HIGH,
             implementation_time="3-4 hours",
             estimated_monthly_cost="$10-20 (includes agent costs)",
-            prerequisites=["File integrity monitoring agent installed", "CloudWatch agent configured"]
+            prerequisites=[
+                "File integrity monitoring agent installed",
+                "CloudWatch agent configured",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1491-001-gcp-storage-web",
             name="GCP Cloud Storage Website Modification Detection",
@@ -327,10 +335,10 @@ resource "aws_cloudwatch_metric_alarm" "web_defacement" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gcs_bucket"
+                gcp_logging_query="""resource.type="gcs_bucket"
 protoPayload.methodName=~"storage.objects.(create|update|delete|patch)"
-(protoPayload.resourceName=~"index.html" OR protoPayload.resourceName=~"login" OR protoPayload.resourceName=~"home" OR protoPayload.resourceName=~"banner")''',
-                gcp_terraform_template='''# GCP: Detect Cloud Storage website defacement
+(protoPayload.resourceName=~"index.html" OR protoPayload.resourceName=~"login" OR protoPayload.resourceName=~"home" OR protoPayload.resourceName=~"banner")""",
+                gcp_terraform_template="""# GCP: Detect Cloud Storage website defacement
 
 variable "project_id" {
   type        = string
@@ -402,7 +410,7 @@ resource "google_monitoring_alert_policy" "website_defacement" {
   alert_strategy {
     auto_close = "1800s"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Potential Cloud Storage Website Defacement",
                 alert_description_template="Multiple modifications to website files in Cloud Storage bucket.",
@@ -412,7 +420,7 @@ resource "google_monitoring_alert_policy" "website_defacement" {
                     "Identify the principal that made changes",
                     "Review Cloud Audit Logs for related activity",
                     "Compare current content with previous versions",
-                    "Check for ransom notes or malicious content"
+                    "Check for ransom notes or malicious content",
                 ],
                 containment_actions=[
                     "Revoke compromised service account credentials",
@@ -420,8 +428,8 @@ resource "google_monitoring_alert_policy" "website_defacement" {
                     "Review and restrict bucket IAM policies",
                     "Enable retention policies on critical buckets",
                     "Review organisation-wide IAM bindings",
-                    "Document incident for security review"
-                ]
+                    "Document incident for security review",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude known deployment service accounts. Adjust threshold based on deployment patterns.",
@@ -430,9 +438,8 @@ resource "google_monitoring_alert_policy" "website_defacement" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled", "Object versioning enabled"]
+            prerequisites=["Cloud Audit Logs enabled", "Object versioning enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1491-001-gcp-gce-web",
             name="GCP Compute Engine Web Application Modification",
@@ -442,11 +449,11 @@ resource "google_monitoring_alert_policy" "website_defacement" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 (protoPayload.methodName="v1.compute.instances.setMetadata" OR
  protoPayload.methodName="beta.compute.instances.updateAccessConfig")
-severity>=WARNING''',
-                gcp_terraform_template='''# GCP: Detect GCE instance configuration changes
+severity>=WARNING""",
+                gcp_terraform_template="""# GCP: Detect GCE instance configuration changes
 # For file-level monitoring, deploy agents to instances
 
 variable "project_id" {
@@ -507,7 +514,7 @@ resource "google_monitoring_alert_policy" "instance_changes" {
 }
 
 # Note: For file-level monitoring, deploy Cloud Monitoring agent
-# with file integrity monitoring configuration''',
+# with file integrity monitoring configuration""",
                 alert_severity="medium",
                 alert_title="GCP: GCE Instance Configuration Changed",
                 alert_description_template="Compute Engine instance configuration was modified.",
@@ -517,7 +524,7 @@ resource "google_monitoring_alert_policy" "instance_changes" {
                     "Check who made the modifications",
                     "Review SSH access logs",
                     "Inspect running web applications",
-                    "Check for unauthorised network exposure"
+                    "Check for unauthorised network exposure",
                 ],
                 containment_actions=[
                     "Snapshot the instance for forensics",
@@ -525,8 +532,8 @@ resource "google_monitoring_alert_policy" "instance_changes" {
                     "Restore from known good snapshot",
                     "Review firewall rules and IAM permissions",
                     "Rotate service account keys",
-                    "Deploy fresh instances from trusted images"
-                ]
+                    "Deploy fresh instances from trusted images",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude infrastructure-as-code deployments and automated scaling events.",
@@ -535,16 +542,15 @@ resource "google_monitoring_alert_policy" "instance_changes" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$8-15",
-            prerequisites=["Cloud Audit Logs enabled", "Instance snapshots configured"]
-        )
+            prerequisites=["Cloud Audit Logs enabled", "Instance snapshots configured"],
+        ),
     ],
-
     recommended_order=[
         "t1491-001-aws-s3-web",
         "t1491-001-gcp-storage-web",
         "t1491-001-aws-ec2-web",
-        "t1491-001-gcp-gce-web"
+        "t1491-001-gcp-gce-web",
     ],
     total_effort_hours=7.0,
-    coverage_improvement="+18% improvement for Impact tactic"
+    coverage_improvement="+18% improvement for Impact tactic",
 )

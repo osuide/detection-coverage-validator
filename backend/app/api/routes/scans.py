@@ -76,9 +76,11 @@ async def create_scan(
     scan = Scan(
         cloud_account_id=scan_in.cloud_account_id,
         regions=regions,
-        detection_types=[dt.value for dt in scan_in.detection_types]
-        if scan_in.detection_types
-        else [],
+        detection_types=(
+            [dt.value for dt in scan_in.detection_types]
+            if scan_in.detection_types
+            else []
+        ),
         status=ScanStatus.PENDING,
     )
     db.add(scan)

@@ -37,6 +37,7 @@ class FalsePositiveRate(str, Enum):
 @dataclass
 class Campaign:
     """Real-world campaign using this technique."""
+
     name: str
     year: int
     description: str
@@ -46,6 +47,7 @@ class Campaign:
 @dataclass
 class ThreatContext:
     """Adversarial context for a technique."""
+
     description: str
     attacker_goal: str
     why_technique: List[str]
@@ -64,6 +66,7 @@ class ThreatContext:
 @dataclass
 class DetectionImplementation:
     """Actual implementation artefacts for a detection."""
+
     # Queries
     query: Optional[str] = None  # AWS CloudWatch Logs Insights
     gcp_logging_query: Optional[str] = None  # GCP Cloud Logging
@@ -92,6 +95,7 @@ class CloudProvider(str, Enum):
 @dataclass
 class DetectionStrategy:
     """Single detection approach for a technique."""
+
     strategy_id: str
     name: str
     description: str
@@ -107,12 +111,15 @@ class DetectionStrategy:
     estimated_monthly_cost: str
     prerequisites: List[str] = field(default_factory=list)
     cloud_provider: CloudProvider = CloudProvider.AWS  # Default to AWS
-    gcp_service: Optional[str] = None  # e.g., "security_command_center", "cloud_logging"
+    gcp_service: Optional[str] = (
+        None  # e.g., "security_command_center", "cloud_logging"
+    )
 
 
 @dataclass
 class RemediationTemplate:
     """Complete remediation guidance for a MITRE technique."""
+
     technique_id: str
     technique_name: str
     tactic_ids: List[str]
@@ -452,7 +459,6 @@ TEMPLATES: Dict[str, RemediationTemplate] = {
     "T1550.003": T1550_003,
     "T1606": T1606,
     "T1059": T1059,
-
     "T1059.009": T1059_009,
     "T1538": T1538,
     "T1556": T1556,
@@ -780,6 +786,5 @@ def get_all_templates() -> Dict[str, RemediationTemplate]:
 def get_templates_by_tactic(tactic_id: str) -> List[RemediationTemplate]:
     """Get all templates for a specific tactic."""
     return [
-        template for template in TEMPLATES.values()
-        if tactic_id in template.tactic_ids
+        template for template in TEMPLATES.values() if tactic_id in template.tactic_ids
     ]

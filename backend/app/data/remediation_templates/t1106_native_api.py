@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Native API",
     tactic_ids=["TA0002"],
     mitre_url="https://attack.mitre.org/techniques/T1106/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries abuse native operating system APIs to execute malicious behaviours whilst "
@@ -42,7 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Facilitates process injection and memory manipulation",
             "Difficult to detect without kernel-level monitoring",
             "Commonly used by advanced malware and APT groups",
-            "Enables execution without cmd.exe or PowerShell"
+            "Enables execution without cmd.exe or PowerShell",
         ],
         known_threat_actors=[
             "APT37",
@@ -54,33 +53,33 @@ TEMPLATE = RemediationTemplate(
             "REvil",
             "Black Basta",
             "FIN7",
-            "TA505"
+            "TA505",
         ],
         recent_campaigns=[
             Campaign(
                 name="Operation Dream Job",
                 year=2020,
                 description="Lazarus Group used native APIs including HttpOpenRequestA and InternetReadFile for C2 communications and VirtualAlloc/WriteProcessMemory for process injection",
-                reference_url="https://attack.mitre.org/groups/G0032/"
+                reference_url="https://attack.mitre.org/groups/G0032/",
             ),
             Campaign(
                 name="Conti Ransomware Operations",
                 year=2021,
                 description="Conti ransomware leveraged native Windows APIs for service discovery, process creation, and defence evasion during enterprise-wide encryption campaigns",
-                reference_url="https://attack.mitre.org/software/S0575/"
+                reference_url="https://attack.mitre.org/software/S0575/",
             ),
             Campaign(
                 name="Emotet Botnet Resurgence",
                 year=2020,
                 description="Emotet malware used CreateProcess() API for process creation and native networking APIs for command and control without PowerShell or cmd.exe",
-                reference_url="https://attack.mitre.org/software/S0367/"
+                reference_url="https://attack.mitre.org/software/S0367/",
             ),
             Campaign(
                 name="Black Basta Discovery Operations",
                 year=2022,
                 description="Black Basta ransomware employed native APIs for system and network discovery whilst evading traditional command-line monitoring",
-                reference_url="https://attack.mitre.org/software/S1070/"
-            )
+                reference_url="https://attack.mitre.org/software/S1070/",
+            ),
         ],
         prevalence="very_common",
         trend="increasing",
@@ -100,13 +99,12 @@ TEMPLATE = RemediationTemplate(
             "Lateral movement using native networking APIs",
             "Defence evasion through direct syscall invocation",
             "Data exfiltration via low-level network APIs",
-            "Persistence mechanisms difficult to detect and remove"
+            "Persistence mechanisms difficult to detect and remove",
         ],
         typical_attack_phase="execution",
         often_precedes=["T1055", "T1003", "T1071", "T1059"],
-        often_follows=["T1566", "T1190", "T1133", "T1078.004"]
+        often_follows=["T1566", "T1190", "T1133", "T1078.004"],
     ),
-
     detection_strategies=[
         # AWS Strategy 1: GuardDuty Runtime Monitoring
         DetectionStrategy(
@@ -127,9 +125,9 @@ TEMPLATE = RemediationTemplate(
                     "DefenseEvasion:Runtime/FilelessExecution",
                     "DefenseEvasion:Runtime/ProcessInjection.Proc",
                     "DefenseEvasion:Runtime/ProcessInjection.Ptrace",
-                    "Execution:Runtime/ReverseShell"
+                    "Execution:Runtime/ReverseShell",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty Runtime Monitoring for native API abuse detection
 
 Parameters:
@@ -198,8 +196,8 @@ Outputs:
     Value: !Ref GuardDutyDetector
   AlertTopicArn:
     Description: SNS topic for alerts
-    Value: !Ref NativeAPIAlertTopic''',
-                terraform_template='''# GuardDuty Runtime Monitoring for native API abuse detection
+    Value: !Ref NativeAPIAlertTopic""",
+                terraform_template="""# GuardDuty Runtime Monitoring for native API abuse detection
 
 variable "alert_email" {
   description = "Email address for security alerts"
@@ -300,7 +298,7 @@ output "guardduty_detector_id" {
 output "alert_topic_arn" {
   description = "SNS topic for alerts"
   value       = aws_sns_topic.native_api_alerts.arn
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GuardDuty: Native API Abuse Detected",
                 alert_description_template=(
@@ -316,7 +314,7 @@ output "alert_topic_arn" {
                     "Analyse network connections from the affected process",
                     "Review CloudTrail for suspicious API calls preceding the detection",
                     "Search for indicators of compromise (hashes, domains, IPs)",
-                    "Check for similar behaviour patterns across other instances"
+                    "Check for similar behaviour patterns across other instances",
                 ],
                 containment_actions=[
                     "Immediately isolate the affected instance/container",
@@ -325,8 +323,8 @@ output "alert_topic_arn" {
                     "Rotate all credentials accessible from the instance",
                     "Review and revoke IAM roles/instance profiles",
                     "Deploy endpoint detection and response (EDR) agents",
-                    "Apply security patches and harden configurations"
-                ]
+                    "Apply security patches and harden configurations",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist legitimate software with unusual library loading patterns (security tools, debuggers, performance monitoring). Exclude authorised DevOps and deployment processes.",
@@ -335,9 +333,12 @@ output "alert_topic_arn" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",
             estimated_monthly_cost="£3.40 per EC2 instance + £1.50 per ECS/EKS task (Runtime Monitoring pricing)",
-            prerequisites=["AWS account with GuardDuty access", "EC2/ECS/EKS workloads", "SSM agent for EC2 automated deployment"]
+            prerequisites=[
+                "AWS account with GuardDuty access",
+                "EC2/ECS/EKS workloads",
+                "SSM agent for EC2 automated deployment",
+            ],
         ),
-
         # AWS Strategy 2: CloudWatch Logs Analysis for Syscall Patterns
         DetectionStrategy(
             strategy_id="t1106-cloudwatch-syscall-monitoring",
@@ -351,7 +352,7 @@ output "alert_topic_arn" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message, host, process_name, syscall, dll_name
+                query="""fields @timestamp, @message, host, process_name, syscall, dll_name
 | filter @message like /NtCreateProcess|NtCreateThread|NtAllocateVirtualMemory/
    or @message like /LoadLibrary|GetProcAddress|VirtualAlloc/
    or @message like /syscall|int 0x80|sysenter/
@@ -359,8 +360,8 @@ output "alert_topic_arn" {
 | parse @message /(?<calling_process>[^ ]+).*(?<api_function>[a-zA-Z0-9_]+)[(](?<arguments>[^)]+)[)]/
 | stats count() by process_name, api_function, calling_process
 | sort count desc
-| limit 100''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| limit 100""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: CloudWatch-based native API syscall pattern detection
 
 Parameters:
@@ -425,8 +426,8 @@ Resources:
 Outputs:
   AlarmName:
     Description: CloudWatch alarm name
-    Value: !Ref NativeAPIAlarm''',
-                terraform_template='''# CloudWatch-based native API syscall pattern detection
+    Value: !Ref NativeAPIAlarm""",
+                terraform_template="""# CloudWatch-based native API syscall pattern detection
 
 variable "system_log_group" {
   description = "CloudWatch log group for system/audit logs"
@@ -496,7 +497,7 @@ resource "aws_sns_topic_policy" "alerts" {
 output "alarm_name" {
   description = "CloudWatch alarm name"
   value       = aws_cloudwatch_metric_alarm.native_api.alarm_name
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Native API Abuse Indicators Detected",
                 alert_description_template=(
@@ -512,7 +513,7 @@ output "alarm_name" {
                     "Review network connections from the calling process",
                     "Check for recently dropped files or modified binaries",
                     "Search for persistence mechanisms and scheduled tasks",
-                    "Correlate with threat intelligence feeds for known malware signatures"
+                    "Correlate with threat intelligence feeds for known malware signatures",
                 ],
                 containment_actions=[
                     "Terminate the malicious process using native APIs",
@@ -521,8 +522,8 @@ output "alarm_name" {
                     "Restrict API access via security policies",
                     "Enable kernel-level protections (PatchGuard, HVCI on Windows)",
                     "Deploy endpoint detection and response (EDR) solutions",
-                    "Review and harden security group configurations"
-                ]
+                    "Review and harden security group configurations",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude legitimate system utilities, debuggers, monitoring tools, and authorised security software. Requires Sysmon (Windows) or auditd (Linux) configured with detailed logging.",
@@ -531,9 +532,12 @@ output "alarm_name" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="£7.50-£22.50 (depends on log volume)",
-            prerequisites=["Enhanced system logging enabled (Sysmon/auditd)", "CloudWatch agent configured", "System logs forwarded to CloudWatch"]
+            prerequisites=[
+                "Enhanced system logging enabled (Sysmon/auditd)",
+                "CloudWatch agent configured",
+                "System logs forwarded to CloudWatch",
+            ],
         ),
-
         # GCP Strategy: Cloud Logging for Native API Detection
         DetectionStrategy(
             strategy_id="t1106-gcp-logging-native-api",
@@ -548,13 +552,13 @@ output "alarm_name" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance" OR resource.type="k8s_container"
+                gcp_logging_query="""resource.type="gce_instance" OR resource.type="k8s_container"
 (jsonPayload.syscall=~"execve|fork|clone|ptrace|mmap|mprotect" OR
  textPayload=~"LoadLibrary|GetProcAddress|NtCreateProcess|NtCreateThread" OR
  textPayload=~"libc\\.so|libdl\\.so|syscall" OR
  jsonPayload.api_call=~"VirtualAlloc|WriteProcessMemory|CreateRemoteThread")
-severity >= WARNING''',
-                gcp_terraform_template='''# GCP: Native API abuse detection via Cloud Logging
+severity >= WARNING""",
+                gcp_terraform_template="""# GCP: Native API abuse detection via Cloud Logging
 
 variable "project_id" {
   description = "GCP project ID"
@@ -667,7 +671,7 @@ output "log_metric_name" {
 output "alert_policy_id" {
   description = "Alert policy ID"
   value       = google_monitoring_alert_policy.native_api.id
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Native API Abuse Detected",
                 alert_description_template=(
@@ -682,7 +686,7 @@ output "alert_policy_id" {
                     "Review VPC Flow Logs for suspicious network activity",
                     "Identify initial access vector (SSH keys, service accounts, vulnerabilities)",
                     "Search for similar patterns across other instances",
-                    "Correlate with Security Command Center findings"
+                    "Correlate with Security Command Center findings",
                 ],
                 containment_actions=[
                     "Terminate the compromised instance or pod",
@@ -691,8 +695,8 @@ output "alert_policy_id" {
                     "Enable OS Login and disable direct SSH access",
                     "Deploy Security Command Centre Premium for advanced threat detection",
                     "Configure shielded VMs with secure boot and vTPM",
-                    "Review and tighten firewall rules and VPC configurations"
-                ]
+                    "Review and tighten firewall rules and VPC configurations",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude authorised system utilities, monitoring agents (Cloud Ops Agent, Stackdriver), debuggers, and DevOps tools. Requires OS-level audit logging configured.",
@@ -701,9 +705,12 @@ output "alert_policy_id" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="£3.75-£15 (depends on log ingestion volume)",
-            prerequisites=["GCE/GKE audit logging enabled", "Cloud Logging configured", "OS-level audit daemon (auditd/Sysmon) installed"]
+            prerequisites=[
+                "GCE/GKE audit logging enabled",
+                "Cloud Logging configured",
+                "OS-level audit daemon (auditd/Sysmon) installed",
+            ],
         ),
-
         # AWS Strategy 3: EventBridge Pattern Detection
         DetectionStrategy(
             strategy_id="t1106-eventbridge-api-patterns",
@@ -717,7 +724,7 @@ output "alert_policy_id" {
             aws_service="eventbridge",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: EventBridge pattern detection for suspicious native API usage
 
 Parameters:
@@ -776,8 +783,8 @@ Resources:
 Outputs:
   RuleArn:
     Description: EventBridge rule ARN
-    Value: !GetAtt SuspiciousAPIPatternRule.Arn''',
-                terraform_template='''# EventBridge pattern detection for suspicious native API usage
+    Value: !GetAtt SuspiciousAPIPatternRule.Arn""",
+                terraform_template="""# EventBridge pattern detection for suspicious native API usage
 
 variable "alert_email" {
   description = "Email address for security alerts"
@@ -845,7 +852,7 @@ resource "aws_sns_topic_policy" "alerts" {
 output "rule_arn" {
   description = "EventBridge rule ARN"
   value       = aws_cloudwatch_event_rule.suspicious_api_pattern.arn
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Suspicious Native Cloud API Pattern Detected",
                 alert_description_template=(
@@ -860,7 +867,7 @@ output "rule_arn" {
                     "Examine the created resources (instances, functions, tasks)",
                     "Review IAM permissions and access patterns",
                     "Search for indicators of credential compromise",
-                    "Check for similar API calls from the same principal"
+                    "Check for similar API calls from the same principal",
                 ],
                 containment_actions=[
                     "Suspend or revoke the IAM credentials used",
@@ -868,8 +875,8 @@ output "rule_arn" {
                     "Enable MFA for privileged accounts",
                     "Review and tighten IAM policies",
                     "Enable AWS Organizations SCPs for additional controls",
-                    "Deploy AWS Config rules to monitor resource creation"
-                ]
+                    "Deploy AWS Config rules to monitor resource creation",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised automation tools, CI/CD pipelines, and infrastructure-as-code deployments. Focus on unusual user agents and IP addresses.",
@@ -878,16 +885,18 @@ output "rule_arn" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="£0.75-£2.25 (EventBridge pricing)",
-            prerequisites=["CloudTrail enabled with management events", "EventBridge access"]
-        )
+            prerequisites=[
+                "CloudTrail enabled with management events",
+                "EventBridge access",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1106-guardduty-runtime",
         "t1106-cloudwatch-syscall-monitoring",
         "t1106-eventbridge-api-patterns",
-        "t1106-gcp-logging-native-api"
+        "t1106-gcp-logging-native-api",
     ],
     total_effort_hours=4.75,
-    coverage_improvement="+30% improvement for Execution tactic detection"
+    coverage_improvement="+30% improvement for Execution tactic detection",
 )

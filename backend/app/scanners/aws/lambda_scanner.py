@@ -26,10 +26,27 @@ class LambdaScanner(BaseScanner):
 
     # Security keywords in function names/descriptions
     SECURITY_KEYWORDS = {
-        "security", "alert", "detect", "monitor", "guard", "audit",
-        "threat", "anomaly", "suspicious", "unauthorized", "incident",
-        "compliance", "remediation", "response", "siem", "soc",
-        "cloudtrail", "guardduty", "securityhub", "config", "iam",
+        "security",
+        "alert",
+        "detect",
+        "monitor",
+        "guard",
+        "audit",
+        "threat",
+        "anomaly",
+        "suspicious",
+        "unauthorized",
+        "incident",
+        "compliance",
+        "remediation",
+        "response",
+        "siem",
+        "soc",
+        "cloudtrail",
+        "guardduty",
+        "securityhub",
+        "config",
+        "iam",
     }
 
     # Event source patterns that indicate security functions
@@ -147,12 +164,14 @@ class LambdaScanner(BaseScanner):
             esm_paginator = client.get_paginator("list_event_source_mappings")
             for page in esm_paginator.paginate(FunctionName=function_name):
                 for mapping in page.get("EventSourceMappings", []):
-                    info["event_source_mappings"].append({
-                        "event_source_arn": mapping.get("EventSourceArn"),
-                        "state": mapping.get("State"),
-                        "batch_size": mapping.get("BatchSize"),
-                        "starting_position": mapping.get("StartingPosition"),
-                    })
+                    info["event_source_mappings"].append(
+                        {
+                            "event_source_arn": mapping.get("EventSourceArn"),
+                            "state": mapping.get("State"),
+                            "batch_size": mapping.get("BatchSize"),
+                            "starting_position": mapping.get("StartingPosition"),
+                        }
+                    )
         except ClientError:
             pass
 
@@ -178,8 +197,15 @@ class LambdaScanner(BaseScanner):
     def _sanitize_env_vars(self, env_vars: dict) -> dict:
         """Remove sensitive environment variables."""
         sensitive_patterns = {
-            "key", "secret", "password", "token", "auth", "credential",
-            "api_key", "apikey", "private",
+            "key",
+            "secret",
+            "password",
+            "token",
+            "auth",
+            "credential",
+            "api_key",
+            "apikey",
+            "private",
         }
 
         sanitized = {}
@@ -223,11 +249,13 @@ class LambdaScanner(BaseScanner):
                     source_arn = arn_like.get("AWS:SourceArn")
 
                 if service:
-                    triggers.append({
-                        "service": service,
-                        "source_arn": source_arn,
-                        "action": stmt.get("Action"),
-                    })
+                    triggers.append(
+                        {
+                            "service": service,
+                            "source_arn": source_arn,
+                            "action": stmt.get("Action"),
+                        }
+                    )
 
         except (json.JSONDecodeError, KeyError):
             pass
@@ -275,7 +303,8 @@ class LambdaScanner(BaseScanner):
 
             # Kinesis streams for log processing
             if ":kinesis:" in source_arn and any(
-                kw in source_arn.lower() for kw in ["security", "audit", "cloudtrail", "log"]
+                kw in source_arn.lower()
+                for kw in ["security", "audit", "cloudtrail", "log"]
             ):
                 return True
 
@@ -303,9 +332,15 @@ class LambdaScanner(BaseScanner):
         # Build description
         trigger_summary = self._summarize_triggers(function_info)
         if trigger_summary:
-            full_description = f"{description} | Triggers: {trigger_summary}" if description else f"Triggers: {trigger_summary}"
+            full_description = (
+                f"{description} | Triggers: {trigger_summary}"
+                if description
+                else f"Triggers: {trigger_summary}"
+            )
         else:
-            full_description = description or f"Custom Lambda detection: {function_name}"
+            full_description = (
+                description or f"Custom Lambda detection: {function_name}"
+            )
 
         return RawDetection(
             name=function_name,

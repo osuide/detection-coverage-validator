@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Credentials from Password Stores",
     tactic_ids=["TA0006"],
     mitre_url="https://attack.mitre.org/techniques/T1555/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries search common password storage locations to obtain user credentials. "
@@ -39,38 +38,48 @@ TEMPLATE = RemediationTemplate(
             "Browser password stores on cloud instances often contain admin credentials",
             "Service account credentials in Kubernetes secrets enable cross-service access",
             "Successful credential extraction provides immediate access to multiple systems",
-            "Less likely to trigger alerts compared to brute force attacks"
+            "Less likely to trigger alerts compared to brute force attacks",
         ],
         known_threat_actors=[
-            "APT29", "APT33", "APT34", "APT39", "APT41", "Evilnum",
-            "FIN6", "HEXANE", "Leafminer", "MuddyWater", "Stealth Falcon",
-            "Volt Typhoon", "Malteiro"
+            "APT29",
+            "APT33",
+            "APT34",
+            "APT39",
+            "APT41",
+            "Evilnum",
+            "FIN6",
+            "HEXANE",
+            "Leafminer",
+            "MuddyWater",
+            "Stealth Falcon",
+            "Volt Typhoon",
+            "Malteiro",
         ],
         recent_campaigns=[
             Campaign(
                 name="APT29 SolarWinds Compromise",
                 year=2020,
                 description="APT29 attempted to access Group Managed Service Account (gMSA) passwords during the SolarWinds breach to enable lateral movement across enterprise environments",
-                reference_url="https://attack.mitre.org/groups/G0016/"
+                reference_url="https://attack.mitre.org/groups/G0016/",
             ),
             Campaign(
                 name="Volt Typhoon Credential Harvesting",
                 year=2023,
                 description="Volt Typhoon attempted to obtain credentials from OpenSSH, RealVNC, and PuTTY password stores on compromised systems to maintain persistent access",
-                reference_url="https://attack.mitre.org/groups/G1017/"
+                reference_url="https://attack.mitre.org/groups/G1017/",
             ),
             Campaign(
                 name="APT33 LaZagne Deployment",
                 year=2024,
                 description="APT33 utilised publicly available tools like LaZagne to gather credentials from password stores on compromised cloud infrastructure",
-                reference_url="https://attack.mitre.org/groups/G0064/"
+                reference_url="https://attack.mitre.org/groups/G0064/",
             ),
             Campaign(
                 name="APT39 FTP Credential Theft",
                 year=2024,
                 description="APT39 deployed SmartFTP Password Decryptor to extract FTP passwords from compromised systems enabling access to file transfer infrastructure",
-                reference_url="https://attack.mitre.org/groups/G0087/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0087/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -88,13 +97,12 @@ TEMPLATE = RemediationTemplate(
             "API key compromise enabling unauthorised cloud resource access",
             "Privilege escalation via stolen administrative credentials",
             "Data exfiltration using legitimate credentials",
-            "Regulatory compliance violations for credential exposure"
+            "Regulatory compliance violations for credential exposure",
         ],
         typical_attack_phase="credential_access",
         often_precedes=["T1078.004", "T1021", "T1530", "T1537"],
-        often_follows=["T1190", "T1133", "T1078.004"]
+        often_follows=["T1190", "T1133", "T1078.004"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS Secrets Manager & Parameter Store Access
         DetectionStrategy(
@@ -110,12 +118,15 @@ TEMPLATE = RemediationTemplate(
                     "detail-type": ["AWS API Call via CloudTrail"],
                     "detail": {
                         "eventName": [
-                            "GetSecretValue", "BatchGetSecretValue",
-                            "GetParameter", "GetParameters", "GetParametersByPath"
+                            "GetSecretValue",
+                            "BatchGetSecretValue",
+                            "GetParameter",
+                            "GetParameters",
+                            "GetParametersByPath",
                         ]
-                    }
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Monitor access to password stores and secrets
 
 Parameters:
@@ -169,8 +180,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref PasswordStoreAlertTopic''',
-                terraform_template='''# Monitor access to password stores and secrets
+            Resource: !Ref PasswordStoreAlertTopic""",
+                terraform_template="""# Monitor access to password stores and secrets
 
 variable "alert_email" {
   type        = string
@@ -223,7 +234,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Resource  = aws_sns_topic.password_store_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Password Store Access Detected",
                 alert_description_template="Secret or parameter accessed: {secretId}. Principal: {userIdentity.arn}. Source IP: {sourceIPAddress}.",
@@ -233,7 +244,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Review which secrets or parameters were accessed",
                     "Check the source IP address and location",
                     "Examine access patterns for bulk retrieval behaviour",
-                    "Review CloudTrail logs for subsequent API calls using retrieved credentials"
+                    "Review CloudTrail logs for subsequent API calls using retrieved credentials",
                 ],
                 containment_actions=[
                     "Rotate the accessed secrets immediately if unauthorised",
@@ -241,8 +252,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Review and restrict IAM policies granting secrets access",
                     "Enable resource-based policies on sensitive secrets",
                     "Implement VPC endpoints for Secrets Manager to restrict network access",
-                    "Enable automatic secret rotation where applicable"
-                ]
+                    "Enable automatic secret rotation where applicable",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known applications and deployment pipelines that legitimately access secrets",
@@ -251,9 +262,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         # Strategy 2: Bulk Secrets Access Pattern Detection
         DetectionStrategy(
             strategy_id="t1555-bulk-secrets",
@@ -263,14 +273,14 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn, eventName, requestParameters.secretId, sourceIPAddress
+                query="""fields @timestamp, userIdentity.arn, eventName, requestParameters.secretId, sourceIPAddress
 | filter eventSource in ["secretsmanager.amazonaws.com", "ssm.amazonaws.com"]
 | filter eventName in ["GetSecretValue", "GetParameter", "GetParameters", "GetParametersByPath"]
 | stats count() as access_count, count_distinct(coalesce(requestParameters.secretId, requestParameters.name)) as unique_secrets
   by userIdentity.arn, sourceIPAddress, bin(10m)
 | filter access_count > 10 or unique_secrets > 5
-| sort access_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort access_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Alert on bulk password store access patterns
 
 Parameters:
@@ -314,8 +324,8 @@ Resources:
       Threshold: 10
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
-        - !Ref BulkAccessAlertTopic''',
-                terraform_template='''# Alert on bulk password store access patterns
+        - !Ref BulkAccessAlertTopic""",
+                terraform_template="""# Alert on bulk password store access patterns
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -362,7 +372,7 @@ resource "aws_cloudwatch_metric_alarm" "bulk_access" {
   threshold           = 10
   comparison_operator = "GreaterThanThreshold"
   alarm_actions       = [aws_sns_topic.bulk_access_alerts.arn]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Bulk Password Store Access Detected",
                 alert_description_template="High volume of password store access detected. Principal: {principal}. {access_count} accesses in 10 minutes. {unique_secrets} unique secrets accessed.",
@@ -372,7 +382,7 @@ resource "aws_cloudwatch_metric_alarm" "bulk_access" {
                     "List all secrets and parameters accessed",
                     "Check if the source IP is expected for this principal",
                     "Review subsequent API calls to identify how credentials were used",
-                    "Search for lateral movement attempts following credential access"
+                    "Search for lateral movement attempts following credential access",
                 ],
                 containment_actions=[
                     "Immediately revoke the accessing principal's credentials",
@@ -380,8 +390,8 @@ resource "aws_cloudwatch_metric_alarm" "bulk_access" {
                     "Review and restrict IAM policies granting bulk secrets access",
                     "Implement resource-based policies requiring additional authentication",
                     "Enable MFA requirements for sensitive secrets access",
-                    "Configure VPC endpoints to restrict access to on-premises network only"
-                ]
+                    "Configure VPC endpoints to restrict access to on-premises network only",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal access patterns; exclude deployment and backup systems with documented business justification",
@@ -390,9 +400,8 @@ resource "aws_cloudwatch_metric_alarm" "bulk_access" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled", "CloudTrail logs sent to CloudWatch"]
+            prerequisites=["CloudTrail enabled", "CloudTrail logs sent to CloudWatch"],
         ),
-
         # Strategy 3: Browser Credential Store Access on EC2
         DetectionStrategy(
             strategy_id="t1555-browser-creds",
@@ -402,13 +411,13 @@ resource "aws_cloudwatch_metric_alarm" "bulk_access" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message, instanceId, processName, commandLine
+                query="""fields @timestamp, @message, instanceId, processName, commandLine
 | filter @message like /Login Data|key4.db|Cookies|logins.json|passwords.db|Chrome.*User Data|Firefox.*Profiles/
 | filter @message like /sqlite3|python|powershell|cmd.exe|bash/
 | stats count() as access_attempts by instanceId, processName, bin(5m)
 | filter access_attempts > 0
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect browser password store access on EC2 instances
 
 Parameters:
@@ -452,8 +461,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       AlarmActions:
-        - !Ref BrowserCredAlertTopic''',
-                terraform_template='''# Detect browser password store access on EC2 instances
+        - !Ref BrowserCredAlertTopic""",
+                terraform_template="""# Detect browser password store access on EC2 instances
 
 variable "cloudwatch_log_group" {
   type        = string
@@ -500,7 +509,7 @@ resource "aws_cloudwatch_metric_alarm" "browser_cred_access" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   alarm_actions       = [aws_sns_topic.browser_cred_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Browser Password Store Access Detected",
                 alert_description_template="Access to browser password database detected on instance {instance_id}. Process: {process_name}. Command: {command_line}.",
@@ -510,7 +519,7 @@ resource "aws_cloudwatch_metric_alarm" "browser_cred_access" {
                     "Check if legitimate administrative activity was occurring",
                     "Search for exfiltration of password database files",
                     "Review recent logins and user sessions on the instance",
-                    "Check for presence of credential dumping tools (LaZagne, ChromePass, etc.)"
+                    "Check for presence of credential dumping tools (LaZagne, ChromePass, etc.)",
                 ],
                 containment_actions=[
                     "Isolate the affected instance from the network",
@@ -518,8 +527,8 @@ resource "aws_cloudwatch_metric_alarm" "browser_cred_access" {
                     "Remove browser password databases from the instance",
                     "Review and disable browser password storage via GPO/configuration",
                     "Force password reset for users with sessions on the instance",
-                    "Scan for malware and credential harvesting tools"
-                ]
+                    "Scan for malware and credential harvesting tools",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised backup and migration tools; exclude browser update processes",
@@ -528,9 +537,11 @@ resource "aws_cloudwatch_metric_alarm" "browser_cred_access" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["CloudWatch Logs Agent installed", "File access logging enabled"]
+            prerequisites=[
+                "CloudWatch Logs Agent installed",
+                "File access logging enabled",
+            ],
         ),
-
         # Strategy 4: GCP Secret Manager Access
         DetectionStrategy(
             strategy_id="t1555-gcp-secrets",
@@ -543,7 +554,7 @@ resource "aws_cloudwatch_metric_alarm" "browser_cred_access" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName="google.cloud.secretmanager.v1.SecretManagerService.AccessSecretVersion"
 OR protoPayload.methodName="google.cloud.secretmanager.v1.SecretManagerService.GetSecretVersion"''',
-                gcp_terraform_template='''# GCP: Monitor Secret Manager access
+                gcp_terraform_template="""# GCP: Monitor Secret Manager access
 
 variable "project_id" {
   type        = string
@@ -610,7 +621,7 @@ resource "google_monitoring_alert_policy" "secret_access" {
     content   = "Secret Manager access detected. Verify access was authorised and investigate if suspicious."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Secret Manager Access Detected",
                 alert_description_template="Secret accessed from Secret Manager. Principal: {principal}. Secret: {resource_name}.",
@@ -620,7 +631,7 @@ resource "google_monitoring_alert_policy" "secret_access" {
                     "Review which specific secrets were accessed",
                     "Check the source location (GCE instance, Cloud Function, etc.)",
                     "Examine access patterns for bulk retrieval behaviour",
-                    "Review subsequent Cloud Audit Logs for credential usage"
+                    "Review subsequent Cloud Audit Logs for credential usage",
                 ],
                 containment_actions=[
                     "Rotate the accessed secrets if unauthorised access detected",
@@ -628,8 +639,8 @@ resource "google_monitoring_alert_policy" "secret_access" {
                     "Review and restrict IAM roles granting secretmanager.versions.access",
                     "Enable CMEK encryption for sensitive secrets",
                     "Implement VPC Service Controls to restrict secret access",
-                    "Enable automatic secret rotation"
-                ]
+                    "Enable automatic secret rotation",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known service accounts used by applications",
@@ -638,9 +649,8 @@ resource "google_monitoring_alert_policy" "secret_access" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled"],
         ),
-
         # Strategy 5: Kubernetes Secrets Access
         DetectionStrategy(
             strategy_id="t1555-k8s-secrets",
@@ -650,12 +660,12 @@ resource "google_monitoring_alert_policy" "secret_access" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query=r'''fields @timestamp, @message, kubernetes.pod_name, kubernetes.namespace_name
+                query=r"""fields @timestamp, @message, kubernetes.pod_name, kubernetes.namespace_name
 | filter @message like /\/run\/secrets\/kubernetes.io|KUBECTL.*get.*secrets|base64.*decode|env.*SECRET/
 | stats count() as secret_access by kubernetes.pod_name, kubernetes.namespace_name, bin(10m)
 | filter secret_access > 3
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect Kubernetes secrets access in EKS
 
 Parameters:
@@ -700,8 +710,8 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
-        - !Ref K8sSecretsAlertTopic''',
-                terraform_template='''# Detect Kubernetes secrets access in EKS
+        - !Ref K8sSecretsAlertTopic""",
+                terraform_template="""# Detect Kubernetes secrets access in EKS
 
 variable "eks_log_group" {
   type        = string
@@ -749,7 +759,7 @@ resource "aws_cloudwatch_metric_alarm" "k8s_secrets" {
   threshold           = 5
   comparison_operator = "GreaterThanThreshold"
   alarm_actions       = [aws_sns_topic.k8s_secrets_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Kubernetes Secrets Access Detected",
                 alert_description_template="Unusual access to Kubernetes secrets detected in pod {pod_name}. Namespace: {namespace}. {secret_access} access attempts in 10 minutes.",
@@ -759,7 +769,7 @@ resource "aws_cloudwatch_metric_alarm" "k8s_secrets" {
                     "Check if the pod spec includes suspicious volume mounts",
                     "Examine the container image and its provenance",
                     "Review kubectl audit logs for secret enumeration",
-                    "Check for lateral movement attempts using extracted credentials"
+                    "Check for lateral movement attempts using extracted credentials",
                 ],
                 containment_actions=[
                     "Delete the suspicious pod immediately",
@@ -767,8 +777,8 @@ resource "aws_cloudwatch_metric_alarm" "k8s_secrets" {
                     "Review and restrict service account RBAC permissions",
                     "Enable Pod Security Admission to enforce restrictive policies",
                     "Update the container image if compromised",
-                    "Implement network policies to restrict pod communication"
-                ]
+                    "Implement network policies to restrict pod communication",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal secret access patterns for each application; exclude init containers that legitimately read secrets",
@@ -777,17 +787,19 @@ resource "aws_cloudwatch_metric_alarm" "k8s_secrets" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$10-25",
-            prerequisites=["EKS cluster with CloudWatch Container Insights", "Audit logging enabled"]
-        )
+            prerequisites=[
+                "EKS cluster with CloudWatch Container Insights",
+                "Audit logging enabled",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1555-aws-secrets-access",
         "t1555-bulk-secrets",
         "t1555-gcp-secrets",
         "t1555-k8s-secrets",
-        "t1555-browser-creds"
+        "t1555-browser-creds",
     ],
     total_effort_hours=5.5,
-    coverage_improvement="+22% improvement for Credential Access tactic"
+    coverage_improvement="+22% improvement for Credential Access tactic",
 )

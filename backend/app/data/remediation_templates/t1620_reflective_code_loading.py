@@ -24,7 +24,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Reflective Code Loading",
     tactic_ids=["TA0005"],
     mitre_url="https://attack.mitre.org/techniques/T1620/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries employ reflective code loading to conceal malicious payload "
@@ -39,7 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Enables payloads to remain encrypted until execution",
             "Masks activity within legitimate processes",
             "Bypasses file system monitoring solutions",
-            "Commonly used by post-exploitation frameworks"
+            "Commonly used by post-exploitation frameworks",
         ],
         known_threat_actors=["FIN7", "Lazarus Group"],
         recent_campaigns=[
@@ -47,14 +46,14 @@ TEMPLATE = RemediationTemplate(
                 name="FIN7 .NET Assembly Loading",
                 year=2021,
                 description="Loaded .NET assemblies via Reflection.Assembly::Load to execute payloads in-memory",
-                reference_url="https://attack.mitre.org/groups/G0046/"
+                reference_url="https://attack.mitre.org/groups/G0046/",
             ),
             Campaign(
                 name="Lazarus Group DLL Overwriting",
                 year=2020,
                 description="Overwrote in-memory DLL function code with shellcode for execution",
-                reference_url="https://attack.mitre.org/groups/G0032/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0032/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -68,13 +67,12 @@ TEMPLATE = RemediationTemplate(
             "Evasion of endpoint protection",
             "Difficult forensic investigation",
             "Enables persistence mechanisms",
-            "Facilitates lateral movement"
+            "Facilitates lateral movement",
         ],
         typical_attack_phase="defense_evasion",
         often_precedes=["T1055", "T1059", "T1070"],
-        often_follows=["T1059.001", "T1203", "T1566"]
+        often_follows=["T1059.001", "T1203", "T1566"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1620-aws-ec2-memory",
@@ -84,13 +82,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, host, process_name, event_type
+                query="""fields @timestamp, host, process_name, event_type
 | filter event_type = "memory_allocation"
 | filter (syscall = "VirtualAlloc" or syscall = "VirtualProtect" or syscall = "CreateThread")
 | stats count(*) as alloc_count by host, process_name, bin(5m)
 | filter alloc_count > 3
-| sort alloc_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort alloc_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect reflective code loading via memory allocation patterns
 
 Parameters:
@@ -132,8 +130,8 @@ Resources:
       Threshold: 10
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect reflective code loading via memory allocation patterns
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect reflective code loading via memory allocation patterns
 
 variable "security_log_group" {
   type        = string
@@ -178,7 +176,7 @@ resource "aws_cloudwatch_metric_alarm" "reflective_loading" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Reflective Code Loading Detected",
                 alert_description_template="Suspicious memory allocation pattern detected on {host} in process {process_name}.",
@@ -187,15 +185,15 @@ resource "aws_cloudwatch_metric_alarm" "reflective_loading" {
                     "Check process for known malicious signatures",
                     "Analyse memory dumps for injected code",
                     "Review network connections from affected process",
-                    "Check for related suspicious activity timeline"
+                    "Check for related suspicious activity timeline",
                 ],
                 containment_actions=[
                     "Isolate affected EC2 instance",
                     "Terminate suspicious process",
                     "Capture memory dump for forensics",
                     "Review EDR/AV logs for related alerts",
-                    "Check for lateral movement indicators"
-                ]
+                    "Check for lateral movement indicators",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Legitimate software may use dynamic memory allocation; baseline normal process behaviour",
@@ -204,9 +202,10 @@ resource "aws_cloudwatch_metric_alarm" "reflective_loading" {
             implementation_effort=EffortLevel.HIGH,
             implementation_time="4-6 hours",
             estimated_monthly_cost="$20-50",
-            prerequisites=["Process monitoring agent (e.g., Sysmon, osquery) forwarding to CloudWatch"]
+            prerequisites=[
+                "Process monitoring agent (e.g., Sysmon, osquery) forwarding to CloudWatch"
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1620-aws-dotnet-assembly",
             name="EC2 .NET Assembly Reflective Loading",
@@ -215,13 +214,13 @@ resource "aws_cloudwatch_metric_alarm" "reflective_loading" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, host, process_name, command_line, event_data
+                query="""fields @timestamp, host, process_name, command_line, event_data
 | filter event_id = 7
 | filter (event_data like /Assembly\\.Load/ or event_data like /Reflection\\.Assembly/ or command_line like /FromBase64String/)
 | stats count(*) as load_count by host, process_name, bin(5m)
 | filter load_count > 2
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect .NET reflective assembly loading
 
 Parameters:
@@ -262,8 +261,8 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect .NET reflective assembly loading
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect .NET reflective assembly loading
 
 variable "security_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -301,7 +300,7 @@ resource "aws_cloudwatch_metric_alarm" "dotnet_loading" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title=".NET Reflective Assembly Loading",
                 alert_description_template="Detected .NET Assembly.Load() execution on {host}.",
@@ -310,15 +309,15 @@ resource "aws_cloudwatch_metric_alarm" "dotnet_loading" {
                     "Check for Base64-encoded payloads",
                     "Analyse parent process chain",
                     "Review loaded assembly contents if available",
-                    "Check for known malware frameworks (e.g., Cobalt Strike)"
+                    "Check for known malware frameworks (e.g., Cobalt Strike)",
                 ],
                 containment_actions=[
                     "Terminate PowerShell/suspicious process",
                     "Isolate affected system",
                     "Enable constrained language mode for PowerShell",
                     "Review and block malicious scripts",
-                    "Check for persistence mechanisms"
-                ]
+                    "Check for persistence mechanisms",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Legitimate admin scripts may use Assembly.Load; whitelist known tools",
@@ -327,9 +326,8 @@ resource "aws_cloudwatch_metric_alarm" "dotnet_loading" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$10-30",
-            prerequisites=["PowerShell logging and Sysmon forwarding to CloudWatch"]
+            prerequisites=["PowerShell logging and Sysmon forwarding to CloudWatch"],
         ),
-
         DetectionStrategy(
             strategy_id="t1620-gcp-gce-memory",
             name="GCE Suspicious Memory Operations",
@@ -343,7 +341,7 @@ resource "aws_cloudwatch_metric_alarm" "dotnet_loading" {
 (jsonPayload.syscall="mmap" OR jsonPayload.syscall="mprotect")
 jsonPayload.flags=~".*RWX.*"
 jsonPayload.event_type="memory_operation"''',
-                gcp_terraform_template='''# GCP: Detect reflective code loading via memory operations
+                gcp_terraform_template="""# GCP: Detect reflective code loading via memory operations
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -396,7 +394,7 @@ resource "google_monitoring_alert_policy" "reflective_loading" {
   alert_strategy {
     auto_close = "1800s"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Reflective Code Loading Detected",
                 alert_description_template="Suspicious RWX memory operations detected on GCE instance.",
@@ -405,15 +403,15 @@ resource "google_monitoring_alert_policy" "reflective_loading" {
                     "Check for anonymous file mappings",
                     "Analyse process memory for malicious code",
                     "Review Cloud Audit Logs for related activity",
-                    "Check for lateral movement indicators"
+                    "Check for lateral movement indicators",
                 ],
                 containment_actions=[
                     "Isolate affected GCE instance",
                     "Terminate suspicious process",
                     "Create disk snapshot for forensics",
                     "Review VPC flow logs for exfiltration",
-                    "Check for compromised service accounts"
-                ]
+                    "Check for compromised service accounts",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Some legitimate applications use RWX memory; baseline normal behaviour",
@@ -422,9 +420,8 @@ resource "google_monitoring_alert_policy" "reflective_loading" {
             implementation_effort=EffortLevel.HIGH,
             implementation_time="4-6 hours",
             estimated_monthly_cost="$25-60",
-            prerequisites=["OS-level monitoring agent forwarding to Cloud Logging"]
+            prerequisites=["OS-level monitoring agent forwarding to Cloud Logging"],
         ),
-
         DetectionStrategy(
             strategy_id="t1620-gcp-container-memory",
             name="GKE Container Memory Injection Detection",
@@ -438,7 +435,7 @@ resource "google_monitoring_alert_policy" "reflective_loading" {
 (jsonPayload.syscall="mmap" OR jsonPayload.syscall="execve")
 jsonPayload.flags=~".*ANONYMOUS.*"
 jsonPayload.event_type="container_memory_operation"''',
-                gcp_terraform_template='''# GCP: Detect reflective loading in GKE containers
+                gcp_terraform_template="""# GCP: Detect reflective loading in GKE containers
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -496,7 +493,7 @@ resource "google_monitoring_alert_policy" "container_injection" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GKE: Container Memory Injection Detected",
                 alert_description_template="In-memory code execution detected in container {container_name} in namespace {namespace_name}.",
@@ -505,15 +502,15 @@ resource "google_monitoring_alert_policy" "container_injection" {
                     "Check for container escape attempts",
                     "Analyse container process tree",
                     "Review pod security context and policies",
-                    "Check for compromised secrets or service accounts"
+                    "Check for compromised secrets or service accounts",
                 ],
                 containment_actions=[
                     "Terminate affected pod immediately",
                     "Isolate namespace if widespread",
                     "Review and harden pod security policies",
                     "Scan container images for vulnerabilities",
-                    "Rotate compromised credentials"
-                ]
+                    "Rotate compromised credentials",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Container memory injection is rarely legitimate; investigate all alerts",
@@ -522,11 +519,15 @@ resource "google_monitoring_alert_policy" "container_injection" {
             implementation_effort=EffortLevel.HIGH,
             implementation_time="3-5 hours",
             estimated_monthly_cost="$30-70",
-            prerequisites=["GKE with runtime security monitoring enabled"]
-        )
+            prerequisites=["GKE with runtime security monitoring enabled"],
+        ),
     ],
-
-    recommended_order=["t1620-aws-dotnet-assembly", "t1620-gcp-container-memory", "t1620-aws-ec2-memory", "t1620-gcp-gce-memory"],
+    recommended_order=[
+        "t1620-aws-dotnet-assembly",
+        "t1620-gcp-container-memory",
+        "t1620-aws-ec2-memory",
+        "t1620-gcp-gce-memory",
+    ],
     total_effort_hours=14.0,
-    coverage_improvement="+25% improvement for Defence Evasion tactic"
+    coverage_improvement="+25% improvement for Defence Evasion tactic",
 )

@@ -29,6 +29,7 @@ router = APIRouter()
 # Response schemas
 class AuditLogActorResponse(BaseModel):
     """Actor (user) who performed the action."""
+
     id: Optional[UUID] = None
     email: Optional[str] = None
     full_name: Optional[str] = None
@@ -36,6 +37,7 @@ class AuditLogActorResponse(BaseModel):
 
 class AuditLogResponse(BaseModel):
     """Audit log entry response."""
+
     id: UUID
     action: str
     resource_type: Optional[str]
@@ -53,6 +55,7 @@ class AuditLogResponse(BaseModel):
 
 class AuditLogListResponse(BaseModel):
     """Paginated audit log list response."""
+
     items: List[AuditLogResponse]
     total: int
     page: int
@@ -62,6 +65,7 @@ class AuditLogListResponse(BaseModel):
 
 class AuditStatsResponse(BaseModel):
     """Audit statistics response."""
+
     total_events: int
     events_today: int
     events_this_week: int
@@ -77,8 +81,12 @@ async def list_audit_logs(
     actor_id: Optional[UUID] = Query(None, description="Filter by actor user ID"),
     resource_type: Optional[str] = Query(None, description="Filter by resource type"),
     resource_id: Optional[str] = Query(None, description="Filter by resource ID"),
-    start_date: Optional[datetime] = Query(None, description="Filter events after this date"),
-    end_date: Optional[datetime] = Query(None, description="Filter events before this date"),
+    start_date: Optional[datetime] = Query(
+        None, description="Filter events after this date"
+    ),
+    end_date: Optional[datetime] = Query(
+        None, description="Filter events before this date"
+    ),
     auth: AuthContext = Depends(require_role(UserRole.OWNER, UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
@@ -112,6 +120,7 @@ async def list_audit_logs(
 
     # Get total count
     from sqlalchemy import func
+
     count_result = await db.execute(
         select(func.count(AuditLog.id)).where(and_(*conditions))
     )
@@ -139,18 +148,24 @@ async def list_audit_logs(
                 email=log.user.email,
                 full_name=log.user.full_name,
             )
-        items.append(AuditLogResponse(
-            id=log.id,
-            action=log.action.value if isinstance(log.action, AuditLogAction) else log.action,
-            resource_type=log.resource_type,
-            resource_id=log.resource_id,
-            details=log.details,
-            ip_address=log.ip_address,
-            success=log.success,
-            error_message=log.error_message,
-            created_at=log.created_at,
-            actor=actor,
-        ))
+        items.append(
+            AuditLogResponse(
+                id=log.id,
+                action=(
+                    log.action.value
+                    if isinstance(log.action, AuditLogAction)
+                    else log.action
+                ),
+                resource_type=log.resource_type,
+                resource_id=log.resource_id,
+                details=log.details,
+                ip_address=log.ip_address,
+                success=log.success,
+                error_message=log.error_message,
+                created_at=log.created_at,
+                actor=actor,
+            )
+        )
 
     pages = (total + page_size - 1) // page_size
 
@@ -171,11 +186,13 @@ async def list_action_types(
     actions = []
     for action in AuditLogAction:
         category = action.value.split(".")[0]
-        actions.append({
-            "value": action.value,
-            "label": action.value.replace(".", " ").replace("_", " ").title(),
-            "category": category,
-        })
+        actions.append(
+            {
+                "value": action.value,
+                "label": action.value.replace(".", " ").replace("_", " ").title(),
+                "category": category,
+            }
+        )
     return {"actions": actions}
 
 
@@ -230,7 +247,7 @@ async def get_audit_stats(
     # Top actions (last 30 days)
     month_start = today_start - timedelta(days=30)
     top_actions_result = await db.execute(
-        select(AuditLog.action, func.count(AuditLog.id).label('count'))
+        select(AuditLog.action, func.count(AuditLog.id).label("count"))
         .where(
             and_(
                 AuditLog.organization_id == auth.organization_id,
@@ -238,17 +255,20 @@ async def get_audit_stats(
             )
         )
         .group_by(AuditLog.action)
-        .order_by(desc('count'))
+        .order_by(desc("count"))
         .limit(10)
     )
     top_actions = [
-        {"action": row.action.value if hasattr(row.action, 'value') else row.action, "count": row.count}
+        {
+            "action": row.action.value if hasattr(row.action, "value") else row.action,
+            "count": row.count,
+        }
         for row in top_actions_result.fetchall()
     ]
 
     # Top actors (last 30 days)
     top_actors_result = await db.execute(
-        select(AuditLog.user_id, func.count(AuditLog.id).label('count'))
+        select(AuditLog.user_id, func.count(AuditLog.id).label("count"))
         .where(
             and_(
                 AuditLog.organization_id == auth.organization_id,
@@ -257,7 +277,7 @@ async def get_audit_stats(
             )
         )
         .group_by(AuditLog.user_id)
-        .order_by(desc('count'))
+        .order_by(desc("count"))
         .limit(10)
     )
     actor_rows = top_actors_result.fetchall()
@@ -266,19 +286,19 @@ async def get_audit_stats(
     top_actors = []
     if actor_rows:
         actor_ids = [row.user_id for row in actor_rows]
-        users_result = await db.execute(
-            select(User).where(User.id.in_(actor_ids))
-        )
+        users_result = await db.execute(select(User).where(User.id.in_(actor_ids)))
         users_map = {u.id: u for u in users_result.scalars().all()}
 
         for row in actor_rows:
             user = users_map.get(row.user_id)
-            top_actors.append({
-                "user_id": str(row.user_id),
-                "full_name": user.full_name if user else "Unknown",
-                "email": user.email if user else "Unknown",
-                "count": row.count,
-            })
+            top_actors.append(
+                {
+                    "user_id": str(row.user_id),
+                    "full_name": user.full_name if user else "Unknown",
+                    "email": user.email if user else "Unknown",
+                    "count": row.count,
+                }
+            )
 
     return AuditStatsResponse(
         total_events=total_events,
@@ -330,7 +350,9 @@ async def get_audit_log(
 
     return AuditLogResponse(
         id=log.id,
-        action=log.action.value if isinstance(log.action, AuditLogAction) else log.action,
+        action=(
+            log.action.value if isinstance(log.action, AuditLogAction) else log.action
+        ),
         resource_type=log.resource_type,
         resource_id=log.resource_id,
         details=log.details,

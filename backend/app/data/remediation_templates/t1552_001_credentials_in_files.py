@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Unsecured Credentials: Credentials in Files",
     tactic_ids=["TA0006"],
     mitre_url="https://attack.mitre.org/techniques/T1552/001/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries search compromised systems and web servers for files "
@@ -35,7 +34,7 @@ TEMPLATE = RemediationTemplate(
             ".env files frequently exposed via misconfigured web servers",
             "Credentials found here often have excessive permissions",
             "No authentication required if files are publicly accessible",
-            "Automated scanning makes large-scale discovery trivial"
+            "Automated scanning makes large-scale discovery trivial",
         ],
         known_threat_actors=["ShinyHunters", "Nemesis", "TeamTNT", "Scattered Spider"],
         recent_campaigns=[
@@ -43,14 +42,14 @@ TEMPLATE = RemediationTemplate(
                 name="AWS .env File Attack",
                 year=2024,
                 description="Attackers scanned 230M+ AWS environments for exposed .env files, stealing credentials and deploying malicious Lambda functions",
-                reference_url="https://unit42.paloaltonetworks.com/large-scale-cloud-extortion-operation/"
+                reference_url="https://unit42.paloaltonetworks.com/large-scale-cloud-extortion-operation/",
             ),
             Campaign(
                 name="TeamTNT Cloud Credential Campaign",
                 year=2024,
                 description="Multi-cloud credential theft targeting AWS, GCP, and Azure via exposed config files",
-                reference_url="https://www.darkreading.com/cloud-security/aws-cloud-credential-stealing-campaign-spreads-azure-google"
-            )
+                reference_url="https://www.darkreading.com/cloud-security/aws-cloud-credential-stealing-campaign-spreads-azure-google",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -65,13 +64,12 @@ TEMPLATE = RemediationTemplate(
             "Data exfiltration at scale",
             "Cryptomining and resource abuse",
             "Regulatory fines for credential exposure",
-            "Reputational damage"
+            "Reputational damage",
         ],
         typical_attack_phase="credential_access",
         often_precedes=["T1078.004", "T1087.004", "T1530"],
-        often_follows=["T1190", "T1595"]
+        often_follows=["T1190", "T1595"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - GuardDuty for credential exfiltration
         DetectionStrategy(
@@ -85,9 +83,9 @@ TEMPLATE = RemediationTemplate(
                 guardduty_finding_types=[
                     "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.OutsideAWS",
                     "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.InsideAWS",
-                    "CredentialAccess:IAMUser/AnomalousBehavior"
+                    "CredentialAccess:IAMUser/AnomalousBehavior",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect credential exfiltration from files
 
 Parameters:
@@ -133,8 +131,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect credential exfiltration from files
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect credential exfiltration from files
 
 variable "alert_email" {
   type = string
@@ -186,7 +184,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Credential Exfiltration Detected",
                 alert_description_template="Credentials used from external location. Finding: {finding_type}. Source IP: {source_ip}.",
@@ -194,14 +192,14 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Identify the source of the credentials (which file/service)",
                     "Check CloudTrail for all API calls using these credentials",
                     "Determine what resources were accessed",
-                    "Identify how the credentials were exposed"
+                    "Identify how the credentials were exposed",
                 ],
                 containment_actions=[
                     "Immediately rotate the compromised credentials",
                     "Revoke any active sessions",
                     "Block the source IP if known malicious",
-                    "Scan for exposed .env files on web servers"
-                ]
+                    "Scan for exposed .env files on web servers",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist known CI/CD systems and deployment tools",
@@ -210,9 +208,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$4/million events",
-            prerequisites=["GuardDuty enabled"]
+            prerequisites=["GuardDuty enabled"],
         ),
-
         # Strategy 2: AWS - Detect .env file access via ALB/CloudFront
         DetectionStrategy(
             strategy_id="t1552001-aws-env-access",
@@ -222,12 +219,12 @@ resource "aws_sns_topic_policy" "allow_events" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message
+                query="""fields @timestamp, @message
 | filter @message like /\\.env/
 | filter @message like /GET|POST|HEAD/
 | stats count(*) as attempts by bin(1h)
-| filter attempts > 10''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| filter attempts > 10""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Alert on .env file access attempts
 
 Parameters:
@@ -268,8 +265,8 @@ Resources:
       Threshold: 10
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Alert on .env file access attempts
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Alert on .env file access attempts
 
 variable "alb_log_group" {
   type = string
@@ -314,7 +311,7 @@ resource "aws_cloudwatch_metric_alarm" "env_access" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title=".env File Access Attempts Detected",
                 alert_description_template="Multiple attempts to access .env files detected. {attempts} attempts in the last hour.",
@@ -322,14 +319,14 @@ resource "aws_cloudwatch_metric_alarm" "env_access" {
                     "Review source IPs attempting access",
                     "Check if .env files are actually exposed",
                     "Verify web server configuration blocks sensitive files",
-                    "Scan for credentials in version control"
+                    "Scan for credentials in version control",
                 ],
                 containment_actions=[
                     "Block malicious IPs at WAF/security group",
                     "Configure web server to deny access to .env files",
                     "Rotate any credentials that may have been exposed",
-                    "Add .env to .gitignore if not already"
-                ]
+                    "Add .env to .gitignore if not already",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Threshold may need adjustment based on traffic",
@@ -338,9 +335,8 @@ resource "aws_cloudwatch_metric_alarm" "env_access" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["ALB access logs enabled", "CloudWatch Logs configured"]
+            prerequisites=["ALB access logs enabled", "CloudWatch Logs configured"],
         ),
-
         # Strategy 3: GCP - Security Command Center + Cloud Logging
         DetectionStrategy(
             strategy_id="t1552001-gcp-logging",
@@ -355,7 +351,7 @@ resource "aws_cloudwatch_metric_alarm" "env_access" {
 httpRequest.requestUrl=~".*\\.env.*"
 OR httpRequest.requestUrl=~".*config\\.json.*"
 OR httpRequest.requestUrl=~".*credentials.*"''',
-                gcp_terraform_template='''# GCP: Alert on sensitive file access attempts
+                gcp_terraform_template="""# GCP: Alert on sensitive file access attempts
 
 variable "project_id" {
   type = string
@@ -406,7 +402,7 @@ resource "google_monitoring_alert_policy" "sensitive_file_alert" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Sensitive File Access Detected",
                 alert_description_template="Attempts to access sensitive configuration files detected via load balancer.",
@@ -414,14 +410,14 @@ resource "google_monitoring_alert_policy" "sensitive_file_alert" {
                     "Review Cloud Audit Logs for source details",
                     "Check if application is exposing config files",
                     "Verify Cloud Storage bucket permissions",
-                    "Scan GCE instances for exposed credential files"
+                    "Scan GCE instances for exposed credential files",
                 ],
                 containment_actions=[
                     "Configure Cloud Armor to block requests for sensitive files",
                     "Rotate any potentially exposed service account keys",
                     "Review and restrict IAM permissions",
-                    "Enable VPC Service Controls for sensitive projects"
-                ]
+                    "Enable VPC Service Controls for sensitive projects",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Adjust URL patterns based on application structure",
@@ -430,9 +426,8 @@ resource "google_monitoring_alert_policy" "sensitive_file_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["HTTP(S) Load Balancer logging enabled"]
+            prerequisites=["HTTP(S) Load Balancer logging enabled"],
         ),
-
         # Strategy 4: AWS - Secrets Manager access anomaly
         DetectionStrategy(
             strategy_id="t1552001-aws-secrets-access",
@@ -442,13 +437,13 @@ resource "google_monitoring_alert_policy" "sensitive_file_alert" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn, eventName, requestParameters.secretId
+                query="""fields @timestamp, userIdentity.arn, eventName, requestParameters.secretId
 | filter eventSource = "secretsmanager.amazonaws.com"
 | filter eventName in ["GetSecretValue", "BatchGetSecretValue"]
 | stats count(*) as access_count by userIdentity.arn, bin(1h)
 | filter access_count > 20
-| sort access_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort access_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Alert on unusual Secrets Manager access
 
 Parameters:
@@ -489,8 +484,8 @@ Resources:
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Alert on unusual Secrets Manager access
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Alert on unusual Secrets Manager access
 
 variable "cloudtrail_log_group" {
   type = string
@@ -535,7 +530,7 @@ resource "aws_cloudwatch_metric_alarm" "secrets_access" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Unusual Secrets Manager Access",
                 alert_description_template="High volume of Secrets Manager access detected. {access_count} accesses in 1 hour.",
@@ -543,14 +538,14 @@ resource "aws_cloudwatch_metric_alarm" "secrets_access" {
                     "Identify which IAM principal is accessing secrets",
                     "Check if access pattern matches normal application behaviour",
                     "Review which secrets were accessed",
-                    "Verify the source IP and user agent"
+                    "Verify the source IP and user agent",
                 ],
                 containment_actions=[
                     "Rotate accessed secrets immediately",
                     "Restrict IAM permissions for the principal",
                     "Enable secret rotation if not already",
-                    "Review resource policies on secrets"
-                ]
+                    "Review resource policies on secrets",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal access patterns; exclude known batch processes",
@@ -559,16 +554,15 @@ resource "aws_cloudwatch_metric_alarm" "secrets_access" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled", "Logs in CloudWatch"]
-        )
+            prerequisites=["CloudTrail enabled", "Logs in CloudWatch"],
+        ),
     ],
-
     recommended_order=[
         "t1552001-aws-guardduty",
         "t1552001-aws-env-access",
         "t1552001-gcp-logging",
-        "t1552001-aws-secrets-access"
+        "t1552001-aws-secrets-access",
     ],
     total_effort_hours=4.0,
-    coverage_improvement="+25% improvement for Credential Access tactic"
+    coverage_improvement="+25% improvement for Credential Access tactic",
 )

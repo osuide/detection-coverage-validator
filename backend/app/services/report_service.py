@@ -106,32 +106,34 @@ class ReportService:
 
         # Custom styles
         title_style = ParagraphStyle(
-            'CustomTitle',
-            parent=styles['Heading1'],
+            "CustomTitle",
+            parent=styles["Heading1"],
             fontSize=24,
             spaceAfter=30,
         )
         heading_style = ParagraphStyle(
-            'CustomHeading',
-            parent=styles['Heading2'],
+            "CustomHeading",
+            parent=styles["Heading2"],
             fontSize=16,
             spaceAfter=12,
             spaceBefore=20,
         )
         subheading_style = ParagraphStyle(
-            'CustomSubheading',
-            parent=styles['Heading3'],
+            "CustomSubheading",
+            parent=styles["Heading3"],
             fontSize=12,
             spaceAfter=8,
         )
 
         # Title
         story.append(Paragraph("Detection Coverage Report", title_style))
-        story.append(Paragraph(f"Account: {account.name}", styles['Normal']))
-        story.append(Paragraph(
-            f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
-            styles['Normal']
-        ))
+        story.append(Paragraph(f"Account: {account.name}", styles["Normal"]))
+        story.append(
+            Paragraph(
+                f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
+                styles["Normal"],
+            )
+        )
         story.append(Spacer(1, 20))
 
         if include_executive_summary and snapshot:
@@ -139,11 +141,19 @@ class ReportService:
 
         if include_gap_analysis and snapshot:
             story.append(PageBreak())
-            story.extend(await self._build_gap_analysis(snapshot, styles, heading_style, subheading_style))
+            story.extend(
+                await self._build_gap_analysis(
+                    snapshot, styles, heading_style, subheading_style
+                )
+            )
 
         if include_detection_details:
             story.append(PageBreak())
-            story.extend(await self._build_detection_details(cloud_account_id, styles, heading_style))
+            story.extend(
+                await self._build_detection_details(
+                    cloud_account_id, styles, heading_style
+                )
+            )
 
         # Build PDF
         doc.build(story)
@@ -162,68 +172,93 @@ class ReportService:
         story.append(Paragraph("Executive Summary", heading_style))
 
         # Overall metrics
-        story.append(Paragraph(
-            f"<b>Overall Coverage:</b> {snapshot.coverage_percent:.1f}%",
-            styles['Normal']
-        ))
-        story.append(Paragraph(
-            f"<b>Techniques Covered:</b> {snapshot.covered_techniques} of {snapshot.total_techniques}",
-            styles['Normal']
-        ))
-        story.append(Paragraph(
-            f"<b>Partial Coverage:</b> {snapshot.partial_techniques} techniques",
-            styles['Normal']
-        ))
-        story.append(Paragraph(
-            f"<b>Coverage Gaps:</b> {snapshot.uncovered_techniques} techniques",
-            styles['Normal']
-        ))
-        story.append(Paragraph(
-            f"<b>Average Confidence:</b> {snapshot.average_confidence:.2f}",
-            styles['Normal']
-        ))
+        story.append(
+            Paragraph(
+                f"<b>Overall Coverage:</b> {snapshot.coverage_percent:.1f}%",
+                styles["Normal"],
+            )
+        )
+        story.append(
+            Paragraph(
+                f"<b>Techniques Covered:</b> {snapshot.covered_techniques} of {snapshot.total_techniques}",
+                styles["Normal"],
+            )
+        )
+        story.append(
+            Paragraph(
+                f"<b>Partial Coverage:</b> {snapshot.partial_techniques} techniques",
+                styles["Normal"],
+            )
+        )
+        story.append(
+            Paragraph(
+                f"<b>Coverage Gaps:</b> {snapshot.uncovered_techniques} techniques",
+                styles["Normal"],
+            )
+        )
+        story.append(
+            Paragraph(
+                f"<b>Average Confidence:</b> {snapshot.average_confidence:.2f}",
+                styles["Normal"],
+            )
+        )
         story.append(Spacer(1, 15))
 
         # Detection summary
-        story.append(Paragraph(
-            f"<b>Total Detections:</b> {snapshot.total_detections}",
-            styles['Normal']
-        ))
-        story.append(Paragraph(
-            f"<b>Active Detections:</b> {snapshot.active_detections}",
-            styles['Normal']
-        ))
-        story.append(Paragraph(
-            f"<b>Mapped Detections:</b> {snapshot.mapped_detections}",
-            styles['Normal']
-        ))
+        story.append(
+            Paragraph(
+                f"<b>Total Detections:</b> {snapshot.total_detections}",
+                styles["Normal"],
+            )
+        )
+        story.append(
+            Paragraph(
+                f"<b>Active Detections:</b> {snapshot.active_detections}",
+                styles["Normal"],
+            )
+        )
+        story.append(
+            Paragraph(
+                f"<b>Mapped Detections:</b> {snapshot.mapped_detections}",
+                styles["Normal"],
+            )
+        )
         story.append(Spacer(1, 20))
 
         # Tactic coverage table
-        story.append(Paragraph("Coverage by Tactic", styles['Heading3']))
+        story.append(Paragraph("Coverage by Tactic", styles["Heading3"]))
         tactic_data = [["Tactic", "Covered", "Partial", "Uncovered", "Coverage %"]]
 
         for tactic_id, info in snapshot.tactic_coverage.items():
-            tactic_data.append([
-                info.get("name", tactic_id),
-                str(info.get("covered", 0)),
-                str(info.get("partial", 0)),
-                str(info.get("uncovered", 0)),
-                f"{info.get('percent', 0):.1f}%",
-            ])
+            tactic_data.append(
+                [
+                    info.get("name", tactic_id),
+                    str(info.get("covered", 0)),
+                    str(info.get("partial", 0)),
+                    str(info.get("uncovered", 0)),
+                    f"{info.get('percent', 0):.1f}%",
+                ]
+            )
 
-        tactic_table = Table(tactic_data, colWidths=[2.5 * inch, 0.8 * inch, 0.8 * inch, 0.9 * inch, 1 * inch])
-        tactic_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 10),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black),
-            ('FONTSIZE', (0, 1), (-1, -1), 9),
-        ]))
+        tactic_table = Table(
+            tactic_data,
+            colWidths=[2.5 * inch, 0.8 * inch, 0.8 * inch, 0.9 * inch, 1 * inch],
+        )
+        tactic_table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                    ("ALIGN", (1, 0), (-1, -1), "CENTER"),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, 0), 10),
+                    ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
+                    ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
+                    ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                    ("FONTSIZE", (0, 1), (-1, -1), 9),
+                ]
+            )
+        )
         story.append(tactic_table)
 
         return story
@@ -239,39 +274,49 @@ class ReportService:
         story = []
 
         story.append(Paragraph("Gap Analysis", heading_style))
-        story.append(Paragraph(
-            "The following techniques have been identified as priority gaps based on "
-            "threat prevalence and detection difficulty.",
-            styles['Normal']
-        ))
+        story.append(
+            Paragraph(
+                "The following techniques have been identified as priority gaps based on "
+                "threat prevalence and detection difficulty.",
+                styles["Normal"],
+            )
+        )
         story.append(Spacer(1, 15))
 
         if snapshot.top_gaps:
             # Priority gaps table
             gap_data = [["Priority", "Technique ID", "Name", "Tactic"]]
             for gap in snapshot.top_gaps[:15]:
-                gap_data.append([
-                    str(gap.get("priority", 0)),
-                    gap.get("technique_id", ""),
-                    gap.get("name", "")[:40],
-                    gap.get("tactic_name", ""),
-                ])
+                gap_data.append(
+                    [
+                        str(gap.get("priority", 0)),
+                        gap.get("technique_id", ""),
+                        gap.get("name", "")[:40],
+                        gap.get("tactic_name", ""),
+                    ]
+                )
 
-            gap_table = Table(gap_data, colWidths=[0.7 * inch, 1 * inch, 2.5 * inch, 1.8 * inch])
-            gap_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.darkred),
-                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                ('ALIGN', (0, 0), (0, -1), 'CENTER'),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, 0), 10),
-                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-                ('BACKGROUND', (0, 1), (-1, -1), colors.lightpink),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                ('FONTSIZE', (0, 1), (-1, -1), 9),
-            ]))
+            gap_table = Table(
+                gap_data, colWidths=[0.7 * inch, 1 * inch, 2.5 * inch, 1.8 * inch]
+            )
+            gap_table.setStyle(
+                TableStyle(
+                    [
+                        ("BACKGROUND", (0, 0), (-1, 0), colors.darkred),
+                        ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                        ("ALIGN", (0, 0), (0, -1), "CENTER"),
+                        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                        ("FONTSIZE", (0, 0), (-1, 0), 10),
+                        ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
+                        ("BACKGROUND", (0, 1), (-1, -1), colors.lightpink),
+                        ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                        ("FONTSIZE", (0, 1), (-1, -1), 9),
+                    ]
+                )
+            )
             story.append(gap_table)
         else:
-            story.append(Paragraph("No critical gaps identified.", styles['Normal']))
+            story.append(Paragraph("No critical gaps identified.", styles["Normal"]))
 
         return story
 
@@ -288,10 +333,12 @@ class ReportService:
 
         # Get detections
         result = await self.db.execute(
-            select(Detection).where(
+            select(Detection)
+            .where(
                 Detection.cloud_account_id == cloud_account_id,
                 Detection.status == DetectionStatus.ACTIVE,
-            ).limit(50)
+            )
+            .limit(50)
         )
         detections = result.scalars().all()
 
@@ -306,28 +353,36 @@ class ReportService:
                 )
                 mappings = mapping_result.scalars().all()
 
-                detection_data.append([
-                    det.name[:35],
-                    det.detection_type.value.replace("_", " ").title()[:20],
-                    det.region,
-                    str(len(mappings)),
-                ])
+                detection_data.append(
+                    [
+                        det.name[:35],
+                        det.detection_type.value.replace("_", " ").title()[:20],
+                        det.region,
+                        str(len(mappings)),
+                    ]
+                )
 
-            detection_table = Table(detection_data, colWidths=[2.5 * inch, 1.5 * inch, 1 * inch, 1 * inch])
-            detection_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
-                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                ('ALIGN', (2, 0), (-1, -1), 'CENTER'),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, 0), 10),
-                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-                ('BACKGROUND', (0, 1), (-1, -1), colors.lightblue),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                ('FONTSIZE', (0, 1), (-1, -1), 8),
-            ]))
+            detection_table = Table(
+                detection_data, colWidths=[2.5 * inch, 1.5 * inch, 1 * inch, 1 * inch]
+            )
+            detection_table.setStyle(
+                TableStyle(
+                    [
+                        ("BACKGROUND", (0, 0), (-1, 0), colors.darkblue),
+                        ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                        ("ALIGN", (2, 0), (-1, -1), "CENTER"),
+                        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                        ("FONTSIZE", (0, 0), (-1, 0), 10),
+                        ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
+                        ("BACKGROUND", (0, 1), (-1, -1), colors.lightblue),
+                        ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                        ("FONTSIZE", (0, 1), (-1, -1), 8),
+                    ]
+                )
+            )
             story.append(detection_table)
         else:
-            story.append(Paragraph("No detections found.", styles['Normal']))
+            story.append(Paragraph("No detections found.", styles["Normal"]))
 
         return story
 
@@ -358,14 +413,16 @@ class ReportService:
         covered_techniques = {m.technique_id: m.confidence for m in mappings}
 
         # Header
-        writer.writerow([
-            "Technique ID",
-            "Name",
-            "Tactic",
-            "Coverage Status",
-            "Confidence",
-            "Is Subtechnique",
-        ])
+        writer.writerow(
+            [
+                "Technique ID",
+                "Name",
+                "Tactic",
+                "Coverage Status",
+                "Confidence",
+                "Is Subtechnique",
+            ]
+        )
 
         for tech in techniques:
             technique_uuid = tech.id
@@ -378,14 +435,16 @@ class ReportService:
             else:
                 status = "Not Covered"
 
-            writer.writerow([
-                tech.technique_id,
-                tech.name,
-                tech.tactic_id,  # Would need join for tactic name
-                status,
-                f"{confidence:.2f}" if confidence > 0 else "",
-                "Yes" if tech.is_subtechnique else "No",
-            ])
+            writer.writerow(
+                [
+                    tech.technique_id,
+                    tech.name,
+                    tech.tactic_id,  # Would need join for tactic name
+                    status,
+                    f"{confidence:.2f}" if confidence > 0 else "",
+                    "Yes" if tech.is_subtechnique else "No",
+                ]
+            )
 
         return output.getvalue()
 
@@ -397,23 +456,27 @@ class ReportService:
         # Get latest snapshot for gaps
         snapshot = await self._get_latest_snapshot(cloud_account_id)
 
-        writer.writerow([
-            "Priority",
-            "Technique ID",
-            "Name",
-            "Tactic",
-            "Reason",
-        ])
+        writer.writerow(
+            [
+                "Priority",
+                "Technique ID",
+                "Name",
+                "Tactic",
+                "Reason",
+            ]
+        )
 
         if snapshot and snapshot.top_gaps:
             for gap in snapshot.top_gaps:
-                writer.writerow([
-                    gap.get("priority", 0),
-                    gap.get("technique_id", ""),
-                    gap.get("name", ""),
-                    gap.get("tactic_name", ""),
-                    gap.get("reason", ""),
-                ])
+                writer.writerow(
+                    [
+                        gap.get("priority", 0),
+                        gap.get("technique_id", ""),
+                        gap.get("name", ""),
+                        gap.get("tactic_name", ""),
+                        gap.get("reason", ""),
+                    ]
+                )
 
         return output.getvalue()
 
@@ -423,32 +486,34 @@ class ReportService:
         writer = csv.writer(output)
 
         result = await self.db.execute(
-            select(Detection).where(
-                Detection.cloud_account_id == cloud_account_id
-            )
+            select(Detection).where(Detection.cloud_account_id == cloud_account_id)
         )
         detections = result.scalars().all()
 
-        writer.writerow([
-            "Name",
-            "Type",
-            "Status",
-            "Region",
-            "Source ARN",
-            "Is Managed",
-            "Discovered At",
-        ])
+        writer.writerow(
+            [
+                "Name",
+                "Type",
+                "Status",
+                "Region",
+                "Source ARN",
+                "Is Managed",
+                "Discovered At",
+            ]
+        )
 
         for det in detections:
-            writer.writerow([
-                det.name,
-                det.detection_type.value,
-                det.status.value,
-                det.region,
-                det.source_arn or "",
-                "Yes" if det.is_managed else "No",
-                det.discovered_at.isoformat() if det.discovered_at else "",
-            ])
+            writer.writerow(
+                [
+                    det.name,
+                    det.detection_type.value,
+                    det.status.value,
+                    det.region,
+                    det.source_arn or "",
+                    "Yes" if det.is_managed else "No",
+                    det.discovered_at.isoformat() if det.discovered_at else "",
+                ]
+            )
 
         return output.getvalue()
 
@@ -459,7 +524,9 @@ class ReportService:
         )
         return result.scalar_one_or_none()
 
-    async def _get_latest_snapshot(self, cloud_account_id: UUID) -> Optional[CoverageSnapshot]:
+    async def _get_latest_snapshot(
+        self, cloud_account_id: UUID
+    ) -> Optional[CoverageSnapshot]:
         """Get latest coverage snapshot."""
         result = await self.db.execute(
             select(CoverageSnapshot)

@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Exfiltration Over Web Service",
     tactic_ids=["TA0010"],
     mitre_url="https://attack.mitre.org/techniques/T1567/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries use legitimate external web services to exfiltrate data. "
@@ -35,7 +34,7 @@ TEMPLATE = RemediationTemplate(
             "SSL/TLS hides data content",
             "Firewall rules permit traffic",
             "Cloud storage has high capacity",
-            "Hard to distinguish from legitimate use"
+            "Hard to distinguish from legitimate use",
         ],
         known_threat_actors=["APT28", "BlackByte", "OilRig", "Magic Hound"],
         recent_campaigns=[
@@ -43,14 +42,14 @@ TEMPLATE = RemediationTemplate(
                 name="APT28 Google Drive Exfil",
                 year=2024,
                 description="Utilised Google Drive for data extraction operations",
-                reference_url="https://attack.mitre.org/groups/G0007/"
+                reference_url="https://attack.mitre.org/groups/G0007/",
             ),
             Campaign(
                 name="BlackByte File Hosting",
                 year=2024,
                 description="Employed file-hosting services like anonymfiles.com and file.io",
-                reference_url="https://attack.mitre.org/software/S1070/"
-            )
+                reference_url="https://attack.mitre.org/software/S1070/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -63,13 +62,12 @@ TEMPLATE = RemediationTemplate(
             "Data breach",
             "Intellectual property theft",
             "Regulatory violations",
-            "Reputational damage"
+            "Reputational damage",
         ],
         typical_attack_phase="exfiltration",
         often_precedes=[],
-        often_follows=["T1530", "T1552.001", "T1114.003"]
+        often_follows=["T1530", "T1552.001", "T1114.003"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1567-aws-s3upload",
@@ -79,14 +77,14 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, requestParameters.bucketName, userIdentity.arn, bytesTransferredOut
+                query="""fields @timestamp, eventName, requestParameters.bucketName, userIdentity.arn, bytesTransferredOut
 | filter eventSource = "s3.amazonaws.com"
 | filter eventName in ["PutObject", "UploadPart", "CompleteMultipartUpload"]
 | filter requestParameters.bucketName not like /your-org-prefix/
 | stats sum(bytesTransferredOut) as total_bytes by userIdentity.arn, requestParameters.bucketName, bin(1h)
 | filter total_bytes > 104857600
-| sort total_bytes desc''',
-                terraform_template='''# Detect exfiltration to external S3
+| sort total_bytes desc""",
+                terraform_template="""# Detect exfiltration to external S3
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -123,7 +121,7 @@ resource "aws_cloudwatch_metric_alarm" "exfil_alert" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Data Upload to External S3",
                 alert_description_template="Large upload to external bucket {bucketName} by {userIdentity.arn}.",
@@ -131,14 +129,14 @@ resource "aws_cloudwatch_metric_alarm" "exfil_alert" {
                     "Verify bucket ownership",
                     "Review uploaded data",
                     "Check if transfer was authorised",
-                    "Review user's recent activity"
+                    "Review user's recent activity",
                 ],
                 containment_actions=[
                     "Block external bucket access",
                     "Revoke user credentials",
                     "Enable S3 Block Public Access",
-                    "Review bucket policies"
-                ]
+                    "Review bucket policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known partner buckets",
@@ -147,9 +145,8 @@ resource "aws_cloudwatch_metric_alarm" "exfil_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["CloudTrail S3 data events enabled"]
+            prerequisites=["CloudTrail S3 data events enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1567-aws-vpc",
             name="AWS VPC Large Outbound Transfer",
@@ -158,13 +155,13 @@ resource "aws_cloudwatch_metric_alarm" "exfil_alert" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcAddr, dstAddr, bytes, action
+                query="""fields @timestamp, srcAddr, dstAddr, bytes, action
 | filter action = "ACCEPT" and bytes > 100000000
 | filter dstAddr not like /^10\\./ and dstAddr not like /^172\\.1[6-9]\\./
 | stats sum(bytes) as total_bytes by srcAddr, dstAddr, bin(1h)
 | filter total_bytes > 1073741824
-| sort total_bytes desc''',
-                terraform_template='''# Detect large outbound transfers via VPC Flow Logs
+| sort total_bytes desc""",
+                terraform_template="""# Detect large outbound transfers via VPC Flow Logs
 
 variable "vpc_flow_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -201,7 +198,7 @@ resource "aws_cloudwatch_metric_alarm" "exfil_transfer" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Large Outbound Data Transfer",
                 alert_description_template="Large outbound transfer detected from {srcAddr} to {dstAddr}.",
@@ -209,14 +206,14 @@ resource "aws_cloudwatch_metric_alarm" "exfil_transfer" {
                     "Identify destination service",
                     "Review source instance activity",
                     "Check for data staging",
-                    "Review access patterns"
+                    "Review access patterns",
                 ],
                 containment_actions=[
                     "Block destination IP",
                     "Isolate source instance",
                     "Review security groups",
-                    "Enable DLP controls"
-                ]
+                    "Enable DLP controls",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude known backup/CDN destinations",
@@ -225,9 +222,8 @@ resource "aws_cloudwatch_metric_alarm" "exfil_transfer" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-30",
-            prerequisites=["VPC Flow Logs enabled"]
+            prerequisites=["VPC Flow Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1567-gcp-storage",
             name="GCP Cloud Storage External Transfer",
@@ -239,7 +235,7 @@ resource "aws_cloudwatch_metric_alarm" "exfil_transfer" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName="storage.objects.create"
 NOT protoPayload.resourceName=~"projects/YOUR-PROJECT"''',
-                gcp_terraform_template='''# GCP: Detect external storage uploads
+                gcp_terraform_template="""# GCP: Detect external storage uploads
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -275,7 +271,7 @@ resource "google_monitoring_alert_policy" "external_upload" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: External Storage Upload",
                 alert_description_template="Data uploaded to external Cloud Storage bucket.",
@@ -283,14 +279,14 @@ resource "google_monitoring_alert_policy" "external_upload" {
                     "Identify destination bucket",
                     "Review uploaded objects",
                     "Check user authorisation",
-                    "Review access patterns"
+                    "Review access patterns",
                 ],
                 containment_actions=[
                     "Block external bucket access",
                     "Revoke user credentials",
                     "Enable VPC Service Controls",
-                    "Review IAM policies"
-                ]
+                    "Review IAM policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known partner projects",
@@ -299,11 +295,10 @@ resource "google_monitoring_alert_policy" "external_upload" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Audit Logs for GCS enabled"]
-        )
+            prerequisites=["Cloud Audit Logs for GCS enabled"],
+        ),
     ],
-
     recommended_order=["t1567-aws-s3upload", "t1567-gcp-storage", "t1567-aws-vpc"],
     total_effort_hours=5.0,
-    coverage_improvement="+18% improvement for Exfiltration tactic"
+    coverage_improvement="+18% improvement for Exfiltration tactic",
 )

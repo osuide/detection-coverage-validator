@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Command and Scripting Interpreter",
     tactic_ids=["TA0002"],
     mitre_url="https://attack.mitre.org/techniques/T1059/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries abuse command and script interpreters to execute commands, scripts, or binaries. "
@@ -38,34 +37,43 @@ TEMPLATE = RemediationTemplate(
             "Provides broad control over system and cloud resources",
             "Can execute encoded or obfuscated payloads",
             "Enables automation of multi-stage attacks",
-            "Hard to distinguish from normal scripting usage"
+            "Hard to distinguish from normal scripting usage",
         ],
         known_threat_actors=[
-            "APT19", "APT32", "APT37", "APT39",
-            "FIN5", "FIN6", "FIN7",
-            "OilRig", "Dragonfly", "Fox Kitten",
-            "Mustang Panda", "Winter Vivern",
-            "Stealth Falcon", "Whitefly"
+            "APT19",
+            "APT32",
+            "APT37",
+            "APT39",
+            "FIN5",
+            "FIN6",
+            "FIN7",
+            "OilRig",
+            "Dragonfly",
+            "Fox Kitten",
+            "Mustang Panda",
+            "Winter Vivern",
+            "Stealth Falcon",
+            "Whitefly",
         ],
         recent_campaigns=[
             Campaign(
                 name="APT32 PowerShell Backdoors",
                 year=2024,
                 description="Leveraged PowerShell and JavaScript to deploy backdoors across compromised networks",
-                reference_url="https://attack.mitre.org/groups/G0050/"
+                reference_url="https://attack.mitre.org/groups/G0050/",
             ),
             Campaign(
                 name="FIN7 JSSLoader",
                 year=2023,
                 description="Used JavaScript-based loader to execute commands and deploy additional payloads",
-                reference_url="https://attack.mitre.org/groups/G0046/"
+                reference_url="https://attack.mitre.org/groups/G0046/",
             ),
             Campaign(
                 name="Mustang Panda PlugX",
                 year=2024,
                 description="Employed scripting interpreters for initial execution and persistence mechanisms",
-                reference_url="https://attack.mitre.org/groups/G0129/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0129/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -82,13 +90,12 @@ TEMPLATE = RemediationTemplate(
             "Privilege escalation through automated enumeration",
             "Persistence via scheduled scripts",
             "Resource manipulation and security control bypass",
-            "Lateral movement automation"
+            "Lateral movement automation",
         ],
         typical_attack_phase="execution",
         often_precedes=["T1087", "T1083", "T1069", "T1530", "T1562"],
-        often_follows=["T1078", "T1190", "T1566", "T1055"]
+        often_follows=["T1078", "T1190", "T1566", "T1055"],
     ),
-
     detection_strategies=[
         # AWS Strategy 1: CloudWatch Process Execution Monitoring
         DetectionStrategy(
@@ -102,14 +109,14 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''# Requires CloudWatch Agent with process monitoring enabled
+                query="""# Requires CloudWatch Agent with process monitoring enabled
 fields @timestamp, processName, commandLine, parentProcessName, username
 | filter processName in ["powershell.exe", "cmd.exe", "bash", "sh", "python", "python3", "perl", "ruby", "node"]
 | filter commandLine like /(-enc|-e |base64|wget|curl|Invoke-|IEX|DownloadString)/
 | stats count(*) as exec_count by processName, username, commandLine, bin(5m)
 | filter exec_count > 5
-| sort exec_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort exec_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect suspicious interpreter execution on EC2 instances
 
 Parameters:
@@ -166,8 +173,8 @@ Resources:
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect suspicious interpreter execution on EC2 instances
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect suspicious interpreter execution on EC2 instances
 
 variable "alert_email" {
   type        = string
@@ -224,7 +231,7 @@ resource "aws_sns_topic_policy" "interpreter_policy" {
       Resource  = aws_sns_topic.interpreter_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Suspicious Interpreter Execution Detected",
                 alert_description_template=(
@@ -237,15 +244,15 @@ resource "aws_sns_topic_policy" "interpreter_policy" {
                     "Examine the process tree to understand execution context",
                     "Look for encoded or obfuscated content in the command",
                     "Review network connections established by the process",
-                    "Check for subsequent file modifications or downloads"
+                    "Check for subsequent file modifications or downloads",
                 ],
                 containment_actions=[
                     "Isolate the affected EC2 instance if compromise confirmed",
                     "Terminate suspicious processes",
                     "Review and rotate credentials that may have been exposed",
                     "Collect memory dumps for forensic analysis",
-                    "Block identified malicious scripts at the network level"
-                ]
+                    "Block identified malicious scripts at the network level",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning=(
@@ -264,10 +271,9 @@ resource "aws_sns_topic_policy" "interpreter_policy" {
             prerequisites=[
                 "CloudWatch Agent installed on EC2 instances",
                 "Process monitoring enabled in CloudWatch Agent configuration",
-                "CloudWatch Logs configured to receive process logs"
-            ]
+                "CloudWatch Logs configured to receive process logs",
+            ],
         ),
-
         # AWS Strategy 2: GuardDuty Runtime Monitoring
         DetectionStrategy(
             strategy_id="t1059-aws-guardduty",
@@ -285,9 +291,9 @@ resource "aws_sns_topic_policy" "interpreter_policy" {
                     "Execution:Runtime/ReverseShell",
                     "Execution:Runtime/SuspiciousCommandExecuted",
                     "PrivilegeEscalation:Runtime/ContainerMountsWithShadowFile",
-                    "DefenseEvasion:Runtime/FilelessExecution"
+                    "DefenseEvasion:Runtime/FilelessExecution",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty Runtime Monitoring for T1059 detection
 
 Parameters:
@@ -343,8 +349,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# GuardDuty Runtime Monitoring for T1059 detection
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# GuardDuty Runtime Monitoring for T1059 detection
 
 variable "alert_email" {
   type = string
@@ -411,7 +417,7 @@ resource "aws_sns_topic_policy" "guardduty_policy" {
       Resource  = aws_sns_topic.guardduty_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GuardDuty: Malicious Script Execution Detected",
                 alert_description_template=(
@@ -424,15 +430,15 @@ resource "aws_sns_topic_policy" "guardduty_policy" {
                     "Check process lineage and command line arguments",
                     "Review network activity from the affected resource",
                     "Look for lateral movement indicators",
-                    "Check for persistence mechanisms"
+                    "Check for persistence mechanisms",
                 ],
                 containment_actions=[
                     "Isolate the affected instance or container",
                     "Snapshot the instance for forensic analysis",
                     "Terminate malicious processes",
                     "Revoke temporary credentials if container-based",
-                    "Update security groups to prevent further access"
-                ]
+                    "Update security groups to prevent further access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning=(
@@ -450,10 +456,9 @@ resource "aws_sns_topic_policy" "guardduty_policy" {
             prerequisites=[
                 "GuardDuty enabled in AWS account",
                 "ECS or EKS agent deployed for Runtime Monitoring",
-                "IAM permissions for GuardDuty to monitor resources"
-            ]
+                "IAM permissions for GuardDuty to monitor resources",
+            ],
         ),
-
         # AWS Strategy 3: Lambda Execution Monitoring
         DetectionStrategy(
             strategy_id="t1059-aws-lambda",
@@ -466,13 +471,13 @@ resource "aws_sns_topic_policy" "guardduty_policy" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message, @logStream
+                query="""fields @timestamp, @message, @logStream
 | filter @message like /(?i)(sh|bash|cmd|powershell|eval|exec|system|subprocess)/
 | filter @message like /(?i)(curl|wget|nc|netcat|reverse|shell|download|invoke)/
 | stats count(*) as suspicious_calls by @logStream, bin(5m)
 | filter suspicious_calls > 3
-| sort suspicious_calls desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort suspicious_calls desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect suspicious Lambda function execution patterns
 
 Parameters:
@@ -514,8 +519,8 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
-        - !Ref LambdaAlertTopic''',
-                terraform_template='''# Detect suspicious Lambda function execution patterns
+        - !Ref LambdaAlertTopic""",
+                terraform_template="""# Detect suspicious Lambda function execution patterns
 
 variable "alert_email" {
   type = string
@@ -558,7 +563,7 @@ resource "aws_cloudwatch_metric_alarm" "lambda_execution_alert" {
   statistic           = "Sum"
   threshold           = 5
   alarm_actions       = [aws_sns_topic.lambda_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Suspicious Lambda Function Execution",
                 alert_description_template=(
@@ -571,15 +576,15 @@ resource "aws_cloudwatch_metric_alarm" "lambda_execution_alert" {
                     "Examine function invocation source (trigger, API call)",
                     "Review IAM role permissions for the Lambda function",
                     "Check for lateral movement or data access attempts",
-                    "Analyse CloudTrail for function updates or modifications"
+                    "Analyse CloudTrail for function updates or modifications",
                 ],
                 containment_actions=[
                     "Remove or update the compromised Lambda function",
                     "Revoke IAM role credentials associated with the function",
                     "Review and restrict Lambda execution role permissions",
                     "Enable Lambda function code signing",
-                    "Block trigger sources if malicious"
-                ]
+                    "Block trigger sources if malicious",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning=(
@@ -596,10 +601,9 @@ resource "aws_cloudwatch_metric_alarm" "lambda_execution_alert" {
             estimated_monthly_cost="£8-25 depending on Lambda usage",
             prerequisites=[
                 "Lambda functions with CloudWatch Logs enabled",
-                "CloudWatch Logs retention configured"
-            ]
+                "CloudWatch Logs retention configured",
+            ],
         ),
-
         # GCP Strategy 1: Cloud Logging Process Monitoring
         DetectionStrategy(
             strategy_id="t1059-gcp-process",
@@ -618,7 +622,7 @@ logName="projects/PROJECT_ID/logs/syslog"
 jsonPayload.message=~"(bash|sh|python|perl|ruby|node).*(-c|eval|exec|system)"
 OR jsonPayload.message=~"(curl|wget).*http"
 OR jsonPayload.message=~"nc.*-e|/bin/sh"''',
-                gcp_terraform_template='''# GCP: Monitor suspicious interpreter execution
+                gcp_terraform_template="""# GCP: Monitor suspicious interpreter execution
 
 variable "project_id" {
   type = string
@@ -699,7 +703,7 @@ resource "google_monitoring_alert_policy" "interpreter_alert" {
       4. Look for lateral movement or data exfiltration
     EOT
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Suspicious Interpreter Execution",
                 alert_description_template=(
@@ -712,15 +716,15 @@ resource "google_monitoring_alert_policy" "interpreter_alert" {
                     "Verify SSH access logs and service account usage",
                     "Examine VPC flow logs for network connections",
                     "Review IAM audit logs for permission escalation",
-                    "Check for persistence mechanisms (startup scripts, cron)"
+                    "Check for persistence mechanisms (startup scripts, cron)",
                 ],
                 containment_actions=[
                     "Stop the affected Compute Engine instance",
                     "Create snapshot for forensic analysis",
                     "Revoke service account keys if compromised",
                     "Update firewall rules to isolate the instance",
-                    "Review and remove malicious startup scripts"
-                ]
+                    "Review and remove malicious startup scripts",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning=(
@@ -739,10 +743,9 @@ resource "google_monitoring_alert_policy" "interpreter_alert" {
             prerequisites=[
                 "Cloud Logging enabled on Compute Engine instances",
                 "OS Config or logging agent installed",
-                "Appropriate IAM permissions for monitoring"
-            ]
+                "Appropriate IAM permissions for monitoring",
+            ],
         ),
-
         # GCP Strategy 2: Cloud Functions Execution Monitoring
         DetectionStrategy(
             strategy_id="t1059-gcp-functions",
@@ -761,7 +764,7 @@ severity>=WARNING
 textPayload=~"(subprocess|os.system|exec|eval|shell|bash|sh)"
 OR textPayload=~"(requests.get|urllib|curl|wget)"
 OR jsonPayload.message=~"command.*execution"''',
-                gcp_terraform_template='''# GCP: Detect suspicious Cloud Functions execution
+                gcp_terraform_template="""# GCP: Detect suspicious Cloud Functions execution
 
 variable "project_id" {
   type = string
@@ -838,7 +841,7 @@ resource "google_monitoring_alert_policy" "function_alert" {
       - Review service account permissions
     EOT
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Suspicious Cloud Function Execution",
                 alert_description_template=(
@@ -851,15 +854,15 @@ resource "google_monitoring_alert_policy" "function_alert" {
                     "Examine invocation source and triggers",
                     "Review service account permissions and access logs",
                     "Check for data exfiltration or lateral movement",
-                    "Analyse Cloud Build history for unauthorised deployments"
+                    "Analyse Cloud Build history for unauthorised deployments",
                 ],
                 containment_actions=[
                     "Disable or delete the compromised Cloud Function",
                     "Revoke service account credentials",
                     "Review and restrict function IAM bindings",
                     "Enable VPC Service Controls to limit access",
-                    "Audit and remove malicious environment variables"
-                ]
+                    "Audit and remove malicious environment variables",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning=(
@@ -877,10 +880,9 @@ resource "google_monitoring_alert_policy" "function_alert" {
             estimated_monthly_cost="£5-20 depending on function usage",
             prerequisites=[
                 "Cloud Functions deployed with Cloud Logging enabled",
-                "Monitoring API enabled in GCP project"
-            ]
+                "Monitoring API enabled in GCP project",
+            ],
         ),
-
         # GCP Strategy 3: Cloud Shell Abuse Detection
         DetectionStrategy(
             strategy_id="t1059-gcp-shell",
@@ -894,12 +896,12 @@ resource "google_monitoring_alert_policy" "function_alert" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="cloudshell.googleapis.com/Environment"
+                gcp_logging_query="""resource.type="cloudshell.googleapis.com/Environment"
 protoPayload.methodName="google.cloudshell.v1.CloudShellService.StartSession"
 OR (resource.type="audited_resource"
     protoPayload.serviceName="cloudshell.googleapis.com"
-    protoPayload.methodName!="google.cloudshell.v1.CloudShellService.GetEnvironment")''',
-                gcp_terraform_template='''# GCP: Detect Cloud Shell abuse
+    protoPayload.methodName!="google.cloudshell.v1.CloudShellService.GetEnvironment")""",
+                gcp_terraform_template="""# GCP: Detect Cloud Shell abuse
 
 variable "project_id" {
   type = string
@@ -977,7 +979,7 @@ resource "google_monitoring_alert_policy" "shell_alert" {
       - Review IAM audit logs for suspicious actions
     EOT
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Unusual Cloud Shell Activity",
                 alert_description_template=(
@@ -990,15 +992,15 @@ resource "google_monitoring_alert_policy" "shell_alert" {
                     "Examine API calls made during Cloud Shell sessions",
                     "Look for resource enumeration patterns",
                     "Review data access and exfiltration indicators",
-                    "Verify user's typical Cloud Shell usage patterns"
+                    "Verify user's typical Cloud Shell usage patterns",
                 ],
                 containment_actions=[
                     "Suspend user's Cloud Shell access if unauthorised",
                     "Review and revoke excessive IAM permissions",
                     "Rotate user credentials if compromise suspected",
                     "Enable additional monitoring for the user account",
-                    "Implement organisation policy to restrict Cloud Shell access"
-                ]
+                    "Implement organisation policy to restrict Cloud Shell access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning=(
@@ -1016,19 +1018,18 @@ resource "google_monitoring_alert_policy" "shell_alert" {
             estimated_monthly_cost="£3-15",
             prerequisites=[
                 "Cloud Audit Logs enabled",
-                "Cloud Shell service enabled in organisation"
-            ]
-        )
+                "Cloud Shell service enabled in organisation",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1059-aws-guardduty",
         "t1059-gcp-functions",
         "t1059-gcp-shell",
         "t1059-aws-lambda",
         "t1059-aws-process-exec",
-        "t1059-gcp-process"
+        "t1059-gcp-process",
     ],
     total_effort_hours=15.0,
-    coverage_improvement="+20% improvement for Execution tactic across AWS and GCP"
+    coverage_improvement="+20% improvement for Execution tactic across AWS and GCP",
 )

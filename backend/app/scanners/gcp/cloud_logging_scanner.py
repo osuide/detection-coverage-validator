@@ -58,7 +58,9 @@ class CloudLoggingScanner(BaseScanner):
             )
 
         except PermissionDenied as e:
-            self.logger.warning("gcp_permission_denied", project_id=project_id, error=str(e))
+            self.logger.warning(
+                "gcp_permission_denied", project_id=project_id, error=str(e)
+            )
         except GoogleAPIError as e:
             self.logger.error("gcp_api_error", project_id=project_id, error=str(e))
         except ImportError:
@@ -120,12 +122,24 @@ class CloudLoggingScanner(BaseScanner):
                 "filter": filter_string,
                 "description": description,
                 "metricDescriptor": {
-                    "metricKind": str(metric.metric_descriptor.metric_kind) if metric.metric_descriptor else None,
-                    "valueType": str(metric.metric_descriptor.value_type) if metric.metric_descriptor else None,
+                    "metricKind": (
+                        str(metric.metric_descriptor.metric_kind)
+                        if metric.metric_descriptor
+                        else None
+                    ),
+                    "valueType": (
+                        str(metric.metric_descriptor.value_type)
+                        if metric.metric_descriptor
+                        else None
+                    ),
                 },
-                "labelExtractors": dict(metric.label_extractors) if metric.label_extractors else {},
-                "bucketOptions": str(metric.bucket_options) if metric.bucket_options else None,
-                "version": str(metric.version) if hasattr(metric, 'version') else None,
+                "labelExtractors": (
+                    dict(metric.label_extractors) if metric.label_extractors else {}
+                ),
+                "bucketOptions": (
+                    str(metric.bucket_options) if metric.bucket_options else None
+                ),
+                "version": str(metric.version) if hasattr(metric, "version") else None,
             },
             query_pattern=filter_string,
             description=description or f"GCP log-based metric: {metric_name}",

@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Search Closed Sources",
     tactic_ids=["TA0043"],
     mitre_url="https://attack.mitre.org/techniques/T1597/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries gather victim information from paid, private, or otherwise "
@@ -37,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Sensitive organisational data available",
             "Employee information for social engineering",
             "Vulnerability intelligence from threat feeds",
-            "Occurs outside defender visibility"
+            "Occurs outside defender visibility",
         ],
         known_threat_actors=["EXOTIC LILY"],
         recent_campaigns=[
@@ -45,7 +44,7 @@ TEMPLATE = RemediationTemplate(
                 name="EXOTIC LILY RocketReach Campaign",
                 year=2022,
                 description="Searched for information on targeted individuals using business databases including RocketReach and CrunchBase",
-                reference_url="https://attack.mitre.org/groups/G1011/"
+                reference_url="https://attack.mitre.org/groups/G1011/",
             )
         ],
         prevalence="uncommon",
@@ -60,13 +59,12 @@ TEMPLATE = RemediationTemplate(
             "Enhanced attacker reconnaissance",
             "More targeted phishing campaigns",
             "Exposure of organisational information",
-            "Social engineering enabler"
+            "Social engineering enabler",
         ],
         typical_attack_phase="reconnaissance",
         often_precedes=["T1598", "T1566", "T1078"],
-        often_follows=[]
+        often_follows=[],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1597-aws-guardduty",
@@ -76,13 +74,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, sourceIPAddress, eventName, userAgent, errorCode
+                query="""fields @timestamp, sourceIPAddress, eventName, userAgent, errorCode
 | filter eventSource = "sts.amazonaws.com" or eventSource = "iam.amazonaws.com"
 | filter sourceIPAddress in ["tor", "proxy", "vpn"] or userAgent like /curl|wget|python/
 | stats count(*) as attempts by sourceIPAddress, userAgent, bin(1h)
 | filter attempts > 5
-| sort attempts desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort attempts desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Monitor for reconnaissance from suspicious sources
 
 Parameters:
@@ -121,8 +119,8 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Monitor for reconnaissance from suspicious sources
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Monitor for reconnaissance from suspicious sources
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -159,7 +157,7 @@ resource "aws_cloudwatch_metric_alarm" "recon_detected" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Reconnaissance Activity Detected",
                 alert_description_template="GuardDuty detected reconnaissance activity from {sourceIPAddress}.",
@@ -168,15 +166,15 @@ resource "aws_cloudwatch_metric_alarm" "recon_detected" {
                     "Check source IP reputation",
                     "Review CloudTrail logs for enumeration",
                     "Identify targeted resources",
-                    "Check for data exfiltration attempts"
+                    "Check for data exfiltration attempts",
                 ],
                 containment_actions=[
                     "Block suspicious IP addresses",
                     "Review IAM policies and permissions",
                     "Enable additional monitoring",
                     "Review public exposure of resources",
-                    "Update security group rules"
-                ]
+                    "Update security group rules",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="GuardDuty may flag legitimate security scanning; tune for your environment",
@@ -185,9 +183,8 @@ resource "aws_cloudwatch_metric_alarm" "recon_detected" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-15",
-            prerequisites=["AWS GuardDuty enabled", "CloudTrail logging enabled"]
+            prerequisites=["AWS GuardDuty enabled", "CloudTrail logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1597-aws-public-data",
             name="AWS Public Data Exposure Monitoring",
@@ -196,13 +193,13 @@ resource "aws_cloudwatch_metric_alarm" "recon_detected" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, requestParameters.bucketName, sourceIPAddress, userAgent
+                query="""fields @timestamp, requestParameters.bucketName, sourceIPAddress, userAgent
 | filter eventName = "GetObject" or eventName = "ListBucket"
 | filter userIdentity.type = "Anonymous" or errorCode = "AccessDenied"
 | stats count(*) as access_attempts by sourceIPAddress, requestParameters.bucketName, bin(1h)
 | filter access_attempts > 10
-| sort access_attempts desc''',
-                terraform_template='''# Monitor public S3 bucket access patterns
+| sort access_attempts desc""",
+                terraform_template="""# Monitor public S3 bucket access patterns
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -239,7 +236,7 @@ resource "aws_cloudwatch_metric_alarm" "public_bucket_enumeration" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Public S3 Bucket Enumeration Detected",
                 alert_description_template="High volume of anonymous access to S3 bucket {bucketName} from {sourceIPAddress}.",
@@ -248,15 +245,15 @@ resource "aws_cloudwatch_metric_alarm" "public_bucket_enumeration" {
                     "Check what data was accessed",
                     "Review source IP reputation",
                     "Identify if bucket should be public",
-                    "Check for data exfiltration"
+                    "Check for data exfiltration",
                 ],
                 containment_actions=[
                     "Restrict S3 bucket public access",
                     "Enable S3 Block Public Access",
                     "Review and update bucket policies",
                     "Enable S3 access logging",
-                    "Rotate exposed credentials if found"
-                ]
+                    "Rotate exposed credentials if found",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Tune threshold for legitimate public buckets (CDN, static sites)",
@@ -265,9 +262,8 @@ resource "aws_cloudwatch_metric_alarm" "public_bucket_enumeration" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail S3 data events enabled"]
+            prerequisites=["CloudTrail S3 data events enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1597-gcp-public-data",
             name="GCP Public Data Exposure Monitoring",
@@ -281,7 +277,7 @@ resource "aws_cloudwatch_metric_alarm" "public_bucket_enumeration" {
 protoPayload.methodName=~"storage.objects.(get|list)"
 protoPayload.authenticationInfo.principalEmail=""
 severity="NOTICE"''',
-                gcp_terraform_template='''# GCP: Monitor public GCS bucket access
+                gcp_terraform_template="""# GCP: Monitor public GCS bucket access
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -318,7 +314,7 @@ resource "google_monitoring_alert_policy" "gcs_enumeration" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Public GCS Bucket Enumeration",
                 alert_description_template="High volume of anonymous access to GCS bucket detected.",
@@ -327,15 +323,15 @@ resource "google_monitoring_alert_policy" "gcs_enumeration" {
                     "Check what objects were accessed",
                     "Review request patterns and source IPs",
                     "Verify if bucket should be public",
-                    "Check for sensitive data exposure"
+                    "Check for sensitive data exposure",
                 ],
                 containment_actions=[
                     "Restrict bucket public access",
                     "Update IAM policies",
                     "Enable uniform bucket-level access",
                     "Review and remove allUsers/allAuthenticatedUsers",
-                    "Enable data access logging"
-                ]
+                    "Enable data access logging",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Adjust thresholds for legitimate public buckets",
@@ -344,9 +340,8 @@ resource "google_monitoring_alert_policy" "gcs_enumeration" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["GCS data access logs enabled"]
+            prerequisites=["GCS data access logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1597-aws-macie",
             name="AWS Macie Sensitive Data Discovery",
@@ -355,12 +350,12 @@ resource "google_monitoring_alert_policy" "gcs_enumeration" {
             aws_service="macie",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, severity, type, resourcesAffected
+                query="""fields @timestamp, severity, type, resourcesAffected
 | filter source = "aws.macie"
 | filter detail.type like /SENSITIVE_DATA|PII/
 | stats count(*) as findings by detail.severity, bin(1d)
-| sort findings desc''',
-                terraform_template='''# Use AWS Macie to monitor for data exposure
+| sort findings desc""",
+                terraform_template="""# Use AWS Macie to monitor for data exposure
 
 variable "alert_email" { type = string }
 variable "s3_buckets" {
@@ -398,7 +393,7 @@ resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.macie_findings.name
   target_id = "SendToSNS"
   arn       = aws_sns_topic.alerts.arn
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Sensitive Data Exposure Detected",
                 alert_description_template="AWS Macie detected sensitive data exposure in {bucketName}.",
@@ -407,15 +402,15 @@ resource "aws_cloudwatch_event_target" "sns" {
                     "Identify type of sensitive data exposed",
                     "Check bucket access logs",
                     "Determine if data was accessed",
-                    "Review bucket permissions"
+                    "Review bucket permissions",
                 ],
                 containment_actions=[
                     "Restrict bucket access immediately",
                     "Remove or encrypt sensitive data",
                     "Enable bucket encryption",
                     "Review and update data classification",
-                    "Implement data loss prevention controls"
-                ]
+                    "Implement data loss prevention controls",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Macie findings are generally accurate; review severity thresholds",
@@ -424,11 +419,15 @@ resource "aws_cloudwatch_event_target" "sns" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$50-200 depending on data volume",
-            prerequisites=["AWS Macie enabled", "S3 buckets configured for scanning"]
-        )
+            prerequisites=["AWS Macie enabled", "S3 buckets configured for scanning"],
+        ),
     ],
-
-    recommended_order=["t1597-aws-public-data", "t1597-gcp-public-data", "t1597-aws-macie", "t1597-aws-guardduty"],
+    recommended_order=[
+        "t1597-aws-public-data",
+        "t1597-gcp-public-data",
+        "t1597-aws-macie",
+        "t1597-aws-guardduty",
+    ],
     total_effort_hours=3.0,
-    coverage_improvement="+15% improvement for Reconnaissance tactic"
+    coverage_improvement="+15% improvement for Reconnaissance tactic",
 )

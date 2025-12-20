@@ -21,7 +21,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Endpoint Denial of Service: Application Exhaustion Flood",
     tactic_ids=["TA0040"],
     mitre_url="https://attack.mitre.org/techniques/T1499/003/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries exploit resource-intensive application features through repeated "
@@ -35,7 +34,7 @@ TEMPLATE = RemediationTemplate(
             "Requires fewer requests than network floods",
             "Targets application logic vulnerabilities",
             "Difficult to distinguish from legitimate traffic",
-            "No infrastructure required beyond basic HTTP clients"
+            "No infrastructure required beyond basic HTTP clients",
         ],
         known_threat_actors=[],
         recent_campaigns=[],
@@ -52,13 +51,12 @@ TEMPLATE = RemediationTemplate(
             "Revenue loss during outages",
             "Customer dissatisfaction and churn",
             "Resource costs from auto-scaling responses",
-            "Reputational damage"
+            "Reputational damage",
         ],
         typical_attack_phase="impact",
         often_precedes=[],
-        often_follows=["T1595", "T1592"]
+        often_follows=["T1595", "T1592"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1499003-aws-alb-resource",
@@ -68,12 +66,12 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, client_ip, request_url, target_processing_time, elb_status_code
+                query="""fields @timestamp, client_ip, request_url, target_processing_time, elb_status_code
 | filter target_processing_time > 5
 | stats count(*) as slow_requests, avg(target_processing_time) as avg_time by client_ip, request_url, bin(5m)
 | filter slow_requests > 20
-| sort slow_requests desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort slow_requests desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect application exhaustion via ALB metrics
 
 Parameters:
@@ -140,8 +138,8 @@ Resources:
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 2
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect application exhaustion via ALB metrics
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect application exhaustion via ALB metrics
 
 variable "alb_log_group" {
   type        = string
@@ -213,7 +211,7 @@ resource "aws_cloudwatch_metric_alarm" "server_error_rate" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Application Exhaustion Attack Detected",
                 alert_description_template="Elevated slow requests or errors from {client_ip} to {request_url}.",
@@ -222,15 +220,15 @@ resource "aws_cloudwatch_metric_alarm" "server_error_rate" {
                     "Identify source IPs and request patterns",
                     "Check application server CPU/memory metrics",
                     "Review database query performance",
-                    "Examine application logs for errors"
+                    "Examine application logs for errors",
                 ],
                 containment_actions=[
                     "Rate-limit suspicious source IPs",
                     "Enable WAF rate-based rules",
                     "Scale application resources temporarily",
                     "Implement endpoint-specific rate limits",
-                    "Add caching for expensive operations"
-                ]
+                    "Add caching for expensive operations",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Adjust thresholds based on normal application behaviour and legitimate traffic spikes",
@@ -239,9 +237,8 @@ resource "aws_cloudwatch_metric_alarm" "server_error_rate" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$10-25",
-            prerequisites=["ALB access logging enabled", "CloudWatch Logs configured"]
+            prerequisites=["ALB access logging enabled", "CloudWatch Logs configured"],
         ),
-
         DetectionStrategy(
             strategy_id="t1499003-aws-ecs-resource",
             name="AWS ECS/EC2 Resource Exhaustion Detection",
@@ -250,7 +247,7 @@ resource "aws_cloudwatch_metric_alarm" "server_error_rate" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect resource exhaustion via ECS metrics
 
 Parameters:
@@ -312,8 +309,8 @@ Resources:
       AlarmName: RapidAutoscalingExhaustion
       AlarmDescription: Rapid autoscaling suggesting DoS attack
       AlarmRule: !Sub "ALARM(${HighCPUAlarm}) AND ALARM(${HighMemoryAlarm})"
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect resource exhaustion via ECS metrics
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect resource exhaustion via ECS metrics
 
 variable "ecs_cluster_name" {
   type        = string
@@ -383,7 +380,7 @@ resource "aws_cloudwatch_composite_alarm" "rapid_scaling" {
     "ALARM(${aws_cloudwatch_metric_alarm.high_cpu.alarm_name})",
     "ALARM(${aws_cloudwatch_metric_alarm.high_memory.alarm_name})"
   ])
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Resource Exhaustion Attack on Application Infrastructure",
                 alert_description_template="Sustained high resource usage on {cluster_name} indicating potential DoS attack.",
@@ -392,15 +389,15 @@ resource "aws_cloudwatch_composite_alarm" "rapid_scaling" {
                     "Check ALB access logs for request patterns",
                     "Identify tasks/containers with highest resource usage",
                     "Review application logs for error patterns",
-                    "Check for scaling events and triggers"
+                    "Check for scaling events and triggers",
                 ],
                 containment_actions=[
                     "Enable AWS WAF rate limiting",
                     "Implement AWS Shield if not enabled",
                     "Scale out application capacity",
                     "Add endpoint-specific rate limits",
-                    "Block attacking source IPs"
-                ]
+                    "Block attacking source IPs",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal traffic patterns and adjust thresholds for legitimate load spikes",
@@ -409,9 +406,11 @@ resource "aws_cloudwatch_composite_alarm" "rapid_scaling" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["ECS cluster with CloudWatch monitoring", "Container Insights enabled"]
+            prerequisites=[
+                "ECS cluster with CloudWatch monitoring",
+                "Container Insights enabled",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1499003-gcp-lb-resource",
             name="GCP Load Balancer Resource Exhaustion Detection",
@@ -421,10 +420,10 @@ resource "aws_cloudwatch_composite_alarm" "rapid_scaling" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="http_load_balancer"
+                gcp_logging_query="""resource.type="http_load_balancer"
 httpRequest.latency > "5s"
-httpRequest.status >= 500''',
-                gcp_terraform_template='''# GCP: Detect application exhaustion via load balancer
+httpRequest.status >= 500""",
+                gcp_terraform_template="""# GCP: Detect application exhaustion via load balancer
 
 variable "project_id" {
   type        = string
@@ -520,7 +519,7 @@ resource "google_monitoring_alert_policy" "server_error_rate" {
   alert_strategy {
     auto_close = "1800s"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Application Exhaustion Attack Detected",
                 alert_description_template="High rate of slow requests or server errors indicating resource exhaustion.",
@@ -529,15 +528,15 @@ resource "google_monitoring_alert_policy" "server_error_rate" {
                     "Check backend service metrics (CPU, memory)",
                     "Identify source IPs and geographical distribution",
                     "Review Cloud Trace for slow transactions",
-                    "Check Cloud Logging for application errors"
+                    "Check Cloud Logging for application errors",
                 ],
                 containment_actions=[
                     "Enable Cloud Armor with rate limiting",
                     "Scale backend services",
                     "Implement backend service circuit breakers",
                     "Add request throttling policies",
-                    "Block malicious IPs via Cloud Armor"
-                ]
+                    "Block malicious IPs via Cloud Armor",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Adjust latency thresholds based on application baseline behaviour",
@@ -546,9 +545,11 @@ resource "google_monitoring_alert_policy" "server_error_rate" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$15-30",
-            prerequisites=["Cloud Load Balancer with logging enabled", "Cloud Monitoring configured"]
+            prerequisites=[
+                "Cloud Load Balancer with logging enabled",
+                "Cloud Monitoring configured",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1499003-gcp-gce-resource",
             name="GCP Compute Engine Resource Exhaustion Detection",
@@ -558,7 +559,7 @@ resource "google_monitoring_alert_policy" "server_error_rate" {
             gcp_service="cloud_monitoring",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_terraform_template='''# GCP: Detect resource exhaustion via GCE metrics
+                gcp_terraform_template="""# GCP: Detect resource exhaustion via GCE metrics
 
 variable "project_id" {
   type        = string
@@ -688,7 +689,7 @@ resource "google_monitoring_alert_policy" "rapid_autoscaling" {
   documentation {
     content = "Rapid autoscaling may indicate DoS attack causing resource exhaustion"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Compute Resource Exhaustion Attack",
                 alert_description_template="Sustained high resource usage and rapid autoscaling on {instance_group}.",
@@ -697,15 +698,15 @@ resource "google_monitoring_alert_policy" "rapid_autoscaling" {
                     "Check load balancer logs for traffic patterns",
                     "Identify instances with highest resource usage",
                     "Review application logs via Cloud Logging",
-                    "Check autoscaling history and triggers"
+                    "Check autoscaling history and triggers",
                 ],
                 containment_actions=[
                     "Enable Cloud Armor rate limiting",
                     "Manually scale instance group",
                     "Implement connection draining",
                     "Add backend service timeouts",
-                    "Configure request throttling"
-                ]
+                    "Configure request throttling",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Establish baseline metrics during normal traffic and adjust thresholds accordingly",
@@ -714,16 +715,19 @@ resource "google_monitoring_alert_policy" "rapid_autoscaling" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Monitoring enabled", "Cloud Monitoring Agent installed", "Managed Instance Groups configured"]
-        )
+            prerequisites=[
+                "Cloud Monitoring enabled",
+                "Cloud Monitoring Agent installed",
+                "Managed Instance Groups configured",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1499003-aws-alb-resource",
         "t1499003-gcp-lb-resource",
         "t1499003-aws-ecs-resource",
-        "t1499003-gcp-gce-resource"
+        "t1499003-gcp-gce-resource",
     ],
     total_effort_hours=7.0,
-    coverage_improvement="+25% improvement for Impact tactic"
+    coverage_improvement="+25% improvement for Impact tactic",
 )

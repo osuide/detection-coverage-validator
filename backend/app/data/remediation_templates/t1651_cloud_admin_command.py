@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Cloud Administration Command",
     tactic_ids=["TA0002"],
     mitre_url="https://attack.mitre.org/techniques/T1651/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries use cloud management services (AWS Systems Manager, Azure RunCommand) "
@@ -34,7 +33,7 @@ TEMPLATE = RemediationTemplate(
             "No need for SSH/RDP access",
             "Commands executed as SYSTEM/root",
             "May bypass network security controls",
-            "Logs may be overlooked"
+            "Logs may be overlooked",
         ],
         known_threat_actors=["APT29"],
         recent_campaigns=[
@@ -42,7 +41,7 @@ TEMPLATE = RemediationTemplate(
                 name="APT29 Azure Run Command",
                 year=2024,
                 description="Utilised Azure Run Command to execute code on virtual machines",
-                reference_url="https://attack.mitre.org/groups/G0016/"
+                reference_url="https://attack.mitre.org/groups/G0016/",
             )
         ],
         prevalence="moderate",
@@ -57,13 +56,12 @@ TEMPLATE = RemediationTemplate(
             "Arbitrary command execution",
             "Malware deployment",
             "Data exfiltration",
-            "Lateral movement"
+            "Lateral movement",
         ],
         typical_attack_phase="execution",
         often_precedes=["T1530", "T1485"],
-        often_follows=["T1078.004", "T1098.003"]
+        often_follows=["T1078.004", "T1098.003"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1651-aws-ssm",
@@ -76,11 +74,9 @@ TEMPLATE = RemediationTemplate(
                 event_pattern={
                     "source": ["aws.ssm"],
                     "detail-type": ["AWS API Call via CloudTrail"],
-                    "detail": {
-                        "eventName": ["SendCommand", "StartSession"]
-                    }
+                    "detail": {"eventName": ["SendCommand", "StartSession"]},
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect SSM command execution
 
 Parameters:
@@ -117,8 +113,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect SSM command execution
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect SSM command execution
 
 variable "alert_email" { type = string }
 
@@ -157,7 +153,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="SSM Command Executed",
                 alert_description_template="SSM command sent to {instanceIds} by {userIdentity.arn}.",
@@ -165,14 +161,14 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Verify command execution was authorised",
                     "Review the command content",
                     "Check target instances",
-                    "Review command output"
+                    "Review command output",
                 ],
                 containment_actions=[
                     "Review SSM permissions",
                     "Check instance for compromise",
                     "Audit SSM usage patterns",
-                    "Consider SSM Session Manager logging"
-                ]
+                    "Consider SSM Session Manager logging",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist automation and patching systems",
@@ -181,9 +177,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1651-gcp-osconfig",
             name="GCP OS Config Command Detection",
@@ -194,7 +189,7 @@ resource "aws_sns_topic_policy" "allow_events" {
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName=~"osconfig.*Execute|osconfig.*Run"''',
-                gcp_terraform_template='''# GCP: Detect OS Config command execution
+                gcp_terraform_template="""# GCP: Detect OS Config command execution
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -229,7 +224,7 @@ resource "google_monitoring_alert_policy" "osconfig_cmd" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: OS Config Command Executed",
                 alert_description_template="Command executed via OS Config Agent.",
@@ -237,13 +232,13 @@ resource "google_monitoring_alert_policy" "osconfig_cmd" {
                     "Verify execution was authorised",
                     "Review command content",
                     "Check target VMs",
-                    "Review execution logs"
+                    "Review execution logs",
                 ],
                 containment_actions=[
                     "Review OS Config permissions",
                     "Check VM for compromise",
-                    "Audit command history"
-                ]
+                    "Audit command history",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist patching and automation",
@@ -252,11 +247,10 @@ resource "google_monitoring_alert_policy" "osconfig_cmd" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled"],
+        ),
     ],
-
     recommended_order=["t1651-aws-ssm", "t1651-gcp-osconfig"],
     total_effort_hours=1.5,
-    coverage_improvement="+15% improvement for Execution tactic"
+    coverage_improvement="+15% improvement for Execution tactic",
 )

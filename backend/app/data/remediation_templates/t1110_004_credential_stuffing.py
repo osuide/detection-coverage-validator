@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Brute Force: Credential Stuffing",
     tactic_ids=["TA0006"],
     mitre_url="https://attack.mitre.org/techniques/T1110/004/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries use credentials obtained from breach dumps of unrelated accounts "
@@ -37,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Breached credential databases readily available",
             "Bypasses weak password policies",
             "Difficult to distinguish from legitimate logins",
-            "Effective against cloud and SaaS platforms"
+            "Effective against cloud and SaaS platforms",
         ],
         known_threat_actors=["Chimera"],
         recent_campaigns=[
@@ -45,7 +44,7 @@ TEMPLATE = RemediationTemplate(
                 name="Chimera Credential Stuffing",
                 year=2021,
                 description="Used credential stuffing against victim's remote services to obtain valid accounts",
-                reference_url="https://attack.mitre.org/groups/G0114/"
+                reference_url="https://attack.mitre.org/groups/G0114/",
             )
         ],
         prevalence="common",
@@ -61,13 +60,12 @@ TEMPLATE = RemediationTemplate(
             "Unauthorised data access",
             "Compliance violations",
             "Lateral movement enabler",
-            "Cloud service compromise"
+            "Cloud service compromise",
         ],
         typical_attack_phase="credential_access",
         often_precedes=["T1078.004", "T1078.002", "T1110.003"],
-        often_follows=["T1589.001", "T1589.002"]
+        often_follows=["T1589.001", "T1589.002"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1110-004-aws-cloudtrail",
@@ -77,12 +75,12 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, sourceIPAddress, errorCode, userIdentity.userName
+                query="""fields @timestamp, userIdentity.principalId, sourceIPAddress, errorCode, userIdentity.userName
 | filter errorCode = "Failed authentication"
 | stats count(*) as failed_attempts by sourceIPAddress, bin(5m)
 | filter failed_attempts > 10
-| sort failed_attempts desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort failed_attempts desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect credential stuffing via CloudTrail failed authentications
 
 Parameters:
@@ -129,8 +127,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# AWS: Detect credential stuffing via CloudTrail failed authentications
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# AWS: Detect credential stuffing via CloudTrail failed authentications
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -181,7 +179,7 @@ resource "aws_cloudwatch_metric_alarm" "credential_stuffing" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
   alarm_actions       = [aws_sns_topic.credential_stuffing_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Credential Stuffing Attack Detected",
                 alert_description_template="High volume of failed authentication attempts from {sourceIPAddress}.",
@@ -190,15 +188,15 @@ resource "aws_cloudwatch_metric_alarm" "credential_stuffing" {
                     "Identify targeted usernames and source IP addresses",
                     "Check for successful authentications from same IPs",
                     "Review IAM user activity for compromised accounts",
-                    "Correlate with AWS GuardDuty findings"
+                    "Correlate with AWS GuardDuty findings",
                 ],
                 containment_actions=[
                     "Block malicious source IPs via WAF/Security Groups",
                     "Reset passwords for targeted accounts",
                     "Enable MFA for affected users",
                     "Review and revoke suspicious sessions",
-                    "Implement IP-based conditional access policies"
-                ]
+                    "Implement IP-based conditional access policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Adjust thresholds for legitimate failed logins; whitelist known IP ranges",
@@ -207,9 +205,8 @@ resource "aws_cloudwatch_metric_alarm" "credential_stuffing" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-60 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled with CloudWatch Logs integration"]
+            prerequisites=["CloudTrail enabled with CloudWatch Logs integration"],
         ),
-
         DetectionStrategy(
             strategy_id="t1110-004-aws-cognito",
             name="AWS Cognito Brute Force Detection",
@@ -218,12 +215,12 @@ resource "aws_cloudwatch_metric_alarm" "credential_stuffing" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, sourceIPAddress, userIdentity.userName, eventName
+                query="""fields @timestamp, sourceIPAddress, userIdentity.userName, eventName
 | filter eventName = "UserAuthentication" AND errorCode = "NotAuthorizedException"
 | stats count(*) as failed_logins by sourceIPAddress, bin(5m)
 | filter failed_logins > 15
-| sort failed_logins desc''',
-                terraform_template='''# AWS: Detect credential stuffing against Cognito user pools
+| sort failed_logins desc""",
+                terraform_template="""# AWS: Detect credential stuffing against Cognito user pools
 
 variable "cognito_log_group" {
   type        = string
@@ -274,7 +271,7 @@ resource "aws_cloudwatch_metric_alarm" "cognito_stuffing" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
   alarm_actions       = [aws_sns_topic.cognito_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Cognito Credential Stuffing Detected",
                 alert_description_template="Multiple failed authentication attempts against Cognito user pool from {sourceIPAddress}.",
@@ -283,15 +280,15 @@ resource "aws_cloudwatch_metric_alarm" "cognito_stuffing" {
                     "Identify targeted user accounts",
                     "Check for successful logins after failures",
                     "Review user pool advanced security metrics",
-                    "Analyse geographic distribution of attempts"
+                    "Analyse geographic distribution of attempts",
                 ],
                 containment_actions=[
                     "Enable Cognito advanced security features",
                     "Configure adaptive authentication",
                     "Block malicious IPs via WAF",
                     "Force password reset for targeted accounts",
-                    "Enable MFA requirement"
-                ]
+                    "Enable MFA requirement",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Tune threshold based on application user base and legitimate failure patterns",
@@ -300,9 +297,8 @@ resource "aws_cloudwatch_metric_alarm" "cognito_stuffing" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-60 minutes",
             estimated_monthly_cost="$5-15",
-            prerequisites=["AWS Cognito with CloudWatch logging enabled"]
+            prerequisites=["AWS Cognito with CloudWatch logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1110-004-gcp-login-failures",
             name="GCP Cloud Logging Authentication Failures",
@@ -312,12 +308,12 @@ resource "aws_cloudwatch_metric_alarm" "cognito_stuffing" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 protoPayload.methodName="login"
 protoPayload.status.message=~"authentication failed"
 | stats count() by protoPayload.requestMetadata.callerIp
-| filter count > 10''',
-                gcp_terraform_template='''# GCP: Detect credential stuffing via authentication failures
+| filter count > 10""",
+                gcp_terraform_template="""# GCP: Detect credential stuffing via authentication failures
 
 variable "project_id" {
   type        = string
@@ -392,7 +388,7 @@ resource "google_monitoring_alert_policy" "credential_stuffing" {
   alert_strategy {
     auto_close = "86400s"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Credential Stuffing Attack",
                 alert_description_template="High volume of failed authentication attempts detected in GCP environment.",
@@ -401,15 +397,15 @@ resource "google_monitoring_alert_policy" "credential_stuffing" {
                     "Identify targeted accounts and source IPs",
                     "Check Cloud Identity logs for successful logins",
                     "Review Security Command Centre findings",
-                    "Analyse geographic origin of attempts"
+                    "Analyse geographic origin of attempts",
                 ],
                 containment_actions=[
                     "Block malicious IPs via Cloud Armor",
                     "Enable Cloud Identity 2-step verification",
                     "Configure context-aware access policies",
                     "Reset passwords for targeted accounts",
-                    "Review and revoke suspicious sessions"
-                ]
+                    "Review and revoke suspicious sessions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Adjust thresholds based on organisation size and authentication patterns",
@@ -418,9 +414,8 @@ resource "google_monitoring_alert_policy" "credential_stuffing" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Logging enabled with authentication logs"]
+            prerequisites=["Cloud Logging enabled with authentication logs"],
         ),
-
         DetectionStrategy(
             strategy_id="t1110-004-gcp-workspace",
             name="GCP Workspace Login Monitoring",
@@ -434,7 +429,7 @@ resource "google_monitoring_alert_policy" "credential_stuffing" {
 protoPayload.methodName="login"
 protoPayload.authenticationInfo.authoritySelector="USER"
 severity="ERROR"''',
-                gcp_terraform_template='''# GCP: Detect credential stuffing against Workspace accounts
+                gcp_terraform_template="""# GCP: Detect credential stuffing against Workspace accounts
 
 variable "project_id" {
   type        = string
@@ -497,7 +492,7 @@ resource "google_monitoring_alert_policy" "workspace_stuffing" {
   }
 
   notification_channels = [google_monitoring_notification_channel.workspace_alerts.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP Workspace: Credential Stuffing",
                 alert_description_template="Multiple failed login attempts detected against Workspace accounts.",
@@ -506,15 +501,15 @@ resource "google_monitoring_alert_policy" "workspace_stuffing" {
                     "Identify targeted user accounts",
                     "Check for successful logins post-failures",
                     "Review suspicious sign-in activity",
-                    "Analyse IP addresses and geographic locations"
+                    "Analyse IP addresses and geographic locations",
                 ],
                 containment_actions=[
                     "Enforce 2-step verification for all users",
                     "Configure security policies for risky logins",
                     "Reset passwords for targeted accounts",
                     "Review and revoke active sessions",
-                    "Enable advanced protection programme"
-                ]
+                    "Enable advanced protection programme",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Workspace audit logs provide reliable authentication data",
@@ -523,16 +518,15 @@ resource "google_monitoring_alert_policy" "workspace_stuffing" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["Google Workspace with Admin audit logging enabled"]
-        )
+            prerequisites=["Google Workspace with Admin audit logging enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1110-004-aws-cloudtrail",
         "t1110-004-gcp-workspace",
         "t1110-004-aws-cognito",
-        "t1110-004-gcp-login-failures"
+        "t1110-004-gcp-login-failures",
     ],
     total_effort_hours=4.5,
-    coverage_improvement="+25% improvement for Credential Access tactic"
+    coverage_improvement="+25% improvement for Credential Access tactic",
 )

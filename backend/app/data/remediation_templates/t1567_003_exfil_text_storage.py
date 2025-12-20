@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Exfiltration to Text Storage Sites",
     tactic_ids=["TA0010"],
     mitre_url="https://attack.mitre.org/techniques/T1567/003/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries leverage text storage and paste sites (Pastebin, Hastebin, etc.) "
@@ -37,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Services often allow anonymous posting",
             "Paid features provide additional encryption",
             "Bypasses traditional DLP solutions",
-            "Widely accessible from corporate networks"
+            "Widely accessible from corporate networks",
         ],
         known_threat_actors=[],  # MITRE page did not identify specific actors
         recent_campaigns=[
@@ -45,14 +44,14 @@ TEMPLATE = RemediationTemplate(
                 name="PowerShell Pastebin Exfiltration",
                 year=2024,
                 description="PowerShell scripts uploading sensitive data to Pastebin via HTTPS POST",
-                reference_url="https://attack.mitre.org/techniques/T1567/003/"
+                reference_url="https://attack.mitre.org/techniques/T1567/003/",
             ),
             Campaign(
                 name="ESXi Hastebin Upload",
                 year=2024,
                 description="Compromised ESXi hosts generating outbound traffic to Hastebin for data exfiltration",
-                reference_url="https://attack.mitre.org/techniques/T1567/003/"
-            )
+                reference_url="https://attack.mitre.org/techniques/T1567/003/",
+            ),
         ],
         prevalence="moderate",
         trend="stable",
@@ -66,13 +65,12 @@ TEMPLATE = RemediationTemplate(
             "Data breach and intellectual property theft",
             "Regulatory compliance violations",
             "Credential exposure",
-            "Source code exfiltration"
+            "Source code exfiltration",
         ],
         typical_attack_phase="exfiltration",
         often_precedes=["T1486"],
-        often_follows=["T1552.001", "T1530", "T1119", "T1074"]
+        often_follows=["T1552.001", "T1530", "T1119", "T1074"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - CloudWatch DNS Query Detection
         DetectionStrategy(
@@ -83,12 +81,12 @@ TEMPLATE = RemediationTemplate(
             aws_service="route53",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, query_name, srcaddr, query_type
+                query="""fields @timestamp, query_name, srcaddr, query_type
 | filter query_name like /pastebin|hastebin|paste\.ee|dpaste|privatebin|justpaste|rentry|telegra\.ph/
 | stats count() as query_count by srcaddr, query_name, bin(5m)
 | filter query_count > 0
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect DNS queries to text storage sites
 
 Parameters:
@@ -144,8 +142,8 @@ Resources:
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect DNS queries to text storage sites
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect DNS queries to text storage sites
 
 variable "route53_log_group" {
   type        = string
@@ -204,7 +202,7 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="DNS Query to Text Storage Site",
                 alert_description_template="Instance {srcaddr} queried text storage domain {query_name}.",
@@ -213,15 +211,15 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
                     "Review process activity on the source system",
                     "Check for outbound HTTPS connections to the domain",
                     "Examine recent file access patterns for sensitive data",
-                    "Review CloudTrail for recent API activity by associated IAM role"
+                    "Review CloudTrail for recent API activity by associated IAM role",
                 ],
                 containment_actions=[
                     "Block text storage domains via security groups/NACLs",
                     "Isolate the affected instance for forensic analysis",
                     "Revoke IAM credentials for the instance role",
                     "Enable VPC Flow Logs if not already enabled",
-                    "Implement DNS firewall rules for paste site domains"
-                ]
+                    "Implement DNS firewall rules for paste site domains",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Monitor during business hours; legitimate developer use is typically manual/infrequent",
@@ -230,9 +228,11 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Route53 Resolver Query Logging enabled", "CloudWatch Logs configured"]
+            prerequisites=[
+                "Route53 Resolver Query Logging enabled",
+                "CloudWatch Logs configured",
+            ],
         ),
-
         # Strategy 2: AWS - VPC Flow Logs for HTTPS POST to Paste Sites
         DetectionStrategy(
             strategy_id="t1567-003-aws-vpc",
@@ -242,14 +242,14 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
             aws_service="vpc",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcAddr, dstAddr, dstPort, bytes, packets
+                query="""fields @timestamp, srcAddr, dstAddr, dstPort, bytes, packets
 | filter dstPort = 443
 | filter action = "ACCEPT"
 | filter bytes > 10000
 | stats sum(bytes) as total_bytes, count() as conn_count by srcAddr, dstAddr, bin(10m)
 | filter total_bytes > 50000
-| sort total_bytes desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort total_bytes desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect HTTPS traffic patterns to text storage sites
 
 Parameters:
@@ -304,8 +304,8 @@ Resources:
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect HTTPS traffic patterns to text storage sites
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect HTTPS traffic patterns to text storage sites
 
 variable "vpc_flow_log_group" {
   type = string
@@ -363,7 +363,7 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Large HTTPS Upload Detected",
                 alert_description_template="Instance {srcAddr} uploaded {total_bytes} bytes via HTTPS to {dstAddr}.",
@@ -372,15 +372,15 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
                     "Review CloudWatch Logs for application/system logs from source",
                     "Identify processes making network connections",
                     "Check for file staging or compression activity",
-                    "Review IAM CloudTrail activity for the instance role"
+                    "Review IAM CloudTrail activity for the instance role",
                 ],
                 containment_actions=[
                     "Block destination IP via security groups",
                     "Quarantine affected instance",
                     "Analyse network packet captures if available",
                     "Review and rotate credentials for affected workloads",
-                    "Implement egress filtering for paste site domains"
-                ]
+                    "Implement egress filtering for paste site domains",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal HTTPS upload patterns; exclude CDN/backup destinations",
@@ -389,9 +389,8 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-25",
-            prerequisites=["VPC Flow Logs enabled and sent to CloudWatch"]
+            prerequisites=["VPC Flow Logs enabled and sent to CloudWatch"],
         ),
-
         # Strategy 3: AWS - GuardDuty for Unusual Outbound Activity
         DetectionStrategy(
             strategy_id="t1567-003-aws-guardduty",
@@ -404,9 +403,9 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
                 guardduty_finding_types=[
                     "Behavior:EC2/NetworkPortUnusual",
                     "Behavior:EC2/TrafficVolumeUnusual",
-                    "UnauthorizedAccess:EC2/TorClient"
+                    "UnauthorizedAccess:EC2/TorClient",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Route GuardDuty exfiltration findings to SNS
 
 Parameters:
@@ -449,8 +448,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Route GuardDuty exfiltration findings to SNS
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Route GuardDuty exfiltration findings to SNS
 
 variable "alert_email" {
   type = string
@@ -501,7 +500,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GuardDuty: Unusual Network Activity Detected",
                 alert_description_template="GuardDuty detected unusual outbound activity from {resource.instanceDetails.instanceId}.",
@@ -510,15 +509,15 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Identify the affected EC2 instance and its role",
                     "Examine CloudTrail logs for the instance's IAM role",
                     "Review Systems Manager Session Manager logs if applicable",
-                    "Check for recently deployed applications or scripts"
+                    "Check for recently deployed applications or scripts",
                 ],
                 containment_actions=[
                     "Isolate the instance using security group changes",
                     "Take an EBS snapshot for forensic analysis",
                     "Terminate the instance if confirmed malicious",
                     "Review and rotate all credentials accessible to the instance",
-                    "Enable GuardDuty malware protection if available"
-                ]
+                    "Enable GuardDuty malware protection if available",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="GuardDuty uses ML baselines; tune suppression rules for known batch jobs",
@@ -527,9 +526,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="20 minutes",
             estimated_monthly_cost="$3-8 (assumes GuardDuty already enabled)",
-            prerequisites=["GuardDuty enabled in the region"]
+            prerequisites=["GuardDuty enabled in the region"],
         ),
-
         # Strategy 4: GCP - Cloud Logging for Text Storage Site Access
         DetectionStrategy(
             strategy_id="t1567-003-gcp-dns",
@@ -540,9 +538,9 @@ resource "aws_sns_topic_policy" "allow_events" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="dns_query"
-(protoPayload.queryName=~"pastebin|hastebin|paste\.ee|dpaste|privatebin|justpaste|rentry")''',
-                gcp_terraform_template='''# GCP: Detect DNS queries to text storage sites
+                gcp_logging_query="""resource.type="dns_query"
+(protoPayload.queryName=~"pastebin|hastebin|paste\.ee|dpaste|privatebin|justpaste|rentry")""",
+                gcp_terraform_template="""# GCP: Detect DNS queries to text storage sites
 
 variable "project_id" {
   type = string
@@ -597,7 +595,7 @@ resource "google_monitoring_alert_policy" "text_storage_dns" {
       period = "300s"
     }
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: DNS Query to Text Storage Site",
                 alert_description_template="GCP resource queried text storage domain.",
@@ -606,15 +604,15 @@ resource "google_monitoring_alert_policy" "text_storage_dns" {
                     "Review VPC Flow Logs for corresponding HTTPS connections",
                     "Examine Cloud Logging for application logs from the source",
                     "Check recent IAM activity for the service account",
-                    "Review file access patterns on the instance"
+                    "Review file access patterns on the instance",
                 ],
                 containment_actions=[
                     "Block text storage domains using Cloud DNS policies",
                     "Isolate the affected GCE instance",
                     "Revoke service account credentials",
                     "Enable VPC Flow Logs if not already configured",
-                    "Implement VPC Service Controls for perimeter security"
-                ]
+                    "Implement VPC Service Controls for perimeter security",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Exclude known developer workstations during code review periods",
@@ -623,9 +621,8 @@ resource "google_monitoring_alert_policy" "text_storage_dns" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-12",
-            prerequisites=["Cloud DNS logging enabled", "Cloud Logging API enabled"]
+            prerequisites=["Cloud DNS logging enabled", "Cloud Logging API enabled"],
         ),
-
         # Strategy 5: GCP - VPC Flow Logs for HTTPS to Paste Sites
         DetectionStrategy(
             strategy_id="t1567-003-gcp-vpc",
@@ -636,11 +633,11 @@ resource "google_monitoring_alert_policy" "text_storage_dns" {
             gcp_service="vpc",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_subnetwork"
+                gcp_logging_query="""resource.type="gce_subnetwork"
 logName="projects/PROJECT_ID/logs/compute.googleapis.com%2Fvpc_flows"
 jsonPayload.connection.dest_port=443
-jsonPayload.bytes_sent > 50000''',
-                gcp_terraform_template='''# GCP: Detect large HTTPS uploads via VPC Flow Logs
+jsonPayload.bytes_sent > 50000""",
+                gcp_terraform_template="""# GCP: Detect large HTTPS uploads via VPC Flow Logs
 
 variable "project_id" {
   type = string
@@ -697,7 +694,7 @@ resource "google_monitoring_alert_policy" "large_https_upload" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Large HTTPS Upload Detected",
                 alert_description_template="GCE instance uploaded significant data via HTTPS.",
@@ -706,15 +703,15 @@ resource "google_monitoring_alert_policy" "large_https_upload" {
                     "Review Cloud Logging for application activity on source instance",
                     "Identify processes with network activity using OS logs",
                     "Check for recent file staging or archive creation",
-                    "Review Cloud Audit Logs for IAM and API activity"
+                    "Review Cloud Audit Logs for IAM and API activity",
                 ],
                 containment_actions=[
                     "Block destination IP using firewall rules",
                     "Isolate the affected instance via VPC firewall",
                     "Snapshot the instance disk for forensic analysis",
                     "Rotate service account keys",
-                    "Enable Private Google Access and restrict egress"
-                ]
+                    "Enable Private Google Access and restrict egress",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal upload patterns; exclude CI/CD and backup systems",
@@ -723,17 +720,19 @@ resource "google_monitoring_alert_policy" "large_https_upload" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-20",
-            prerequisites=["VPC Flow Logs enabled for subnets", "Cloud Logging configured"]
-        )
+            prerequisites=[
+                "VPC Flow Logs enabled for subnets",
+                "Cloud Logging configured",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1567-003-aws-dns",
         "t1567-003-gcp-dns",
         "t1567-003-aws-guardduty",
         "t1567-003-aws-vpc",
-        "t1567-003-gcp-vpc"
+        "t1567-003-gcp-vpc",
     ],
     total_effort_hours=4.0,
-    coverage_improvement="+12% improvement for Exfiltration tactic"
+    coverage_improvement="+12% improvement for Exfiltration tactic",
 )

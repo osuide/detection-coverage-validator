@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Unsecured Credentials",
     tactic_ids=["TA0006"],
     mitre_url="https://attack.mitre.org/techniques/T1552/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries search compromised systems to locate insecurely stored credentials "
@@ -40,28 +39,34 @@ TEMPLATE = RemediationTemplate(
             "Private keys and service account credentials stored without encryption",
             "Credentials found here typically have elevated permissions",
             "No authentication required if files are world-readable or exposed",
-            "Automated scanning tools make discovery at scale trivial"
+            "Automated scanning tools make discovery at scale trivial",
         ],
-        known_threat_actors=["Volt Typhoon", "Leviathan", "TeamTNT", "ShinyHunters", "Scattered Spider"],
+        known_threat_actors=[
+            "Volt Typhoon",
+            "Leviathan",
+            "TeamTNT",
+            "ShinyHunters",
+            "Scattered Spider",
+        ],
         recent_campaigns=[
             Campaign(
                 name="Leviathan Australian Intrusions",
                 year=2023,
                 description="Leviathan gathered hardcoded credentials from binaries during intrusions targeting Australian organisations",
-                reference_url="https://attack.mitre.org/campaigns/C0049/"
+                reference_url="https://attack.mitre.org/campaigns/C0049/",
             ),
             Campaign(
                 name="AWS .env File Attack",
                 year=2024,
                 description="Attackers scanned 230M+ AWS environments for exposed .env files containing credentials, deploying Lambda functions for extortion",
-                reference_url="https://unit42.paloaltonetworks.com/large-scale-cloud-extortion-operation/"
+                reference_url="https://unit42.paloaltonetworks.com/large-scale-cloud-extortion-operation/",
             ),
             Campaign(
                 name="TeamTNT Cloud Credential Campaign",
                 year=2024,
                 description="Multi-cloud credential theft targeting AWS, GCP, and Azure via exposed configuration files and container secrets",
-                reference_url="https://www.darkreading.com/cloud-security/aws-cloud-credential-stealing-campaign-spreads-azure-google"
-            )
+                reference_url="https://www.darkreading.com/cloud-security/aws-cloud-credential-stealing-campaign-spreads-azure-google",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -79,13 +84,12 @@ TEMPLATE = RemediationTemplate(
             "Cryptomining and resource abuse resulting in unexpected costs",
             "Regulatory fines for inadequate credential protection (GDPR, PCI-DSS, HIPAA)",
             "Reputational damage and loss of customer trust",
-            "Ransomware deployment using compromised administrative credentials"
+            "Ransomware deployment using compromised administrative credentials",
         ],
         typical_attack_phase="credential_access",
         often_precedes=["T1078.004", "T1087.004", "T1530", "T1098"],
-        often_follows=["T1190", "T1595", "T1609", "T1611"]
+        often_follows=["T1190", "T1595", "T1609", "T1611"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - GuardDuty for credential exposure and exfiltration
         DetectionStrategy(
@@ -101,9 +105,9 @@ TEMPLATE = RemediationTemplate(
                     "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.InsideAWS",
                     "CredentialAccess:IAMUser/AnomalousBehavior",
                     "UnauthorizedAccess:EC2/MetadataDNSRebind",
-                    "UnauthorizedAccess:EC2/RDPBruteForce"
+                    "UnauthorizedAccess:EC2/RDPBruteForce",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect credential exfiltration and exposure via GuardDuty
 
 Parameters:
@@ -157,8 +161,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref CredentialAlertTopic''',
-                terraform_template='''# Detect credential exfiltration and exposure via GuardDuty
+            Resource: !Ref CredentialAlertTopic""",
+                terraform_template="""# Detect credential exfiltration and exposure via GuardDuty
 
 variable "alert_email" {
   type        = string
@@ -218,7 +222,7 @@ resource "aws_sns_topic_policy" "credential_alerts_policy" {
       Resource  = aws_sns_topic.credential_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Credential Exfiltration or Exposure Detected",
                 alert_description_template="GuardDuty detected credential exfiltration or unusual credential usage. Finding: {finding_type}. Principal: {principal}. Source IP: {source_ip}.",
@@ -228,7 +232,7 @@ resource "aws_sns_topic_policy" "credential_alerts_policy" {
                     "Identify the source of the credentials (instance metadata, file, environment variable)",
                     "Determine the time window of potential exposure",
                     "Review what resources were accessed or modified",
-                    "Check for lateral movement to other accounts or services"
+                    "Check for lateral movement to other accounts or services",
                 ],
                 containment_actions=[
                     "Immediately rotate the compromised credentials",
@@ -236,8 +240,8 @@ resource "aws_sns_topic_policy" "credential_alerts_policy" {
                     "Block the source IP if identified as malicious",
                     "Disable EC2 instance or container if it's the source",
                     "Scan all systems for exposed credential files",
-                    "Enable IMDSv2 on EC2 instances to prevent metadata abuse"
-                ]
+                    "Enable IMDSv2 on EC2 instances to prevent metadata abuse",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist known CI/CD systems and deployment automation tools. Create trusted IP lists for expected locations.",
@@ -246,9 +250,8 @@ resource "aws_sns_topic_policy" "credential_alerts_policy" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$4/million events analysed",
-            prerequisites=["GuardDuty service quota available"]
+            prerequisites=["GuardDuty service quota available"],
         ),
-
         # Strategy 2: AWS - Detect access to credential storage locations
         DetectionStrategy(
             strategy_id="t1552-aws-secret-access",
@@ -258,13 +261,13 @@ resource "aws_sns_topic_policy" "credential_alerts_policy" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn, eventName, requestParameters.secretId, requestParameters.name, sourceIPAddress
+                query="""fields @timestamp, userIdentity.arn, eventName, requestParameters.secretId, requestParameters.name, sourceIPAddress
 | filter eventSource in ["secretsmanager.amazonaws.com", "ssm.amazonaws.com", "kms.amazonaws.com"]
 | filter eventName in ["GetSecretValue", "BatchGetSecretValue", "GetParameter", "GetParameters", "GetParametersByPath", "Decrypt"]
 | stats count(*) as access_count by userIdentity.arn, eventName, bin(5m)
 | filter access_count > 10
-| sort access_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort access_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Alert on unusual access to credential storage services
 
 Parameters:
@@ -311,8 +314,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Alert on unusual access to credential storage services
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Alert on unusual access to credential storage services
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -363,7 +366,7 @@ resource "aws_cloudwatch_metric_alarm" "secret_access" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
   alarm_actions       = [aws_sns_topic.secret_access_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Unusual Access to Secret Storage",
                 alert_description_template="High volume of secret retrieval detected. {access_count} accesses by {principal} in 5 minutes.",
@@ -373,15 +376,15 @@ resource "aws_cloudwatch_metric_alarm" "secret_access" {
                     "Check if access pattern matches normal application behaviour",
                     "Verify the source IP and user agent",
                     "Look for other suspicious activity from the same principal",
-                    "Review IAM permissions to assess if they're excessive"
+                    "Review IAM permissions to assess if they're excessive",
                 ],
                 containment_actions=[
                     "Rotate all accessed secrets immediately",
                     "Restrict IAM permissions for the accessing principal",
                     "Enable automatic secret rotation if not already enabled",
                     "Review and update resource policies on secrets",
-                    "Enable AWS Config rules for secret manager compliance"
-                ]
+                    "Enable AWS Config rules for secret manager compliance",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal access patterns over 30 days. Exclude known batch processes and CI/CD pipelines.",
@@ -390,9 +393,8 @@ resource "aws_cloudwatch_metric_alarm" "secret_access" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20 depending on log volume",
-            prerequisites=["CloudTrail enabled and logging to CloudWatch Logs"]
+            prerequisites=["CloudTrail enabled and logging to CloudWatch Logs"],
         ),
-
         # Strategy 3: GCP - Detect secret access via Cloud Logging
         DetectionStrategy(
             strategy_id="t1552-gcp-secret-access",
@@ -403,12 +405,12 @@ resource "aws_cloudwatch_metric_alarm" "secret_access" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="audited_resource"
+                gcp_logging_query="""resource.type="audited_resource"
 protoPayload.serviceName="secretmanager.googleapis.com"
 protoPayload.methodName=~"google.cloud.secretmanager.v1.SecretManagerService.(AccessSecretVersion|GetSecretVersion)"
 OR (protoPayload.serviceName="iam.googleapis.com"
-    AND protoPayload.methodName=~"google.iam.admin.v1.CreateServiceAccountKey")''',
-                gcp_terraform_template='''# GCP: Monitor Secret Manager and service account key access
+    AND protoPayload.methodName=~"google.iam.admin.v1.CreateServiceAccountKey")""",
+                gcp_terraform_template="""# GCP: Monitor Secret Manager and service account key access
 
 variable "project_id" {
   type        = string
@@ -477,7 +479,7 @@ resource "google_monitoring_alert_policy" "secret_access_alert" {
     content   = "High volume of Secret Manager or service account key access detected, indicating potential credential harvesting (MITRE T1552)."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Unusual Secret Access Detected",
                 alert_description_template="High volume of Secret Manager or service account key access detected, potentially indicating credential harvesting.",
@@ -487,7 +489,7 @@ resource "google_monitoring_alert_policy" "secret_access_alert" {
                     "Verify the source IP and determine if it's expected",
                     "Review IAM permissions for the accessing principal",
                     "Check for other suspicious activity from the same identity",
-                    "Determine if access pattern matches legitimate application behaviour"
+                    "Determine if access pattern matches legitimate application behaviour",
                 ],
                 containment_actions=[
                     "Rotate all accessed secrets and service account keys",
@@ -495,8 +497,8 @@ resource "google_monitoring_alert_policy" "secret_access_alert" {
                     "Restrict IAM permissions using least privilege principle",
                     "Enable VPC Service Controls to restrict Secret Manager access",
                     "Implement automatic secret rotation policies",
-                    "Review and update secret version access policies"
-                ]
+                    "Review and update secret version access policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal access patterns. Exclude known CI/CD service accounts and deployment automation.",
@@ -505,9 +507,8 @@ resource "google_monitoring_alert_policy" "secret_access_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$15-25",
-            prerequisites=["Cloud Audit Logs enabled", "Secret Manager API enabled"]
+            prerequisites=["Cloud Audit Logs enabled", "Secret Manager API enabled"],
         ),
-
         # Strategy 4: AWS - Detect EC2 instance metadata service abuse
         DetectionStrategy(
             strategy_id="t1552-aws-metadata-abuse",
@@ -517,13 +518,13 @@ resource "google_monitoring_alert_policy" "secret_access_alert" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message
+                query="""fields @timestamp, @message
 | filter @message like /169.254.169.254/
 | filter @message like /latest\/meta-data\/iam\/security-credentials/
 | stats count(*) as metadata_requests by bin(5m)
 | filter metadata_requests > 100
-| sort metadata_requests desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort metadata_requests desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect EC2 metadata service abuse for T1552.005
 
 Parameters:
@@ -567,8 +568,8 @@ Resources:
       Threshold: 100
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref MetadataAbuseTopic]''',
-                terraform_template='''# Detect EC2 metadata service abuse for T1552.005
+      AlarmActions: [!Ref MetadataAbuseTopic]""",
+                terraform_template="""# Detect EC2 metadata service abuse for T1552.005
 
 variable "vpc_flow_log_group" {
   type        = string
@@ -616,7 +617,7 @@ resource "aws_cloudwatch_metric_alarm" "metadata_abuse" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.metadata_abuse.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="EC2 Metadata Service Abuse Detected",
                 alert_description_template="Excessive metadata service requests detected: {metadata_requests} requests in 5 minutes. Possible SSRF or credential harvesting.",
@@ -626,7 +627,7 @@ resource "aws_cloudwatch_metric_alarm" "metadata_abuse" {
                     "Review if IMDSv2 (session-oriented) is enforced on instances",
                     "Investigate network traffic from affected instances",
                     "Check CloudTrail for any API calls made using instance credentials",
-                    "Review instance role permissions for excessive privileges"
+                    "Review instance role permissions for excessive privileges",
                 ],
                 containment_actions=[
                     "Enforce IMDSv2 on all EC2 instances to prevent SSRF abuse",
@@ -634,8 +635,8 @@ resource "aws_cloudwatch_metric_alarm" "metadata_abuse" {
                     "Implement hop limit of 1 for metadata service",
                     "Review and restrict instance role permissions",
                     "Patch applications vulnerable to SSRF",
-                    "Consider isolating affected instances for forensic analysis"
-                ]
+                    "Consider isolating affected instances for forensic analysis",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Adjust threshold based on normal instance metadata usage patterns. Some applications legitimately query metadata frequently.",
@@ -644,16 +645,15 @@ resource "aws_cloudwatch_metric_alarm" "metadata_abuse" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$10-15",
-            prerequisites=["VPC Flow Logs enabled and logging to CloudWatch"]
-        )
+            prerequisites=["VPC Flow Logs enabled and logging to CloudWatch"],
+        ),
     ],
-
     recommended_order=[
         "t1552-aws-guardduty",
         "t1552-aws-secret-access",
         "t1552-gcp-secret-access",
-        "t1552-aws-metadata-abuse"
+        "t1552-aws-metadata-abuse",
     ],
     total_effort_hours=6.0,
-    coverage_improvement="+30% improvement for Credential Access tactic"
+    coverage_improvement="+30% improvement for Credential Access tactic",
 )

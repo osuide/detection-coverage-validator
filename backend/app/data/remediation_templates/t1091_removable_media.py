@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Replication Through Removable Media",
     tactic_ids=["TA0001", "TA0008"],  # Initial Access, Lateral Movement
     mitre_url="https://attack.mitre.org/techniques/T1091/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries exploit removable media such as USB drives, external hard drives, "
@@ -40,7 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Social engineering component makes detection difficult",
             "Can spread automatically via Autorun functionality",
             "Difficult to prevent in environments requiring USB access",
-            "Works across network boundaries"
+            "Works across network boundaries",
         ],
         known_threat_actors=[
             "APT28",
@@ -51,33 +50,33 @@ TEMPLATE = RemediationTemplate(
             "Gamaredon Group",
             "LuminousMoth",
             "Mustang Panda",
-            "Tropic Trooper"
+            "Tropic Trooper",
         ],
         recent_campaigns=[
             Campaign(
                 name="FIN7 USB Ransomware Campaign",
                 year=2021,
                 description="FIN7 mailed USB drives containing ransomware to retail and hospitality companies, disguised as COVID-19 safety guidelines or customer complaints",
-                reference_url="https://attack.mitre.org/groups/G0046/"
+                reference_url="https://attack.mitre.org/groups/G0046/",
             ),
             Campaign(
                 name="Raspberry Robin Worm",
                 year=2022,
                 description="Widespread worm spreading via USB drives and external drives, observed deploying additional malware including IcedID and Bumblebee",
-                reference_url="https://attack.mitre.org/software/S1040/"
+                reference_url="https://attack.mitre.org/software/S1040/",
             ),
             Campaign(
                 name="Gamaredon USB Spreading",
                 year=2023,
                 description="Gamaredon Group used USB-spreading malware to compromise Ukrainian government networks and spread laterally across air-gapped systems",
-                reference_url="https://attack.mitre.org/groups/G0047/"
+                reference_url="https://attack.mitre.org/groups/G0047/",
             ),
             Campaign(
                 name="Agent.btz Pentagon Breach",
                 year=2008,
                 description="Nation-state malware spread via infected USB drive into classified US military networks, leading to creation of US Cyber Command",
-                reference_url="https://attack.mitre.org/techniques/T1091/"
-            )
+                reference_url="https://attack.mitre.org/techniques/T1091/",
+            ),
         ],
         prevalence="moderate",
         trend="stable",
@@ -94,13 +93,12 @@ TEMPLATE = RemediationTemplate(
             "Introduction of malware to secure environments",
             "Potential for widespread lateral movement",
             "Compliance violations in regulated environments",
-            "Data exfiltration from isolated networks"
+            "Data exfiltration from isolated networks",
         ],
         typical_attack_phase="initial_access",
         often_precedes=["T1059.001", "T1071", "T1105", "T1570", "T1204.002"],
-        often_follows=["T1566.001", "T1195.003"]
+        often_follows=["T1566.001", "T1195.003"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - WorkSpaces USB Device Detection
         DetectionStrategy(
@@ -111,13 +109,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message, userIdentity.principalId
+                query="""fields @timestamp, @message, userIdentity.principalId
 | filter @message like /USB/ or @message like /removable/ or @message like /storage device/
 | filter @message like /connected|attached|mounted/
 | stats count(*) as deviceConnections by userIdentity.principalId, bin(1h)
 | filter deviceConnections > 0
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect USB device connections in AWS WorkSpaces
 
 Parameters:
@@ -168,8 +166,8 @@ Resources:
       EvaluationPeriods: 1
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching''',
-                terraform_template='''# AWS: Detect USB device connections in WorkSpaces
+      TreatMissingData: notBreaching""",
+                terraform_template="""# AWS: Detect USB device connections in WorkSpaces
 
 variable "alert_email" {
   type        = string
@@ -220,7 +218,7 @@ resource "aws_cloudwatch_metric_alarm" "usb_connection" {
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.usb_alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="USB Device Connected to WorkSpace",
                 alert_description_template="USB or removable storage device connected to WorkSpace {workspaceId} by user {principalId}.",
@@ -231,7 +229,7 @@ resource "aws_cloudwatch_metric_alarm" "usb_connection" {
                     "Check for autorun.inf or suspicious executable files",
                     "Examine WorkSpace security logs for malware indicators",
                     "Verify the business justification for USB usage",
-                    "Check if device is registered in asset management system"
+                    "Check if device is registered in asset management system",
                 ],
                 containment_actions=[
                     "Disable USB redirection for affected WorkSpace if unauthorised",
@@ -240,8 +238,8 @@ resource "aws_cloudwatch_metric_alarm" "usb_connection" {
                     "Review and restrict USB access policies organisation-wide",
                     "Enable USB device allowlisting if supported",
                     "Implement data loss prevention (DLP) for removable media",
-                    "Document incident and update security policies"
-                ]
+                    "Document incident and update security policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist authorised users and job roles requiring USB access; implement device registration system",
@@ -250,9 +248,12 @@ resource "aws_cloudwatch_metric_alarm" "usb_connection" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["WorkSpaces deployed", "USB redirection configured", "CloudWatch Logs enabled"]
+            prerequisites=[
+                "WorkSpaces deployed",
+                "USB redirection configured",
+                "CloudWatch Logs enabled",
+            ],
         ),
-
         # Strategy 2: AWS - EC2 Systems Manager USB Device Inventory
         DetectionStrategy(
             strategy_id="t1091-aws-ssm-inventory",
@@ -266,10 +267,14 @@ resource "aws_cloudwatch_metric_alarm" "usb_connection" {
                     "source": ["aws.ssm"],
                     "detail-type": ["Inventory Resource State Change"],
                     "detail": {
-                        "resourceType": ["AWS:WindowsUpdate", "AWS:Application", "Custom:USBDevice"]
-                    }
+                        "resourceType": [
+                            "AWS:WindowsUpdate",
+                            "AWS:Application",
+                            "Custom:USBDevice",
+                        ]
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Monitor USB devices via Systems Manager Inventory
 
 Parameters:
@@ -332,8 +337,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# AWS: Monitor USB devices via Systems Manager
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# AWS: Monitor USB devices via Systems Manager
 
 variable "alert_email" {
   type        = string
@@ -398,7 +403,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.inventory_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="USB Device Detected via Systems Manager Inventory",
                 alert_description_template="New USB or removable storage device detected on instance {instanceId}.",
@@ -409,7 +414,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Review instance access logs around connection time",
                     "Examine files transferred to/from device",
                     "Check for malware signatures in transferred files",
-                    "Verify business justification for device usage"
+                    "Verify business justification for device usage",
                 ],
                 containment_actions=[
                     "Disable USB ports via Group Policy if unauthorised",
@@ -417,8 +422,8 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Isolate instance if malware detected",
                     "Implement USB device allowlisting",
                     "Enable USB storage encryption requirements",
-                    "Review and update device control policies"
-                ]
+                    "Review and update device control policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known-good USB devices and authorised users; implement device registration workflow",
@@ -427,9 +432,12 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$10-30",
-            prerequisites=["Systems Manager agent installed", "Inventory collection enabled", "EventBridge configured"]
+            prerequisites=[
+                "Systems Manager agent installed",
+                "Inventory collection enabled",
+                "EventBridge configured",
+            ],
         ),
-
         # Strategy 3: AWS - S3 Upload from Suspicious Sources
         DetectionStrategy(
             strategy_id="t1091-aws-s3-upload",
@@ -443,10 +451,14 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "source": ["aws.s3"],
                     "detail-type": ["AWS API Call via CloudTrail"],
                     "detail": {
-                        "eventName": ["PutObject", "UploadPart", "CompleteMultipartUpload"]
-                    }
+                        "eventName": [
+                            "PutObject",
+                            "UploadPart",
+                            "CompleteMultipartUpload",
+                        ]
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect suspicious S3 uploads potentially from removable media
 
 Parameters:
@@ -501,8 +513,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# AWS: Detect suspicious S3 uploads
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# AWS: Detect suspicious S3 uploads
 
 variable "alert_email" {
   type        = string
@@ -565,7 +577,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.upload_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Suspicious S3 Upload Detected",
                 alert_description_template="File uploaded to S3 bucket {bucketName} by {principalId}. Review for potential removable media transfer.",
@@ -576,7 +588,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Scan uploaded file for malware",
                     "Examine file metadata and properties",
                     "Verify business justification for upload",
-                    "Check if upload matches known file transfer patterns"
+                    "Check if upload matches known file transfer patterns",
                 ],
                 containment_actions=[
                     "Quarantine suspicious files in S3",
@@ -584,8 +596,8 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Block further uploads from suspicious sources",
                     "Enable S3 Object Lock for critical buckets",
                     "Implement S3 bucket policies restricting upload sources",
-                    "Enable MFA Delete on sensitive buckets"
-                ]
+                    "Enable MFA Delete on sensitive buckets",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Establish baseline upload patterns; whitelist known-good upload sources and automated processes",
@@ -594,9 +606,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled", "S3 data events logged"]
+            prerequisites=["CloudTrail enabled", "S3 data events logged"],
         ),
-
         # Strategy 4: GCP - Compute Instance USB Device Detection
         DetectionStrategy(
             strategy_id="t1091-gcp-usb-detection",
@@ -607,7 +618,7 @@ resource "aws_sns_topic_policy" "allow_events" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 (logName=~"logs/syslog" OR logName=~"logs/windows")
 AND (
   jsonPayload.message=~".*USB.*connect.*"
@@ -615,8 +626,8 @@ AND (
   OR jsonPayload.message=~".*mass storage.*"
   OR jsonPayload.message=~".*usb-storage.*"
   OR textPayload=~".*USB.*device.*attached.*"
-)''',
-                gcp_terraform_template='''# GCP: Detect USB device connections to Compute instances
+)""",
+                gcp_terraform_template="""# GCP: Detect USB device connections to Compute instances
 
 variable "project_id" {
   type        = string
@@ -694,7 +705,7 @@ resource "google_monitoring_alert_policy" "usb_alert" {
     content   = "USB or removable storage device connected to Compute instance. Investigate for unauthorised device usage or potential malware."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: USB Device Connected to Compute Instance",
                 alert_description_template="USB or removable storage device detected on instance {instance_name} in zone {zone}.",
@@ -705,7 +716,7 @@ resource "google_monitoring_alert_policy" "usb_alert" {
                     "Examine files accessed during connection timeframe",
                     "Run malware scan on instance",
                     "Verify user authentication around connection time",
-                    "Check for autorun scripts or suspicious executables"
+                    "Check for autorun scripts or suspicious executables",
                 ],
                 containment_actions=[
                     "Disable USB passthrough if unauthorised",
@@ -713,8 +724,8 @@ resource "google_monitoring_alert_policy" "usb_alert" {
                     "Run antimalware scan on affected instance",
                     "Implement organisation policy restricting USB access",
                     "Enable VM Manager for inventory tracking",
-                    "Document incident and update security policies"
-                ]
+                    "Document incident and update security policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised users and instances requiring USB access; establish device registration process",
@@ -723,9 +734,12 @@ resource "google_monitoring_alert_policy" "usb_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Logging enabled", "OS logs forwarded to Cloud Logging", "Syslog or Windows Event Forwarding configured"]
+            prerequisites=[
+                "Cloud Logging enabled",
+                "OS logs forwarded to Cloud Logging",
+                "Syslog or Windows Event Forwarding configured",
+            ],
         ),
-
         # Strategy 5: GCP - Cloud Storage Unusual Upload Patterns
         DetectionStrategy(
             strategy_id="t1091-gcp-storage-upload",
@@ -740,7 +754,7 @@ resource "google_monitoring_alert_policy" "usb_alert" {
 protoPayload.methodName="storage.objects.create"
 OR protoPayload.methodName="storage.objects.update"
 protoPayload.serviceName="storage.googleapis.com"''',
-                gcp_terraform_template='''# GCP: Detect unusual Cloud Storage uploads
+                gcp_terraform_template="""# GCP: Detect unusual Cloud Storage uploads
 
 variable "project_id" {
   type        = string
@@ -816,7 +830,7 @@ resource "google_monitoring_alert_policy" "upload_alert" {
     content   = "Unusual upload pattern detected. Review for potential removable media data transfer or bulk file upload from untrusted source."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Unusual Cloud Storage Upload Pattern",
                 alert_description_template="High volume of uploads detected to bucket {bucket_name}. Review for potential removable media transfer.",
@@ -827,7 +841,7 @@ resource "google_monitoring_alert_policy" "upload_alert" {
                     "Scan uploaded files for malware",
                     "Examine upload patterns and timing",
                     "Verify business justification for bulk upload",
-                    "Check object metadata for source indicators"
+                    "Check object metadata for source indicators",
                 ],
                 containment_actions=[
                     "Quarantine suspicious objects",
@@ -835,8 +849,8 @@ resource "google_monitoring_alert_policy" "upload_alert" {
                     "Run malware scanning on uploaded objects",
                     "Implement bucket ACLs restricting upload sources",
                     "Enable VPC Service Controls for bucket access",
-                    "Review and restrict upload permissions"
-                ]
+                    "Review and restrict upload permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Baseline normal upload patterns; whitelist known backup and sync operations",
@@ -845,17 +859,19 @@ resource "google_monitoring_alert_policy" "upload_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-25",
-            prerequisites=["Cloud Audit Logs enabled", "Data Access logs enabled for Cloud Storage"]
-        )
+            prerequisites=[
+                "Cloud Audit Logs enabled",
+                "Data Access logs enabled for Cloud Storage",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1091-aws-workspaces-usb",
         "t1091-gcp-usb-detection",
         "t1091-aws-ssm-inventory",
         "t1091-aws-s3-upload",
-        "t1091-gcp-storage-upload"
+        "t1091-gcp-storage-upload",
     ],
     total_effort_hours=7.5,
-    coverage_improvement="+15% improvement for Initial Access and Lateral Movement tactics"
+    coverage_improvement="+15% improvement for Initial Access and Lateral Movement tactics",
 )

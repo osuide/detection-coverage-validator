@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Application Window Discovery",
     tactic_ids=["TA0007"],
     mitre_url="https://attack.mitre.org/techniques/T1010/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries enumerate application windows to obtain a listing of open "
@@ -39,26 +38,22 @@ TEMPLATE = RemediationTemplate(
             "Maps email clients and communication tools",
             "Determines screenshot and keylogging targets",
             "Reveals analysis and sandbox environments",
-            "Informs follow-on data collection activities"
+            "Informs follow-on data collection activities",
         ],
-        known_threat_actors=[
-            "Lazarus Group",
-            "Volt Typhoon",
-            "HEXANE"
-        ],
+        known_threat_actors=["Lazarus Group", "Volt Typhoon", "HEXANE"],
         recent_campaigns=[
             Campaign(
                 name="Lazarus Group Financial Targeting",
                 year=2024,
                 description="Malware reported window titles to command servers to identify cryptocurrency wallets and financial applications",
-                reference_url="https://attack.mitre.org/groups/G0032/"
+                reference_url="https://attack.mitre.org/groups/G0032/",
             ),
             Campaign(
                 name="Volt Typhoon Infrastructure Compromise",
                 year=2024,
                 description="Collected window title information from compromised infrastructure to map running applications",
-                reference_url="https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-144a"
-            )
+                reference_url="https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-144a",
+            ),
         ],
         prevalence="common",
         trend="stable",
@@ -75,13 +70,12 @@ TEMPLATE = RemediationTemplate(
             "Precursor to targeted data collection",
             "Security tool mapping by attackers",
             "Credential theft risk from banking/wallet apps",
-            "Email and communication tool targeting"
+            "Email and communication tool targeting",
         ],
         typical_attack_phase="discovery",
         often_precedes=["T1113", "T1056.001", "T1005", "T1114"],
-        often_follows=["T1078.004", "T1190", "T1566"]
+        often_follows=["T1078.004", "T1190", "T1566"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - EC2 Windows API Monitoring via CloudWatch Logs
         DetectionStrategy(
@@ -92,13 +86,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, EventID, ProcessName, ApiCall
+                query="""fields @timestamp, EventID, ProcessName, ApiCall
 | filter EventID = 7 OR EventID = 10
 | filter ApiCall like /EnumWindows|GetForegroundWindow|GetWindowText|FindWindow/
 | stats count(*) as api_calls by ProcessName, SourceImage, bin(30m)
 | filter api_calls > 10
-| sort api_calls desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort api_calls desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect application window discovery on Windows EC2 instances
 
 Parameters:
@@ -140,8 +134,8 @@ Resources:
       Threshold: 15
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect application window discovery on Windows EC2
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect application window discovery on Windows EC2
 
 variable "log_group_name" {
   type        = string
@@ -187,7 +181,7 @@ resource "aws_cloudwatch_metric_alarm" "window_enum" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Application Window Discovery Detected",
                 alert_description_template="Win32 API calls for window enumeration detected from {ProcessName}.",
@@ -196,15 +190,15 @@ resource "aws_cloudwatch_metric_alarm" "window_enum" {
                     "Check if the process is legitimate or malicious",
                     "Review what windows were enumerated",
                     "Look for correlation with keylogging or screenshots",
-                    "Check for follow-on data collection activity"
+                    "Check for follow-on data collection activity",
                 ],
                 containment_actions=[
                     "Analyse suspicious process and parent process",
                     "Check for malware signatures",
                     "Monitor for credential theft attempts",
                     "Review security tool status",
-                    "Consider isolating affected instance"
-                ]
+                    "Consider isolating affected instance",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate monitoring tools and UI automation software",
@@ -213,9 +207,11 @@ resource "aws_cloudwatch_metric_alarm" "window_enum" {
             implementation_effort=EffortLevel.HIGH,
             implementation_time="2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Sysmon installed on Windows instances", "CloudWatch Logs agent configured"]
+            prerequisites=[
+                "Sysmon installed on Windows instances",
+                "CloudWatch Logs agent configured",
+            ],
         ),
-
         # Strategy 2: AWS - PowerShell Script Monitoring
         DetectionStrategy(
             strategy_id="t1010-aws-powershell",
@@ -225,12 +221,12 @@ resource "aws_cloudwatch_metric_alarm" "window_enum" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, EventID, ScriptBlockText, UserName
+                query="""fields @timestamp, EventID, ScriptBlockText, UserName
 | filter EventID = 4104
 | filter ScriptBlockText like /Get-Process.*MainWindowTitle|\\[Windows\\.Automation|EnumWindows/
 | stats count(*) as script_count by UserName, ComputerName, bin(30m)
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect PowerShell-based window enumeration
 
 Parameters:
@@ -272,8 +268,8 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect PowerShell window enumeration
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect PowerShell window enumeration
 
 variable "powershell_log_group" {
   type        = string
@@ -319,7 +315,7 @@ resource "aws_cloudwatch_metric_alarm" "powershell_window" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="PowerShell Window Enumeration Detected",
                 alert_description_template="PowerShell script enumerating application windows executed by {UserName}.",
@@ -328,15 +324,15 @@ resource "aws_cloudwatch_metric_alarm" "powershell_window" {
                     "Identify who executed the script",
                     "Check if this is authorised administrative activity",
                     "Look for associated keylogging or screenshot activity",
-                    "Review recent activity from this user"
+                    "Review recent activity from this user",
                 ],
                 containment_actions=[
                     "Analyse script content for malicious behaviour",
                     "Check for follow-on data exfiltration",
                     "Monitor for credential theft attempts",
                     "Review PowerShell execution policies",
-                    "Consider restricting PowerShell access"
-                ]
+                    "Consider restricting PowerShell access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised automation scripts and monitoring tools",
@@ -345,9 +341,11 @@ resource "aws_cloudwatch_metric_alarm" "powershell_window" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$8-15",
-            prerequisites=["PowerShell script block logging enabled", "CloudWatch Logs agent configured"]
+            prerequisites=[
+                "PowerShell script block logging enabled",
+                "CloudWatch Logs agent configured",
+            ],
         ),
-
         # Strategy 3: GCP - Linux X11 Utility Detection
         DetectionStrategy(
             strategy_id="t1010-gcp-linux",
@@ -360,7 +358,7 @@ resource "aws_cloudwatch_metric_alarm" "powershell_window" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.request.cmdline=~"(xdotool|wmctrl|xwininfo|xprop)"
 OR textPayload=~"(xdotool.*search|wmctrl -l|xwininfo -root|xprop -root)"''',
-                gcp_terraform_template='''# GCP: Detect X11 window enumeration on Linux instances
+                gcp_terraform_template="""# GCP: Detect X11 window enumeration on Linux instances
 
 variable "project_id" {
   type = string
@@ -409,7 +407,7 @@ resource "google_monitoring_alert_policy" "x11_window_enum" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: X11 Window Enumeration Detected",
                 alert_description_template="X11 utilities used for window enumeration on Compute instance.",
@@ -418,15 +416,15 @@ resource "google_monitoring_alert_policy" "x11_window_enum" {
                     "Review the specific X11 utility and parameters",
                     "Check if this is authorised administrative activity",
                     "Look for correlation with screenshots or keylogging",
-                    "Review instance's expected workload"
+                    "Review instance's expected workload",
                 ],
                 containment_actions=[
                     "Review instance access logs",
                     "Check for data collection activities",
                     "Monitor for credential theft attempts",
                     "Consider disabling X11 forwarding if unused",
-                    "Audit user permissions and access"
-                ]
+                    "Audit user permissions and access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist legitimate desktop automation and testing tools",
@@ -435,9 +433,11 @@ resource "google_monitoring_alert_policy" "x11_window_enum" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Cloud Audit Logs enabled", "OS Login or SSH logging configured"]
+            prerequisites=[
+                "Cloud Audit Logs enabled",
+                "OS Login or SSH logging configured",
+            ],
         ),
-
         # Strategy 4: GCP - macOS AppleScript Detection
         DetectionStrategy(
             strategy_id="t1010-gcp-macos",
@@ -450,7 +450,7 @@ resource "google_monitoring_alert_policy" "x11_window_enum" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.request.cmdline=~"(osascript|CGWindowListCopyWindowInfo|NSRunningApplication)"
 OR textPayload=~"(tell application.*windows|CGWindowListCopyWindowInfo|NSRunningApplication)"''',
-                gcp_terraform_template='''# GCP: Detect macOS window enumeration
+                gcp_terraform_template="""# GCP: Detect macOS window enumeration
 
 variable "project_id" {
   type = string
@@ -499,7 +499,7 @@ resource "google_monitoring_alert_policy" "macos_window_enum" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: macOS Window Enumeration Detected",
                 alert_description_template="AppleScript or macOS API used for window enumeration on instance.",
@@ -508,15 +508,15 @@ resource "google_monitoring_alert_policy" "macos_window_enum" {
                     "Review the AppleScript or API call details",
                     "Check if this is authorised automation",
                     "Look for associated data collection activity",
-                    "Review recent user activity"
+                    "Review recent user activity",
                 ],
                 containment_actions=[
                     "Analyse script or binary for malicious behaviour",
                     "Check for follow-on credential theft",
                     "Monitor for screenshot or keylogging activity",
                     "Review user permissions and legitimacy",
-                    "Consider restricting AppleScript execution"
-                ]
+                    "Consider restricting AppleScript execution",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised UI automation and testing frameworks",
@@ -525,16 +525,18 @@ resource "google_monitoring_alert_policy" "macos_window_enum" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Cloud Audit Logs enabled", "macOS system logging configured"]
-        )
+            prerequisites=[
+                "Cloud Audit Logs enabled",
+                "macOS system logging configured",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1010-aws-powershell",
         "t1010-aws-windows",
         "t1010-gcp-linux",
-        "t1010-gcp-macos"
+        "t1010-gcp-macos",
     ],
     total_effort_hours=5.0,
-    coverage_improvement="+10% improvement for Discovery tactic"
+    coverage_improvement="+10% improvement for Discovery tactic",
 )

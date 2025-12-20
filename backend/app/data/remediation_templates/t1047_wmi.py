@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Windows Management Instrumentation",
     tactic_ids=["TA0002"],
     mitre_url="https://attack.mitre.org/techniques/T1047/",
-
     threat_context=ThreatContext(
         description=(
             "Windows Management Instrumentation (WMI) is a legitimate Windows administration "
@@ -40,38 +39,50 @@ TEMPLATE = RemediationTemplate(
             "Facilitates 'living off the land' tactics",
             "Historically used wmic.exe, now PowerShell and COM APIs",
             "Critical for ransomware shadow copy deletion",
-            "Supports both local and remote system management"
+            "Supports both local and remote system management",
         ],
         known_threat_actors=[
-            "APT29", "APT32", "APT41", "FIN7", "FIN8", "FIN13",
-            "Lazarus Group", "Volt Typhoon", "Gamaredon", "BlackCat",
-            "LockBit 2.0", "REvil", "WannaCry", "Maze", "Conti"
+            "APT29",
+            "APT32",
+            "APT41",
+            "FIN7",
+            "FIN8",
+            "FIN13",
+            "Lazarus Group",
+            "Volt Typhoon",
+            "Gamaredon",
+            "BlackCat",
+            "LockBit 2.0",
+            "REvil",
+            "WannaCry",
+            "Maze",
+            "Conti",
         ],
         recent_campaigns=[
             Campaign(
                 name="Volt Typhoon Living-off-the-Land Campaign",
                 year=2024,
                 description="Chinese APT targeted critical infrastructure using WMI for discovery and execution whilst evading detection through native Windows tools",
-                reference_url="https://attack.mitre.org/groups/G1017/"
+                reference_url="https://attack.mitre.org/groups/G1017/",
             ),
             Campaign(
                 name="BlackCat Ransomware Shadow Copy Deletion",
                 year=2023,
                 description="Used 'wmic.exe Shadowcopy Delete' to inhibit system recovery before encryption, targeting cloud-connected Windows environments",
-                reference_url="https://attack.mitre.org/software/S1068/"
+                reference_url="https://attack.mitre.org/software/S1068/",
             ),
             Campaign(
                 name="APT29 SolarWinds Compromise",
                 year=2020,
                 description="Leveraged WMI for credential theft, backdoor execution, and lateral movement across hybrid cloud infrastructure",
-                reference_url="https://attack.mitre.org/groups/G0016/"
+                reference_url="https://attack.mitre.org/groups/G0016/",
             ),
             Campaign(
                 name="Ukraine Electric Power Attack",
                 year=2016,
                 description="Used WMI for remote execution and system discovery during critical infrastructure compromise",
-                reference_url="https://attack.mitre.org/techniques/T1047/"
-            )
+                reference_url="https://attack.mitre.org/techniques/T1047/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -90,13 +101,12 @@ TEMPLATE = RemediationTemplate(
             "Discovery of security tools and system configurations",
             "Remote command execution without malware deployment",
             "Credential theft and privilege escalation",
-            "Data destruction and system recovery inhibition"
+            "Data destruction and system recovery inhibition",
         ],
         typical_attack_phase="execution",
         often_precedes=["T1003", "T1078", "T1021", "T1490"],
-        often_follows=["T1078.004", "T1190", "T1133", "T1078.001"]
+        often_follows=["T1078.004", "T1190", "T1133", "T1078.001"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS GuardDuty Runtime Monitoring for WMI Execution
         DetectionStrategy(
@@ -115,9 +125,9 @@ TEMPLATE = RemediationTemplate(
                     "Execution:Runtime/NewBinaryExecuted",
                     "Execution:Runtime/ReverseShell",
                     "CredentialAccess:Runtime/MemoryDumpCreated",
-                    "Impact:Runtime/MaliciousCommand"
+                    "Impact:Runtime/MaliciousCommand",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty Runtime Monitoring for WMI abuse detection on Windows EC2 instances
 
 Parameters:
@@ -172,8 +182,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref WMIAlertTopic''',
-                terraform_template='''# GuardDuty Runtime Monitoring for WMI abuse detection
+            Resource: !Ref WMIAlertTopic""",
+                terraform_template="""# GuardDuty Runtime Monitoring for WMI abuse detection
 
 variable "alert_email" {
   type        = string
@@ -247,7 +257,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Resource  = aws_sns_topic.wmi_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GuardDuty: WMI Execution Detected",
                 alert_description_template=(
@@ -262,7 +272,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Review Windows Event Logs (EventID 4688, 4648, Sysmon Event 1, 19, 20, 21)",
                     "Check for shadow copy deletion or anti-forensics activities",
                     "Investigate network connections for lateral movement indicators",
-                    "Review recent user logons and authentication events"
+                    "Review recent user logons and authentication events",
                 ],
                 containment_actions=[
                     "Isolate the instance by modifying security groups to block all traffic",
@@ -270,8 +280,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Rotate all credentials that may have been exposed on the instance",
                     "Revoke the instance IAM role session credentials",
                     "Check for persistence mechanisms (WMI event subscriptions, scheduled tasks)",
-                    "Terminate the instance if compromise is confirmed"
-                ]
+                    "Terminate the instance if compromise is confirmed",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Baseline legitimate administrative WMI usage; exclude authorised management tools and patch deployment systems",
@@ -280,9 +290,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",
             estimated_monthly_cost="$4.60 per Windows instance per month for Runtime Monitoring",
-            prerequisites=["GuardDuty enabled", "SSM Agent on Windows EC2 instances for Runtime Monitoring"]
+            prerequisites=[
+                "GuardDuty enabled",
+                "SSM Agent on Windows EC2 instances for Runtime Monitoring",
+            ],
         ),
-
         # Strategy 2: CloudWatch Logs - WMI Command Detection
         DetectionStrategy(
             strategy_id="t1047-cloudwatch-wmi",
@@ -295,11 +307,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message, instanceId, commandLine, processName
+                query="""fields @timestamp, @message, instanceId, commandLine, processName
 | filter @message like /wmic.exe|Get-WmiObject|Invoke-WmiMethod|gwmi|iwmi|Win32_Shadowcopy.*Delete|shadowcopy.*delete/i
 | filter @message not like /Microsoft.*Update|SCCM|authorised_management/
 | stats count() as wmi_executions by instanceId, processName, bin(5m)
-| sort @timestamp desc''',
+| sort @timestamp desc""",
                 cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect WMI command execution on Windows instances
 
@@ -349,7 +361,7 @@ Resources:
         - MetricName: ShadowCopyDeletion
           MetricNamespace: Security/T1047
           MetricValue: "1"''',
-                terraform_template='''# Detect WMI command execution on Windows instances
+                terraform_template="""# Detect WMI command execution on Windows instances
 
 variable "cloudwatch_log_group" {
   type        = string
@@ -409,7 +421,7 @@ resource "aws_cloudwatch_log_metric_filter" "shadow_copy_deletion" {
     namespace = "Security/T1047"
     value     = "1"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="WMI Command Execution Detected",
                 alert_description_template=(
@@ -424,7 +436,7 @@ resource "aws_cloudwatch_log_metric_filter" "shadow_copy_deletion" {
                     "Search for shadow copy deletion commands (ransomware indicator)",
                     "Check for lateral movement via WMI to other instances",
                     "Review Windows Security Event Log (EventID 4688 for process creation)",
-                    "Examine Sysmon logs for WMI EventID 19, 20, 21 (WMI event consumers)"
+                    "Examine Sysmon logs for WMI EventID 19, 20, 21 (WMI event consumers)",
                 ],
                 containment_actions=[
                     "Immediately isolate the instance from the network",
@@ -432,8 +444,8 @@ resource "aws_cloudwatch_log_metric_filter" "shadow_copy_deletion" {
                     "Kill suspicious WMI processes if still running",
                     "Disable WMI service temporarily if compromise confirmed",
                     "Check for and remove WMI event subscriptions used for persistence",
-                    "Rotate credentials for all accounts that authenticated to the instance"
-                ]
+                    "Rotate credentials for all accounts that authenticated to the instance",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude authorised systems management tools (SCCM, patch management), whitelist known administrative automation",
@@ -442,9 +454,11 @@ resource "aws_cloudwatch_log_metric_filter" "shadow_copy_deletion" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-15 depending on log volume",
-            prerequisites=["CloudWatch Logs Agent installed on Windows instances", "Windows Event Forwarding or Sysmon logging enabled"]
+            prerequisites=[
+                "CloudWatch Logs Agent installed on Windows instances",
+                "Windows Event Forwarding or Sysmon logging enabled",
+            ],
         ),
-
         # Strategy 3: Remote WMI Detection via VPC Flow Logs
         DetectionStrategy(
             strategy_id="t1047-remote-wmi",
@@ -457,12 +471,12 @@ resource "aws_cloudwatch_log_metric_filter" "shadow_copy_deletion" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcAddr, dstAddr, dstPort, protocol, action
+                query="""fields @timestamp, srcAddr, dstAddr, dstPort, protocol, action
 | filter dstPort in [135, 5985, 5986] and protocol = 6 and action = "ACCEPT"
 | stats count() as connections by srcAddr, dstAddr, dstPort, bin(10m)
 | filter connections > 5
-| sort connections desc''',
-                terraform_template='''# Detect remote WMI connections via VPC Flow Logs
+| sort connections desc""",
+                terraform_template="""# Detect remote WMI connections via VPC Flow Logs
 
 variable "vpc_flow_log_group" {
   type        = string
@@ -525,7 +539,7 @@ resource "aws_cloudwatch_log_metric_filter" "dcom_wmi" {
     value         = "1"
     default_value = 0
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Remote WMI Connection Detected",
                 alert_description_template=(
@@ -539,7 +553,7 @@ resource "aws_cloudwatch_log_metric_filter" "dcom_wmi" {
                     "Review what commands were executed via remote WMI",
                     "Investigate if credentials were passed or harvested",
                     "Look for subsequent lateral movement to additional instances",
-                    "Check if this matches known administrative patterns or is anomalous"
+                    "Check if this matches known administrative patterns or is anomalous",
                 ],
                 containment_actions=[
                     "Block WMI ports (135, 5985, 5986) via security groups if not required",
@@ -547,8 +561,8 @@ resource "aws_cloudwatch_log_metric_filter" "dcom_wmi" {
                     "Implement network segmentation to limit lateral movement",
                     "Enable Windows Firewall rules to restrict WMI to authorised sources",
                     "Review and restrict IAM instance profile permissions",
-                    "Consider implementing AWS Systems Manager Session Manager instead of remote WMI"
-                ]
+                    "Consider implementing AWS Systems Manager Session Manager instead of remote WMI",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline legitimate remote administration patterns; exclude known management servers and domain controllers",
@@ -557,9 +571,11 @@ resource "aws_cloudwatch_log_metric_filter" "dcom_wmi" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20 depending on VPC Flow Logs volume",
-            prerequisites=["VPC Flow Logs enabled", "Windows instances configured for network logging"]
+            prerequisites=[
+                "VPC Flow Logs enabled",
+                "Windows instances configured for network logging",
+            ],
         ),
-
         # Strategy 4: GCP Cloud Logging for WMI on Windows VMs
         DetectionStrategy(
             strategy_id="t1047-gcp-wmi",
@@ -578,7 +594,7 @@ resource "aws_cloudwatch_log_metric_filter" "dcom_wmi" {
 OR protoPayload.request.commandLine=~"wmic|Get-WmiObject|Invoke-WmiMethod"
 OR jsonPayload.message=~"shadowcopy.*delete|vssadmin.*delete.*shadows")
 NOT jsonPayload.message=~"Microsoft.*Update|SCCM"''',
-                gcp_terraform_template='''# GCP: Detect WMI execution on Windows GCE instances
+                gcp_terraform_template="""# GCP: Detect WMI execution on Windows GCE instances
 
 variable "project_id" {
   type        = string
@@ -653,7 +669,7 @@ resource "google_monitoring_alert_policy" "wmi_alert" {
     content   = "WMI command execution detected on Windows GCE instance. Investigate for lateral movement or ransomware activity."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: WMI Execution Detected",
                 alert_description_template=(
@@ -667,7 +683,7 @@ resource "google_monitoring_alert_policy" "wmi_alert" {
                     "Look for shadow copy deletion indicating ransomware",
                     "Review network connections for lateral movement",
                     "Check VPC Flow Logs for WMI-related port activity (135, 5985, 5986)",
-                    "Investigate authentication events and user sessions"
+                    "Investigate authentication events and user sessions",
                 ],
                 containment_actions=[
                     "Stop the GCE instance to prevent further lateral movement",
@@ -675,8 +691,8 @@ resource "google_monitoring_alert_policy" "wmi_alert" {
                     "Revoke the instance's service account credentials",
                     "Update firewall rules to isolate the instance",
                     "If ransomware suspected, check for shadow copy deletion and initiate backup recovery",
-                    "Review and remove any WMI persistence mechanisms"
-                ]
+                    "Review and remove any WMI persistence mechanisms",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude authorised management tools, scheduled system maintenance, and patch deployment systems",
@@ -685,9 +701,11 @@ resource "google_monitoring_alert_policy" "wmi_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="$15-30 depending on logging volume",
-            prerequisites=["Cloud Logging API enabled", "Ops Agent or legacy logging agent installed on Windows GCE instances"]
+            prerequisites=[
+                "Cloud Logging API enabled",
+                "Ops Agent or legacy logging agent installed on Windows GCE instances",
+            ],
         ),
-
         # Strategy 5: WMI Event Subscription Detection
         DetectionStrategy(
             strategy_id="t1047-wmi-persistence",
@@ -700,10 +718,10 @@ resource "google_monitoring_alert_policy" "wmi_alert" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message, instanceId, eventID
+                query="""fields @timestamp, @message, instanceId, eventID
 | filter eventID in [19, 20, 21] or @message like /Win32.*EventConsumer|Win32.*EventFilter|Win32.*FilterToConsumerBinding/
 | stats count() as wmi_events by instanceId, eventID, bin(1h)
-| sort @timestamp desc''',
+| sort @timestamp desc""",
                 cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect WMI event subscriptions used for persistence
 
@@ -753,7 +771,7 @@ Resources:
         - MetricName: MaliciousWMINamespace
           MetricNamespace: Security/T1047
           MetricValue: "1"''',
-                terraform_template='''# Detect WMI event subscriptions for persistence
+                terraform_template="""# Detect WMI event subscriptions for persistence
 
 variable "sysmon_log_group" {
   type        = string
@@ -813,7 +831,7 @@ resource "aws_cloudwatch_log_metric_filter" "malicious_wmi_namespace" {
     namespace = "Security/T1047"
     value     = "1"
   }
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="WMI Persistence Mechanism Detected",
                 alert_description_template=(
@@ -828,7 +846,7 @@ resource "aws_cloudwatch_log_metric_filter" "malicious_wmi_namespace" {
                     "Identify when the subscription was created and by which user/process",
                     "Check Sysmon Event 19 (WMIEventConsumer), Event 20 (WMIEventConsumerToFilter), Event 21 (WMIEventFilter)",
                     "Correlate with other security events around the same timeframe",
-                    "Search for similar subscriptions across all Windows instances"
+                    "Search for similar subscriptions across all Windows instances",
                 ],
                 containment_actions=[
                     "Remove malicious WMI event subscriptions immediately using PowerShell",
@@ -836,8 +854,8 @@ resource "aws_cloudwatch_log_metric_filter" "malicious_wmi_namespace" {
                     "Check for and remove any files or scripts referenced by the consumer",
                     "Reboot the instance to clear any in-memory WMI components",
                     "Audit all WMI subscriptions across the environment",
-                    "Implement WMI auditing and monitoring on all Windows instances"
-                ]
+                    "Implement WMI auditing and monitoring on all Windows instances",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="WMI persistence is rarely used legitimately; investigate all detections carefully",
@@ -846,17 +864,19 @@ resource "aws_cloudwatch_log_metric_filter" "malicious_wmi_namespace" {
             implementation_effort=EffortLevel.HIGH,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$15-30 depending on log volume",
-            prerequisites=["Sysmon installed on Windows instances with WMI event monitoring enabled (Events 19, 20, 21)", "CloudWatch Logs Agent configured to forward Sysmon logs"]
-        )
+            prerequisites=[
+                "Sysmon installed on Windows instances with WMI event monitoring enabled (Events 19, 20, 21)",
+                "CloudWatch Logs Agent configured to forward Sysmon logs",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1047-guardduty-wmi",
         "t1047-cloudwatch-wmi",
         "t1047-wmi-persistence",
         "t1047-remote-wmi",
-        "t1047-gcp-wmi"
+        "t1047-gcp-wmi",
     ],
     total_effort_hours=8.0,
-    coverage_improvement="+25% improvement for Execution tactic"
+    coverage_improvement="+25% improvement for Execution tactic",
 )

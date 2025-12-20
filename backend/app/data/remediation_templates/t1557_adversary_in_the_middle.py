@@ -24,7 +24,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Adversary-in-the-Middle",
     tactic_ids=["TA0006", "TA0009"],  # Credential Access, Collection
     mitre_url="https://attack.mitre.org/techniques/T1557/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries position themselves between networked devices to enable "
@@ -39,7 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Modify traffic to inject malicious content",
             "Redirect users to attacker-controlled sites",
             "Bypass encryption via TLS downgrade attacks",
-            "Intercept API requests and cloud service traffic"
+            "Intercept API requests and cloud service traffic",
         ],
         known_threat_actors=["Sea Turtle", "Kimsuky", "Mustang Panda"],
         recent_campaigns=[
@@ -47,20 +46,20 @@ TEMPLATE = RemediationTemplate(
                 name="ArcaneDoor Campaign",
                 year=2024,
                 description="Intercepted HTTP traffic on perimeter network devices to monitor and manipulate communications",
-                reference_url="https://attack.mitre.org/techniques/T1557/"
+                reference_url="https://attack.mitre.org/techniques/T1557/",
             ),
             Campaign(
                 name="Sea Turtle DNS Hijacking",
                 year=2019,
                 description="Modified DNS records at service providers to redirect legitimate traffic through attacker infrastructure",
-                reference_url="https://attack.mitre.org/groups/G1041/"
+                reference_url="https://attack.mitre.org/groups/G1041/",
             ),
             Campaign(
                 name="Kimsuky PHProxy Deployment",
                 year=2022,
                 description="Deployed modified PHProxy to examine web traffic between victims and websites",
-                reference_url="https://attack.mitre.org/groups/G0094/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0094/",
+            ),
         ],
         prevalence="moderate",
         trend="stable",
@@ -76,13 +75,12 @@ TEMPLATE = RemediationTemplate(
             "Data exfiltration and privacy violations",
             "Session hijacking and unauthorised access",
             "Compliance violations from data interception",
-            "Reputation damage from security breach"
+            "Reputation damage from security breach",
         ],
         typical_attack_phase="credential_access",
         often_precedes=["T1078.004", "T1528", "T1550"],
-        often_follows=["T1190", "T1133"]
+        often_follows=["T1190", "T1133"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - VPC DNS Query Logging
         DetectionStrategy(
@@ -93,13 +91,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, query_name, query_type, rcode, answers.0.Rdata as resolved_ip
+                query="""fields @timestamp, query_name, query_type, rcode, answers.0.Rdata as resolved_ip
 | filter query_type = "A" or query_type = "AAAA"
 | filter rcode = "NOERROR"
 | stats count(*) as query_count by query_name, resolved_ip, bin(5m)
 | filter query_count > 100
-| sort query_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort query_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect DNS anomalies via Route 53 Resolver Query Logging
 
 Parameters:
@@ -162,8 +160,8 @@ Resources:
       Threshold: 500
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# AWS: Detect DNS anomalies via Route 53 Resolver
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# AWS: Detect DNS anomalies via Route 53 Resolver
 
 variable "vpc_id" {
   type        = string
@@ -235,7 +233,7 @@ resource "aws_cloudwatch_metric_alarm" "high_dns" {
   alarm_actions       = [aws_sns_topic.alerts.arn]
 }
 
-data "aws_caller_identity" "current" {}''',
+data "aws_caller_identity" "current" {}""",
                 alert_severity="high",
                 alert_title="Suspicious DNS Activity Detected",
                 alert_description_template="Abnormal DNS query patterns detected in VPC {vpcId}. Potential DNS hijacking or cache poisoning attempt.",
@@ -245,7 +243,7 @@ data "aws_caller_identity" "current" {}''',
                     "Verify DNS server configurations are unchanged",
                     "Check for unauthorised changes to Route 53 hosted zones",
                     "Review VPC Flow Logs for connections to suspicious IPs",
-                    "Validate TLS certificates for affected domains"
+                    "Validate TLS certificates for affected domains",
                 ],
                 containment_actions=[
                     "Enable DNSSEC validation on Route 53 Resolver",
@@ -253,8 +251,8 @@ data "aws_caller_identity" "current" {}''',
                     "Implement DNS firewall rules to block malicious domains",
                     "Force DNS resolution through trusted resolvers",
                     "Investigate and block suspicious IP addresses",
-                    "Review network ACLs and security group rules"
-                ]
+                    "Review network ACLs and security group rules",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal DNS patterns; exclude authorised CDN and third-party services",
@@ -263,9 +261,8 @@ data "aws_caller_identity" "current" {}''',
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$15-40 (Route 53 Resolver query logging + CloudWatch)",
-            prerequisites=["VPC with workloads", "Route 53 Resolver"]
+            prerequisites=["VPC with workloads", "Route 53 Resolver"],
         ),
-
         # Strategy 2: AWS - TLS/SSL Certificate Monitoring
         DetectionStrategy(
             strategy_id="t1557-aws-cert",
@@ -282,11 +279,11 @@ data "aws_caller_identity" "current" {}''',
                         "eventName": [
                             "ImportCertificate",
                             "RequestCertificate",
-                            "UpdateDistribution"
+                            "UpdateDistribution",
                         ]
-                    }
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect unauthorised certificate operations
 
 Parameters:
@@ -329,8 +326,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# AWS: Monitor unauthorised certificate operations
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# AWS: Monitor unauthorised certificate operations
 
 variable "alert_email" {
   type = string
@@ -380,7 +377,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Unauthorised Certificate Operation",
                 alert_description_template="Certificate operation {eventName} performed by {userIdentity.principalId} on {certificateArn}.",
@@ -390,7 +387,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Review certificate details and subject alternative names",
                     "Check CloudTrail for related suspicious activities",
                     "Verify no unauthorised CloudFront distributions created",
-                    "Review ACM certificate transparency logs"
+                    "Review ACM certificate transparency logs",
                 ],
                 containment_actions=[
                     "Delete unauthorised certificates immediately",
@@ -398,8 +395,8 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Review and restrict ACM/CloudFront IAM permissions",
                     "Enable SCPs to restrict certificate operations",
                     "Contact affected domain owners if necessary",
-                    "Review CloudFront distributions for unauthorised changes"
-                ]
+                    "Review CloudFront distributions for unauthorised changes",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised DevOps automation and CI/CD pipelines",
@@ -408,9 +405,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         # Strategy 3: AWS - VPC Traffic Mirroring Analysis
         DetectionStrategy(
             strategy_id="t1557-aws-mirror",
@@ -420,7 +416,7 @@ resource "aws_sns_topic_policy" "allow_events" {
             aws_service="vpc",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                terraform_template='''# AWS: VPC Traffic Mirroring for AitM detection
+                terraform_template="""# AWS: VPC Traffic Mirroring for AitM detection
 
 variable "monitored_eni_id" {
   type        = string
@@ -483,7 +479,7 @@ resource "aws_sns_topic_subscription" "email" {
   topic_arn = aws_sns_topic.alerts.arn
   protocol  = "email"
   endpoint  = var.alert_email
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Network Traffic Anomaly Detected",
                 alert_description_template="Suspicious network patterns detected on {networkInterfaceId}. Potential ARP spoofing or traffic interception.",
@@ -493,7 +489,7 @@ resource "aws_sns_topic_subscription" "email" {
                     "Review source/destination IP patterns",
                     "Identify instances with suspicious network behaviour",
                     "Check for gratuitous ARP requests",
-                    "Verify network switch configurations"
+                    "Verify network switch configurations",
                 ],
                 containment_actions=[
                     "Isolate affected instances via security groups",
@@ -501,8 +497,8 @@ resource "aws_sns_topic_subscription" "email" {
                     "Enable VPC Flow Logs for detailed analysis",
                     "Review and harden network ACLs",
                     "Deploy host-based intrusion detection",
-                    "Consider network segmentation improvements"
-                ]
+                    "Consider network segmentation improvements",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Requires custom analysis logic; baseline normal network patterns",
@@ -511,9 +507,12 @@ resource "aws_sns_topic_subscription" "email" {
             implementation_effort=EffortLevel.HIGH,
             implementation_time="4-6 hours",
             estimated_monthly_cost="$30-100 (VPC Traffic Mirroring + NLB + analysis)",
-            prerequisites=["VPC Traffic Mirroring support", "Network Load Balancer", "Analysis infrastructure"]
+            prerequisites=[
+                "VPC Traffic Mirroring support",
+                "Network Load Balancer",
+                "Analysis infrastructure",
+            ],
         ),
-
         # Strategy 4: GCP - Cloud DNS Logging
         DetectionStrategy(
             strategy_id="t1557-gcp-dns",
@@ -528,7 +527,7 @@ resource "aws_sns_topic_subscription" "email" {
 logName="projects/[PROJECT_ID]/logs/dns.googleapis.com%2Fdns_queries"
 jsonPayload.queryType=~"A|AAAA"
 jsonPayload.responseCode="NOERROR"''',
-                gcp_terraform_template='''# GCP: Detect DNS anomalies via Cloud DNS
+                gcp_terraform_template="""# GCP: Detect DNS anomalies via Cloud DNS
 
 variable "project_id" {
   type = string
@@ -613,7 +612,7 @@ resource "google_monitoring_alert_policy" "dns_anomaly" {
     content   = "Suspicious DNS query patterns detected. Potential DNS hijacking or cache poisoning."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Suspicious DNS Activity",
                 alert_description_template="Abnormal DNS query patterns detected in Cloud DNS zone {dnsZone}.",
@@ -623,7 +622,7 @@ resource "google_monitoring_alert_policy" "dns_anomaly" {
                     "Verify Cloud DNS zone configurations",
                     "Check for unauthorised zone modifications",
                     "Review IAM permissions for Cloud DNS",
-                    "Validate DNSSEC configuration if enabled"
+                    "Validate DNSSEC configuration if enabled",
                 ],
                 containment_actions=[
                     "Enable DNSSEC on Cloud DNS zones",
@@ -631,8 +630,8 @@ resource "google_monitoring_alert_policy" "dns_anomaly" {
                     "Implement DNS firewall policies",
                     "Lock down zone record modifications",
                     "Enable Cloud Armor for web applications",
-                    "Review VPC firewall rules for DNS traffic"
-                ]
+                    "Review VPC firewall rules for DNS traffic",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline legitimate DNS patterns; exclude known CDNs and services",
@@ -641,9 +640,8 @@ resource "google_monitoring_alert_policy" "dns_anomaly" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$20-50 (Cloud DNS logging + monitoring)",
-            prerequisites=["Cloud DNS managed zones", "Cloud Logging API enabled"]
+            prerequisites=["Cloud DNS managed zones", "Cloud Logging API enabled"],
         ),
-
         # Strategy 5: GCP - Load Balancer TLS Inspection
         DetectionStrategy(
             strategy_id="t1557-gcp-lb",
@@ -657,7 +655,7 @@ resource "google_monitoring_alert_policy" "dns_anomaly" {
                 gcp_logging_query='''protoPayload.serviceName="compute.googleapis.com"
 protoPayload.methodName=~"(insert|update|patch)"
 protoPayload.resourceName=~"sslCertificates|targetHttpsProxies"''',
-                gcp_terraform_template='''# GCP: Monitor load balancer certificate changes
+                gcp_terraform_template="""# GCP: Monitor load balancer certificate changes
 
 variable "project_id" {
   type = string
@@ -712,7 +710,7 @@ resource "google_monitoring_alert_policy" "cert_change" {
     content   = "SSL/TLS certificate modified on load balancer. Review for unauthorised changes."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Load Balancer Certificate Modified",
                 alert_description_template="SSL/TLS certificate operation {methodName} performed on {resourceName}.",
@@ -722,7 +720,7 @@ resource "google_monitoring_alert_policy" "cert_change" {
                     "Check Certificate Manager for unauthorised certs",
                     "Validate load balancer configurations",
                     "Review Cloud Audit Logs for related activities",
-                    "Check certificate transparency logs"
+                    "Check certificate transparency logs",
                 ],
                 containment_actions=[
                     "Remove unauthorised certificates immediately",
@@ -730,8 +728,8 @@ resource "google_monitoring_alert_policy" "cert_change" {
                     "Review and restrict compute.sslCertificates IAM roles",
                     "Enable organisation policy constraints",
                     "Implement certificate pinning where possible",
-                    "Review all load balancer configurations"
-                ]
+                    "Review all load balancer configurations",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist legitimate certificate renewal automation",
@@ -740,9 +738,8 @@ resource "google_monitoring_alert_policy" "cert_change" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled"],
         ),
-
         # Strategy 6: GCP - VPC Flow Logs Analysis
         DetectionStrategy(
             strategy_id="t1557-gcp-flow",
@@ -757,7 +754,7 @@ resource "google_monitoring_alert_policy" "cert_change" {
 logName="projects/[PROJECT_ID]/logs/compute.googleapis.com%2Fvpc_flows"
 jsonPayload.connection.protocol=6
 jsonPayload.reporter="DEST"''',
-                gcp_terraform_template='''# GCP: VPC Flow Logs for network anomaly detection
+                gcp_terraform_template="""# GCP: VPC Flow Logs for network anomaly detection
 
 variable "project_id" {
   type = string
@@ -855,7 +852,7 @@ resource "google_monitoring_alert_policy" "flow_anomaly" {
     content   = "Abnormal network flow patterns detected. Potential network interception or scanning."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: VPC Network Flow Anomaly",
                 alert_description_template="Suspicious network flow patterns detected from {srcIp}.",
@@ -865,7 +862,7 @@ resource "google_monitoring_alert_policy" "flow_anomaly" {
                     "Check for port scanning or connection flooding",
                     "Review firewall rules for misconfigurations",
                     "Verify network topology and routing",
-                    "Check instance metadata for compromise"
+                    "Check instance metadata for compromise",
                 ],
                 containment_actions=[
                     "Update firewall rules to block malicious IPs",
@@ -873,8 +870,8 @@ resource "google_monitoring_alert_policy" "flow_anomaly" {
                     "Enable Private Google Access to reduce exposure",
                     "Review and harden VPC peering configurations",
                     "Implement Cloud Armor for web workloads",
-                    "Consider VPC Service Controls for sensitive data"
-                ]
+                    "Consider VPC Service Controls for sensitive data",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Establish baselines for normal traffic patterns; tune thresholds per application",
@@ -883,18 +880,17 @@ resource "google_monitoring_alert_policy" "flow_anomaly" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$30-80 (VPC Flow Logs + monitoring)",
-            prerequisites=["VPC Flow Logs enabled on subnets"]
-        )
+            prerequisites=["VPC Flow Logs enabled on subnets"],
+        ),
     ],
-
     recommended_order=[
         "t1557-aws-dns",
         "t1557-gcp-dns",
         "t1557-aws-cert",
         "t1557-gcp-lb",
         "t1557-aws-mirror",
-        "t1557-gcp-flow"
+        "t1557-gcp-flow",
     ],
     total_effort_hours=12.0,
-    coverage_improvement="+18% improvement for Credential Access and Collection tactics"
+    coverage_improvement="+18% improvement for Credential Access and Collection tactics",
 )

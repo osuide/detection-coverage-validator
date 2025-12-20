@@ -35,7 +35,7 @@ class Scan(Base):
     )
     status: Mapped[ScanStatus] = mapped_column(
         SQLEnum(ScanStatus, values_callable=lambda x: [e.value for e in x]),
-        default=ScanStatus.PENDING
+        default=ScanStatus.PENDING,
     )
 
     # Scan configuration

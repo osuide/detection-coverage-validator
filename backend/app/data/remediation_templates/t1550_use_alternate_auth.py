@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Use Alternate Authentication Material",
     tactic_ids=["TA0005", "TA0008"],
     mitre_url="https://attack.mitre.org/techniques/T1550/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries leverage stolen authentication artefacts like password hashes, "
@@ -35,7 +34,7 @@ TEMPLATE = RemediationTemplate(
             "Tokens persist after password change",
             "Forged SAML grants broad access",
             "Session cookies avoid re-authentication",
-            "Hard to distinguish from legitimate use"
+            "Hard to distinguish from legitimate use",
         ],
         known_threat_actors=["APT29", "FoggyWeb"],
         recent_campaigns=[
@@ -43,14 +42,14 @@ TEMPLATE = RemediationTemplate(
                 name="APT29 SolarWinds SAML Forging",
                 year=2021,
                 description="Deployed forged SAML tokens to bypass MFA and access cloud applications",
-                reference_url="https://attack.mitre.org/groups/G0016/"
+                reference_url="https://attack.mitre.org/groups/G0016/",
             ),
             Campaign(
                 name="FoggyWeb Token Theft",
                 year=2021,
                 description="Exploited compromised AD FS servers' SAML tokens for unauthorised access",
-                reference_url="https://attack.mitre.org/software/S0661/"
-            )
+                reference_url="https://attack.mitre.org/software/S0661/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -63,13 +62,12 @@ TEMPLATE = RemediationTemplate(
             "MFA bypass",
             "Persistent unauthorised access",
             "Broad cloud service access",
-            "Difficult detection"
+            "Difficult detection",
         ],
         typical_attack_phase="lateral_movement",
         often_precedes=["T1021.007", "T1530"],
-        often_follows=["T1552.001", "T1552.005", "T1528"]
+        often_follows=["T1552.001", "T1552.005", "T1528"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1550-aws-token",
@@ -79,12 +77,12 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn, userIdentity.accessKeyId, sourceIPAddress, eventName
+                query="""fields @timestamp, userIdentity.arn, userIdentity.accessKeyId, sourceIPAddress, eventName
 | filter userIdentity.type = "IAMUser" or userIdentity.type = "AssumedRole"
 | stats count(*) as api_calls, count_distinct(sourceIPAddress) as unique_ips by userIdentity.accessKeyId, bin(1h)
 | filter unique_ips > 3
-| sort unique_ips desc''',
-                terraform_template='''# Detect token reuse from multiple locations
+| sort unique_ips desc""",
+                terraform_template="""# Detect token reuse from multiple locations
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -131,7 +129,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Possible Token Reuse Detected",
                 alert_description_template="Access key {accessKeyId} used from multiple IPs.",
@@ -139,14 +137,14 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Review IP locations for impossible travel",
                     "Check if token was compromised",
                     "Review API calls made",
-                    "Check for credential theft indicators"
+                    "Check for credential theft indicators",
                 ],
                 containment_actions=[
                     "Rotate access keys immediately",
                     "Revoke active sessions",
                     "Review IAM user activity",
-                    "Enable MFA if not set"
-                ]
+                    "Enable MFA if not set",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude VPN exit nodes and mobile users",
@@ -155,9 +153,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["CloudTrail enabled", "GuardDuty enabled"]
+            prerequisites=["CloudTrail enabled", "GuardDuty enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1550-aws-sts",
             name="AWS STS Token Anomaly Detection",
@@ -169,9 +166,9 @@ resource "aws_sns_topic_policy" "allow_events" {
                 guardduty_finding_types=[
                     "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.OutsideAWS",
                     "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.InsideAWS",
-                    "CredentialAccess:IAMUser/AnomalousBehavior"
+                    "CredentialAccess:IAMUser/AnomalousBehavior",
                 ],
-                terraform_template='''# Enable GuardDuty for token anomaly detection
+                terraform_template="""# Enable GuardDuty for token anomaly detection
 
 variable "alert_email" { type = string }
 
@@ -220,7 +217,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="AWS Credential Exfiltration Detected",
                 alert_description_template="GuardDuty detected credential theft: {type}.",
@@ -228,14 +225,14 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Review GuardDuty finding details",
                     "Identify compromised credential",
                     "Review all API calls from credential",
-                    "Check source of exfiltration"
+                    "Check source of exfiltration",
                 ],
                 containment_actions=[
                     "Rotate compromised credentials",
                     "Revoke all active sessions",
                     "Block source IP if applicable",
-                    "Review instance for compromise"
-                ]
+                    "Review instance for compromise",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="GuardDuty has built-in ML tuning",
@@ -244,9 +241,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$10-30",
-            prerequisites=["GuardDuty enabled"]
+            prerequisites=["GuardDuty enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1550-gcp-token",
             name="GCP Token Anomaly Detection",
@@ -258,7 +254,7 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.authenticationInfo.serviceAccountDelegationInfo:*
 OR protoPayload.authenticationInfo.principalSubject=~"serviceAccount:"''',
-                gcp_terraform_template='''# GCP: Detect token anomalies
+                gcp_terraform_template="""# GCP: Detect token anomalies
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -295,7 +291,7 @@ resource "google_monitoring_alert_policy" "token_alert" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Token Anomaly Detected",
                 alert_description_template="Unusual service account token usage detected.",
@@ -303,14 +299,14 @@ resource "google_monitoring_alert_policy" "token_alert" {
                     "Review token delegation chain",
                     "Check source of API calls",
                     "Review accessed resources",
-                    "Check for impossible travel"
+                    "Check for impossible travel",
                 ],
                 containment_actions=[
                     "Delete compromised SA keys",
                     "Disable service account",
                     "Review IAM bindings",
-                    "Check for persistence"
-                ]
+                    "Check for persistence",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal SA usage patterns",
@@ -319,11 +315,10 @@ resource "google_monitoring_alert_policy" "token_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Audit Logs enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled"],
+        ),
     ],
-
     recommended_order=["t1550-aws-sts", "t1550-aws-token", "t1550-gcp-token"],
     total_effort_hours=4.0,
-    coverage_improvement="+20% improvement for Defense Evasion and Lateral Movement tactics"
+    coverage_improvement="+20% improvement for Defense Evasion and Lateral Movement tactics",
 )

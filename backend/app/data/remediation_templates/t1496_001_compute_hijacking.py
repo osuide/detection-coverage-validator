@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Resource Hijacking: Compute Hijacking",
     tactic_ids=["TA0040"],
     mitre_url="https://attack.mitre.org/techniques/T1496/001/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries abuse compute resources for cryptocurrency mining. "
@@ -35,22 +34,28 @@ TEMPLATE = RemediationTemplate(
             "Cloud resources scale easily",
             "Victim pays electricity/compute costs",
             "XMRig and similar tools readily available",
-            "Containers and serverless also targeted"
+            "Containers and serverless also targeted",
         ],
-        known_threat_actors=["TeamTNT", "Kinsing", "APT41", "Blue Mockingbird", "Rocke"],
+        known_threat_actors=[
+            "TeamTNT",
+            "Kinsing",
+            "APT41",
+            "Blue Mockingbird",
+            "Rocke",
+        ],
         recent_campaigns=[
             Campaign(
                 name="TeamTNT Kubernetes Mining",
                 year=2024,
                 description="Deploys XMRig Docker images and infects Kubernetes clusters",
-                reference_url="https://attack.mitre.org/software/S0683/"
+                reference_url="https://attack.mitre.org/software/S0683/",
             ),
             Campaign(
                 name="Kinsing Container Attacks",
                 year=2024,
                 description="Creates and runs Bitcoin cryptocurrency miners in containers",
-                reference_url="https://attack.mitre.org/software/S1014/"
-            )
+                reference_url="https://attack.mitre.org/software/S1014/",
+            ),
         ],
         prevalence="common",
         trend="stable",
@@ -63,13 +68,12 @@ TEMPLATE = RemediationTemplate(
             "Significant cloud cost increases",
             "Degraded system performance",
             "Indicates broader compromise",
-            "Potential compliance issues"
+            "Potential compliance issues",
         ],
         typical_attack_phase="impact",
         often_precedes=[],
-        often_follows=["T1078.004", "T1578.002", "T1535"]
+        often_follows=["T1078.004", "T1578.002", "T1535"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1496001-aws-cpu",
@@ -79,8 +83,8 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''# Use CloudWatch Metrics for EC2 CPU monitoring
-# CPUUtilization > 90% for extended periods indicates mining''',
+                query="""# Use CloudWatch Metrics for EC2 CPU monitoring
+# CPUUtilization > 90% for extended periods indicates mining""",
                 cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect cryptomining via high CPU
 
@@ -111,7 +115,7 @@ Resources:
       Dimensions:
         - Name: InstanceId
           Value: "*"''',
-                terraform_template='''# Detect cryptomining via high CPU
+                terraform_template="""# Detect cryptomining via high CPU
 
 variable "alert_email" { type = string }
 
@@ -136,7 +140,7 @@ resource "aws_cloudwatch_metric_alarm" "high_cpu" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 12  # 1 hour sustained
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Potential Cryptomining Detected",
                 alert_description_template="Instance {instanceId} sustained >90% CPU for 1+ hour.",
@@ -144,14 +148,14 @@ resource "aws_cloudwatch_metric_alarm" "high_cpu" {
                     "Check running processes on instance",
                     "Look for xmrig, minerd, or similar",
                     "Review network connections to mining pools",
-                    "Check for unauthorised containers"
+                    "Check for unauthorised containers",
                 ],
                 containment_actions=[
                     "Terminate malicious processes",
                     "Isolate or terminate instance",
                     "Review instance launch origin",
-                    "Scan for backdoors"
-                ]
+                    "Scan for backdoors",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known compute-intensive workloads",
@@ -160,9 +164,8 @@ resource "aws_cloudwatch_metric_alarm" "high_cpu" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudWatch detailed monitoring"]
+            prerequisites=["CloudWatch detailed monitoring"],
         ),
-
         DetectionStrategy(
             strategy_id="t1496001-aws-guardduty",
             name="GuardDuty Cryptomining Detection",
@@ -174,9 +177,9 @@ resource "aws_cloudwatch_metric_alarm" "high_cpu" {
                 guardduty_finding_types=[
                     "CryptoCurrency:EC2/BitcoinTool.B!DNS",
                     "CryptoCurrency:EC2/BitcoinTool.B",
-                    "Impact:EC2/BitcoinDomainRequest.Reputation"
+                    "Impact:EC2/BitcoinDomainRequest.Reputation",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty cryptomining detection
 
 Parameters:
@@ -218,8 +221,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# GuardDuty cryptomining detection
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# GuardDuty cryptomining detection
 
 variable "alert_email" { type = string }
 
@@ -263,7 +266,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GuardDuty: Cryptomining Detected",
                 alert_description_template="Cryptocurrency mining activity detected on {resource}.",
@@ -271,14 +274,14 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Review GuardDuty finding details",
                     "Identify affected resources",
                     "Check DNS queries to mining pools",
-                    "Review instance/container for malware"
+                    "Review instance/container for malware",
                 ],
                 containment_actions=[
                     "Terminate affected resources",
                     "Block mining pool domains",
                     "Review access logs",
-                    "Rotate compromised credentials"
-                ]
+                    "Rotate compromised credentials",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="GuardDuty has low false positive rate for crypto",
@@ -287,9 +290,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$4/million events",
-            prerequisites=["GuardDuty enabled"]
+            prerequisites=["GuardDuty enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1496001-gcp-cpu",
             name="GCP High CPU/Cryptomining Detection",
@@ -300,7 +302,7 @@ resource "aws_sns_topic_policy" "allow_events" {
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
                 scc_finding_categories=["MALWARE: CRYPTOMINING_POOL_COMMUNICATION"],
-                gcp_terraform_template='''# GCP: Detect cryptomining
+                gcp_terraform_template="""# GCP: Detect cryptomining
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -328,7 +330,7 @@ resource "google_monitoring_alert_policy" "high_cpu" {
 }
 
 # SCC integration - enable Event Threat Detection for cryptomining
-# This detects mining pool communication automatically''',
+# This detects mining pool communication automatically""",
                 alert_severity="high",
                 alert_title="GCP: Cryptomining Detected",
                 alert_description_template="Cryptocurrency mining activity detected.",
@@ -336,14 +338,14 @@ resource "google_monitoring_alert_policy" "high_cpu" {
                     "Review SCC finding details",
                     "Check VM processes",
                     "Review network connections",
-                    "Check container images"
+                    "Check container images",
                 ],
                 containment_actions=[
                     "Stop affected VMs",
                     "Block mining pool IPs",
                     "Review IAM permissions",
-                    "Scan for backdoors"
-                ]
+                    "Scan for backdoors",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="SCC has low false positive rate",
@@ -352,11 +354,14 @@ resource "google_monitoring_alert_policy" "high_cpu" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Security Command Center enabled"]
-        )
+            prerequisites=["Security Command Center enabled"],
+        ),
     ],
-
-    recommended_order=["t1496001-aws-guardduty", "t1496001-gcp-cpu", "t1496001-aws-cpu"],
+    recommended_order=[
+        "t1496001-aws-guardduty",
+        "t1496001-gcp-cpu",
+        "t1496001-aws-cpu",
+    ],
     total_effort_hours=2.0,
-    coverage_improvement="+20% improvement for Impact tactic"
+    coverage_improvement="+20% improvement for Impact tactic",
 )

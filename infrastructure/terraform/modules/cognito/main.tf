@@ -212,15 +212,15 @@ resource "aws_cognito_identity_provider" "github" {
   provider_type = "OIDC"
 
   provider_details = {
-    client_id                     = var.github_client_id
-    client_secret                 = var.github_client_secret
-    authorize_scopes              = "openid read:user user:email"
-    attributes_request_method     = "GET"
-    oidc_issuer                   = "https://github.com"
-    authorize_url                 = "https://github.com/login/oauth/authorize"
-    token_url                     = "https://github.com/login/oauth/access_token"
-    attributes_url                = "https://api.github.com/user"
-    jwks_uri                      = "https://token.actions.githubusercontent.com/.well-known/jwks"
+    client_id                 = var.github_client_id
+    client_secret             = var.github_client_secret
+    authorize_scopes          = "openid read:user user:email"
+    attributes_request_method = "GET"
+    oidc_issuer               = "https://github.com"
+    authorize_url             = "https://github.com/login/oauth/authorize"
+    token_url                 = "https://github.com/login/oauth/access_token"
+    attributes_url            = "https://api.github.com/user"
+    jwks_uri                  = "https://token.actions.githubusercontent.com/.well-known/jwks"
   }
 
   attribute_mapping = {
@@ -249,15 +249,15 @@ resource "aws_cognito_identity_provider" "microsoft" {
   provider_type = "OIDC"
 
   provider_details = {
-    client_id                     = var.microsoft_client_id
-    client_secret                 = var.microsoft_client_secret
-    authorize_scopes              = "openid email profile"
-    attributes_request_method     = "GET"
-    oidc_issuer                   = "https://login.microsoftonline.com/${var.microsoft_tenant_id}/v2.0"
-    authorize_url                 = "https://login.microsoftonline.com/${var.microsoft_tenant_id}/oauth2/v2.0/authorize"
-    token_url                     = "https://login.microsoftonline.com/${var.microsoft_tenant_id}/oauth2/v2.0/token"
-    attributes_url                = "https://graph.microsoft.com/oidc/userinfo"
-    jwks_uri                      = "https://login.microsoftonline.com/${var.microsoft_tenant_id}/discovery/v2.0/keys"
+    client_id                 = var.microsoft_client_id
+    client_secret             = var.microsoft_client_secret
+    authorize_scopes          = "openid email profile"
+    attributes_request_method = "GET"
+    oidc_issuer               = "https://login.microsoftonline.com/${var.microsoft_tenant_id}/v2.0"
+    authorize_url             = "https://login.microsoftonline.com/${var.microsoft_tenant_id}/oauth2/v2.0/authorize"
+    token_url                 = "https://login.microsoftonline.com/${var.microsoft_tenant_id}/oauth2/v2.0/token"
+    attributes_url            = "https://graph.microsoft.com/oidc/userinfo"
+    jwks_uri                  = "https://login.microsoftonline.com/${var.microsoft_tenant_id}/discovery/v2.0/keys"
   }
 
   attribute_mapping = {

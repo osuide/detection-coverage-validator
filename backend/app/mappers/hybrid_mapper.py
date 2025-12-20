@@ -117,14 +117,14 @@ class HybridMapper:
                 "nlp_mapping_complete",
                 detection_name=detection.name,
                 nlp_match_count=len(nlp_results),
-                new_matches=len(nlp_results) - sum(
-                    1 for r in nlp_results if r.technique_id in all_results
-                ),
+                new_matches=len(nlp_results)
+                - sum(1 for r in nlp_results if r.technique_id in all_results),
             )
 
         # Step 3: Filter by confidence threshold
         filtered_results = [
-            result for result in all_results.values()
+            result
+            for result in all_results.values()
             if result.confidence >= self.MIN_CONFIDENCE_THRESHOLD
         ]
 
@@ -135,13 +135,21 @@ class HybridMapper:
             "hybrid_mapping_complete",
             detection_name=detection.name,
             total_mappings=len(filtered_results),
-            pattern_count=sum(1 for r in filtered_results if r.mapping_source == MappingSource.PATTERN_MATCH),
-            nlp_count=sum(1 for r in filtered_results if r.mapping_source == MappingSource.NLP),
+            pattern_count=sum(
+                1
+                for r in filtered_results
+                if r.mapping_source == MappingSource.PATTERN_MATCH
+            ),
+            nlp_count=sum(
+                1 for r in filtered_results if r.mapping_source == MappingSource.NLP
+            ),
         )
 
         return filtered_results
 
-    def _run_pattern_mapping(self, detection: RawDetection) -> list[HybridMappingResult]:
+    def _run_pattern_mapping(
+        self, detection: RawDetection
+    ) -> list[HybridMappingResult]:
         """Run pattern-based mapping."""
         results = []
 
@@ -154,37 +162,43 @@ class HybridMapper:
                 # Handle different return types from pattern mapper
                 if hasattr(match, "technique_id"):
                     # Object-based result
-                    results.append(HybridMappingResult(
-                        technique_id=match.technique_id,
-                        technique_name=getattr(match, "technique_name", ""),
-                        confidence=match.confidence,
-                        mapping_source=MappingSource.PATTERN_MATCH,
-                        rationale=getattr(match, "rationale", "Pattern match"),
-                        tactic_id=getattr(match, "tactic_id", ""),
-                        tactic_name=getattr(match, "tactic_name", ""),
-                    ))
+                    results.append(
+                        HybridMappingResult(
+                            technique_id=match.technique_id,
+                            technique_name=getattr(match, "technique_name", ""),
+                            confidence=match.confidence,
+                            mapping_source=MappingSource.PATTERN_MATCH,
+                            rationale=getattr(match, "rationale", "Pattern match"),
+                            tactic_id=getattr(match, "tactic_id", ""),
+                            tactic_name=getattr(match, "tactic_name", ""),
+                        )
+                    )
                 elif isinstance(match, tuple) and len(match) >= 2:
                     # Tuple-based result
-                    results.append(HybridMappingResult(
-                        technique_id=match[0],
-                        technique_name=match[1] if len(match) > 1 else "",
-                        confidence=match[2] if len(match) > 2 else 0.7,
-                        mapping_source=MappingSource.PATTERN_MATCH,
-                        rationale=match[3] if len(match) > 3 else "Pattern match",
-                        tactic_id=match[4] if len(match) > 4 else "",
-                        tactic_name=match[5] if len(match) > 5 else "",
-                    ))
+                    results.append(
+                        HybridMappingResult(
+                            technique_id=match[0],
+                            technique_name=match[1] if len(match) > 1 else "",
+                            confidence=match[2] if len(match) > 2 else 0.7,
+                            mapping_source=MappingSource.PATTERN_MATCH,
+                            rationale=match[3] if len(match) > 3 else "Pattern match",
+                            tactic_id=match[4] if len(match) > 4 else "",
+                            tactic_name=match[5] if len(match) > 5 else "",
+                        )
+                    )
                 elif isinstance(match, dict):
                     # Dict-based result
-                    results.append(HybridMappingResult(
-                        technique_id=match.get("technique_id", ""),
-                        technique_name=match.get("technique_name", ""),
-                        confidence=match.get("confidence", 0.7),
-                        mapping_source=MappingSource.PATTERN_MATCH,
-                        rationale=match.get("rationale", "Pattern match"),
-                        tactic_id=match.get("tactic_id", ""),
-                        tactic_name=match.get("tactic_name", ""),
-                    ))
+                    results.append(
+                        HybridMappingResult(
+                            technique_id=match.get("technique_id", ""),
+                            technique_name=match.get("technique_name", ""),
+                            confidence=match.get("confidence", 0.7),
+                            mapping_source=MappingSource.PATTERN_MATCH,
+                            rationale=match.get("rationale", "Pattern match"),
+                            tactic_id=match.get("tactic_id", ""),
+                            tactic_name=match.get("tactic_name", ""),
+                        )
+                    )
 
         except Exception as e:
             self.logger.error(
@@ -211,13 +225,15 @@ class HybridMapper:
             )
 
             for match in nlp_matches:
-                results.append(HybridMappingResult(
-                    technique_id=match.technique_id,
-                    technique_name=match.technique_name,
-                    confidence=match.confidence,
-                    mapping_source=MappingSource.NLP,
-                    rationale=match.rationale,
-                ))
+                results.append(
+                    HybridMappingResult(
+                        technique_id=match.technique_id,
+                        technique_name=match.technique_name,
+                        confidence=match.confidence,
+                        mapping_source=MappingSource.NLP,
+                        rationale=match.rationale,
+                    )
+                )
 
         except Exception as e:
             self.logger.error(

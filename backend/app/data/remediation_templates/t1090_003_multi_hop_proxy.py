@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Proxy: Multi-hop Proxy",
     tactic_ids=["TA0011"],
     mitre_url="https://attack.mitre.org/techniques/T1090/003/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries chain multiple proxies to obscure malicious traffic origins, "
@@ -37,28 +36,34 @@ TEMPLATE = RemediationTemplate(
             "Anonymity networks like Tor readily available",
             "Can leverage compromised infrastructure",
             "Defeats traditional IP-based blocking",
-            "Multiple relay layers provide redundancy"
+            "Multiple relay layers provide redundancy",
         ],
-        known_threat_actors=["APT28", "APT29", "Inception", "Leviathan", "Volt Typhoon"],
+        known_threat_actors=[
+            "APT28",
+            "APT29",
+            "Inception",
+            "Leviathan",
+            "Volt Typhoon",
+        ],
         recent_campaigns=[
             Campaign(
                 name="Operation Wocao",
                 year=2020,
                 description="Used Tor exit nodes for command execution to obscure C2 origins",
-                reference_url="https://attack.mitre.org/techniques/T1090/003/"
+                reference_url="https://attack.mitre.org/techniques/T1090/003/",
             ),
             Campaign(
                 name="FLORAHOX Activity",
                 year=2021,
                 description="Deployed customised Tor relay network infrastructure for C2 communications",
-                reference_url="https://attack.mitre.org/techniques/T1090/003/"
+                reference_url="https://attack.mitre.org/techniques/T1090/003/",
             ),
             Campaign(
                 name="SPACEHOP & Quad7 Activity",
                 year=2024,
                 description="Chained compromised network devices for multi-hop proxy attacks",
-                reference_url="https://attack.mitre.org/techniques/T1090/003/"
-            )
+                reference_url="https://attack.mitre.org/techniques/T1090/003/",
+            ),
         ],
         prevalence="moderate",
         trend="increasing",
@@ -72,13 +77,12 @@ TEMPLATE = RemediationTemplate(
             "Difficult attribution and incident response",
             "Extended dwell time due to obscured C2",
             "Challenges in blocking malicious traffic",
-            "Legal/jurisdictional complexities in investigation"
+            "Legal/jurisdictional complexities in investigation",
         ],
         typical_attack_phase="command_and_control",
         often_precedes=["T1041", "T1071"],
-        often_follows=["T1071", "T1573"]
+        often_follows=["T1071", "T1573"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1090-003-aws-tor",
@@ -88,13 +92,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcaddr, dstaddr, dstport, protocol, bytes
+                query="""fields @timestamp, srcaddr, dstaddr, dstport, protocol, bytes
 | filter action = "ACCEPT"
 | filter (dstport = 9001 or dstport = 9030 or dstport = 443)
 | stats count(*) as connections, sum(bytes) as total_bytes by srcaddr, dstaddr, bin(5m)
 | filter connections > 3
-| sort total_bytes desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort total_bytes desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect Tor and multi-hop proxy traffic
 
 Parameters:
@@ -136,8 +140,8 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect Tor and multi-hop proxy traffic
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect Tor and multi-hop proxy traffic
 
 variable "vpc_flow_log_group" {
   type        = string
@@ -183,7 +187,7 @@ resource "aws_cloudwatch_metric_alarm" "tor_detection" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.proxy_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Multi-hop Proxy Traffic Detected",
                 alert_description_template="Detected connections to Tor or proxy infrastructure from {srcaddr}.",
@@ -192,15 +196,15 @@ resource "aws_cloudwatch_metric_alarm" "tor_detection" {
                     "Review CloudTrail for API activity from instance",
                     "Check for unauthorised processes or binaries",
                     "Analyse full connection history and patterns",
-                    "Review for data exfiltration indicators"
+                    "Review for data exfiltration indicators",
                 ],
                 containment_actions=[
                     "Block Tor entry nodes at security group/NACL",
                     "Isolate compromised instance",
                     "Capture memory and disk forensics",
                     "Review IAM credentials for exposure",
-                    "Deploy DPI/SSL inspection if appropriate"
-                ]
+                    "Deploy DPI/SSL inspection if appropriate",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Legitimate Tor usage in enterprise is rare. Whitelist known privacy tools if used.",
@@ -209,9 +213,8 @@ resource "aws_cloudwatch_metric_alarm" "tor_detection" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes - 1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["VPC Flow Logs enabled"]
+            prerequisites=["VPC Flow Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1090-003-aws-suspicious-chains",
             name="AWS Suspicious Proxy Chain Detection",
@@ -220,13 +223,13 @@ resource "aws_cloudwatch_metric_alarm" "tor_detection" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcaddr, dstaddr, protocol, bytes
+                query="""fields @timestamp, srcaddr, dstaddr, protocol, bytes
 | filter action = "ACCEPT"
 | filter protocol = 6
 | stats count(*) as unique_destinations, sum(bytes) as total_bytes by srcaddr, bin(10m)
 | filter unique_destinations > 20 and total_bytes < 1000000
-| sort unique_destinations desc''',
-                terraform_template='''# Detect suspicious proxy chain behaviour
+| sort unique_destinations desc""",
+                terraform_template="""# Detect suspicious proxy chain behaviour
 
 variable "vpc_flow_log_group" {
   type        = string
@@ -266,7 +269,7 @@ resource "aws_cloudwatch_query_definition" "proxy_chains" {
 }
 
 # Note: For automated alerting, consider using Lambda to run this query
-# and publish metrics based on results''',
+# and publish metrics based on results""",
                 alert_severity="medium",
                 alert_title="Suspicious Proxy Chain Behaviour Detected",
                 alert_description_template="Instance {srcaddr} showing proxy relay patterns with {unique_destinations} destinations.",
@@ -275,14 +278,14 @@ resource "aws_cloudwatch_query_definition" "proxy_chains" {
                     "Check for proxy software installation",
                     "Analyse connection destinations",
                     "Review for compromised credentials",
-                    "Check application logs for anomalies"
+                    "Check application logs for anomalies",
                 ],
                 containment_actions=[
                     "Restrict outbound connections via security groups",
                     "Rotate IAM credentials",
                     "Isolate instance for investigation",
-                    "Review for lateral movement"
-                ]
+                    "Review for lateral movement",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Tune thresholds based on legitimate proxy/NAT infrastructure. Exclude known proxy servers.",
@@ -291,9 +294,8 @@ resource "aws_cloudwatch_query_definition" "proxy_chains" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["VPC Flow Logs enabled", "CloudWatch Insights"]
+            prerequisites=["VPC Flow Logs enabled", "CloudWatch Insights"],
         ),
-
         DetectionStrategy(
             strategy_id="t1090-003-aws-guardduty",
             name="AWS GuardDuty Tor Detection",
@@ -302,10 +304,10 @@ resource "aws_cloudwatch_query_definition" "proxy_chains" {
             aws_service="guardduty",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, type, severity, resource.instanceDetails.instanceId, service.action.networkConnectionAction.remoteIpDetails.ipAddressV4
+                query="""fields @timestamp, type, severity, resource.instanceDetails.instanceId, service.action.networkConnectionAction.remoteIpDetails.ipAddressV4
 | filter type like /Tor/
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Alert on GuardDuty Tor detections
 
 Parameters:
@@ -340,8 +342,8 @@ Resources:
             - prefix: "UnauthorizedAccess:EC2/TorClient"
       Targets:
         - Arn: !Ref AlertTopic
-          Id: TorAlertTarget''',
-                terraform_template='''# Alert on GuardDuty Tor detections
+          Id: TorAlertTarget""",
+                terraform_template="""# Alert on GuardDuty Tor detections
 
 variable "alert_email" {
   type        = string
@@ -396,7 +398,7 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
       Resource = aws_sns_topic.guardduty_tor_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GuardDuty: Tor Activity Detected",
                 alert_description_template="GuardDuty detected Tor-related activity from instance {instanceId}.",
@@ -405,15 +407,15 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
                     "Check instance for authorised Tor usage",
                     "Review CloudTrail for instance API activity",
                     "Analyse network connections",
-                    "Check for indicators of compromise"
+                    "Check for indicators of compromise",
                 ],
                 containment_actions=[
                     "Isolate affected instance",
                     "Block Tor exit nodes at network level",
                     "Rotate IAM credentials",
                     "Perform forensic analysis",
-                    "Review security group configurations"
-                ]
+                    "Review security group configurations",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="GuardDuty Tor detections are highly accurate. Suppress for legitimate use cases only.",
@@ -422,9 +424,8 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$0 (GuardDuty costs separate)",
-            prerequisites=["AWS GuardDuty enabled"]
+            prerequisites=["AWS GuardDuty enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1090-003-gcp-tor",
             name="GCP Tor Traffic Detection",
@@ -438,7 +439,7 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
 jsonPayload.connection.dest_port=(9001 OR 9030 OR 443)
 jsonPayload.reporter="SRC"
 NOT jsonPayload.dest_instance.vm_name=""''',
-                gcp_terraform_template='''# GCP: Detect Tor and multi-hop proxy traffic
+                gcp_terraform_template="""# GCP: Detect Tor and multi-hop proxy traffic
 
 variable "project_id" {
   type        = string
@@ -514,7 +515,7 @@ resource "google_monitoring_alert_policy" "tor_detected" {
       5. Look for data exfiltration indicators
     EOT
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Multi-hop Proxy Traffic Detected",
                 alert_description_template="Detected Tor connections from instance {instance_name}.",
@@ -523,15 +524,15 @@ resource "google_monitoring_alert_policy" "tor_detected" {
                     "Review Cloud Audit Logs for VM activity",
                     "Check for proxy software installation",
                     "Analyse connection history",
-                    "Review for data exfiltration patterns"
+                    "Review for data exfiltration patterns",
                 ],
                 containment_actions=[
                     "Update firewall rules to block Tor",
                     "Isolate compromised VM",
                     "Take VM snapshot for forensics",
                     "Rotate service account keys",
-                    "Review VPC service controls"
-                ]
+                    "Review VPC service controls",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Legitimate Tor usage is rare in GCP environments. Whitelist if privacy tools are authorised.",
@@ -540,9 +541,8 @@ resource "google_monitoring_alert_policy" "tor_detected" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes - 1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["VPC Flow Logs enabled"]
+            prerequisites=["VPC Flow Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1090-003-gcp-proxy-chains",
             name="GCP Suspicious Proxy Pattern Detection",
@@ -552,10 +552,10 @@ resource "google_monitoring_alert_policy" "tor_detected" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_subnetwork"
+                gcp_logging_query="""resource.type="gce_subnetwork"
 jsonPayload.reporter="SRC"
-jsonPayload.bytes_sent<100000''',
-                gcp_terraform_template='''# GCP: Detect suspicious proxy chain patterns
+jsonPayload.bytes_sent<100000""",
+                gcp_terraform_template="""# GCP: Detect suspicious proxy chain patterns
 
 variable "project_id" {
   type        = string
@@ -622,7 +622,7 @@ resource "google_bigquery_job" "proxy_pattern_detection" {
 
     use_legacy_sql = false
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Suspicious Proxy Chain Pattern",
                 alert_description_template="Instance {instance_name} showing proxy relay behaviour with multiple destinations.",
@@ -631,14 +631,14 @@ resource "google_bigquery_job" "proxy_pattern_detection" {
                     "Check for proxy software installation",
                     "Analyse destination IPs and ports",
                     "Review service account permissions",
-                    "Check for lateral movement indicators"
+                    "Check for lateral movement indicators",
                 ],
                 containment_actions=[
                     "Restrict egress via firewall rules",
                     "Rotate service account keys",
                     "Isolate VM for investigation",
-                    "Review IAM policies"
-                ]
+                    "Review IAM policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude legitimate proxy/NAT VMs. Tune thresholds based on normal traffic patterns.",
@@ -647,17 +647,16 @@ resource "google_bigquery_job" "proxy_pattern_detection" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$15-30",
-            prerequisites=["VPC Flow Logs enabled", "BigQuery dataset"]
-        )
+            prerequisites=["VPC Flow Logs enabled", "BigQuery dataset"],
+        ),
     ],
-
     recommended_order=[
         "t1090-003-aws-guardduty",
         "t1090-003-aws-tor",
         "t1090-003-gcp-tor",
         "t1090-003-aws-suspicious-chains",
-        "t1090-003-gcp-proxy-chains"
+        "t1090-003-gcp-proxy-chains",
     ],
     total_effort_hours=7.0,
-    coverage_improvement="+15% improvement for Command and Control tactic"
+    coverage_improvement="+15% improvement for Command and Control tactic",
 )

@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Modify Cloud Compute Infrastructure",
     tactic_ids=["TA0005"],
     mitre_url="https://attack.mitre.org/techniques/T1578/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries may alter cloud compute service infrastructure to circumvent "
@@ -38,7 +37,7 @@ TEMPLATE = RemediationTemplate(
             "Modifies configurations to disable logging",
             "Reverts instances to vulnerable states",
             "Creates snapshots for data exfiltration",
-            "86% of cloud incidents involved business disruption"
+            "86% of cloud incidents involved business disruption",
         ],
         known_threat_actors=["LAPSUS$", "Scattered Spider", "DEV-0537", "UNC3944"],
         recent_campaigns=[
@@ -46,20 +45,20 @@ TEMPLATE = RemediationTemplate(
                 name="Scattered Spider Cloud Campaign",
                 year=2024,
                 description="29% of all cloud-based intrusions in 2024, targeting insurance and financial sectors",
-                reference_url="https://www.picussecurity.com/resource/blog/scattered-lapsus-hunters-2025s-most-dangerous-cybercrime-supergroup"
+                reference_url="https://www.picussecurity.com/resource/blog/scattered-lapsus-hunters-2025s-most-dangerous-cybercrime-supergroup",
             ),
             Campaign(
                 name="LAPSUS$ Cloud Attacks",
                 year=2024,
                 description="Cloud tenant infiltration with privilege escalation and lateral movement",
-                reference_url="https://www.cisa.gov/sites/default/files/2023-08/CSRB_Lapsus$_508c.pdf"
+                reference_url="https://www.cisa.gov/sites/default/files/2023-08/CSRB_Lapsus$_508c.pdf",
             ),
             Campaign(
                 name="Unit 42 Cloud Hijacking",
                 year=2024,
                 description="Threat actors hijacked cloud resources, scanning 230M+ targets for sensitive data",
-                reference_url="https://www.paloaltonetworks.com/resources/research/unit-42-incident-response-report"
-            )
+                reference_url="https://www.paloaltonetworks.com/resources/research/unit-42-incident-response-report",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -75,13 +74,12 @@ TEMPLATE = RemediationTemplate(
             "Bypassed security controls",
             "Compliance violations for unauthorised changes",
             "Data exfiltration via snapshot creation",
-            "Reputational damage from security breaches"
+            "Reputational damage from security breaches",
         ],
         typical_attack_phase="defence-evasion",
         often_precedes=["T1537", "T1530"],
-        often_follows=["T1078.004", "T1098.003"]
+        often_follows=["T1078.004", "T1098.003"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - EC2 Instance Lifecycle Changes
         DetectionStrategy(
@@ -101,11 +99,11 @@ TEMPLATE = RemediationTemplate(
                             "TerminateInstances",
                             "StopInstances",
                             "ModifyInstanceAttribute",
-                            "ModifyInstanceMetadataOptions"
+                            "ModifyInstanceMetadataOptions",
                         ]
-                    }
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect EC2 instance lifecycle changes
 
 Parameters:
@@ -150,8 +148,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect EC2 instance lifecycle changes
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect EC2 instance lifecycle changes
 
 variable "alert_email" {
   type = string
@@ -203,7 +201,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="EC2 Instance Lifecycle Change Detected",
                 alert_description_template="EC2 instance {instanceId} action: {eventName} by {userArn}.",
@@ -212,15 +210,15 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Check who initiated the action",
                     "Review instance configuration changes",
                     "Check for unusual instance types or AMIs",
-                    "Look for patterns of rapid create/delete cycles"
+                    "Look for patterns of rapid create/delete cycles",
                 ],
                 containment_actions=[
                     "Terminate unauthorised instances",
                     "Restore deleted instances from snapshots if needed",
                     "Review EC2 launch permissions",
                     "Enable AWS Config for configuration tracking",
-                    "Implement SCPs to restrict instance actions"
-                ]
+                    "Implement SCPs to restrict instance actions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist auto-scaling groups and deployment automation",
@@ -229,9 +227,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         # Strategy 2: AWS - Volume and Snapshot Manipulation
         DetectionStrategy(
             strategy_id="t1578-aws-volume-snapshot",
@@ -250,11 +247,11 @@ resource "aws_sns_topic_policy" "allow_events" {
                             "DeleteVolume",
                             "ModifyVolume",
                             "DeleteSnapshot",
-                            "ModifySnapshotAttribute"
+                            "ModifySnapshotAttribute",
                         ]
-                    }
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect volume and snapshot manipulation
 
 Parameters:
@@ -299,8 +296,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect volume and snapshot manipulation
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect volume and snapshot manipulation
 
 variable "alert_email" {
   type = string
@@ -352,7 +349,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Volume/Snapshot Manipulation Detected",
                 alert_description_template="Volume/snapshot {resourceId} action: {eventName} by {userArn}.",
@@ -361,15 +358,15 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Check who performed the operation",
                     "Review if snapshots were shared externally",
                     "Check for evidence destruction (deletions)",
-                    "Look for data exfiltration patterns"
+                    "Look for data exfiltration patterns",
                 ],
                 containment_actions=[
                     "Block unauthorised volume/snapshot operations",
                     "Remove external sharing permissions",
                     "Enable snapshot deletion protection",
                     "Review EBS encryption settings",
-                    "Implement resource tagging for tracking"
-                ]
+                    "Implement resource tagging for tracking",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist backup automation and storage management",
@@ -378,9 +375,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         # Strategy 3: AWS - GuardDuty Defence Evasion
         DetectionStrategy(
             strategy_id="t1578-aws-guardduty",
@@ -394,9 +390,9 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "DefenseEvasion:EC2/UnusualNetworkPortActivity",
                     "DefenseEvasion:EC2/InstanceConfigModified",
                     "Stealth:EC2/AnomalousBehavior",
-                    "Impact:EC2/WinRMBruteForce"
+                    "Impact:EC2/WinRMBruteForce",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty defence evasion detection
 
 Parameters:
@@ -442,8 +438,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# GuardDuty defence evasion detection
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# GuardDuty defence evasion detection
 
 variable "alert_email" {
   type = string
@@ -495,7 +491,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GuardDuty: Defence Evasion Detected",
                 alert_description_template="GuardDuty detected {findingType} on {instanceId}.",
@@ -504,15 +500,15 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Check instance security group changes",
                     "Review network configuration modifications",
                     "Verify instance metadata service access",
-                    "Check for evidence destruction attempts"
+                    "Check for evidence destruction attempts",
                 ],
                 containment_actions=[
                     "Isolate the affected instance",
                     "Revert unauthorised configuration changes",
                     "Enable instance termination protection",
                     "Review and restrict EC2 permissions",
-                    "Enable VPC Flow Logs for network monitoring"
-                ]
+                    "Enable VPC Flow Logs for network monitoring",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist known maintenance windows",
@@ -521,9 +517,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$4 per million events",
-            prerequisites=["AWS account with GuardDuty permissions"]
+            prerequisites=["AWS account with GuardDuty permissions"],
         ),
-
         # Strategy 4: GCP - Compute Instance Modification
         DetectionStrategy(
             strategy_id="t1578-gcp-compute",
@@ -535,7 +530,7 @@ resource "aws_sns_topic_policy" "allow_events" {
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName=~"(compute.instances.insert|compute.instances.delete|compute.instances.stop|compute.instances.setMetadata|compute.instances.setMachineType)"''',
-                gcp_terraform_template='''# GCP: Detect compute instance modifications
+                gcp_terraform_template="""# GCP: Detect compute instance modifications
 
 variable "project_id" {
   type = string
@@ -583,7 +578,7 @@ resource "google_monitoring_alert_policy" "instance_modification" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Compute Instance Modified",
                 alert_description_template="GCE instance modified: {methodName}.",
@@ -592,15 +587,15 @@ resource "google_monitoring_alert_policy" "instance_modification" {
                     "Check who performed the modification",
                     "Review instance metadata changes",
                     "Check for unusual machine types",
-                    "Look for evidence destruction patterns"
+                    "Look for evidence destruction patterns",
                 ],
                 containment_actions=[
                     "Delete unauthorised instances",
                     "Revert configuration changes",
                     "Review IAM permissions for Compute Engine",
                     "Enable organisation policies for restrictions",
-                    "Implement resource labels for tracking"
-                ]
+                    "Implement resource labels for tracking",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist auto-scaling and deployment automation",
@@ -609,9 +604,8 @@ resource "google_monitoring_alert_policy" "instance_modification" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled"],
         ),
-
         # Strategy 5: Pattern Analysis - Suspicious Sequences
         DetectionStrategy(
             strategy_id="t1578-pattern-analysis",
@@ -621,7 +615,7 @@ resource "google_monitoring_alert_policy" "instance_modification" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn as user, eventName,
+                query="""fields @timestamp, userIdentity.arn as user, eventName,
        requestParameters.instancesSet.items.0.instanceId as instanceId,
        sourceIPAddress
 | filter eventSource = "ec2.amazonaws.com"
@@ -630,8 +624,8 @@ resource "google_monitoring_alert_policy" "instance_modification" {
 | stats count(*) as action_count, count_distinct(eventName) as unique_actions
   by user, sourceIPAddress, bin(1h) as hour_window
 | filter action_count >= 10 or unique_actions >= 4
-| sort action_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort action_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Suspicious infrastructure change pattern detection
 
 Parameters:
@@ -692,8 +686,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       AlarmActions:
-        - !Ref SNSTopicArn''',
-                terraform_template='''# Suspicious infrastructure change pattern detection
+        - !Ref SNSTopicArn""",
+                terraform_template="""# Suspicious infrastructure change pattern detection
 
 variable "cloudtrail_log_group" {
   type = string
@@ -754,7 +748,7 @@ resource "aws_cloudwatch_metric_alarm" "snapshot_deletion" {
   statistic           = "Sum"
   threshold           = 1
   alarm_actions       = [var.sns_topic_arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Suspicious Infrastructure Change Pattern",
                 alert_description_template=(
@@ -767,15 +761,15 @@ resource "aws_cloudwatch_metric_alarm" "snapshot_deletion" {
                     "Review snapshot operations for data exfiltration",
                     "Verify the source IP and user identity",
                     "Look for patterns indicating automated attacks",
-                    "Check if changes correlate with other alerts"
+                    "Check if changes correlate with other alerts",
                 ],
                 containment_actions=[
                     "Temporarily restrict the user's EC2 permissions",
                     "Enable termination protection on critical instances",
                     "Review and revert unauthorised changes",
                     "Enable AWS Config for change tracking",
-                    "Implement SCPs for infrastructure restrictions"
-                ]
+                    "Implement SCPs for infrastructure restrictions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal change patterns; exclude deployment windows",
@@ -784,17 +778,16 @@ resource "aws_cloudwatch_metric_alarm" "snapshot_deletion" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["CloudTrail enabled", "CloudTrail logs in CloudWatch"]
-        )
+            prerequisites=["CloudTrail enabled", "CloudTrail logs in CloudWatch"],
+        ),
     ],
-
     recommended_order=[
         "t1578-aws-guardduty",
         "t1578-aws-ec2-lifecycle",
         "t1578-aws-volume-snapshot",
         "t1578-gcp-compute",
-        "t1578-pattern-analysis"
+        "t1578-pattern-analysis",
     ],
     total_effort_hours=5.0,
-    coverage_improvement="+25% improvement for Defence Evasion tactic"
+    coverage_improvement="+25% improvement for Defence Evasion tactic",
 )

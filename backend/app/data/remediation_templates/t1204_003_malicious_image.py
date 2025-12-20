@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="User Execution: Malicious Image",
     tactic_ids=["TA0002"],
     mitre_url="https://attack.mitre.org/techniques/T1204/003/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries deploy backdoored container or VM images to public repositories. "
@@ -34,7 +33,7 @@ TEMPLATE = RemediationTemplate(
             "Images run with system privileges",
             "Hard to detect backdoors",
             "Deceptive naming tricks users",
-            "Bypasses perimeter defenses"
+            "Bypasses perimeter defenses",
         ],
         known_threat_actors=["TeamTNT"],
         recent_campaigns=[
@@ -42,7 +41,7 @@ TEMPLATE = RemediationTemplate(
                 name="TeamTNT Docker Images",
                 year=2024,
                 description="Relied on users to download and execute malicious Docker images",
-                reference_url="https://attack.mitre.org/groups/G0139/"
+                reference_url="https://attack.mitre.org/groups/G0139/",
             )
         ],
         prevalence="moderate",
@@ -56,13 +55,12 @@ TEMPLATE = RemediationTemplate(
             "Malware execution",
             "Cryptomining abuse",
             "Data exfiltration",
-            "Credential theft"
+            "Credential theft",
         ],
         typical_attack_phase="execution",
         often_precedes=["T1496.001", "T1530"],
-        often_follows=[]
+        often_follows=[],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1204003-aws-public",
@@ -72,12 +70,12 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, requestParameters.imageId, userIdentity.arn
+                query="""fields @timestamp, eventName, requestParameters.imageId, userIdentity.arn
 | filter eventSource = "ec2.amazonaws.com"
 | filter eventName = "RunInstances"
 | filter requestParameters.imageId not like /^ami-[a-z0-9]+/ or requestParameters.imageId not like /approved/
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect usage of unapproved AMIs
 
 Parameters:
@@ -115,8 +113,8 @@ Resources:
       Threshold: 0
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect usage of unapproved images
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect usage of unapproved images
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -141,7 +139,7 @@ resource "aws_config_config_rule" "approved_amis" {
   input_parameters = jsonencode({
     amiIds = "ami-xxxxxxxx,ami-yyyyyyyy"  # Your approved AMIs
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Unapproved Image Used",
                 alert_description_template="Instance launched from potentially unapproved image {imageId}.",
@@ -149,14 +147,14 @@ resource "aws_config_config_rule" "approved_amis" {
                     "Verify image is from approved source",
                     "Check image for malware",
                     "Review who launched the instance",
-                    "Check instance behaviour"
+                    "Check instance behaviour",
                 ],
                 containment_actions=[
                     "Terminate suspicious instances",
                     "Block unapproved AMIs via SCP",
                     "Require AMI approval process",
-                    "Scan running containers"
-                ]
+                    "Scan running containers",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Maintain approved image list",
@@ -165,9 +163,8 @@ resource "aws_config_config_rule" "approved_amis" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Approved AMI list maintained"]
+            prerequisites=["Approved AMI list maintained"],
         ),
-
         DetectionStrategy(
             strategy_id="t1204003-gcp-public",
             name="GCP Public Image Usage Detection",
@@ -179,7 +176,7 @@ resource "aws_config_config_rule" "approved_amis" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName="compute.instances.insert"
 protoPayload.request.disks.initializeParams.sourceImage!~"projects/YOUR-PROJECT"''',
-                gcp_terraform_template='''# GCP: Detect usage of unapproved images
+                gcp_terraform_template="""# GCP: Detect usage of unapproved images
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -215,7 +212,7 @@ resource "google_monitoring_alert_policy" "external_image" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Unapproved Image Used",
                 alert_description_template="VM launched from external image.",
@@ -223,13 +220,13 @@ resource "google_monitoring_alert_policy" "external_image" {
                     "Verify image source",
                     "Check for malware",
                     "Review launcher",
-                    "Check VM behaviour"
+                    "Check VM behaviour",
                 ],
                 containment_actions=[
                     "Delete suspicious VMs",
                     "Use org policies for images",
-                    "Enable Binary Authorization"
-                ]
+                    "Enable Binary Authorization",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Maintain approved image projects",
@@ -238,11 +235,10 @@ resource "google_monitoring_alert_policy" "external_image" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Cloud Audit Logs enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled"],
+        ),
     ],
-
     recommended_order=["t1204003-aws-public", "t1204003-gcp-public"],
     total_effort_hours=4.0,
-    coverage_improvement="+12% improvement for Execution tactic"
+    coverage_improvement="+12% improvement for Execution tactic",
 )

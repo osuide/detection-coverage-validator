@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Gather Victim Network Information",
     tactic_ids=["TA0043"],
     mitre_url="https://attack.mitre.org/techniques/T1590/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries collect information about victim networks including "
@@ -39,7 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Maps network topology for lateral movement planning",
             "Discovers security controls to evade",
             "Identifies trust relationships to exploit",
-            "Often performed from outside organisational visibility"
+            "Often performed from outside organisational visibility",
         ],
         known_threat_actors=["HAFNIUM", "Indrik Spider", "Volt Typhoon"],
         recent_campaigns=[
@@ -47,14 +46,14 @@ TEMPLATE = RemediationTemplate(
                 name="HAFNIUM Exchange Targeting",
                 year=2021,
                 description="Gathered fully qualified domain names of targeted Exchange servers",
-                reference_url="https://attack.mitre.org/groups/G0125/"
+                reference_url="https://attack.mitre.org/groups/G0125/",
             ),
             Campaign(
                 name="Indrik Spider Infrastructure Reconnaissance",
                 year=2020,
                 description="Downloaded reconnaissance tools and accessed VMware infrastructure details",
-                reference_url="https://attack.mitre.org/groups/G0119/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0119/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -68,13 +67,12 @@ TEMPLATE = RemediationTemplate(
             "Enables targeted attacks",
             "Reveals organisational infrastructure",
             "Exposes security control placement",
-            "Facilitates social engineering"
+            "Facilitates social engineering",
         ],
         typical_attack_phase="reconnaissance",
         often_precedes=["T1595", "T1592", "T1589", "T1133", "T1190"],
-        often_follows=["T1591", "T1589"]
+        often_follows=["T1591", "T1589"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1590-aws-guardduty",
@@ -84,13 +82,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="guardduty",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, detail.type, detail.service.action.networkConnectionAction.remoteIpDetails.ipAddressV4
+                query="""fields @timestamp, detail.type, detail.service.action.networkConnectionAction.remoteIpDetails.ipAddressV4
 | filter detail.type like /Recon:EC2|Discovery:S3|UnauthorizedAccess:EC2/
 | filter detail.type like /PortProbeUnprotectedPort|PortProbeEMRUnprotectedPort|Portscan/
 | stats count(*) as recon_events by detail.service.action.networkConnectionAction.remoteIpDetails.ipAddressV4, bin(1h)
 | filter recon_events > 5
-| sort recon_events desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort recon_events desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect network reconnaissance via GuardDuty
 
 Parameters:
@@ -129,8 +127,8 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect network reconnaissance via GuardDuty
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect network reconnaissance via GuardDuty
 
 variable "guardduty_log_group" {
   type    = string
@@ -170,7 +168,7 @@ resource "aws_cloudwatch_metric_alarm" "recon_activity" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Network Reconnaissance Detected",
                 alert_description_template="GuardDuty detected reconnaissance activity from {remoteIp}.",
@@ -179,14 +177,14 @@ resource "aws_cloudwatch_metric_alarm" "recon_activity" {
                     "Check source IP reputation",
                     "Identify targeted resources",
                     "Review VPC Flow Logs for scanning patterns",
-                    "Check for successful access attempts"
+                    "Check for successful access attempts",
                 ],
                 containment_actions=[
                     "Block source IP in NACLs/security groups",
                     "Review and harden security group rules",
                     "Enable VPC Flow Logs if not active",
-                    "Verify no unauthorised access occurred"
-                ]
+                    "Verify no unauthorised access occurred",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="GuardDuty findings are high-confidence detections",
@@ -195,9 +193,8 @@ resource "aws_cloudwatch_metric_alarm" "recon_activity" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-60 minutes",
             estimated_monthly_cost="$5-20",
-            prerequisites=["AWS GuardDuty enabled", "CloudWatch Logs integration"]
+            prerequisites=["AWS GuardDuty enabled", "CloudWatch Logs integration"],
         ),
-
         DetectionStrategy(
             strategy_id="t1590-aws-vpc-flow",
             name="VPC Flow Logs Scanning Detection",
@@ -206,12 +203,12 @@ resource "aws_cloudwatch_metric_alarm" "recon_activity" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcaddr, dstaddr, dstport, action
+                query="""fields @timestamp, srcaddr, dstaddr, dstport, action
 | filter action = "REJECT"
 | stats count(*) as rejected_ports, count_distinct(dstport) as unique_ports by srcaddr, dstaddr, bin(5m)
 | filter unique_ports > 10
-| sort unique_ports desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort unique_ports desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect port scanning via VPC Flow Logs
 
 Parameters:
@@ -249,8 +246,8 @@ Resources:
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect port scanning via VPC Flow Logs
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect port scanning via VPC Flow Logs
 
 variable "vpc_flow_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -287,7 +284,7 @@ resource "aws_cloudwatch_metric_alarm" "scanning_activity" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Port Scanning Activity Detected",
                 alert_description_template="High volume of rejected connections from {srcaddr} to {dstaddr}.",
@@ -296,14 +293,14 @@ resource "aws_cloudwatch_metric_alarm" "scanning_activity" {
                     "Review connection patterns and ports targeted",
                     "Check threat intelligence for source IP",
                     "Determine if scanning was successful",
-                    "Review related CloudTrail events"
+                    "Review related CloudTrail events",
                 ],
                 containment_actions=[
                     "Block scanning IP in NACLs",
                     "Review security group configurations",
                     "Enable GuardDuty if not active",
-                    "Check for any successful connections"
-                ]
+                    "Check for any successful connections",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Tune threshold based on normal rejected connection volume",
@@ -312,9 +309,8 @@ resource "aws_cloudwatch_metric_alarm" "scanning_activity" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-40",
-            prerequisites=["VPC Flow Logs enabled"]
+            prerequisites=["VPC Flow Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1590-aws-route53",
             name="Route53 DNS Reconnaissance Detection",
@@ -323,12 +319,12 @@ resource "aws_cloudwatch_metric_alarm" "scanning_activity" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcaddr, query_name, rcode
+                query="""fields @timestamp, srcaddr, query_name, rcode
 | filter rcode = "NXDOMAIN"
 | stats count(*) as failed_queries, count_distinct(query_name) as unique_queries by srcaddr, bin(5m)
 | filter unique_queries > 20
-| sort unique_queries desc''',
-                terraform_template='''# Detect DNS enumeration via Route53 query logs
+| sort unique_queries desc""",
+                terraform_template="""# Detect DNS enumeration via Route53 query logs
 
 variable "route53_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -365,7 +361,7 @@ resource "aws_cloudwatch_metric_alarm" "dns_recon" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="low",
                 alert_title="DNS Enumeration Detected",
                 alert_description_template="High volume of NXDOMAIN responses to {srcaddr}.",
@@ -374,14 +370,14 @@ resource "aws_cloudwatch_metric_alarm" "dns_recon" {
                     "Identify source IP and check reputation",
                     "Determine if any queries were successful",
                     "Check for zone transfer attempts",
-                    "Review DNS records for sensitive information exposure"
+                    "Review DNS records for sensitive information exposure",
                 ],
                 containment_actions=[
                     "Rate-limit DNS queries if possible",
                     "Review DNS record visibility",
                     "Consider hiding infrastructure details",
-                    "Block malicious source if confirmed"
-                ]
+                    "Block malicious source if confirmed",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Tune threshold based on legitimate failed query volume",
@@ -390,9 +386,8 @@ resource "aws_cloudwatch_metric_alarm" "dns_recon" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["Route53 query logging enabled"]
+            prerequisites=["Route53 query logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1590-gcp-vpc-flow",
             name="GCP VPC Flow Logs Scanning Detection",
@@ -406,7 +401,7 @@ resource "aws_cloudwatch_metric_alarm" "dns_recon" {
 logName="projects/PROJECT_ID/logs/compute.googleapis.com%2Fvpc_flows"
 jsonPayload.connection.dest_port>1024
 jsonPayload.reporter="DEST"''',
-                gcp_terraform_template='''# GCP: Detect network scanning via VPC Flow Logs
+                gcp_terraform_template="""# GCP: Detect network scanning via VPC Flow Logs
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -456,7 +451,7 @@ resource "google_monitoring_alert_policy" "scanning_detection" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Network Scanning Detected",
                 alert_description_template="Port scanning activity detected in VPC.",
@@ -465,14 +460,14 @@ resource "google_monitoring_alert_policy" "scanning_detection" {
                     "Identify source and destination IPs",
                     "Check source IP reputation",
                     "Determine ports and services targeted",
-                    "Review firewall rules"
+                    "Review firewall rules",
                 ],
                 containment_actions=[
                     "Update firewall rules to block source",
                     "Review and harden security configurations",
                     "Enable Cloud Armor if applicable",
-                    "Verify no successful access"
-                ]
+                    "Verify no successful access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Adjust threshold based on normal network activity",
@@ -481,9 +476,8 @@ resource "google_monitoring_alert_policy" "scanning_detection" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-30",
-            prerequisites=["VPC Flow Logs enabled"]
+            prerequisites=["VPC Flow Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1590-gcp-cloud-dns",
             name="GCP Cloud DNS Query Analysis",
@@ -497,7 +491,7 @@ resource "google_monitoring_alert_policy" "scanning_detection" {
 resource.labels.target_type="public-zone"
 jsonPayload.rdata=""
 severity="ERROR"''',
-                gcp_terraform_template='''# GCP: Detect DNS enumeration via Cloud DNS
+                gcp_terraform_template="""# GCP: Detect DNS enumeration via Cloud DNS
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -535,7 +529,7 @@ resource "google_monitoring_alert_policy" "dns_recon" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="low",
                 alert_title="GCP: DNS Enumeration Detected",
                 alert_description_template="High volume of failed DNS queries detected.",
@@ -544,14 +538,14 @@ resource "google_monitoring_alert_policy" "dns_recon" {
                     "Identify source of queries",
                     "Check for successful resolutions",
                     "Review DNS zone configurations",
-                    "Determine exposed information"
+                    "Determine exposed information",
                 ],
                 containment_actions=[
                     "Review DNS record visibility",
                     "Consider private DNS zones",
                     "Implement rate limiting",
-                    "Audit sensitive DNS records"
-                ]
+                    "Audit sensitive DNS records",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal failed query volume",
@@ -560,11 +554,16 @@ resource "google_monitoring_alert_policy" "dns_recon" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["Cloud DNS query logging enabled"]
-        )
+            prerequisites=["Cloud DNS query logging enabled"],
+        ),
     ],
-
-    recommended_order=["t1590-aws-guardduty", "t1590-gcp-vpc-flow", "t1590-aws-vpc-flow", "t1590-aws-route53", "t1590-gcp-cloud-dns"],
+    recommended_order=[
+        "t1590-aws-guardduty",
+        "t1590-gcp-vpc-flow",
+        "t1590-aws-vpc-flow",
+        "t1590-aws-route53",
+        "t1590-gcp-cloud-dns",
+    ],
     total_effort_hours=7.0,
-    coverage_improvement="+15% improvement for Reconnaissance tactic"
+    coverage_improvement="+15% improvement for Reconnaissance tactic",
 )

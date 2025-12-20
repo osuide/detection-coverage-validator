@@ -24,7 +24,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Modify Authentication Process",
     tactic_ids=["TA0006", "TA0005", "TA0003"],
     mitre_url="https://attack.mitre.org/techniques/T1556/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries modify authentication mechanisms to access credentials or enable "
@@ -43,34 +42,40 @@ TEMPLATE = RemediationTemplate(
             "Allows access from any location without challenge",
             "Modifications often persist after incident response",
             "Can reveal credentials for lateral movement",
-            "Weakens organisation-wide security posture"
+            "Weakens organisation-wide security posture",
         ],
-        known_threat_actors=["ArcaneDoor", "FIN13", "APT29", "APT42", "Scattered Spider"],
+        known_threat_actors=[
+            "ArcaneDoor",
+            "FIN13",
+            "APT29",
+            "APT42",
+            "Scattered Spider",
+        ],
         recent_campaigns=[
             Campaign(
                 name="ArcaneDoor Authentication Bypass",
                 year=2024,
                 description="Modified AAA authentication process on network devices to bypass authentication controls",
-                reference_url="https://attack.mitre.org/campaigns/C0046/"
+                reference_url="https://attack.mitre.org/campaigns/C0046/",
             ),
             Campaign(
                 name="FIN13 KeePass Trojan",
                 year=2024,
                 description="Replaced legitimate KeePass binaries with trojaned versions to harvest passwords",
-                reference_url="https://attack.mitre.org/groups/G1016/"
+                reference_url="https://attack.mitre.org/groups/G1016/",
             ),
             Campaign(
                 name="APT42 MFA Modification",
                 year=2024,
                 description="Leveraged authentication modification tactics to maintain persistent access to cloud environments",
-                reference_url="https://www.mandiant.com/resources/apt42"
+                reference_url="https://www.mandiant.com/resources/apt42",
             ),
             Campaign(
                 name="Scattered Spider Hybrid Identity",
                 year=2023,
                 description="Manipulated hybrid identity synchronisation to bypass authentication controls",
-                reference_url="https://attack.mitre.org/groups/G1015/"
-            )
+                reference_url="https://attack.mitre.org/groups/G1015/",
+            ),
         ],
         prevalence="moderate",
         trend="increasing",
@@ -90,13 +95,12 @@ TEMPLATE = RemediationTemplate(
             "Compliance violations (SOC 2, ISO 27001, PCI DSS)",
             "Difficult to detect and remediate fully",
             "Organisation-wide security posture degradation",
-            "Potential for long-term undetected compromise"
+            "Potential for long-term undetected compromise",
         ],
         typical_attack_phase="credential_access",
         often_precedes=["T1078.004", "T1530", "T1110", "T1552"],
-        often_follows=["T1078.004", "T1098", "T1528", "T1548"]
+        often_follows=["T1078.004", "T1098", "T1528", "T1548"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS IAM Authentication Policy Modifications
         DetectionStrategy(
@@ -120,11 +124,11 @@ TEMPLATE = RemediationTemplate(
                             "AttachUserPolicy",
                             "AttachRolePolicy",
                             "AttachGroupPolicy",
-                            "UpdateAssumeRolePolicy"
+                            "UpdateAssumeRolePolicy",
                         ]
-                    }
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect IAM authentication policy modifications
 
 Parameters:
@@ -176,8 +180,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect IAM authentication policy modifications
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect IAM authentication policy modifications
 
 variable "alert_email" {
   type = string
@@ -235,7 +239,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.iam_auth_policy_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="IAM Authentication Policy Modified",
                 alert_description_template=(
@@ -250,7 +254,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Review source IP and user agent for anomalies",
                     "Check for suspicious conditions in assume role policies",
                     "Look for overly permissive trust relationships",
-                    "Review other IAM changes by the same actor"
+                    "Review other IAM changes by the same actor",
                 ],
                 containment_actions=[
                     "Revert unauthorised policy changes immediately",
@@ -259,8 +263,8 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Rotate credentials for affected users/roles",
                     "Review and remove suspicious trust relationships",
                     "Enable AWS IAM Access Analyzer",
-                    "Implement SCPs to prevent policy tampering"
-                ]
+                    "Implement SCPs to prevent policy tampering",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known administrative accounts during planned changes; suppress during IaC deployments",
@@ -269,9 +273,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled", "IAM events logged"]
+            prerequisites=["CloudTrail enabled", "IAM events logged"],
         ),
-
         # Strategy 2: AWS STS Assume Role Without MFA
         DetectionStrategy(
             strategy_id="t1556-aws-assume-role-no-mfa",
@@ -281,12 +284,12 @@ resource "aws_sns_topic_policy" "allow_events" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn as actor, requestParameters.roleArn, userIdentity.sessionContext.attributes.mfaAuthenticated, sourceIPAddress
+                query="""fields @timestamp, userIdentity.arn as actor, requestParameters.roleArn, userIdentity.sessionContext.attributes.mfaAuthenticated, sourceIPAddress
 | filter eventName = "AssumeRole"
 | filter userIdentity.sessionContext.attributes.mfaAuthenticated = "false" or ispresent(userIdentity.sessionContext.attributes.mfaAuthenticated) = 0
 | filter requestParameters.roleArn like /Admin|Power|Privileged/
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Monitor AssumeRole calls without MFA for privileged roles
 
 Parameters:
@@ -330,8 +333,8 @@ Resources:
       Threshold: 0
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
-        - !Ref AlertTopic''',
-                terraform_template='''# Monitor AssumeRole calls without MFA for privileged roles
+        - !Ref AlertTopic""",
+                terraform_template="""# Monitor AssumeRole calls without MFA for privileged roles
 
 variable "cloudtrail_log_group" {
   type = string
@@ -378,7 +381,7 @@ resource "aws_cloudwatch_metric_alarm" "assume_role_no_mfa" {
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.assume_role_no_mfa_alerts.arn]
   alarm_description   = "Privileged role assumed without MFA authentication"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Privileged Role Assumed Without MFA",
                 alert_description_template=(
@@ -392,7 +395,7 @@ resource "aws_cloudwatch_metric_alarm" "assume_role_no_mfa" {
                     "Identify the principal that assumed the role",
                     "Check source IP and geolocation for anomalies",
                     "Review actions taken with the assumed role",
-                    "Verify if MFA requirement was recently removed"
+                    "Verify if MFA requirement was recently removed",
                 ],
                 containment_actions=[
                     "Revoke active sessions for the assumed role",
@@ -400,8 +403,8 @@ resource "aws_cloudwatch_metric_alarm" "assume_role_no_mfa" {
                     "Disable the principal that assumed the role",
                     "Review and revert unauthorised trust policy changes",
                     "Enable SCP to enforce MFA for privileged roles",
-                    "Audit all role assumption activity"
-                ]
+                    "Audit all role assumption activity",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist service-to-service role assumptions; exclude automation accounts with compensating controls",
@@ -410,9 +413,8 @@ resource "aws_cloudwatch_metric_alarm" "assume_role_no_mfa" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled", "CloudWatch Logs integration"]
+            prerequisites=["CloudTrail enabled", "CloudWatch Logs integration"],
         ),
-
         # Strategy 3: AWS Identity Provider Modifications
         DetectionStrategy(
             strategy_id="t1556-aws-idp-modify",
@@ -433,11 +435,11 @@ resource "aws_cloudwatch_metric_alarm" "assume_role_no_mfa" {
                             "CreateOpenIDConnectProvider",
                             "UpdateOpenIDConnectProviderThumbprint",
                             "AddClientIDToOpenIDConnectProvider",
-                            "DeleteOpenIDConnectProvider"
+                            "DeleteOpenIDConnectProvider",
                         ]
-                    }
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect identity provider configuration changes
 
 Parameters:
@@ -487,8 +489,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect identity provider configuration changes
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect identity provider configuration changes
 
 variable "alert_email" {
   type = string
@@ -544,7 +546,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.idp_change_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Identity Provider Configuration Modified",
                 alert_description_template=(
@@ -559,7 +561,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Review trust relationships using this IdP",
                     "Check for new client IDs added to OIDC providers",
                     "Verify certificate thumbprints are from trusted sources",
-                    "Look for other authentication-related changes"
+                    "Look for other authentication-related changes",
                 ],
                 containment_actions=[
                     "Revert unauthorised IdP configuration changes",
@@ -568,8 +570,8 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Review and update role trust policies using the IdP",
                     "Disable the IdP if compromise is suspected",
                     "Enable AWS CloudTrail data events for IAM",
-                    "Implement change control for IdP modifications"
-                ]
+                    "Implement change control for IdP modifications",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="IdP changes should be rare and well-documented; all events warrant investigation",
@@ -578,9 +580,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled", "IAM events logged"]
+            prerequisites=["CloudTrail enabled", "IAM events logged"],
         ),
-
         # Strategy 4: GCP IAM Conditional Access Policy Changes
         DetectionStrategy(
             strategy_id="t1556-gcp-conditional-access",
@@ -595,7 +596,7 @@ resource "aws_sns_topic_policy" "allow_events" {
 (protoPayload.request.policy.bindings.condition IS NOT NULL
 OR protoPayload.serviceData.policyDelta.bindingDeltas.condition IS NOT NULL)
 severity="NOTICE"''',
-                gcp_terraform_template='''# GCP: Detect IAM conditional access policy changes
+                gcp_terraform_template="""# GCP: Detect IAM conditional access policy changes
 
 variable "project_id" {
   type = string
@@ -650,7 +651,7 @@ resource "google_monitoring_alert_policy" "conditional_policy" {
   documentation {
     content = "IAM conditional access policy was modified. This may indicate authentication bypass attempt. Verify changes were authorised."
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: IAM Conditional Access Policy Modified",
                 alert_description_template=(
@@ -665,7 +666,7 @@ resource "google_monitoring_alert_policy" "conditional_policy" {
                     "Check if device security requirements were removed",
                     "Verify if geographical restrictions were modified",
                     "Review other IAM policy changes by the same actor",
-                    "Check for patterns of authentication weakening"
+                    "Check for patterns of authentication weakening",
                 ],
                 containment_actions=[
                     "Revert unauthorised conditional policy changes",
@@ -674,8 +675,8 @@ resource "google_monitoring_alert_policy" "conditional_policy" {
                     "Review IAM permissions for policy modification",
                     "Enable organisation policy constraints",
                     "Audit recent authentication events",
-                    "Implement change approval for IAM policies"
-                ]
+                    "Implement change approval for IAM policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known administrators during planned policy updates; require change tickets",
@@ -684,9 +685,8 @@ resource "google_monitoring_alert_policy" "conditional_policy" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Cloud Audit Logs enabled", "Admin Activity logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled", "Admin Activity logs enabled"],
         ),
-
         # Strategy 5: GCP Identity Provider and Federation Changes
         DetectionStrategy(
             strategy_id="t1556-gcp-federation-modify",
@@ -699,7 +699,7 @@ resource "google_monitoring_alert_policy" "conditional_policy" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.serviceName="iam.googleapis.com"
 protoPayload.methodName=~"google.iam.admin.v1.CreateWorkloadIdentityPoolProvider|UpdateWorkloadIdentityPoolProvider|DeleteWorkloadIdentityPoolProvider|CreateWorkforcePoolProvider|UpdateWorkforcePoolProvider|DeleteWorkforcePoolProvider"''',
-                gcp_terraform_template='''# GCP: Detect workforce identity federation changes
+                gcp_terraform_template="""# GCP: Detect workforce identity federation changes
 
 variable "project_id" {
   type = string
@@ -752,7 +752,7 @@ resource "google_monitoring_alert_policy" "federation_alert" {
   documentation {
     content = "Workforce identity federation provider was created, modified, or deleted. This could enable authentication bypass. Immediate investigation required."
   }
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GCP: Identity Federation Provider Modified",
                 alert_description_template=(
@@ -767,7 +767,7 @@ resource "google_monitoring_alert_policy" "federation_alert" {
                     "Identify who made the change (principalEmail)",
                     "Check for new identity providers added",
                     "Verify issuer URLs and audience configurations",
-                    "Review IAM bindings using the federation provider"
+                    "Review IAM bindings using the federation provider",
                 ],
                 containment_actions=[
                     "Revert unauthorised federation provider changes",
@@ -776,8 +776,8 @@ resource "google_monitoring_alert_policy" "federation_alert" {
                     "Review attribute condition mappings",
                     "Audit service account impersonation permissions",
                     "Enable organisation policy for federation",
-                    "Implement approval workflow for federation changes"
-                ]
+                    "Implement approval workflow for federation changes",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Federation changes should be rare and well-documented; investigate all events",
@@ -786,9 +786,8 @@ resource "google_monitoring_alert_policy" "federation_alert" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Cloud Audit Logs enabled", "Admin Activity logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled", "Admin Activity logs enabled"],
         ),
-
         # Strategy 6: AWS Cognito Authentication Configuration Changes
         DetectionStrategy(
             strategy_id="t1556-aws-cognito-auth-flow",
@@ -798,11 +797,11 @@ resource "google_monitoring_alert_policy" "federation_alert" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.arn, requestParameters.userPoolId, requestParameters
+                query="""fields @timestamp, eventName, userIdentity.arn, requestParameters.userPoolId, requestParameters
 | filter eventSource = "cognito-idp.amazonaws.com"
 | filter eventName in ["UpdateUserPool", "SetUserPoolMfaConfig", "UpdateUserPoolClient", "CreateUserPoolClient"]
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Monitor Cognito authentication configuration changes
 
 Parameters:
@@ -845,8 +844,8 @@ Resources:
       Threshold: 0
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
-        - !Ref AlertTopic''',
-                terraform_template='''# Monitor Cognito authentication configuration changes
+        - !Ref AlertTopic""",
+                terraform_template="""# Monitor Cognito authentication configuration changes
 
 variable "cloudtrail_log_group" {
   type = string
@@ -893,7 +892,7 @@ resource "aws_cloudwatch_metric_alarm" "cognito_auth" {
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.cognito_auth_alerts.arn]
   alarm_description   = "Cognito authentication configuration modified"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Cognito Authentication Configuration Changed",
                 alert_description_template=(
@@ -908,7 +907,7 @@ resource "aws_cloudwatch_metric_alarm" "cognito_auth" {
                     "Check if SRP authentication was disabled",
                     "Verify token validity period modifications",
                     "Review OAuth flow changes in user pool clients",
-                    "Check for suspicious callback URLs added"
+                    "Check for suspicious callback URLs added",
                 ],
                 containment_actions=[
                     "Revert unauthorised user pool configuration changes",
@@ -917,8 +916,8 @@ resource "aws_cloudwatch_metric_alarm" "cognito_auth" {
                     "Remove suspicious OAuth callback URLs",
                     "Review user pool client configurations",
                     "Enable advanced security features",
-                    "Audit IAM permissions for Cognito modifications"
-                ]
+                    "Audit IAM permissions for Cognito modifications",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known application deployment processes; require change tickets for user pool modifications",
@@ -927,18 +926,17 @@ resource "aws_cloudwatch_metric_alarm" "cognito_auth" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled", "Cognito events logged to CloudWatch"]
-        )
+            prerequisites=["CloudTrail enabled", "Cognito events logged to CloudWatch"],
+        ),
     ],
-
     recommended_order=[
         "t1556-aws-iam-auth-policy",
         "t1556-gcp-federation-modify",
         "t1556-aws-idp-modify",
         "t1556-gcp-conditional-access",
         "t1556-aws-assume-role-no-mfa",
-        "t1556-aws-cognito-auth-flow"
+        "t1556-aws-cognito-auth-flow",
     ],
     total_effort_hours=5.0,
-    coverage_improvement="+22% improvement for Credential Access, Persistence, and Defence Evasion tactics"
+    coverage_improvement="+22% improvement for Credential Access, Persistence, and Defence Evasion tactics",
 )

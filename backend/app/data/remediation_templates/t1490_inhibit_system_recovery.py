@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Inhibit System Recovery",
     tactic_ids=["TA0040"],
     mitre_url="https://attack.mitre.org/techniques/T1490/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries delete or disable built-in system recovery features to prevent "
@@ -38,28 +37,34 @@ TEMPLATE = RemediationTemplate(
             "Prevent incident response and forensics",
             "Force victim to pay ransom",
             "Cloud backups easily deleted via API",
-            "Automated backup policies can be disabled"
+            "Automated backup policies can be disabled",
         ],
-        known_threat_actors=["Sandworm Team", "Wizard Spider", "Scattered Spider", "Storm-0501", "Medusa Group"],
+        known_threat_actors=[
+            "Sandworm Team",
+            "Wizard Spider",
+            "Scattered Spider",
+            "Storm-0501",
+            "Medusa Group",
+        ],
         recent_campaigns=[
             Campaign(
                 name="Scattered Spider Ransomware",
                 year=2024,
                 description="Used cloud access to delete backups and snapshots before deploying ransomware",
-                reference_url="https://attack.mitre.org/groups/G1015/"
+                reference_url="https://attack.mitre.org/groups/G1015/",
             ),
             Campaign(
                 name="Sandworm Destructive Attacks",
                 year=2022,
                 description="Deployed wipers that deleted backups and system recovery points",
-                reference_url="https://attack.mitre.org/groups/G0034/"
+                reference_url="https://attack.mitre.org/groups/G0034/",
             ),
             Campaign(
                 name="LockBit Ransomware Operations",
                 year=2024,
                 description="Systematically deleted shadow copies and cloud backups before encryption",
-                reference_url="https://attack.mitre.org/software/S1070/"
-            )
+                reference_url="https://attack.mitre.org/software/S1070/",
+            ),
         ],
         prevalence="high",
         trend="increasing",
@@ -74,13 +79,12 @@ TEMPLATE = RemediationTemplate(
             "Increased ransomware pressure",
             "Extended recovery time",
             "Potential permanent data loss",
-            "Higher likelihood of ransom payment"
+            "Higher likelihood of ransom payment",
         ],
         typical_attack_phase="impact",
         often_precedes=["T1486", "T1485"],
-        often_follows=["T1078.004", "T1098.003"]
+        often_follows=["T1078.004", "T1098.003"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1490-aws-snapshot-delete",
@@ -98,11 +102,11 @@ TEMPLATE = RemediationTemplate(
                             "DeleteSnapshot",
                             "DeleteDBSnapshot",
                             "DeleteDBClusterSnapshot",
-                            "DeregisterImage"
+                            "DeregisterImage",
                         ]
-                    }
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect deletion of EBS/RDS snapshots and AMIs
 
 Parameters:
@@ -148,8 +152,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect deletion of EBS/RDS snapshots and AMIs
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect deletion of EBS/RDS snapshots and AMIs
 
 variable "alert_email" {
   type        = string
@@ -203,7 +207,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.snapshot_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="AWS Snapshot Deletion Detected",
                 alert_description_template="Snapshot deleted by {userIdentity.arn}. Event: {eventName}, Resource: {requestParameters}",
@@ -212,15 +216,15 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Identify which snapshots were deleted",
                     "Check for other backup deletions in timeframe",
                     "Review user's recent activity for suspicious behaviour",
-                    "Check if automated backups still enabled"
+                    "Check if automated backups still enabled",
                 ],
                 containment_actions=[
                     "Revoke access if unauthorised",
                     "Enable snapshot deletion protection",
                     "Create new snapshots immediately",
                     "Review and restrict backup deletion permissions",
-                    "Enable MFA for destructive operations"
-                ]
+                    "Enable MFA for destructive operations",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist automated lifecycle policies and authorised backup rotation",
@@ -229,9 +233,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled with management events"]
+            prerequisites=["CloudTrail enabled with management events"],
         ),
-
         DetectionStrategy(
             strategy_id="t1490-aws-backup-disable",
             name="AWS Backup Policy Modification",
@@ -249,11 +252,11 @@ resource "aws_sns_topic_policy" "allow_events" {
                             "DeleteBackupVault",
                             "DeleteBackupSelection",
                             "UpdateBackupPlan",
-                            "PutBackupVaultAccessPolicy"
+                            "PutBackupVaultAccessPolicy",
                         ]
-                    }
+                    },
                 },
-                terraform_template='''# Detect AWS Backup policy modifications
+                terraform_template="""# Detect AWS Backup policy modifications
 
 variable "alert_email" {
   type        = string
@@ -308,7 +311,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.backup_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="AWS Backup Policy Modified",
                 alert_description_template="Backup policy changed by {userIdentity.arn}. Event: {eventName}",
@@ -317,15 +320,15 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Review backup plan modifications",
                     "Check if backups still running",
                     "Verify vault access policies unchanged",
-                    "Check for other backup-related changes"
+                    "Check for other backup-related changes",
                 ],
                 containment_actions=[
                     "Restore backup plan if deleted",
                     "Re-enable backup selections",
                     "Review backup vault access policies",
                     "Restrict backup modification permissions",
-                    "Enable vault lock for immutability"
-                ]
+                    "Enable vault lock for immutability",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Backup plan updates are typically infrequent and documented",
@@ -334,9 +337,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1490-aws-s3-versioning",
             name="AWS S3 Versioning Suspension",
@@ -345,12 +347,12 @@ resource "aws_sns_topic_policy" "allow_events" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, requestParameters.bucketName, userIdentity.arn
+                query="""fields @timestamp, eventName, requestParameters.bucketName, userIdentity.arn
 | filter eventSource = "s3.amazonaws.com"
 | filter eventName IN ["PutBucketVersioning", "PutBucketLifecycle", "DeleteBucketLifecycle"]
 | filter requestParameters.versioning.Status = "Suspended" OR eventName LIKE /Delete/
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect S3 versioning suspension
 
 Parameters:
@@ -391,8 +393,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect S3 versioning suspension
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect S3 versioning suspension
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -437,7 +439,7 @@ resource "aws_cloudwatch_metric_alarm" "versioning_suspended" {
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.versioning_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="S3 Versioning Modified",
                 alert_description_template="S3 versioning changed for bucket {requestParameters.bucketName} by {userIdentity.arn}",
@@ -446,15 +448,15 @@ resource "aws_cloudwatch_metric_alarm" "versioning_suspended" {
                     "Check which buckets affected",
                     "Verify if lifecycle policies deleted",
                     "Check for other S3 configuration changes",
-                    "Review recent object deletions"
+                    "Review recent object deletions",
                 ],
                 containment_actions=[
                     "Re-enable versioning immediately",
                     "Restore lifecycle policies",
                     "Enable MFA Delete",
                     "Review and restrict versioning permissions",
-                    "Check for deleted object versions"
-                ]
+                    "Check for deleted object versions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised infrastructure changes; versioning changes should be rare",
@@ -463,9 +465,8 @@ resource "aws_cloudwatch_metric_alarm" "versioning_suspended" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="45 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled with S3 data events"]
+            prerequisites=["CloudTrail enabled with S3 data events"],
         ),
-
         DetectionStrategy(
             strategy_id="t1490-gcp-snapshot-delete",
             name="GCP Snapshot and Backup Deletion",
@@ -477,7 +478,7 @@ resource "aws_cloudwatch_metric_alarm" "versioning_suspended" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName=~"(compute.snapshots.delete|compute.disks.delete|sqladmin.backupRuns.delete)"
 AND severity="NOTICE"''',
-                gcp_terraform_template='''# GCP: Detect snapshot and backup deletion
+                gcp_terraform_template="""# GCP: Detect snapshot and backup deletion
 
 variable "project_id" {
   type        = string
@@ -535,7 +536,7 @@ resource "google_monitoring_alert_policy" "snapshot_delete" {
   }
 
   project = var.project_id
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GCP: Snapshot/Backup Deletion",
                 alert_description_template="Snapshot or backup deleted in GCP project",
@@ -544,15 +545,15 @@ resource "google_monitoring_alert_policy" "snapshot_delete" {
                     "Identify which snapshots/backups deleted",
                     "Check for automated backup policy changes",
                     "Review principal's recent activity",
-                    "Verify remaining backups are intact"
+                    "Verify remaining backups are intact",
                 ],
                 containment_actions=[
                     "Revoke access if unauthorised",
                     "Create new snapshots immediately",
                     "Enable snapshot schedule policies",
                     "Restrict snapshot deletion permissions",
-                    "Review IAM roles for backup access"
-                ]
+                    "Review IAM roles for backup access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist automated snapshot lifecycle management",
@@ -561,9 +562,8 @@ resource "google_monitoring_alert_policy" "snapshot_delete" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1490-gcp-backup-policy",
             name="GCP Backup Policy Modification",
@@ -573,9 +573,9 @@ resource "google_monitoring_alert_policy" "snapshot_delete" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''protoPayload.methodName=~"(sqladmin.instances.update|compute.resourcePolicies.delete)"
-AND (protoPayload.request.backupConfiguration.enabled=false OR protoPayload.methodName="compute.resourcePolicies.delete")''',
-                gcp_terraform_template='''# GCP: Detect backup policy modifications
+                gcp_logging_query="""protoPayload.methodName=~"(sqladmin.instances.update|compute.resourcePolicies.delete)"
+AND (protoPayload.request.backupConfiguration.enabled=false OR protoPayload.methodName="compute.resourcePolicies.delete")""",
+                gcp_terraform_template="""# GCP: Detect backup policy modifications
 
 variable "project_id" {
   type        = string
@@ -636,7 +636,7 @@ resource "google_monitoring_alert_policy" "backup_policy_changes" {
   }
 
   project = var.project_id
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Backup Policy Modified",
                 alert_description_template="Backup configuration disabled or resource policy deleted",
@@ -645,15 +645,15 @@ resource "google_monitoring_alert_policy" "backup_policy_changes" {
                     "Check which resources affected",
                     "Review backup configuration changes",
                     "Verify automated backups still running",
-                    "Check for other policy modifications"
+                    "Check for other policy modifications",
                 ],
                 containment_actions=[
                     "Re-enable backup configurations",
                     "Restore resource policies",
                     "Restrict backup modification permissions",
                     "Create manual backups immediately",
-                    "Review IAM policies for backup access"
-                ]
+                    "Review IAM policies for backup access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Backup policy changes are typically rare and documented",
@@ -662,17 +662,16 @@ resource "google_monitoring_alert_policy" "backup_policy_changes" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1490-aws-snapshot-delete",
         "t1490-aws-backup-disable",
         "t1490-aws-s3-versioning",
         "t1490-gcp-snapshot-delete",
-        "t1490-gcp-backup-policy"
+        "t1490-gcp-backup-policy",
     ],
     total_effort_hours=3.0,
-    coverage_improvement="+28% improvement for Impact tactic"
+    coverage_improvement="+28% improvement for Impact tactic",
 )

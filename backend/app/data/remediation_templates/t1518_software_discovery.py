@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Software Discovery",
     tactic_ids=["TA0007"],
     mitre_url="https://attack.mitre.org/techniques/T1518/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries enumerate installed software, versions, and patches on systems "
@@ -35,22 +34,29 @@ TEMPLATE = RemediationTemplate(
             "Reveals vulnerable application versions",
             "Discovers system management tools",
             "Informs exploitation strategy",
-            "Detects monitoring and backup solutions"
+            "Detects monitoring and backup solutions",
         ],
-        known_threat_actors=["APT35", "Volt Typhoon", "Lazarus Group", "MuddyWater", "Mustang Panda", "OilRig"],
+        known_threat_actors=[
+            "APT35",
+            "Volt Typhoon",
+            "Lazarus Group",
+            "MuddyWater",
+            "Mustang Panda",
+            "OilRig",
+        ],
         recent_campaigns=[
             Campaign(
                 name="Software Inventory Reconnaissance",
                 year=2024,
                 description="Threat actors systematically enumerate installed software to identify security tools and vulnerable applications before launching attacks",
-                reference_url="https://attack.mitre.org/techniques/T1518/"
+                reference_url="https://attack.mitre.org/techniques/T1518/",
             ),
             Campaign(
                 name="Cloud Environment Profiling",
                 year=2024,
                 description="Enumeration of cloud-based software inventories via Systems Manager and metadata services to identify attack surface",
-                reference_url="https://unit42.paloaltonetworks.com/2025-cloud-security-alert-trends/"
-            )
+                reference_url="https://unit42.paloaltonetworks.com/2025-cloud-security-alert-trends/",
+            ),
         ],
         prevalence="common",
         trend="stable",
@@ -64,13 +70,12 @@ TEMPLATE = RemediationTemplate(
             "Reveals defensive capabilities to adversaries",
             "Enables targeted vulnerability exploitation",
             "Identifies valuable software assets",
-            "Indicates pre-attack reconnaissance phase"
+            "Indicates pre-attack reconnaissance phase",
         ],
         typical_attack_phase="discovery",
         often_precedes=["T1203", "T1210", "T1562.001"],
-        often_follows=["T1078.004", "T1651"]
+        often_follows=["T1078.004", "T1651"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - Systems Manager Inventory Enumeration
         DetectionStrategy(
@@ -85,10 +90,14 @@ TEMPLATE = RemediationTemplate(
                     "source": ["aws.ssm"],
                     "detail-type": ["AWS API Call via CloudTrail"],
                     "detail": {
-                        "eventName": ["GetInventory", "ListInventoryEntries", "DescribeInstanceInformation"]
-                    }
+                        "eventName": [
+                            "GetInventory",
+                            "ListInventoryEntries",
+                            "DescribeInstanceInformation",
+                        ]
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect Systems Manager inventory enumeration
 
 Parameters:
@@ -128,8 +137,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect Systems Manager inventory enumeration
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect Systems Manager inventory enumeration
 
 variable "alert_email" {
   type = string
@@ -175,7 +184,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Systems Manager Inventory Enumeration Detected",
                 alert_description_template="SSM inventory queries performed by {userIdentity.arn}.",
@@ -183,14 +192,14 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Identify the user performing inventory queries",
                     "Check if this is authorised security scanning or patching activity",
                     "Review what instance information was accessed",
-                    "Look for follow-on exploitation attempts"
+                    "Look for follow-on exploitation attempts",
                 ],
                 containment_actions=[
                     "Review user's permissions and recent activity",
                     "Monitor for targeted attacks on identified software",
                     "Check for vulnerability exploitation attempts",
-                    "Consider restricting SSM inventory read access"
-                ]
+                    "Consider restricting SSM inventory read access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist patch management, CSPM tools, and systems administrators",
@@ -199,9 +208,11 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled", "Systems Manager Inventory configured"]
+            prerequisites=[
+                "CloudTrail enabled",
+                "Systems Manager Inventory configured",
+            ],
         ),
-
         # Strategy 2: AWS - EC2 Instance Details Enumeration
         DetectionStrategy(
             strategy_id="t1518-aws-ec2-describe",
@@ -211,13 +222,13 @@ resource "aws_sns_topic_policy" "allow_events" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.arn, sourceIPAddress
+                query="""fields @timestamp, eventName, userIdentity.arn, sourceIPAddress
 | filter eventSource = "ec2.amazonaws.com"
 | filter eventName in ["DescribeInstanceAttribute", "GetConsoleOutput", "DescribeImages"]
 | stats count(*) as describe_count by userIdentity.arn, bin(1h)
 | filter describe_count > 20
-| sort describe_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort describe_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect EC2 software enumeration
 
 Parameters:
@@ -258,8 +269,8 @@ Resources:
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect EC2 software enumeration
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect EC2 software enumeration
 
 variable "cloudtrail_log_group" {
   type = string
@@ -304,7 +315,7 @@ resource "aws_cloudwatch_metric_alarm" "ec2_enum" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="EC2 Software Enumeration Detected",
                 alert_description_template="High volume of EC2 describe operations from {userIdentity.arn}.",
@@ -312,14 +323,14 @@ resource "aws_cloudwatch_metric_alarm" "ec2_enum" {
                     "Identify who is performing EC2 enumeration",
                     "Determine if this is normal operational behaviour",
                     "Review what instance details were accessed",
-                    "Check for targeted exploitation attempts"
+                    "Check for targeted exploitation attempts",
                 ],
                 containment_actions=[
                     "Review user's permissions and activity history",
                     "Monitor for exploitation of identified software",
                     "Consider implementing SCPs for describe limits",
-                    "Audit instances for vulnerable software"
-                ]
+                    "Audit instances for vulnerable software",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist automation tools, monitoring systems, and infrastructure management platforms",
@@ -328,9 +339,8 @@ resource "aws_cloudwatch_metric_alarm" "ec2_enum" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail logging to CloudWatch"]
+            prerequisites=["CloudTrail logging to CloudWatch"],
         ),
-
         # Strategy 3: GCP - Compute Instance Software Enumeration
         DetectionStrategy(
             strategy_id="t1518-gcp-compute-describe",
@@ -342,7 +352,7 @@ resource "aws_cloudwatch_metric_alarm" "ec2_enum" {
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName=~"(compute.instances.get|osconfig.patchDeployments.list|osconfig.patchJobs.list)"''',
-                gcp_terraform_template='''# GCP: Detect instance software enumeration
+                gcp_terraform_template="""# GCP: Detect instance software enumeration
 
 variable "project_id" {
   type = string
@@ -390,7 +400,7 @@ resource "google_monitoring_alert_policy" "software_enum" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Instance Software Enumeration Detected",
                 alert_description_template="High volume of instance software queries detected.",
@@ -398,14 +408,14 @@ resource "google_monitoring_alert_policy" "software_enum" {
                     "Identify the principal performing software enumeration",
                     "Check if this is authorised security scanning",
                     "Review which instances were queried",
-                    "Look for follow-on exploitation attempts"
+                    "Look for follow-on exploitation attempts",
                 ],
                 containment_actions=[
                     "Review principal's permissions and recent activity",
                     "Monitor for targeted attacks on vulnerable software",
                     "Consider IAM Conditions to restrict access",
-                    "Audit instances for vulnerable applications"
-                ]
+                    "Audit instances for vulnerable applications",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist patch management, monitoring tools, and operations teams",
@@ -414,9 +424,8 @@ resource "google_monitoring_alert_policy" "software_enum" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled"],
         ),
-
         # Strategy 4: GCP - OS Inventory Service Enumeration
         DetectionStrategy(
             strategy_id="t1518-gcp-os-inventory",
@@ -428,7 +437,7 @@ resource "google_monitoring_alert_policy" "software_enum" {
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName=~"osconfig.*Inventory|compute.instances.getGuestAttributes"''',
-                gcp_terraform_template='''# GCP: Detect OS inventory enumeration
+                gcp_terraform_template="""# GCP: Detect OS inventory enumeration
 
 variable "project_id" {
   type = string
@@ -476,7 +485,7 @@ resource "google_monitoring_alert_policy" "os_inventory" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: OS Inventory Enumeration Detected",
                 alert_description_template="OS inventory queries detected - software enumeration in progress.",
@@ -484,14 +493,14 @@ resource "google_monitoring_alert_policy" "os_inventory" {
                     "Identify who is accessing OS inventory data",
                     "Verify if this is authorised patching or scanning",
                     "Review which instances were targeted",
-                    "Check for subsequent exploitation activity"
+                    "Check for subsequent exploitation activity",
                 ],
                 containment_actions=[
                     "Review principal's permissions",
                     "Monitor for targeted exploitation",
                     "Consider restricting inventory access",
-                    "Audit vulnerable software on instances"
-                ]
+                    "Audit vulnerable software on instances",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist vulnerability scanners and patch management systems",
@@ -500,16 +509,15 @@ resource "google_monitoring_alert_policy" "os_inventory" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled", "OS Inventory configured"]
-        )
+            prerequisites=["Cloud Audit Logs enabled", "OS Inventory configured"],
+        ),
     ],
-
     recommended_order=[
         "t1518-aws-ssm-inventory",
         "t1518-aws-ec2-describe",
         "t1518-gcp-os-inventory",
-        "t1518-gcp-compute-describe"
+        "t1518-gcp-compute-describe",
     ],
     total_effort_hours=3.0,
-    coverage_improvement="+12% improvement for Discovery tactic"
+    coverage_improvement="+12% improvement for Discovery tactic",
 )

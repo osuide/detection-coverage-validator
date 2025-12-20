@@ -24,7 +24,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="User Execution: Malicious File",
     tactic_ids=["TA0002"],
     mitre_url="https://attack.mitre.org/techniques/T1204/002/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries leverage social engineering to manipulate users into opening "
@@ -39,22 +38,28 @@ TEMPLATE = RemediationTemplate(
             "Leverages social engineering effectiveness",
             "Can bypass email filters with obfuscation",
             "Users often trust familiar file types",
-            "Effective initial access vector"
+            "Effective initial access vector",
         ],
-        known_threat_actors=["APT28", "APT29", "Lazarus Group", "FIN7", "Sandworm Team"],
+        known_threat_actors=[
+            "APT28",
+            "APT29",
+            "Lazarus Group",
+            "FIN7",
+            "Sandworm Team",
+        ],
         recent_campaigns=[
             Campaign(
                 name="Operation Dream Job",
                 year=2021,
                 description="Lazarus Group distributed documents with compelling job descriptions from defence and aerospace sectors",
-                reference_url="https://attack.mitre.org/groups/G0032/"
+                reference_url="https://attack.mitre.org/groups/G0032/",
             ),
             Campaign(
                 name="Ukraine Electric Power Attack",
                 year=2015,
                 description="Sandworm Team manipulated recipients into enabling malicious macros embedded within files",
-                reference_url="https://attack.mitre.org/groups/G0034/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0034/",
+            ),
         ],
         prevalence="very_common",
         trend="stable",
@@ -69,13 +74,12 @@ TEMPLATE = RemediationTemplate(
             "Credential theft via malware",
             "Data exfiltration risk",
             "Ransomware deployment",
-            "Lateral movement enabler"
+            "Lateral movement enabler",
         ],
         typical_attack_phase="execution",
         often_precedes=["T1059.001", "T1547.001", "T1055", "T1105"],
-        often_follows=["T1566.001", "T1566.002"]
+        often_follows=["T1566.001", "T1566.002"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1204-002-aws-suspicious-downloads",
@@ -85,7 +89,7 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.principalId, requestParameters.instanceId
+                query="""fields @timestamp, eventName, userIdentity.principalId, requestParameters.instanceId
 | filter eventName = "RunInstances" OR eventName = "StartInstances"
 | join (
     fields @timestamp, processName, commandLine
@@ -94,8 +98,8 @@ TEMPLATE = RemediationTemplate(
   ) on instanceId
 | stats count(*) as executions by instanceId, processName
 | filter executions > 3
-| sort executions desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort executions desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect suspicious file execution patterns
 
 Parameters:
@@ -143,8 +147,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       AlarmActions: [!Ref AlertTopic]
-      TreatMissingData: notBreaching''',
-                terraform_template='''# AWS: Detect suspicious file execution patterns
+      TreatMissingData: notBreaching""",
+                terraform_template="""# AWS: Detect suspicious file execution patterns
 
 variable "cloudwatch_log_group" {
   description = "CloudWatch log group for EC2 process monitoring"
@@ -196,7 +200,7 @@ resource "aws_cloudwatch_metric_alarm" "suspicious_execution" {
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.suspicious_execution_alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Suspicious File Execution Detected",
                 alert_description_template="Multiple suspicious processes executed from user directories on instance {instanceId}.",
@@ -206,7 +210,7 @@ resource "aws_cloudwatch_metric_alarm" "suspicious_execution" {
                     "Check for macro-enabled documents or suspicious archives",
                     "Analyse process command-line arguments for malicious indicators",
                     "Review network connections initiated by suspicious processes",
-                    "Check for persistence mechanisms created"
+                    "Check for persistence mechanisms created",
                 ],
                 containment_actions=[
                     "Isolate affected instance from network",
@@ -214,8 +218,8 @@ resource "aws_cloudwatch_metric_alarm" "suspicious_execution" {
                     "Quarantine malicious files",
                     "Review email security controls and attachment filters",
                     "Enhance endpoint protection policies",
-                    "Conduct user security awareness training"
-                ]
+                    "Conduct user security awareness training",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Legitimate software installations may trigger alerts. Tune by excluding known software deployment paths and authorised installers.",
@@ -224,9 +228,10 @@ resource "aws_cloudwatch_metric_alarm" "suspicious_execution" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$15-40",
-            prerequisites=["CloudWatch agent with process monitoring enabled on EC2 instances"]
+            prerequisites=[
+                "CloudWatch agent with process monitoring enabled on EC2 instances"
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1204-002-aws-office-macro",
             name="AWS Office Document Macro Execution",
@@ -235,12 +240,12 @@ resource "aws_cloudwatch_metric_alarm" "suspicious_execution" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, parentProcess, childProcess, commandLine, userName
+                query="""fields @timestamp, parentProcess, childProcess, commandLine, userName
 | filter parentProcess in ["WINWORD.EXE", "EXCEL.EXE", "POWERPNT.EXE", "OUTLOOK.EXE"]
 | filter childProcess in ["powershell.exe", "cmd.exe", "wscript.exe", "cscript.exe", "mshta.exe", "regsvr32.exe", "rundll32.exe"]
 | stats count(*) as spawns by userName, parentProcess, childProcess
-| sort spawns desc''',
-                terraform_template='''# AWS: Detect Office macro execution via process monitoring
+| sort spawns desc""",
+                terraform_template="""# AWS: Detect Office macro execution via process monitoring
 
 variable "process_log_group" {
   description = "CloudWatch log group containing process creation logs"
@@ -292,7 +297,7 @@ resource "aws_cloudwatch_metric_alarm" "office_macro_execution" {
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.macro_execution_alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Office Macro Execution Detected",
                 alert_description_template="Office application {parentProcess} spawned suspicious process {childProcess} for user {userName}.",
@@ -302,7 +307,7 @@ resource "aws_cloudwatch_metric_alarm" "office_macro_execution" {
                     "Examine child process command-line for malicious indicators",
                     "Check email source and sender reputation",
                     "Review file hash against threat intelligence",
-                    "Analyse network activity from spawned processes"
+                    "Analyse network activity from spawned processes",
                 ],
                 containment_actions=[
                     "Quarantine malicious document",
@@ -310,8 +315,8 @@ resource "aws_cloudwatch_metric_alarm" "office_macro_execution" {
                     "Block sender email address",
                     "Disable macros via Group Policy",
                     "Scan endpoint for additional compromise indicators",
-                    "Review email gateway rules"
-                ]
+                    "Review email gateway rules",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Very few legitimate scenarios require Office spawning scripting engines. Exclude known automation scripts if necessary.",
@@ -320,9 +325,10 @@ resource "aws_cloudwatch_metric_alarm" "office_macro_execution" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-25",
-            prerequisites=["Process creation logging enabled via Sysmon or Windows Event Logs"]
+            prerequisites=[
+                "Process creation logging enabled via Sysmon or Windows Event Logs"
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1204-002-gcp-file-execution",
             name="GCP Suspicious File Execution Monitoring",
@@ -332,13 +338,13 @@ resource "aws_cloudwatch_metric_alarm" "office_macro_execution" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 protoPayload.methodName="v1.compute.instances.start"
 OR (
   jsonPayload.process.executable=~"(bash|sh|python|perl|osascript)"
   AND jsonPayload.process.args=~"(Downloads|tmp|var/tmp)"
-)''',
-                gcp_terraform_template='''# GCP: Detect suspicious file execution on Compute Engine
+)""",
+                gcp_terraform_template="""# GCP: Detect suspicious file execution on Compute Engine
 
 variable "project_id" {
   description = "GCP project ID"
@@ -407,7 +413,7 @@ resource "google_monitoring_alert_policy" "suspicious_execution_alert" {
   alert_strategy {
     auto_close = "1800s"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Suspicious File Execution",
                 alert_description_template="Suspicious script execution detected from temporary directories on GCP instance.",
@@ -416,7 +422,7 @@ resource "google_monitoring_alert_policy" "suspicious_execution_alert" {
                     "Examine script content and execution arguments",
                     "Check network egress for data exfiltration",
                     "Review IAM permissions and service account activity",
-                    "Analyse VPC flow logs for suspicious connections"
+                    "Analyse VPC flow logs for suspicious connections",
                 ],
                 containment_actions=[
                     "Stop affected instance",
@@ -424,8 +430,8 @@ resource "google_monitoring_alert_policy" "suspicious_execution_alert" {
                     "Remove malicious files",
                     "Review and tighten firewall rules",
                     "Rotate service account credentials",
-                    "Enhance OS login security policies"
-                ]
+                    "Enhance OS login security policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude legitimate automation scripts and software deployment paths. Adjust threshold based on instance usage patterns.",
@@ -434,9 +440,11 @@ resource "google_monitoring_alert_policy" "suspicious_execution_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$20-35",
-            prerequisites=["Cloud Logging API enabled", "OS Config agent for process monitoring"]
+            prerequisites=[
+                "Cloud Logging API enabled",
+                "OS Config agent for process monitoring",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1204-002-aws-lnk-execution",
             name="AWS Shortcut File (.lnk) Execution Detection",
@@ -445,13 +453,13 @@ resource "google_monitoring_alert_policy" "suspicious_execution_alert" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, processName, commandLine, parentProcess
+                query="""fields @timestamp, processName, commandLine, parentProcess
 | filter processName = "cmd.exe" OR processName = "powershell.exe"
 | filter commandLine like /\\.lnk/
 | filter parentProcess = "explorer.exe"
 | stats count(*) as executions by commandLine, userName
-| sort executions desc''',
-                terraform_template='''# AWS: Detect malicious .lnk file execution
+| sort executions desc""",
+                terraform_template="""# AWS: Detect malicious .lnk file execution
 
 variable "security_log_group" {
   description = "CloudWatch log group for Windows security events"
@@ -503,7 +511,7 @@ resource "aws_cloudwatch_metric_alarm" "lnk_execution_detected" {
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.lnk_execution_alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Malicious Shortcut File Execution",
                 alert_description_template="Suspicious .lnk file executed: {commandLine}",
@@ -512,15 +520,15 @@ resource "aws_cloudwatch_metric_alarm" "lnk_execution_detected" {
                     "Identify file source (email, download, removable media)",
                     "Review process tree for child processes",
                     "Check for network connections or file downloads",
-                    "Analyse .lnk file hash against threat intelligence"
+                    "Analyse .lnk file hash against threat intelligence",
                 ],
                 containment_actions=[
                     "Delete malicious .lnk file",
                     "Terminate spawned processes",
                     "Block file hash across endpoints",
                     "Review email attachment filtering",
-                    "Scan for similar files on network shares"
-                ]
+                    "Scan for similar files on network shares",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Legitimate .lnk files rarely execute via cmd.exe or PowerShell. Review exceptions carefully.",
@@ -529,16 +537,15 @@ resource "aws_cloudwatch_metric_alarm" "lnk_execution_detected" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-15",
-            prerequisites=["Windows process creation logging enabled"]
-        )
+            prerequisites=["Windows process creation logging enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1204-002-aws-office-macro",
         "t1204-002-aws-suspicious-downloads",
         "t1204-002-gcp-file-execution",
-        "t1204-002-aws-lnk-execution"
+        "t1204-002-aws-lnk-execution",
     ],
     total_effort_hours=6.5,
-    coverage_improvement="+25% improvement for Execution tactic"
+    coverage_improvement="+25% improvement for Execution tactic",
 )

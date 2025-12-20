@@ -5,7 +5,15 @@ from typing import Optional
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status, BackgroundTasks
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Request,
+    Response,
+    status,
+    BackgroundTasks,
+)
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select, and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -31,6 +39,7 @@ router = APIRouter()
 # Request/Response schemas
 class MemberResponse(BaseModel):
     """Organization member response."""
+
     id: UUID
     user_id: UUID
     email: str
@@ -46,6 +55,7 @@ class MemberResponse(BaseModel):
 
 class InviteRequest(BaseModel):
     """Invite member request."""
+
     email: EmailStr
     role: UserRole = UserRole.MEMBER
     message: Optional[str] = Field(None, max_length=500)
@@ -53,6 +63,7 @@ class InviteRequest(BaseModel):
 
 class InviteResponse(BaseModel):
     """Invite response."""
+
     id: UUID
     email: str
     role: UserRole
@@ -63,6 +74,7 @@ class InviteResponse(BaseModel):
 
 class PendingInviteResponse(BaseModel):
     """Pending invite response."""
+
     id: UUID
     email: str
     role: UserRole
@@ -73,11 +85,13 @@ class PendingInviteResponse(BaseModel):
 
 class UpdateMemberRoleRequest(BaseModel):
     """Update member role request."""
+
     role: UserRole
 
 
 class AcceptInviteRequest(BaseModel):
     """Accept invite request."""
+
     invite_token: str
 
 
@@ -188,13 +202,17 @@ async def list_pending_invites(
             role=inv.role,
             invited_at=inv.invited_at,
             expires_at=inv.invite_expires_at,
-            invited_by_name=inv.invited_by_user.full_name if inv.invited_by_user else "Unknown",
+            invited_by_name=(
+                inv.invited_by_user.full_name if inv.invited_by_user else "Unknown"
+            ),
         )
         for inv in invites
     ]
 
 
-@router.post("/invites", response_model=InviteResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/invites", response_model=InviteResponse, status_code=status.HTTP_201_CREATED
+)
 async def invite_member(
     request: Request,
     body: InviteRequest,
@@ -228,7 +246,9 @@ async def invite_member(
         .where(
             and_(
                 OrganizationMember.organization_id == auth.organization_id,
-                OrganizationMember.status.in_([MembershipStatus.ACTIVE, MembershipStatus.PENDING]),
+                OrganizationMember.status.in_(
+                    [MembershipStatus.ACTIVE, MembershipStatus.PENDING]
+                ),
             )
         )
     )
@@ -252,6 +272,7 @@ async def invite_member(
 
     # Create invite
     import secrets
+
     invite_token = secrets.token_urlsafe(32)
     expires_at = datetime.now(timezone.utc) + timedelta(days=7)
 

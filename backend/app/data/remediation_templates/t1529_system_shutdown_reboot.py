@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="System Shutdown/Reboot",
     tactic_ids=["TA0040"],
     mitre_url="https://attack.mitre.org/techniques/T1529/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries may shut down or reboot systems to interrupt availability, "
@@ -41,32 +40,44 @@ TEMPLATE = RemediationTemplate(
             "Forces system reboots to activate persistence mechanisms or bootkit malware",
             "Masks evidence of malicious activity by clearing volatile memory",
             "Triggers panic and confusion during ransomware deployment",
-            "Prevents recovery by interrupting backup or restoration processes"
+            "Prevents recovery by interrupting backup or restoration processes",
         ],
         known_threat_actors=[
-            "APT37", "APT38", "Lazarus Group", "Sandworm Team", "Olympic Destroyer",
-            "NotPetya", "Shamoon", "HermeticWiper", "WhisperGate", "Black Basta",
-            "Maze", "AvosLocker", "Qilin", "LockerGoga", "Medusa Group"
+            "APT37",
+            "APT38",
+            "Lazarus Group",
+            "Sandworm Team",
+            "Olympic Destroyer",
+            "NotPetya",
+            "Shamoon",
+            "HermeticWiper",
+            "WhisperGate",
+            "Black Basta",
+            "Maze",
+            "AvosLocker",
+            "Qilin",
+            "LockerGoga",
+            "Medusa Group",
         ],
         recent_campaigns=[
             Campaign(
                 name="WhisperGate Ukraine Attacks",
                 year=2022,
                 description="Deployed wiper malware that corrupted master boot records and triggered system shutdowns to prevent recovery",
-                reference_url="https://attack.mitre.org/software/S0689/"
+                reference_url="https://attack.mitre.org/software/S0689/",
             ),
             Campaign(
                 name="HermeticWiper Russian Invasion",
                 year=2022,
                 description="Wiped data on Ukrainian systems and forced shutdowns to maximise disruption during military operations",
-                reference_url="https://attack.mitre.org/software/S0697/"
+                reference_url="https://attack.mitre.org/software/S0697/",
             ),
             Campaign(
                 name="Black Basta Ransomware",
                 year=2023,
                 description="Forced system reboots after encrypting files to prevent incident response and ensure ransom demands were visible",
-                reference_url="https://attack.mitre.org/software/S1070/"
-            )
+                reference_url="https://attack.mitre.org/software/S1070/",
+            ),
         ],
         prevalence="uncommon",
         trend="stable",
@@ -85,13 +96,12 @@ TEMPLATE = RemediationTemplate(
             "Prevention of incident response and forensic investigation",
             "Extended recovery time due to forced shutdowns",
             "Completion of destructive attacks like data wiping or disk encryption",
-            "Service-level agreement violations and financial penalties"
+            "Service-level agreement violations and financial penalties",
         ],
         typical_attack_phase="impact",
         often_precedes=[],
-        often_follows=["T1486", "T1485", "T1490", "T1561"]
+        often_follows=["T1486", "T1485", "T1490", "T1561"],
     ),
-
     detection_strategies=[
         # Strategy 1: CloudWatch EventBridge - EC2 State Changes
         DetectionStrategy(
@@ -105,7 +115,7 @@ TEMPLATE = RemediationTemplate(
             aws_service="eventbridge",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect unexpected EC2 instance shutdowns and reboots
 
 Parameters:
@@ -183,8 +193,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref SecurityAlertTopic''',
-                terraform_template='''# AWS: Detect unexpected EC2 instance shutdowns
+            Resource: !Ref SecurityAlertTopic""",
+                terraform_template="""# AWS: Detect unexpected EC2 instance shutdowns
 
 variable "alert_email" {
   type        = string
@@ -261,7 +271,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Resource  = aws_sns_topic.ec2_shutdown_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Unexpected EC2 Instance Shutdown Detected",
                 alert_description_template=(
@@ -275,7 +285,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Check for signs of preceding destructive actions (data wiping, disk encryption)",
                     "Examine the IAM principal that initiated the shutdown for compromise",
                     "Review EventBridge/CloudWatch Events for patterns of mass shutdowns",
-                    "Check if other instances in the same VPC or availability zone were affected"
+                    "Check if other instances in the same VPC or availability zone were affected",
                 ],
                 containment_actions=[
                     "Restart the instance if shutdown was unauthorised",
@@ -283,8 +293,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Enable termination protection on critical instances",
                     "Implement SCPs to prevent instance termination outside business hours",
                     "Enable CloudWatch detailed monitoring for instance metrics",
-                    "Review security group rules and network access logs for signs of breach"
-                ]
+                    "Review security group rules and network access logs for signs of breach",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Filter out auto-scaling group terminations and scheduled shutdowns via tags",
@@ -293,9 +303,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$0 - EventBridge rules are free for AWS events",
-            prerequisites=["CloudTrail enabled for API call logging"]
+            prerequisites=["CloudTrail enabled for API call logging"],
         ),
-
         # Strategy 2: CloudWatch Logs - Shutdown Command Detection
         DetectionStrategy(
             strategy_id="t1529-shutdown-commands",
@@ -308,11 +317,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query=r'''fields @timestamp, @message, instanceId, commandLine, processName
+                query=r"""fields @timestamp, @message, instanceId, commandLine, processName
 | filter @message like /shutdown|reboot|poweroff|halt|init 0|init 6|systemctl (poweroff|reboot|halt)|shutdown\.exe|wmic.*shutdown/
 | filter @message not like /cron|systemd-shutdown|scheduled/
 | stats count() as shutdown_commands by instanceId, commandLine, bin(5m)
-| sort @timestamp desc''',
+| sort @timestamp desc""",
                 cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect shutdown/reboot commands in CloudWatch Logs
 
@@ -362,7 +371,7 @@ Resources:
         - MetricName: WindowsShutdownEvents
           MetricNamespace: Security/T1529
           MetricValue: "1"''',
-                terraform_template='''# Detect shutdown/reboot commands in CloudWatch Logs
+                terraform_template="""# Detect shutdown/reboot commands in CloudWatch Logs
 
 variable "cloudwatch_log_group" {
   type        = string
@@ -422,7 +431,7 @@ resource "aws_cloudwatch_log_metric_filter" "windows_shutdown" {
     namespace = "Security/T1529"
     value     = "1"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="System Shutdown Command Detected",
                 alert_description_template=(
@@ -437,7 +446,7 @@ resource "aws_cloudwatch_log_metric_filter" "windows_shutdown" {
                     "Examine system logs for signs of wiper malware or ransomware",
                     "Review recent file modifications and deletions",
                     "Check if multiple instances received shutdown commands simultaneously",
-                    "Investigate the parent process that spawned the shutdown command"
+                    "Investigate the parent process that spawned the shutdown command",
                 ],
                 containment_actions=[
                     "If malicious, prevent instance shutdown by modifying IAM policies",
@@ -445,8 +454,8 @@ resource "aws_cloudwatch_log_metric_filter" "windows_shutdown" {
                     "Block network access to prevent lateral shutdown attempts",
                     "Review and remove any scheduled tasks triggering shutdowns",
                     "Disable or quarantine accounts that executed unauthorised shutdowns",
-                    "Enable instance termination protection on critical workloads"
-                ]
+                    "Enable instance termination protection on critical workloads",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude scheduled maintenance windows and approved automation scripts",
@@ -455,9 +464,11 @@ resource "aws_cloudwatch_log_metric_filter" "windows_shutdown" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="$5-15 depending on log volume",
-            prerequisites=["CloudWatch Logs Agent or SSM Agent installed", "System audit logging enabled"]
+            prerequisites=[
+                "CloudWatch Logs Agent or SSM Agent installed",
+                "System audit logging enabled",
+            ],
         ),
-
         # Strategy 3: GCP - VM Instance State Changes
         DetectionStrategy(
             strategy_id="t1529-gcp-vm-shutdown",
@@ -471,12 +482,12 @@ resource "aws_cloudwatch_log_metric_filter" "windows_shutdown" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''(resource.type="gce_instance"
+                gcp_logging_query="""(resource.type="gce_instance"
 AND protoPayload.methodName=("v1.compute.instances.stop" OR "v1.compute.instances.delete" OR "v1.compute.instances.reset"))
 OR
 (resource.type="gce_instance"
-AND textPayload=~"shutdown|reboot|poweroff|halt|systemctl (poweroff|reboot)")''',
-                gcp_terraform_template='''# GCP: Detect unexpected GCE VM shutdowns
+AND textPayload=~"shutdown|reboot|poweroff|halt|systemctl (poweroff|reboot)")""",
+                gcp_terraform_template="""# GCP: Detect unexpected GCE VM shutdowns
 
 variable "project_id" {
   type        = string
@@ -556,7 +567,7 @@ resource "google_monitoring_alert_policy" "vm_shutdown" {
     content   = "GCE VM shutdown detected - T1529. Investigate if this was an authorised operation. Check for preceding destructive activity."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Unexpected VM Shutdown Detected",
                 alert_description_template=(
@@ -570,7 +581,7 @@ resource "google_monitoring_alert_policy" "vm_shutdown" {
                     "Examine VM serial port output for system-level shutdown messages",
                     "Review Cloud Logging for signs of malware or destructive activity before shutdown",
                     "Check for patterns of mass shutdowns across multiple VMs",
-                    "Investigate whether data wiping or disk encryption preceded the shutdown"
+                    "Investigate whether data wiping or disk encryption preceded the shutdown",
                 ],
                 containment_actions=[
                     "Restart the VM if shutdown was unauthorised",
@@ -578,8 +589,8 @@ resource "google_monitoring_alert_policy" "vm_shutdown" {
                     "Review and restrict IAM permissions for compute.instances.stop",
                     "Enable deletion protection on critical VM instances",
                     "Revoke compromised service account credentials",
-                    "Implement organisation policies to restrict VM deletions"
-                ]
+                    "Implement organisation policies to restrict VM deletions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude managed instance group auto-scaling and scheduled shutdowns",
@@ -588,9 +599,8 @@ resource "google_monitoring_alert_policy" "vm_shutdown" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Logging API enabled", "Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Logging API enabled", "Cloud Audit Logs enabled"],
         ),
-
         # Strategy 4: Windows Event Log Monitoring
         DetectionStrategy(
             strategy_id="t1529-windows-events",
@@ -603,12 +613,12 @@ resource "google_monitoring_alert_policy" "vm_shutdown" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, EventID, UserName, ProcessName, @message
+                query="""fields @timestamp, EventID, UserName, ProcessName, @message
 | filter EventID in [1074, 6006, 6008, 41]
 | filter EventID = 1074 and UserName not like /SYSTEM|NETWORK SERVICE/
 | stats count() as shutdown_count by UserName, ProcessName, bin(5m)
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Monitor Windows shutdown events via CloudWatch
 
 Parameters:
@@ -655,8 +665,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       AlarmActions:
-        - !Ref SNSTopicArn''',
-                terraform_template='''# Monitor Windows shutdown events
+        - !Ref SNSTopicArn""",
+                terraform_template="""# Monitor Windows shutdown events
 
 variable "cloudwatch_log_group" {
   type        = string
@@ -715,7 +725,7 @@ resource "aws_cloudwatch_metric_alarm" "shutdown_event" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Windows System Shutdown Detected",
                 alert_description_template=(
@@ -729,7 +739,7 @@ resource "aws_cloudwatch_metric_alarm" "shutdown_event" {
                     "Review Application and System logs for malware or ransomware indicators",
                     "Check Task Scheduler for scheduled shutdown tasks",
                     "Investigate whether destructive actions (file deletion, encryption) preceded shutdown",
-                    "Review user account privileges and recent activity"
+                    "Review user account privileges and recent activity",
                 ],
                 containment_actions=[
                     "Disable user accounts that initiated unauthorised shutdowns",
@@ -737,8 +747,8 @@ resource "aws_cloudwatch_metric_alarm" "shutdown_event" {
                     "Enable write-protect on critical system files",
                     "Deploy endpoint detection and response (EDR) agents",
                     "Restrict local administrator privileges",
-                    "Implement application control to block shutdown utilities"
-                ]
+                    "Implement application control to block shutdown utilities",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Exclude SYSTEM account shutdowns and scheduled maintenance",
@@ -747,9 +757,10 @@ resource "aws_cloudwatch_metric_alarm" "shutdown_event" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudWatch Agent installed with Windows Event Log collection"]
+            prerequisites=[
+                "CloudWatch Agent installed with Windows Event Log collection"
+            ],
         ),
-
         # Strategy 5: Mass Shutdown Detection
         DetectionStrategy(
             strategy_id="t1529-mass-shutdown",
@@ -762,13 +773,13 @@ resource "aws_cloudwatch_metric_alarm" "shutdown_event" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, detail.instance-id as instance, detail.state as state
+                query="""fields @timestamp, detail.instance-id as instance, detail.state as state
 | filter detail-type = "EC2 Instance State-change Notification"
 | filter detail.state in ["stopping", "stopped", "shutting-down", "terminated"]
 | stats count() as instance_count by bin(5m)
 | filter instance_count > 3
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect mass shutdown events across EC2 fleet
 
 Parameters:
@@ -815,8 +826,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
         - !Ref SNSTopicArn
-      TreatMissingData: notBreaching''',
-                terraform_template='''# Detect mass shutdown events across EC2 fleet
+      TreatMissingData: notBreaching""",
+                terraform_template="""# Detect mass shutdown events across EC2 fleet
 
 variable "alert_email" {
   type = string
@@ -870,7 +881,7 @@ resource "aws_cloudwatch_metric_alarm" "mass_shutdown" {
   comparison_operator = "GreaterThanThreshold"
   alarm_actions       = [aws_sns_topic.critical_alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Mass Instance Shutdown Detected - Potential Attack",
                 alert_description_template=(
@@ -885,7 +896,7 @@ resource "aws_cloudwatch_metric_alarm" "mass_shutdown" {
                     "Review GuardDuty findings for signs of widespread compromise",
                     "Check for ransomware notes or data encryption across instances",
                     "Examine network traffic for command-and-control communications",
-                    "Coordinate incident response across security and infrastructure teams"
+                    "Coordinate incident response across security and infrastructure teams",
                 ],
                 containment_actions=[
                     "Immediately revoke credentials of suspected compromised accounts",
@@ -894,8 +905,8 @@ resource "aws_cloudwatch_metric_alarm" "mass_shutdown" {
                     "Isolate network segments to prevent lateral spread",
                     "Activate disaster recovery procedures if business-critical systems affected",
                     "Preserve forensic evidence from CloudTrail and CloudWatch Logs",
-                    "Engage incident response team and consider third-party forensics support"
-                ]
+                    "Engage incident response team and consider third-party forensics support",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Adjust threshold based on normal auto-scaling patterns",
@@ -904,17 +915,19 @@ resource "aws_cloudwatch_metric_alarm" "mass_shutdown" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled", "EventBridge configured for EC2 events"]
-        )
+            prerequisites=[
+                "CloudTrail enabled",
+                "EventBridge configured for EC2 events",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1529-ec2-shutdown",
         "t1529-windows-events",
         "t1529-mass-shutdown",
         "t1529-shutdown-commands",
-        "t1529-gcp-vm-shutdown"
+        "t1529-gcp-vm-shutdown",
     ],
     total_effort_hours=4.5,
-    coverage_improvement="+25% improvement for Impact tactic"
+    coverage_improvement="+25% improvement for Impact tactic",
 )

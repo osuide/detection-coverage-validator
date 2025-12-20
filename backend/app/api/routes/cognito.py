@@ -13,7 +13,16 @@ import structlog
 
 from app.core.config import get_settings
 from app.core.database import get_db
-from app.models.user import User, Organization, OrganizationMember, UserRole, MembershipStatus, FederatedIdentity, AuditLog, AuditLogAction
+from app.models.user import (
+    User,
+    Organization,
+    OrganizationMember,
+    UserRole,
+    MembershipStatus,
+    FederatedIdentity,
+    AuditLog,
+    AuditLogAction,
+)
 from app.models.billing import Subscription, AccountTier
 from app.services.cognito_service import cognito_service, generate_pkce
 from app.services.auth_service import AuthService
@@ -26,6 +35,7 @@ settings = get_settings()
 
 class CognitoConfigResponse(BaseModel):
     """Cognito configuration for frontend."""
+
     configured: bool
     region: Optional[str] = None
     user_pool_id: Optional[str] = None
@@ -37,6 +47,7 @@ class CognitoConfigResponse(BaseModel):
 
 class CognitoTokenRequest(BaseModel):
     """Request to exchange Cognito tokens with PKCE."""
+
     code: str
     redirect_uri: str
     code_verifier: str  # PKCE - required
@@ -45,6 +56,7 @@ class CognitoTokenRequest(BaseModel):
 
 class CognitoTokenResponse(BaseModel):
     """Response with app tokens after Cognito auth."""
+
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
@@ -54,6 +66,7 @@ class CognitoTokenResponse(BaseModel):
 
 class SSOInitiateResponse(BaseModel):
     """Response for SSO initiation."""
+
     authorization_url: str
     state: str
     code_verifier: str  # PKCE - client must store and send back
@@ -93,7 +106,7 @@ async def initiate_sso(
     if not cognito_service.is_configured():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="SSO is not configured"
+            detail="SSO is not configured",
         )
 
     # Validate provider and map to Cognito identity provider name
@@ -108,7 +121,7 @@ async def initiate_sso(
     if provider_lower not in provider_mapping:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid provider. Must be one of: {list(provider_mapping.keys())}"
+            detail=f"Invalid provider. Must be one of: {list(provider_mapping.keys())}",
         )
 
     # Generate state for CSRF protection
@@ -144,7 +157,7 @@ async def exchange_cognito_token(
     if not cognito_service.is_configured():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="SSO is not configured"
+            detail="SSO is not configured",
         )
 
     # Exchange code for Cognito tokens with PKCE
@@ -157,7 +170,7 @@ async def exchange_cognito_token(
     if not tokens:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Failed to exchange authorization code"
+            detail="Failed to exchange authorization code",
         )
 
     # Verify the ID token
@@ -165,15 +178,13 @@ async def exchange_cognito_token(
     access_token = tokens.get("access_token")
     if not id_token:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="No ID token received"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="No ID token received"
         )
 
     claims = await cognito_service.verify_token(id_token, access_token=access_token)
     if not claims:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid ID token"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid ID token"
         )
 
     # Extract user info from claims
@@ -192,14 +203,12 @@ async def exchange_cognito_token(
     if not email:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email not provided by identity provider"
+            detail="Email not provided by identity provider",
         )
 
     # Find or create user
     result = await db.execute(
-        select(User).where(
-            (User.cognito_sub == cognito_sub) | (User.email == email)
-        )
+        select(User).where((User.cognito_sub == cognito_sub) | (User.email == email))
     )
     user = result.scalar_one_or_none()
 
@@ -255,7 +264,9 @@ async def exchange_cognito_token(
         )
         db.add(subscription)
 
-        logger.info("user_created_via_sso", user_id=str(user.id), provider=identity_provider)
+        logger.info(
+            "user_created_via_sso", user_id=str(user.id), provider=identity_provider
+        )
 
     # Track/update federated identity
     result = await db.execute(
@@ -289,7 +300,7 @@ async def exchange_cognito_token(
     if not membership:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="User has no active organization membership"
+            detail="User has no active organization membership",
         )
 
     # Get organization
@@ -356,7 +367,11 @@ async def list_linked_identities(
                 "provider": identity.provider,
                 "provider_email": identity.provider_email,
                 "linked_at": identity.linked_at.isoformat(),
-                "last_login_at": identity.last_login_at.isoformat() if identity.last_login_at else None,
+                "last_login_at": (
+                    identity.last_login_at.isoformat()
+                    if identity.last_login_at
+                    else None
+                ),
             }
             for identity in identities
         ]
@@ -381,7 +396,7 @@ async def unlink_identity(
         if len(identities) <= 1:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot unlink last authentication method. Set a password first."
+                detail="Cannot unlink last authentication method. Set a password first.",
             )
 
     # Find and delete the identity
@@ -396,7 +411,7 @@ async def unlink_identity(
     if not identity:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No linked identity found for provider: {provider}"
+            detail=f"No linked identity found for provider: {provider}",
         )
 
     await db.delete(identity)

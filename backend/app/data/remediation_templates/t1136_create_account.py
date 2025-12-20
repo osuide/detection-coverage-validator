@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Create Account",
     tactic_ids=["TA0003"],
     mitre_url="https://attack.mitre.org/techniques/T1136/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries create new accounts (local, domain, or cloud) to maintain "
@@ -39,7 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Accounts blend with legitimate users when named appropriately",
             "Multiple accounts provide backup access paths",
             "Cloud accounts can be restricted to specific services to minimise detection",
-            "Domain accounts enable lateral movement across networks"
+            "Domain accounts enable lateral movement across networks",
         ],
         known_threat_actors=[
             "Indrik Spider",
@@ -47,27 +46,27 @@ TEMPLATE = RemediationTemplate(
             "Salt Typhoon",
             "Scattered Spider",
             "APT29",
-            "LockBit"
+            "LockBit",
         ],
         recent_campaigns=[
             Campaign(
                 name="Sandworm Ukraine Power Grid Attack",
                 year=2016,
                 description="Sandworm Team added SQL Server logins during the Ukraine power infrastructure compromise",
-                reference_url="https://attack.mitre.org/groups/G0034/"
+                reference_url="https://attack.mitre.org/groups/G0034/",
             ),
             Campaign(
                 name="Scattered Spider Shadow Admins",
                 year=2023,
                 description="Created new user identities within compromised organisations for persistent access and data theft",
-                reference_url="https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-320a"
+                reference_url="https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-320a",
             ),
             Campaign(
                 name="Indrik Spider Persistence",
                 year=2024,
                 description="Used wmic.exe to add local system users for maintaining access during ransomware operations",
-                reference_url="https://attack.mitre.org/groups/G0119/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0119/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -84,13 +83,12 @@ TEMPLATE = RemediationTemplate(
             "Lateral movement enabling broader compromise",
             "Compliance violations from unauthorised account creation",
             "Potential for privilege escalation to administrator level",
-            "Data exfiltration through persistent access channels"
+            "Data exfiltration through persistent access channels",
         ],
         typical_attack_phase="persistence",
         often_precedes=["T1098", "T1078", "T1530", "T1087"],
-        often_follows=["T1078", "T1110", "T1190", "T1566"]
+        often_follows=["T1078", "T1110", "T1190", "T1566"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - IAM User Creation
         DetectionStrategy(
@@ -109,10 +107,10 @@ TEMPLATE = RemediationTemplate(
                     "detail-type": ["AWS API Call via CloudTrail"],
                     "detail": {
                         "eventSource": ["iam.amazonaws.com"],
-                        "eventName": ["CreateUser", "CreateGroup"]
-                    }
+                        "eventName": ["CreateUser", "CreateGroup"],
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect IAM user and group creation for T1136
 
 Parameters:
@@ -162,8 +160,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect IAM user and group creation for T1136
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect IAM user and group creation for T1136
 
 variable "alert_email" {
   type = string
@@ -214,7 +212,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="AWS: IAM Account Created",
                 alert_description_template=(
@@ -227,7 +225,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Review the new account's permissions and group memberships",
                     "Check if access keys or login profiles were created for the account",
                     "Review naming patterns to identify potential shadow accounts",
-                    "Check for immediate suspicious activity from the new account"
+                    "Check for immediate suspicious activity from the new account",
                 ],
                 containment_actions=[
                     "Delete unauthorised IAM users immediately",
@@ -235,8 +233,8 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Delete any access keys created for the unauthorised account",
                     "Audit the creator's recent activity for other malicious actions",
                     "Implement approval workflows for IAM user creation",
-                    "Enable AWS Organisations SCPs to restrict account creation"
-                ]
+                    "Enable AWS Organisations SCPs to restrict account creation",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised provisioning systems and HR onboarding automation",
@@ -245,9 +243,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled", "EventBridge configured"]
+            prerequisites=["CloudTrail enabled", "EventBridge configured"],
         ),
-
         # Strategy 2: AWS - Root User Equivalent Detection
         DetectionStrategy(
             strategy_id="t1136-aws-admin-account",
@@ -260,7 +257,7 @@ resource "aws_sns_topic_policy" "allow_events" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, requestParameters.userName, userIdentity.arn, sourceIPAddress
+                query="""fields @timestamp, eventName, requestParameters.userName, userIdentity.arn, sourceIPAddress
 | filter eventSource = "iam.amazonaws.com"
 | filter eventName = "CreateUser"
 | join on requestParameters.userName
@@ -268,8 +265,8 @@ resource "aws_sns_topic_policy" "allow_events" {
    | filter eventName in ["AttachUserPolicy", "AddUserToGroup"]
    | filter requestParameters.policyArn like /AdministratorAccess/
       or requestParameters.groupName like /Admin/)
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect creation of IAM users with admin privileges
 
 Parameters:
@@ -312,8 +309,8 @@ Resources:
       Threshold: 0
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
-        - !Ref AlertTopic''',
-                terraform_template='''# Detect creation of IAM users with admin privileges
+        - !Ref AlertTopic""",
+                terraform_template="""# Detect creation of IAM users with admin privileges
 
 variable "cloudtrail_log_group" {
   type = string
@@ -359,7 +356,7 @@ resource "aws_cloudwatch_metric_alarm" "admin_account" {
   threshold           = 0
   comparison_operator = "GreaterThanThreshold"
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="AWS: Administrator Account Created",
                 alert_description_template=(
@@ -372,7 +369,7 @@ resource "aws_cloudwatch_metric_alarm" "admin_account" {
                     "Check the account creator's legitimacy and permissions",
                     "Review all actions taken by the new admin account",
                     "Identify any data or resources accessed by the account",
-                    "Check for other accounts created by the same principal"
+                    "Check for other accounts created by the same principal",
                 ],
                 containment_actions=[
                     "Immediately remove administrator permissions if unauthorised",
@@ -380,8 +377,8 @@ resource "aws_cloudwatch_metric_alarm" "admin_account" {
                     "Revoke all access keys and login profiles",
                     "Review and audit all admin accounts in the environment",
                     "Implement mandatory approval for admin account creation",
-                    "Enable MFA enforcement for all admin accounts"
-                ]
+                    "Enable MFA enforcement for all admin accounts",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Integrate with ITSM ticketing systems to validate authorised admin provisioning",
@@ -390,9 +387,8 @@ resource "aws_cloudwatch_metric_alarm" "admin_account" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail logging to CloudWatch Logs"]
+            prerequisites=["CloudTrail logging to CloudWatch Logs"],
         ),
-
         # Strategy 3: GCP - Service Account Creation
         DetectionStrategy(
             strategy_id="t1136-gcp-service-account",
@@ -408,7 +404,7 @@ resource "aws_cloudwatch_metric_alarm" "admin_account" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName="google.iam.admin.v1.CreateServiceAccount"
 OR protoPayload.methodName="google.iam.admin.v1.CreateServiceAccountKey"''',
-                gcp_terraform_template='''# GCP: Detect service account creation for T1136
+                gcp_terraform_template="""# GCP: Detect service account creation for T1136
 
 variable "project_id" {
   type = string
@@ -482,7 +478,7 @@ resource "google_monitoring_alert_policy" "sa_creation" {
       4. Review any immediate activity from the new account
     EOT
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Service Account Created",
                 alert_description_template=(
@@ -496,7 +492,7 @@ resource "google_monitoring_alert_policy" "sa_creation" {
                     "Review IAM roles and permissions assigned to the service account",
                     "Check if service account keys were created",
                     "Review the service account's activity in Cloud Audit Logs",
-                    "Verify naming conventions match organisational standards"
+                    "Verify naming conventions match organisational standards",
                 ],
                 containment_actions=[
                     "Delete unauthorised service accounts immediately",
@@ -504,8 +500,8 @@ resource "google_monitoring_alert_policy" "sa_creation" {
                     "Remove IAM role bindings for the service account",
                     "Audit the creator's permissions and recent activity",
                     "Enable organisation policies to restrict service account creation",
-                    "Implement approval workflows for service account creation"
-                ]
+                    "Implement approval workflows for service account creation",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist CI/CD pipelines and Terraform automation service accounts",
@@ -514,9 +510,8 @@ resource "google_monitoring_alert_policy" "sa_creation" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled", "Admin Activity logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled", "Admin Activity logs enabled"],
         ),
-
         # Strategy 4: GCP - Privileged Service Account Detection
         DetectionStrategy(
             strategy_id="t1136-gcp-privileged-account",
@@ -534,7 +529,7 @@ resource "google_monitoring_alert_policy" "sa_creation" {
 AND protoPayload.serviceData.policyDelta.bindingDeltas.role=~"roles/(owner|editor|iam.serviceAccountAdmin|iam.securityAdmin)"
 AND protoPayload.serviceData.policyDelta.bindingDeltas.member=~"serviceAccount:.*"
 AND protoPayload.serviceData.policyDelta.bindingDeltas.action="ADD"''',
-                gcp_terraform_template='''# GCP: Detect privileged service account creation
+                gcp_terraform_template="""# GCP: Detect privileged service account creation
 
 variable "project_id" {
   type = string
@@ -622,7 +617,7 @@ resource "google_monitoring_alert_policy" "privileged_sa" {
       4. Determine if this violates least privilege principles
     EOT
   }
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GCP: Privileged Service Account Created",
                 alert_description_template=(
@@ -635,7 +630,7 @@ resource "google_monitoring_alert_policy" "privileged_sa" {
                     "Check who granted the privileged role and their authority level",
                     "Review all actions taken by the service account since creation",
                     "Identify any data or resources accessed with elevated permissions",
-                    "Check for other service accounts created or modified by the same principal"
+                    "Check for other service accounts created or modified by the same principal",
                 ],
                 containment_actions=[
                     "Immediately revoke privileged roles if unauthorised",
@@ -643,8 +638,8 @@ resource "google_monitoring_alert_policy" "privileged_sa" {
                     "Delete the service account if it's confirmed malicious",
                     "Revoke all service account keys",
                     "Implement organisation policies to restrict privileged role assignment",
-                    "Enable mandatory approval for owner/editor role grants"
-                ]
+                    "Enable mandatory approval for owner/editor role grants",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised infrastructure-as-code deployments with documented justification",
@@ -653,9 +648,11 @@ resource "google_monitoring_alert_policy" "privileged_sa" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="45 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled", "Data Access logs enabled for IAM"]
+            prerequisites=[
+                "Cloud Audit Logs enabled",
+                "Data Access logs enabled for IAM",
+            ],
         ),
-
         # Strategy 5: Account Creation Pattern Analysis
         DetectionStrategy(
             strategy_id="t1136-pattern-analysis",
@@ -668,15 +665,15 @@ resource "google_monitoring_alert_policy" "privileged_sa" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn as creator, requestParameters.userName as newUser, sourceIPAddress
+                query="""fields @timestamp, userIdentity.arn as creator, requestParameters.userName as newUser, sourceIPAddress
 | filter eventSource = "iam.amazonaws.com"
 | filter eventName = "CreateUser"
 | stats count(*) as users_created, count_distinct(requestParameters.userName) as unique_users,
         min(@timestamp) as first_creation, max(@timestamp) as last_creation
   by creator, sourceIPAddress, bin(1h) as time_window
 | filter users_created >= 3
-| sort users_created desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort users_created desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect suspicious account creation patterns
 
 Parameters:
@@ -719,8 +716,8 @@ Resources:
       Threshold: 3
       ComparisonOperator: GreaterThanOrEqualToThreshold
       AlarmActions:
-        - !Ref AlertTopic''',
-                terraform_template='''# Detect suspicious account creation patterns
+        - !Ref AlertTopic""",
+                terraform_template="""# Detect suspicious account creation patterns
 
 variable "cloudtrail_log_group" {
   type = string
@@ -766,7 +763,7 @@ resource "aws_cloudwatch_metric_alarm" "rapid_creation" {
   threshold           = 3
   comparison_operator = "GreaterThanOrEqualToThreshold"
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Suspicious Account Creation Pattern",
                 alert_description_template=(
@@ -779,7 +776,7 @@ resource "aws_cloudwatch_metric_alarm" "rapid_creation" {
                     "Verify if bulk creation aligns with onboarding processes",
                     "Review the creator's authority and typical behaviour",
                     "Check if accounts were immediately granted permissions",
-                    "Look for correlation with other security events"
+                    "Look for correlation with other security events",
                 ],
                 containment_actions=[
                     "Disable all newly created accounts pending investigation",
@@ -787,8 +784,8 @@ resource "aws_cloudwatch_metric_alarm" "rapid_creation" {
                     "Delete confirmed unauthorised accounts",
                     "Implement rate limiting for account creation",
                     "Require multi-party approval for bulk account operations",
-                    "Review the creator's account for compromise"
-                ]
+                    "Review the creator's account for compromise",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist scheduled onboarding processes and account migration activities",
@@ -797,17 +794,19 @@ resource "aws_cloudwatch_metric_alarm" "rapid_creation" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-15",
-            prerequisites=["CloudTrail logging to CloudWatch Logs", "Baseline of normal account creation rate"]
-        )
+            prerequisites=[
+                "CloudTrail logging to CloudWatch Logs",
+                "Baseline of normal account creation rate",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1136-aws-user-creation",
         "t1136-gcp-service-account",
         "t1136-aws-admin-account",
         "t1136-gcp-privileged-account",
-        "t1136-pattern-analysis"
+        "t1136-pattern-analysis",
     ],
     total_effort_hours=3.5,
-    coverage_improvement="+22% improvement for Persistence tactic"
+    coverage_improvement="+22% improvement for Persistence tactic",
 )

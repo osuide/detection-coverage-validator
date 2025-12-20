@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Service Stop",
     tactic_ids=["TA0040"],
     mitre_url="https://attack.mitre.org/techniques/T1489/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries stop or disable services to render them unavailable. "
@@ -35,22 +34,28 @@ TEMPLATE = RemediationTemplate(
             "Prevents incident response",
             "Maximises business disruption",
             "Stops backup services",
-            "Disables security tools"
+            "Disables security tools",
         ],
-        known_threat_actors=["Wizard Spider", "Conti", "LockBit", "RobbinHood", "Lazarus Group"],
+        known_threat_actors=[
+            "Wizard Spider",
+            "Conti",
+            "LockBit",
+            "RobbinHood",
+            "Lazarus Group",
+        ],
         recent_campaigns=[
             Campaign(
                 name="LockBit 3.0 Service Termination",
                 year=2024,
                 description="Terminates services related to security, backup, and databases before encryption",
-                reference_url="https://attack.mitre.org/software/S1070/"
+                reference_url="https://attack.mitre.org/software/S1070/",
             ),
             Campaign(
                 name="Conti Service Stops",
                 year=2022,
                 description="Disables up to 146 Windows services through net stop commands",
-                reference_url="https://attack.mitre.org/software/S0575/"
-            )
+                reference_url="https://attack.mitre.org/software/S0575/",
+            ),
         ],
         prevalence="common",
         trend="stable",
@@ -63,13 +68,12 @@ TEMPLATE = RemediationTemplate(
             "Service unavailability",
             "Enables ransomware encryption",
             "Backup service disruption",
-            "Extended recovery time"
+            "Extended recovery time",
         ],
         typical_attack_phase="impact",
         often_precedes=["T1486", "T1485"],
-        often_follows=["T1078.004", "T1021.007"]
+        often_follows=["T1078.004", "T1021.007"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1489-aws-stop",
@@ -84,13 +88,17 @@ TEMPLATE = RemediationTemplate(
                     "detail-type": ["AWS API Call via CloudTrail"],
                     "detail": {
                         "eventName": [
-                            "StopInstances", "TerminateInstances",
-                            "DeleteFunction", "UpdateFunctionConfiguration",
-                            "StopTask", "DeleteService", "UpdateService"
+                            "StopInstances",
+                            "TerminateInstances",
+                            "DeleteFunction",
+                            "UpdateFunctionConfiguration",
+                            "StopTask",
+                            "DeleteService",
+                            "UpdateService",
                         ]
-                    }
+                    },
                 },
-                terraform_template='''# Detect cloud service stops
+                terraform_template="""# Detect cloud service stops
 
 variable "alert_email" { type = string }
 
@@ -134,7 +142,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Cloud Service Stopped",
                 alert_description_template="Service stopped: {eventName} by {userIdentity.arn}.",
@@ -142,14 +150,14 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Verify stop was authorised",
                     "Check for bulk service stops",
                     "Review user's recent activity",
-                    "Check for ransomware indicators"
+                    "Check for ransomware indicators",
                 ],
                 containment_actions=[
                     "Restart critical services",
                     "Isolate compromised identity",
                     "Review all recent stops",
-                    "Activate incident response"
-                ]
+                    "Activate incident response",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude scheduled maintenance windows",
@@ -158,9 +166,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1489-aws-bulk",
             name="AWS Bulk Service Stop Detection",
@@ -169,13 +176,13 @@ resource "aws_sns_topic_policy" "allow_events" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.arn, requestParameters
+                query="""fields @timestamp, eventName, userIdentity.arn, requestParameters
 | filter eventSource in ["ec2.amazonaws.com", "lambda.amazonaws.com", "ecs.amazonaws.com"]
 | filter eventName in ["StopInstances", "TerminateInstances", "DeleteFunction", "StopTask"]
 | stats count(*) as stop_count by userIdentity.arn, bin(15m)
 | filter stop_count > 5
-| sort stop_count desc''',
-                terraform_template='''# Detect bulk service stops
+| sort stop_count desc""",
+                terraform_template="""# Detect bulk service stops
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -212,7 +219,7 @@ resource "aws_cloudwatch_metric_alarm" "bulk_stop" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Bulk Service Stop - Possible Ransomware",
                 alert_description_template="Multiple services stopped by {userIdentity.arn} in short time.",
@@ -220,14 +227,14 @@ resource "aws_cloudwatch_metric_alarm" "bulk_stop" {
                     "Immediately investigate as ransomware",
                     "Check for data encryption",
                     "Review all affected services",
-                    "Activate IR playbook"
+                    "Activate IR playbook",
                 ],
                 containment_actions=[
                     "Isolate affected accounts",
                     "Revoke compromised credentials",
                     "Enable recovery procedures",
-                    "Engage incident response team"
-                ]
+                    "Engage incident response team",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Bulk stops are rare outside maintenance",
@@ -236,9 +243,8 @@ resource "aws_cloudwatch_metric_alarm" "bulk_stop" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail logging to CloudWatch"]
+            prerequisites=["CloudTrail logging to CloudWatch"],
         ),
-
         DetectionStrategy(
             strategy_id="t1489-gcp-stop",
             name="GCP Service Stop Detection",
@@ -250,7 +256,7 @@ resource "aws_cloudwatch_metric_alarm" "bulk_stop" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName=~"(instances.stop|instances.delete|functions.delete|deployments.delete)"
 OR protoPayload.serviceName="container.googleapis.com" AND protoPayload.methodName=~"delete"''',
-                gcp_terraform_template='''# GCP: Detect service stops
+                gcp_terraform_template="""# GCP: Detect service stops
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -286,7 +292,7 @@ resource "google_monitoring_alert_policy" "service_stop" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GCP: Service Stops Detected",
                 alert_description_template="Cloud services being stopped or deleted.",
@@ -294,14 +300,14 @@ resource "google_monitoring_alert_policy" "service_stop" {
                     "Verify stops are authorised",
                     "Check for bulk operations",
                     "Review actor identity",
-                    "Check for ransomware"
+                    "Check for ransomware",
                 ],
                 containment_actions=[
                     "Restart critical services",
                     "Isolate compromised accounts",
                     "Review all recent operations",
-                    "Activate incident response"
-                ]
+                    "Activate incident response",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude scheduled maintenance",
@@ -310,11 +316,10 @@ resource "google_monitoring_alert_policy" "service_stop" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Cloud Audit Logs enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled"],
+        ),
     ],
-
     recommended_order=["t1489-aws-bulk", "t1489-aws-stop", "t1489-gcp-stop"],
     total_effort_hours=3.0,
-    coverage_improvement="+20% improvement for Impact tactic"
+    coverage_improvement="+20% improvement for Impact tactic",
 )

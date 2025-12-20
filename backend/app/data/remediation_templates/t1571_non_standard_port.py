@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Non-Standard Port",
     tactic_ids=["TA0011"],  # Command and Control
     mitre_url="https://attack.mitre.org/techniques/T1571/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries communicate using application-layer protocols over non-standard ports "
@@ -37,28 +36,35 @@ TEMPLATE = RemediationTemplate(
             "Evades network monitoring focused on standard ports",
             "Blends malicious traffic with legitimate services",
             "Allows protocol tunnelling over unexpected ports",
-            "Complicates traffic analysis and detection efforts"
+            "Complicates traffic analysis and detection efforts",
         ],
-        known_threat_actors=["APT32", "APT33", "FIN7", "Lazarus Group", "Emotet", "TrickBot"],
+        known_threat_actors=[
+            "APT32",
+            "APT33",
+            "FIN7",
+            "Lazarus Group",
+            "Emotet",
+            "TrickBot",
+        ],
         recent_campaigns=[
             Campaign(
                 name="C0018 RDP on Non-Standard Ports",
                 year=2023,
                 description="Attackers used Remote Desktop Protocol on ports 28035 and 32467 instead of standard port 3389 to evade detection",
-                reference_url="https://attack.mitre.org/campaigns/C0018/"
+                reference_url="https://attack.mitre.org/campaigns/C0018/",
             ),
             Campaign(
                 name="C0032 Multi-Port C2 Infrastructure",
                 year=2023,
                 description="Adversaries established command and control using ports 4444 and 8531 for HTTP communications",
-                reference_url="https://attack.mitre.org/campaigns/C0032/"
+                reference_url="https://attack.mitre.org/campaigns/C0032/",
             ),
             Campaign(
                 name="C0043 TCP Port 8080 C2",
                 year=2024,
                 description="Malicious actors leveraged TCP port 8080 for command and control traffic to blend with legitimate web services",
-                reference_url="https://attack.mitre.org/campaigns/C0043/"
-            )
+                reference_url="https://attack.mitre.org/campaigns/C0043/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -75,13 +81,12 @@ TEMPLATE = RemediationTemplate(
             "Data exfiltration through disguised communications",
             "Bypassed security controls reduce detection effectiveness",
             "Extended dwell time increases breach impact",
-            "Compliance violations from unmonitored traffic"
+            "Compliance violations from unmonitored traffic",
         ],
         typical_attack_phase="command_and_control",
         often_precedes=["T1041", "T1048", "T1071"],
-        often_follows=["T1190", "T1078.004", "T1566"]
+        often_follows=["T1190", "T1078.004", "T1566"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - Unusual Port Usage Detection
         DetectionStrategy(
@@ -92,14 +97,14 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcaddr, dstaddr, srcport, dstport, protocol, bytes, packets
+                query="""fields @timestamp, srcaddr, dstaddr, srcport, dstport, protocol, bytes, packets
 | filter action = "ACCEPT"
 | filter (dstport > 1024 and dstport < 49152) or (srcport > 1024 and srcport < 49152)
 | filter dstport not in [3306, 5432, 6379, 27017, 9200, 9300]
 | stats count(*) as connection_count, sum(bytes) as total_bytes by srcaddr, dstport, bin(5m)
 | filter connection_count > 50 or total_bytes > 10485760
-| sort connection_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort connection_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect non-standard port usage via VPC Flow Logs
 
 Parameters:
@@ -153,8 +158,8 @@ Resources:
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# AWS: Non-standard port detection via VPC Flow Logs
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# AWS: Non-standard port detection via VPC Flow Logs
 
 variable "alert_email" {
   type = string
@@ -213,7 +218,7 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Non-Standard Port Usage Detected",
                 alert_description_template="Unusual port usage detected from {srcaddr} to port {dstport}: {connection_count} connections, {total_bytes} bytes transferred.",
@@ -223,15 +228,15 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
                     "Review recent security group and network ACL changes",
                     "Check if the port usage is documented and authorised",
                     "Examine CloudTrail logs for related API activity",
-                    "Correlate with other security events and indicators"
+                    "Correlate with other security events and indicators",
                 ],
                 containment_actions=[
                     "Block unauthorised traffic via security group rules",
                     "Apply restrictive network ACLs to limit port usage",
                     "Isolate affected instances for forensic analysis",
                     "Review and update firewall rules to block suspicious ports",
-                    "Enable enhanced monitoring on affected resources"
-                ]
+                    "Enable enhanced monitoring on affected resources",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known application ports (databases, caching, microservices); establish baseline for normal port usage patterns",
@@ -240,9 +245,8 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-25",
-            prerequisites=["VPC Flow Logs enabled", "CloudWatch Logs"]
+            prerequisites=["VPC Flow Logs enabled", "CloudWatch Logs"],
         ),
-
         # Strategy 2: AWS - Security Group Port Range Monitoring
         DetectionStrategy(
             strategy_id="t1571-aws-sg-changes",
@@ -259,11 +263,11 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
                         "eventName": [
                             "AuthorizeSecurityGroupIngress",
                             "AuthorizeSecurityGroupEgress",
-                            "CreateSecurityGroup"
+                            "CreateSecurityGroup",
                         ]
-                    }
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Monitor security group changes for non-standard ports
 
 Parameters:
@@ -306,8 +310,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# AWS: Monitor security group changes
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# AWS: Monitor security group changes
 
 variable "alert_email" {
   type = string
@@ -357,7 +361,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Security Group Port Configuration Changed",
                 alert_description_template="Security group {groupId} modified to allow port {toPort}. Review to ensure authorised access.",
@@ -367,15 +371,15 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Verify if the change was authorised and documented",
                     "Check if the ports are being actively used",
                     "Examine associated instances and their purpose",
-                    "Review CloudTrail for context around the change"
+                    "Review CloudTrail for context around the change",
                 ],
                 containment_actions=[
                     "Revert unauthorised security group rules",
                     "Apply least-privilege security group policies",
                     "Enable MFA for security group modifications",
                     "Implement AWS Config rules for security group compliance",
-                    "Review IAM permissions for ec2:AuthorizeSecurityGroup* actions"
-                ]
+                    "Review IAM permissions for ec2:AuthorizeSecurityGroup* actions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist authorised infrastructure teams; exclude known application port ranges; implement approval workflows",
@@ -384,9 +388,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         # Strategy 3: AWS - Protocol-Port Mismatch Detection
         DetectionStrategy(
             strategy_id="t1571-aws-protocol-mismatch",
@@ -396,12 +399,12 @@ resource "aws_sns_topic_policy" "allow_events" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcaddr, dstaddr, dstport, protocol, bytes
+                query="""fields @timestamp, srcaddr, dstaddr, dstport, protocol, bytes
 | filter action = "ACCEPT"
 | filter (dstport = 443 and protocol != 6) or (dstport = 80 and protocol != 6) or (dstport = 53 and protocol not in [6, 17])
 | stats count(*) as mismatches, sum(bytes) as total_bytes by srcaddr, dstaddr, dstport, protocol
-| sort mismatches desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort mismatches desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect protocol-port mismatches in network traffic
 
 Parameters:
@@ -450,8 +453,8 @@ Resources:
             Action: sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-        - arn:aws:iam::aws:policy/CloudWatchLogsReadOnlyAccess''',
-                terraform_template='''# AWS: Protocol-port mismatch detection
+        - arn:aws:iam::aws:policy/CloudWatchLogsReadOnlyAccess""",
+                terraform_template="""# AWS: Protocol-port mismatch detection
 
 variable "alert_email" {
   type = string
@@ -500,7 +503,7 @@ resource "aws_iam_role_policy_attachment" "lambda_basic" {
 resource "aws_iam_role_policy_attachment" "lambda_logs" {
   role       = aws_iam_role.lambda.name
   policy_arn = "arn:aws:iam::aws:policy/CloudWatchLogsReadOnlyAccess"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Protocol-Port Mismatch Detected",
                 alert_description_template="Protocol mismatch detected: port {dstport} using protocol {protocol} from {srcaddr}.",
@@ -509,14 +512,14 @@ resource "aws_iam_role_policy_attachment" "lambda_logs" {
                     "Verify the expected protocol for the destination port",
                     "Check for protocol tunnelling or encapsulation",
                     "Review application logs for unusual behaviour",
-                    "Examine network configuration for proxies or NAT"
+                    "Examine network configuration for proxies or NAT",
                 ],
                 containment_actions=[
                     "Block suspicious traffic patterns via security groups",
                     "Investigate and isolate potentially compromised instances",
                     "Review and enforce protocol-specific network policies",
-                    "Enable deep packet inspection where available"
-                ]
+                    "Enable deep packet inspection where available",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Account for legitimate protocol variations; exclude known proxies and tunnelling services",
@@ -525,9 +528,8 @@ resource "aws_iam_role_policy_attachment" "lambda_logs" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$15-30",
-            prerequisites=["VPC Flow Logs enabled", "CloudWatch Logs Insights"]
+            prerequisites=["VPC Flow Logs enabled", "CloudWatch Logs Insights"],
         ),
-
         # Strategy 4: GCP - Non-Standard Port Detection
         DetectionStrategy(
             strategy_id="t1571-gcp-nonstandard-ports",
@@ -538,12 +540,12 @@ resource "aws_iam_role_policy_attachment" "lambda_logs" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_subnetwork"
+                gcp_logging_query="""resource.type="gce_subnetwork"
 logName="projects/PROJECT_ID/logs/compute.googleapis.com%2Fvpc_flows"
 jsonPayload.connection.dest_port>1024
 jsonPayload.connection.dest_port<49152
-NOT jsonPayload.connection.dest_port:(3306 OR 5432 OR 6379 OR 27017 OR 9200)''',
-                gcp_terraform_template='''# GCP: Non-standard port detection via VPC Flow Logs
+NOT jsonPayload.connection.dest_port:(3306 OR 5432 OR 6379 OR 27017 OR 9200)""",
+                gcp_terraform_template="""# GCP: Non-standard port detection via VPC Flow Logs
 
 variable "project_id" {
   type = string
@@ -599,7 +601,7 @@ resource "google_monitoring_alert_policy" "unusual_ports" {
   alert_strategy {
     auto_close = "86400s"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Non-Standard Port Usage Detected",
                 alert_description_template="Unusual port usage detected in VPC flow logs. Review connections to ensure authorised traffic.",
@@ -609,15 +611,15 @@ resource "google_monitoring_alert_policy" "unusual_ports" {
                     "Check firewall rules for recent changes",
                     "Verify if the port usage is documented",
                     "Examine Cloud Audit Logs for related activity",
-                    "Correlate with other security events"
+                    "Correlate with other security events",
                 ],
                 containment_actions=[
                     "Apply restrictive firewall rules to block suspicious ports",
                     "Isolate affected instances for investigation",
                     "Review and update VPC firewall configurations",
                     "Enable hierarchical firewall policies for enforcement",
-                    "Implement organisation policy constraints"
-                ]
+                    "Implement organisation policy constraints",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known application ports; establish baseline port usage patterns for workloads",
@@ -626,9 +628,8 @@ resource "google_monitoring_alert_policy" "unusual_ports" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-25",
-            prerequisites=["VPC Flow Logs enabled", "Cloud Logging"]
+            prerequisites=["VPC Flow Logs enabled", "Cloud Logging"],
         ),
-
         # Strategy 5: GCP - Firewall Rule Changes
         DetectionStrategy(
             strategy_id="t1571-gcp-firewall-changes",
@@ -639,11 +640,11 @@ resource "google_monitoring_alert_policy" "unusual_ports" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''protoPayload.serviceName="compute.googleapis.com"
+                gcp_logging_query="""protoPayload.serviceName="compute.googleapis.com"
 (protoPayload.methodName="v1.compute.firewalls.insert" OR
  protoPayload.methodName="v1.compute.firewalls.patch" OR
- protoPayload.methodName="v1.compute.firewalls.update")''',
-                gcp_terraform_template='''# GCP: Monitor firewall rule changes
+ protoPayload.methodName="v1.compute.firewalls.update")""",
+                gcp_terraform_template="""# GCP: Monitor firewall rule changes
 
 variable "project_id" {
   type = string
@@ -698,7 +699,7 @@ resource "google_monitoring_alert_policy" "firewall_changes" {
   alert_strategy {
     auto_close = "86400s"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Firewall Rule Modified",
                 alert_description_template="Firewall rule created or modified. Review to ensure authorised network access changes.",
@@ -708,15 +709,15 @@ resource "google_monitoring_alert_policy" "firewall_changes" {
                     "Verify if the change was authorised and documented",
                     "Check if the ports are being actively used",
                     "Examine associated instances and workloads",
-                    "Review Cloud Audit Logs for context"
+                    "Review Cloud Audit Logs for context",
                 ],
                 containment_actions=[
                     "Revert unauthorised firewall rules",
                     "Implement least-privilege firewall policies",
                     "Enable organisation policy constraints for firewall rules",
                     "Review IAM permissions for compute.firewalls.* operations",
-                    "Implement approval workflows for firewall changes"
-                ]
+                    "Implement approval workflows for firewall changes",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist authorised network and platform teams; exclude known service deployments; implement change approval workflows",
@@ -725,17 +726,16 @@ resource "google_monitoring_alert_policy" "firewall_changes" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1571-aws-nonstandard-ports",
         "t1571-gcp-nonstandard-ports",
         "t1571-aws-sg-changes",
         "t1571-gcp-firewall-changes",
-        "t1571-aws-protocol-mismatch"
+        "t1571-aws-protocol-mismatch",
     ],
     total_effort_hours=6.5,
-    coverage_improvement="+25% improvement for Command and Control tactic"
+    coverage_improvement="+25% improvement for Command and Control tactic",
 )

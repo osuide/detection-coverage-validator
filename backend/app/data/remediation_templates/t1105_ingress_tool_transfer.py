@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Ingress Tool Transfer",
     tactic_ids=["TA0011"],
     mitre_url="https://attack.mitre.org/techniques/T1105/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries transfer tools and files from external systems into compromised "
@@ -37,28 +36,38 @@ TEMPLATE = RemediationTemplate(
             "Enables post-exploitation toolkit delivery",
             "Small initial payload can download larger tools",
             "Cloud instances often have unrestricted outbound access",
-            "Blends with legitimate software downloads"
+            "Blends with legitimate software downloads",
         ],
-        known_threat_actors=["APT28", "APT29", "APT41", "Lazarus Group", "FIN7", "FIN8", "Kimsuky", "OilRig", "APT37"],
+        known_threat_actors=[
+            "APT28",
+            "APT29",
+            "APT41",
+            "Lazarus Group",
+            "FIN7",
+            "FIN8",
+            "Kimsuky",
+            "OilRig",
+            "APT37",
+        ],
         recent_campaigns=[
             Campaign(
                 name="APT29 Second-Stage Implants",
                 year=2024,
                 description="Downloaded post-exploitation frameworks and tools onto compromised cloud infrastructure",
-                reference_url="https://attack.mitre.org/groups/G0016/"
+                reference_url="https://attack.mitre.org/groups/G0016/",
             ),
             Campaign(
                 name="Lazarus Group Malware Transfers",
                 year=2024,
                 description="Extensively transferred malware and tools onto compromised hosts using cloud storage",
-                reference_url="https://attack.mitre.org/groups/G0032/"
+                reference_url="https://attack.mitre.org/groups/G0032/",
             ),
             Campaign(
                 name="FIN7 Remote Payload Retrieval",
                 year=2023,
                 description="Executed remote code to retrieve follow-on payloads from C2 infrastructure",
-                reference_url="https://attack.mitre.org/groups/G0046/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0046/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -73,13 +82,12 @@ TEMPLATE = RemediationTemplate(
             "Cryptomining and resource abuse",
             "Data exfiltration tooling deployment",
             "Lateral movement enabler",
-            "Credential theft utilities"
+            "Credential theft utilities",
         ],
         typical_attack_phase="command_and_control",
         often_precedes=["T1078.004", "T1530", "T1552.001", "T1485", "T1496.001"],
-        often_follows=["T1190", "T1078.004", "T1552.005"]
+        often_follows=["T1190", "T1078.004", "T1552.005"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1105-aws-ec2-download",
@@ -89,13 +97,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message, userIdentity.principalId, requestParameters.instanceId
+                query="""fields @timestamp, @message, userIdentity.principalId, requestParameters.instanceId
 | filter eventSource = "ssm.amazonaws.com" or eventSource = "ec2.amazonaws.com"
 | filter @message like /wget|curl|certutil|Invoke-WebRequest|iwr|IEX|powershell.*downloadfile/i
 | stats count(*) as download_commands by userIdentity.principalId, requestParameters.instanceId, bin(1h)
 | filter download_commands > 3
-| sort download_commands desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort download_commands desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect suspicious file downloads on EC2 instances
 
 Parameters:
@@ -143,8 +151,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching''',
-                terraform_template='''# AWS: Detect suspicious file downloads on EC2
+      TreatMissingData: notBreaching""",
+                terraform_template="""# AWS: Detect suspicious file downloads on EC2
 
 variable "cloudtrail_log_group" {
   description = "CloudTrail log group name"
@@ -194,7 +202,7 @@ resource "aws_cloudwatch_metric_alarm" "download_alert" {
   comparison_operator = "GreaterThanThreshold"
   alarm_actions       = [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Suspicious File Download Detected on EC2",
                 alert_description_template="Instance {instanceId} executed download commands using {command}.",
@@ -203,15 +211,15 @@ resource "aws_cloudwatch_metric_alarm" "download_alert" {
                     "Check instance role permissions and recent activity",
                     "Analyse network connections from the instance",
                     "Verify file hash against threat intelligence",
-                    "Review process execution history"
+                    "Review process execution history",
                 ],
                 containment_actions=[
                     "Isolate instance via security group modification",
                     "Create snapshot for forensic analysis",
                     "Revoke instance profile credentials",
                     "Block malicious domains at VPC level",
-                    "Terminate instance if confirmed malicious"
-                ]
+                    "Terminate instance if confirmed malicious",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude known software deployment patterns and authorised automation",
@@ -220,9 +228,11 @@ resource "aws_cloudwatch_metric_alarm" "download_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["CloudTrail enabled with SSM and EC2 logging", "CloudWatch Logs integration"]
+            prerequisites=[
+                "CloudTrail enabled with SSM and EC2 logging",
+                "CloudWatch Logs integration",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1105-aws-guardduty",
             name="AWS GuardDuty Malicious Download Detection",
@@ -234,9 +244,9 @@ resource "aws_cloudwatch_metric_alarm" "download_alert" {
                 guardduty_finding_types=[
                     "Backdoor:EC2/C&CActivity.B",
                     "UnauthorizedAccess:EC2/MaliciousIPCaller.Custom",
-                    "Trojan:EC2/DropPoint"
+                    "Trojan:EC2/DropPoint",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty detection for malicious downloads
 
 Parameters:
@@ -287,8 +297,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref GuardDutyAlertTopic''',
-                terraform_template='''# AWS: GuardDuty malicious download detection
+            Resource: !Ref GuardDutyAlertTopic""",
+                terraform_template="""# AWS: GuardDuty malicious download detection
 
 variable "alert_email" {
   description = "Email for security alerts"
@@ -343,7 +353,7 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
       Resource  = aws_sns_topic.guardduty_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GuardDuty: Malicious Download Activity",
                 alert_description_template="Instance {instanceId} communicating with known malicious infrastructure.",
@@ -352,15 +362,15 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
                     "Identify malicious domain/IP from finding",
                     "Check instance for downloaded files",
                     "Review instance timeline and network activity",
-                    "Correlate with other security events"
+                    "Correlate with other security events",
                 ],
                 containment_actions=[
                     "Isolate affected instance immediately",
                     "Block malicious IPs/domains at network level",
                     "Rotate instance credentials",
                     "Scan for persistence mechanisms",
-                    "Consider instance replacement"
-                ]
+                    "Consider instance replacement",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="GuardDuty findings are pre-vetted; review suppression rules for known safe IPs",
@@ -369,9 +379,8 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$1-5 (requires GuardDuty)",
-            prerequisites=["AWS GuardDuty enabled"]
+            prerequisites=["AWS GuardDuty enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1105-aws-vpc-flows",
             name="AWS VPC Suspicious Download Patterns",
@@ -380,13 +389,13 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcAddr, dstAddr, dstPort, bytes, packets
+                query="""fields @timestamp, srcAddr, dstAddr, dstPort, bytes, packets
 | filter action = "ACCEPT" and dstPort in [80, 443, 8080, 8443]
 | filter bytes > 1048576
 | stats count(*) as connections, sum(bytes) as total_bytes by srcAddr, dstAddr, bin(5m)
 | filter connections > 10 and total_bytes > 10485760
-| sort total_bytes desc''',
-                terraform_template='''# AWS: Detect download patterns via VPC Flow Logs
+| sort total_bytes desc""",
+                terraform_template="""# AWS: Detect download patterns via VPC Flow Logs
 
 variable "vpc_flow_log_group" {
   description = "VPC Flow Logs log group name"
@@ -436,7 +445,7 @@ resource "aws_cloudwatch_metric_alarm" "download_alert" {
   comparison_operator = "GreaterThanThreshold"
   alarm_actions       = [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Large Download Pattern Detected",
                 alert_description_template="Instance {srcAddr} downloaded {total_bytes} bytes from {dstAddr}.",
@@ -445,15 +454,15 @@ resource "aws_cloudwatch_metric_alarm" "download_alert" {
                     "Verify destination legitimacy",
                     "Check for authorised software installations",
                     "Review instance user activity logs",
-                    "Analyse downloaded content if accessible"
+                    "Analyse downloaded content if accessible",
                 ],
                 containment_actions=[
                     "Block destination IP if malicious",
                     "Review security group rules",
                     "Enable VPC endpoint for AWS services",
                     "Implement network segmentation",
-                    "Require proxy for external downloads"
-                ]
+                    "Require proxy for external downloads",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Exclude known update servers, CDNs, and authorised software repositories",
@@ -462,9 +471,8 @@ resource "aws_cloudwatch_metric_alarm" "download_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-25",
-            prerequisites=["VPC Flow Logs enabled"]
+            prerequisites=["VPC Flow Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1105-gcp-vm-download",
             name="GCP VM Suspicious Download Commands",
@@ -474,11 +482,11 @@ resource "aws_cloudwatch_metric_alarm" "download_alert" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 protoPayload.methodName=~"compute.instances.osLogin"
 (jsonPayload.message=~"wget|curl|gcloud.*download|gsutil.*cp" OR
- protoPayload.request.commands=~"wget|curl|gcloud.*download|gsutil.*cp")''',
-                gcp_terraform_template='''# GCP: Detect suspicious downloads on VM instances
+ protoPayload.request.commands=~"wget|curl|gcloud.*download|gsutil.*cp")""",
+                gcp_terraform_template="""# GCP: Detect suspicious downloads on VM instances
 
 variable "project_id" {
   description = "GCP project ID"
@@ -548,7 +556,7 @@ resource "google_monitoring_alert_policy" "download_alert" {
   alert_strategy {
     auto_close = "1800s"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Suspicious Download on VM Instance",
                 alert_description_template="VM instance {instance_id} executed download commands.",
@@ -557,15 +565,15 @@ resource "google_monitoring_alert_policy" "download_alert" {
                     "Check downloaded file source and content",
                     "Verify service account permissions",
                     "Analyse network traffic patterns",
-                    "Review recent API activity"
+                    "Review recent API activity",
                 ],
                 containment_actions=[
                     "Isolate VM using firewall rules",
                     "Create disk snapshot for forensics",
                     "Revoke service account access",
                     "Block malicious domains via Cloud DNS",
-                    "Stop instance if confirmed compromise"
-                ]
+                    "Stop instance if confirmed compromise",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude authorised deployment pipelines and patch management systems",
@@ -574,9 +582,11 @@ resource "google_monitoring_alert_policy" "download_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Logging enabled for GCE", "OS Login or SSH logging configured"]
+            prerequisites=[
+                "Cloud Logging enabled for GCE",
+                "OS Login or SSH logging configured",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1105-gcp-cloud-armor",
             name="GCP Cloud Armor Malicious File Download",
@@ -586,12 +596,12 @@ resource "google_monitoring_alert_policy" "download_alert" {
             gcp_service="cloud_armor",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="http_load_balancer"
+                gcp_logging_query="""resource.type="http_load_balancer"
 httpRequest.requestUrl=~"\\.(exe|dll|ps1|sh|bin|elf|py)$"
 httpRequest.requestMethod="GET"
 httpRequest.status>=200
-httpRequest.status<300''',
-                gcp_terraform_template='''# GCP: Detect malicious file downloads via load balancer
+httpRequest.status<300""",
+                gcp_terraform_template="""# GCP: Detect malicious file downloads via load balancer
 
 variable "project_id" {
   description = "GCP project ID"
@@ -649,7 +659,7 @@ resource "google_monitoring_alert_policy" "download_alert" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Malicious File Download Detected",
                 alert_description_template="Suspicious executable downloads detected via load balancer.",
@@ -658,15 +668,15 @@ resource "google_monitoring_alert_policy" "download_alert" {
                     "Review application serving the files",
                     "Check if application is compromised",
                     "Analyse file content and hashes",
-                    "Review access logs for patterns"
+                    "Review access logs for patterns",
                 ],
                 containment_actions=[
                     "Block source IPs via Cloud Armor",
                     "Isolate compromised application",
                     "Remove malicious files from storage",
                     "Review application security",
-                    "Enable additional Cloud Armor rules"
-                ]
+                    "Enable additional Cloud Armor rules",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate software distribution endpoints",
@@ -675,17 +685,16 @@ resource "google_monitoring_alert_policy" "download_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["Load Balancer logging enabled"]
-        )
+            prerequisites=["Load Balancer logging enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1105-aws-guardduty",
         "t1105-aws-ec2-download",
         "t1105-gcp-vm-download",
         "t1105-aws-vpc-flows",
-        "t1105-gcp-cloud-armor"
+        "t1105-gcp-cloud-armor",
     ],
     total_effort_hours=6.5,
-    coverage_improvement="+22% improvement for Command and Control tactic"
+    coverage_improvement="+22% improvement for Command and Control tactic",
 )

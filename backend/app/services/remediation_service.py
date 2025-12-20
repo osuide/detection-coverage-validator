@@ -18,6 +18,7 @@ from app.data.remediation_templates import (
 @dataclass
 class RecommendationSummary:
     """Summary of a detection strategy for quick review."""
+
     strategy_id: str
     name: str
     detection_type: str
@@ -32,6 +33,7 @@ class RecommendationSummary:
 @dataclass
 class DetailedRecommendation:
     """Full recommendation with implementation details."""
+
     strategy_id: str
     name: str
     description: str
@@ -68,6 +70,7 @@ class DetailedRecommendation:
 @dataclass
 class TechniqueRemediation:
     """Complete remediation package for a technique."""
+
     technique_id: str
     technique_name: str
     mitre_url: str
@@ -95,8 +98,7 @@ class RemediationService:
     """Service for generating remediation recommendations."""
 
     def get_technique_remediation(
-        self,
-        technique_id: str
+        self, technique_id: str
     ) -> Optional[TechniqueRemediation]:
         """
         Get complete remediation guidance for a MITRE ATT&CK technique.
@@ -121,7 +123,7 @@ class RemediationService:
                 estimated_time=s.implementation_time,
                 estimated_monthly_cost=s.estimated_monthly_cost,
                 detection_coverage=s.detection_coverage,
-                false_positive_rate=s.estimated_false_positive_rate.value
+                false_positive_rate=s.estimated_false_positive_rate.value,
             )
             for s in template.detection_strategies
         ]
@@ -143,13 +145,11 @@ class RemediationService:
             recommended_order=template.recommended_order,
             total_effort_hours=template.total_effort_hours,
             coverage_improvement=template.coverage_improvement,
-            strategies=strategies
+            strategies=strategies,
         )
 
     def get_strategy_details(
-        self,
-        technique_id: str,
-        strategy_id: str
+        self, technique_id: str, strategy_id: str
     ) -> Optional[DetailedRecommendation]:
         """
         Get detailed implementation guidance for a specific detection strategy.
@@ -167,7 +167,7 @@ class RemediationService:
 
         strategy = next(
             (s for s in template.detection_strategies if s.strategy_id == strategy_id),
-            None
+            None,
         )
         if not strategy:
             return None
@@ -197,7 +197,7 @@ class RemediationService:
             implementation_effort=strategy.implementation_effort.value,
             implementation_time=strategy.implementation_time,
             estimated_monthly_cost=strategy.estimated_monthly_cost,
-            prerequisites=strategy.prerequisites
+            prerequisites=strategy.prerequisites,
         )
 
     def get_available_techniques(self) -> List[Dict[str, Any]]:
@@ -216,15 +216,12 @@ class RemediationService:
                 "severity_score": t.threat_context.severity_score,
                 "strategy_count": len(t.detection_strategies),
                 "total_effort_hours": t.total_effort_hours,
-                "coverage_improvement": t.coverage_improvement
+                "coverage_improvement": t.coverage_improvement,
             }
             for t in templates.values()
         ]
 
-    def get_techniques_by_tactic(
-        self,
-        tactic_id: str
-    ) -> List[Dict[str, Any]]:
+    def get_techniques_by_tactic(self, tactic_id: str) -> List[Dict[str, Any]]:
         """
         Get all techniques with templates for a specific tactic.
 
@@ -241,15 +238,15 @@ class RemediationService:
                 "technique_name": t.technique_name,
                 "severity_score": t.threat_context.severity_score,
                 "strategy_count": len(t.detection_strategies),
-                "recommended_first": t.recommended_order[0] if t.recommended_order else None
+                "recommended_first": (
+                    t.recommended_order[0] if t.recommended_order else None
+                ),
             }
             for t in templates
         ]
 
     def get_quick_wins(
-        self,
-        technique_ids: List[str],
-        max_effort_hours: float = 2.0
+        self, technique_ids: List[str], max_effort_hours: float = 2.0
     ) -> List[Dict[str, Any]]:
         """
         Identify quick-win detection strategies for a list of gap techniques.
@@ -286,18 +283,20 @@ class RemediationService:
                     continue
 
                 if hours <= max_effort_hours:
-                    quick_wins.append({
-                        "technique_id": template.technique_id,
-                        "technique_name": template.technique_name,
-                        "strategy_id": strategy.strategy_id,
-                        "strategy_name": strategy.name,
-                        "detection_type": strategy.detection_type.value,
-                        "implementation_effort": strategy.implementation_effort.value,
-                        "implementation_time": strategy.implementation_time,
-                        "detection_coverage": strategy.detection_coverage,
-                        "severity_score": template.threat_context.severity_score,
-                        "estimated_hours": hours
-                    })
+                    quick_wins.append(
+                        {
+                            "technique_id": template.technique_id,
+                            "technique_name": template.technique_name,
+                            "strategy_id": strategy.strategy_id,
+                            "strategy_name": strategy.name,
+                            "detection_type": strategy.detection_type.value,
+                            "implementation_effort": strategy.implementation_effort.value,
+                            "implementation_time": strategy.implementation_time,
+                            "detection_coverage": strategy.detection_coverage,
+                            "severity_score": template.threat_context.severity_score,
+                            "estimated_hours": hours,
+                        }
+                    )
 
         # Sort by severity (highest first), then by implementation time (lowest first)
         quick_wins.sort(key=lambda x: (-x["severity_score"], x["estimated_hours"]))
@@ -305,9 +304,7 @@ class RemediationService:
         return quick_wins
 
     def generate_implementation_plan(
-        self,
-        technique_ids: List[str],
-        budget_hours: Optional[float] = None
+        self, technique_ids: List[str], budget_hours: Optional[float] = None
     ) -> Dict[str, Any]:
         """
         Generate a prioritised implementation plan for addressing coverage gaps.
@@ -329,12 +326,14 @@ class RemediationService:
             # Add the first (recommended) strategy for each technique
             if template.detection_strategies:
                 strategy = template.detection_strategies[0]
-                all_strategies.append({
-                    "technique_id": template.technique_id,
-                    "technique_name": template.technique_name,
-                    "strategy": strategy,
-                    "severity_score": template.threat_context.severity_score
-                })
+                all_strategies.append(
+                    {
+                        "technique_id": template.technique_id,
+                        "technique_name": template.technique_name,
+                        "strategy": strategy,
+                        "severity_score": template.threat_context.severity_score,
+                    }
+                )
 
         # Sort by severity
         all_strategies.sort(key=lambda x: -x["severity_score"])
@@ -362,31 +361,37 @@ class RemediationService:
 
             # Check if we should start a new phase (every ~8 hours of work)
             if phase_hours + hours > 8 and current_phase:
-                phases.append({
-                    "phase_number": len(phases) + 1,
-                    "estimated_hours": phase_hours,
-                    "strategies": current_phase
-                })
+                phases.append(
+                    {
+                        "phase_number": len(phases) + 1,
+                        "estimated_hours": phase_hours,
+                        "strategies": current_phase,
+                    }
+                )
                 current_phase = []
                 phase_hours = 0
 
-            current_phase.append({
-                "technique_id": item["technique_id"],
-                "technique_name": item["technique_name"],
-                "strategy_id": strategy.strategy_id,
-                "strategy_name": strategy.name,
-                "severity_score": item["severity_score"],
-                "estimated_hours": hours
-            })
+            current_phase.append(
+                {
+                    "technique_id": item["technique_id"],
+                    "technique_name": item["technique_name"],
+                    "strategy_id": strategy.strategy_id,
+                    "strategy_name": strategy.name,
+                    "severity_score": item["severity_score"],
+                    "estimated_hours": hours,
+                }
+            )
             phase_hours += hours
 
         # Add final phase
         if current_phase:
-            phases.append({
-                "phase_number": len(phases) + 1,
-                "estimated_hours": phase_hours,
-                "strategies": current_phase
-            })
+            phases.append(
+                {
+                    "phase_number": len(phases) + 1,
+                    "estimated_hours": phase_hours,
+                    "strategies": current_phase,
+                }
+            )
 
         total_hours = sum(p["estimated_hours"] for p in phases)
 
@@ -395,7 +400,7 @@ class RemediationService:
             "techniques_with_templates": len(all_strategies),
             "total_phases": len(phases),
             "total_estimated_hours": total_hours,
-            "phases": phases
+            "phases": phases,
         }
 
 

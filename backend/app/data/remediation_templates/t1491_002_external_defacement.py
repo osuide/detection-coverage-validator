@@ -24,7 +24,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Defacement: External Defacement",
     tactic_ids=["TA0040"],
     mitre_url="https://attack.mitre.org/techniques/T1491/002/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries modify systems external to an organisation to deliver messaging, "
@@ -40,7 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Can precede drive-by compromise attacks",
             "Cloud-hosted static sites often have weak access controls",
             "Web shells can be deployed during defacement",
-            "Frequently used in geopolitical conflicts"
+            "Frequently used in geopolitical conflicts",
         ],
         known_threat_actors=["Ember Bear", "Sandworm Team"],
         recent_campaigns=[
@@ -48,14 +47,14 @@ TEMPLATE = RemediationTemplate(
                 name="Ember Bear Ukrainian Defacement",
                 year=2022,
                 description="Defaced Ukrainian organisation websites during Russian invasion",
-                reference_url="https://attack.mitre.org/groups/G1003/"
+                reference_url="https://attack.mitre.org/groups/G1003/",
             ),
             Campaign(
                 name="Sandworm Georgian Website Defacement",
                 year=2019,
                 description="Defaced approximately 15,000 Georgian government and private sector websites",
-                reference_url="https://attack.mitre.org/groups/G0034/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0034/",
+            ),
         ],
         prevalence="moderate",
         trend="stable",
@@ -70,13 +69,12 @@ TEMPLATE = RemediationTemplate(
             "Potential for follow-on attacks via web shells",
             "Disruption of public-facing services",
             "Regulatory compliance concerns",
-            "Investigation and remediation costs"
+            "Investigation and remediation costs",
         ],
         typical_attack_phase="impact",
         often_precedes=["T1190", "T1189"],
-        often_follows=["T1078.004", "T1552.001", "T1190"]
+        often_follows=["T1078.004", "T1552.001", "T1190"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1491.002-aws-s3-content",
@@ -99,12 +97,12 @@ TEMPLATE = RemediationTemplate(
                                 {"suffix": ".html"},
                                 {"suffix": ".htm"},
                                 {"suffix": ".js"},
-                                {"suffix": ".css"}
+                                {"suffix": ".css"},
                             ]
-                        }
-                    }
+                        },
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect S3 website defacement attempts
 
 Parameters:
@@ -176,8 +174,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref DefacementAlertTopic''',
-                terraform_template='''# AWS: Detect S3 website defacement
+            Resource: !Ref DefacementAlertTopic""",
+                terraform_template="""# AWS: Detect S3 website defacement
 
 variable "alert_email" {
   type        = string
@@ -246,7 +244,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Resource  = aws_sns_topic.defacement_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="S3 Website Content Modified",
                 alert_description_template=(
@@ -261,7 +259,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Check CloudTrail for suspicious access patterns leading up to modification",
                     "Review source IP address and geolocation for anomalies",
                     "Check for web shell uploads or malicious JavaScript injection",
-                    "Examine other S3 buckets for similar unauthorised modifications"
+                    "Examine other S3 buckets for similar unauthorised modifications",
                 ],
                 containment_actions=[
                     "Immediately restore known-good content from backups or S3 versioning",
@@ -270,8 +268,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Implement bucket policies restricting PutObject to specific principals",
                     "Enable MFA Delete on critical website buckets",
                     "Review and tighten IAM policies for S3 access",
-                    "Consider enabling S3 Versioning for rollback capability"
-                ]
+                    "Consider enabling S3 Versioning for rollback capability",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning=(
@@ -286,9 +284,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled with S3 data events", "S3 static website hosting"]
+            prerequisites=[
+                "CloudTrail enabled with S3 data events",
+                "S3 static website hosting",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1491.002-aws-cloudfront",
             name="CloudFront Origin Access Pattern Monitoring",
@@ -300,13 +300,13 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query=r'''fields @timestamp, cs-method, cs-uri-stem, sc-status, c-ip, cs-user-agent
+                query=r"""fields @timestamp, cs-method, cs-uri-stem, sc-status, c-ip, cs-user-agent
 | filter sc-status >= 200 and sc-status < 300
 | filter cs-uri-stem like /index\.html|main\.js|styles\.css/
 | stats count(*) as requests, count_distinct(c-ip) as unique_ips by bin(5m)
 | filter requests > 1000 or unique_ips > 100
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Monitor CloudFront for unusual access patterns indicating defacement
 
 Parameters:
@@ -350,8 +350,8 @@ Resources:
       Threshold: 1000
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
-        - !Ref AlertTopic''',
-                terraform_template='''# AWS: Monitor CloudFront for defacement indicators
+        - !Ref AlertTopic""",
+                terraform_template="""# AWS: Monitor CloudFront for defacement indicators
 
 variable "cloudfront_log_group" {
   type        = string
@@ -398,7 +398,7 @@ resource "aws_cloudwatch_metric_alarm" "traffic_anomaly" {
   threshold           = 1000
   comparison_operator = "GreaterThanThreshold"
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="CloudFront Unusual Traffic Pattern Detected",
                 alert_description_template=(
@@ -411,15 +411,15 @@ resource "aws_cloudwatch_metric_alarm" "traffic_anomaly" {
                     "Analyse user-agent strings for scraping or botnet activity",
                     "Review geographic distribution of traffic for anomalies",
                     "Check social media and defacement archives for mentions",
-                    "Verify content hash against known-good baseline"
+                    "Verify content hash against known-good baseline",
                 ],
                 containment_actions=[
                     "Invalidate CloudFront cache if content is compromised",
                     "Update origin to known-good content immediately",
                     "Consider temporarily disabling distribution whilst investigating",
                     "Review and restrict origin access identity permissions",
-                    "Implement CloudFront signed URLs for sensitive content"
-                ]
+                    "Implement CloudFront signed URLs for sensitive content",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning=(
@@ -435,9 +435,11 @@ resource "aws_cloudwatch_metric_alarm" "traffic_anomaly" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["CloudFront access logging enabled", "Logs sent to CloudWatch"]
+            prerequisites=[
+                "CloudFront access logging enabled",
+                "Logs sent to CloudWatch",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1491.002-aws-integrity",
             name="S3 Object Integrity Monitoring",
@@ -449,7 +451,7 @@ resource "aws_cloudwatch_metric_alarm" "traffic_anomaly" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, requestParameters.bucketName as bucket,
+                query="""fields @timestamp, eventName, requestParameters.bucketName as bucket,
        requestParameters.key as file_path, userIdentity.arn as user,
        sourceIPAddress, responseElements.eTag as etag
 | filter eventName = "PutObject"
@@ -457,8 +459,8 @@ resource "aws_cloudwatch_metric_alarm" "traffic_anomaly" {
 | stats latest(@timestamp) as last_modified, latest(etag) as current_etag,
   latest(user) as last_user, latest(sourceIPAddress) as last_ip
   by bucket, file_path
-| sort last_modified desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort last_modified desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: S3 object integrity monitoring for defacement detection
 
 Parameters:
@@ -505,8 +507,8 @@ Resources:
       ComparisonOperator: GreaterThanOrEqualToThreshold
       AlarmActions:
         - !Ref IntegrityAlertTopic
-      TreatMissingData: notBreaching''',
-                terraform_template='''# AWS: S3 object integrity monitoring for defacement
+      TreatMissingData: notBreaching""",
+                terraform_template="""# AWS: S3 object integrity monitoring for defacement
 
 variable "cloudtrail_log_group" {
   type = string
@@ -562,7 +564,7 @@ resource "aws_cloudwatch_metric_alarm" "critical_file_alarm" {
   comparison_operator = "GreaterThanOrEqualToThreshold"
   alarm_actions       = [aws_sns_topic.integrity_alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Critical Website File Modified",
                 alert_description_template=(
@@ -577,7 +579,7 @@ resource "aws_cloudwatch_metric_alarm" "critical_file_alarm" {
                     "Verify the modifying user's authorisation and recent activity",
                     "Check for malicious content (web shells, redirects, injected scripts)",
                     "Review all files in bucket for additional unauthorised changes",
-                    "Check S3 access logs for the modification timeframe"
+                    "Check S3 access logs for the modification timeframe",
                 ],
                 containment_actions=[
                     "Restore file from S3 versioning to previous known-good version",
@@ -585,8 +587,8 @@ resource "aws_cloudwatch_metric_alarm" "critical_file_alarm" {
                     "Implement bucket policy requiring MFA for PutObject operations",
                     "Revoke credentials if unauthorised access confirmed",
                     "Enable S3 Versioning if not already active",
-                    "Invalidate CloudFront cache if distribution is in use"
-                ]
+                    "Invalidate CloudFront cache if distribution is in use",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning=(
@@ -604,10 +606,9 @@ resource "aws_cloudwatch_metric_alarm" "critical_file_alarm" {
             prerequisites=[
                 "CloudTrail enabled with S3 data events",
                 "S3 Versioning enabled for rollback capability",
-                "Baseline of critical file paths established"
-            ]
+                "Baseline of critical file paths established",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1491.002-gcp-storage",
             name="GCP Storage Website Defacement Detection",
@@ -624,7 +625,7 @@ resource "aws_cloudwatch_metric_alarm" "critical_file_alarm" {
 protoPayload.methodName="storage.objects.update" OR
 protoPayload.methodName="storage.objects.delete"
 protoPayload.resourceName=~".*\\.(html|htm|js|css)$"''',
-                gcp_terraform_template='''# GCP: Detect Cloud Storage website defacement
+                gcp_terraform_template="""# GCP: Detect Cloud Storage website defacement
 
 variable "project_id" {
   type        = string
@@ -729,7 +730,7 @@ resource "google_monitoring_alert_policy" "defacement_detection" {
     EOT
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Cloud Storage Website Content Modified",
                 alert_description_template=(
@@ -744,7 +745,7 @@ resource "google_monitoring_alert_policy" "defacement_detection" {
                     "Check Cloud Audit Logs for suspicious access patterns",
                     "Compare content with backups or object versioning history",
                     "Search for web shells, redirects, or injected scripts",
-                    "Review all objects in bucket for additional modifications"
+                    "Review all objects in bucket for additional modifications",
                 ],
                 containment_actions=[
                     "Restore object from versioning to previous known-good state",
@@ -753,8 +754,8 @@ resource "google_monitoring_alert_policy" "defacement_detection" {
                     "Implement IAM Conditions requiring specific IP ranges",
                     "Enable retention policies to prevent unauthorised deletions",
                     "Invalidate CDN cache if Cloud CDN is in use",
-                    "Review and tighten bucket IAM policies"
-                ]
+                    "Review and tighten bucket IAM policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning=(
@@ -772,17 +773,16 @@ resource "google_monitoring_alert_policy" "defacement_detection" {
             prerequisites=[
                 "Cloud Audit Logs enabled",
                 "Object Versioning enabled for rollback capability",
-                "Cloud Storage bucket configured for static website hosting"
-            ]
-        )
+                "Cloud Storage bucket configured for static website hosting",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1491.002-aws-s3-content",
         "t1491.002-aws-integrity",
         "t1491.002-gcp-storage",
-        "t1491.002-aws-cloudfront"
+        "t1491.002-aws-cloudfront",
     ],
     total_effort_hours=5.5,
-    coverage_improvement="+30% improvement for Impact tactic"
+    coverage_improvement="+30% improvement for Impact tactic",
 )

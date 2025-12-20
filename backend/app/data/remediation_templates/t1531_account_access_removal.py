@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Account Access Removal",
     tactic_ids=["TA0040"],
     mitre_url="https://attack.mitre.org/techniques/T1531/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries delete, lock, or modify accounts to prevent legitimate "
@@ -35,7 +34,7 @@ TEMPLATE = RemediationTemplate(
             "Maximises ransomware impact",
             "Extends dwell time",
             "Creates chaos for defenders",
-            "May be final attack stage"
+            "May be final attack stage",
         ],
         known_threat_actors=["LAPSUS$", "Akira", "LockerGoga"],
         recent_campaigns=[
@@ -43,14 +42,14 @@ TEMPLATE = RemediationTemplate(
                 name="LAPSUS$ Account Deletion",
                 year=2022,
                 description="Removed global admin accounts to lock organisations out",
-                reference_url="https://attack.mitre.org/groups/G1004/"
+                reference_url="https://attack.mitre.org/groups/G1004/",
             ),
             Campaign(
                 name="Akira Admin Deletion",
                 year=2024,
                 description="Deletes administrator accounts before encryption",
-                reference_url="https://attack.mitre.org/groups/G1024/"
-            )
+                reference_url="https://attack.mitre.org/groups/G1024/",
+            ),
         ],
         prevalence="moderate",
         trend="increasing",
@@ -63,13 +62,12 @@ TEMPLATE = RemediationTemplate(
             "Loss of administrative access",
             "Delayed incident response",
             "Extended outage",
-            "Recovery complications"
+            "Recovery complications",
         ],
         typical_attack_phase="impact",
         often_precedes=[],
-        often_follows=["T1078.004", "T1485", "T1486"]
+        often_follows=["T1078.004", "T1485", "T1486"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1531-aws-userdelete",
@@ -83,10 +81,14 @@ TEMPLATE = RemediationTemplate(
                     "source": ["aws.iam"],
                     "detail-type": ["AWS API Call via CloudTrail"],
                     "detail": {
-                        "eventName": ["DeleteUser", "DeleteLoginProfile", "DeactivateMFADevice"]
-                    }
+                        "eventName": [
+                            "DeleteUser",
+                            "DeleteLoginProfile",
+                            "DeactivateMFADevice",
+                        ]
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect IAM user deletion
 
 Parameters:
@@ -123,8 +125,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect IAM user deletion
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect IAM user deletion
 
 variable "alert_email" { type = string }
 
@@ -163,7 +165,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="IAM User Deleted",
                 alert_description_template="IAM user {userName} deleted by {userIdentity.arn}.",
@@ -171,14 +173,14 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Verify deletion was authorised",
                     "Check for other deletions",
                     "Review remaining admin accounts",
-                    "Check for ransomware indicators"
+                    "Check for ransomware indicators",
                 ],
                 containment_actions=[
                     "Recreate deleted users from backup",
                     "Use break-glass account",
                     "Review all IAM changes",
-                    "Initiate incident response"
-                ]
+                    "Initiate incident response",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="User deletion is typically rare",
@@ -187,9 +189,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1531-gcp-userremove",
             name="GCP IAM Member Removal Detection",
@@ -199,9 +200,9 @@ resource "aws_sns_topic_policy" "allow_events" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''protoPayload.methodName="google.iam.admin.v1.DeleteServiceAccount"
-OR (protoPayload.methodName="SetIamPolicy" AND protoPayload.request.policy.bindings:*)''',
-                gcp_terraform_template='''# GCP: Detect account removal
+                gcp_logging_query="""protoPayload.methodName="google.iam.admin.v1.DeleteServiceAccount"
+OR (protoPayload.methodName="SetIamPolicy" AND protoPayload.request.policy.bindings:*)""",
+                gcp_terraform_template="""# GCP: Detect account removal
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -237,7 +238,7 @@ resource "google_monitoring_alert_policy" "account_removal" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GCP: Account Removed",
                 alert_description_template="Account or service account was deleted.",
@@ -245,14 +246,14 @@ resource "google_monitoring_alert_policy" "account_removal" {
                     "Verify deletion was authorised",
                     "Check for other deletions",
                     "Review remaining admins",
-                    "Check for ransomware"
+                    "Check for ransomware",
                 ],
                 containment_actions=[
                     "Restore accounts",
                     "Use break-glass access",
                     "Review all IAM changes",
-                    "Initiate incident response"
-                ]
+                    "Initiate incident response",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Account deletion is rare",
@@ -261,11 +262,10 @@ resource "google_monitoring_alert_policy" "account_removal" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled"],
+        ),
     ],
-
     recommended_order=["t1531-aws-userdelete", "t1531-gcp-userremove"],
     total_effort_hours=1.5,
-    coverage_improvement="+18% improvement for Impact tactic"
+    coverage_improvement="+18% improvement for Impact tactic",
 )

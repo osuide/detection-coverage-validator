@@ -24,7 +24,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Brute Force: Password Guessing",
     tactic_ids=["TA0006"],
     mitre_url="https://attack.mitre.org/techniques/T1110/001/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries systematically attempt to gain account access by guessing "
@@ -39,7 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Automated tools widely available",
             "Cloud services expand attack surface",
             "Weak passwords remain common",
-            "Distributed attacks avoid rate limits"
+            "Distributed attacks avoid rate limits",
         ],
         known_threat_actors=["APT28", "APT29"],
         recent_campaigns=[
@@ -47,14 +46,14 @@ TEMPLATE = RemediationTemplate(
                 name="APT28 Kubernetes Password Attacks",
                 year=2024,
                 description="Leveraged Kubernetes clusters for distributed password guessing sending over 300 authentication attempts per hour per targeted account",
-                reference_url="https://attack.mitre.org/groups/G0007/"
+                reference_url="https://attack.mitre.org/groups/G0007/",
             ),
             Campaign(
                 name="APT29 Mailbox Targeting",
                 year=2024,
                 description="Successfully conducted password guessing attacks targeting mailbox lists",
-                reference_url="https://attack.mitre.org/groups/G0016/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0016/",
+            ),
         ],
         prevalence="very_common",
         trend="increasing",
@@ -69,13 +68,12 @@ TEMPLATE = RemediationTemplate(
             "Data breach via compromised credentials",
             "Account lockouts affecting availability",
             "Cloud service compromise",
-            "Lateral movement enabler"
+            "Lateral movement enabler",
         ],
         typical_attack_phase="credential_access",
         often_precedes=["T1078.004", "T1078.002", "T1078.003", "T1021.004"],
-        often_follows=["T1589.001", "T1589.002"]
+        often_follows=["T1589.001", "T1589.002"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1110-001-aws-failed-auth",
@@ -85,12 +83,12 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, sourceIPAddress, errorCode, errorMessage
+                query="""fields @timestamp, userIdentity.principalId, sourceIPAddress, errorCode, errorMessage
 | filter errorCode = "AccessDenied" or errorCode = "UnauthorizedOperation" or errorCode = "InvalidUserID.NotFound"
 | stats count(*) as failures by sourceIPAddress, userIdentity.principalId, bin(5m)
 | filter failures > 10
-| sort failures desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort failures desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect password guessing via failed authentication attempts
 
 Parameters:
@@ -137,8 +135,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# AWS: Detect password guessing via failed authentication
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# AWS: Detect password guessing via failed authentication
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -189,7 +187,7 @@ resource "aws_cloudwatch_metric_alarm" "failed_auth_alarm" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
   alarm_actions       = [aws_sns_topic.auth_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Password Guessing Attack Detected",
                 alert_description_template="Multiple failed authentication attempts detected from {sourceIPAddress} targeting {principalId}.",
@@ -198,15 +196,15 @@ resource "aws_cloudwatch_metric_alarm" "failed_auth_alarm" {
                     "Check targeted user accounts",
                     "Review authentication timeline",
                     "Check for successful authentications after failures",
-                    "Correlate with GuardDuty findings"
+                    "Correlate with GuardDuty findings",
                 ],
                 containment_actions=[
                     "Block source IP in security groups/WAF",
                     "Reset credentials for targeted accounts",
                     "Enable MFA on affected accounts",
                     "Review account lockout policies",
-                    "Check for successful compromises"
-                ]
+                    "Check for successful compromises",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Tune threshold based on legitimate failed login patterns. Exclude service accounts with known retry behaviour.",
@@ -215,9 +213,8 @@ resource "aws_cloudwatch_metric_alarm" "failed_auth_alarm" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-60 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled and logging to CloudWatch"]
+            prerequisites=["CloudTrail enabled and logging to CloudWatch"],
         ),
-
         DetectionStrategy(
             strategy_id="t1110-001-aws-console-signin",
             name="AWS Console Sign-In Failures",
@@ -226,13 +223,13 @@ resource "aws_cloudwatch_metric_alarm" "failed_auth_alarm" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.userName, sourceIPAddress, responseElements.ConsoleLogin
+                query="""fields @timestamp, userIdentity.userName, sourceIPAddress, responseElements.ConsoleLogin
 | filter eventName = "ConsoleLogin"
 | filter responseElements.ConsoleLogin = "Failure"
 | stats count(*) as failures by sourceIPAddress, userIdentity.userName, bin(10m)
 | filter failures > 5
-| sort failures desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort failures desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect AWS Console password guessing attempts
 
 Parameters:
@@ -273,8 +270,8 @@ Resources:
       Threshold: 10
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref ConsoleAlertTopic]''',
-                terraform_template='''# AWS: Detect Console password guessing
+      AlarmActions: [!Ref ConsoleAlertTopic]""",
+                terraform_template="""# AWS: Detect Console password guessing
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -314,7 +311,7 @@ resource "aws_cloudwatch_metric_alarm" "console_brute_force" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.console_alerts.arn]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="AWS Console Brute Force Detected",
                 alert_description_template="Multiple failed console login attempts from {sourceIPAddress}.",
@@ -323,15 +320,15 @@ resource "aws_cloudwatch_metric_alarm" "console_brute_force" {
                     "Check source IP geolocation",
                     "Review login attempt timeline",
                     "Check for successful logins",
-                    "Review MFA status of accounts"
+                    "Review MFA status of accounts",
                 ],
                 containment_actions=[
                     "Enable MFA for all IAM users",
                     "Implement IP allowlisting",
                     "Reset passwords for targeted accounts",
                     "Review IAM password policy",
-                    "Enable GuardDuty if not present"
-                ]
+                    "Enable GuardDuty if not present",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Console login failures are high-fidelity indicators. Adjust threshold for organisation size.",
@@ -340,9 +337,8 @@ resource "aws_cloudwatch_metric_alarm" "console_brute_force" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5",
-            prerequisites=["CloudTrail with console sign-in events"]
+            prerequisites=["CloudTrail with console sign-in events"],
         ),
-
         DetectionStrategy(
             strategy_id="t1110-001-gcp-failed-auth",
             name="GCP Failed Authentication Detection",
@@ -355,7 +351,7 @@ resource "aws_cloudwatch_metric_alarm" "console_brute_force" {
                 gcp_logging_query='''protoPayload.methodName=~"google.cloud.identityplatform.*"
 protoPayload.status.code!=0
 severity="ERROR"''',
-                gcp_terraform_template='''# GCP: Detect password guessing attempts
+                gcp_terraform_template="""# GCP: Detect password guessing attempts
 
 variable "project_id" {
   type        = string
@@ -420,7 +416,7 @@ resource "google_monitoring_alert_policy" "auth_brute_force" {
   alert_strategy {
     auto_close = "1800s"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP Password Guessing Attack",
                 alert_description_template="Multiple failed authentication attempts detected from {source_ip}.",
@@ -429,15 +425,15 @@ resource "google_monitoring_alert_policy" "auth_brute_force" {
                     "Check targeted accounts",
                     "Verify source IP geolocation",
                     "Check for successful authentications",
-                    "Review Security Command Centre findings"
+                    "Review Security Command Centre findings",
                 ],
                 containment_actions=[
                     "Enable Cloud Identity security features",
                     "Implement 2-Step Verification",
                     "Block malicious IPs via Cloud Armor",
                     "Review organisation policies",
-                    "Reset compromised credentials"
-                ]
+                    "Reset compromised credentials",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Filter out known service accounts and legitimate retry patterns",
@@ -446,9 +442,8 @@ resource "google_monitoring_alert_policy" "auth_brute_force" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1110-001-gcp-console-signin",
             name="GCP Console Sign-In Monitoring",
@@ -460,7 +455,7 @@ resource "google_monitoring_alert_policy" "auth_brute_force" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName="google.login.LoginService.loginFailure"
 protoPayload.@type="type.googleapis.com/google.cloud.audit.AuditLog"''',
-                gcp_terraform_template='''# GCP: Monitor console login failures
+                gcp_terraform_template="""# GCP: Monitor console login failures
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -504,7 +499,7 @@ resource "google_monitoring_alert_policy" "console_brute_force" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.console_alerts.id]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GCP Console Brute Force Attack",
                 alert_description_template="Multiple failed console login attempts detected.",
@@ -513,15 +508,15 @@ resource "google_monitoring_alert_policy" "console_brute_force" {
                     "Identify targeted accounts",
                     "Check source locations",
                     "Verify MFA status",
-                    "Check for successful logins"
+                    "Check for successful logins",
                 ],
                 containment_actions=[
                     "Enforce 2-Step Verification",
                     "Implement context-aware access",
                     "Reset compromised passwords",
                     "Review access controls",
-                    "Enable Security Command Centre"
-                ]
+                    "Enable Security Command Centre",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Console failures are reliable indicators",
@@ -530,16 +525,15 @@ resource "google_monitoring_alert_policy" "console_brute_force" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-60 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Admin Activity audit logs enabled"]
-        )
+            prerequisites=["Admin Activity audit logs enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1110-001-aws-console-signin",
         "t1110-001-aws-failed-auth",
         "t1110-001-gcp-console-signin",
-        "t1110-001-gcp-failed-auth"
+        "t1110-001-gcp-failed-auth",
     ],
     total_effort_hours=3.5,
-    coverage_improvement="+25% improvement for Credential Access tactic"
+    coverage_improvement="+25% improvement for Credential Access tactic",
 )

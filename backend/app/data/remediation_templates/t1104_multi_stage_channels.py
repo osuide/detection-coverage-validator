@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Multi-Stage Channels",
     tactic_ids=["TA0011"],
     mitre_url="https://attack.mitre.org/techniques/T1104/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries establish multiple command and control stages deployed under different "
@@ -39,7 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Protects advanced C2 infrastructure from discovery",
             "Allows infrastructure segmentation and redundancy",
             "Enables staged capability deployment",
-            "Provides fallback channels if primary C2 detected"
+            "Provides fallback channels if primary C2 detected",
         ],
         known_threat_actors=["APT3", "APT41", "Lazarus Group", "MuddyWater", "UNC3886"],
         recent_campaigns=[
@@ -47,26 +46,26 @@ TEMPLATE = RemediationTemplate(
                 name="APT41 BEACON Multi-Stage Deployment",
                 year=2024,
                 description="Deployed storescyncsvc.dll BEACON to download secondary backdoors from separate C2 infrastructure",
-                reference_url="https://attack.mitre.org/groups/G0096/"
+                reference_url="https://attack.mitre.org/groups/G0096/",
             ),
             Campaign(
                 name="Latrodectus Two-Tier C2",
                 year=2024,
                 description="Operated a two-tiered C2 configuration with tier one nodes connecting to victims and tier two nodes to backend infrastructure",
-                reference_url="https://attack.mitre.org/software/S1160/"
+                reference_url="https://attack.mitre.org/software/S1160/",
             ),
             Campaign(
                 name="RedPenguin Separate Channels",
                 year=2023,
                 description="Used malware with separate channels for task requests and execution, obfuscating C2 relationships",
-                reference_url="https://attack.mitre.org/campaigns/C0024/"
+                reference_url="https://attack.mitre.org/campaigns/C0024/",
             ),
             Campaign(
                 name="APT3 SOCKS5 Intermediaries",
                 year=2023,
                 description="Established SOCKS5 connections through intermediate servers before final C2 contact",
-                reference_url="https://attack.mitre.org/groups/G0022/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0022/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -83,13 +82,12 @@ TEMPLATE = RemediationTemplate(
             "Extended dwell time as detection is delayed",
             "Increased incident response complexity and cost",
             "Secondary payloads may remain undetected",
-            "Potential for persistent re-compromise via backup channels"
+            "Potential for persistent re-compromise via backup channels",
         ],
         typical_attack_phase="command_and_control",
         often_precedes=["T1041", "T1485", "T1530", "T1078.004"],
-        often_follows=["T1190", "T1078.004", "T1105"]
+        often_follows=["T1190", "T1078.004", "T1105"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1104-aws-multi-stage-network",
@@ -99,7 +97,7 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcAddr, dstAddr, srcPort, dstPort, bytes
+                query="""fields @timestamp, srcAddr, dstAddr, srcPort, dstPort, bytes
 | filter action = "ACCEPT" and dstPort in [80, 443, 8080, 8443]
 | sort @timestamp asc
 | stats count(*) as connections, count_distinct(dstAddr) as unique_destinations,
@@ -107,8 +105,8 @@ TEMPLATE = RemediationTemplate(
         by srcAddr, bin(10m)
 | filter unique_destinations > 3 and connections > 5
 | filter (last_connection - first_connection) < 600000
-| sort unique_destinations desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort unique_destinations desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect multi-stage C2 connections via VPC Flow Logs
 
 Parameters:
@@ -156,8 +154,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching''',
-                terraform_template='''# AWS: Detect multi-stage C2 connections
+      TreatMissingData: notBreaching""",
+                terraform_template="""# AWS: Detect multi-stage C2 connections
 
 variable "vpc_flow_log_group" {
   description = "VPC Flow Logs log group name"
@@ -207,7 +205,7 @@ resource "aws_cloudwatch_metric_alarm" "multi_stage_alert" {
   comparison_operator = "GreaterThanThreshold"
   alarm_actions       = [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Multi-Stage C2 Connection Pattern Detected",
                 alert_description_template="Instance {srcAddr} connected to {unique_destinations} different external hosts in rapid succession.",
@@ -217,7 +215,7 @@ resource "aws_cloudwatch_metric_alarm" "multi_stage_alert" {
                     "Analyse connection timing and data transfer patterns",
                     "Check for downloaded files between connections",
                     "Correlate with process execution and API activity",
-                    "Review instance user activity and authentication logs"
+                    "Review instance user activity and authentication logs",
                 ],
                 containment_actions=[
                     "Isolate instance via security group modification",
@@ -225,8 +223,8 @@ resource "aws_cloudwatch_metric_alarm" "multi_stage_alert" {
                     "Block identified C2 infrastructure at network level",
                     "Revoke instance profile credentials",
                     "Terminate instance if confirmed malicious",
-                    "Search for similar patterns across other instances"
-                ]
+                    "Search for similar patterns across other instances",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude known CDN endpoints and legitimate multi-service applications; adjust destination count threshold",
@@ -235,9 +233,8 @@ resource "aws_cloudwatch_metric_alarm" "multi_stage_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$15-30",
-            prerequisites=["VPC Flow Logs enabled", "CloudWatch Logs integration"]
+            prerequisites=["VPC Flow Logs enabled", "CloudWatch Logs integration"],
         ),
-
         DetectionStrategy(
             strategy_id="t1104-aws-process-network",
             name="AWS Process Network Sequence Detection",
@@ -246,14 +243,14 @@ resource "aws_cloudwatch_metric_alarm" "multi_stage_alert" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, requestParameters.commands, userIdentity.principalId, sourceIPAddress
+                query="""fields @timestamp, requestParameters.commands, userIdentity.principalId, sourceIPAddress
 | filter eventSource = "ssm.amazonaws.com" and eventName = "SendCommand"
 | filter @message like /curl|wget|python|powershell.*downloadstring/i
 | stats count(*) as command_count, count_distinct(sourceIPAddress) as unique_sources
         by userIdentity.principalId, bin(15m)
 | filter command_count > 2 and unique_sources > 1
-| sort command_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort command_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect process spawning with multi-stage network activity
 
 Parameters:
@@ -301,8 +298,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching''',
-                terraform_template='''# AWS: Detect process network sequences
+      TreatMissingData: notBreaching""",
+                terraform_template="""# AWS: Detect process network sequences
 
 variable "cloudtrail_log_group" {
   description = "CloudTrail log group name"
@@ -352,7 +349,7 @@ resource "aws_cloudwatch_metric_alarm" "process_sequence_alert" {
   comparison_operator = "GreaterThanThreshold"
   alarm_actions       = [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Process Network Sequence Detected",
                 alert_description_template="Instance {principalId} executed {command_count} network commands with {unique_sources} different sources.",
@@ -362,7 +359,7 @@ resource "aws_cloudwatch_metric_alarm" "process_sequence_alert" {
                     "Analyse downloaded payloads between stages",
                     "Check network destinations for each stage",
                     "Review process memory for injected code",
-                    "Examine file system for dropped files"
+                    "Examine file system for dropped files",
                 ],
                 containment_actions=[
                     "Terminate suspicious processes",
@@ -370,8 +367,8 @@ resource "aws_cloudwatch_metric_alarm" "process_sequence_alert" {
                     "Block C2 infrastructure at network level",
                     "Collect memory dumps for analysis",
                     "Revoke credentials and rotate keys",
-                    "Scan for persistence mechanisms"
-                ]
+                    "Scan for persistence mechanisms",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude authorised automation tools and deployment scripts; whitelist known orchestration systems",
@@ -380,9 +377,11 @@ resource "aws_cloudwatch_metric_alarm" "process_sequence_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["CloudTrail enabled with SSM logging", "SSM Session Manager logging configured"]
+            prerequisites=[
+                "CloudTrail enabled with SSM logging",
+                "SSM Session Manager logging configured",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1104-aws-guardduty-staging",
             name="AWS GuardDuty C2 Staging Detection",
@@ -395,9 +394,9 @@ resource "aws_cloudwatch_metric_alarm" "process_sequence_alert" {
                     "Backdoor:EC2/C&CActivity.B",
                     "Backdoor:EC2/C&CActivity.B!DNS",
                     "Trojan:EC2/DropPoint",
-                    "UnauthorizedAccess:EC2/MaliciousIPCaller.Custom"
+                    "UnauthorizedAccess:EC2/MaliciousIPCaller.Custom",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty detection for multi-stage C2 activity
 
 Parameters:
@@ -449,8 +448,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref GuardDutyAlertTopic''',
-                terraform_template='''# AWS: GuardDuty multi-stage C2 detection
+            Resource: !Ref GuardDutyAlertTopic""",
+                terraform_template="""# AWS: GuardDuty multi-stage C2 detection
 
 variable "alert_email" {
   description = "Email for security alerts"
@@ -506,7 +505,7 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
       Resource  = aws_sns_topic.guardduty_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GuardDuty: Multi-Stage C2 Activity Detected",
                 alert_description_template="Instance {instanceId} communicating with known C2 infrastructure across multiple stages.",
@@ -516,7 +515,7 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
                     "Map communication timeline across stages",
                     "Review instance network activity comprehensively",
                     "Check for downloaded payloads and persistence",
-                    "Correlate with CloudTrail and VPC Flow Logs"
+                    "Correlate with CloudTrail and VPC Flow Logs",
                 ],
                 containment_actions=[
                     "Immediately isolate affected instance",
@@ -524,8 +523,8 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
                     "Revoke instance credentials and rotate keys",
                     "Create forensic snapshot before termination",
                     "Search for indicators across all instances",
-                    "Consider complete instance replacement"
-                ]
+                    "Consider complete instance replacement",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="GuardDuty findings are pre-vetted; review threat intelligence sources and suppression rules",
@@ -534,9 +533,8 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$1-5 (requires GuardDuty)",
-            prerequisites=["AWS GuardDuty enabled", "VPC DNS query logging enabled"]
+            prerequisites=["AWS GuardDuty enabled", "VPC DNS query logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1104-gcp-multi-stage-network",
             name="GCP Multi-Stage Connection Detection",
@@ -546,12 +544,12 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_subnetwork"
+                gcp_logging_query="""resource.type="gce_subnetwork"
 jsonPayload.connection.dest_port:(80 OR 443 OR 8080 OR 8443)
 | stats count() as connections, count_distinct(jsonPayload.connection.dest_ip) as unique_destinations
   by jsonPayload.connection.src_ip
-| connections > 5 AND unique_destinations > 3''',
-                gcp_terraform_template='''# GCP: Detect multi-stage C2 connections
+| connections > 5 AND unique_destinations > 3""",
+                gcp_terraform_template="""# GCP: Detect multi-stage C2 connections
 
 variable "project_id" {
   description = "GCP project ID"
@@ -622,7 +620,7 @@ resource "google_monitoring_alert_policy" "multi_stage_alert" {
   alert_strategy {
     auto_close = "1800s"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Multi-Stage C2 Pattern Detected",
                 alert_description_template="VM instance connected to {unique_destinations} different external hosts in rapid succession.",
@@ -632,7 +630,7 @@ resource "google_monitoring_alert_policy" "multi_stage_alert" {
                     "Analyse connection timing and data volume patterns",
                     "Check for file downloads between connections",
                     "Review Cloud Logging for API and process activity",
-                    "Examine service account permissions"
+                    "Examine service account permissions",
                 ],
                 containment_actions=[
                     "Isolate VM using VPC firewall rules",
@@ -640,8 +638,8 @@ resource "google_monitoring_alert_policy" "multi_stage_alert" {
                     "Block identified C2 infrastructure via Cloud Armor",
                     "Revoke service account access",
                     "Stop VM if confirmed compromise",
-                    "Search for similar patterns across project"
-                ]
+                    "Search for similar patterns across project",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude known CDN endpoints, API gateways, and legitimate distributed applications",
@@ -650,9 +648,8 @@ resource "google_monitoring_alert_policy" "multi_stage_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$15-25",
-            prerequisites=["VPC Flow Logs enabled on subnets", "Cloud Logging enabled"]
+            prerequisites=["VPC Flow Logs enabled on subnets", "Cloud Logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1104-gcp-process-network",
             name="GCP Process Network Sequence Detection",
@@ -662,12 +659,12 @@ resource "google_monitoring_alert_policy" "multi_stage_alert" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 (jsonPayload.message=~"curl|wget|python.*requests|gcloud.*download" OR
  protoPayload.request.commands=~"curl|wget|python.*requests")
 | stats count() as command_count by resource.labels.instance_id
-| command_count > 2''',
-                gcp_terraform_template='''# GCP: Detect process network sequences on VMs
+| command_count > 2""",
+                gcp_terraform_template="""# GCP: Detect process network sequences on VMs
 
 variable "project_id" {
   description = "GCP project ID"
@@ -736,7 +733,7 @@ resource "google_monitoring_alert_policy" "process_sequence_alert" {
   alert_strategy {
     auto_close = "1800s"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Process Network Sequence Detected",
                 alert_description_template="VM instance {instance_id} executed multiple network download commands in sequence.",
@@ -746,7 +743,7 @@ resource "google_monitoring_alert_policy" "process_sequence_alert" {
                     "Analyse downloaded content between stages",
                     "Check network flow logs for destination patterns",
                     "Review OS Login and SSH session logs",
-                    "Examine file system for persistence mechanisms"
+                    "Examine file system for persistence mechanisms",
                 ],
                 containment_actions=[
                     "Stop suspicious processes via SSH or OS Login",
@@ -754,8 +751,8 @@ resource "google_monitoring_alert_policy" "process_sequence_alert" {
                     "Block C2 domains via Cloud DNS policies",
                     "Create snapshot for forensic investigation",
                     "Revoke service account and SSH keys",
-                    "Consider VM replacement if heavily compromised"
-                ]
+                    "Consider VM replacement if heavily compromised",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised deployment tools, CI/CD pipelines, and configuration management systems",
@@ -764,17 +761,19 @@ resource "google_monitoring_alert_policy" "process_sequence_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Logging enabled for GCE", "OS Login or SSH logging configured"]
-        )
+            prerequisites=[
+                "Cloud Logging enabled for GCE",
+                "OS Login or SSH logging configured",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1104-aws-guardduty-staging",
         "t1104-aws-multi-stage-network",
         "t1104-gcp-multi-stage-network",
         "t1104-aws-process-network",
-        "t1104-gcp-process-network"
+        "t1104-gcp-process-network",
     ],
     total_effort_hours=9.0,
-    coverage_improvement="+18% improvement for Command and Control tactic"
+    coverage_improvement="+18% improvement for Command and Control tactic",
 )

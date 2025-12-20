@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Email Collection: Email Forwarding Rule",
     tactic_ids=["TA0009"],
     mitre_url="https://attack.mitre.org/techniques/T1114/003/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries create email forwarding rules to monitor victims and collect "
@@ -35,22 +34,27 @@ TEMPLATE = RemediationTemplate(
             "Silent data exfiltration",
             "Can forward all org email",
             "Hidden rules evade detection",
-            "Captures MFA codes and alerts"
+            "Captures MFA codes and alerts",
         ],
-        known_threat_actors=["LAPSUS$", "Scattered Spider", "Kimsuky", "Silent Librarian"],
+        known_threat_actors=[
+            "LAPSUS$",
+            "Scattered Spider",
+            "Kimsuky",
+            "Silent Librarian",
+        ],
         recent_campaigns=[
             Campaign(
                 name="LAPSUS$ Tenant Rules",
                 year=2022,
                 description="Created Office 365 tenant-level mail transport rule to capture all traffic",
-                reference_url="https://attack.mitre.org/groups/G1004/"
+                reference_url="https://attack.mitre.org/groups/G1004/",
             ),
             Campaign(
                 name="Scattered Spider Email Redirect",
                 year=2024,
                 description="Redirected emails notifying users of suspicious account activity",
-                reference_url="https://attack.mitre.org/groups/G1015/"
-            )
+                reference_url="https://attack.mitre.org/groups/G1015/",
+            ),
         ],
         prevalence="common",
         trend="stable",
@@ -63,13 +67,12 @@ TEMPLATE = RemediationTemplate(
             "Email data exfiltration",
             "Persistent monitoring",
             "Security alert bypass",
-            "Compliance violations"
+            "Compliance violations",
         ],
         typical_attack_phase="collection",
         often_precedes=["T1530"],
-        often_follows=["T1078.004", "T1621"]
+        often_follows=["T1078.004", "T1621"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1114003-aws-ses",
@@ -79,11 +82,11 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.arn, requestParameters
+                query="""fields @timestamp, eventName, userIdentity.arn, requestParameters
 | filter eventSource = "workmail.amazonaws.com" or eventSource = "ses.amazonaws.com"
 | filter eventName like /Forward|Rule|Redirect/
-| sort @timestamp desc''',
-                terraform_template='''# Detect email forwarding changes
+| sort @timestamp desc""",
+                terraform_template="""# Detect email forwarding changes
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -120,7 +123,7 @@ resource "aws_cloudwatch_metric_alarm" "email_forward" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Email Forwarding Rule Created",
                 alert_description_template="Email forwarding configuration changed by {userIdentity.arn}.",
@@ -128,14 +131,14 @@ resource "aws_cloudwatch_metric_alarm" "email_forward" {
                     "Review the forwarding rule",
                     "Check destination address",
                     "Verify rule was authorised",
-                    "Check for other rules"
+                    "Check for other rules",
                 ],
                 containment_actions=[
                     "Delete unauthorised rules",
                     "Reset affected credentials",
                     "Review all forwarding rules",
-                    "Block external forwarding"
-                ]
+                    "Block external forwarding",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Forwarding rules are infrequent",
@@ -144,9 +147,8 @@ resource "aws_cloudwatch_metric_alarm" "email_forward" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled for WorkMail/SES"]
+            prerequisites=["CloudTrail enabled for WorkMail/SES"],
         ),
-
         DetectionStrategy(
             strategy_id="t1114003-gcp-workspace",
             name="Google Workspace Forwarding Detection",
@@ -158,7 +160,7 @@ resource "aws_cloudwatch_metric_alarm" "email_forward" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName=~"gmail.users.settings.forwardingAddresses"
 OR protoPayload.serviceName="admin.googleapis.com" AND protoPayload.methodName=~"CHANGE_EMAIL_SETTINGS"''',
-                gcp_terraform_template='''# GCP: Detect Workspace email forwarding
+                gcp_terraform_template="""# GCP: Detect Workspace email forwarding
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -194,7 +196,7 @@ resource "google_monitoring_alert_policy" "email_forward" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Email Forwarding Rule Created",
                 alert_description_template="Email forwarding rule was created or modified.",
@@ -202,14 +204,14 @@ resource "google_monitoring_alert_policy" "email_forward" {
                     "Review the forwarding rule",
                     "Check destination",
                     "Verify authorisation",
-                    "Check user's other settings"
+                    "Check user's other settings",
                 ],
                 containment_actions=[
                     "Delete unauthorised rules",
                     "Reset credentials",
                     "Review all user rules",
-                    "Disable external forwarding org-wide"
-                ]
+                    "Disable external forwarding org-wide",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Forwarding is typically rare",
@@ -218,11 +220,10 @@ resource "google_monitoring_alert_policy" "email_forward" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Workspace audit logs enabled"]
-        )
+            prerequisites=["Workspace audit logs enabled"],
+        ),
     ],
-
     recommended_order=["t1114003-aws-ses", "t1114003-gcp-workspace"],
     total_effort_hours=2.5,
-    coverage_improvement="+15% improvement for Collection tactic"
+    coverage_improvement="+15% improvement for Collection tactic",
 )

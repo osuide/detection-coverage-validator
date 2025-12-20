@@ -24,7 +24,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Acquire Infrastructure: Web Services",
     tactic_ids=["TA0042"],
     mitre_url="https://attack.mitre.org/techniques/T1583/006/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries register for web-based services during the targeting phase "
@@ -40,31 +39,37 @@ TEMPLATE = RemediationTemplate(
             "Free and easy to register",
             "Difficult to block legitimate services",
             "Provides plausible deniability",
-            "Often has generous bandwidth/storage"
+            "Often has generous bandwidth/storage",
         ],
         known_threat_actors=[
-            "APT17", "APT28", "APT29", "APT32", "Lazarus Group",
-            "Kimsuky", "MuddyWater", "Contagious Interview"
+            "APT17",
+            "APT28",
+            "APT29",
+            "APT32",
+            "Lazarus Group",
+            "Kimsuky",
+            "MuddyWater",
+            "Contagious Interview",
         ],
         recent_campaigns=[
             Campaign(
                 name="Operation Dream Job",
                 year=2022,
                 description="Lazarus Group used Dropbox and OneDrive for C2 and data exfiltration",
-                reference_url="https://attack.mitre.org/campaigns/C0022/"
+                reference_url="https://attack.mitre.org/campaigns/C0022/",
             ),
             Campaign(
                 name="Operation Sharpshooter",
                 year=2018,
                 description="Threat actors hosted lure documents on Dropbox to distribute malware",
-                reference_url="https://attack.mitre.org/campaigns/C0013/"
+                reference_url="https://attack.mitre.org/campaigns/C0013/",
             ),
             Campaign(
                 name="ArcaneDoor",
                 year=2024,
                 description="Used OpenConnect VPN Server instances as web service infrastructure",
-                reference_url="https://attack.mitre.org/campaigns/C0046/"
-            )
+                reference_url="https://attack.mitre.org/campaigns/C0046/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -79,13 +84,12 @@ TEMPLATE = RemediationTemplate(
             "Facilitates data exfiltration",
             "Difficult to detect and block",
             "Increases attack sophistication",
-            "Complicates incident response"
+            "Complicates incident response",
         ],
         typical_attack_phase="resource_development",
         often_precedes=["T1102", "T1567", "T1071"],
-        often_follows=[]
+        often_follows=[],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1583-006-aws-cloudtrail-web",
@@ -95,15 +99,15 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, sourceIPAddress, userAgent, requestParameters.bucketName, eventName
+                query="""fields @timestamp, sourceIPAddress, userAgent, requestParameters.bucketName, eventName
 | filter eventSource = "s3.amazonaws.com"
 | filter eventName IN ["PutObject", "GetObject", "ListBucket"]
 | filter requestParameters.bucketName not like /^(your-org|company|internal)/
 | filter userAgent like /(aws-cli|boto3|curl|wget|powershell)/
 | stats count(*) as requests by sourceIPAddress, userAgent, bin(1h)
 | filter requests > 100
-| sort requests desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort requests desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect suspicious web service usage patterns
 
 Parameters:
@@ -143,8 +147,8 @@ Resources:
       Threshold: 100
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect suspicious web service access patterns
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect suspicious web service access patterns
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -181,7 +185,7 @@ resource "aws_cloudwatch_metric_alarm" "web_service_abuse" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.web_service_alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Suspicious Web Service Access Detected",
                 alert_description_template="Unusual web service access from {sourceIPAddress} using {userAgent}.",
@@ -190,15 +194,15 @@ resource "aws_cloudwatch_metric_alarm" "web_service_abuse" {
                     "Check if the user agent matches expected tools",
                     "Examine the accessed buckets and objects",
                     "Correlate with other suspicious activities",
-                    "Review IAM credentials and access patterns"
+                    "Review IAM credentials and access patterns",
                 ],
                 containment_actions=[
                     "Disable compromised IAM credentials",
                     "Block suspicious IP addresses",
                     "Review S3 bucket policies",
                     "Enable MFA for sensitive operations",
-                    "Implement SCPs to restrict external services"
-                ]
+                    "Implement SCPs to restrict external services",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Filter out legitimate automation and backup tools. Adjust user agent patterns for your environment.",
@@ -207,9 +211,11 @@ resource "aws_cloudwatch_metric_alarm" "web_service_abuse" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["CloudTrail enabled with S3 data events", "CloudWatch Logs integration"]
+            prerequisites=[
+                "CloudTrail enabled with S3 data events",
+                "CloudWatch Logs integration",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1583-006-aws-vpc-flow",
             name="AWS VPC Flow Logs Web Service Detection",
@@ -218,12 +224,12 @@ resource "aws_cloudwatch_metric_alarm" "web_service_abuse" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcaddr, dstaddr, dstport, bytes
+                query="""fields @timestamp, srcaddr, dstaddr, dstport, bytes
 | filter dstaddr like /dropbox|github|pastebin|telegram|discord/
 | stats sum(bytes) as totalBytes by srcaddr, dstaddr, bin(1h)
 | filter totalBytes > 100000000
-| sort totalBytes desc''',
-                terraform_template='''# Detect high-volume connections to web services
+| sort totalBytes desc""",
+                terraform_template="""# Detect high-volume connections to web services
 
 variable "vpc_flow_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -260,7 +266,7 @@ resource "aws_cloudwatch_metric_alarm" "high_web_service_traffic" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.web_service_traffic.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="High-Volume Web Service Traffic",
                 alert_description_template="Significant data transfer to web service from {srcaddr}.",
@@ -269,15 +275,15 @@ resource "aws_cloudwatch_metric_alarm" "high_web_service_traffic" {
                     "Review the destination service",
                     "Check volume and frequency of transfers",
                     "Correlate with authorised activities",
-                    "Review instance security and access logs"
+                    "Review instance security and access logs",
                 ],
                 containment_actions=[
                     "Isolate affected instances",
                     "Block unauthorised destinations via NACLs",
                     "Review and rotate credentials",
                     "Implement DLP controls",
-                    "Enable GuardDuty for enhanced detection"
-                ]
+                    "Enable GuardDuty for enhanced detection",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Exclude known legitimate backup and sync services. Adjust byte thresholds based on baseline.",
@@ -286,9 +292,8 @@ resource "aws_cloudwatch_metric_alarm" "high_web_service_traffic" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$15-30",
-            prerequisites=["VPC Flow Logs enabled", "DNS logging for resolution"]
+            prerequisites=["VPC Flow Logs enabled", "DNS logging for resolution"],
         ),
-
         DetectionStrategy(
             strategy_id="t1583-006-gcp-cloud-logging",
             name="GCP Cloud Logging Web Service Access",
@@ -302,7 +307,7 @@ resource "aws_cloudwatch_metric_alarm" "high_web_service_traffic" {
 protoPayload.methodName=~"storage.objects.(get|create|list)"
 protoPayload.requestMetadata.callerSuppliedUserAgent=~"(curl|wget|powershell|python-requests)"
 severity>="WARNING"''',
-                gcp_terraform_template='''# GCP: Detect suspicious web service access
+                gcp_terraform_template="""# GCP: Detect suspicious web service access
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -339,7 +344,7 @@ resource "google_monitoring_alert_policy" "web_service_abuse" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Suspicious Web Service Access",
                 alert_description_template="Unusual web service access detected in GCP project.",
@@ -348,15 +353,15 @@ resource "google_monitoring_alert_policy" "web_service_abuse" {
                     "Check the accessed buckets and objects",
                     "Examine user agent and request patterns",
                     "Correlate with authorised activities",
-                    "Review IAM permissions and policies"
+                    "Review IAM permissions and policies",
                 ],
                 containment_actions=[
                     "Disable compromised service accounts",
                     "Review and tighten IAM policies",
                     "Enable VPC Service Controls",
                     "Implement organisation policies",
-                    "Enable Data Loss Prevention scanning"
-                ]
+                    "Enable Data Loss Prevention scanning",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude known automation tools and CI/CD pipelines. Adjust user agent patterns.",
@@ -365,9 +370,8 @@ resource "google_monitoring_alert_policy" "web_service_abuse" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$10-25",
-            prerequisites=["Cloud Logging enabled", "Storage audit logs enabled"]
+            prerequisites=["Cloud Logging enabled", "Storage audit logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1583-006-gcp-vpc-flow",
             name="GCP VPC Flow Logs External Service Detection",
@@ -377,11 +381,11 @@ resource "google_monitoring_alert_policy" "web_service_abuse" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_subnetwork"
+                gcp_logging_query="""resource.type="gce_subnetwork"
 logName=~".*vpc_flows.*"
 jsonPayload.connection.dest_ip=~"(.*dropbox.*|.*github.*|.*pastebin.*|.*telegram.*)"
-jsonPayload.bytes_sent > 100000000''',
-                gcp_terraform_template='''# GCP: Monitor high-volume web service connections
+jsonPayload.bytes_sent > 100000000""",
+                gcp_terraform_template="""# GCP: Monitor high-volume web service connections
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -424,7 +428,7 @@ resource "google_monitoring_alert_policy" "high_traffic" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: High-Volume Web Service Traffic",
                 alert_description_template="Significant data transfer to external web service detected.",
@@ -433,15 +437,15 @@ resource "google_monitoring_alert_policy" "high_traffic" {
                     "Review destination service",
                     "Check data volume and patterns",
                     "Correlate with business activities",
-                    "Review VM security and access"
+                    "Review VM security and access",
                 ],
                 containment_actions=[
                     "Isolate affected VMs",
                     "Configure firewall rules to block",
                     "Review and rotate credentials",
                     "Enable VPC Service Controls",
-                    "Implement DLP policies"
-                ]
+                    "Implement DLP policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Baseline normal traffic patterns and exclude legitimate services. Adjust threshold.",
@@ -450,16 +454,15 @@ resource "google_monitoring_alert_policy" "high_traffic" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$20-35",
-            prerequisites=["VPC Flow Logs enabled", "Cloud DNS logging"]
-        )
+            prerequisites=["VPC Flow Logs enabled", "Cloud DNS logging"],
+        ),
     ],
-
     recommended_order=[
         "t1583-006-aws-cloudtrail-web",
         "t1583-006-gcp-cloud-logging",
         "t1583-006-aws-vpc-flow",
-        "t1583-006-gcp-vpc-flow"
+        "t1583-006-gcp-vpc-flow",
     ],
     total_effort_hours=10.0,
-    coverage_improvement="+15% improvement for Resource Development tactic detection"
+    coverage_improvement="+15% improvement for Resource Development tactic detection",
 )

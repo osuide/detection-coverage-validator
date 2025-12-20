@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Clipboard Data",
     tactic_ids=["TA0009"],  # Collection
     mitre_url="https://attack.mitre.org/techniques/T1115/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries collect clipboard data from users copying information between applications. "
@@ -40,7 +39,7 @@ TEMPLATE = RemediationTemplate(
             "No network traffic or file access required for basic monitoring",
             "Can capture data that never touches disk or network",
             "Clipboard often contains configuration and secret data during deployments",
-            "Cryptocurrency wallet addresses provide high-value theft opportunity"
+            "Cryptocurrency wallet addresses provide high-value theft opportunity",
         ],
         known_threat_actors=[
             "APT38",
@@ -49,27 +48,27 @@ TEMPLATE = RemediationTemplate(
             "Agent Tesla malware",
             "DarkComet",
             "Remcos",
-            "TajMahal"
+            "TajMahal",
         ],
         recent_campaigns=[
             Campaign(
                 name="Operation Wocao",
                 year=2019,
                 description="Threat actors extracted clipboard data in plaintext during targeting of government and industrial organisations",
-                reference_url="https://attack.mitre.org/techniques/T1115/"
+                reference_url="https://attack.mitre.org/techniques/T1115/",
             ),
             Campaign(
                 name="Cryptocurrency Clipboard Hijacking",
                 year=2022,
                 description="Multiple malware families including DarkGate and XLoader targeted cryptocurrency users by monitoring and replacing wallet addresses in clipboard",
-                reference_url="https://attack.mitre.org/software/S0674/"
+                reference_url="https://attack.mitre.org/software/S0674/",
             ),
             Campaign(
                 name="TajMahal APT Framework",
                 year=2019,
                 description="Sophisticated APT framework included clipboard monitoring module to capture sensitive data from diplomatic targets",
-                reference_url="https://attack.mitre.org/software/S0467/"
-            )
+                reference_url="https://attack.mitre.org/software/S0467/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -86,13 +85,12 @@ TEMPLATE = RemediationTemplate(
             "Exposure of sensitive configuration data",
             "Cryptocurrency theft via wallet address replacement",
             "Loss of intellectual property during copy/paste operations",
-            "Compromise of multi-factor authentication codes"
+            "Compromise of multi-factor authentication codes",
         ],
         typical_attack_phase="collection",
         often_precedes=["T1078.004", "T1552.001", "T1567"],
-        often_follows=["T1078.004", "T1059", "T1105"]
+        often_follows=["T1078.004", "T1059", "T1105"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - Clipboard Utility Process Execution
         DetectionStrategy(
@@ -106,14 +104,14 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query=r'''fields @timestamp, ec2_instance_id, process_name, command_line, parent_process, user
+                query=r"""fields @timestamp, ec2_instance_id, process_name, command_line, parent_process, user
 | filter process_name in ["clip.exe", "powershell.exe", "pwsh.exe", "pbpaste", "xclip", "xsel"]
 | filter command_line like /(?i)(Get-Clipboard|clip\.exe|pbpaste|xclip|xsel)/
 | filter parent_process not in ["explorer.exe", "Terminal.app", "gnome-terminal", "konsole"]
 | stats count(*) as clipboard_accesses by ec2_instance_id, process_name, user, bin(15m) as time_window
 | filter clipboard_accesses >= 5
-| sort clipboard_accesses desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort clipboard_accesses desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect clipboard utility usage on EC2 instances for T1115
 
 Parameters:
@@ -155,8 +153,8 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect clipboard utility execution on EC2
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect clipboard utility execution on EC2
 
 variable "cloudwatch_log_group" {
   type        = string
@@ -202,7 +200,7 @@ resource "aws_cloudwatch_metric_alarm" "clipboard_access" {
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Clipboard Utility Execution Detected",
                 alert_description_template=(
@@ -215,7 +213,7 @@ resource "aws_cloudwatch_metric_alarm" "clipboard_access" {
                     "Check if clipboard access is from interactive session or automated script",
                     "Examine recent authentication logs for compromised accounts",
                     "Look for data exfiltration following clipboard access",
-                    "Review CloudWatch Agent logs for other suspicious process executions"
+                    "Review CloudWatch Agent logs for other suspicious process executions",
                 ],
                 containment_actions=[
                     "Isolate affected instance from production network",
@@ -223,8 +221,8 @@ resource "aws_cloudwatch_metric_alarm" "clipboard_access" {
                     "Terminate suspicious processes accessing clipboard",
                     "Conduct full malware scan on affected systems",
                     "Review IAM credentials and session tokens for misuse",
-                    "Consider implementing application whitelisting on bastion hosts"
-                ]
+                    "Consider implementing application whitelisting on bastion hosts",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate administrative scripts; baseline normal clipboard usage patterns on jump hosts",
@@ -236,10 +234,9 @@ resource "aws_cloudwatch_metric_alarm" "clipboard_access" {
             prerequisites=[
                 "CloudWatch Agent installed on EC2 instances",
                 "Process monitoring enabled in CloudWatch Agent configuration",
-                "CloudWatch Logs subscription for process events"
-            ]
+                "CloudWatch Logs subscription for process events",
+            ],
         ),
-
         # Strategy 2: AWS - Suspicious PowerShell Clipboard Access
         DetectionStrategy(
             strategy_id="t1115-aws-powershell-clipboard",
@@ -252,13 +249,13 @@ resource "aws_cloudwatch_metric_alarm" "clipboard_access" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, ec2_instance_id, command_line, parent_process, user, session_type
+                query="""fields @timestamp, ec2_instance_id, command_line, parent_process, user, session_type
 | filter command_line like /Get-Clipboard/
 | filter command_line like /(curl|Invoke-WebRequest|Invoke-RestMethod|Out-File|Set-Content)/
   or session_type != "interactive"
 | stats count(*) as suspicious_accesses by ec2_instance_id, user, bin(1h) as time_window
-| sort suspicious_accesses desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort suspicious_accesses desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect suspicious PowerShell clipboard access
 
 Parameters:
@@ -299,8 +296,8 @@ Resources:
       Threshold: 3
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect PowerShell clipboard access
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect PowerShell clipboard access
 
 variable "cloudwatch_log_group" {
   type = string
@@ -345,7 +342,7 @@ resource "aws_cloudwatch_metric_alarm" "get_clipboard" {
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Suspicious PowerShell Clipboard Access Detected",
                 alert_description_template=(
@@ -358,7 +355,7 @@ resource "aws_cloudwatch_metric_alarm" "get_clipboard" {
                     "Verify if execution was from interactive or non-interactive session",
                     "Examine PowerShell script block logging for full command context",
                     "Review network connections from the instance during this timeframe",
-                    "Check for credential or API key usage following clipboard access"
+                    "Check for credential or API key usage following clipboard access",
                 ],
                 containment_actions=[
                     "Isolate instance pending investigation",
@@ -366,8 +363,8 @@ resource "aws_cloudwatch_metric_alarm" "get_clipboard" {
                     "Enable PowerShell module logging and script block logging",
                     "Implement Constrained Language Mode for PowerShell where possible",
                     "Review outbound network connections for data exfiltration",
-                    "Consider AppLocker policies to restrict PowerShell execution"
-                ]
+                    "Consider AppLocker policies to restrict PowerShell execution",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist legitimate administrative automation; requires PowerShell logging enabled",
@@ -379,10 +376,9 @@ resource "aws_cloudwatch_metric_alarm" "get_clipboard" {
             prerequisites=[
                 "CloudWatch Agent with PowerShell logging",
                 "PowerShell Script Block Logging enabled via GPO or registry",
-                "CloudWatch Logs for PowerShell events"
-            ]
+                "CloudWatch Logs for PowerShell events",
+            ],
         ),
-
         # Strategy 3: AWS - Container Clipboard Access Detection
         DetectionStrategy(
             strategy_id="t1115-aws-container-clipboard",
@@ -395,12 +391,12 @@ resource "aws_cloudwatch_metric_alarm" "get_clipboard" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query=r'''fields @timestamp, container_id, container_name, process_name, command_line
+                query=r"""fields @timestamp, container_id, container_name, process_name, command_line
 | filter command_line like /(apt-get|yum|apk)\s+(install|add).*(xclip|xsel|wl-clipboard)/
   or process_name in ["xclip", "xsel", "wl-copy", "wl-paste"]
 | stats count(*) as clipboard_activity by container_id, container_name, command_line
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect clipboard utilities in containers for T1115
 
 Parameters:
@@ -442,8 +438,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect clipboard utilities in containers
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect clipboard utilities in containers
 
 variable "container_log_group" {
   type        = string
@@ -489,7 +485,7 @@ resource "aws_cloudwatch_metric_alarm" "container_clipboard" {
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Clipboard Utility Detected in Container",
                 alert_description_template=(
@@ -502,7 +498,7 @@ resource "aws_cloudwatch_metric_alarm" "container_clipboard" {
                     "Check if container has interactive sessions (kubectl exec, ECS exec)",
                     "Examine container image for malicious modifications",
                     "Review IAM roles and service accounts attached to container",
-                    "Check for data exfiltration from container networking"
+                    "Check for data exfiltration from container networking",
                 ],
                 containment_actions=[
                     "Terminate affected container immediately",
@@ -510,8 +506,8 @@ resource "aws_cloudwatch_metric_alarm" "container_clipboard" {
                     "Review and lock down container image sources",
                     "Disable ECS Exec and kubectl exec on production workloads",
                     "Implement runtime security policies to block package installations",
-                    "Review secrets and credentials accessible to the container"
-                ]
+                    "Review secrets and credentials accessible to the container",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Clipboard utilities in containers are almost always suspicious; minimal tuning needed",
@@ -522,10 +518,9 @@ resource "aws_cloudwatch_metric_alarm" "container_clipboard" {
             estimated_monthly_cost="$5-15",
             prerequisites=[
                 "Container logs shipped to CloudWatch (ECS, EKS)",
-                "Runtime monitoring for container processes"
-            ]
+                "Runtime monitoring for container processes",
+            ],
         ),
-
         # Strategy 4: GCP - Clipboard Process Monitoring on GCE
         DetectionStrategy(
             strategy_id="t1115-gcp-clipboard-procs",
@@ -545,7 +540,7 @@ resource "aws_cloudwatch_metric_alarm" "container_clipboard" {
  jsonPayload.process_name="xsel" OR
  jsonPayload.command=~"Get-Clipboard")
 jsonPayload.parent_process!~"(Terminal|gnome-terminal|konsole|explorer.exe)"''',
-                gcp_terraform_template='''# GCP: Detect clipboard utility execution
+                gcp_terraform_template="""# GCP: Detect clipboard utility execution
 
 variable "project_id" {
   type = string
@@ -605,7 +600,7 @@ resource "google_monitoring_alert_policy" "clipboard_access" {
   documentation {
     content = "Clipboard data collection detected on GCE instance (T1115)"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Clipboard Utility Execution Detected",
                 alert_description_template=(
@@ -618,7 +613,7 @@ resource "google_monitoring_alert_policy" "clipboard_access" {
                     "Check if instance is a bastion or developer workstation",
                     "Examine authentication logs for compromised accounts",
                     "Review VPC Flow Logs for data exfiltration patterns",
-                    "Check for other suspicious process executions"
+                    "Check for other suspicious process executions",
                 ],
                 containment_actions=[
                     "Isolate affected instance via firewall rules",
@@ -626,8 +621,8 @@ resource "google_monitoring_alert_policy" "clipboard_access" {
                     "Terminate suspicious processes",
                     "Enable OS Config for compliance and vulnerability scanning",
                     "Review IAM permissions for the instance service account",
-                    "Consider VM Manager OS policy for security baselines"
-                ]
+                    "Consider VM Manager OS policy for security baselines",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline clipboard usage on jump hosts; whitelist legitimate admin scripts",
@@ -639,10 +634,9 @@ resource "google_monitoring_alert_policy" "clipboard_access" {
             prerequisites=[
                 "Cloud Logging enabled",
                 "OS Config agent or Ops Agent installed on GCE instances",
-                "Process monitoring configuration enabled"
-            ]
+                "Process monitoring configuration enabled",
+            ],
         ),
-
         # Strategy 5: GCP - GKE Container Clipboard Activity
         DetectionStrategy(
             strategy_id="t1115-gcp-gke-clipboard",
@@ -656,10 +650,10 @@ resource "google_monitoring_alert_policy" "clipboard_access" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="k8s_container"
+                gcp_logging_query="""resource.type="k8s_container"
 (jsonPayload.message=~"(apt-get|yum|apk).*(install|add).*(xclip|xsel)" OR
- jsonPayload.process_name=~"(xclip|xsel|wl-copy|wl-paste)")''',
-                gcp_terraform_template='''# GCP: Detect clipboard utilities in GKE containers
+ jsonPayload.process_name=~"(xclip|xsel|wl-copy|wl-paste)")""",
+                gcp_terraform_template="""# GCP: Detect clipboard utilities in GKE containers
 
 variable "project_id" {
   type = string
@@ -713,7 +707,7 @@ resource "google_monitoring_alert_policy" "container_clipboard" {
   documentation {
     content = "Clipboard utility detected in GKE container - highly suspicious (T1115)"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Clipboard Utility in GKE Container",
                 alert_description_template=(
@@ -726,7 +720,7 @@ resource "google_monitoring_alert_policy" "container_clipboard" {
                     "Check for kubectl exec sessions to the pod",
                     "Examine container image for malicious content",
                     "Review Workload Identity and service account permissions",
-                    "Check for network egress from the pod to external destinations"
+                    "Check for network egress from the pod to external destinations",
                 ],
                 containment_actions=[
                     "Delete affected pod immediately",
@@ -734,8 +728,8 @@ resource "google_monitoring_alert_policy" "container_clipboard" {
                     "Implement Binary Authorization to prevent unsigned images",
                     "Disable kubectl exec on production namespaces via RBAC",
                     "Deploy runtime security policies (Falco, GKE Security Posture)",
-                    "Rotate any secrets accessible to the compromised pod"
-                ]
+                    "Rotate any secrets accessible to the compromised pod",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Clipboard utilities in containers are almost always malicious; minimal false positives expected",
@@ -746,18 +740,17 @@ resource "google_monitoring_alert_policy" "container_clipboard" {
             estimated_monthly_cost="$5-10",
             prerequisites=[
                 "GKE cluster with Cloud Logging enabled",
-                "Container runtime logs exported to Cloud Logging"
-            ]
-        )
+                "Container runtime logs exported to Cloud Logging",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1115-aws-container-clipboard",
         "t1115-gcp-gke-clipboard",
         "t1115-aws-powershell-clipboard",
         "t1115-aws-clipboard-procs",
-        "t1115-gcp-clipboard-procs"
+        "t1115-gcp-clipboard-procs",
     ],
     total_effort_hours=7.5,
-    coverage_improvement="+15% improvement for Collection tactic"
+    coverage_improvement="+15% improvement for Collection tactic",
 )

@@ -183,8 +183,8 @@ resource "aws_cloudwatch_log_group" "scanner" {
 # SQS Queue for scan jobs
 resource "aws_sqs_queue" "scan_jobs" {
   name                       = "dcv-${var.environment}-scan-jobs"
-  visibility_timeout_seconds = 900  # 15 minutes
-  message_retention_seconds  = 86400  # 1 day
+  visibility_timeout_seconds = 900   # 15 minutes
+  message_retention_seconds  = 86400 # 1 day
 
   tags = {
     Name = "dcv-${var.environment}-scan-jobs"

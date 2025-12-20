@@ -42,4 +42,4 @@ enable_cognito = true
 # Microsoft/Azure AD OAuth (set via environment variables)
 # microsoft_client_id     = ""  # Set via TF_VAR_microsoft_client_id
 # microsoft_client_secret = ""  # Set via TF_VAR_microsoft_client_secret
-microsoft_tenant_id = "common"  # "common" allows any Azure AD tenant (multi-tenant)
+microsoft_tenant_id = "common" # "common" allows any Azure AD tenant (multi-tenant)

@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Impair Defences: Disable or Modify Cloud Logs",
     tactic_ids=["TA0005"],
     mitre_url="https://attack.mitre.org/techniques/T1562/008/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries disable or modify cloud logging services to evade detection. "
@@ -35,7 +34,7 @@ TEMPLATE = RemediationTemplate(
             "Makes incident response difficult",
             "Often done early in attack chain",
             "Single API call can disable logging",
-            "May go unnoticed without monitoring"
+            "May go unnoticed without monitoring",
         ],
         known_threat_actors=["Scattered Spider", "TeamTNT", "APT29"],
         recent_campaigns=[
@@ -43,14 +42,14 @@ TEMPLATE = RemediationTemplate(
                 name="CloudTrail Deletion Attacks",
                 year=2024,
                 description="Multiple threat actors observed deleting CloudTrail trails as first action after compromise",
-                reference_url="https://www.datadoghq.com/state-of-cloud-security/"
+                reference_url="https://www.datadoghq.com/state-of-cloud-security/",
             ),
             Campaign(
                 name="TeamTNT Log Evasion",
                 year=2024,
                 description="Cryptomining group disabling CloudWatch agent and audit logging on compromised instances",
-                reference_url="https://www.cadosecurity.com/blog/teamtnt-reemerges-with-new-aggressive-cloud-campaign"
-            )
+                reference_url="https://www.cadosecurity.com/blog/teamtnt-reemerges-with-new-aggressive-cloud-campaign",
+            ),
         ],
         prevalence="common",
         trend="stable",
@@ -64,13 +63,12 @@ TEMPLATE = RemediationTemplate(
             "Loss of audit trail for compliance",
             "Inability to investigate incidents",
             "Potential regulatory violations",
-            "Extended dwell time for attackers"
+            "Extended dwell time for attackers",
         ],
         typical_attack_phase="defence_evasion",
         often_precedes=["T1530", "T1537", "T1078.004"],
-        often_follows=["T1078.004", "T1528"]
+        often_follows=["T1078.004", "T1528"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - CloudTrail Modification
         DetectionStrategy(
@@ -83,9 +81,9 @@ TEMPLATE = RemediationTemplate(
             implementation=DetectionImplementation(
                 guardduty_finding_types=[
                     "Stealth:IAMUser/CloudTrailLoggingDisabled",
-                    "Stealth:IAMUser/LoggingConfigurationModified"
+                    "Stealth:IAMUser/LoggingConfigurationModified",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect CloudTrail modifications
 
 Parameters:
@@ -128,8 +126,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect CloudTrail modifications
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect CloudTrail modifications
 
 variable "alert_email" {
   type = string
@@ -179,7 +177,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="CloudTrail Logging Modified",
                 alert_description_template="CloudTrail trail {trailName} was modified or disabled.",
@@ -187,14 +185,14 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Identify who made the change",
                     "Check if trail is currently logging",
                     "Review recent API calls before logging stopped",
-                    "Check for other concurrent suspicious activity"
+                    "Check for other concurrent suspicious activity",
                 ],
                 containment_actions=[
                     "Immediately re-enable CloudTrail logging",
                     "Lock down the IAM user/role that made the change",
                     "Review and rotate compromised credentials",
-                    "Enable CloudTrail log file validation"
-                ]
+                    "Enable CloudTrail log file validation",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised infrastructure automation",
@@ -203,9 +201,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["GuardDuty or CloudTrail enabled"]
+            prerequisites=["GuardDuty or CloudTrail enabled"],
         ),
-
         # Strategy 2: AWS - VPC Flow Logs Deletion
         DetectionStrategy(
             strategy_id="t1562008-aws-flowlogs",
@@ -218,11 +215,9 @@ resource "aws_sns_topic_policy" "allow_events" {
                 event_pattern={
                     "source": ["aws.ec2"],
                     "detail-type": ["AWS API Call via CloudTrail"],
-                    "detail": {
-                        "eventName": ["DeleteFlowLogs"]
-                    }
+                    "detail": {"eventName": ["DeleteFlowLogs"]},
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect VPC Flow Logs deletion
 
 Parameters:
@@ -261,8 +256,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect VPC Flow Logs deletion
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect VPC Flow Logs deletion
 
 variable "alert_email" {
   type = string
@@ -307,7 +302,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="VPC Flow Logs Deleted",
                 alert_description_template="VPC Flow Logs were deleted from {vpcId}.",
@@ -315,14 +310,14 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Identify who deleted the flow logs",
                     "Check which VPCs are now unmonitored",
                     "Review recent network activity",
-                    "Look for concurrent suspicious activity"
+                    "Look for concurrent suspicious activity",
                 ],
                 containment_actions=[
                     "Re-enable VPC Flow Logs immediately",
                     "Review IAM permissions for flow logs management",
                     "Check for data exfiltration attempts",
-                    "Enable flow logs to a protected S3 bucket"
-                ]
+                    "Enable flow logs to a protected S3 bucket",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist VPC cleanup automation",
@@ -331,9 +326,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         # Strategy 3: GCP - Cloud Audit Logs Modification
         DetectionStrategy(
             strategy_id="t1562008-gcp-auditlogs",
@@ -346,7 +340,7 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName=~"SetIamPolicy|UpdateSink|DeleteSink"
 protoPayload.serviceName="logging.googleapis.com"''',
-                gcp_terraform_template='''# GCP: Detect audit log modifications
+                gcp_terraform_template="""# GCP: Detect audit log modifications
 
 variable "project_id" {
   type = string
@@ -395,7 +389,7 @@ resource "google_monitoring_alert_policy" "audit_mod" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GCP: Audit Log Configuration Modified",
                 alert_description_template="Cloud Audit Logs configuration was modified.",
@@ -403,14 +397,14 @@ resource "google_monitoring_alert_policy" "audit_mod" {
                     "Review what logging configuration changed",
                     "Identify the principal making the change",
                     "Check if log sinks were deleted",
-                    "Verify current logging coverage"
+                    "Verify current logging coverage",
                 ],
                 containment_actions=[
                     "Restore deleted log sinks",
                     "Lock down logging configuration permissions",
                     "Enable organisation policy for logging",
-                    "Review service account permissions"
-                ]
+                    "Review service account permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised log management automation",
@@ -419,9 +413,8 @@ resource "google_monitoring_alert_policy" "audit_mod" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled"],
         ),
-
         # Strategy 4: GCP - Data Access Logs Disabled
         DetectionStrategy(
             strategy_id="t1562008-gcp-dataaccess",
@@ -432,9 +425,9 @@ resource "google_monitoring_alert_policy" "audit_mod" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''protoPayload.methodName="SetIamPolicy"
-protoPayload.request.policy.auditConfigs:*''',
-                gcp_terraform_template='''# GCP: Monitor Data Access audit log configuration
+                gcp_logging_query="""protoPayload.methodName="SetIamPolicy"
+protoPayload.request.policy.auditConfigs:*""",
+                gcp_terraform_template="""# GCP: Monitor Data Access audit log configuration
 
 variable "project_id" {
   type = string
@@ -483,7 +476,7 @@ resource "google_monitoring_alert_policy" "data_access" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Data Access Logs Configuration Changed",
                 alert_description_template="Data Access audit log configuration was modified.",
@@ -491,14 +484,14 @@ resource "google_monitoring_alert_policy" "data_access" {
                     "Review the audit config changes",
                     "Check which services had logging disabled",
                     "Verify the principal making changes",
-                    "Review recent data access patterns"
+                    "Review recent data access patterns",
                 ],
                 containment_actions=[
                     "Re-enable Data Access logs",
                     "Set organisation-level audit config",
                     "Review IAM permissions for audit config",
-                    "Enable log sinks to external destination"
-                ]
+                    "Enable log sinks to external destination",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Baseline normal audit config changes",
@@ -507,16 +500,15 @@ resource "google_monitoring_alert_policy" "data_access" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1562008-aws-cloudtrail",
         "t1562008-gcp-auditlogs",
         "t1562008-aws-flowlogs",
-        "t1562008-gcp-dataaccess"
+        "t1562008-gcp-dataaccess",
     ],
     total_effort_hours=2.5,
-    coverage_improvement="+25% improvement for Defence Evasion tactic"
+    coverage_improvement="+25% improvement for Defence Evasion tactic",
 )

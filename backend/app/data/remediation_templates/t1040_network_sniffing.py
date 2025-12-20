@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Network Sniffing",
     tactic_ids=["TA0006", "TA0009"],  # Credential Access, Collection
     mitre_url="https://attack.mitre.org/techniques/T1040/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries passively monitor network traffic to capture sensitive data in transit. "
@@ -36,28 +35,34 @@ TEMPLATE = RemediationTemplate(
             "Captures credentials transmitted over unencrypted protocols",
             "Cloud traffic mirroring provides legitimate-looking access",
             "TLS termination at load balancers exposes cleartext traffic",
-            "Can reveal network topology and service architecture"
+            "Can reveal network topology and service architecture",
         ],
-        known_threat_actors=["APT28", "Sandworm Team", "Salt Typhoon", "UNC3886", "Kimsuky"],
+        known_threat_actors=[
+            "APT28",
+            "Sandworm Team",
+            "Salt Typhoon",
+            "UNC3886",
+            "Kimsuky",
+        ],
         recent_campaigns=[
             Campaign(
                 name="Salt Typhoon Network Surveillance",
                 year=2024,
                 description="Chinese state-sponsored group used packet capture tools for extensive network surveillance in telecommunications infrastructure",
-                reference_url="https://attack.mitre.org/groups/G1041/"
+                reference_url="https://attack.mitre.org/groups/G1041/",
             ),
             Campaign(
                 name="APT28 Wi-Fi Pineapple Operations",
                 year=2023,
                 description="APT28 deployed Wi-Fi pineapple devices and Responder tool for NetBIOS poisoning to capture network credentials",
-                reference_url="https://attack.mitre.org/groups/G0007/"
+                reference_url="https://attack.mitre.org/groups/G0007/",
             ),
             Campaign(
                 name="Ukraine Power Grid Attack",
                 year=2015,
                 description="Sandworm Team used BlackEnergy malware with network sniffer module during attacks on Ukrainian critical infrastructure",
-                reference_url="https://attack.mitre.org/groups/G0034/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0034/",
+            ),
         ],
         prevalence="moderate",
         trend="increasing",
@@ -72,13 +77,12 @@ TEMPLATE = RemediationTemplate(
             "Exposure of credentials and API keys",
             "Loss of sensitive business communications",
             "Compliance violations from data interception",
-            "Network topology and architecture disclosure"
+            "Network topology and architecture disclosure",
         ],
         typical_attack_phase="credential_access",
         often_precedes=["T1078.004", "T1552.001", "T1557"],
-        often_follows=["T1078.004", "T1110"]
+        often_follows=["T1078.004", "T1110"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - Traffic Mirroring Session Creation
         DetectionStrategy(
@@ -96,11 +100,11 @@ TEMPLATE = RemediationTemplate(
                         "eventName": [
                             "CreateTrafficMirrorSession",
                             "CreateTrafficMirrorTarget",
-                            "CreateTrafficMirrorFilter"
+                            "CreateTrafficMirrorFilter",
                         ]
-                    }
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect VPC Traffic Mirroring creation
 
 Parameters:
@@ -143,8 +147,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect AWS Traffic Mirroring sessions
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect AWS Traffic Mirroring sessions
 
 variable "alert_email" {
   type = string
@@ -194,7 +198,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="AWS Traffic Mirroring Session Created",
                 alert_description_template="Traffic mirroring session created for {networkInterfaceId}. This could indicate network sniffing activity.",
@@ -203,15 +207,15 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Review the source and target network interfaces",
                     "Check if this is authorised security monitoring",
                     "Examine the traffic mirror filter rules",
-                    "Review recent authentication activity for the principal"
+                    "Review recent authentication activity for the principal",
                 ],
                 containment_actions=[
                     "Delete unauthorised traffic mirroring sessions",
                     "Review and restrict ec2:CreateTrafficMirror* permissions",
                     "Enable MFA for sensitive EC2 operations",
                     "Audit all existing traffic mirroring configurations",
-                    "Enable VPC Flow Logs for network monitoring"
-                ]
+                    "Enable VPC Flow Logs for network monitoring",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised security monitoring and network troubleshooting teams",
@@ -220,9 +224,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         # Strategy 2: AWS - Suspicious Network Interface Configuration
         DetectionStrategy(
             strategy_id="t1040-aws-promiscuous-mode",
@@ -232,12 +235,12 @@ resource "aws_sns_topic_policy" "allow_events" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message
+                query="""fields @timestamp, @message
 | filter eventName in ["ModifyNetworkInterfaceAttribute", "AttachNetworkInterface"]
 | filter requestParameters.sourceDestCheck = false
 | sort @timestamp desc
-| limit 100''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| limit 100""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect network interface promiscuous mode configuration
 
 Parameters:
@@ -279,8 +282,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect promiscuous mode network configuration
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect promiscuous mode network configuration
 
 variable "alert_email" {
   type = string
@@ -329,7 +332,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Network Interface Source/Dest Check Disabled",
                 alert_description_template="Source/destination checking disabled on network interface {networkInterfaceId}. This may enable packet sniffing.",
@@ -338,14 +341,14 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Check if this is a NAT instance or router (legitimate use)",
                     "Review instance security group and network ACLs",
                     "Examine CloudWatch logs for suspicious process execution",
-                    "Check for installation of packet capture tools"
+                    "Check for installation of packet capture tools",
                 ],
                 containment_actions=[
                     "Re-enable source/destination checking if not required",
                     "Isolate suspicious instances from production networks",
                     "Review IAM permissions for network interface modifications",
-                    "Enable detailed monitoring on affected instances"
-                ]
+                    "Enable detailed monitoring on affected instances",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist NAT instances, routers, and VPN gateways that legitimately require this configuration",
@@ -354,9 +357,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled", "CloudWatch Logs"]
+            prerequisites=["CloudTrail enabled", "CloudWatch Logs"],
         ),
-
         # Strategy 3: AWS - VPC Flow Logs Analysis for Unusual Patterns
         DetectionStrategy(
             strategy_id="t1040-aws-flow-anomaly",
@@ -366,13 +368,13 @@ resource "aws_sns_topic_policy" "allow_events" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcaddr, dstaddr, srcport, dstport, protocol, bytes
+                query="""fields @timestamp, srcaddr, dstaddr, srcport, dstport, protocol, bytes
 | filter action = "ACCEPT"
 | stats count() as connectionCount, sum(bytes) as totalBytes by srcaddr, dstaddr
 | filter connectionCount > 1000 or totalBytes > 10000000
 | sort totalBytes desc
-| limit 50''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| limit 50""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Monitor VPC Flow Logs for anomalous traffic patterns
 
 Parameters:
@@ -421,8 +423,8 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Ref LogGroupName
-      RetentionInDays: 7''',
-                terraform_template='''# Enable VPC Flow Logs for network monitoring
+      RetentionInDays: 7""",
+                terraform_template="""# Enable VPC Flow Logs for network monitoring
 
 variable "vpc_id" {
   type = string
@@ -474,7 +476,7 @@ resource "aws_flow_log" "main" {
   log_destination = aws_cloudwatch_log_group.flow_logs.arn
   traffic_type    = "ALL"
   vpc_id          = var.vpc_id
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Anomalous Network Traffic Detected",
                 alert_description_template="Unusual network traffic pattern detected from {srcaddr}. High connection count or data transfer may indicate reconnaissance or sniffing.",
@@ -483,14 +485,14 @@ resource "aws_flow_log" "main" {
                     "Review traffic patterns and protocols used",
                     "Check if source instance has legitimate monitoring role",
                     "Examine application logs on source instance",
-                    "Correlate with other security events"
+                    "Correlate with other security events",
                 ],
                 containment_actions=[
                     "Apply network ACLs to restrict suspicious traffic",
                     "Enable enhanced monitoring on affected instances",
                     "Review and update security group rules",
-                    "Consider isolating suspicious instances"
-                ]
+                    "Consider isolating suspicious instances",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Establish baselines for normal traffic patterns and whitelist known monitoring infrastructure",
@@ -499,9 +501,8 @@ resource "aws_flow_log" "main" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-30",
-            prerequisites=["VPC Flow Logs enabled", "CloudWatch Logs"]
+            prerequisites=["VPC Flow Logs enabled", "CloudWatch Logs"],
         ),
-
         # Strategy 4: GCP - Packet Mirroring Detection
         DetectionStrategy(
             strategy_id="t1040-gcp-packet-mirror",
@@ -515,7 +516,7 @@ resource "aws_flow_log" "main" {
                 gcp_logging_query='''protoPayload.methodName="v1.compute.packetMirrorings.insert"
 OR protoPayload.methodName="v1.compute.packetMirrorings.patch"
 protoPayload.serviceName="compute.googleapis.com"''',
-                gcp_terraform_template='''# GCP: Detect packet mirroring creation
+                gcp_terraform_template="""# GCP: Detect packet mirroring creation
 
 variable "project_id" {
   type = string
@@ -565,7 +566,7 @@ resource "google_monitoring_alert_policy" "packet_mirror" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Packet Mirroring Policy Created",
                 alert_description_template="Packet mirroring policy created or modified. This could indicate network sniffing activity.",
@@ -574,15 +575,15 @@ resource "google_monitoring_alert_policy" "packet_mirror" {
                     "Review the mirrored subnets and instances",
                     "Check the collector destination configuration",
                     "Verify if this is authorised security monitoring",
-                    "Examine recent authentication events for the principal"
+                    "Examine recent authentication events for the principal",
                 ],
                 containment_actions=[
                     "Delete unauthorised packet mirroring policies",
                     "Review and restrict compute.packetMirrorings.* permissions",
                     "Enable organisation policy constraints for packet mirroring",
                     "Audit all existing packet mirroring configurations",
-                    "Enable VPC Flow Logs for all subnets"
-                ]
+                    "Enable VPC Flow Logs for all subnets",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised network security and troubleshooting teams",
@@ -591,9 +592,8 @@ resource "google_monitoring_alert_policy" "packet_mirror" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled"],
         ),
-
         # Strategy 5: GCP - VPC Flow Logs Anomaly Detection
         DetectionStrategy(
             strategy_id="t1040-gcp-flow-anomaly",
@@ -604,11 +604,11 @@ resource "google_monitoring_alert_policy" "packet_mirror" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_subnetwork"
+                gcp_logging_query="""resource.type="gce_subnetwork"
 logName="projects/PROJECT_ID/logs/compute.googleapis.com%2Fvpc_flows"
 jsonPayload.connection.protocol!=6
-jsonPayload.bytes_sent>10000000''',
-                gcp_terraform_template='''# GCP: Monitor VPC Flow Logs for anomalies
+jsonPayload.bytes_sent>10000000""",
+                gcp_terraform_template="""# GCP: Monitor VPC Flow Logs for anomalies
 
 variable "project_id" {
   type = string
@@ -658,7 +658,7 @@ resource "google_monitoring_alert_policy" "flow_anomaly" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Anomalous Network Traffic Detected",
                 alert_description_template="High-volume or unusual network traffic pattern detected. May indicate reconnaissance or data collection.",
@@ -667,14 +667,14 @@ resource "google_monitoring_alert_policy" "flow_anomaly" {
                     "Review protocols and ports used",
                     "Check if source has legitimate monitoring function",
                     "Examine application and system logs",
-                    "Correlate with other security events"
+                    "Correlate with other security events",
                 ],
                 containment_actions=[
                     "Apply firewall rules to restrict suspicious traffic",
                     "Enable enhanced monitoring on affected instances",
                     "Review and update VPC firewall rules",
-                    "Consider network isolation for suspicious instances"
-                ]
+                    "Consider network isolation for suspicious instances",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Establish traffic baselines and whitelist legitimate high-bandwidth applications",
@@ -683,17 +683,16 @@ resource "google_monitoring_alert_policy" "flow_anomaly" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-30",
-            prerequisites=["VPC Flow Logs enabled", "Cloud Logging"]
-        )
+            prerequisites=["VPC Flow Logs enabled", "Cloud Logging"],
+        ),
     ],
-
     recommended_order=[
         "t1040-aws-traffic-mirror",
         "t1040-gcp-packet-mirror",
         "t1040-aws-promiscuous-mode",
         "t1040-aws-flow-anomaly",
-        "t1040-gcp-flow-anomaly"
+        "t1040-gcp-flow-anomaly",
     ],
     total_effort_hours=3.5,
-    coverage_improvement="+20% improvement for Credential Access and Collection tactics"
+    coverage_improvement="+20% improvement for Credential Access and Collection tactics",
 )

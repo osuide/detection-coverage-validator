@@ -24,7 +24,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Compromise Infrastructure",
     tactic_ids=["TA0042"],
     mitre_url="https://attack.mitre.org/techniques/T1584/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries compromise third-party infrastructure including physical or cloud servers, "
@@ -39,7 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Establish C2 channels appearing legitimate",
             "Support phishing using trusted domains",
             "Enable proximity-based attacks via compromised networks",
-            "Lower operational costs versus purchasing infrastructure"
+            "Lower operational costs versus purchasing infrastructure",
         ],
         known_threat_actors=["APT28", "Chinese state-sponsored groups"],
         recent_campaigns=[
@@ -47,14 +46,14 @@ TEMPLATE = RemediationTemplate(
                 name="Nearest Neighbor",
                 year=2023,
                 description="APT28 compromised third-party infrastructure in physical proximity to targets for follow-on activities",
-                reference_url="https://attack.mitre.org/campaigns/C0051/"
+                reference_url="https://attack.mitre.org/campaigns/C0051/",
             ),
             Campaign(
                 name="Indian Critical Infrastructure",
                 year=2023,
                 description="Chinese state-sponsored actors utilised compromised DVR and IP camera devices for ShadowPad C2 against Indian power grid",
-                reference_url="https://attack.mitre.org/campaigns/C0043/"
-            )
+                reference_url="https://attack.mitre.org/campaigns/C0043/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -68,13 +67,12 @@ TEMPLATE = RemediationTemplate(
             "Enables subsequent attack stages",
             "Attribution evasion complicates incident response",
             "Legitimate infrastructure abuse damages reputation",
-            "Difficult to detect pre-attack preparation"
+            "Difficult to detect pre-attack preparation",
         ],
         typical_attack_phase="resource_development",
         often_precedes=["T1566", "T1071", "T1090", "T1583"],
-        often_follows=[]
+        often_follows=[],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1584-aws-unusual-services",
@@ -84,13 +82,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, eventName, sourceIPAddress, requestParameters
+                query="""fields @timestamp, userIdentity.principalId, eventName, sourceIPAddress, requestParameters
 | filter eventName like /RunInstances|CreateFunction|CreateCluster/
 | filter userAgent like /boto|python-requests|curl|wget/
 | stats count(*) as api_calls by sourceIPAddress, userIdentity.principalId, bin(1h)
 | filter api_calls > 50
-| sort api_calls desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort api_calls desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect compromised AWS resources launching unusual services
 
 Parameters:
@@ -128,8 +126,8 @@ Resources:
       Threshold: 10
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect compromised AWS resources launching unusual services
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect compromised AWS resources launching unusual services
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -166,7 +164,7 @@ resource "aws_cloudwatch_metric_alarm" "compromised_resource" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Compromised AWS Resource Detected",
                 alert_description_template="Unusual service launches detected from {principalId} at {sourceIPAddress}.",
@@ -175,15 +173,15 @@ resource "aws_cloudwatch_metric_alarm" "compromised_resource" {
                     "Check if API calls originate from expected IP addresses",
                     "Examine launched resources for C2 indicators",
                     "Review CloudTrail for privilege escalation events",
-                    "Check for data exfiltration attempts"
+                    "Check for data exfiltration attempts",
                 ],
                 containment_actions=[
                     "Disable compromised IAM credentials immediately",
                     "Terminate suspicious EC2 instances or Lambda functions",
                     "Review and restrict security group rules",
                     "Enable VPC Flow Logs for network analysis",
-                    "Rotate all potentially exposed credentials"
-                ]
+                    "Rotate all potentially exposed credentials",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Tune user agents and API call thresholds for legitimate automation tools",
@@ -192,9 +190,8 @@ resource "aws_cloudwatch_metric_alarm" "compromised_resource" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-25",
-            prerequisites=["CloudTrail enabled", "CloudTrail logs sent to CloudWatch"]
+            prerequisites=["CloudTrail enabled", "CloudTrail logs sent to CloudWatch"],
         ),
-
         DetectionStrategy(
             strategy_id="t1584-aws-dns-tunnelling",
             name="AWS DNS Tunnelling Detection",
@@ -203,12 +200,12 @@ resource "aws_cloudwatch_metric_alarm" "compromised_resource" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, query_name, query_type, srcaddr
+                query="""fields @timestamp, query_name, query_type, srcaddr
 | filter query_type = "TXT" or query_name like /[a-f0-9]{32,}/
 | stats count(*) as dns_queries by srcaddr, bin(5m)
 | filter dns_queries > 100
-| sort dns_queries desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort dns_queries desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect DNS tunnelling via compromised infrastructure
 
 Parameters:
@@ -246,8 +243,8 @@ Resources:
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect DNS tunnelling via compromised infrastructure
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect DNS tunnelling via compromised infrastructure
 
 variable "route53_query_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -284,7 +281,7 @@ resource "aws_cloudwatch_metric_alarm" "dns_tunnel_detected" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="DNS Tunnelling Detected",
                 alert_description_template="Suspicious DNS query pattern from {srcaddr} indicates potential C2 channel.",
@@ -293,15 +290,15 @@ resource "aws_cloudwatch_metric_alarm" "dns_tunnel_detected" {
                     "Identify source IP addresses and associated resources",
                     "Review Route 53 hosted zones for unauthorised changes",
                     "Check for data exfiltration in query payloads",
-                    "Correlate with other security events"
+                    "Correlate with other security events",
                 ],
                 containment_actions=[
                     "Block suspicious domains at DNS resolver level",
                     "Isolate affected instances from network",
                     "Review and revoke compromised credentials",
                     "Implement DNS query rate limiting",
-                    "Enable GuardDuty for additional DNS monitoring"
-                ]
+                    "Enable GuardDuty for additional DNS monitoring",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude legitimate TXT record queries from monitoring tools",
@@ -310,9 +307,8 @@ resource "aws_cloudwatch_metric_alarm" "dns_tunnel_detected" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$15-35",
-            prerequisites=["Route 53 Resolver Query Logging enabled"]
+            prerequisites=["Route 53 Resolver Query Logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1584-gcp-compromised-compute",
             name="GCP Compromised Compute Instance Detection",
@@ -326,7 +322,7 @@ resource "aws_cloudwatch_metric_alarm" "dns_tunnel_detected" {
 protoPayload.methodName=~"compute.instances.(insert|start)"
 protoPayload.request.machineType=~"n1-standard|e2-medium"
 severity="NOTICE"''',
-                gcp_terraform_template='''# GCP: Detect compromised compute instances
+                gcp_terraform_template="""# GCP: Detect compromised compute instances
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -364,7 +360,7 @@ resource "google_monitoring_alert_policy" "compromised_instance" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Compromised Instance Detected",
                 alert_description_template="Suspicious compute instance activity detected in project.",
@@ -373,15 +369,15 @@ resource "google_monitoring_alert_policy" "compromised_instance" {
                     "Check service account permissions",
                     "Analyse VPC Flow Logs for C2 traffic",
                     "Examine instance metadata for indicators",
-                    "Review IAM policy changes"
+                    "Review IAM policy changes",
                 ],
                 containment_actions=[
                     "Stop suspicious instances immediately",
                     "Revoke compromised service account keys",
                     "Update firewall rules to block C2 traffic",
                     "Enable VPC Service Controls",
-                    "Review and restrict IAM permissions"
-                ]
+                    "Review and restrict IAM permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude authorised automation service accounts",
@@ -390,9 +386,8 @@ resource "google_monitoring_alert_policy" "compromised_instance" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Audit Logs enabled", "VPC Flow Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled", "VPC Flow Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1584-gcp-dns-monitoring",
             name="GCP Cloud DNS Suspicious Query Detection",
@@ -405,7 +400,7 @@ resource "google_monitoring_alert_policy" "compromised_instance" {
                 gcp_logging_query='''resource.type="dns_query"
 jsonPayload.queryType="TXT"
 jsonPayload.responseCode="NOERROR"''',
-                gcp_terraform_template='''# GCP: Detect DNS-based C2 via Cloud DNS
+                gcp_terraform_template="""# GCP: Detect DNS-based C2 via Cloud DNS
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -442,7 +437,7 @@ resource "google_monitoring_alert_policy" "dns_c2" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GCP: DNS Tunnelling Detected",
                 alert_description_template="Suspicious DNS query patterns indicate potential C2 communication.",
@@ -451,15 +446,15 @@ resource "google_monitoring_alert_policy" "dns_c2" {
                     "Identify source VMs or services",
                     "Review Cloud DNS zone configurations",
                     "Check for unauthorised DNS zone changes",
-                    "Correlate with network flow data"
+                    "Correlate with network flow data",
                 ],
                 containment_actions=[
                     "Block suspicious domains via Cloud DNS policies",
                     "Isolate affected instances",
                     "Review and rotate service account keys",
                     "Enable Cloud IDS for deeper inspection",
-                    "Implement DNS Security Extensions (DNSSEC)"
-                ]
+                    "Implement DNS Security Extensions (DNSSEC)",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Baseline legitimate TXT queries from monitoring systems",
@@ -468,11 +463,15 @@ resource "google_monitoring_alert_policy" "dns_c2" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$15-30",
-            prerequisites=["Cloud DNS query logging enabled"]
-        )
+            prerequisites=["Cloud DNS query logging enabled"],
+        ),
     ],
-
-    recommended_order=["t1584-aws-unusual-services", "t1584-gcp-compromised-compute", "t1584-aws-dns-tunnelling", "t1584-gcp-dns-monitoring"],
+    recommended_order=[
+        "t1584-aws-unusual-services",
+        "t1584-gcp-compromised-compute",
+        "t1584-aws-dns-tunnelling",
+        "t1584-gcp-dns-monitoring",
+    ],
     total_effort_hours=7.0,
-    coverage_improvement="+15% improvement for Resource Development tactic"
+    coverage_improvement="+15% improvement for Resource Development tactic",
 )

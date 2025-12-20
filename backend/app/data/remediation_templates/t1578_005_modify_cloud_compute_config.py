@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Modify Cloud Compute Infrastructure: Modify Cloud Compute Configurations",
     tactic_ids=["TA0005"],  # Defense Evasion
     mitre_url="https://attack.mitre.org/techniques/T1578/005/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries modify cloud compute configuration settings to affect "
@@ -37,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Modify tenant policies to allow larger deployments",
             "Enable new regions for unauthorised resource creation",
             "Bypass security controls through policy weakening",
-            "Avoid suspicion by staying within modified quotas"
+            "Avoid suspicion by staying within modified quotas",
         ],
         known_threat_actors=[],  # No verified threat actors in MITRE data
         recent_campaigns=[],  # No verified campaigns in MITRE data
@@ -54,13 +53,12 @@ TEMPLATE = RemediationTemplate(
             "Increased cloud costs",
             "Weakened security controls",
             "Compliance violations",
-            "Cryptomining and resource hijacking"
+            "Cryptomining and resource hijacking",
         ],
         typical_attack_phase="defense_evasion",
         often_precedes=["T1496", "T1496"],  # Resource hijacking, cryptomining
-        often_follows=["T1098", "T1078.004"]  # Account manipulation, cloud accounts
+        often_follows=["T1098", "T1078.004"],  # Account manipulation, cloud accounts
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1578-005-aws-quota",
@@ -70,11 +68,11 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, requestParameters.serviceCode, requestParameters.quotaCode
+                query="""fields @timestamp, userIdentity.principalId, requestParameters.serviceCode, requestParameters.quotaCode
 | filter eventName = "RequestServiceQuotaIncrease"
 | stats count(*) as requests by userIdentity.principalId, requestParameters.serviceCode, bin(24h)
-| sort requests desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort requests desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect service quota modification attempts
 
 Parameters:
@@ -119,8 +117,8 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# AWS: Detect service quota modifications
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# AWS: Detect service quota modifications
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -168,7 +166,7 @@ resource "aws_cloudwatch_metric_alarm" "quota_modification" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   alarm_actions       = [aws_sns_topic.quota_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Service Quota Modification Detected",
                 alert_description_template="Service quota change requested by {principalId} for {serviceCode}.",
@@ -177,15 +175,15 @@ resource "aws_cloudwatch_metric_alarm" "quota_modification" {
                     "Review the specific services and quotas requested",
                     "Check if request aligns with authorised changes",
                     "Review recent resource creation following approval",
-                    "Examine account activity for suspicious behaviour"
+                    "Examine account activity for suspicious behaviour",
                 ],
                 containment_actions=[
                     "Deny unauthorised quota increase requests",
                     "Revert approved quota changes if malicious",
                     "Restrict Service Quotas permissions",
                     "Review and terminate suspicious resources",
-                    "Enable SCPs to limit quota modifications"
-                ]
+                    "Enable SCPs to limit quota modifications",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Legitimate quota requests occur during scaling; maintain approved change list",
@@ -194,9 +192,8 @@ resource "aws_cloudwatch_metric_alarm" "quota_modification" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-60 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled and logging to CloudWatch"]
+            prerequisites=["CloudTrail enabled and logging to CloudWatch"],
         ),
-
         DetectionStrategy(
             strategy_id="t1578-005-aws-ec2-limits",
             name="AWS EC2 Instance Limit Modifications",
@@ -205,12 +202,12 @@ resource "aws_cloudwatch_metric_alarm" "quota_modification" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, requestParameters.instanceType, responseElements.vCpuLimit
+                query="""fields @timestamp, userIdentity.principalId, requestParameters.instanceType, responseElements.vCpuLimit
 | filter eventName = "ModifyInstanceAttribute" or eventName = "ModifyReservedInstances"
 | filter responseElements.vCpuLimit exists or requestParameters.attribute = "instanceType"
 | stats count(*) as modifications by userIdentity.principalId, bin(24h)
-| sort modifications desc''',
-                terraform_template='''# AWS: Detect EC2 instance limit modifications
+| sort modifications desc""",
+                terraform_template="""# AWS: Detect EC2 instance limit modifications
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -258,7 +255,7 @@ resource "aws_cloudwatch_metric_alarm" "ec2_limit_change" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   alarm_actions       = [aws_sns_topic.ec2_limit_alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="EC2 Instance Limit Modified",
                 alert_description_template="EC2 instance configuration changed by {principalId}.",
@@ -267,14 +264,14 @@ resource "aws_cloudwatch_metric_alarm" "ec2_limit_change" {
                     "Check if changes align with capacity planning",
                     "Examine account for recent privilege escalation",
                     "Review subsequent EC2 instance launches",
-                    "Verify business justification for changes"
+                    "Verify business justification for changes",
                 ],
                 containment_actions=[
                     "Revert unauthorised instance modifications",
                     "Restrict EC2 modification permissions",
                     "Review and terminate suspicious instances",
-                    "Implement SCPs for instance type restrictions"
-                ]
+                    "Implement SCPs for instance type restrictions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Instance modifications common during operations; filter known admin accounts",
@@ -283,9 +280,8 @@ resource "aws_cloudwatch_metric_alarm" "ec2_limit_change" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-60 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled and logging to CloudWatch"]
+            prerequisites=["CloudTrail enabled and logging to CloudWatch"],
         ),
-
         DetectionStrategy(
             strategy_id="t1578-005-gcp-quota",
             name="GCP Quota Modification Detection",
@@ -295,11 +291,11 @@ resource "aws_cloudwatch_metric_alarm" "ec2_limit_change" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''protoPayload.methodName=("cloudquotas.googleapis.com.QuotaPreference.CreateQuotaPreference" OR
+                gcp_logging_query="""protoPayload.methodName=("cloudquotas.googleapis.com.QuotaPreference.CreateQuotaPreference" OR
 "cloudquotas.googleapis.com.QuotaPreference.UpdateQuotaPreference" OR
 "orgpolicy.googleapis.com.OrgPolicy.SetOrgPolicy")
-severity>=WARNING''',
-                gcp_terraform_template='''# GCP: Detect quota and policy modifications
+severity>=WARNING""",
+                gcp_terraform_template="""# GCP: Detect quota and policy modifications
 
 variable "project_id" {
   type        = string
@@ -354,7 +350,7 @@ resource "google_monitoring_alert_policy" "quota_modification" {
     auto_close = "1800s"
   }
   project = var.project_id
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP Quota Modification Detected",
                 alert_description_template="Quota or organisation policy modified in GCP project.",
@@ -363,15 +359,15 @@ resource "google_monitoring_alert_policy" "quota_modification" {
                     "Review specific quotas or policies modified",
                     "Check for alignment with approved changes",
                     "Examine subsequent resource creation patterns",
-                    "Review IAM permissions for quota management"
+                    "Review IAM permissions for quota management",
                 ],
                 containment_actions=[
                     "Revert unauthorised quota changes",
                     "Restrict quota management permissions",
                     "Review and delete suspicious resources",
                     "Implement organisation policy constraints",
-                    "Enable VPC Service Controls for protection"
-                ]
+                    "Enable VPC Service Controls for protection",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Legitimate quota requests occur; maintain approved change baseline",
@@ -380,9 +376,8 @@ resource "google_monitoring_alert_policy" "quota_modification" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-60 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled for Admin Activity"]
+            prerequisites=["Cloud Audit Logs enabled for Admin Activity"],
         ),
-
         DetectionStrategy(
             strategy_id="t1578-005-gcp-compute-policy",
             name="GCP Compute Engine Policy Changes",
@@ -392,10 +387,10 @@ resource "google_monitoring_alert_policy" "quota_modification" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''protoPayload.methodName="orgpolicy.googleapis.com.OrgPolicy.SetOrgPolicy"
+                gcp_logging_query="""protoPayload.methodName="orgpolicy.googleapis.com.OrgPolicy.SetOrgPolicy"
 protoPayload.resourceName=~"compute"
-severity>=WARNING''',
-                gcp_terraform_template='''# GCP: Detect Compute Engine policy modifications
+severity>=WARNING""",
+                gcp_terraform_template="""# GCP: Detect Compute Engine policy modifications
 
 variable "project_id" {
   type        = string
@@ -449,7 +444,7 @@ resource "google_monitoring_alert_policy" "compute_policy_alert" {
     auto_close = "1800s"
   }
   project = var.project_id
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP Compute Policy Modified",
                 alert_description_template="Compute Engine organisation policy modified.",
@@ -458,15 +453,15 @@ resource "google_monitoring_alert_policy" "compute_policy_alert" {
                     "Review specific policy constraints changed",
                     "Check if changes weaken security controls",
                     "Examine for subsequent VM size increases",
-                    "Verify business justification"
+                    "Verify business justification",
                 ],
                 containment_actions=[
                     "Revert unauthorised policy changes",
                     "Restrict organisation policy permissions",
                     "Review recently created compute resources",
                     "Implement mandatory policy constraints",
-                    "Enable change approval workflows"
-                ]
+                    "Enable change approval workflows",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Policy changes are infrequent; review all modifications",
@@ -475,11 +470,15 @@ resource "google_monitoring_alert_policy" "compute_policy_alert" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-60 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled for Admin Activity"]
-        )
+            prerequisites=["Cloud Audit Logs enabled for Admin Activity"],
+        ),
     ],
-
-    recommended_order=["t1578-005-aws-quota", "t1578-005-gcp-quota", "t1578-005-aws-ec2-limits", "t1578-005-gcp-compute-policy"],
+    recommended_order=[
+        "t1578-005-aws-quota",
+        "t1578-005-gcp-quota",
+        "t1578-005-aws-ec2-limits",
+        "t1578-005-gcp-compute-policy",
+    ],
     total_effort_hours=3.0,
-    coverage_improvement="+25% improvement for Defence Evasion tactic"
+    coverage_improvement="+25% improvement for Defence Evasion tactic",
 )

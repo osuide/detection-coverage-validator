@@ -47,7 +47,9 @@ async def list_accounts(
         # For members/viewers, filter by allowed accounts if set
         if auth.membership and auth.membership.allowed_account_ids:
             query = query.where(
-                CloudAccount.id.in_([UUID(aid) for aid in auth.membership.allowed_account_ids])
+                CloudAccount.id.in_(
+                    [UUID(aid) for aid in auth.membership.allowed_account_ids]
+                )
             )
 
     if is_active is not None:

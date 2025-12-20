@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Exfiltration Over Webhook",
     tactic_ids=["TA0010"],
     mitre_url="https://attack.mitre.org/techniques/T1567/004/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries exfiltrate data through webhook endpoints rather than primary command "
@@ -40,7 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Bypasses traditional C2 channel monitoring",
             "Webhook services rarely blocked by firewalls",
             "Enables automated exfiltration from SaaS applications",
-            "Popular platforms (Discord, Slack) provide easy setup"
+            "Popular platforms (Discord, Slack) provide easy setup",
         ],
         known_threat_actors=["Various threat actors"],
         recent_campaigns=[
@@ -48,14 +47,14 @@ TEMPLATE = RemediationTemplate(
                 name="Discord Webhook Exfiltration",
                 year=2024,
                 description="Adversaries leveraged Discord webhooks for automated credential and data exfiltration",
-                reference_url="https://attack.mitre.org/techniques/T1567/004/"
+                reference_url="https://attack.mitre.org/techniques/T1567/004/",
             ),
             Campaign(
                 name="Slack Webhook Data Theft",
                 year=2024,
                 description="Threat actors configured Slack webhooks to exfiltrate sensitive corporate data",
-                reference_url="https://attack.mitre.org/techniques/T1567/004/"
-            )
+                reference_url="https://attack.mitre.org/techniques/T1567/004/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -71,13 +70,12 @@ TEMPLATE = RemediationTemplate(
             "Intellectual property theft",
             "Regulatory fines and compliance violations",
             "Reputational damage and customer trust loss",
-            "Exposure of credentials and authentication tokens"
+            "Exposure of credentials and authentication tokens",
         ],
         typical_attack_phase="exfiltration",
         often_precedes=[],
-        often_follows=["T1530", "T1552.001", "T1114.003", "T1074"]
+        often_follows=["T1530", "T1552.001", "T1114.003", "T1074"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1567-004-aws-webhook",
@@ -87,14 +85,14 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query=r'''fields @timestamp, srcAddr, dstAddr, httpMethod, httpRequest.uri, userAgent, bytesTransferredOut
+                query=r"""fields @timestamp, srcAddr, dstAddr, httpMethod, httpRequest.uri, userAgent, bytesTransferredOut
 | filter httpMethod = "POST" or httpMethod = "PUT"
 | filter httpRequest.uri like /webhook/ or httpRequest.uri like /api\/webhooks/ or httpRequest.uri like /hooks/
 | filter dstAddr like /discord/ or dstAddr like /slack/ or dstAddr like /teams.microsoft/
 | stats sum(bytesTransferredOut) as total_bytes, count(*) as request_count by srcAddr, dstAddr, bin(1h)
 | filter total_bytes > 1048576 or request_count > 50
-| sort total_bytes desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort total_bytes desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Webhook exfiltration detection via VPC Flow Logs and CloudTrail
 
 Parameters:
@@ -135,8 +133,8 @@ Resources:
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Webhook exfiltration detection via VPC Flow Logs and CloudTrail
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Webhook exfiltration detection via VPC Flow Logs and CloudTrail
 
 variable "alert_email" { type = string }
 variable "vpc_flow_log_group" { type = string }
@@ -176,7 +174,7 @@ resource "aws_cloudwatch_metric_alarm" "webhook_exfil" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Webhook Exfiltration Activity Detected",
                 alert_description_template="Suspicious webhook POST requests from {srcAddr} to {dstAddr}: {request_count} requests, {total_bytes} bytes transferred.",
@@ -186,15 +184,15 @@ resource "aws_cloudwatch_metric_alarm" "webhook_exfil" {
                     "Examine the content and size of data being posted",
                     "Check for authorised integrations with collaboration platforms",
                     "Review user activity and process execution on source instance",
-                    "Correlate with other suspicious activities (data staging, credential access)"
+                    "Correlate with other suspicious activities (data staging, credential access)",
                 ],
                 containment_actions=[
                     "Block webhook URLs at network firewall or proxy",
                     "Isolate the source instance",
                     "Revoke API keys and webhook tokens",
                     "Review and restrict outbound HTTPS to collaboration platforms",
-                    "Disable unauthorised SaaS integrations"
-                ]
+                    "Disable unauthorised SaaS integrations",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised webhook integrations; exclude known monitoring and alerting platforms",
@@ -203,9 +201,11 @@ resource "aws_cloudwatch_metric_alarm" "webhook_exfil" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$15-30",
-            prerequisites=["VPC Flow Logs enabled", "DNS query logging for domain resolution"]
+            prerequisites=[
+                "VPC Flow Logs enabled",
+                "DNS query logging for domain resolution",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1567-004-aws-script",
             name="AWS Script Webhook POST Detection",
@@ -214,12 +214,12 @@ resource "aws_cloudwatch_metric_alarm" "webhook_exfil" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.arn, requestParameters.command, responseElements.instanceId
+                query="""fields @timestamp, eventName, userIdentity.arn, requestParameters.command, responseElements.instanceId
 | filter eventName = "SendCommand" or eventName = "RunInstances"
 | filter requestParameters.command like /curl.*webhook/ or requestParameters.command like /powershell.*Invoke-WebRequest/ or requestParameters.command like /python.*requests.post/
 | stats count(*) as command_count by userIdentity.arn, requestParameters.command, bin(1h)
-| sort command_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort command_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Script-based webhook exfiltration detection
 
 Parameters:
@@ -260,8 +260,8 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Script-based webhook exfiltration detection
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Script-based webhook exfiltration detection
 
 variable "alert_email" { type = string }
 variable "cloudtrail_log_group" { type = string }
@@ -301,7 +301,7 @@ resource "aws_cloudwatch_metric_alarm" "script_webhook" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Script-Based Webhook Exfiltration Detected",
                 alert_description_template="Suspicious script command detected: {requestParameters.command} executed by {userIdentity.arn}.",
@@ -311,15 +311,15 @@ resource "aws_cloudwatch_metric_alarm" "script_webhook" {
                     "Check for data staging activities before webhook POST",
                     "Examine recent login history for the user",
                     "Review other commands executed by the same identity",
-                    "Analyse the webhook URL and destination platform"
+                    "Analyse the webhook URL and destination platform",
                 ],
                 containment_actions=[
                     "Revoke credentials for the executing identity",
                     "Block the webhook URL at network level",
                     "Isolate affected instances",
                     "Review and restrict Systems Manager permissions",
-                    "Enable session logging for command execution"
-                ]
+                    "Enable session logging for command execution",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised automation scripts; exclude approved CI/CD workflows",
@@ -328,9 +328,8 @@ resource "aws_cloudwatch_metric_alarm" "script_webhook" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-20",
-            prerequisites=["CloudTrail enabled with Systems Manager events"]
+            prerequisites=["CloudTrail enabled with Systems Manager events"],
         ),
-
         DetectionStrategy(
             strategy_id="t1567-004-aws-saas",
             name="AWS SaaS Webhook Configuration Monitoring",
@@ -339,12 +338,12 @@ resource "aws_cloudwatch_metric_alarm" "script_webhook" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.arn, requestParameters.webhookUrl, sourceIPAddress
+                query="""fields @timestamp, eventName, userIdentity.arn, requestParameters.webhookUrl, sourceIPAddress
 | filter eventName in ["CreateWebhook", "UpdateWebhook", "PutWebhookConfiguration", "SetWebhook"]
 | filter requestParameters.webhookUrl not like /your-approved-domain.com/
 | stats count(*) as config_count by userIdentity.arn, requestParameters.webhookUrl, sourceIPAddress
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: SaaS webhook configuration monitoring
 
 Parameters:
@@ -385,8 +384,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# SaaS webhook configuration monitoring
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# SaaS webhook configuration monitoring
 
 variable "alert_email" { type = string }
 variable "cloudtrail_log_group" { type = string }
@@ -426,7 +425,7 @@ resource "aws_cloudwatch_metric_alarm" "webhook_config" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Unauthorised Webhook Configuration Detected",
                 alert_description_template="Webhook configuration change by {userIdentity.arn} pointing to {requestParameters.webhookUrl} from {sourceIPAddress}.",
@@ -436,15 +435,15 @@ resource "aws_cloudwatch_metric_alarm" "webhook_config" {
                     "Review the user's recent activity and permissions",
                     "Identify what data the webhook will receive",
                     "Check for other suspicious configuration changes",
-                    "Review SaaS application audit logs"
+                    "Review SaaS application audit logs",
                 ],
                 containment_actions=[
                     "Remove unauthorised webhook configurations",
                     "Revoke user access to SaaS application",
                     "Block webhook destination at network level",
                     "Review and restrict webhook configuration permissions",
-                    "Enable approval workflow for integration changes"
-                ]
+                    "Enable approval workflow for integration changes",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist approved webhook domains; implement change request validation",
@@ -453,9 +452,11 @@ resource "aws_cloudwatch_metric_alarm" "webhook_config" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-15",
-            prerequisites=["CloudTrail enabled for SaaS API calls", "SaaS application API logging"]
+            prerequisites=[
+                "CloudTrail enabled for SaaS API calls",
+                "SaaS application API logging",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1567-004-gcp-webhook",
             name="GCP Webhook POST Detection",
@@ -465,11 +466,11 @@ resource "aws_cloudwatch_metric_alarm" "webhook_config" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 httpRequest.requestMethod="POST"
 (httpRequest.requestUrl=~"webhook" OR httpRequest.requestUrl=~"discord.com/api/webhooks" OR httpRequest.requestUrl=~"hooks.slack.com")
-httpRequest.requestSize > 1000000''',
-                gcp_terraform_template='''# GCP: Webhook exfiltration detection
+httpRequest.requestSize > 1000000""",
+                gcp_terraform_template="""# GCP: Webhook exfiltration detection
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -512,7 +513,7 @@ resource "google_monitoring_alert_policy" "webhook_exfil" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Webhook Exfiltration Activity Detected",
                 alert_description_template="Suspicious webhook POST requests detected from GCP instance.",
@@ -522,15 +523,15 @@ resource "google_monitoring_alert_policy" "webhook_exfil" {
                     "Examine the data being posted to webhooks",
                     "Check for authorised integrations",
                     "Review user and service account activity",
-                    "Correlate with other suspicious activities"
+                    "Correlate with other suspicious activities",
                 ],
                 containment_actions=[
                     "Block webhook URLs via Cloud Armor or firewall",
                     "Isolate the source instance",
                     "Revoke webhook tokens and API keys",
                     "Review and restrict egress firewall rules",
-                    "Disable unauthorised SaaS integrations"
-                ]
+                    "Disable unauthorised SaaS integrations",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised webhook integrations and monitoring services",
@@ -539,9 +540,8 @@ resource "google_monitoring_alert_policy" "webhook_exfil" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$15-25",
-            prerequisites=["VPC Flow Logs enabled", "HTTP request logging enabled"]
+            prerequisites=["VPC Flow Logs enabled", "HTTP request logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1567-004-gcp-script",
             name="GCP Script Webhook Detection",
@@ -551,10 +551,10 @@ resource "google_monitoring_alert_policy" "webhook_exfil" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 protoPayload.methodName="v1.compute.instances.start"
-(textPayload=~"curl.*webhook" OR textPayload=~"python.*requests.post" OR textPayload=~"wget.*POST")''',
-                gcp_terraform_template='''# GCP: Script-based webhook detection
+(textPayload=~"curl.*webhook" OR textPayload=~"python.*requests.post" OR textPayload=~"wget.*POST")""",
+                gcp_terraform_template="""# GCP: Script-based webhook detection
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -595,7 +595,7 @@ resource "google_monitoring_alert_policy" "script_webhook" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Script-Based Webhook Exfiltration",
                 alert_description_template="Suspicious script webhook command detected on GCP instance.",
@@ -605,15 +605,15 @@ resource "google_monitoring_alert_policy" "script_webhook" {
                     "Check for data staging before webhook POST",
                     "Examine recent instance activity",
                     "Analyse webhook destination",
-                    "Review startup scripts and metadata"
+                    "Review startup scripts and metadata",
                 ],
                 containment_actions=[
                     "Revoke service account credentials",
                     "Block webhook URLs at network level",
                     "Isolate the instance",
                     "Review IAM permissions",
-                    "Enable OS Login for audit trail"
-                ]
+                    "Enable OS Login for audit trail",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Exclude authorised automation scripts and CI/CD workflows",
@@ -622,17 +622,19 @@ resource "google_monitoring_alert_policy" "script_webhook" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Logging enabled for compute instances", "OS-level logging enabled"]
-        )
+            prerequisites=[
+                "Cloud Logging enabled for compute instances",
+                "OS-level logging enabled",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1567-004-aws-script",
         "t1567-004-gcp-script",
         "t1567-004-aws-webhook",
         "t1567-004-gcp-webhook",
-        "t1567-004-aws-saas"
+        "t1567-004-aws-saas",
     ],
     total_effort_hours=8.0,
-    coverage_improvement="+15% improvement for Exfiltration tactic"
+    coverage_improvement="+15% improvement for Exfiltration tactic",
 )

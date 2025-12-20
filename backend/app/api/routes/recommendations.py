@@ -21,6 +21,7 @@ router = APIRouter()
 # Pydantic models for API responses
 class TechniqueInfo(BaseModel):
     """Summary info for a technique with remediation template."""
+
     technique_id: str
     technique_name: str
     tactic_ids: List[str]
@@ -32,6 +33,7 @@ class TechniqueInfo(BaseModel):
 
 class StrategySummary(BaseModel):
     """Summary of a detection strategy."""
+
     strategy_id: str
     name: str
     detection_type: str
@@ -45,6 +47,7 @@ class StrategySummary(BaseModel):
 
 class TechniqueRemediationResponse(BaseModel):
     """Full remediation response for a technique."""
+
     technique_id: str
     technique_name: str
     mitre_url: str
@@ -66,6 +69,7 @@ class TechniqueRemediationResponse(BaseModel):
 
 class StrategyDetailResponse(BaseModel):
     """Detailed strategy implementation response."""
+
     strategy_id: str
     name: str
     description: str
@@ -93,6 +97,7 @@ class StrategyDetailResponse(BaseModel):
 
 class QuickWin(BaseModel):
     """Quick win detection strategy."""
+
     technique_id: str
     technique_name: str
     strategy_id: str
@@ -107,6 +112,7 @@ class QuickWin(BaseModel):
 
 class ImplementationPhase(BaseModel):
     """Phase of an implementation plan."""
+
     phase_number: int
     estimated_hours: float
     strategies: List[dict]
@@ -114,6 +120,7 @@ class ImplementationPhase(BaseModel):
 
 class ImplementationPlanResponse(BaseModel):
     """Implementation plan response."""
+
     total_techniques: int
     techniques_with_templates: int
     total_phases: int
@@ -144,7 +151,7 @@ async def get_technique_remediation(technique_id: str):
     if not remediation:
         raise HTTPException(
             status_code=404,
-            detail=f"No remediation template found for technique {technique_id}"
+            detail=f"No remediation template found for technique {technique_id}",
         )
 
     # Convert dataclass to response model
@@ -158,7 +165,7 @@ async def get_technique_remediation(technique_id: str):
             estimated_time=s.estimated_time,
             estimated_monthly_cost=s.estimated_monthly_cost,
             detection_coverage=s.detection_coverage,
-            false_positive_rate=s.false_positive_rate
+            false_positive_rate=s.false_positive_rate,
         )
         for s in remediation.strategies
     ]
@@ -180,13 +187,13 @@ async def get_technique_remediation(technique_id: str):
         recommended_order=remediation.recommended_order,
         total_effort_hours=remediation.total_effort_hours,
         coverage_improvement=remediation.coverage_improvement,
-        strategies=strategies
+        strategies=strategies,
     )
 
 
 @router.get(
     "/techniques/{technique_id}/strategies/{strategy_id}",
-    response_model=StrategyDetailResponse
+    response_model=StrategyDetailResponse,
 )
 async def get_strategy_details(technique_id: str, strategy_id: str):
     """
@@ -199,7 +206,7 @@ async def get_strategy_details(technique_id: str, strategy_id: str):
     if not details:
         raise HTTPException(
             status_code=404,
-            detail=f"Strategy {strategy_id} not found for technique {technique_id}"
+            detail=f"Strategy {strategy_id} not found for technique {technique_id}",
         )
 
     return StrategyDetailResponse(
@@ -225,7 +232,7 @@ async def get_strategy_details(technique_id: str, strategy_id: str):
         implementation_effort=details.implementation_effort,
         implementation_time=details.implementation_time,
         estimated_monthly_cost=details.estimated_monthly_cost,
-        prerequisites=details.prerequisites
+        prerequisites=details.prerequisites,
     )
 
 
@@ -270,11 +277,12 @@ async def get_quick_wins(
         return []
 
     # Extract technique IDs from gaps
-    technique_ids = [gap.get("technique_id") for gap in snapshot.top_gaps if gap.get("technique_id")]
+    technique_ids = [
+        gap.get("technique_id") for gap in snapshot.top_gaps if gap.get("technique_id")
+    ]
 
     quick_wins = remediation_service.get_quick_wins(
-        technique_ids=technique_ids,
-        max_effort_hours=max_hours
+        technique_ids=technique_ids, max_effort_hours=max_hours
     )
 
     return [QuickWin(**qw) for qw in quick_wins[:limit]]
@@ -283,7 +291,9 @@ async def get_quick_wins(
 @router.get("/{cloud_account_id}/plan", response_model=ImplementationPlanResponse)
 async def get_implementation_plan(
     cloud_account_id: UUID,
-    budget_hours: Optional[float] = Query(None, description="Optional time budget constraint"),
+    budget_hours: Optional[float] = Query(
+        None, description="Optional time budget constraint"
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -313,22 +323,23 @@ async def get_implementation_plan(
             techniques_with_templates=0,
             total_phases=0,
             total_estimated_hours=0,
-            phases=[]
+            phases=[],
         )
 
     # Extract technique IDs from gaps
-    technique_ids = [gap.get("technique_id") for gap in snapshot.top_gaps if gap.get("technique_id")]
+    technique_ids = [
+        gap.get("technique_id") for gap in snapshot.top_gaps if gap.get("technique_id")
+    ]
 
     plan = remediation_service.generate_implementation_plan(
-        technique_ids=technique_ids,
-        budget_hours=budget_hours
+        technique_ids=technique_ids, budget_hours=budget_hours
     )
 
     phases = [
         ImplementationPhase(
             phase_number=p["phase_number"],
             estimated_hours=p["estimated_hours"],
-            strategies=p["strategies"]
+            strategies=p["strategies"],
         )
         for p in plan["phases"]
     ]
@@ -338,5 +349,5 @@ async def get_implementation_plan(
         techniques_with_templates=plan["techniques_with_templates"],
         total_phases=plan["total_phases"],
         total_estimated_hours=plan["total_estimated_hours"],
-        phases=phases
+        phases=phases,
     )

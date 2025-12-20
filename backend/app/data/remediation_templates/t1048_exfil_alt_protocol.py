@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Exfiltration Over Alternative Protocol",
     tactic_ids=["TA0010"],
     mitre_url="https://attack.mitre.org/techniques/T1048/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries exfiltrate data over protocols different from the main command "
@@ -36,7 +35,7 @@ TEMPLATE = RemediationTemplate(
             "Blends with legitimate protocol usage",
             "Multiple protocol options provide flexibility",
             "DNS and SMTP rarely blocked outbound",
-            "Encrypted protocols hide data content"
+            "Encrypted protocols hide data content",
         ],
         known_threat_actors=["Play (G1040)", "TeamTNT (G0139)", "FIN6", "OilRig"],
         recent_campaigns=[
@@ -44,20 +43,20 @@ TEMPLATE = RemediationTemplate(
                 name="Play WinSCP Exfiltration",
                 year=2024,
                 description="Play group used WinSCP for data exfiltration to attacker-controlled accounts",
-                reference_url="https://attack.mitre.org/groups/G1040/"
+                reference_url="https://attack.mitre.org/groups/G1040/",
             ),
             Campaign(
                 name="TeamTNT cURL Transfer",
                 year=2023,
                 description="Staged files with collected credentials sent to C2 servers using cURL",
-                reference_url="https://attack.mitre.org/groups/G0139/"
+                reference_url="https://attack.mitre.org/groups/G0139/",
             ),
             Campaign(
                 name="FIN6 DNS Tunnelling",
                 year=2023,
                 description="FrameworkPOS malware leveraged DNS tunnelling for credit card data theft",
-                reference_url="https://attack.mitre.org/groups/G0037/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0037/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -73,13 +72,12 @@ TEMPLATE = RemediationTemplate(
             "Intellectual property theft",
             "Regulatory fines and compliance violations",
             "Reputational damage and customer trust loss",
-            "Operational disruption from incident response"
+            "Operational disruption from incident response",
         ],
         typical_attack_phase="exfiltration",
         often_precedes=[],
-        often_follows=["T1530", "T1552.001", "T1005", "T1074"]
+        often_follows=["T1530", "T1552.001", "T1005", "T1074"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1048-aws-dns",
@@ -89,13 +87,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, query_name, query_type, srcaddr, rcode
+                query="""fields @timestamp, query_name, query_type, srcaddr, rcode
 | filter query_type = "TXT" or length(query_name) > 50
 | stats count(*) as query_count, avg(length(query_name)) as avg_length,
         count_distinct(query_name) as unique_queries by srcaddr, bin(5m)
 | filter query_count > 100 or avg_length > 40
-| sort query_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort query_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: DNS tunnelling detection via Route 53 query logging
 
 Parameters:
@@ -147,8 +145,8 @@ Resources:
       Threshold: 100
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# DNS tunnelling detection via Route 53 query logging
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# DNS tunnelling detection via Route 53 query logging
 
 variable "alert_email" { type = string }
 variable "vpc_id" { type = string }
@@ -197,7 +195,7 @@ resource "aws_cloudwatch_metric_alarm" "dns_tunnel" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="DNS Tunnelling Activity Detected",
                 alert_description_template="Suspicious DNS query patterns from {srcaddr}: {query_count} queries with average length {avg_length}.",
@@ -206,14 +204,14 @@ resource "aws_cloudwatch_metric_alarm" "dns_tunnel" {
                     "Review query patterns and domain names",
                     "Check for encoded or encrypted data in queries",
                     "Examine timing patterns (steady stream vs bursts)",
-                    "Correlate with other network activity"
+                    "Correlate with other network activity",
                 ],
                 containment_actions=[
                     "Isolate the source instance",
                     "Block suspicious DNS queries at resolver level",
                     "Review and restrict DNS resolver configuration",
-                    "Implement DNS firewall rules"
-                ]
+                    "Implement DNS firewall rules",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude legitimate long query names (e.g., DMARC records); adjust length threshold",
@@ -222,9 +220,8 @@ resource "aws_cloudwatch_metric_alarm" "dns_tunnel" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$15-30",
-            prerequisites=["Route 53 resolver in use", "VPC DNS logging enabled"]
+            prerequisites=["Route 53 resolver in use", "VPC DNS logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1048-aws-ftp",
             name="AWS FTP/SFTP Transfer Detection",
@@ -233,12 +230,12 @@ resource "aws_cloudwatch_metric_alarm" "dns_tunnel" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcAddr, dstAddr, dstPort, bytes, action
+                query="""fields @timestamp, srcAddr, dstAddr, dstPort, bytes, action
 | filter dstPort in [20, 21, 22, 989, 990] and action = "ACCEPT"
 | stats sum(bytes) as total_bytes by srcAddr, dstAddr, dstPort, bin(1h)
 | filter total_bytes > 10485760
-| sort total_bytes desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort total_bytes desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: FTP/SFTP transfer monitoring via VPC Flow Logs
 
 Parameters:
@@ -280,8 +277,8 @@ Resources:
       Threshold: 104857600
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# FTP/SFTP transfer monitoring via VPC Flow Logs
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# FTP/SFTP transfer monitoring via VPC Flow Logs
 
 variable "alert_email" { type = string }
 variable "vpc_flow_log_group" { type = string }
@@ -322,7 +319,7 @@ resource "aws_cloudwatch_metric_alarm" "ftp_transfer" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Large FTP/SFTP Transfer Detected",
                 alert_description_template="Large file transfer detected from {srcAddr} to {dstAddr}:{dstPort} - {total_bytes} bytes transferred.",
@@ -331,14 +328,14 @@ resource "aws_cloudwatch_metric_alarm" "ftp_transfer" {
                     "Determine if transfer was authorised",
                     "Review transferred files if possible",
                     "Check for scheduled backup or legitimate file transfers",
-                    "Examine user activity on source system"
+                    "Examine user activity on source system",
                 ],
                 containment_actions=[
                     "Block FTP/SFTP traffic at security group",
                     "Isolate source instance",
                     "Review and restrict outbound network rules",
-                    "Disable FTP/SFTP services if not required"
-                ]
+                    "Disable FTP/SFTP services if not required",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known file transfer servers; exclude scheduled backups",
@@ -347,9 +344,8 @@ resource "aws_cloudwatch_metric_alarm" "ftp_transfer" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-20",
-            prerequisites=["VPC Flow Logs enabled"]
+            prerequisites=["VPC Flow Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1048-aws-smtp",
             name="AWS Unusual SMTP Activity Detection",
@@ -358,12 +354,12 @@ resource "aws_cloudwatch_metric_alarm" "ftp_transfer" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcAddr, dstAddr, bytes, packets
+                query="""fields @timestamp, srcAddr, dstAddr, bytes, packets
 | filter dstPort in [25, 465, 587] and action = "ACCEPT"
 | stats sum(bytes) as total_bytes, count(*) as connections by srcAddr, bin(1h)
 | filter total_bytes > 52428800 or connections > 100
-| sort total_bytes desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort total_bytes desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Unusual SMTP activity detection
 
 Parameters:
@@ -404,8 +400,8 @@ Resources:
       Threshold: 100
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Unusual SMTP activity detection
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Unusual SMTP activity detection
 
 variable "alert_email" { type = string }
 variable "vpc_flow_log_group" { type = string }
@@ -445,7 +441,7 @@ resource "aws_cloudwatch_metric_alarm" "smtp" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Unusual SMTP Activity Detected",
                 alert_description_template="Unusual SMTP traffic from {srcAddr}: {connections} connections, {total_bytes} bytes transferred.",
@@ -454,14 +450,14 @@ resource "aws_cloudwatch_metric_alarm" "smtp" {
                     "Review email sending patterns",
                     "Check for compromised mail services",
                     "Examine email content if accessible",
-                    "Verify against legitimate bulk email operations"
+                    "Verify against legitimate bulk email operations",
                 ],
                 containment_actions=[
                     "Block SMTP traffic from source",
                     "Disable mail relay if compromised",
                     "Review and restrict SMTP access",
-                    "Implement SMTP authentication requirements"
-                ]
+                    "Implement SMTP authentication requirements",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist mail servers and SES; adjust thresholds for legitimate email volume",
@@ -470,9 +466,8 @@ resource "aws_cloudwatch_metric_alarm" "smtp" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-20",
-            prerequisites=["VPC Flow Logs enabled"]
+            prerequisites=["VPC Flow Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1048-gcp-dns",
             name="GCP DNS Tunnelling Detection",
@@ -482,11 +477,11 @@ resource "aws_cloudwatch_metric_alarm" "smtp" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="dns_query"
+                gcp_logging_query="""resource.type="dns_query"
 (queryName=~".{50,}" OR queryType="TXT")
 | stats count() as query_count, avg(len(queryName)) as avg_length by sourceIP
-| query_count > 100 OR avg_length > 40''',
-                gcp_terraform_template='''# GCP: DNS tunnelling detection
+| query_count > 100 OR avg_length > 40""",
+                gcp_terraform_template="""# GCP: DNS tunnelling detection
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -535,7 +530,7 @@ resource "google_monitoring_alert_policy" "dns_tunnel" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: DNS Tunnelling Activity Detected",
                 alert_description_template="Suspicious DNS query patterns detected: {query_count} queries with average length {avg_length}.",
@@ -544,14 +539,14 @@ resource "google_monitoring_alert_policy" "dns_tunnel" {
                     "Review DNS query logs for patterns",
                     "Check for encoded data in query names",
                     "Examine destination DNS servers",
-                    "Correlate with network flow logs"
+                    "Correlate with network flow logs",
                 ],
                 containment_actions=[
                     "Isolate the source instance",
                     "Restrict DNS resolver access",
                     "Block suspicious domains at Cloud DNS",
-                    "Review and update VPC firewall rules"
-                ]
+                    "Review and update VPC firewall rules",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude legitimate services with long DNS names; tune length threshold",
@@ -560,9 +555,8 @@ resource "google_monitoring_alert_policy" "dns_tunnel" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$15-25",
-            prerequisites=["Cloud DNS logging enabled", "VPC Flow Logs enabled"]
+            prerequisites=["Cloud DNS logging enabled", "VPC Flow Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1048-gcp-protocol",
             name="GCP Alternative Protocol Detection",
@@ -572,10 +566,10 @@ resource "google_monitoring_alert_policy" "dns_tunnel" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_subnetwork"
+                gcp_logging_query="""resource.type="gce_subnetwork"
 jsonPayload.connection.dest_port:(20 OR 21 OR 22 OR 25 OR 465 OR 587 OR 989 OR 990)
-jsonPayload.bytes_sent > 10485760''',
-                gcp_terraform_template='''# GCP: Alternative protocol detection
+jsonPayload.bytes_sent > 10485760""",
+                gcp_terraform_template="""# GCP: Alternative protocol detection
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -623,7 +617,7 @@ resource "google_monitoring_alert_policy" "alt_protocol" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Alternative Protocol Transfer Detected",
                 alert_description_template="Large data transfer detected using alternative protocol.",
@@ -632,14 +626,14 @@ resource "google_monitoring_alert_policy" "alt_protocol" {
                     "Review protocol usage patterns",
                     "Verify business justification for transfer",
                     "Check for authorised file transfers",
-                    "Examine user activity on source instance"
+                    "Examine user activity on source instance",
                 ],
                 containment_actions=[
                     "Block suspicious traffic via firewall rules",
                     "Isolate source instance",
                     "Review and restrict network egress",
-                    "Disable unnecessary services"
-                ]
+                    "Disable unnecessary services",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known transfer servers and scheduled jobs",
@@ -648,17 +642,16 @@ resource "google_monitoring_alert_policy" "alt_protocol" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["VPC Flow Logs enabled on subnets"]
-        )
+            prerequisites=["VPC Flow Logs enabled on subnets"],
+        ),
     ],
-
     recommended_order=[
         "t1048-aws-dns",
         "t1048-gcp-dns",
         "t1048-aws-ftp",
         "t1048-aws-smtp",
-        "t1048-gcp-protocol"
+        "t1048-gcp-protocol",
     ],
     total_effort_hours=8.0,
-    coverage_improvement="+20% improvement for Exfiltration tactic"
+    coverage_improvement="+20% improvement for Exfiltration tactic",
 )

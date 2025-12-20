@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Remote Services",
     tactic_ids=["TA0008"],  # Lateral Movement
     mitre_url="https://attack.mitre.org/techniques/T1021/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries exploit valid accounts to access remote services including SSH, RDP, "
@@ -39,28 +38,34 @@ TEMPLATE = RemediationTemplate(
             "Difficult to distinguish from normal admin activity",
             "Multiple protocols provide redundancy",
             "Enables rapid lateral movement",
-            "Cloud services provide cross-environment access"
+            "Cloud services provide cross-environment access",
         ],
-        known_threat_actors=["Aquatic Panda", "Ember Bear", "Wizard Spider", "APT29", "Scattered Spider"],
+        known_threat_actors=[
+            "Aquatic Panda",
+            "Ember Bear",
+            "Wizard Spider",
+            "APT29",
+            "Scattered Spider",
+        ],
         recent_campaigns=[
             Campaign(
                 name="Aquatic Panda Remote Scheduled Tasks",
                 year=2024,
                 description="Deployed malicious software via remote scheduled tasks using valid credentials",
-                reference_url="https://attack.mitre.org/groups/G0143/"
+                reference_url="https://attack.mitre.org/groups/G0143/",
             ),
             Campaign(
                 name="Ember Bear Impacket Lateral Movement",
                 year=2024,
                 description="Harvested credentials to move laterally using the Impacket framework via SMB and WMI",
-                reference_url="https://attack.mitre.org/groups/G1003/"
+                reference_url="https://attack.mitre.org/groups/G1003/",
             ),
             Campaign(
                 name="Wizard Spider Ryuk Deployment",
                 year=2023,
                 description="Executed Ryuk ransomware payloads through WebDAV protocol on network shares",
-                reference_url="https://attack.mitre.org/groups/G0102/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0102/",
+            ),
         ],
         prevalence="common",
         trend="stable",
@@ -76,13 +81,12 @@ TEMPLATE = RemediationTemplate(
             "Data exfiltration from sensitive systems",
             "Privilege escalation opportunities",
             "Extended attacker dwell time",
-            "Compliance violations (PCI-DSS, ISO 27001)"
+            "Compliance violations (PCI-DSS, ISO 27001)",
         ],
         typical_attack_phase="lateral_movement",
         often_precedes=["T1486", "T1485", "T1530", "T1078.004"],
-        often_follows=["T1078", "T1110", "T1003"]
+        often_follows=["T1078", "T1110", "T1003"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1021-aws-ssm-unusual",
@@ -92,13 +96,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn, sourceIPAddress, requestParameters.target
+                query="""fields @timestamp, userIdentity.arn, sourceIPAddress, requestParameters.target
 | filter eventSource = "ssm.amazonaws.com"
 | filter eventName in ["StartSession", "ResumeSession", "TerminateSession"]
 | stats count(*) as session_count by userIdentity.arn, requestParameters.target, bin(1h)
 | filter session_count > 3
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect unusual SSM session activity for lateral movement
 
 Parameters:
@@ -140,8 +144,8 @@ Resources:
       Threshold: 10
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect unusual SSM session activity
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect unusual SSM session activity
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -180,7 +184,7 @@ resource "aws_cloudwatch_metric_alarm" "ssm_lateral" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Unusual SSM Session Activity Detected",
                 alert_description_template="Multiple SSM sessions initiated by {userIdentity.arn} to instances.",
@@ -190,7 +194,7 @@ resource "aws_cloudwatch_metric_alarm" "ssm_lateral" {
                     "Review session timing and frequency patterns",
                     "Check for subsequent suspicious API calls",
                     "Review CloudTrail for associated events",
-                    "Examine session command history if available"
+                    "Examine session command history if available",
                 ],
                 containment_actions=[
                     "Terminate active suspicious SSM sessions",
@@ -198,8 +202,8 @@ resource "aws_cloudwatch_metric_alarm" "ssm_lateral" {
                     "Review and restrict SSM access policies",
                     "Enable session logging to S3",
                     "Review affected instances for compromise",
-                    "Implement least-privilege access controls"
-                ]
+                    "Implement least-privilege access controls",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal SSM session patterns per administrator. Filter automated deployment sessions.",
@@ -208,9 +212,8 @@ resource "aws_cloudwatch_metric_alarm" "ssm_lateral" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["CloudTrail enabled", "SSM Session Manager enabled"]
+            prerequisites=["CloudTrail enabled", "SSM Session Manager enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1021-aws-ec2-remote-access",
             name="AWS EC2 Instance Remote Access Detection",
@@ -219,13 +222,13 @@ resource "aws_cloudwatch_metric_alarm" "ssm_lateral" {
             aws_service="vpc_flow_logs",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcaddr, dstaddr, srcport, dstport, action
+                query="""fields @timestamp, srcaddr, dstaddr, srcport, dstport, action
 | filter dstport in [22, 3389, 5985, 5986, 445]
 | filter action = "ACCEPT"
 | stats count(*) as connection_count by srcaddr, dstaddr, dstport, bin(5m)
 | filter connection_count > 2
-| sort connection_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort connection_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect lateral movement via remote protocols
 
 Parameters:
@@ -264,8 +267,8 @@ Resources:
       Threshold: 20
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect lateral movement via remote protocols
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect lateral movement via remote protocols
 
 variable "vpc_flow_logs_group" { type = string }
 variable "alert_email" { type = string }
@@ -302,7 +305,7 @@ resource "aws_cloudwatch_metric_alarm" "lateral_movement" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Internal Lateral Movement Detected",
                 alert_description_template="Multiple remote protocol connections from {srcaddr} to {dstaddr} on port {dstport}.",
@@ -312,7 +315,7 @@ resource "aws_cloudwatch_metric_alarm" "lateral_movement" {
                     "Check for unusual processes or connections",
                     "Review security group rules",
                     "Check for credential access attempts",
-                    "Examine command execution history"
+                    "Examine command execution history",
                 ],
                 containment_actions=[
                     "Isolate suspicious instances",
@@ -320,8 +323,8 @@ resource "aws_cloudwatch_metric_alarm" "lateral_movement" {
                     "Rotate credentials on affected systems",
                     "Review and tighten security group rules",
                     "Enable enhanced monitoring",
-                    "Check for persistence mechanisms"
-                ]
+                    "Check for persistence mechanisms",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal administrative patterns. Allowlist legitimate management servers.",
@@ -330,9 +333,8 @@ resource "aws_cloudwatch_metric_alarm" "lateral_movement" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-15",
-            prerequisites=["VPC Flow Logs enabled and sent to CloudWatch"]
+            prerequisites=["VPC Flow Logs enabled and sent to CloudWatch"],
         ),
-
         DetectionStrategy(
             strategy_id="t1021-aws-ecs-exec",
             name="AWS ECS Exec Session Detection",
@@ -344,11 +346,9 @@ resource "aws_cloudwatch_metric_alarm" "lateral_movement" {
                 event_pattern={
                     "source": ["aws.ecs"],
                     "detail-type": ["AWS API Call via CloudTrail"],
-                    "detail": {
-                        "eventName": ["ExecuteCommand"]
-                    }
+                    "detail": {"eventName": ["ExecuteCommand"]},
                 },
-                terraform_template='''# Detect ECS Exec usage for lateral movement
+                terraform_template="""# Detect ECS Exec usage for lateral movement
 
 variable "alert_email" { type = string }
 
@@ -392,7 +392,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="ECS Exec Command Execution",
                 alert_description_template="ECS Exec command executed by {userIdentity.arn} on task {requestParameters.task}.",
@@ -402,7 +402,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Review executed commands if logging enabled",
                     "Check for unusual timing or frequency",
                     "Review container image for compromise",
-                    "Check for subsequent suspicious activities"
+                    "Check for subsequent suspicious activities",
                 ],
                 containment_actions=[
                     "Disable ECS Exec if not required",
@@ -410,8 +410,8 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Stop suspicious tasks",
                     "Review task definitions",
                     "Enable container insights logging",
-                    "Implement least-privilege policies"
-                ]
+                    "Implement least-privilege policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Filter known debugging sessions. Baseline normal operational patterns.",
@@ -420,9 +420,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled", "ECS Exec enabled on tasks"]
+            prerequisites=["CloudTrail enabled", "ECS Exec enabled on tasks"],
         ),
-
         DetectionStrategy(
             strategy_id="t1021-gcp-ssh-lateral",
             name="GCP SSH Lateral Movement Detection",
@@ -432,12 +431,12 @@ resource "aws_sns_topic_policy" "allow_events" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 protoPayload.methodName=~"compute.instances.osLogin"
 OR (resource.type="gce_subnetwork"
     jsonPayload.connection.dest_port=22
-    jsonPayload.connection.src_ip=~"10\\..*|172\\..*|192\\.168\\..*")''',
-                gcp_terraform_template='''# GCP: Detect SSH-based lateral movement
+    jsonPayload.connection.src_ip=~"10\\..*|172\\..*|192\\.168\\..*")""",
+                gcp_terraform_template="""# GCP: Detect SSH-based lateral movement
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -476,7 +475,7 @@ resource "google_monitoring_alert_policy" "ssh_lateral" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: SSH Lateral Movement Detected",
                 alert_description_template="Internal SSH connections detected between GCP instances.",
@@ -486,7 +485,7 @@ resource "google_monitoring_alert_policy" "ssh_lateral" {
                     "Review SSH key usage",
                     "Check for unusual timing patterns",
                     "Review executed commands if available",
-                    "Check for privilege escalation attempts"
+                    "Check for privilege escalation attempts",
                 ],
                 containment_actions=[
                     "Remove unauthorised SSH keys",
@@ -494,8 +493,8 @@ resource "google_monitoring_alert_policy" "ssh_lateral" {
                     "Restrict firewall rules",
                     "Enable OS Login with 2FA",
                     "Review instance metadata",
-                    "Implement bastion host architecture"
-                ]
+                    "Implement bastion host architecture",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal SSH patterns. Filter automation and orchestration tools.",
@@ -504,9 +503,8 @@ resource "google_monitoring_alert_policy" "ssh_lateral" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["VPC Flow Logs enabled", "Cloud Audit Logs enabled"]
+            prerequisites=["VPC Flow Logs enabled", "Cloud Audit Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1021-gcp-gke-exec",
             name="GCP GKE Container Exec Detection",
@@ -519,7 +517,7 @@ resource "google_monitoring_alert_policy" "ssh_lateral" {
                 gcp_logging_query='''resource.type="k8s_cluster"
 protoPayload.methodName="io.k8s.core.v1.pods.exec.create"
 OR protoPayload.methodName="io.k8s.core.v1.pods.portforward.create"''',
-                gcp_terraform_template='''# GCP: Detect GKE container access
+                gcp_terraform_template="""# GCP: Detect GKE container access
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -556,7 +554,7 @@ resource "google_monitoring_alert_policy" "gke_exec" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: GKE Container Access Detected",
                 alert_description_template="Container exec or port-forward operation detected in GKE cluster.",
@@ -566,7 +564,7 @@ resource "google_monitoring_alert_policy" "gke_exec" {
                     "Review executed commands if audit policy enabled",
                     "Check for unusual timing or frequency",
                     "Review RBAC permissions",
-                    "Check for subsequent suspicious activities"
+                    "Check for subsequent suspicious activities",
                 ],
                 containment_actions=[
                     "Review and restrict RBAC permissions",
@@ -574,8 +572,8 @@ resource "google_monitoring_alert_policy" "gke_exec" {
                     "Implement Pod Security Standards",
                     "Enable GKE audit logging",
                     "Review service account permissions",
-                    "Implement network policies"
-                ]
+                    "Implement network policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal debugging and operational access patterns. Filter CI/CD systems.",
@@ -584,17 +582,16 @@ resource "google_monitoring_alert_policy" "gke_exec" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-15",
-            prerequisites=["GKE cluster with audit logging enabled"]
-        )
+            prerequisites=["GKE cluster with audit logging enabled"],
+        ),
     ],
-
     recommended_order=[
-        "t1021-aws-ec2-remote-access",    # Broad coverage of lateral movement
-        "t1021-aws-ssm-unusual",          # AWS-specific detection
-        "t1021-gcp-ssh-lateral",          # GCP lateral movement
-        "t1021-aws-ecs-exec",             # Container-specific
-        "t1021-gcp-gke-exec"              # GKE-specific
+        "t1021-aws-ec2-remote-access",  # Broad coverage of lateral movement
+        "t1021-aws-ssm-unusual",  # AWS-specific detection
+        "t1021-gcp-ssh-lateral",  # GCP lateral movement
+        "t1021-aws-ecs-exec",  # Container-specific
+        "t1021-gcp-gke-exec",  # GKE-specific
     ],
     total_effort_hours=6.5,
-    coverage_improvement="+20% improvement for Lateral Movement tactic"
+    coverage_improvement="+20% improvement for Lateral Movement tactic",
 )

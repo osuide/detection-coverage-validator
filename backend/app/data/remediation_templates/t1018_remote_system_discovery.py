@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Remote System Discovery",
     tactic_ids=["TA0007"],  # Discovery
     mitre_url="https://attack.mitre.org/techniques/T1018/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries attempt to identify other systems on a network to map the environment "
@@ -40,28 +39,44 @@ TEMPLATE = RemediationTemplate(
             "Discovers domain controllers and critical infrastructure",
             "Locates systems with specific roles or data",
             "Enables targeted attacks on high-value assets",
-            "Reveals system naming conventions and architecture patterns"
+            "Reveals system naming conventions and architecture patterns",
         ],
-        known_threat_actors=["APT3", "APT29", "APT32", "APT39", "APT41", "Sandworm Team", "Volt Typhoon", "Turla", "Wizard Spider", "Conti", "FIN5", "FIN6", "FIN8", "BlackCat", "Akira"],
+        known_threat_actors=[
+            "APT3",
+            "APT29",
+            "APT32",
+            "APT39",
+            "APT41",
+            "Sandworm Team",
+            "Volt Typhoon",
+            "Turla",
+            "Wizard Spider",
+            "Conti",
+            "FIN5",
+            "FIN6",
+            "FIN8",
+            "BlackCat",
+            "Akira",
+        ],
         recent_campaigns=[
             Campaign(
                 name="SolarWinds Compromise (C0024)",
                 year=2020,
                 description="APT29 used AdFind to enumerate remote systems and Active Directory computers, identifying targets for lateral movement across compromised networks",
-                reference_url="https://attack.mitre.org/campaigns/C0024/"
+                reference_url="https://attack.mitre.org/campaigns/C0024/",
             ),
             Campaign(
                 name="2015 Ukraine Electric Power Attack (C0028)",
                 year=2015,
                 description="Sandworm Team discovered OT systems visible from IT networks using network enumeration tools, enabling targeted attacks on critical infrastructure",
-                reference_url="https://attack.mitre.org/campaigns/C0028/"
+                reference_url="https://attack.mitre.org/campaigns/C0028/",
             ),
             Campaign(
                 name="Operation Wocao (C0014)",
                 year=2019,
                 description="Threat actors used nbtscan and ping commands to systematically discover remote systems during multi-stage attacks on managed service providers",
-                reference_url="https://attack.mitre.org/campaigns/C0014/"
-            )
+                reference_url="https://attack.mitre.org/campaigns/C0014/",
+            ),
         ],
         prevalence="very_common",
         trend="increasing",
@@ -79,13 +94,12 @@ TEMPLATE = RemediationTemplate(
             "Precursor to lateral movement attempts",
             "Exposes critical infrastructure and high-value targets",
             "Early warning of credential compromise",
-            "May reveal inadequate network segmentation"
+            "May reveal inadequate network segmentation",
         ],
         typical_attack_phase="discovery",
         often_precedes=["T1021", "T1570", "T1210", "T1003"],
-        often_follows=["T1078.004", "T1059.009", "T1110", "T1190"]
+        often_follows=["T1078.004", "T1059.009", "T1110", "T1190"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - EC2 Instance Enumeration
         DetectionStrategy(
@@ -96,12 +110,12 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.arn, sourceIPAddress, requestParameters
+                query="""fields @timestamp, eventName, userIdentity.arn, sourceIPAddress, requestParameters
 | filter eventName in ["DescribeInstances", "DescribeInstanceAttribute", "DescribeInstanceStatus", "DescribeTags", "GetConsoleOutput"]
 | stats count(*) as instance_enum_count by userIdentity.arn, bin(1h)
 | filter instance_enum_count > 40
-| sort instance_enum_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort instance_enum_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect remote system discovery via EC2 instance enumeration
 
 Parameters:
@@ -149,8 +163,8 @@ Resources:
       EvaluationPeriods: 1
       AlarmActions:
         - !Ref InstanceDiscoveryAlertTopic
-      TreatMissingData: notBreaching''',
-                terraform_template='''# AWS: Detect remote system discovery via EC2 enumeration
+      TreatMissingData: notBreaching""",
+                terraform_template="""# AWS: Detect remote system discovery via EC2 enumeration
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -201,7 +215,7 @@ resource "aws_cloudwatch_metric_alarm" "instance_discovery" {
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.instance_discovery_alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="EC2 Instance Discovery Activity Detected",
                 alert_description_template="High volume of EC2 instance discovery API calls from {userIdentity.arn}. {instance_enum_count} enumeration calls in 1 hour may indicate remote system reconnaissance.",
@@ -212,7 +226,7 @@ resource "aws_cloudwatch_metric_alarm" "instance_discovery" {
                     "Check CloudTrail for other suspicious discovery activities",
                     "Examine instance tags and filters used in enumeration queries",
                     "Look for follow-on lateral movement or instance access attempts",
-                    "Review recent authentication activity for the principal"
+                    "Review recent authentication activity for the principal",
                 ],
                 containment_actions=[
                     "Review and restrict IAM permissions for ec2:Describe* actions",
@@ -221,8 +235,8 @@ resource "aws_cloudwatch_metric_alarm" "instance_discovery" {
                     "Enable VPC Flow Logs to track network-level discovery attempts",
                     "Audit Session Manager and EC2 Instance Connect activity",
                     "If unauthorised, rotate compromised credentials immediately",
-                    "Review EC2 instance metadata service usage (IMDSv2)"
-                ]
+                    "Review EC2 instance metadata service usage (IMDSv2)",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist infrastructure automation tools, AWS Config, Systems Manager Fleet Manager, CSPM scanners, monitoring solutions, and DevOps CI/CD pipelines. Adjust threshold based on environment size.",
@@ -231,9 +245,11 @@ resource "aws_cloudwatch_metric_alarm" "instance_discovery" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail logging to CloudWatch Logs", "EC2 read events logged"]
+            prerequisites=[
+                "CloudTrail logging to CloudWatch Logs",
+                "EC2 read events logged",
+            ],
         ),
-
         # Strategy 2: AWS - Systems Manager Remote Command Execution
         DetectionStrategy(
             strategy_id="t1018-aws-ssm-discovery",
@@ -243,12 +259,12 @@ resource "aws_cloudwatch_metric_alarm" "instance_discovery" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.arn, requestParameters.commands, requestParameters.instanceIds
+                query="""fields @timestamp, eventName, userIdentity.arn, requestParameters.commands, requestParameters.instanceIds
 | filter eventName = "SendCommand"
 | filter requestParameters.commands like /net view|ping|arp|hostname|nltest|nbtstat|dsquery|AdFind/
 | stats count(*) as discovery_commands by userIdentity.arn, bin(30m)
-| sort discovery_commands desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort discovery_commands desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect remote system discovery via Systems Manager commands
 
 Parameters:
@@ -289,8 +305,8 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref SSMDiscoveryAlertTopic]''',
-                terraform_template='''# AWS: Detect remote discovery via Systems Manager
+      AlarmActions: [!Ref SSMDiscoveryAlertTopic]""",
+                terraform_template="""# AWS: Detect remote discovery via Systems Manager
 
 variable "cloudtrail_log_group" {
   type = string
@@ -336,7 +352,7 @@ resource "aws_cloudwatch_metric_alarm" "ssm_discovery" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.ssm_discovery_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Remote Discovery Commands via Systems Manager",
                 alert_description_template="Remote system discovery commands executed via Systems Manager by {userIdentity.arn}. Commands detected: {requestParameters.commands}",
@@ -347,7 +363,7 @@ resource "aws_cloudwatch_metric_alarm" "ssm_discovery" {
                     "Examine Systems Manager command history and outputs",
                     "Look for patterns of reconnaissance across multiple instances",
                     "Review recent authentication and access patterns",
-                    "Check for data exfiltration attempts following discovery"
+                    "Check for data exfiltration attempts following discovery",
                 ],
                 containment_actions=[
                     "Review IAM permissions for ssm:SendCommand",
@@ -356,8 +372,8 @@ resource "aws_cloudwatch_metric_alarm" "ssm_discovery" {
                     "Monitor for lateral movement attempts",
                     "Review and restrict SSM managed instance permissions",
                     "Consider implementing AWS Config rules for SSM compliance",
-                    "If unauthorised, isolate affected instances and rotate credentials"
-                ]
+                    "If unauthorised, isolate affected instances and rotate credentials",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised administrative runbooks and approved systems management activities. Low false positives as network discovery commands are rarely legitimate.",
@@ -366,9 +382,11 @@ resource "aws_cloudwatch_metric_alarm" "ssm_discovery" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",
             estimated_monthly_cost="$3-5",
-            prerequisites=["CloudTrail logging to CloudWatch Logs", "Systems Manager in use"]
+            prerequisites=[
+                "CloudTrail logging to CloudWatch Logs",
+                "Systems Manager in use",
+            ],
         ),
-
         # Strategy 3: GCP - Compute Instance Enumeration
         DetectionStrategy(
             strategy_id="t1018-gcp-instance-enum",
@@ -381,7 +399,7 @@ resource "aws_cloudwatch_metric_alarm" "ssm_discovery" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.serviceName="compute.googleapis.com"
 protoPayload.methodName=~"(v1.compute.instances.list|v1.compute.instances.get|v1.compute.instances.aggregatedList|beta.compute.instanceGroupManagers.list|v1.compute.zones.list)"''',
-                gcp_terraform_template='''# GCP: Detect remote system discovery via instance enumeration
+                gcp_terraform_template="""# GCP: Detect remote system discovery via instance enumeration
 
 variable "project_id" {
   type        = string
@@ -458,7 +476,7 @@ resource "google_monitoring_alert_policy" "instance_discovery" {
     content   = "High volume of compute instance discovery API calls detected. Investigate the principal and verify if this is authorised scanning or automation."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP Compute Instance Discovery",
                 alert_description_template="High volume of compute instance discovery calls detected from principal {principal} in GCP project.",
@@ -469,7 +487,7 @@ resource "google_monitoring_alert_policy" "instance_discovery" {
                     "Check for unusual access patterns or timing",
                     "Look for follow-on SSH/RDP connection attempts to discovered instances",
                     "Review audit logs for other suspicious discovery activities",
-                    "Examine service account key usage if applicable"
+                    "Examine service account key usage if applicable",
                 ],
                 containment_actions=[
                     "Review and restrict IAM permissions for compute.instances.list and compute.instances.get",
@@ -478,8 +496,8 @@ resource "google_monitoring_alert_policy" "instance_discovery" {
                     "Implement organisation policies to restrict instance enumeration",
                     "Audit recent changes to IAM bindings and service accounts",
                     "Consider implementing VPC Service Controls for data perimeter",
-                    "If unauthorised, revoke service account keys and rotate credentials"
-                ]
+                    "If unauthorised, revoke service account keys and rotate credentials",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist infrastructure automation tools, GCP Config Connector, Terraform Cloud, CSPM scanners, and monitoring solutions. Adjust threshold based on deployment frequency and environment size.",
@@ -488,9 +506,11 @@ resource "google_monitoring_alert_policy" "instance_discovery" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Cloud Audit Logs enabled", "Admin Activity and Data Access logs configured"]
+            prerequisites=[
+                "Cloud Audit Logs enabled",
+                "Admin Activity and Data Access logs configured",
+            ],
         ),
-
         # Strategy 4: GCP - OS Login and SSH Key Discovery
         DetectionStrategy(
             strategy_id="t1018-gcp-ssh-discovery",
@@ -501,10 +521,10 @@ resource "google_monitoring_alert_policy" "instance_discovery" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''protoPayload.serviceName="compute.googleapis.com"
+                gcp_logging_query="""protoPayload.serviceName="compute.googleapis.com"
 protoPayload.methodName=~"(beta.compute.instances.getIamPolicy|v1.compute.instances.getSerialPortOutput|beta.compute.projects.getXpnHost|oslogin)"
-protoPayload.authorizationInfo.granted=true''',
-                gcp_terraform_template='''# GCP: Detect SSH and OS Login discovery
+protoPayload.authorizationInfo.granted=true""",
+                gcp_terraform_template="""# GCP: Detect SSH and OS Login discovery
 
 variable "project_id" {
   type = string
@@ -564,7 +584,7 @@ resource "google_monitoring_alert_policy" "ssh_discovery" {
   documentation {
     content = "SSH access pattern discovery detected. Review for authorised administrative activity or potential reconnaissance."
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP SSH Access Pattern Discovery",
                 alert_description_template="Enumeration of SSH keys and OS Login configurations detected, indicating remote access reconnaissance.",
@@ -574,7 +594,7 @@ resource "google_monitoring_alert_policy" "ssh_discovery" {
                     "Review which instances were targeted",
                     "Look for subsequent SSH connection attempts",
                     "Examine OS Login and SSH key modifications",
-                    "Check for IAM policy changes on instances"
+                    "Check for IAM policy changes on instances",
                 ],
                 containment_actions=[
                     "Review IAM permissions for compute.instances.getIamPolicy",
@@ -582,8 +602,8 @@ resource "google_monitoring_alert_policy" "ssh_discovery" {
                     "Enable serial port access logging",
                     "Audit SSH keys across all instances",
                     "Implement organisation policies for OS Login enforcement",
-                    "Consider requiring OS Login for all instances"
-                ]
+                    "Consider requiring OS Login for all instances",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised systems administration tools and compliance scanners. Threshold may need adjustment for larger environments.",
@@ -592,16 +612,18 @@ resource "google_monitoring_alert_policy" "ssh_discovery" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$8-12",
-            prerequisites=["Cloud Audit Logs enabled", "Data Access logs for Compute Engine"]
-        )
+            prerequisites=[
+                "Cloud Audit Logs enabled",
+                "Data Access logs for Compute Engine",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1018-aws-instance-enum",
         "t1018-gcp-instance-enum",
         "t1018-aws-ssm-discovery",
-        "t1018-gcp-ssh-discovery"
+        "t1018-gcp-ssh-discovery",
     ],
     total_effort_hours=3.75,
-    coverage_improvement="+7% improvement for Discovery tactic"
+    coverage_improvement="+7% improvement for Discovery tactic",
 )

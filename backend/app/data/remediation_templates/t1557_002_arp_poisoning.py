@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Adversary-in-the-Middle: ARP Cache Poisoning",
     tactic_ids=["TA0006", "TA0009"],  # Credential Access, Collection
     mitre_url="https://attack.mitre.org/techniques/T1557/002/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries exploit the stateless, unauthenticated nature of the Address Resolution "
@@ -39,7 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Capture unencrypted internal API communications",
             "Redirect traffic to attacker-controlled instances",
             "Bypass network-layer security controls via Layer 2 manipulation",
-            "Enable follow-on attacks like session hijacking"
+            "Enable follow-on attacks like session hijacking",
         ],
         known_threat_actors=["Cleaver", "LuminousMoth"],
         recent_campaigns=[
@@ -47,14 +46,14 @@ TEMPLATE = RemediationTemplate(
                 name="Cleaver ARP Poisoning Operations",
                 year=2015,
                 description="Iranian threat group Cleaver deployed custom tools to facilitate ARP cache poisoning attacks against targeted organisations",
-                reference_url="https://attack.mitre.org/groups/G0003/"
+                reference_url="https://attack.mitre.org/groups/G0003/",
             ),
             Campaign(
                 name="LuminousMoth ARP Spoofing Campaign",
                 year=2021,
                 description="Chinese APT group LuminousMoth employed ARP spoofing to redirect compromised systems toward attacker-controlled websites for data collection",
-                reference_url="https://attack.mitre.org/groups/G1014/"
-            )
+                reference_url="https://attack.mitre.org/groups/G1014/",
+            ),
         ],
         prevalence="moderate",
         trend="stable",
@@ -71,13 +70,12 @@ TEMPLATE = RemediationTemplate(
             "Session hijacking and unauthorised API access",
             "Data manipulation and integrity violations",
             "Privacy violations from traffic interception",
-            "Compliance violations (PCI-DSS, GDPR data protection)"
+            "Compliance violations (PCI-DSS, GDPR data protection)",
         ],
         typical_attack_phase="credential_access",
         often_precedes=["T1040", "T1557", "T1078.004"],
-        often_follows=["T1078.004", "T1021.007"]
+        often_follows=["T1078.004", "T1021.007"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - VPC Traffic Mirroring for ARP Anomalies
         DetectionStrategy(
@@ -88,7 +86,7 @@ TEMPLATE = RemediationTemplate(
             aws_service="vpc",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                terraform_template='''# AWS: Detect ARP cache poisoning via Traffic Mirroring
+                terraform_template="""# AWS: Detect ARP cache poisoning via Traffic Mirroring
 
 variable "monitored_eni_id" {
   type        = string
@@ -150,7 +148,7 @@ resource "aws_sns_topic_subscription" "email" {
   topic_arn = aws_sns_topic.arp_alerts.arn
   protocol  = "email"
   endpoint  = var.alert_email
-}''',
+}""",
                 alert_severity="high",
                 alert_title="ARP Cache Poisoning Detected",
                 alert_description_template="Suspicious ARP traffic detected on {networkInterfaceId}. Multiple IPs mapping to single MAC or gratuitous ARP anomalies observed.",
@@ -160,7 +158,7 @@ resource "aws_sns_topic_subscription" "email" {
                     "Review MAC address tables for duplicate entries",
                     "Identify instances sending unsolicited ARP replies",
                     "Examine VPC Flow Logs for corresponding traffic redirection",
-                    "Check for unauthorised instances in subnet"
+                    "Check for unauthorised instances in subnet",
                 ],
                 containment_actions=[
                     "Isolate suspected malicious instances via security groups",
@@ -168,8 +166,8 @@ resource "aws_sns_topic_subscription" "email" {
                     "Enable VPC Flow Logs for detailed traffic analysis",
                     "Review and segment network to limit ARP broadcast domains",
                     "Deploy host-based intrusion detection on critical instances",
-                    "Consider implementing DHCP snooping where supported"
-                ]
+                    "Consider implementing DHCP snooping where supported",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Requires custom analysis logic to distinguish legitimate ARP from attacks; baseline normal ARP patterns per subnet",
@@ -178,9 +176,12 @@ resource "aws_sns_topic_subscription" "email" {
             implementation_effort=EffortLevel.HIGH,
             implementation_time="4-6 hours",
             estimated_monthly_cost="$40-120 (VPC Traffic Mirroring + NLB + analysis infrastructure)",
-            prerequisites=["VPC Traffic Mirroring support", "Network Load Balancer", "Packet analysis infrastructure"]
+            prerequisites=[
+                "VPC Traffic Mirroring support",
+                "Network Load Balancer",
+                "Packet analysis infrastructure",
+            ],
         ),
-
         # Strategy 2: AWS - Security Group and Network ACL Monitoring
         DetectionStrategy(
             strategy_id="t1557-002-aws-netacl",
@@ -198,11 +199,11 @@ resource "aws_sns_topic_subscription" "email" {
                             "ModifyNetworkInterfaceAttribute",
                             "AttachNetworkInterface",
                             "CreateNetworkInterface",
-                            "ModifySubnetAttribute"
+                            "ModifySubnetAttribute",
                         ]
-                    }
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect network configuration changes enabling ARP attacks
 
 Parameters:
@@ -246,8 +247,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# AWS: Monitor network configuration changes
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# AWS: Monitor network configuration changes
 
 variable "alert_email" {
   type = string
@@ -298,7 +299,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Network Configuration Modified",
                 alert_description_template="Network interface configuration change {eventName} performed on {networkInterfaceId}. Review for potential ARP spoofing enablement.",
@@ -308,7 +309,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Check for promiscuous mode enablement",
                     "Examine subnet and routing table configurations",
                     "Review CloudTrail for related suspicious activities",
-                    "Verify instance roles and security groups"
+                    "Verify instance roles and security groups",
                 ],
                 containment_actions=[
                     "Re-enable source/destination checking if disabled inappropriately",
@@ -316,8 +317,8 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Audit all network interfaces in affected subnets",
                     "Enable enhanced VPC Flow Logs for monitoring",
                     "Implement SCPs to prevent unauthorised network changes",
-                    "Review and update network ACLs"
-                ]
+                    "Review and update network ACLs",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate network operations (NAT instances, VPN gateways, load balancers)",
@@ -326,9 +327,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         # Strategy 3: AWS - VPC Flow Logs for Traffic Redirection
         DetectionStrategy(
             strategy_id="t1557-002-aws-flow",
@@ -338,13 +338,13 @@ resource "aws_sns_topic_policy" "allow_events" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcaddr, dstaddr, srcport, dstport, bytes, packets
+                query="""fields @timestamp, srcaddr, dstaddr, srcport, dstport, bytes, packets
 | filter action = "ACCEPT"
 | stats count(*) as conn_count, sum(bytes) as total_bytes by srcaddr, dstaddr
 | filter conn_count > 500
 | sort total_bytes desc
-| limit 50''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| limit 50""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Monitor VPC Flow Logs for ARP-based traffic redirection
 
 Parameters:
@@ -420,8 +420,8 @@ Resources:
       Threshold: 100
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# AWS: Detect traffic redirection via Flow Logs
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# AWS: Detect traffic redirection via Flow Logs
 
 variable "vpc_id" {
   type = string
@@ -512,7 +512,7 @@ resource "aws_cloudwatch_metric_alarm" "traffic_alarm" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Suspicious Traffic Redirection Detected",
                 alert_description_template="Unusual traffic patterns detected from {srcaddr} to {dstaddr}. May indicate ARP-based traffic redirection.",
@@ -522,7 +522,7 @@ resource "aws_cloudwatch_metric_alarm" "traffic_alarm" {
                     "Examine MAC address associations in subnet",
                     "Verify routing tables and security group configurations",
                     "Correlate with other network security events",
-                    "Check instances for unauthorised network tools"
+                    "Check instances for unauthorised network tools",
                 ],
                 containment_actions=[
                     "Isolate suspected rogue instances via security groups",
@@ -530,8 +530,8 @@ resource "aws_cloudwatch_metric_alarm" "traffic_alarm" {
                     "Enable GuardDuty for additional network threat detection",
                     "Review and segment VPC subnets to limit ARP scope",
                     "Implement micro-segmentation for critical workloads",
-                    "Deploy host-based security agents on instances"
-                ]
+                    "Deploy host-based security agents on instances",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Establish traffic baselines per application; whitelist legitimate proxy and NAT instances",
@@ -540,9 +540,8 @@ resource "aws_cloudwatch_metric_alarm" "traffic_alarm" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$15-35 (VPC Flow Logs + CloudWatch)",
-            prerequisites=["VPC Flow Logs enabled"]
+            prerequisites=["VPC Flow Logs enabled"],
         ),
-
         # Strategy 4: GCP - VPC Flow Logs Anomaly Detection
         DetectionStrategy(
             strategy_id="t1557-002-gcp-flow",
@@ -557,7 +556,7 @@ resource "aws_cloudwatch_metric_alarm" "traffic_alarm" {
 logName="projects/[PROJECT_ID]/logs/compute.googleapis.com%2Fvpc_flows"
 jsonPayload.connection.protocol=6
 jsonPayload.reporter="SRC"''',
-                gcp_terraform_template='''# GCP: Detect ARP-based traffic anomalies
+                gcp_terraform_template="""# GCP: Detect ARP-based traffic anomalies
 
 variable "project_id" {
   type = string
@@ -666,7 +665,7 @@ resource "google_monitoring_alert_policy" "arp_attack" {
     content   = "Unusual traffic pattern detected that may indicate ARP cache poisoning. Review VPC Flow Logs for traffic redirection."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: ARP Traffic Anomaly Detected",
                 alert_description_template="Suspicious traffic patterns detected from instance {srcInstance}. Potential ARP cache poisoning.",
@@ -676,7 +675,7 @@ resource "google_monitoring_alert_policy" "arp_attack" {
                     "Examine firewall rules and routing configurations",
                     "Verify instance network interface configurations",
                     "Check for unauthorised instances in subnet",
-                    "Review Cloud Audit Logs for network configuration changes"
+                    "Review Cloud Audit Logs for network configuration changes",
                 ],
                 containment_actions=[
                     "Apply firewall rules to isolate suspected instances",
@@ -684,8 +683,8 @@ resource "google_monitoring_alert_policy" "arp_attack" {
                     "Review and update VPC firewall rules",
                     "Implement VPC Service Controls for sensitive workloads",
                     "Enable Cloud IDS (Intrusion Detection System) if available",
-                    "Review network topology and consider segmentation"
-                ]
+                    "Review network topology and consider segmentation",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Baseline normal traffic patterns; whitelist legitimate proxy and NAT instances",
@@ -694,9 +693,8 @@ resource "google_monitoring_alert_policy" "arp_attack" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$25-60 (VPC Flow Logs + Cloud Monitoring)",
-            prerequisites=["VPC Flow Logs enabled", "Cloud Logging API enabled"]
+            prerequisites=["VPC Flow Logs enabled", "Cloud Logging API enabled"],
         ),
-
         # Strategy 5: GCP - Compute Engine Network Configuration Monitoring
         DetectionStrategy(
             strategy_id="t1557-002-gcp-netconfig",
@@ -709,7 +707,7 @@ resource "google_monitoring_alert_policy" "arp_attack" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.serviceName="compute.googleapis.com"
 protoPayload.methodName=~"(v1.compute.instances.insert|v1.compute.instances.setMetadata|beta.compute.instances.updateNetworkInterface)"''',
-                gcp_terraform_template='''# GCP: Monitor network configuration changes
+                gcp_terraform_template="""# GCP: Monitor network configuration changes
 
 variable "project_id" {
   type = string
@@ -774,7 +772,7 @@ resource "google_monitoring_alert_policy" "network_change" {
     content   = "Network configuration change detected. Review for potential ARP spoofing enablement or malicious network modifications."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Network Configuration Modified",
                 alert_description_template="Network configuration change {methodName} detected. Review for potential ARP attack enablement.",
@@ -784,7 +782,7 @@ resource "google_monitoring_alert_policy" "network_change" {
                     "Check for IP forwarding enablement",
                     "Examine firewall rule modifications",
                     "Review Cloud Audit Logs for related activities",
-                    "Verify instance service account permissions"
+                    "Verify instance service account permissions",
                 ],
                 containment_actions=[
                     "Revert unauthorised network configuration changes",
@@ -792,8 +790,8 @@ resource "google_monitoring_alert_policy" "network_change" {
                     "Enable organisation policy constraints for network changes",
                     "Audit all instances in affected VPC",
                     "Implement change management approval workflows",
-                    "Enable VPC Flow Logs for detailed monitoring"
-                ]
+                    "Enable VPC Flow Logs for detailed monitoring",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised infrastructure-as-code deployments and network operations",
@@ -802,9 +800,8 @@ resource "google_monitoring_alert_policy" "network_change" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled"],
         ),
-
         # Strategy 6: GCP - Packet Mirroring for Deep Analysis
         DetectionStrategy(
             strategy_id="t1557-002-gcp-mirror",
@@ -815,7 +812,7 @@ resource "google_monitoring_alert_policy" "network_change" {
             gcp_service="compute",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_terraform_template='''# GCP: Packet Mirroring for ARP detection
+                gcp_terraform_template="""# GCP: Packet Mirroring for ARP detection
 
 variable "project_id" {
   type = string
@@ -867,7 +864,7 @@ resource "google_compute_packet_mirroring" "arp_detection" {
     ip_protocols = ["arp"]
     direction    = "BOTH"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: ARP Anomaly Detected via Packet Mirroring",
                 alert_description_template="ARP cache poisoning indicators detected via packet analysis. Gratuitous ARP or MAC-IP mapping anomalies observed.",
@@ -877,7 +874,7 @@ resource "google_compute_packet_mirroring" "arp_detection" {
                     "Identify instances sending suspicious ARP traffic",
                     "Review network topology and routing",
                     "Correlate with VPC Flow Logs for traffic redirection",
-                    "Examine instance metadata and configurations"
+                    "Examine instance metadata and configurations",
                 ],
                 containment_actions=[
                     "Isolate malicious instances via firewall rules",
@@ -885,8 +882,8 @@ resource "google_compute_packet_mirroring" "arp_detection" {
                     "Review and restrict network administration permissions",
                     "Enable Cloud IDS for additional protection",
                     "Implement network segmentation",
-                    "Deploy Security Command Center for unified monitoring"
-                ]
+                    "Deploy Security Command Center for unified monitoring",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Requires packet analysis infrastructure; baseline legitimate ARP patterns",
@@ -895,18 +892,21 @@ resource "google_compute_packet_mirroring" "arp_detection" {
             implementation_effort=EffortLevel.HIGH,
             implementation_time="4-6 hours",
             estimated_monthly_cost="$50-150 (Packet Mirroring + collector infrastructure + analysis)",
-            prerequisites=["Packet Mirroring support in region", "Internal Load Balancer", "Packet analysis infrastructure"]
-        )
+            prerequisites=[
+                "Packet Mirroring support in region",
+                "Internal Load Balancer",
+                "Packet analysis infrastructure",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1557-002-aws-netacl",
         "t1557-002-gcp-netconfig",
         "t1557-002-aws-flow",
         "t1557-002-gcp-flow",
         "t1557-002-aws-mirror",
-        "t1557-002-gcp-mirror"
+        "t1557-002-gcp-mirror",
     ],
     total_effort_hours=13.5,
-    coverage_improvement="+15% improvement for Credential Access and Collection tactics against Layer 2 attacks"
+    coverage_improvement="+15% improvement for Credential Access and Collection tactics against Layer 2 attacks",
 )

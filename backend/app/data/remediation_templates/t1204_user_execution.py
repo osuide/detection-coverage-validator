@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="User Execution",
     tactic_ids=["TA0002"],
     mitre_url="https://attack.mitre.org/techniques/T1204/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries manipulate users into performing actions that enable malicious code execution. "
@@ -40,14 +39,14 @@ TEMPLATE = RemediationTemplate(
             "Establishes initial foothold or escalates privileges",
             "Enables remote access tool installation",
             "Difficult to detect as behaviour appears legitimate",
-            "Can leverage trusted relationships and impersonation"
+            "Can leverage trusted relationships and impersonation",
         ],
         known_threat_actors=[
             "LAPSUS$ (G1004)",
             "Scattered Spider (G1015)",
             "Lumma Stealer",
             "Raspberry Robin",
-            "Pikabot"
+            "Pikabot",
         ],
         recent_campaigns=[
             Campaign(
@@ -58,7 +57,7 @@ TEMPLATE = RemediationTemplate(
                     "credentials and approved MFA prompts, or installed remote management software "
                     "onto corporate workstations enabling initial access."
                 ),
-                reference_url="https://attack.mitre.org/groups/G1004/"
+                reference_url="https://attack.mitre.org/groups/G1004/",
             ),
             Campaign(
                 name="Scattered Spider IT Impersonation",
@@ -68,7 +67,7 @@ TEMPLATE = RemediationTemplate(
                     "execute commercial remote access tools, gaining initial access to corporate "
                     "environments through social engineering."
                 ),
-                reference_url="https://attack.mitre.org/groups/G1015/"
+                reference_url="https://attack.mitre.org/groups/G1015/",
             ),
             Campaign(
                 name="Lumma Stealer Fake CAPTCHA",
@@ -78,7 +77,7 @@ TEMPLATE = RemediationTemplate(
                     "open Windows Run window and paste clipboard contents to execute Base64-encoded "
                     "PowerShell, stealing credentials and session tokens."
                 ),
-                reference_url="https://attack.mitre.org/software/S1213/"
+                reference_url="https://attack.mitre.org/software/S1213/",
             ),
             Campaign(
                 name="Pikabot Malicious Attachments",
@@ -87,8 +86,8 @@ TEMPLATE = RemediationTemplate(
                     "Campaign C0037 required users to interact with malicious email attachments "
                     "to start installation of Pikabot malware, leading to ransomware deployment."
                 ),
-                reference_url="https://attack.mitre.org/campaigns/C0037/"
-            )
+                reference_url="https://attack.mitre.org/campaigns/C0037/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -107,13 +106,12 @@ TEMPLATE = RemediationTemplate(
             "Malware and ransomware deployment",
             "Cryptomining resource abuse",
             "Data exfiltration and breach",
-            "Insider threat via recruited employees"
+            "Insider threat via recruited employees",
         ],
         typical_attack_phase="execution",
         often_precedes=["T1078.004", "T1219", "T1496.001", "T1530", "T1555.006"],
-        often_follows=["T1566", "T1189", "T1199"]
+        often_follows=["T1566", "T1189", "T1199"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1204-aws-instance-user-data",
@@ -127,12 +125,12 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, requestParameters.instanceType, requestParameters.imageId, userIdentity.arn, requestParameters.userData
+                query="""fields @timestamp, eventName, requestParameters.instanceType, requestParameters.imageId, userIdentity.arn, requestParameters.userData
 | filter eventSource = "ec2.amazonaws.com"
 | filter eventName = "RunInstances"
 | filter ispresent(requestParameters.userData)
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect suspicious EC2 instances with user data execution
 
 Parameters:
@@ -178,8 +176,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       AlarmActions:
-        - !Ref UserDataAlertTopic''',
-                terraform_template='''# AWS: Detect suspicious EC2 user data execution
+        - !Ref UserDataAlertTopic""",
+                terraform_template="""# AWS: Detect suspicious EC2 user data execution
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -229,7 +227,7 @@ resource "aws_cloudwatch_metric_alarm" "user_data_execution" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.user_data_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="AWS EC2: Instance Launched with User Data Script",
                 alert_description_template=(
@@ -243,7 +241,7 @@ resource "aws_cloudwatch_metric_alarm" "user_data_execution" {
                     "Check if the AMI is from an approved or external source",
                     "Review CloudTrail for preceding suspicious activity",
                     "Check if user clicked suspicious links before instance launch",
-                    "Examine instance network connections and running processes"
+                    "Examine instance network connections and running processes",
                 ],
                 containment_actions=[
                     "Terminate suspicious instances immediately",
@@ -251,8 +249,8 @@ resource "aws_cloudwatch_metric_alarm" "user_data_execution" {
                     "Reset credentials for the launching user",
                     "Block unapproved AMIs via Service Control Policies",
                     "Review and restrict EC2 launch permissions",
-                    "Implement session recording for cloud console access"
-                ]
+                    "Implement session recording for cloud console access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning=(
@@ -267,9 +265,8 @@ resource "aws_cloudwatch_metric_alarm" "user_data_execution" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled with data events for EC2"]
+            prerequisites=["CloudTrail enabled with data events for EC2"],
         ),
-
         DetectionStrategy(
             strategy_id="t1204-aws-lambda-external-trigger",
             name="AWS Lambda Execution from External Triggers",
@@ -282,13 +279,13 @@ resource "aws_cloudwatch_metric_alarm" "user_data_execution" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message, requestId, userIdentity.arn
+                query="""fields @timestamp, @message, requestId, userIdentity.arn
 | filter @type = "START"
 | filter userAgent like /Mozilla|curl|wget/
 | stats count(*) as executions by userIdentity.arn, bin(5m)
 | filter executions > 10
-| sort executions desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort executions desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect suspicious Lambda function executions
 
 Parameters:
@@ -339,8 +336,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref LambdaAlertTopic''',
-                terraform_template='''# AWS: Detect suspicious Lambda function executions
+            Resource: !Ref LambdaAlertTopic""",
+                terraform_template="""# AWS: Detect suspicious Lambda function executions
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -390,7 +387,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Resource  = aws_sns_topic.lambda_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="AWS Lambda: Suspicious Function Execution",
                 alert_description_template=(
@@ -404,7 +401,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Identify the trigger source (API Gateway, S3, manual invoke)",
                     "Verify the user or role that invoked the function",
                     "Check for environment variables containing credentials",
-                    "Review function IAM permissions and network access"
+                    "Review function IAM permissions and network access",
                 ],
                 containment_actions=[
                     "Delete or disable suspicious Lambda functions",
@@ -412,8 +409,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Rotate IAM credentials used by the function",
                     "Review and restrict Lambda execution permissions",
                     "Enable Lambda function concurrency limits",
-                    "Implement Lambda code signing for deployment"
-                ]
+                    "Implement Lambda code signing for deployment",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning=(
@@ -428,9 +425,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled for Lambda data events"]
+            prerequisites=["CloudTrail enabled for Lambda data events"],
         ),
-
         DetectionStrategy(
             strategy_id="t1204-aws-ssm-remote-commands",
             name="AWS SSM Session Manager Command Execution",
@@ -443,11 +439,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.arn, requestParameters.target, requestParameters.documentName
+                query="""fields @timestamp, eventName, userIdentity.arn, requestParameters.target, requestParameters.documentName
 | filter eventSource = "ssm.amazonaws.com"
 | filter eventName in ["StartSession", "SendCommand"]
-| sort @timestamp desc''',
-                terraform_template='''# AWS: Detect suspicious SSM command execution
+| sort @timestamp desc""",
+                terraform_template="""# AWS: Detect suspicious SSM command execution
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -490,7 +486,7 @@ resource "aws_cloudwatch_metric_alarm" "ssm_execution" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.ssm_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="AWS SSM: Remote Command Execution Detected",
                 alert_description_template=(
@@ -504,7 +500,7 @@ resource "aws_cloudwatch_metric_alarm" "ssm_execution" {
                     "Check if commands match known malicious patterns",
                     "Review recent communication with the user for social engineering",
                     "Check for unusual command sequences or PowerShell/Bash execution",
-                    "Verify target instances for compromise indicators"
+                    "Verify target instances for compromise indicators",
                 ],
                 containment_actions=[
                     "Terminate active SSM sessions immediately",
@@ -512,8 +508,8 @@ resource "aws_cloudwatch_metric_alarm" "ssm_execution" {
                     "Isolate target instances in separate security group",
                     "Rotate credentials and session tokens",
                     "Review and restrict SSM Session Manager permissions",
-                    "Implement session recording and command logging"
-                ]
+                    "Implement session recording and command logging",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning=(
@@ -528,9 +524,11 @@ resource "aws_cloudwatch_metric_alarm" "ssm_execution" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled for SSM events", "SSM Session Manager configured"]
+            prerequisites=[
+                "CloudTrail enabled for SSM events",
+                "SSM Session Manager configured",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1204-gcp-compute-ssh-browser",
             name="GCP Compute SSH-in-Browser Session Detection",
@@ -549,7 +547,7 @@ OR protoPayload.methodName="compute.sshKeys.create"
 OR protoPayload.serviceName="oslogin.googleapis.com"
 OR resource.type="gce_instance"
 AND protoPayload.request.metadata.items.key="enable-oslogin"''',
-                gcp_terraform_template='''# GCP: Detect SSH-in-browser and remote command execution
+                gcp_terraform_template="""# GCP: Detect SSH-in-browser and remote command execution
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -601,7 +599,7 @@ resource "google_monitoring_alert_policy" "ssh_alert" {
   alert_strategy {
     auto_close = "86400s"  # 24 hours
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: SSH Session or Remote Access Detected",
                 alert_description_template=(
@@ -614,7 +612,7 @@ resource "google_monitoring_alert_policy" "ssh_alert" {
                     "Check if OS Login keys were added unexpectedly",
                     "Review commands executed during the session if available",
                     "Check for unusual instance access patterns",
-                    "Verify instance metadata for suspicious changes"
+                    "Verify instance metadata for suspicious changes",
                 ],
                 containment_actions=[
                     "Revoke SSH keys for affected users",
@@ -622,8 +620,8 @@ resource "google_monitoring_alert_policy" "ssh_alert" {
                     "Remove unauthorised metadata and SSH keys",
                     "Reset user credentials and disable accounts if compromised",
                     "Enable OS Login for centralised key management",
-                    "Implement VPC firewall rules to restrict SSH access"
-                ]
+                    "Implement VPC firewall rules to restrict SSH access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning=(
@@ -638,9 +636,8 @@ resource "google_monitoring_alert_policy" "ssh_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Cloud Audit Logs enabled for Compute Engine"]
+            prerequisites=["Cloud Audit Logs enabled for Compute Engine"],
         ),
-
         DetectionStrategy(
             strategy_id="t1204-gcp-cloud-shell",
             name="GCP Cloud Shell Suspicious Command Execution",
@@ -657,7 +654,7 @@ resource "google_monitoring_alert_policy" "ssh_alert" {
                 gcp_logging_query='''resource.type="cloud_shell"
 protoPayload.methodName="google.cloudshell.v1.CloudShellService.StartEnvironment"
 OR protoPayload.methodName="google.cloudshell.v1.CloudShellService.AddPublicKey"''',
-                gcp_terraform_template='''# GCP: Detect suspicious Cloud Shell activity
+                gcp_terraform_template="""# GCP: Detect suspicious Cloud Shell activity
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -711,7 +708,7 @@ resource "google_monitoring_alert_policy" "cloud_shell_alert" {
   documentation {
     content = "Cloud Shell activity detected. Verify user was not tricked into running malicious commands."
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Cloud Shell Activity Detected",
                 alert_description_template=(
@@ -725,7 +722,7 @@ resource "google_monitoring_alert_policy" "cloud_shell_alert" {
                     "Look for Base64-encoded commands or obfuscated scripts",
                     "Verify if user received instructions to paste commands",
                     "Check for unusual API calls made during the session",
-                    "Review user's recent browser activity if available"
+                    "Review user's recent browser activity if available",
                 ],
                 containment_actions=[
                     "Disable Cloud Shell access for affected user",
@@ -733,8 +730,8 @@ resource "google_monitoring_alert_policy" "cloud_shell_alert" {
                     "Remove any SSH keys added during suspicious sessions",
                     "Reset user password and require re-authentication",
                     "Review and restrict Cloud Shell permissions organisation-wide",
-                    "Implement user training on copy-paste attack risks"
-                ]
+                    "Implement user training on copy-paste attack risks",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning=(
@@ -749,9 +746,8 @@ resource "google_monitoring_alert_policy" "cloud_shell_alert" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1204-gcp-container-execution",
             name="GCP Cloud Run Suspicious Container Execution",
@@ -769,7 +765,7 @@ resource "google_monitoring_alert_policy" "cloud_shell_alert" {
 AND (protoPayload.methodName="google.cloud.run.v1.Services.CreateService"
 OR protoPayload.methodName="google.cloud.run.v1.Services.ReplaceService")
 AND protoPayload.request.spec.template.spec.containers.image!~"gcr.io/${PROJECT_ID}/"''',
-                gcp_terraform_template='''# GCP: Detect suspicious Cloud Run container deployments
+                gcp_terraform_template="""# GCP: Detect suspicious Cloud Run container deployments
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -827,7 +823,7 @@ resource "google_monitoring_alert_policy" "external_container_alert" {
       Verify the image source and user was not tricked into deploying malicious container.
     EOT
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Cloud Run External Container Deployed",
                 alert_description_template=(
@@ -841,7 +837,7 @@ resource "google_monitoring_alert_policy" "external_container_alert" {
                     "Verify the user who deployed the service",
                     "Check Cloud Run service configuration and IAM permissions",
                     "Review container execution logs for suspicious behaviour",
-                    "Scan container image with vulnerability scanning tools"
+                    "Scan container image with vulnerability scanning tools",
                 ],
                 containment_actions=[
                     "Delete suspicious Cloud Run services immediately",
@@ -849,8 +845,8 @@ resource "google_monitoring_alert_policy" "external_container_alert" {
                     "Require Binary Authorisation for container deployments",
                     "Rotate credentials used to deploy the service",
                     "Review and restrict Cloud Run deployment permissions",
-                    "Implement container image scanning in CI/CD pipeline"
-                ]
+                    "Implement container image scanning in CI/CD pipeline",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning=(
@@ -865,18 +861,17 @@ resource "google_monitoring_alert_policy" "external_container_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Cloud Audit Logs enabled for Cloud Run"]
-        )
+            prerequisites=["Cloud Audit Logs enabled for Cloud Run"],
+        ),
     ],
-
     recommended_order=[
         "t1204-aws-ssm-remote-commands",
         "t1204-gcp-cloud-shell",
         "t1204-aws-instance-user-data",
         "t1204-gcp-container-execution",
         "t1204-gcp-compute-ssh-browser",
-        "t1204-aws-lambda-external-trigger"
+        "t1204-aws-lambda-external-trigger",
     ],
     total_effort_hours=6.5,
-    coverage_improvement="+25% improvement for Execution tactic"
+    coverage_improvement="+25% improvement for Execution tactic",
 )

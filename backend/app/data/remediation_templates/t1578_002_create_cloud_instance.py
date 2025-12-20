@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Modify Cloud Compute Infrastructure: Create Cloud Instance",
     tactic_ids=["TA0005"],
     mitre_url="https://attack.mitre.org/techniques/T1578/002/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries create new virtual machine instances to bypass firewall rules "
@@ -35,7 +34,7 @@ TEMPLATE = RemediationTemplate(
             "Enables cryptomining on victim infrastructure",
             "Provides clean environment for data staging",
             "Avoids detection on monitored systems",
-            "Can use large instance types for compute abuse"
+            "Can use large instance types for compute abuse",
         ],
         known_threat_actors=["Scattered Spider", "LAPSUS$"],
         recent_campaigns=[
@@ -43,14 +42,14 @@ TEMPLATE = RemediationTemplate(
                 name="Scattered Spider EC2 Creation",
                 year=2024,
                 description="Created EC2 instances and Azure VMs following credential compromise",
-                reference_url="https://attack.mitre.org/groups/G1015/"
+                reference_url="https://attack.mitre.org/groups/G1015/",
             ),
             Campaign(
                 name="LAPSUS$ VM Provisioning",
                 year=2022,
                 description="Provisioned new VMs in target cloud environments after credential theft",
-                reference_url="https://attack.mitre.org/groups/G1004/"
-            )
+                reference_url="https://attack.mitre.org/groups/G1004/",
+            ),
         ],
         prevalence="common",
         trend="stable",
@@ -63,13 +62,12 @@ TEMPLATE = RemediationTemplate(
             "Significant cloud cost increases",
             "Cryptomining resource abuse",
             "Bypassed security controls",
-            "Potential data staging for exfil"
+            "Potential data staging for exfil",
         ],
         typical_attack_phase="defence_evasion",
         often_precedes=["T1496.001", "T1530"],
-        often_follows=["T1078.004", "T1098.003"]
+        often_follows=["T1078.004", "T1098.003"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - EC2 Instance Creation
         DetectionStrategy(
@@ -83,11 +81,9 @@ TEMPLATE = RemediationTemplate(
                 event_pattern={
                     "source": ["aws.ec2"],
                     "detail-type": ["AWS API Call via CloudTrail"],
-                    "detail": {
-                        "eventName": ["RunInstances"]
-                    }
+                    "detail": {"eventName": ["RunInstances"]},
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect EC2 instance creation
 
 Parameters:
@@ -124,8 +120,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect EC2 instance creation
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect EC2 instance creation
 
 variable "alert_email" { type = string }
 
@@ -164,7 +160,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="EC2 Instance Created",
                 alert_description_template="New EC2 instance created by {userIdentity.arn}.",
@@ -172,14 +168,14 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Verify instance creation was authorised",
                     "Check instance type for cryptomining (large GPU/compute)",
                     "Review who created the instance",
-                    "Check instance security groups and IAM role"
+                    "Check instance security groups and IAM role",
                 ],
                 containment_actions=[
                     "Terminate unauthorised instances",
                     "Review EC2 launch permissions",
                     "Check for associated costs",
-                    "Review instance for malicious activity"
-                ]
+                    "Review instance for malicious activity",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist auto-scaling and deployment automation",
@@ -188,9 +184,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         # Strategy 2: AWS - Large Instance Type Detection
         DetectionStrategy(
             strategy_id="t1578002-aws-largeinstance",
@@ -200,12 +195,12 @@ resource "aws_sns_topic_policy" "allow_events" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn, requestParameters.instanceType
+                query="""fields @timestamp, userIdentity.arn, requestParameters.instanceType
 | filter eventSource = "ec2.amazonaws.com"
 | filter eventName = "RunInstances"
 | filter requestParameters.instanceType like /p3|p4|g4|g5|x1|x2|c5.18|c5.24|c6|m5.24/
-| sort @timestamp desc''',
-                terraform_template='''# Detect large/GPU instance creation (cryptomining indicator)
+| sort @timestamp desc""",
+                terraform_template="""# Detect large/GPU instance creation (cryptomining indicator)
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -242,7 +237,7 @@ resource "aws_cloudwatch_metric_alarm" "large_instance" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Large/GPU Instance Created",
                 alert_description_template="Large or GPU instance {instanceType} created - potential cryptomining.",
@@ -250,13 +245,13 @@ resource "aws_cloudwatch_metric_alarm" "large_instance" {
                     "Verify large instance was authorised",
                     "Check for legitimate ML/HPC workload",
                     "Review instance activity",
-                    "Check CPU/GPU utilisation patterns"
+                    "Check CPU/GPU utilisation patterns",
                 ],
                 containment_actions=[
                     "Terminate if unauthorised",
                     "Review who has RunInstances permission",
-                    "Set Service Control Policies for instance types"
-                ]
+                    "Set Service Control Policies for instance types",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist ML teams and approved workloads",
@@ -265,9 +260,8 @@ resource "aws_cloudwatch_metric_alarm" "large_instance" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail logging to CloudWatch"]
+            prerequisites=["CloudTrail logging to CloudWatch"],
         ),
-
         # Strategy 3: GCP - GCE Instance Creation
         DetectionStrategy(
             strategy_id="t1578002-gcp-gce",
@@ -279,7 +273,7 @@ resource "aws_cloudwatch_metric_alarm" "large_instance" {
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName="compute.instances.insert"''',
-                gcp_terraform_template='''# GCP: Detect GCE instance creation
+                gcp_terraform_template="""# GCP: Detect GCE instance creation
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -314,7 +308,7 @@ resource "google_monitoring_alert_policy" "gce_create" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: GCE Instance Created",
                 alert_description_template="New GCE instance was created.",
@@ -322,13 +316,13 @@ resource "google_monitoring_alert_policy" "gce_create" {
                     "Verify instance creation was authorised",
                     "Check machine type for cryptomining indicators",
                     "Review who created the instance",
-                    "Check instance for malicious activity"
+                    "Check instance for malicious activity",
                 ],
                 containment_actions=[
                     "Delete unauthorised instances",
                     "Review compute permissions",
-                    "Set organisation policy constraints"
-                ]
+                    "Set organisation policy constraints",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist auto-scaling and deployment",
@@ -337,11 +331,14 @@ resource "google_monitoring_alert_policy" "gce_create" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled"],
+        ),
     ],
-
-    recommended_order=["t1578002-aws-ec2", "t1578002-aws-largeinstance", "t1578002-gcp-gce"],
+    recommended_order=[
+        "t1578002-aws-ec2",
+        "t1578002-aws-largeinstance",
+        "t1578002-gcp-gce",
+    ],
     total_effort_hours=2.5,
-    coverage_improvement="+15% improvement for Defence Evasion tactic"
+    coverage_improvement="+15% improvement for Defence Evasion tactic",
 )

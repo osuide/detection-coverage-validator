@@ -21,7 +21,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Trusted Developer Utilities Proxy Execution",
     tactic_ids=["TA0005"],  # Defence Evasion
     mitre_url="https://attack.mitre.org/techniques/T1127/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries may leverage trusted developer utilities to proxy execution of malicious code. "
@@ -37,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Allows arbitrary C# or Visual Basic code execution via MSBuild inline tasks",
             "Often goes undetected by traditional endpoint security solutions",
             "Can be used to establish persistence or execute additional payloads",
-            "Particularly effective in environments with developer tools installed"
+            "Particularly effective in environments with developer tools installed",
         ],
         known_threat_actors=["APT29", "APT28", "Turla", "Multiple cybercrime groups"],
         recent_campaigns=[
@@ -45,20 +44,20 @@ TEMPLATE = RemediationTemplate(
                 name="Frankenstein Campaign",
                 year=2020,
                 description="Threat actors cobbled together open-source pieces to leverage MSBuild for code execution",
-                reference_url="https://attack.mitre.org/techniques/T1127/001/"
+                reference_url="https://attack.mitre.org/techniques/T1127/001/",
             ),
             Campaign(
                 name="Paranoid PlugX",
                 year=2017,
                 description="MSBuild used as part of sophisticated malware deployment and execution chain",
-                reference_url="https://www.anomali.com/blog/threat-actors-use-msbuild-to-deliver-rats-filelessly"
+                reference_url="https://www.anomali.com/blog/threat-actors-use-msbuild-to-deliver-rats-filelessly",
             ),
             Campaign(
                 name="Fileless RAT Delivery",
                 year=2023,
                 description="Threat actors used MSBuild to filelessly deliver Remcos RAT and RedLine Stealer",
-                reference_url="https://www.anomali.com/blog/threat-actors-use-msbuild-to-deliver-rats-filelessly"
-            )
+                reference_url="https://www.anomali.com/blog/threat-actors-use-msbuild-to-deliver-rats-filelessly",
+            ),
         ],
         prevalence="moderate",
         trend="stable",
@@ -74,13 +73,12 @@ TEMPLATE = RemediationTemplate(
             "Arbitrary code execution with trusted process privileges",
             "Potential for establishing persistent access mechanisms",
             "Difficult forensic investigation due to use of legitimate tools",
-            "Increased attacker dwell time due to reduced detection likelihood"
+            "Increased attacker dwell time due to reduced detection likelihood",
         ],
         typical_attack_phase="defence_evasion",
         often_precedes=["T1059", "T1543", "T1055"],
-        often_follows=["T1078", "T1190", "T1566"]
+        often_follows=["T1078", "T1190", "T1566"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - Process Monitoring on Windows Instances
         DetectionStrategy(
@@ -95,14 +93,14 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query=r'''fields @timestamp, instance_id, process_name, command_line, parent_process, source_ip
+                query=r"""fields @timestamp, instance_id, process_name, command_line, parent_process, source_ip
 | filter process_name in ["MSBuild.exe", "dnx.exe", "rcsi.exe", "cdb.exe", "windbg.exe", "tracker.exe"]
 | filter command_line like /(?i)(http|\.csproj|\.xml|\.proj|inline)/
 | filter parent_process not in ["devenv.exe", "VisualStudio.exe", "ServiceHub.Host.CLR.exe"]
 | stats count(*) as execution_count by instance_id, process_name, bin(5m)
 | filter execution_count > 0
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: CloudWatch alerting for developer utility proxy execution
 
 Parameters:
@@ -161,8 +159,8 @@ Resources:
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# CloudWatch alerting for developer utility proxy execution
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# CloudWatch alerting for developer utility proxy execution
 
 variable "log_group_name" {
   type        = string
@@ -225,7 +223,7 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Developer Utility Proxy Execution Detected",
                 alert_description_template=(
@@ -239,7 +237,7 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
                     "Look for network connections made by the process",
                     "Examine any DLLs loaded or files created by the process",
                     "Review recent login activity to the instance",
-                    "Check for other suspicious process executions on the same instance"
+                    "Check for other suspicious process executions on the same instance",
                 ],
                 containment_actions=[
                     "Isolate the affected EC2 instance from the network",
@@ -247,8 +245,8 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
                     "Terminate suspicious processes if still running",
                     "Review and remove any unauthorised scheduled tasks or persistence mechanisms",
                     "Implement application whitelisting to restrict developer utilities",
-                    "Remove unnecessary developer tools from production instances"
-                ]
+                    "Remove unnecessary developer tools from production instances",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning=(
@@ -267,10 +265,9 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
             prerequisites=[
                 "CloudWatch agent installed on Windows EC2 instances",
                 "Process monitoring enabled in CloudWatch agent configuration",
-                "CloudWatch Logs configured to receive instance logs"
-            ]
+                "CloudWatch Logs configured to receive instance logs",
+            ],
         ),
-
         # Strategy 2: AWS - Systems Manager Inventory
         DetectionStrategy(
             strategy_id="t1127-aws-ssm-inventory",
@@ -283,7 +280,7 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
             aws_service="systems_manager",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Systems Manager inventory for developer tools detection
 
 Parameters:
@@ -341,8 +338,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref SNSTopicArn''',
-                terraform_template='''# Systems Manager inventory for developer tools detection
+            Resource: !Ref SNSTopicArn""",
+                terraform_template="""# Systems Manager inventory for developer tools detection
 
 variable "sns_topic_arn" {
   type = string
@@ -411,7 +408,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Resource  = var.sns_topic_arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Developer Tools Found on Instance",
                 alert_description_template=(
@@ -423,14 +420,14 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Review instance purpose and validate developer tools are required",
                     "Check when the software was installed",
                     "Look for recent process execution logs involving these tools",
-                    "Verify if the installation was authorised and documented"
+                    "Verify if the installation was authorised and documented",
                 ],
                 containment_actions=[
                     "Remove developer tools from production instances",
                     "Implement tag-based policies to restrict tool installation",
                     "Use Systems Manager Run Command to uninstall unauthorised software",
-                    "Update golden AMIs to exclude developer utilities"
-                ]
+                    "Update golden AMIs to exclude developer utilities",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning=(
@@ -448,10 +445,9 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             prerequisites=[
                 "Systems Manager agent installed on EC2 instances",
                 "IAM role with Systems Manager permissions",
-                "Instances must be managed by Systems Manager"
-            ]
+                "Instances must be managed by Systems Manager",
+            ],
         ),
-
         # Strategy 3: GCP - Cloud Logging for Process Execution
         DetectionStrategy(
             strategy_id="t1127-gcp-process-logging",
@@ -469,7 +465,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
 logName=~"windows.*"
 jsonPayload.event_data.Image=~"(?i)(msbuild|dnx|rcsi|cdb|windbg|tracker)\\.exe"
 NOT jsonPayload.event_data.ParentImage=~"(?i)(devenv|visualstudio|servicehub)"''',
-                gcp_terraform_template='''# GCP: Cloud Logging alerts for developer utility execution
+                gcp_terraform_template="""# GCP: Cloud Logging alerts for developer utility execution
 
 variable "project_id" {
   type = string
@@ -549,7 +545,7 @@ resource "google_monitoring_alert_policy" "developer_utility_alert" {
     content   = "Developer utility executed on GCE instance. Investigate for potential T1127 defence evasion technique."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Developer Utility Proxy Execution",
                 alert_description_template=(
@@ -563,7 +559,7 @@ resource "google_monitoring_alert_policy" "developer_utility_alert" {
                     "Examine VPC Flow Logs for network connections from the process",
                     "Review Cloud Audit Logs for recent instance access",
                     "Check for other suspicious process executions",
-                    "Validate if developer tools should be present on the instance"
+                    "Validate if developer tools should be present on the instance",
                 ],
                 containment_actions=[
                     "Suspend the GCE instance to prevent further execution",
@@ -571,8 +567,8 @@ resource "google_monitoring_alert_policy" "developer_utility_alert" {
                     "Remove developer tools from production instances",
                     "Implement Organisation Policy constraints to restrict software",
                     "Review and update golden images to exclude build tools",
-                    "Enable OS Config for centralised patch and software management"
-                ]
+                    "Enable OS Config for centralised patch and software management",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning=(
@@ -591,10 +587,9 @@ resource "google_monitoring_alert_policy" "developer_utility_alert" {
             prerequisites=[
                 "Cloud Logging enabled for GCE instances",
                 "Windows event forwarding configured to Cloud Logging",
-                "Appropriate IAM permissions for log-based metrics"
-            ]
+                "Appropriate IAM permissions for log-based metrics",
+            ],
         ),
-
         # Strategy 4: Container Image Scanning
         DetectionStrategy(
             strategy_id="t1127-container-scanning",
@@ -697,7 +692,7 @@ Resources:
                   - ecr:DescribeImageScanFindings
                   - ecr:GetDownloadUrlForLayer
                 Resource: "*"''',
-                terraform_template='''# ECR image scanning for developer utilities
+                terraform_template="""# ECR image scanning for developer utilities
 
 variable "sns_topic_arn" {
   type = string
@@ -788,7 +783,7 @@ resource "aws_lambda_permission" "allow_eventbridge" {
   function_name = aws_lambda_function.scan_review.function_name
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.ecr_scan.arn
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Developer Utilities in Container Image",
                 alert_description_template=(
@@ -801,7 +796,7 @@ resource "aws_lambda_permission" "allow_eventbridge" {
                     "Verify if the image is for development or production use",
                     "Check if the utilities are required for application functionality",
                     "Review container runtime policies and restrictions",
-                    "Examine deployment configurations (ECS task definitions, K8s manifests)"
+                    "Examine deployment configurations (ECS task definitions, K8s manifests)",
                 ],
                 containment_actions=[
                     "Build new image without developer utilities",
@@ -809,8 +804,8 @@ resource "aws_lambda_permission" "allow_eventbridge" {
                     "Implement image vulnerability scanning in CI/CD pipeline",
                     "Use distroless or minimal base images where possible",
                     "Enforce image scanning policies before deployment",
-                    "Tag and quarantine images containing unnecessary tools"
-                ]
+                    "Tag and quarantine images containing unnecessary tools",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning=(
@@ -829,17 +824,16 @@ resource "aws_lambda_permission" "allow_eventbridge" {
             prerequisites=[
                 "ECR image scanning enabled",
                 "Lambda execution permissions configured",
-                "Container image scanning integrated in CI/CD pipeline"
-            ]
+                "Container image scanning integrated in CI/CD pipeline",
+            ],
         ),
     ],
-
     recommended_order=[
-        "t1127-aws-ssm-inventory",           # Start with identifying where tools exist
-        "t1127-aws-process-monitoring",      # Monitor execution on AWS instances
-        "t1127-gcp-process-logging",         # Monitor execution on GCP instances
-        "t1127-container-scanning"           # Scan container images for tools
+        "t1127-aws-ssm-inventory",  # Start with identifying where tools exist
+        "t1127-aws-process-monitoring",  # Monitor execution on AWS instances
+        "t1127-gcp-process-logging",  # Monitor execution on GCP instances
+        "t1127-container-scanning",  # Scan container images for tools
     ],
     total_effort_hours=8.5,
-    coverage_improvement="+35% improvement for Defence Evasion tactic"
+    coverage_improvement="+35% improvement for Defence Evasion tactic",
 )

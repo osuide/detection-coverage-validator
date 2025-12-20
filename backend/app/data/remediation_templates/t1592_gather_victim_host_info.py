@@ -24,7 +24,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Gather Victim Host Information",
     tactic_ids=["TA0043"],
     mitre_url="https://attack.mitre.org/techniques/T1592/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries collect information about victim hosts during the reconnaissance "
@@ -39,7 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Determine appropriate malware variants",
             "Select exploits matching target OS/software",
             "Identify high-value targets",
-            "Plan evasion techniques based on defences"
+            "Plan evasion techniques based on defences",
         ],
         known_threat_actors=["Volt Typhoon"],
         recent_campaigns=[
@@ -47,7 +46,7 @@ TEMPLATE = RemediationTemplate(
                 name="Volt Typhoon Infrastructure Targeting",
                 year=2023,
                 description="Conducted pre-compromise reconnaissance targeting critical infrastructure victim host information",
-                reference_url="https://attack.mitre.org/groups/G1017/"
+                reference_url="https://attack.mitre.org/groups/G1017/",
             )
         ],
         prevalence="common",
@@ -63,13 +62,12 @@ TEMPLATE = RemediationTemplate(
             "Identifies vulnerable assets",
             "Facilitates exploit selection",
             "Supports social engineering",
-            "Early warning of potential attack"
+            "Early warning of potential attack",
         ],
         typical_attack_phase="reconnaissance",
         often_precedes=["T1190", "T1566", "T1189", "T1078"],
-        often_follows=[]
+        often_follows=[],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1592-aws-public-exposure",
@@ -79,7 +77,7 @@ TEMPLATE = RemediationTemplate(
             aws_service="config",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Monitor public asset exposure that may leak host information
 
 Parameters:
@@ -135,8 +133,8 @@ Resources:
       State: ENABLED
       Targets:
         - Arn: !Ref AlertTopic
-          Id: ComplianceAlertTarget''',
-                terraform_template='''# Monitor public asset exposure in AWS
+          Id: ComplianceAlertTarget""",
+                terraform_template="""# Monitor public asset exposure in AWS
 
 variable "alert_email" { type = string }
 
@@ -197,7 +195,7 @@ resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.config_compliance.name
   target_id = "SendToSNS"
   arn       = aws_sns_topic.alerts.arn
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Public Asset Exposure Detected",
                 alert_description_template="Publicly exposed resource may leak host information: {resourceId}",
@@ -206,15 +204,15 @@ resource "aws_cloudwatch_event_target" "sns" {
                     "Check for sensitive metadata exposure",
                     "Review CloudTrail for unusual access patterns",
                     "Assess information disclosure risk",
-                    "Check for reconnaissance scanning activity"
+                    "Check for reconnaissance scanning activity",
                 ],
                 containment_actions=[
                     "Remove unnecessary public exposure",
                     "Implement security groups restrictions",
                     "Review and sanitise public metadata",
                     "Enable VPC Flow Logs for monitoring",
-                    "Document legitimate public assets"
-                ]
+                    "Document legitimate public assets",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude intentionally public resources (websites, APIs)",
@@ -223,9 +221,8 @@ resource "aws_cloudwatch_event_target" "sns" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["AWS Config enabled"]
+            prerequisites=["AWS Config enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1592-aws-metadata-access",
             name="AWS EC2 Metadata Service Access",
@@ -234,12 +231,12 @@ resource "aws_cloudwatch_event_target" "sns" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, sourceIPAddress, userAgent, requestParameters
+                query="""fields @timestamp, sourceIPAddress, userAgent, requestParameters
 | filter eventName = "DescribeInstances" or eventName = "DescribeImages" or eventName = "GetConsoleOutput"
 | stats count(*) as requests by sourceIPAddress, userAgent, bin(1h)
 | filter requests > 50
-| sort requests desc''',
-                terraform_template='''# Detect metadata and instance enumeration in AWS
+| sort requests desc""",
+                terraform_template="""# Detect metadata and instance enumeration in AWS
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -277,7 +274,7 @@ resource "aws_cloudwatch_metric_alarm" "excessive_enumeration" {
   evaluation_periods  = 1
   alarm_description   = "Detects excessive instance enumeration activity"
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Excessive Instance Enumeration Detected",
                 alert_description_template="High volume of instance enumeration from {sourceIPAddress}",
@@ -286,15 +283,15 @@ resource "aws_cloudwatch_metric_alarm" "excessive_enumeration" {
                     "Identify source IP and user agent",
                     "Check for authorised security scanning",
                     "Review compromised credentials possibility",
-                    "Correlate with other suspicious activity"
+                    "Correlate with other suspicious activity",
                 ],
                 containment_actions=[
                     "Review IAM permissions for least privilege",
                     "Enable MFA for sensitive operations",
                     "Rotate potentially compromised credentials",
                     "Implement SCPs to restrict enumeration",
-                    "Enable CloudTrail Insights"
-                ]
+                    "Enable CloudTrail Insights",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude authorised security scanning and monitoring tools",
@@ -303,9 +300,8 @@ resource "aws_cloudwatch_metric_alarm" "excessive_enumeration" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-20",
-            prerequisites=["CloudTrail enabled with CloudWatch Logs integration"]
+            prerequisites=["CloudTrail enabled with CloudWatch Logs integration"],
         ),
-
         DetectionStrategy(
             strategy_id="t1592-gcp-asset-enumeration",
             name="GCP Asset Enumeration Detection",
@@ -315,11 +311,11 @@ resource "aws_cloudwatch_metric_alarm" "excessive_enumeration" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 (protoPayload.methodName="v1.compute.instances.list" OR
  protoPayload.methodName="v1.compute.instances.get" OR
- protoPayload.methodName="beta.compute.instances.getSerialPortOutput")''',
-                gcp_terraform_template='''# GCP: Detect instance and asset enumeration
+ protoPayload.methodName="beta.compute.instances.getSerialPortOutput")""",
+                gcp_terraform_template="""# GCP: Detect instance and asset enumeration
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -411,7 +407,7 @@ resource "google_monitoring_alert_policy" "public_instance_creation" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Asset Enumeration Detected",
                 alert_description_template="Excessive instance enumeration activity detected",
@@ -420,15 +416,15 @@ resource "google_monitoring_alert_policy" "public_instance_creation" {
                     "Identify principal performing enumeration",
                     "Check for authorised security scanning",
                     "Review service account permissions",
-                    "Correlate with authentication logs"
+                    "Correlate with authentication logs",
                 ],
                 containment_actions=[
                     "Review IAM bindings for least privilege",
                     "Require MFA for sensitive operations",
                     "Rotate compromised service account keys",
                     "Implement organisation policies",
-                    "Enable VPC Service Controls"
-                ]
+                    "Enable VPC Service Controls",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude monitoring tools, GKE, and automation",
@@ -437,9 +433,8 @@ resource "google_monitoring_alert_policy" "public_instance_creation" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$15-25",
-            prerequisites=["Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1592-aws-guardduty",
             name="AWS GuardDuty Reconnaissance Findings",
@@ -453,9 +448,9 @@ resource "google_monitoring_alert_policy" "public_instance_creation" {
                     "Recon:EC2/PortProbeEMRUnprotectedPort",
                     "Recon:EC2/Portscan",
                     "Discovery:S3/MaliciousIPCaller",
-                    "Discovery:S3/TorIPCaller"
+                    "Discovery:S3/TorIPCaller",
                 ],
-                terraform_template='''# Enable GuardDuty reconnaissance detection
+                terraform_template="""# Enable GuardDuty reconnaissance detection
 
 variable "alert_email" { type = string }
 
@@ -507,7 +502,7 @@ resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.guardduty_recon.name
   target_id = "SendToSNS"
   arn       = aws_sns_topic.guardduty_alerts.arn
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Reconnaissance Activity Detected",
                 alert_description_template="GuardDuty detected reconnaissance: {findingType}",
@@ -516,15 +511,15 @@ resource "aws_cloudwatch_event_target" "sns" {
                     "Identify targeted resources",
                     "Check VPC Flow Logs for activity",
                     "Review Security Group configurations",
-                    "Assess potential vulnerability exposure"
+                    "Assess potential vulnerability exposure",
                 ],
                 containment_actions=[
                     "Block malicious IPs via NACL/Security Groups",
                     "Review and harden security groups",
                     "Enable VPC Flow Logs if not present",
                     "Patch identified vulnerabilities",
-                    "Consider AWS Shield if DDoS concerns"
-                ]
+                    "Consider AWS Shield if DDoS concerns",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="GuardDuty findings are generally accurate",
@@ -533,16 +528,15 @@ resource "aws_cloudwatch_event_target" "sns" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$30-50 for GuardDuty",
-            prerequisites=["AWS GuardDuty enabled"]
-        )
+            prerequisites=["AWS GuardDuty enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1592-aws-guardduty",
         "t1592-aws-public-exposure",
         "t1592-aws-metadata-access",
-        "t1592-gcp-asset-enumeration"
+        "t1592-gcp-asset-enumeration",
     ],
     total_effort_hours=3.0,
-    coverage_improvement="+15% improvement for Reconnaissance tactic detection"
+    coverage_improvement="+15% improvement for Reconnaissance tactic detection",
 )

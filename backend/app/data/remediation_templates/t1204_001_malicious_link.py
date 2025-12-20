@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="User Execution: Malicious Link",
     tactic_ids=["TA0002"],
     mitre_url="https://attack.mitre.org/techniques/T1204/001/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries leverage user clicks on malicious links to achieve code execution. "
@@ -37,27 +36,42 @@ TEMPLATE = RemediationTemplate(
             "Exploits human trust and curiosity",
             "Common in spearphishing campaigns",
             "Enables delivery of malware payloads",
-            "Difficult to prevent with technical controls alone"
+            "Difficult to prevent with technical controls alone",
         ],
         known_threat_actors=[
-            "APT28", "APT29", "APT32", "APT33", "APT38", "APT39",
-            "Lazarus Group", "Turla", "Sandworm Team", "Cobalt Group",
-            "TA505", "FIN7", "FIN8", "Wizard Spider", "OilRig",
-            "MuddyWater", "Kimsuky", "Sidewinder", "Patchwork"
+            "APT28",
+            "APT29",
+            "APT32",
+            "APT33",
+            "APT38",
+            "APT39",
+            "Lazarus Group",
+            "Turla",
+            "Sandworm Team",
+            "Cobalt Group",
+            "TA505",
+            "FIN7",
+            "FIN8",
+            "Wizard Spider",
+            "OilRig",
+            "MuddyWater",
+            "Kimsuky",
+            "Sidewinder",
+            "Patchwork",
         ],
         recent_campaigns=[
             Campaign(
                 name="Operation Dream Job",
                 year=2024,
                 description="Lazarus Group targeted employees with fake job offers via malicious LinkedIn links",
-                reference_url="https://attack.mitre.org/groups/G0032/"
+                reference_url="https://attack.mitre.org/groups/G0032/",
             ),
             Campaign(
                 name="Night Dragon",
                 year=2024,
                 description="Energy sector targeting via spearphishing emails with malicious hyperlinks",
-                reference_url="https://attack.mitre.org/campaigns/"
-            )
+                reference_url="https://attack.mitre.org/campaigns/",
+            ),
         ],
         prevalence="very_common",
         trend="increasing",
@@ -71,13 +85,12 @@ TEMPLATE = RemediationTemplate(
             "Malware delivery vector",
             "Credential theft risk",
             "Data exfiltration pathway",
-            "Ransomware deployment"
+            "Ransomware deployment",
         ],
         typical_attack_phase="execution",
         often_precedes=["T1204.002", "T1566.002", "T1059", "T1105"],
-        often_follows=["T1566.002"]
+        often_follows=["T1566.002"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1204-001-aws-guardduty",
@@ -87,14 +100,14 @@ TEMPLATE = RemediationTemplate(
             aws_service="guardduty",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, service.action.networkConnectionAction.remoteIpDetails.ipAddressV4,
+                query="""fields @timestamp, service.action.networkConnectionAction.remoteIpDetails.ipAddressV4,
        service.action.networkConnectionAction.remotePortDetails.portName,
        severity, title
 | filter type like /Backdoor|Trojan|CryptoMining/
 | filter service.action.networkConnectionAction.connectionDirection = "OUTBOUND"
 | stats count(*) as malicious_connections by service.action.networkConnectionAction.remoteIpDetails.ipAddressV4, bin(1h)
-| sort malicious_connections desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort malicious_connections desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect malicious domain connections via GuardDuty
 
 Parameters:
@@ -145,8 +158,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref SecurityAlertTopic''',
-                terraform_template='''# Detect malicious domain connections via GuardDuty
+            Resource: !Ref SecurityAlertTopic""",
+                terraform_template="""# Detect malicious domain connections via GuardDuty
 
 variable "alert_email" {
   type        = string
@@ -202,7 +215,7 @@ resource "aws_sns_topic_policy" "eventbridge_publish" {
       Resource  = aws_sns_topic.security_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Malicious Domain Connection Detected",
                 alert_description_template="EC2 instance {instanceId} connected to known malicious domain {remoteDomain}.",
@@ -211,15 +224,15 @@ resource "aws_sns_topic_policy" "eventbridge_publish" {
                     "Identify affected EC2 instance and user activity",
                     "Check browser history and email logs for malicious links",
                     "Review process execution logs for suspicious activity",
-                    "Examine network traffic for data exfiltration"
+                    "Examine network traffic for data exfiltration",
                 ],
                 containment_actions=[
                     "Isolate affected EC2 instance from network",
                     "Block malicious domain at security group/WAF",
                     "Terminate suspicious processes",
                     "Revoke potentially compromised credentials",
-                    "Review and apply security patches"
-                ]
+                    "Review and apply security patches",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="GuardDuty uses threat intelligence; false positives are rare",
@@ -228,9 +241,8 @@ resource "aws_sns_topic_policy" "eventbridge_publish" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-20",
-            prerequisites=["AWS GuardDuty enabled"]
+            prerequisites=["AWS GuardDuty enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1204-001-aws-cloudtrail",
             name="AWS CloudTrail Suspicious Browser Activity",
@@ -239,14 +251,14 @@ resource "aws_sns_topic_policy" "eventbridge_publish" {
             aws_service="cloudtrail",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, sourceIPAddress,
+                query="""fields @timestamp, userIdentity.principalId, sourceIPAddress,
        requestParameters.instancesSet.items.0.instanceId
 | filter eventName = "RunInstances" OR eventName = "StartInstances"
 | filter sourceIPAddress not like /^10\\.|^172\\.(1[6-9]|2[0-9]|3[01])\\.|^192\\.168\\./
 | stats count(*) as suspicious_starts by sourceIPAddress, bin(1h)
 | filter suspicious_starts > 3
-| sort suspicious_starts desc''',
-                terraform_template='''# Detect suspicious browser/download activity patterns
+| sort suspicious_starts desc""",
+                terraform_template="""# Detect suspicious browser/download activity patterns
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -293,7 +305,7 @@ resource "aws_cloudwatch_metric_alarm" "suspicious_activity" {
   evaluation_periods  = 1
   alarm_description   = "Detect suspicious instance launch patterns"
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Suspicious Browser/Download Activity",
                 alert_description_template="Unusual instance activity from external IP {sourceIPAddress}.",
@@ -302,15 +314,15 @@ resource "aws_cloudwatch_metric_alarm" "suspicious_activity" {
                     "Check browser history for suspicious links",
                     "Examine downloaded files in user directories",
                     "Review process execution logs",
-                    "Check for lateral movement indicators"
+                    "Check for lateral movement indicators",
                 ],
                 containment_actions=[
                     "Disable compromised user account",
                     "Isolate affected systems",
                     "Remove malicious files",
                     "Reset user credentials",
-                    "Review email security settings"
-                ]
+                    "Review email security settings",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Adjust thresholds based on normal user activity patterns",
@@ -319,9 +331,8 @@ resource "aws_cloudwatch_metric_alarm" "suspicious_activity" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-25",
-            prerequisites=["CloudTrail enabled with CloudWatch Logs integration"]
+            prerequisites=["CloudTrail enabled with CloudWatch Logs integration"],
         ),
-
         DetectionStrategy(
             strategy_id="t1204-001-aws-proxy",
             name="AWS Web Proxy URL Analysis",
@@ -330,13 +341,13 @@ resource "aws_cloudwatch_metric_alarm" "suspicious_activity" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, client_ip, url, http_status, bytes_sent
+                query="""fields @timestamp, client_ip, url, http_status, bytes_sent
 | filter url like /\\.exe|\\.scr|\\.pif|\\.cpl|\\.zip|\\.rar/
 | filter http_status = 200
 | stats count(*) as downloads, sum(bytes_sent) as total_bytes by client_ip, url
 | filter downloads > 0
-| sort downloads desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort downloads desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect suspicious file downloads via web proxy logs
 
 Parameters:
@@ -381,8 +392,8 @@ Resources:
       EvaluationPeriods: 1
       AlarmDescription: Detect suspicious file types downloaded
       AlarmActions:
-        - !Ref AlertTopic''',
-                terraform_template='''# Detect suspicious file downloads via web proxy
+        - !Ref AlertTopic""",
+                terraform_template="""# Detect suspicious file downloads via web proxy
 
 variable "proxy_log_group" {
   type        = string
@@ -430,7 +441,7 @@ resource "aws_cloudwatch_metric_alarm" "download_alert" {
   evaluation_periods  = 1
   alarm_description   = "Detect suspicious file types downloaded"
   alarm_actions       = [aws_sns_topic.download_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Suspicious File Download Detected",
                 alert_description_template="User {client_ip} downloaded suspicious file: {url}.",
@@ -439,15 +450,15 @@ resource "aws_cloudwatch_metric_alarm" "download_alert" {
                     "Review full browsing history and email",
                     "Analyse downloaded file for malware",
                     "Check if file was executed",
-                    "Review endpoint security logs"
+                    "Review endpoint security logs",
                 ],
                 containment_actions=[
                     "Quarantine downloaded file",
                     "Block malicious URL at proxy/firewall",
                     "Scan endpoint for malware",
                     "Disable user account if compromised",
-                    "Review and strengthen email filtering"
-                ]
+                    "Review and strengthen email filtering",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate software distribution domains",
@@ -456,9 +467,8 @@ resource "aws_cloudwatch_metric_alarm" "download_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Web proxy with CloudWatch Logs integration"]
+            prerequisites=["Web proxy with CloudWatch Logs integration"],
         ),
-
         DetectionStrategy(
             strategy_id="t1204-001-gcp-chronicle",
             name="GCP Chronicle SIEM Detection",
@@ -472,7 +482,7 @@ resource "aws_cloudwatch_metric_alarm" "download_alert" {
 log_name="projects/YOUR_PROJECT/logs/syslog"
 jsonPayload.message=~"(wget|curl|browser).*http"
 severity>="WARNING"''',
-                gcp_terraform_template='''# GCP: Detect malicious link activity via Cloud Logging
+                gcp_terraform_template="""# GCP: Detect malicious link activity via Cloud Logging
 
 variable "project_id" {
   type = string
@@ -548,7 +558,7 @@ resource "google_monitoring_alert_policy" "malicious_link_alert" {
     content   = "Suspicious URL access or download activity detected on GCE instance. Investigate for potential malicious link execution."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Malicious Link Activity Detected",
                 alert_description_template="Suspicious URL access detected on instance {instance_id}.",
@@ -557,15 +567,15 @@ resource "google_monitoring_alert_policy" "malicious_link_alert" {
                     "Check browser history and downloaded files",
                     "Analyse network traffic for C2 communication",
                     "Review recent authentication events",
-                    "Examine process execution logs"
+                    "Examine process execution logs",
                 ],
                 containment_actions=[
                     "Isolate affected GCE instance",
                     "Block malicious domains at VPC firewall",
                     "Scan instance for malware",
                     "Revoke potentially compromised credentials",
-                    "Review and update security policies"
-                ]
+                    "Review and update security policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate automated update/download processes",
@@ -574,9 +584,8 @@ resource "google_monitoring_alert_policy" "malicious_link_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$15-35",
-            prerequisites=["GCP Cloud Logging enabled", "Chronicle SIEM recommended"]
+            prerequisites=["GCP Cloud Logging enabled", "Chronicle SIEM recommended"],
         ),
-
         DetectionStrategy(
             strategy_id="t1204-001-gcp-safebrowsing",
             name="GCP Safe Browsing API Integration",
@@ -589,7 +598,7 @@ resource "google_monitoring_alert_policy" "malicious_link_alert" {
                 gcp_logging_query='''resource.type="cloud_function"
 jsonPayload.safeBrowsingThreat!=""
 severity="WARNING"''',
-                gcp_terraform_template='''# GCP: Detect malicious URLs via Safe Browsing API
+                gcp_terraform_template="""# GCP: Detect malicious URLs via Safe Browsing API
 
 variable "project_id" {
   type = string
@@ -659,7 +668,7 @@ resource "google_monitoring_alert_policy" "safe_browsing_alert" {
     content   = "Malicious URL accessed by user. Safe Browsing API detected threat. Investigate immediately for potential compromise."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Malicious URL Accessed",
                 alert_description_template="Safe Browsing detected threat type: {threat_type}.",
@@ -668,15 +677,15 @@ resource "google_monitoring_alert_policy" "safe_browsing_alert" {
                     "Review user's recent browsing activity",
                     "Check for downloaded files or executables",
                     "Examine system logs for suspicious processes",
-                    "Review authentication logs for compromise"
+                    "Review authentication logs for compromise",
                 ],
                 containment_actions=[
                     "Block malicious URL at organisational level",
                     "Quarantine affected user system",
                     "Reset user credentials",
                     "Scan for malware/backdoors",
-                    "Enhance security awareness training"
-                ]
+                    "Enhance security awareness training",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Safe Browsing API is highly accurate; false positives rare",
@@ -685,17 +694,19 @@ resource "google_monitoring_alert_policy" "safe_browsing_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-30",
-            prerequisites=["Safe Browsing API enabled", "Cloud Functions for URL scanning"]
-        )
+            prerequisites=[
+                "Safe Browsing API enabled",
+                "Cloud Functions for URL scanning",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1204-001-aws-guardduty",
         "t1204-001-gcp-safebrowsing",
         "t1204-001-aws-proxy",
         "t1204-001-gcp-chronicle",
-        "t1204-001-aws-cloudtrail"
+        "t1204-001-aws-cloudtrail",
     ],
     total_effort_hours=7.0,
-    coverage_improvement="+25% improvement for Execution tactic"
+    coverage_improvement="+25% improvement for Execution tactic",
 )

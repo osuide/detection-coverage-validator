@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Taint Shared Content",
     tactic_ids=["TA0008"],  # Lateral Movement
     mitre_url="https://attack.mitre.org/techniques/T1080/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries deliver payloads to remote systems by adding malicious content to "
@@ -37,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Users and systems regularly access shared content, enabling lateral movement",
             "Malicious content can remain dormant until accessed",
             "Cloud storage services often have broad access permissions",
-            "Modified binaries or documents may be trusted by users and security tools"
+            "Modified binaries or documents may be trusted by users and security tools",
         ],
         known_threat_actors=[
             "BRONZE BUTLER",
@@ -45,27 +44,27 @@ TEMPLATE = RemediationTemplate(
             "Gamaredon Group",
             "Darkhotel",
             "Conti",
-            "Miner-C"
+            "Miner-C",
         ],
         recent_campaigns=[
             Campaign(
                 name="BRONZE BUTLER Network Drive Compromise",
                 year=2023,
                 description="Deployed malware disguised as legitimate documents on shared drives to spread across enterprise networks",
-                reference_url="https://attack.mitre.org/groups/G0060/"
+                reference_url="https://attack.mitre.org/groups/G0060/",
             ),
             Campaign(
                 name="Cinnamon Tempest Ransomware",
                 year=2023,
                 description="Deployed ransomware via batch files placed in shared network locations",
-                reference_url="https://attack.mitre.org/groups/G1021/"
+                reference_url="https://attack.mitre.org/groups/G1021/",
             ),
             Campaign(
                 name="Gamaredon Macro Injection",
                 year=2022,
                 description="Injected malicious macros into Word and Excel files stored on shared drives",
-                reference_url="https://attack.mitre.org/groups/G0047/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0047/",
+            ),
         ],
         prevalence="moderate",
         trend="increasing",
@@ -81,13 +80,12 @@ TEMPLATE = RemediationTemplate(
             "Data corruption or ransomware affecting shared resources",
             "Compromised code repositories leading to supply chain attacks",
             "Loss of trust in shared infrastructure",
-            "Significant remediation costs for cleaning infected systems"
+            "Significant remediation costs for cleaning infected systems",
         ],
         typical_attack_phase="lateral-movement",
         often_precedes=["T1059", "T1204", "T1566"],
-        often_follows=["T1078", "T1110", "T1190"]
+        often_follows=["T1078", "T1110", "T1190"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS S3 Object Modification Monitoring
         DetectionStrategy(
@@ -117,12 +115,12 @@ TEMPLATE = RemediationTemplate(
                                 {"suffix": ".js"},
                                 {"suffix": ".docm"},
                                 {"suffix": ".xlsm"},
-                                {"suffix": ".pptm"}
+                                {"suffix": ".pptm"},
                             ]
-                        }
-                    }
+                        },
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect suspicious file uploads to shared S3 storage
 
 Parameters:
@@ -183,8 +181,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect suspicious file uploads to shared S3 storage
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect suspicious file uploads to shared S3 storage
 
 variable "alert_email" {
   description = "Email address for security alerts"
@@ -248,7 +246,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Suspicious File Upload to Shared S3 Storage",
                 alert_description_template=(
@@ -263,7 +261,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Check the source IP address and verify it's expected",
                     "Scan the file for malicious content using antivirus tools",
                     "Review access patterns to determine if the file has been accessed",
-                    "Check for similar uploads across other shared buckets"
+                    "Check for similar uploads across other shared buckets",
                 ],
                 containment_actions=[
                     "Quarantine or delete the suspicious file from the S3 bucket",
@@ -271,8 +269,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Enable S3 Object Lock to prevent file modifications",
                     "Implement bucket policies to restrict executable uploads",
                     "Enable S3 Versioning to track and revert malicious changes",
-                    "Consider enabling Amazon Macie to scan for sensitive data"
-                ]
+                    "Consider enabling Amazon Macie to scan for sensitive data",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised software distribution buckets and deployment pipelines",
@@ -281,9 +279,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled with S3 data events", "SNS email subscription confirmation"]
+            prerequisites=[
+                "CloudTrail enabled with S3 data events",
+                "SNS email subscription confirmation",
+            ],
         ),
-
         # Strategy 2: Unusual S3 Object Overwrite Detection
         DetectionStrategy(
             strategy_id="t1080-aws-s3-overwrite",
@@ -296,13 +296,13 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn as user, requestParameters.bucketName as bucket,
+                query="""fields @timestamp, userIdentity.arn as user, requestParameters.bucketName as bucket,
        requestParameters.key as object_key, sourceIPAddress, userAgent
 | filter eventName = "PutObject"
 | stats count(*) as modification_count by bucket, object_key, user, bin(1h) as time_window
 | filter modification_count >= 3
-| sort modification_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort modification_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect repeated S3 object modifications
 
 Parameters:
@@ -365,8 +365,8 @@ Resources:
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect repeated S3 object modifications
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect repeated S3 object modifications
 
 variable "cloudtrail_log_group" {
   description = "CloudWatch Log Group containing CloudTrail logs"
@@ -436,7 +436,7 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Excessive S3 Object Modifications Detected",
                 alert_description_template=(
@@ -449,15 +449,15 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
                     "Compare file hashes to detect malicious changes",
                     "Verify if the user normally has write access to this location",
                     "Check if similar patterns exist across other objects",
-                    "Review user agent strings for suspicious tools or scripts"
+                    "Review user agent strings for suspicious tools or scripts",
                 ],
                 containment_actions=[
                     "Enable S3 Versioning to track all changes",
                     "Restore known-good version of the modified object",
                     "Implement MFA Delete to prevent unauthorised deletions",
                     "Review and restrict write permissions to shared buckets",
-                    "Consider implementing bucket policies with IP restrictions"
-                ]
+                    "Consider implementing bucket policies with IP restrictions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Establish baseline for normal modification patterns; exclude CI/CD processes",
@@ -466,9 +466,11 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-20",
-            prerequisites=["CloudTrail S3 data events enabled", "CloudTrail logs in CloudWatch Logs"]
+            prerequisites=[
+                "CloudTrail S3 data events enabled",
+                "CloudTrail logs in CloudWatch Logs",
+            ],
         ),
-
         # Strategy 3: GCP Cloud Storage Modification Detection
         DetectionStrategy(
             strategy_id="t1080-gcp-storage-modification",
@@ -482,7 +484,7 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''protoPayload.methodName="storage.objects.create"
+                gcp_logging_query="""protoPayload.methodName="storage.objects.create"
 OR protoPayload.methodName="storage.objects.update"
 AND (
   protoPayload.resourceName=~".*\\.exe$"
@@ -493,8 +495,8 @@ AND (
   OR protoPayload.resourceName=~".*\\.py$"
   OR protoPayload.resourceName=~".*\\.docm$"
   OR protoPayload.resourceName=~".*\\.xlsm$"
-)''',
-                gcp_terraform_template='''# GCP: Detect suspicious file uploads to shared Cloud Storage
+)""",
+                gcp_terraform_template="""# GCP: Detect suspicious file uploads to shared Cloud Storage
 
 variable "project_id" {
   description = "GCP Project ID"
@@ -574,7 +576,7 @@ resource "google_monitoring_alert_policy" "suspicious_uploads" {
   documentation {
     content = "Suspicious file uploaded to Cloud Storage. Investigate for potential taint shared content attack (T1080)."
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Suspicious File Upload to Cloud Storage",
                 alert_description_template=(
@@ -589,7 +591,7 @@ resource "google_monitoring_alert_policy" "suspicious_uploads" {
                     "Review bucket IAM policies and public access settings",
                     "Scan the file for malicious content",
                     "Check if the file has been accessed or downloaded",
-                    "Review logs for similar suspicious uploads"
+                    "Review logs for similar suspicious uploads",
                 ],
                 containment_actions=[
                     "Remove the suspicious object from the bucket",
@@ -597,8 +599,8 @@ resource "google_monitoring_alert_policy" "suspicious_uploads" {
                     "Review and restrict bucket IAM permissions",
                     "Implement bucket-level organisation policies",
                     "Enable uniform bucket-level access",
-                    "Consider implementing VPC Service Controls"
-                ]
+                    "Consider implementing VPC Service Controls",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised software distribution buckets and deployment accounts",
@@ -607,9 +609,11 @@ resource "google_monitoring_alert_policy" "suspicious_uploads" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="45 minutes",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Cloud Audit Logs enabled for Cloud Storage", "Admin Activity and Data Access logs"]
+            prerequisites=[
+                "Cloud Audit Logs enabled for Cloud Storage",
+                "Admin Activity and Data Access logs",
+            ],
         ),
-
         # Strategy 4: File Integrity Monitoring for Shared Storage
         DetectionStrategy(
             strategy_id="t1080-file-integrity",
@@ -622,7 +626,7 @@ resource "google_monitoring_alert_policy" "suspicious_uploads" {
             aws_service="lambda",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                terraform_template='''# File Integrity Monitoring for S3 Shared Storage
+                terraform_template="""# File Integrity Monitoring for S3 Shared Storage
 
 variable "monitored_bucket" {
   description = "S3 bucket to monitor for file integrity"
@@ -751,7 +755,7 @@ resource "aws_iam_role_policy" "lambda_policy" {
       }
     ]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="File Integrity Violation in Shared Storage",
                 alert_description_template=(
@@ -765,15 +769,15 @@ resource "aws_iam_role_policy" "lambda_policy" {
                     "Analyse the modified file for malicious content",
                     "Identify who modified the file and verify authorisation",
                     "Check if other files in the same bucket were modified",
-                    "Review CloudTrail logs for related suspicious activity"
+                    "Review CloudTrail logs for related suspicious activity",
                 ],
                 containment_actions=[
                     "Restore the file to its previous known-good version",
                     "Quarantine the modified file for forensic analysis",
                     "Revoke access for the compromised principal",
                     "Enable S3 Object Lock for critical shared files",
-                    "Implement stricter bucket policies and access controls"
-                ]
+                    "Implement stricter bucket policies and access controls",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Exclude files that are expected to change frequently; baseline normal update patterns",
@@ -782,16 +786,19 @@ resource "aws_iam_role_policy" "lambda_policy" {
             implementation_effort=EffortLevel.HIGH,
             implementation_time="3-4 hours",
             estimated_monthly_cost="$15-30",
-            prerequisites=["S3 versioning enabled", "Lambda function code deployment", "DynamoDB table creation"]
-        )
+            prerequisites=[
+                "S3 versioning enabled",
+                "Lambda function code deployment",
+                "DynamoDB table creation",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1080-aws-s3-modification",
         "t1080-gcp-storage-modification",
         "t1080-aws-s3-overwrite",
-        "t1080-file-integrity"
+        "t1080-file-integrity",
     ],
     total_effort_hours=6.0,
-    coverage_improvement="+30% improvement for Lateral Movement tactic"
+    coverage_improvement="+30% improvement for Lateral Movement tactic",
 )

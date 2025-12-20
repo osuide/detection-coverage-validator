@@ -25,7 +25,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Inter-Process Communication",
     tactic_ids=["TA0002"],  # Execution
     mitre_url="https://attack.mitre.org/techniques/T1559/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries abuse inter-process communication (IPC) mechanisms to execute arbitrary "
@@ -43,7 +42,7 @@ TEMPLATE = RemediationTemplate(
             "Facilitates communication between malware components",
             "Bypasses application control policies",
             "Allows execution in the context of trusted processes",
-            "Difficult to distinguish from normal operations"
+            "Difficult to distinguish from normal operations",
         ],
         known_threat_actors=[
             "AppleJeus",
@@ -51,27 +50,27 @@ TEMPLATE = RemediationTemplate(
             "Havoc",
             "TONESHELL",
             "Medusa Ransomware",
-            "RotaJakiro"
+            "RotaJakiro",
         ],
         recent_campaigns=[
             Campaign(
                 name="3CX Supply Chain Attack",
                 year=2023,
                 description="AppleJeus malware created Windows named pipes for inter-module messaging during the 3CX supply chain compromise",
-                reference_url="https://attack.mitre.org/campaigns/C0026/"
+                reference_url="https://attack.mitre.org/campaigns/C0026/",
             ),
             Campaign(
                 name="Operation MidnightEclipse",
                 year=2024,
                 description="Unknown actors piped stdout to bash for execution in sophisticated cloud environment compromise",
-                reference_url="https://attack.mitre.org/techniques/T1559/"
+                reference_url="https://attack.mitre.org/techniques/T1559/",
             ),
             Campaign(
                 name="Cyclops Blink Campaign",
                 year=2022,
                 description="Cyclops Blink malware created pipes enabling inter-process communication for modular malware execution",
-                reference_url="https://attack.mitre.org/software/S0687/"
-            )
+                reference_url="https://attack.mitre.org/software/S0687/",
+            ),
         ],
         prevalence="moderate",
         trend="increasing",
@@ -89,13 +88,12 @@ TEMPLATE = RemediationTemplate(
             "Inter-component communication for advanced threats",
             "Container and host compromise",
             "Supply chain attack facilitation",
-            "Credential and data theft"
+            "Credential and data theft",
         ],
         typical_attack_phase="execution",
         often_precedes=["T1055", "T1003", "T1078", "T1071"],
-        often_follows=["T1190", "T1566", "T1195", "T1204"]
+        often_follows=["T1190", "T1566", "T1195", "T1204"],
     ),
-
     detection_strategies=[
         # AWS Strategy 1: Named Pipe and IPC Monitoring
         DetectionStrategy(
@@ -109,15 +107,15 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message, host, process_name, syscall, pipe_name
+                query="""fields @timestamp, @message, host, process_name, syscall, pipe_name
 | filter @message like /mkfifo|mknod.*p|socketpair|shmget|shmat/
    or @message like /CreateNamedPipe|CreatePipe|CallNamedPipe/
    or @message like /\\\\.\\\\pipe\\\\/
 | parse @message /(?<process>\S+).*(?<ipc_object>\S+pipe\S+|\S+shm\S+)/
 | filter process not in ["systemd", "dockerd", "containerd"]
 | sort @timestamp desc
-| limit 100''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| limit 100""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Named pipe and IPC creation detection for T1559
 
 Parameters:
@@ -182,8 +180,8 @@ Resources:
 Outputs:
   AlarmName:
     Description: CloudWatch alarm name
-    Value: !Ref IPCCreationAlarm''',
-                terraform_template='''# Named pipe and IPC creation detection for T1559
+    Value: !Ref IPCCreationAlarm""",
+                terraform_template="""# Named pipe and IPC creation detection for T1559
 
 variable "system_log_group" {
   description = "CloudWatch log group for system/audit logs"
@@ -253,7 +251,7 @@ resource "aws_sns_topic_policy" "alerts" {
 output "alarm_name" {
   description = "CloudWatch alarm name"
   value       = aws_cloudwatch_metric_alarm.ipc_creation.alarm_name
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Suspicious IPC Mechanism Creation Detected",
                 alert_description_template=(
@@ -269,7 +267,7 @@ output "alarm_name" {
                     "Review network connections from the process",
                     "Check for multiple processes communicating via the IPC object",
                     "Search for related persistence mechanisms",
-                    "Review process creation timeline for correlation"
+                    "Review process creation timeline for correlation",
                 ],
                 containment_actions=[
                     "Terminate suspicious processes using IPC",
@@ -278,8 +276,8 @@ output "alarm_name" {
                     "Enable comprehensive audit logging for IPC syscalls",
                     "Implement SELinux/AppArmor policies restricting IPC",
                     "Deploy endpoint detection and response (EDR) tools",
-                    "Review and harden instance security posture"
-                ]
+                    "Review and harden instance security posture",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude legitimate system services (systemd, dockerd, containerd) and database processes that use IPC. Tune threshold based on normal baseline.",
@@ -288,9 +286,12 @@ output "alarm_name" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$10-25 (depends on log volume)",
-            prerequisites=["Linux audit logging (auditd) enabled", "CloudWatch agent configured", "System logs forwarded to CloudWatch"]
+            prerequisites=[
+                "Linux audit logging (auditd) enabled",
+                "CloudWatch agent configured",
+                "System logs forwarded to CloudWatch",
+            ],
         ),
-
         # AWS Strategy 2: GuardDuty Runtime Monitoring for IPC Abuse
         DetectionStrategy(
             strategy_id="t1559-guardduty-ipc",
@@ -308,9 +309,9 @@ output "alarm_name" {
                     "Execution:Runtime/NewBinaryExecuted",
                     "DefenseEvasion:Runtime/FilelessExecution",
                     "Execution:Runtime/SuspiciousProcess",
-                    "Execution:Runtime/AnomalousProcessCommunication"
+                    "Execution:Runtime/AnomalousProcessCommunication",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty Runtime Monitoring for IPC abuse detection
 
 Parameters:
@@ -376,8 +377,8 @@ Resources:
 Outputs:
   GuardDutyDetectorId:
     Description: GuardDuty detector ID
-    Value: !Ref GuardDutyDetector''',
-                terraform_template='''# GuardDuty Runtime Monitoring for IPC abuse detection
+    Value: !Ref GuardDutyDetector""",
+                terraform_template="""# GuardDuty Runtime Monitoring for IPC abuse detection
 
 variable "alert_email" {
   description = "Email address for security alerts"
@@ -472,7 +473,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
 output "guardduty_detector_id" {
   description = "GuardDuty detector ID"
   value       = aws_guardduty_detector.main.id
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GuardDuty: Suspicious IPC Activity Detected",
                 alert_description_template=(
@@ -487,7 +488,7 @@ output "guardduty_detector_id" {
                     "Review network connections from involved processes",
                     "Analyse command line arguments of communicating processes",
                     "Search for persistence mechanisms",
-                    "Check CloudTrail for suspicious API activity"
+                    "Check CloudTrail for suspicious API activity",
                 ],
                 containment_actions=[
                     "Isolate affected instance or container",
@@ -496,8 +497,8 @@ output "guardduty_detector_id" {
                     "Rotate credentials accessible from the resource",
                     "Enable enhanced monitoring and logging",
                     "Deploy endpoint protection tools",
-                    "Review IAM roles and permissions"
-                ]
+                    "Review IAM roles and permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Minimal tuning required. GuardDuty uses ML baselines. Whitelist authorised DevOps processes if needed.",
@@ -506,9 +507,12 @@ output "guardduty_detector_id" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",
             estimated_monthly_cost="$4.60 per EC2 instance + $2 per ECS/EKS task (Runtime Monitoring)",
-            prerequisites=["GuardDuty enabled", "Runtime Monitoring feature enabled", "EC2/ECS/EKS workloads"]
+            prerequisites=[
+                "GuardDuty enabled",
+                "Runtime Monitoring feature enabled",
+                "EC2/ECS/EKS workloads",
+            ],
         ),
-
         # GCP Strategy 1: Cloud Logging IPC Detection
         DetectionStrategy(
             strategy_id="t1559-gcp-ipc-logging",
@@ -522,15 +526,15 @@ output "guardduty_detector_id" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance" OR resource.type="k8s_container"
+                gcp_logging_query="""resource.type="gce_instance" OR resource.type="k8s_container"
 (jsonPayload.syscall="mkfifo" OR
  jsonPayload.syscall="mknod" OR
  jsonPayload.syscall="socketpair" OR
  jsonPayload.syscall="shmget" OR
  jsonPayload.syscall="shmat" OR
  textPayload=~"CreateNamedPipe|CreatePipe|CallNamedPipe")
-severity >= WARNING''',
-                gcp_terraform_template='''# GCP: IPC mechanism creation detection
+severity >= WARNING""",
+                gcp_terraform_template="""# GCP: IPC mechanism creation detection
 
 variable "project_id" {
   description = "GCP project ID"
@@ -646,7 +650,7 @@ output "log_metric_name" {
 output "alert_policy_id" {
   description = "Alert policy ID"
   value       = google_monitoring_alert_policy.ipc_creation.id
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Suspicious IPC Creation Detected",
                 alert_description_template=(
@@ -661,7 +665,7 @@ output "alert_policy_id" {
                     "Review VPC Flow Logs for network activity",
                     "Identify initial access vector",
                     "Search for similar patterns across other instances",
-                    "Analyse command execution history"
+                    "Analyse command execution history",
                 ],
                 containment_actions=[
                     "Terminate suspicious processes",
@@ -671,8 +675,8 @@ output "alert_policy_id" {
                     "Enable OS Config for security patching",
                     "Configure shielded VMs for future instances",
                     "Deploy Security Command Center for threat detection",
-                    "Review and tighten firewall rules"
-                ]
+                    "Review and tighten firewall rules",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude authorised system services and database processes. Adjust threshold based on environment baseline.",
@@ -681,9 +685,12 @@ output "alert_policy_id" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="$5-20 (depends on log volume)",
-            prerequisites=["GCE/GKE audit logging enabled", "Cloud Logging configured", "OS audit daemon (auditd) installed"]
+            prerequisites=[
+                "GCE/GKE audit logging enabled",
+                "Cloud Logging configured",
+                "OS audit daemon (auditd) installed",
+            ],
         ),
-
         # GCP Strategy 2: Security Command Center
         DetectionStrategy(
             strategy_id="t1559-gcp-scc-ipc",
@@ -700,9 +707,9 @@ output "alert_policy_id" {
                 scc_finding_categories=[
                     "Execution: Suspicious Process",
                     "Execution: Added Binary Executed",
-                    "Persistence: Launch Suspicious Process"
+                    "Persistence: Launch Suspicious Process",
                 ],
-                gcp_terraform_template='''# GCP: Security Command Center IPC detection
+                gcp_terraform_template="""# GCP: Security Command Center IPC detection
 
 variable "project_id" {
   description = "GCP project ID"
@@ -759,7 +766,7 @@ output "pubsub_topic" {
 output "notification_config_id" {
   description = "SCC notification config ID"
   value       = google_scc_notification_config.ipc_abuse.config_id
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Security Command Center IPC Abuse Detection",
                 alert_description_template=(
@@ -774,7 +781,7 @@ output "notification_config_id" {
                     "Review container image and vulnerabilities",
                     "Examine lateral movement indicators",
                     "Check for credential access attempts",
-                    "Review related security findings"
+                    "Review related security findings",
                 ],
                 containment_actions=[
                     "Terminate affected workloads immediately",
@@ -784,8 +791,8 @@ output "notification_config_id" {
                     "Enable GKE Sandbox (gVisor) for containers",
                     "Deploy Binary Authorisation",
                     "Review and update security policies",
-                    "Enable Event Threat Detection"
-                ]
+                    "Enable Event Threat Detection",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Minimal tuning required. SCC uses threat intelligence and ML baselines.",
@@ -794,16 +801,19 @@ output "notification_config_id" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$20-40 (Security Command Center Premium)",
-            prerequisites=["Security Command Center Premium enabled", "Event Threat Detection enabled", "GCE/GKE security features enabled"]
-        )
+            prerequisites=[
+                "Security Command Center Premium enabled",
+                "Event Threat Detection enabled",
+                "GCE/GKE security features enabled",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1559-guardduty-ipc",
         "t1559-gcp-scc-ipc",
         "t1559-aws-ipc-monitoring",
-        "t1559-gcp-ipc-logging"
+        "t1559-gcp-ipc-logging",
     ],
     total_effort_hours=5.5,
-    coverage_improvement="+15% improvement for Execution tactic"
+    coverage_improvement="+15% improvement for Execution tactic",
 )

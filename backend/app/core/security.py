@@ -249,6 +249,7 @@ async def _authenticate_api_key(
 
     # Check expiration
     from datetime import datetime, timezone
+
     if api_key.expires_at and api_key.expires_at < datetime.now(timezone.utc):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -288,6 +289,7 @@ async def _authenticate_api_key(
 
 # Permission dependency factories
 
+
 def require_auth(
     require_org: bool = True,
 ) -> Callable:
@@ -297,6 +299,7 @@ def require_auth(
     Args:
         require_org: Whether organization context is required
     """
+
     async def dependency(
         auth: AuthContext = Depends(get_auth_context),
     ) -> AuthContext:
@@ -316,6 +319,7 @@ def require_role(*roles: UserRole) -> Callable:
 
     Example: require_role(UserRole.OWNER, UserRole.ADMIN)
     """
+
     async def dependency(
         auth: AuthContext = Depends(get_auth_context),
     ) -> AuthContext:
@@ -343,6 +347,7 @@ def require_scope(*scopes: str) -> Callable:
 
     Example: require_scope("read:accounts", "write:accounts")
     """
+
     async def dependency(
         auth: AuthContext = Depends(get_auth_context),
     ) -> AuthContext:
@@ -370,12 +375,15 @@ def require_account_access(account_id_param: str = "cloud_account_id") -> Callab
     Args:
         account_id_param: Name of the path/query parameter containing the account ID
     """
+
     async def dependency(
         request: Request,
         auth: AuthContext = Depends(get_auth_context),
     ) -> AuthContext:
         # Get account ID from path parameters or query parameters
-        account_id_str = request.path_params.get(account_id_param) or request.query_params.get(account_id_param)
+        account_id_str = request.path_params.get(
+            account_id_param
+        ) or request.query_params.get(account_id_param)
 
         if not account_id_str:
             raise HTTPException(

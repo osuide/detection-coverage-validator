@@ -20,7 +20,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Data from Cloud Storage",
     tactic_ids=["TA0009"],
     mitre_url="https://attack.mitre.org/techniques/T1530/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries may access data stored in cloud storage objects such as S3 buckets. "
@@ -33,7 +32,7 @@ TEMPLATE = RemediationTemplate(
             "Misconfigured buckets may allow public or overly permissive access",
             "Data exfiltration can occur at scale with simple API calls",
             "Backups in S3 may contain database dumps with credentials",
-            "Logs and configuration files can reveal additional attack vectors"
+            "Logs and configuration files can reveal additional attack vectors",
         ],
         known_threat_actors=["APT29", "APT41", "FIN7", "Lazarus Group", "LAPSUS$"],
         recent_campaigns=[
@@ -41,20 +40,20 @@ TEMPLATE = RemediationTemplate(
                 name="Capital One Breach",
                 year=2019,
                 description="Attacker exploited SSRF to access S3 buckets containing 100M+ customer records",
-                reference_url="https://www.capitalone.com/digital/facts2019/"
+                reference_url="https://www.capitalone.com/digital/facts2019/",
             ),
             Campaign(
                 name="Twitch Source Code Leak",
                 year=2021,
                 description="Complete source code and internal data exfiltrated from misconfigured cloud storage",
-                reference_url="https://blog.twitch.tv/en/2021/10/06/updates-on-the-twitch-security-incident/"
+                reference_url="https://blog.twitch.tv/en/2021/10/06/updates-on-the-twitch-security-incident/",
             ),
             Campaign(
                 name="LAPSUS$ Data Theft",
                 year=2022,
                 description="Accessed and exfiltrated source code and data from major tech companies' cloud storage",
-                reference_url="https://www.microsoft.com/security/blog/2022/03/22/dev-0537-criminal-actor-targeting-organizations-for-data-exfiltration/"
-            )
+                reference_url="https://www.microsoft.com/security/blog/2022/03/22/dev-0537-criminal-actor-targeting-organizations-for-data-exfiltration/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -69,13 +68,12 @@ TEMPLATE = RemediationTemplate(
             "Regulatory fines (GDPR, CCPA, HIPAA violations)",
             "Intellectual property theft",
             "Ransomware/extortion leverage",
-            "Reputational damage and loss of customer trust"
+            "Reputational damage and loss of customer trust",
         ],
         typical_attack_phase="collection",
         often_precedes=["T1567", "T1537"],
-        often_follows=["T1078", "T1552", "T1190"]
+        often_follows=["T1078", "T1552", "T1190"],
     ),
-
     detection_strategies=[
         # Strategy 1: GuardDuty S3 Protection
         DetectionStrategy(
@@ -96,9 +94,9 @@ TEMPLATE = RemediationTemplate(
                     "UnauthorizedAccess:S3/TorIPCaller",
                     "UnauthorizedAccess:S3/MaliciousIPCaller.Custom",
                     "Policy:S3/BucketBlockPublicAccessDisabled",
-                    "Policy:S3/BucketAnonymousAccessGranted"
+                    "Policy:S3/BucketAnonymousAccessGranted",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty + email alerts for S3 data theft
 
 Parameters:
@@ -149,8 +147,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# GuardDuty + email alerts for S3 data theft
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# GuardDuty + email alerts for S3 data theft
 
 variable "alert_email" {
   type = string
@@ -209,7 +207,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GuardDuty: Suspicious S3 Access Detected",
                 alert_description_template=(
@@ -222,15 +220,15 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Review the source IP and determine if it's known",
                     "Check what data was accessed or downloaded",
                     "Verify if the accessing principal should have this access",
-                    "Review access patterns for unusual volume or timing"
+                    "Review access patterns for unusual volume or timing",
                 ],
                 containment_actions=[
                     "Block the source IP at bucket policy or WAF level",
                     "Revoke access for the compromised principal",
                     "Enable S3 Object Lock if data integrity is critical",
                     "Review and restrict bucket policies",
-                    "Consider enabling bucket versioning for recovery"
-                ]
+                    "Consider enabling bucket versioning for recovery",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Add known data processing IPs to trusted IP lists",
@@ -239,9 +237,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$4 per million S3 data events",
-            prerequisites=["AWS account with appropriate IAM permissions", "S3 data events enabled"]
+            prerequisites=[
+                "AWS account with appropriate IAM permissions",
+                "S3 data events enabled",
+            ],
         ),
-
         # Strategy 2: Unusual S3 Access Volume
         DetectionStrategy(
             strategy_id="t1530-bulk-access",
@@ -253,14 +253,14 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             detection_type=DetectionType.CLOUDWATCH_QUERY,
             aws_service="cloudwatch",
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn as user, requestParameters.bucketName as bucket,
+                query="""fields @timestamp, userIdentity.arn as user, requestParameters.bucketName as bucket,
        sourceIPAddress, bytesTransferredOut
 | filter eventName = "GetObject"
 | stats count(*) as object_count, sum(bytesTransferredOut) as total_bytes
   by user, bucket, sourceIPAddress, bin(1h) as hour_window
 | filter object_count >= 100 or total_bytes >= 1073741824
-| sort total_bytes desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort total_bytes desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Bulk S3 access detection for T1530
 
 Parameters:
@@ -296,7 +296,7 @@ Resources:
       Threshold: !Ref ObjectCountThreshold
       ComparisonOperator: GreaterThanOrEqualToThreshold
       AlarmActions:
-        - !Ref SNSTopicArn''',
+        - !Ref SNSTopicArn""",
                 alert_severity="high",
                 alert_title="Bulk S3 Data Access Detected",
                 alert_description_template=(
@@ -308,14 +308,14 @@ Resources:
                     "Verify if this access pattern is normal for the user",
                     "Check the source IP geolocation and reputation",
                     "Review if the data accessed was sensitive or regulated",
-                    "Compare with the user's historical access patterns"
+                    "Compare with the user's historical access patterns",
                 ],
                 containment_actions=[
                     "Temporarily revoke the user's S3 access",
                     "Add source IP to bucket policy deny list",
                     "Enable S3 access logging if not already enabled",
-                    "Review and tighten bucket access policies"
-                ]
+                    "Review and tighten bucket access policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal access patterns; exclude known data pipeline roles",
@@ -324,9 +324,11 @@ Resources:
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$10-30",
-            prerequisites=["CloudTrail S3 data events enabled", "CloudTrail logs in CloudWatch"]
+            prerequisites=[
+                "CloudTrail S3 data events enabled",
+                "CloudTrail logs in CloudWatch",
+            ],
         ),
-
         # Strategy 3: Sensitive Bucket Access
         DetectionStrategy(
             strategy_id="t1530-sensitive-buckets",
@@ -350,10 +352,10 @@ Resources:
                                 {"prefix": "logs"},
                                 {"prefix": "config"},
                                 {"suffix": "-sensitive"},
-                                {"suffix": "-pii"}
+                                {"suffix": "-pii"},
                             ]
-                        }
-                    }
+                        },
+                    },
                 },
                 cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
 Description: Sensitive S3 bucket access monitoring
@@ -403,13 +405,13 @@ Resources:
                     "Check what specific objects were accessed",
                     "Review the user's role and normal access patterns",
                     "Confirm the source IP is expected for this user",
-                    "Check if any data was downloaded or copied"
+                    "Check if any data was downloaded or copied",
                 ],
                 containment_actions=[
                     "Contact the user to verify the access",
                     "Review and update bucket access policies",
-                    "Consider implementing S3 Access Points for granular control"
-                ]
+                    "Consider implementing S3 Access Points for granular control",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Customise bucket name patterns; whitelist specific roles",
@@ -418,9 +420,11 @@ Resources:
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["CloudTrail S3 data events enabled", "Consistent bucket naming"]
+            prerequisites=[
+                "CloudTrail S3 data events enabled",
+                "Consistent bucket naming",
+            ],
         ),
-
         # Strategy 4: Cross-Account Access
         DetectionStrategy(
             strategy_id="t1530-cross-account",
@@ -432,13 +436,13 @@ Resources:
             detection_type=DetectionType.CLOUDWATCH_QUERY,
             aws_service="cloudwatch",
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.accountId as caller_account,
+                query="""fields @timestamp, userIdentity.accountId as caller_account,
        userIdentity.arn as user, requestParameters.bucketName as bucket,
        sourceIPAddress, eventName
 | filter eventName in ["GetObject", "CopyObject", "UploadPartCopy"]
 | filter userIdentity.accountId != "YOUR_ACCOUNT_ID"
 | stats count(*) as access_count by caller_account, user, bucket, bin(1h) as hour_window
-| sort access_count desc''',
+| sort access_count desc""",
                 alert_severity="high",
                 alert_title="Cross-Account S3 Access Detected",
                 alert_description_template=(
@@ -450,14 +454,14 @@ Resources:
                     "Verify if this account is a known partner or service",
                     "Review bucket policies for overly permissive cross-account access",
                     "Check what data was accessed by the external account",
-                    "Determine if the access pattern is normal"
+                    "Determine if the access pattern is normal",
                 ],
                 containment_actions=[
                     "Update bucket policy to restrict external access",
                     "Implement VPC endpoints for S3 if applicable",
                     "Review and audit all cross-account access policies",
-                    "Consider using AWS RAM for controlled resource sharing"
-                ]
+                    "Consider using AWS RAM for controlled resource sharing",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Maintain list of trusted partner account IDs",
@@ -466,16 +470,18 @@ Resources:
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["CloudTrail S3 data events enabled", "Account ID documented"]
-        )
+            prerequisites=[
+                "CloudTrail S3 data events enabled",
+                "Account ID documented",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1530-guardduty",
         "t1530-bulk-access",
         "t1530-sensitive-buckets",
-        "t1530-cross-account"
+        "t1530-cross-account",
     ],
     total_effort_hours=6.5,
-    coverage_improvement="+35% improvement for Collection tactic"
+    coverage_improvement="+35% improvement for Collection tactic",
 )

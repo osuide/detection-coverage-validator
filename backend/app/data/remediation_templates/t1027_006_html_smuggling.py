@@ -24,7 +24,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Obfuscated Files or Information: HTML Smuggling",
     tactic_ids=["TA0005"],
     mitre_url="https://attack.mitre.org/techniques/T1027/006/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries conceal malicious payloads within seemingly benign HTML files "
@@ -42,7 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Payload deobfuscated only at victim endpoint",
             "Avoids network-based content inspection",
             "Difficult to detect in transit",
-            "Can deliver various payload types (ISO, ZIP, executables)"
+            "Can deliver various payload types (ISO, ZIP, executables)",
         ],
         known_threat_actors=["APT29"],
         recent_campaigns=[
@@ -50,20 +49,20 @@ TEMPLATE = RemediationTemplate(
                 name="APT29 ISO Embedding",
                 year=2021,
                 description="Embedded ISO file within HTML attachment with JavaScript code to initiate malware execution",
-                reference_url="https://attack.mitre.org/groups/G0016/"
+                reference_url="https://attack.mitre.org/groups/G0016/",
             ),
             Campaign(
                 name="EnvyScout HTML Smuggling",
                 year=2021,
                 description="Used JavaScript to extract encoded blobs from HTML bodies for malware delivery",
-                reference_url="https://attack.mitre.org/software/S0634/"
+                reference_url="https://attack.mitre.org/software/S0634/",
             ),
             Campaign(
                 name="QakBot HTML Delivery",
                 year=2021,
                 description="Delivered ZIP files through HTML smuggling techniques",
-                reference_url="https://attack.mitre.org/software/S0650/"
-            )
+                reference_url="https://attack.mitre.org/software/S0650/",
+            ),
         ],
         prevalence="moderate",
         trend="increasing",
@@ -78,13 +77,12 @@ TEMPLATE = RemediationTemplate(
             "Bypassed email security",
             "Endpoint compromise risk",
             "Potential ransomware delivery",
-            "Data theft enabler"
+            "Data theft enabler",
         ],
         typical_attack_phase="initial_access",
         often_precedes=["T1204.002", "T1059", "T1055"],
-        often_follows=["T1566.001", "T1566.002"]
+        often_follows=["T1566.001", "T1566.002"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1027-006-aws-cloudtrail-s3",
@@ -94,14 +92,14 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, requestParameters.bucketName, requestParameters.key
+                query="""fields @timestamp, userIdentity.principalId, requestParameters.bucketName, requestParameters.key
 | filter eventName = "PutObject"
 | filter requestParameters.key like /\\.html?$/
 | filter requestParameters.key like /attachment|download|payload|blob/
 | stats count(*) as html_uploads by userIdentity.principalId, requestParameters.bucketName, bin(1h)
 | filter html_uploads > 5
-| sort html_uploads desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort html_uploads desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect suspicious HTML file uploads to S3
 
 Parameters:
@@ -141,8 +139,8 @@ Resources:
       Threshold: 10
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect suspicious HTML file uploads to S3
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect suspicious HTML file uploads to S3
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -179,7 +177,7 @@ resource "aws_cloudwatch_metric_alarm" "html_smuggling" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Suspicious HTML File Upload Detected",
                 alert_description_template="Multiple HTML files uploaded to S3 by {principalId}.",
@@ -189,15 +187,15 @@ resource "aws_cloudwatch_metric_alarm" "html_smuggling" {
                     "Review file size and embedded data patterns",
                     "Identify source IP and user identity",
                     "Check for similar files from same source",
-                    "Inspect for Data URLs and download attributes"
+                    "Inspect for Data URLs and download attributes",
                 ],
                 containment_actions=[
                     "Quarantine suspicious HTML files",
                     "Block file downloads from affected buckets",
                     "Review and restrict S3 bucket permissions",
                     "Enable S3 Object Lock for forensics",
-                    "Scan endpoints that may have accessed files"
-                ]
+                    "Scan endpoints that may have accessed files",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Tune based on legitimate HTML upload patterns in your environment",
@@ -206,9 +204,8 @@ resource "aws_cloudwatch_metric_alarm" "html_smuggling" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail logging enabled", "S3 data events logged"]
+            prerequisites=["CloudTrail logging enabled", "S3 data events logged"],
         ),
-
         DetectionStrategy(
             strategy_id="t1027-006-aws-guardduty",
             name="AWS GuardDuty Malicious File Detection",
@@ -219,9 +216,9 @@ resource "aws_cloudwatch_metric_alarm" "html_smuggling" {
             implementation=DetectionImplementation(
                 guardduty_finding_types=[
                     "Execution:S3/MaliciousFile",
-                    "Impact:S3/MaliciousFile"
+                    "Impact:S3/MaliciousFile",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Configure GuardDuty for HTML smuggling detection
 
 Parameters:
@@ -253,8 +250,8 @@ Resources:
       State: ENABLED
       Targets:
         - Arn: !Ref AlertTopic
-          Id: SNSTarget''',
-                terraform_template='''# Configure GuardDuty for HTML smuggling detection
+          Id: SNSTarget""",
+                terraform_template="""# Configure GuardDuty for HTML smuggling detection
 
 variable "s3_bucket_arn" { type = string }
 variable "alert_email" { type = string }
@@ -305,7 +302,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Resource = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Malicious File Detected by GuardDuty",
                 alert_description_template="GuardDuty detected malicious file in S3: {resource}.",
@@ -315,7 +312,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Check for HTML smuggling indicators",
                     "Review CloudTrail for file access history",
                     "Identify users who uploaded or accessed file",
-                    "Scan related files in same bucket"
+                    "Scan related files in same bucket",
                 ],
                 containment_actions=[
                     "Immediately quarantine detected file",
@@ -323,8 +320,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Rotate credentials of affected users",
                     "Review and remove similar files",
                     "Enable S3 Block Public Access",
-                    "Scan endpoints that accessed the file"
-                ]
+                    "Scan endpoints that accessed the file",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="GuardDuty malware detection is highly accurate",
@@ -333,9 +330,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$15-40",
-            prerequisites=["GuardDuty enabled", "GuardDuty Malware Protection enabled for S3"]
+            prerequisites=[
+                "GuardDuty enabled",
+                "GuardDuty Malware Protection enabled for S3",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1027-006-aws-waf-html",
             name="AWS WAF HTML Content Inspection",
@@ -344,13 +343,13 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             aws_service="waf",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, httpRequest.clientIp, httpRequest.uri, httpRequest.headers
+                query="""fields @timestamp, httpRequest.clientIp, httpRequest.uri, httpRequest.headers
 | filter httpRequest.uri like /\\.html?$/
 | filter httpRequest.headers[*].value like /Blob|createObjectURL|msSaveBlob|download=/
 | stats count(*) as suspicious_html by httpRequest.clientIp, bin(1h)
 | filter suspicious_html > 3
-| sort suspicious_html desc''',
-                terraform_template='''# Detect HTML smuggling via WAF inspection
+| sort suspicious_html desc""",
+                terraform_template="""# Detect HTML smuggling via WAF inspection
 
 variable "waf_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -387,7 +386,7 @@ resource "aws_cloudwatch_metric_alarm" "html_smuggling_detected" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="HTML Smuggling Pattern Detected",
                 alert_description_template="Suspicious HTML with JavaScript Blob patterns from {clientIp}.",
@@ -397,15 +396,15 @@ resource "aws_cloudwatch_metric_alarm" "html_smuggling_detected" {
                     "Check for encoded payloads in Data URLs",
                     "Review download attribute usage",
                     "Identify destination endpoints",
-                    "Check for Zone.Identifier artifacts on endpoints"
+                    "Check for Zone.Identifier artifacts on endpoints",
                 ],
                 containment_actions=[
                     "Block source IP at WAF",
                     "Create WAF rule for similar patterns",
                     "Enable enhanced request inspection",
                     "Block suspicious HTML downloads at email gateway",
-                    "Deploy endpoint detection for file creation"
-                ]
+                    "Deploy endpoint detection for file creation",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Tune to exclude legitimate web applications using Blob APIs",
@@ -414,9 +413,8 @@ resource "aws_cloudwatch_metric_alarm" "html_smuggling_detected" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-25",
-            prerequisites=["AWS WAF deployed", "WAF logging enabled"]
+            prerequisites=["AWS WAF deployed", "WAF logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1027-006-gcp-cloud-storage",
             name="GCP Cloud Storage HTML File Monitoring",
@@ -429,7 +427,7 @@ resource "aws_cloudwatch_metric_alarm" "html_smuggling_detected" {
                 gcp_logging_query='''resource.type="gcs_bucket"
 protoPayload.methodName="storage.objects.create"
 protoPayload.resourceName=~"\\.html?$"''',
-                gcp_terraform_template='''# GCP: Detect HTML smuggling in Cloud Storage
+                gcp_terraform_template="""# GCP: Detect HTML smuggling in Cloud Storage
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -466,7 +464,7 @@ resource "google_monitoring_alert_policy" "html_smuggling" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Suspicious HTML File Upload",
                 alert_description_template="Multiple HTML files uploaded to Cloud Storage.",
@@ -476,7 +474,7 @@ resource "google_monitoring_alert_policy" "html_smuggling" {
                     "Review uploader identity and source IP",
                     "Inspect file metadata and creation time",
                     "Check for similar files in bucket",
-                    "Review bucket access logs"
+                    "Review bucket access logs",
                 ],
                 containment_actions=[
                     "Quarantine suspicious files",
@@ -484,8 +482,8 @@ resource "google_monitoring_alert_policy" "html_smuggling" {
                     "Enable uniform bucket-level access",
                     "Review and rotate service account keys",
                     "Enable Cloud Storage object versioning",
-                    "Deploy Cloud DLP for content scanning"
-                ]
+                    "Deploy Cloud DLP for content scanning",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude known web hosting buckets",
@@ -494,9 +492,8 @@ resource "google_monitoring_alert_policy" "html_smuggling" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-15",
-            prerequisites=["Cloud Logging enabled", "Data Access logs enabled"]
+            prerequisites=["Cloud Logging enabled", "Data Access logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1027-006-gcp-workspace",
             name="GCP Workspace Email Attachment Monitoring",
@@ -509,7 +506,7 @@ resource "google_monitoring_alert_policy" "html_smuggling" {
                 gcp_logging_query='''log_name="organizations/YOUR_ORG_ID/logs/gmail_log"
 jsonPayload.event_info.event_name="attachment_received"
 jsonPayload.event_info.attachment_info.file_type="html"''',
-                gcp_terraform_template='''# GCP: Detect HTML smuggling via Workspace
+                gcp_terraform_template="""# GCP: Detect HTML smuggling via Workspace
 
 variable "organization_id" { type = string }
 variable "alert_email" { type = string }
@@ -546,7 +543,7 @@ resource "google_monitoring_alert_policy" "html_email_smuggling" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: HTML Email Attachment Detected",
                 alert_description_template="HTML attachment received via Gmail - potential smuggling attempt.",
@@ -556,7 +553,7 @@ resource "google_monitoring_alert_policy" "html_email_smuggling" {
                     "Check for JavaScript Blob patterns",
                     "Review email headers and routing",
                     "Check if recipients opened attachment",
-                    "Scan recipient endpoints for indicators"
+                    "Scan recipient endpoints for indicators",
                 ],
                 containment_actions=[
                     "Quarantine similar emails",
@@ -564,8 +561,8 @@ resource "google_monitoring_alert_policy" "html_email_smuggling" {
                     "Update Gmail attachment rules",
                     "Enable advanced phishing protection",
                     "Deploy security awareness training",
-                    "Scan affected user endpoints"
-                ]
+                    "Scan affected user endpoints",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Most HTML email attachments are suspicious",
@@ -574,17 +571,16 @@ resource "google_monitoring_alert_policy" "html_email_smuggling" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Google Workspace", "Workspace audit logging enabled"]
-        )
+            prerequisites=["Google Workspace", "Workspace audit logging enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1027-006-aws-guardduty",
         "t1027-006-aws-waf-html",
         "t1027-006-gcp-workspace",
         "t1027-006-aws-cloudtrail-s3",
-        "t1027-006-gcp-cloud-storage"
+        "t1027-006-gcp-cloud-storage",
     ],
     total_effort_hours=4.5,
-    coverage_improvement="+25% improvement for Defence Evasion tactic"
+    coverage_improvement="+25% improvement for Defence Evasion tactic",
 )

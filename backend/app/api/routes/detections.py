@@ -142,9 +142,7 @@ async def get_detection_mappings(
 ):
     """Get technique mappings for a detection."""
     # Verify detection exists
-    result = await db.execute(
-        select(Detection).where(Detection.id == detection_id)
-    )
+    result = await db.execute(select(Detection).where(Detection.id == detection_id))
     detection = result.scalar_one_or_none()
     if not detection:
         raise HTTPException(status_code=404, detail="Detection not found")
@@ -167,13 +165,15 @@ async def get_detection_mappings(
                 "technique_id": t.technique_id,
                 "technique_name": t.name,
                 "confidence": round(m.confidence, 2),
-                "mapping_source": m.mapping_source.value if m.mapping_source else "unknown",
+                "mapping_source": (
+                    m.mapping_source.value if m.mapping_source else "unknown"
+                ),
                 "rationale": m.rationale,
                 "matched_indicators": m.matched_indicators,
                 "created_at": m.created_at.isoformat() if m.created_at else None,
             }
             for m, t in mappings
-        ]
+        ],
     }
 
 
@@ -183,9 +183,7 @@ async def delete_detection(
     db: AsyncSession = Depends(get_db),
 ):
     """Delete a detection."""
-    result = await db.execute(
-        select(Detection).where(Detection.id == detection_id)
-    )
+    result = await db.execute(select(Detection).where(Detection.id == detection_id))
     detection = result.scalar_one_or_none()
     if not detection:
         raise HTTPException(status_code=404, detail="Detection not found")

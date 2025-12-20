@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Indirect Command Execution",
     tactic_ids=["TA0005"],
     mitre_url="https://attack.mitre.org/techniques/T1202/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries abuse Windows system utilities to execute commands whilst bypassing "
@@ -42,7 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Enables execution of PowerShell, cmd, and other interpreters indirectly",
             "Can establish persistence through scheduled tasks and registry modifications",
             "SSH configuration file abuse enables command execution on connection",
-            "WSL provides alternative Linux environment for executing malicious code"
+            "WSL provides alternative Linux environment for executing malicious code",
         ],
         known_threat_actors=["Lazarus Group", "RedCurl"],
         recent_campaigns=[
@@ -50,20 +49,20 @@ TEMPLATE = RemediationTemplate(
                 name="Lazarus Group forfiles.exe Persistence",
                 year=2024,
                 description="Used forfiles.exe to execute .htm files for persistence, bypassing application control policies",
-                reference_url="https://attack.mitre.org/groups/G0032/"
+                reference_url="https://attack.mitre.org/groups/G0032/",
             ),
             Campaign(
                 name="RedCurl pcalua.exe Obfuscation",
                 year=2024,
                 description="Employed pcalua.exe to obfuscate binary execution during corporate espionage operations",
-                reference_url="https://attack.mitre.org/groups/G1039/"
+                reference_url="https://attack.mitre.org/groups/G1039/",
             ),
             Campaign(
                 name="Revenge RAT Forfiles Execution",
                 year=2023,
                 description="Revenge RAT malware used Forfiles utility for command execution to subvert controls",
-                reference_url="https://attack.mitre.org/software/S0379/"
-            )
+                reference_url="https://attack.mitre.org/software/S0379/",
+            ),
         ],
         prevalence="moderate",
         trend="increasing",
@@ -83,13 +82,12 @@ TEMPLATE = RemediationTemplate(
             "Persistence establishment through scheduled tasks",
             "Lateral movement to other Windows instances",
             "Data exfiltration via spawned processes",
-            "Deployment of ransomware and remote access trojans"
+            "Deployment of ransomware and remote access trojans",
         ],
         typical_attack_phase="defense_evasion",
         often_precedes=["T1059.001", "T1059.003", "T1003", "T1053"],
-        often_follows=["T1078.004", "T1190", "T1133", "T1566"]
+        often_follows=["T1078.004", "T1190", "T1133", "T1566"],
     ),
-
     detection_strategies=[
         # Strategy 1: Monitor Indirect Execution Utilities
         DetectionStrategy(
@@ -104,13 +102,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, EventID, Computer, ParentProcessName, NewProcessName, CommandLine
+                query="""fields @timestamp, EventID, Computer, ParentProcessName, NewProcessName, CommandLine
 | filter EventID = 4688
 | filter ParentProcessName like /forfiles[.]exe|pcalua[.]exe|wsl[.]exe|scriptrunner[.]exe|ssh[.]exe/i
 | filter NewProcessName like /powershell[.]exe|cmd[.]exe|msiexec[.]exe|regsvr32[.]exe|wscript[.]exe|cscript[.]exe/i
 | stats count() as executions by Computer, ParentProcessName, NewProcessName, bin(10m)
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect indirect command execution utilities on Windows instances
 
 Parameters:
@@ -172,8 +170,8 @@ Resources:
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect indirect command execution utilities on Windows instances
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect indirect command execution utilities on Windows instances
 
 variable "cloudwatch_log_group" {
   type        = string
@@ -238,7 +236,7 @@ resource "aws_sns_topic_policy" "indirect_exec_alerts" {
       Resource  = aws_sns_topic.indirect_exec_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Indirect Command Execution Detected",
                 alert_description_template=(
@@ -254,7 +252,7 @@ resource "aws_sns_topic_policy" "indirect_exec_alerts" {
                     "Review Windows Event ID 4688 for complete process creation history",
                     "Check for network connections from spawned processes",
                     "Search for SSH config file modifications in %USERPROFILE%\\.ssh\\config",
-                    "Verify WSL usage patterns if wsl.exe was the parent process"
+                    "Verify WSL usage patterns if wsl.exe was the parent process",
                 ],
                 containment_actions=[
                     "Terminate suspicious spawned processes (PowerShell, cmd.exe)",
@@ -263,8 +261,8 @@ resource "aws_sns_topic_policy" "indirect_exec_alerts" {
                     "Isolate the instance if compromise is confirmed",
                     "Disable WSL if not required for business operations",
                     "Audit and lock down SSH configuration files",
-                    "Review application control policies to block indirect execution methods"
-                ]
+                    "Review application control policies to block indirect execution methods",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised administrative scripts using forfiles; baseline normal WSL usage patterns",
@@ -273,9 +271,12 @@ resource "aws_sns_topic_policy" "indirect_exec_alerts" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="$10-20 depending on log volume",
-            prerequisites=["CloudWatch Agent installed on Windows instances", "Windows Process Creation auditing enabled (Event ID 4688)", "Process command-line logging enabled"]
+            prerequisites=[
+                "CloudWatch Agent installed on Windows instances",
+                "Windows Process Creation auditing enabled (Event ID 4688)",
+                "Process command-line logging enabled",
+            ],
         ),
-
         # Strategy 2: SSH Configuration File Monitoring
         DetectionStrategy(
             strategy_id="t1202-ssh-config-abuse",
@@ -289,10 +290,10 @@ resource "aws_sns_topic_policy" "indirect_exec_alerts" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message, Computer, ProcessName, CommandLine
+                query="""fields @timestamp, @message, Computer, ProcessName, CommandLine
 | filter @message like /[.]ssh.config|ProxyCommand|LocalCommand|ssh[.]exe.*-o/i
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect SSH configuration file abuse for indirect command execution
 
 Parameters:
@@ -354,8 +355,8 @@ Resources:
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect SSH configuration file abuse for indirect command execution
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect SSH configuration file abuse for indirect command execution
 
 variable "system_log_group" {
   type        = string
@@ -420,7 +421,7 @@ resource "aws_sns_topic_policy" "ssh_config_alerts" {
       Resource  = aws_sns_topic.ssh_config_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="SSH Configuration File Abuse Detected",
                 alert_description_template=(
@@ -434,7 +435,7 @@ resource "aws_sns_topic_policy" "ssh_config_alerts" {
                     "Identify the user account that modified the SSH config file",
                     "Review Windows Event ID 4663 (File Access) for config file modifications",
                     "Check for ssh.exe executions with -o flag in command-line history",
-                    "Investigate parent process that modified the SSH config"
+                    "Investigate parent process that modified the SSH config",
                 ],
                 containment_actions=[
                     "Remove malicious ProxyCommand and LocalCommand entries from SSH config",
@@ -442,8 +443,8 @@ resource "aws_sns_topic_policy" "ssh_config_alerts" {
                     "Restrict write permissions on .ssh directory and config files",
                     "Disable SSH client if not required for business operations",
                     "Audit SSH usage patterns across all Windows instances",
-                    "Implement file integrity monitoring for SSH configuration files"
-                ]
+                    "Implement file integrity monitoring for SSH configuration files",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised SSH proxy and jump host configurations",
@@ -452,9 +453,12 @@ resource "aws_sns_topic_policy" "ssh_config_alerts" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="$5-15 depending on log volume",
-            prerequisites=["File access auditing enabled on Windows", "CloudWatch Agent configured to forward file audit logs", "Sysmon or enhanced logging for file modifications"]
+            prerequisites=[
+                "File access auditing enabled on Windows",
+                "CloudWatch Agent configured to forward file audit logs",
+                "Sysmon or enhanced logging for file modifications",
+            ],
         ),
-
         # Strategy 3: GCP Windows Instance Detection
         DetectionStrategy(
             strategy_id="t1202-gcp-indirect-exec",
@@ -468,11 +472,11 @@ resource "aws_sns_topic_policy" "ssh_config_alerts" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 jsonPayload.EventID=4688
 (jsonPayload.ParentProcessName=~"forfiles\\.exe|pcalua\\.exe|wsl\\.exe|scriptrunner\\.exe|ssh\\.exe")
-(jsonPayload.NewProcessName=~"powershell\\.exe|cmd\\.exe|msiexec\\.exe|regsvr32\\.exe|wscript\\.exe")''',
-                gcp_terraform_template='''# GCP: Detect indirect command execution on Windows GCE instances
+(jsonPayload.NewProcessName=~"powershell\\.exe|cmd\\.exe|msiexec\\.exe|regsvr32\\.exe|wscript\\.exe")""",
+                gcp_terraform_template="""# GCP: Detect indirect command execution on Windows GCE instances
 
 variable "project_id" {
   type        = string
@@ -556,7 +560,7 @@ resource "google_monitoring_alert_policy" "indirect_exec" {
     content   = "Indirect command execution detected on Windows GCE instance. Investigate for defence evasion activity using forfiles, pcalua, WSL, or SSH utilities."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Indirect Command Execution Detected",
                 alert_description_template=(
@@ -571,7 +575,7 @@ resource "google_monitoring_alert_policy" "indirect_exec" {
                     "Check Windows Event Viewer for Event ID 4688 context",
                     "Review the instance's service account recent API activity",
                     "Check for subsequent network connections or data transfers",
-                    "Investigate parent process chain to identify initial execution vector"
+                    "Investigate parent process chain to identify initial execution vector",
                 ],
                 containment_actions=[
                     "Terminate suspicious spawned processes via remote command",
@@ -580,8 +584,8 @@ resource "google_monitoring_alert_policy" "indirect_exec" {
                     "Revoke instance service account credentials",
                     "Review and strengthen application control policies",
                     "Disable WSL and unused utilities if not business-required",
-                    "Implement stricter command-line execution policies"
-                ]
+                    "Implement stricter command-line execution policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised administrative scripts using forfiles; exclude known WSL development workflows",
@@ -590,9 +594,12 @@ resource "google_monitoring_alert_policy" "indirect_exec" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="$10-25",
-            prerequisites=["Cloud Logging API enabled", "Ops Agent or Cloud Logging agent installed on Windows GCE instances", "Windows Event logging configured for process creation"]
+            prerequisites=[
+                "Cloud Logging API enabled",
+                "Ops Agent or Cloud Logging agent installed on Windows GCE instances",
+                "Windows Event logging configured for process creation",
+            ],
         ),
-
         # Strategy 4: WSL-Specific Detection
         DetectionStrategy(
             strategy_id="t1202-wsl-detection",
@@ -605,13 +612,13 @@ resource "google_monitoring_alert_policy" "indirect_exec" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, EventID, Computer, ProcessName, CommandLine, ParentProcessName
+                query="""fields @timestamp, EventID, Computer, ProcessName, CommandLine, ParentProcessName
 | filter EventID = 4688
 | filter ProcessName like /wsl[.]exe|wslhost[.]exe|bash[.]exe/i
 | filter CommandLine like /curl|wget|nc|ncat|powershell|sh -c|bash -c/i
 | stats count() as executions by Computer, ProcessName, CommandLine, bin(10m)
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect WSL abuse for indirect command execution
 
 Parameters:
@@ -673,8 +680,8 @@ Resources:
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect WSL abuse for indirect command execution
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect WSL abuse for indirect command execution
 
 variable "cloudwatch_log_group" {
   type        = string
@@ -739,7 +746,7 @@ resource "aws_sns_topic_policy" "wsl_abuse_alerts" {
       Resource  = aws_sns_topic.wsl_abuse_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="WSL Abuse for Command Execution Detected",
                 alert_description_template=(
@@ -755,7 +762,7 @@ resource "aws_sns_topic_policy" "wsl_abuse_alerts" {
                     "Review parent process that invoked wsl.exe",
                     "Check for network connections from WSL processes",
                     "Investigate recent file downloads or data transfers via WSL",
-                    "Review WSL installation date and distribution configurations"
+                    "Review WSL installation date and distribution configurations",
                 ],
                 containment_actions=[
                     "Terminate WSL processes if suspicious activity confirmed",
@@ -764,8 +771,8 @@ resource "aws_sns_topic_policy" "wsl_abuse_alerts" {
                     "Review and restrict WSL usage via Group Policy",
                     "Block WSL network access through Windows Firewall if needed",
                     "Audit and remove unauthorised WSL distributions",
-                    "Implement application control to restrict wsl.exe execution"
-                ]
+                    "Implement application control to restrict wsl.exe execution",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised developer workflows and CI/CD pipelines using WSL",
@@ -774,16 +781,19 @@ resource "aws_sns_topic_policy" "wsl_abuse_alerts" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-15 depending on log volume",
-            prerequisites=["CloudWatch Agent installed on Windows instances", "Windows Process Creation auditing enabled", "Process command-line logging enabled"]
-        )
+            prerequisites=[
+                "CloudWatch Agent installed on Windows instances",
+                "Windows Process Creation auditing enabled",
+                "Process command-line logging enabled",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1202-aws-indirect-utils",
         "t1202-wsl-detection",
         "t1202-ssh-config-abuse",
-        "t1202-gcp-indirect-exec"
+        "t1202-gcp-indirect-exec",
     ],
     total_effort_hours=5.5,
-    coverage_improvement="+12% improvement for Defence Evasion tactic"
+    coverage_improvement="+12% improvement for Defence Evasion tactic",
 )

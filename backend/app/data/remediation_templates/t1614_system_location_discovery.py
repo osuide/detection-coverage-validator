@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="System Location Discovery",
     tactic_ids=["TA0007"],
     mitre_url="https://attack.mitre.org/techniques/T1614/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries gather geographical location information from victim hosts including "
@@ -39,7 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Customise malware behaviour based on victim location",
             "Identify high-value targets in specific regions",
             "Evade detection by not executing in researcher locations",
-            "Determine cloud region for resource targeting"
+            "Determine cloud region for resource targeting",
         ],
         known_threat_actors=[
             "Volt Typhoon (G1017)",
@@ -54,27 +53,27 @@ TEMPLATE = RemediationTemplate(
             "Qakbot (S0650)",
             "Lokibot (S0447)",
             "TrickBot (S0266)",
-            "Emotet (S0367)"
+            "Emotet (S0367)",
         ],
         recent_campaigns=[
             Campaign(
                 name="Volt Typhoon Infrastructure Campaign",
                 year=2023,
                 description="Chinese state-sponsored group obtained victim system location during critical infrastructure compromise",
-                reference_url="https://attack.mitre.org/groups/G1017/"
+                reference_url="https://attack.mitre.org/groups/G1017/",
             ),
             Campaign(
                 name="SideCopy APT Operations",
                 year=2023,
                 description="Identified country location of compromised hosts to target specific regions",
-                reference_url="https://attack.mitre.org/groups/G0121/"
+                reference_url="https://attack.mitre.org/groups/G0121/",
             ),
             Campaign(
                 name="Ragnar Locker Ransomware",
                 year=2020,
                 description="Checked system locale to avoid encrypting systems in CIS countries",
-                reference_url="https://attack.mitre.org/software/S0481/"
-            )
+                reference_url="https://attack.mitre.org/software/S0481/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -91,13 +90,20 @@ TEMPLATE = RemediationTemplate(
             "Precursor to geofenced malware deployment",
             "May signal targeted regional attacks",
             "Early warning for location-aware threats",
-            "Potential evasion of security controls"
+            "Potential evasion of security controls",
         ],
         typical_attack_phase="discovery",
-        often_precedes=["T1486", "T1485", "T1490"],  # Data Encrypted for Impact, Data Destruction, Inhibit System Recovery
-        often_follows=["T1078", "T1059", "T1566"]  # Valid Accounts, Command and Scripting Interpreter, Phishing
+        often_precedes=[
+            "T1486",
+            "T1485",
+            "T1490",
+        ],  # Data Encrypted for Impact, Data Destruction, Inhibit System Recovery
+        often_follows=[
+            "T1078",
+            "T1059",
+            "T1566",
+        ],  # Valid Accounts, Command and Scripting Interpreter, Phishing
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - EC2 Instance Metadata Queries
         DetectionStrategy(
@@ -108,13 +114,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message, instanceId, sourceIP
+                query="""fields @timestamp, @message, instanceId, sourceIP
 | filter @message like /169.254.169.254/
 | filter @message like /(placement\\/availability-zone|placement\\/region|instance-id\\/az)/
 | stats count(*) as metadata_queries by instanceId, sourceIP, bin(15m)
 | filter metadata_queries > 3
-| sort metadata_queries desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort metadata_queries desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect instance metadata location discovery attempts
 
 Parameters:
@@ -162,8 +168,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching''',
-                terraform_template='''# AWS: Detect instance metadata location discovery
+      TreatMissingData: notBreaching""",
+                terraform_template="""# AWS: Detect instance metadata location discovery
 
 variable "vpc_flow_logs_group" {
   type        = string
@@ -214,7 +220,7 @@ resource "aws_cloudwatch_metric_alarm" "metadata_location" {
   comparison_operator = "GreaterThanThreshold"
   alarm_actions       = [aws_sns_topic.metadata_location_alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Instance Metadata Location Discovery Detected",
                 alert_description_template="Multiple queries to EC2 instance metadata service for location information from instance {instanceId}. This may indicate malware checking victim location.",
@@ -225,7 +231,7 @@ resource "aws_cloudwatch_metric_alarm" "metadata_location" {
                     "Examine network connections for C2 activity",
                     "Look for other reconnaissance activities (T1082, T1083)",
                     "Review CloudTrail for suspicious API calls from the instance",
-                    "Check for known malware signatures or IOCs"
+                    "Check for known malware signatures or IOCs",
                 ],
                 containment_actions=[
                     "Consider isolating instance for forensic analysis",
@@ -233,8 +239,8 @@ resource "aws_cloudwatch_metric_alarm" "metadata_location" {
                     "Review instance security groups and IAM roles",
                     "Check for unauthorised scheduled tasks or persistence",
                     "Scan instance for malware and suspicious files",
-                    "Review recent deployments and configuration changes"
-                ]
+                    "Review recent deployments and configuration changes",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning=(
@@ -254,10 +260,9 @@ resource "aws_cloudwatch_metric_alarm" "metadata_location" {
             prerequisites=[
                 "VPC Flow Logs enabled and sent to CloudWatch",
                 "CloudWatch Logs retention configured",
-                "Sufficient log retention for historical analysis"
-            ]
+                "Sufficient log retention for historical analysis",
+            ],
         ),
-
         # Strategy 2: AWS - Locale and Timezone Discovery Commands
         DetectionStrategy(
             strategy_id="t1614-aws-locale",
@@ -267,13 +272,13 @@ resource "aws_cloudwatch_metric_alarm" "metadata_location" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message, instanceId, commandId
+                query="""fields @timestamp, @message, instanceId, commandId
 | filter @message like /(locale|localectl|timedatectl|Get-Culture|Get-WinSystemLocale|GetLocaleInfo|setxkbmap|GetKeyboardLayout|HKLM.*Keyboard Layout)/
 | filter @message not like /(systemd|locale-gen|dpkg-reconfigure|yum|apt)/
 | stats count(*) as locale_queries by instanceId, bin(1h)
 | filter locale_queries > 5
-| sort locale_queries desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort locale_queries desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect system locale and timezone discovery attempts
 
 Parameters:
@@ -321,8 +326,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching''',
-                terraform_template='''# AWS: Detect system locale and timezone discovery
+      TreatMissingData: notBreaching""",
+                terraform_template="""# AWS: Detect system locale and timezone discovery
 
 variable "cloudwatch_log_group" {
   type        = string
@@ -373,7 +378,7 @@ resource "aws_cloudwatch_metric_alarm" "locale_discovery" {
   comparison_operator = "GreaterThanThreshold"
   alarm_actions       = [aws_sns_topic.location_discovery_alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="System Location Discovery Detected",
                 alert_description_template="Multiple locale/timezone queries detected from instance {instanceId}. This may indicate malware performing geofencing checks.",
@@ -384,7 +389,7 @@ resource "aws_cloudwatch_metric_alarm" "locale_discovery" {
                     "Look for malware signatures or known IOCs",
                     "Check for other reconnaissance activities (T1082, T1124)",
                     "Review network connections for C2 communication",
-                    "Investigate any recent software installations or updates"
+                    "Investigate any recent software installations or updates",
                 ],
                 containment_actions=[
                     "Review user account permissions and recent activity",
@@ -392,8 +397,8 @@ resource "aws_cloudwatch_metric_alarm" "locale_discovery" {
                     "Check for unauthorised scheduled tasks or persistence mechanisms",
                     "Consider isolating instance if malware is confirmed",
                     "Review and update endpoint protection signatures",
-                    "Audit system logs for suspicious modifications"
-                ]
+                    "Audit system logs for suspicious modifications",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning=(
@@ -413,10 +418,9 @@ resource "aws_cloudwatch_metric_alarm" "locale_discovery" {
             prerequisites=[
                 "CloudWatch Logs agent installed on EC2 instances",
                 "System logs (syslog, Windows event logs) forwarded to CloudWatch",
-                "Command execution logging enabled (audit logs, PowerShell logging)"
-            ]
+                "Command execution logging enabled (audit logs, PowerShell logging)",
+            ],
         ),
-
         # Strategy 3: AWS - Systems Manager Location Command Detection
         DetectionStrategy(
             strategy_id="t1614-aws-ssm",
@@ -434,12 +438,12 @@ resource "aws_cloudwatch_metric_alarm" "locale_discovery" {
                         "requestParameters": {
                             "documentName": [
                                 "AWS-RunShellScript",
-                                "AWS-RunPowerShellScript"
+                                "AWS-RunPowerShellScript",
                             ]
-                        }
-                    }
+                        },
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect location discovery via Systems Manager
 
 Parameters:
@@ -493,8 +497,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# AWS: Detect location discovery via Systems Manager
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# AWS: Detect location discovery via Systems Manager
 
 variable "alert_email" {
   type        = string
@@ -553,7 +557,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.ssm_location_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Location Discovery Command via SSM",
                 alert_description_template="Location-related command executed via Systems Manager. Requires manual review of command content.",
@@ -563,15 +567,15 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Check target instances for command execution results",
                     "Verify if this is authorised administrative activity",
                     "Look for patterns of multiple discovery commands",
-                    "Review command output in Systems Manager console"
+                    "Review command output in Systems Manager console",
                 ],
                 containment_actions=[
                     "Review IAM permissions for SSM command execution",
                     "Check for unauthorised access to Systems Manager",
                     "Monitor target instances for suspicious activity",
                     "Consider restricting SSM command execution permissions",
-                    "Enable SSM Session Manager logging for better visibility"
-                ]
+                    "Enable SSM Session Manager logging for better visibility",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning=(
@@ -587,10 +591,9 @@ resource "aws_sns_topic_policy" "allow_events" {
             estimated_monthly_cost="$3-8",
             prerequisites=[
                 "CloudTrail enabled with SSM API logging",
-                "Systems Manager in use for instance management"
-            ]
+                "Systems Manager in use for instance management",
+            ],
         ),
-
         # Strategy 4: GCP - Compute Instance Location Discovery
         DetectionStrategy(
             strategy_id="t1614-gcp-compute",
@@ -604,7 +607,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                 gcp_logging_query='''resource.type="gce_instance"
 (textPayload=~"locale" OR textPayload=~"localectl" OR textPayload=~"AppleLocale" OR textPayload=~"Get-Culture" OR textPayload=~"GetLocaleInfo" OR textPayload=~"keyboard.*layout")
 -textPayload=~"(yum|apt|dpkg|systemd|locale-gen)"''',
-                gcp_terraform_template='''# GCP: Detect system location discovery
+                gcp_terraform_template="""# GCP: Detect system location discovery
 
 variable "project_id" {
   type        = string
@@ -669,7 +672,7 @@ resource "google_monitoring_alert_policy" "location_discovery_alert" {
   alert_strategy {
     auto_close = "1800s"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: System Location Discovery Detected",
                 alert_description_template="Multiple system location queries detected on GCP Compute Engine instance.",
@@ -680,7 +683,7 @@ resource "google_monitoring_alert_policy" "location_discovery_alert" {
                     "Look for other discovery techniques (metadata queries, network enumeration)",
                     "Review recent VM access logs and SSH sessions",
                     "Check for suspicious processes or scheduled tasks",
-                    "Examine instance for malware or unauthorised software"
+                    "Examine instance for malware or unauthorised software",
                 ],
                 containment_actions=[
                     "Review IAM permissions for instance access",
@@ -688,8 +691,8 @@ resource "google_monitoring_alert_policy" "location_discovery_alert" {
                     "Monitor instance for malware execution patterns",
                     "Consider VPC Service Controls for additional protection",
                     "Review OS Login and metadata settings",
-                    "Scan instance for malware and suspicious files"
-                ]
+                    "Scan instance for malware and suspicious files",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning=(
@@ -708,10 +711,9 @@ resource "google_monitoring_alert_policy" "location_discovery_alert" {
             prerequisites=[
                 "Cloud Logging agent installed on GCE instances",
                 "System logs ingested into Cloud Logging",
-                "Audit logging enabled for Compute Engine"
-            ]
+                "Audit logging enabled for Compute Engine",
+            ],
         ),
-
         # Strategy 5: GCP - Instance Metadata Location Queries
         DetectionStrategy(
             strategy_id="t1614-gcp-metadata",
@@ -725,7 +727,7 @@ resource "google_monitoring_alert_policy" "location_discovery_alert" {
                 gcp_logging_query='''resource.type="gce_instance"
 httpRequest.requestUrl=~"metadata.google.internal.*(zone|region)"
 protoPayload.request.url=~"metadata.google.internal.*(zone|region)"''',
-                gcp_terraform_template='''# GCP: Monitor metadata server location queries
+                gcp_terraform_template="""# GCP: Monitor metadata server location queries
 
 variable "project_id" {
   type        = string
@@ -789,7 +791,7 @@ resource "google_monitoring_alert_policy" "metadata_location_alert" {
   alert_strategy {
     auto_close = "1800s"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Metadata Location Discovery",
                 alert_description_template="Multiple queries to metadata server for location information detected.",
@@ -800,7 +802,7 @@ resource "google_monitoring_alert_policy" "metadata_location_alert" {
                     "Look for recently deployed applications or changes",
                     "Review network connections for C2 activity",
                     "Check for known malware patterns or IOCs",
-                    "Examine instance for unauthorised software"
+                    "Examine instance for unauthorised software",
                 ],
                 containment_actions=[
                     "Review instance security and IAM permissions",
@@ -808,8 +810,8 @@ resource "google_monitoring_alert_policy" "metadata_location_alert" {
                     "Monitor instance for suspicious activity",
                     "Check for unauthorised scheduled tasks",
                     "Scan for malware and suspicious processes",
-                    "Review recent configuration changes"
-                ]
+                    "Review recent configuration changes",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning=(
@@ -825,18 +827,17 @@ resource "google_monitoring_alert_policy" "metadata_location_alert" {
             prerequisites=[
                 "Cloud Logging enabled for GCE instances",
                 "HTTP request logging configured",
-                "Metadata server access logging enabled"
-            ]
-        )
+                "Metadata server access logging enabled",
+            ],
+        ),
     ],
-
     recommended_order=[
-        "t1614-aws-locale",          # Best AWS coverage for explicit commands
-        "t1614-aws-metadata",        # AWS metadata service monitoring
-        "t1614-aws-ssm",             # Low effort AWS SSM monitoring
-        "t1614-gcp-compute",         # Best GCP coverage for commands
-        "t1614-gcp-metadata"         # GCP metadata service monitoring
+        "t1614-aws-locale",  # Best AWS coverage for explicit commands
+        "t1614-aws-metadata",  # AWS metadata service monitoring
+        "t1614-aws-ssm",  # Low effort AWS SSM monitoring
+        "t1614-gcp-compute",  # Best GCP coverage for commands
+        "t1614-gcp-metadata",  # GCP metadata service monitoring
     ],
     total_effort_hours=6.0,
-    coverage_improvement="+7% improvement for Discovery tactic"
+    coverage_improvement="+7% improvement for Discovery tactic",
 )

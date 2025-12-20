@@ -24,7 +24,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="File and Directory Discovery",
     tactic_ids=["TA0007"],
     mitre_url="https://attack.mitre.org/techniques/T1083/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries enumerate files and directories or search specific locations "
@@ -39,7 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Locates configuration files with credentials",
             "Discovers backup files and archives",
             "Maps out exfiltration targets",
-            "Required for targeted data theft"
+            "Required for targeted data theft",
         ],
         known_threat_actors=[
             "APT28",
@@ -51,21 +50,21 @@ TEMPLATE = RemediationTemplate(
             "Kimsuky",
             "Dragonfly",
             "MuddyWater",
-            "Scattered Spider"
+            "Scattered Spider",
         ],
         recent_campaigns=[
             Campaign(
                 name="Cloud Instance File Enumeration",
                 year=2024,
                 description="Attackers enumerate EC2/GCE instances for sensitive files after initial access",
-                reference_url="https://www.datadoghq.com/state-of-cloud-security/"
+                reference_url="https://www.datadoghq.com/state-of-cloud-security/",
             ),
             Campaign(
                 name="Container File Discovery",
                 year=2024,
                 description="Adversaries search container filesystems for secrets and credentials",
-                reference_url="https://unit42.paloaltonetworks.com/2025-cloud-security-alert-trends/"
-            )
+                reference_url="https://unit42.paloaltonetworks.com/2025-cloud-security-alert-trends/",
+            ),
         ],
         prevalence="common",
         trend="stable",
@@ -81,13 +80,12 @@ TEMPLATE = RemediationTemplate(
             "Precursor to data exfiltration",
             "Often precedes credential theft",
             "Early warning opportunity for incident response",
-            "Reveals system layout to adversaries"
+            "Reveals system layout to adversaries",
         ],
         typical_attack_phase="discovery",
         often_precedes=["T1552.001", "T1530", "T1005", "T1039"],
-        often_follows=["T1078.004", "T1078.001", "T1190"]
+        often_follows=["T1078.004", "T1078.001", "T1190"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - EC2 SSM Command Execution Monitoring
         DetectionStrategy(
@@ -98,15 +96,15 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn, requestParameters.instanceId, responseElements.command.commandId
+                query="""fields @timestamp, userIdentity.arn, requestParameters.instanceId, responseElements.command.commandId
 | filter eventSource = "ssm.amazonaws.com"
 | filter eventName = "SendCommand"
 | filter requestParameters.documentName in ["AWS-RunShellScript", "AWS-RunPowerShellScript"]
 | filter requestParameters.parameters.commands.0 like /(?i)(ls|dir|find|tree|locate|get-childitem)/
 | stats count(*) as command_count by userIdentity.arn, bin(1h)
 | filter command_count > 5
-| sort command_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort command_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect file discovery commands via SSM
 
 Parameters:
@@ -152,8 +150,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       AlarmActions:
-        - !Ref AlertTopic''',
-                terraform_template='''# Detect file discovery commands via SSM
+        - !Ref AlertTopic""",
+                terraform_template="""# Detect file discovery commands via SSM
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -202,7 +200,7 @@ resource "aws_cloudwatch_metric_alarm" "file_discovery" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.file_discovery_alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="File Discovery Commands Detected",
                 alert_description_template="Multiple file enumeration commands executed via SSM by {userIdentity.arn}.",
@@ -212,7 +210,7 @@ resource "aws_cloudwatch_metric_alarm" "file_discovery" {
                     "Check which instances were targeted",
                     "Determine if this is authorised administrative activity",
                     "Look for follow-on data access or exfiltration",
-                    "Review CloudTrail for additional suspicious activity"
+                    "Review CloudTrail for additional suspicious activity",
                 ],
                 containment_actions=[
                     "Review SSM Session Manager logs for full command history",
@@ -220,8 +218,8 @@ resource "aws_cloudwatch_metric_alarm" "file_discovery" {
                     "Restrict SSM SendCommand permissions",
                     "Enable session logging to S3 for forensics",
                     "Consider requiring MFA for SSM access",
-                    "Audit instance security groups and network access"
-                ]
+                    "Audit instance security groups and network access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised automation tools and DevOps scripts. Consider time-of-day baselines for administrative activity.",
@@ -230,9 +228,11 @@ resource "aws_cloudwatch_metric_alarm" "file_discovery" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail logging to CloudWatch", "SSM enabled on EC2 instances"]
+            prerequisites=[
+                "CloudTrail logging to CloudWatch",
+                "SSM enabled on EC2 instances",
+            ],
         ),
-
         # Strategy 2: AWS - CloudWatch Logs for ECS/Lambda File Access
         DetectionStrategy(
             strategy_id="t1083-aws-containerfile",
@@ -242,12 +242,12 @@ resource "aws_cloudwatch_metric_alarm" "file_discovery" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message, @logStream
+                query="""fields @timestamp, @message, @logStream
 | filter @message like /(?i)(ls -la|find \/|tree \/|dir \/s|locate .*)/
 | stats count(*) as enum_count by @logStream, bin(15m)
 | filter enum_count > 3
-| sort enum_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort enum_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect file enumeration in containers
 
 Parameters:
@@ -293,8 +293,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       AlarmActions:
-        - !Ref AlertTopic''',
-                terraform_template='''# Detect file enumeration in containers
+        - !Ref AlertTopic""",
+                terraform_template="""# Detect file enumeration in containers
 
 variable "ecs_log_group" {
   type        = string
@@ -343,7 +343,7 @@ resource "aws_cloudwatch_metric_alarm" "container_enum" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.container_enum_alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Container File Enumeration Detected",
                 alert_description_template="File discovery commands detected in container logs for {logStream}.",
@@ -353,7 +353,7 @@ resource "aws_cloudwatch_metric_alarm" "container_enum" {
                     "Check if enumeration matches expected application behaviour",
                     "Examine container IAM role permissions",
                     "Look for subsequent credential access or data exfiltration",
-                    "Review container network connections"
+                    "Review container network connections",
                 ],
                 containment_actions=[
                     "Isolate suspicious containers from network",
@@ -361,8 +361,8 @@ resource "aws_cloudwatch_metric_alarm" "container_enum" {
                     "Audit container image for malicious code",
                     "Enable AWS GuardDuty runtime monitoring",
                     "Consider using read-only root filesystems",
-                    "Implement least-privilege container policies"
-                ]
+                    "Implement least-privilege container policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="High false positives from legitimate scripts. Filter by specific log patterns and known application behaviour. Consider excluding health check scripts.",
@@ -371,9 +371,11 @@ resource "aws_cloudwatch_metric_alarm" "container_enum" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["ECS/Lambda logging to CloudWatch enabled", "Detailed application logging"]
+            prerequisites=[
+                "ECS/Lambda logging to CloudWatch enabled",
+                "Detailed application logging",
+            ],
         ),
-
         # Strategy 3: GCP - VM Instance Command Monitoring
         DetectionStrategy(
             strategy_id="t1083-gcp-vmcommands",
@@ -384,12 +386,12 @@ resource "aws_cloudwatch_metric_alarm" "container_enum" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 protoPayload.methodName="google.cloud.osconfig.v1.OsConfigService.ExecutePatchJob"
 OR
 (resource.type="gce_instance" AND
- jsonPayload.message=~"(ls -la|find /|tree /|locate )")''',
-                gcp_terraform_template='''# GCP: Detect file discovery on VM instances
+ jsonPayload.message=~"(ls -la|find /|tree /|locate )")""",
+                gcp_terraform_template="""# GCP: Detect file discovery on VM instances
 
 variable "project_id" {
   type        = string
@@ -449,7 +451,7 @@ resource "google_monitoring_alert_policy" "file_discovery" {
   alert_strategy {
     auto_close = "1800s"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: File Discovery Commands Detected",
                 alert_description_template="File enumeration commands detected on GCE instances.",
@@ -459,7 +461,7 @@ resource "google_monitoring_alert_policy" "file_discovery" {
                     "Check if commands match authorised maintenance",
                     "Examine instance service account permissions",
                     "Look for lateral movement or data exfiltration",
-                    "Review VPC flow logs for suspicious network activity"
+                    "Review VPC flow logs for suspicious network activity",
                 ],
                 containment_actions=[
                     "Isolate affected instances if unauthorised",
@@ -467,8 +469,8 @@ resource "google_monitoring_alert_policy" "file_discovery" {
                     "Enable VPC Service Controls",
                     "Review and restrict OS Login access",
                     "Implement BeyondCorp Enterprise for zero trust",
-                    "Enable shielded VM with secure boot"
-                ]
+                    "Enable shielded VM with secure boot",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised automation and patch management. Consider time-based filtering for maintenance windows.",
@@ -477,9 +479,11 @@ resource "google_monitoring_alert_policy" "file_discovery" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Cloud Logging enabled on GCE instances", "OS Config API enabled for patch management"]
+            prerequisites=[
+                "Cloud Logging enabled on GCE instances",
+                "OS Config API enabled for patch management",
+            ],
         ),
-
         # Strategy 4: GCP - GCS Bucket Enumeration
         DetectionStrategy(
             strategy_id="t1083-gcp-gcsenum",
@@ -490,11 +494,11 @@ resource "google_monitoring_alert_policy" "file_discovery" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gcs_bucket"
+                gcp_logging_query="""resource.type="gcs_bucket"
 protoPayload.methodName="storage.objects.list"
 protoPayload.status.code!=403
-protoPayload.status.code!=404''',
-                gcp_terraform_template='''# GCP: Detect GCS bucket enumeration
+protoPayload.status.code!=404""",
+                gcp_terraform_template="""# GCP: Detect GCS bucket enumeration
 
 variable "project_id" {
   type        = string
@@ -555,7 +559,7 @@ resource "google_monitoring_alert_policy" "gcs_enumeration" {
   alert_strategy {
     auto_close = "1800s"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: GCS Bucket Enumeration Detected",
                 alert_description_template="High volume of GCS bucket listing operations detected.",
@@ -565,7 +569,7 @@ resource "google_monitoring_alert_policy" "gcs_enumeration" {
                     "Check if this matches expected application patterns",
                     "Examine service account or user permissions",
                     "Look for subsequent object downloads",
-                    "Review for potential data exfiltration"
+                    "Review for potential data exfiltration",
                 ],
                 containment_actions=[
                     "Review and restrict bucket IAM permissions",
@@ -573,8 +577,8 @@ resource "google_monitoring_alert_policy" "gcs_enumeration" {
                     "Implement bucket access logging",
                     "Consider private bucket access only",
                     "Enable uniform bucket-level access",
-                    "Review service account keys and rotate if needed"
-                ]
+                    "Review service account keys and rotate if needed",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known backup systems and CDN refresh processes. Adjust threshold based on normal application behaviour.",
@@ -583,16 +587,15 @@ resource "google_monitoring_alert_policy" "gcs_enumeration" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs with data access enabled for GCS"]
-        )
+            prerequisites=["Cloud Audit Logs with data access enabled for GCS"],
+        ),
     ],
-
     recommended_order=[
         "t1083-aws-ssmcommands",
         "t1083-gcp-gcsenum",
         "t1083-gcp-vmcommands",
-        "t1083-aws-containerfile"
+        "t1083-aws-containerfile",
     ],
     total_effort_hours=5.5,
-    coverage_improvement="+12% improvement for Discovery tactic"
+    coverage_improvement="+12% improvement for Discovery tactic",
 )

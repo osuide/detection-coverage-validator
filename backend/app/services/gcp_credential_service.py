@@ -20,6 +20,7 @@ import structlog
 # Optional imports - not all GCP services may be installed
 try:
     from google.cloud import securitycenter_v1
+
     HAS_SCC = True
 except ImportError:
     HAS_SCC = False
@@ -27,6 +28,7 @@ except ImportError:
 # Google SecOps (Chronicle SIEM) SDK
 try:
     from secops import SecOpsClient
+
     HAS_SECOPS = True
 except ImportError:
     HAS_SECOPS = False
@@ -45,9 +47,9 @@ class GCPCredentialService:
 
     # OAuth scopes we request (minimum needed)
     REQUIRED_SCOPES = [
-        'https://www.googleapis.com/auth/cloud-platform.read-only',
-        'https://www.googleapis.com/auth/logging.read',
-        'https://www.googleapis.com/auth/monitoring.read',
+        "https://www.googleapis.com/auth/cloud-platform.read-only",
+        "https://www.googleapis.com/auth/logging.read",
+        "https://www.googleapis.com/auth/monitoring.read",
     ]
 
     def __init__(self):
@@ -63,6 +65,7 @@ class GCPCredentialService:
         """
         if self._source_credentials is None:
             from google.auth import default
+
             self._source_credentials, _ = default(scopes=self.REQUIRED_SCOPES)
         return self._source_credentials
 
@@ -121,7 +124,9 @@ class GCPCredentialService:
         if credential.credential_type == CredentialType.GCP_WORKLOAD_IDENTITY:
             if not credential.gcp_service_account_email:
                 raise ValueError("Service account email required for workload identity")
-            return self.get_impersonated_credentials(credential.gcp_service_account_email)
+            return self.get_impersonated_credentials(
+                credential.gcp_service_account_email
+            )
 
         elif credential.credential_type == CredentialType.GCP_SERVICE_ACCOUNT_KEY:
             key_json = credential.get_gcp_service_account_key()
@@ -130,7 +135,9 @@ class GCPCredentialService:
             return self.get_credentials_from_key(key_json)
 
         else:
-            raise ValueError(f"Unsupported credential type: {credential.credential_type}")
+            raise ValueError(
+                f"Unsupported credential type: {credential.credential_type}"
+            )
 
     async def validate_credentials(self, credential: CloudCredential) -> dict:
         """Validate GCP credentials and check permissions.
@@ -146,10 +153,10 @@ class GCPCredentialService:
 
         if not credential.gcp_project_id:
             return {
-                'status': CredentialStatus.INVALID,
-                'message': 'Missing GCP project ID',
-                'granted_permissions': [],
-                'missing_permissions': [],
+                "status": CredentialStatus.INVALID,
+                "message": "Missing GCP project ID",
+                "granted_permissions": [],
+                "missing_permissions": [],
             }
 
         try:
@@ -158,10 +165,10 @@ class GCPCredentialService:
                 creds = self.get_credentials(credential)
             except Exception as e:
                 return {
-                    'status': CredentialStatus.INVALID,
-                    'message': f"Failed to obtain credentials: {str(e)}",
-                    'granted_permissions': [],
-                    'missing_permissions': [],
+                    "status": CredentialStatus.INVALID,
+                    "message": f"Failed to obtain credentials: {str(e)}",
+                    "granted_permissions": [],
+                    "missing_permissions": [],
                 }
 
             granted = []
@@ -173,17 +180,25 @@ class GCPCredentialService:
                 logging_client = logging_v2.MetricsServiceV2Client(credentials=creds)
                 parent = f"projects/{project_id}"
                 # Try to list metrics (this tests logging.logMetrics.list)
-                list(logging_client.list_log_metrics(request={"parent": parent}, timeout=10))
-                granted.extend([
-                    'logging.logMetrics.list',
-                    'logging.logMetrics.get',
-                ])
+                list(
+                    logging_client.list_log_metrics(
+                        request={"parent": parent}, timeout=10
+                    )
+                )
+                granted.extend(
+                    [
+                        "logging.logMetrics.list",
+                        "logging.logMetrics.get",
+                    ]
+                )
             except Exception as e:
-                if 'PERMISSION_DENIED' in str(e) or 'permission' in str(e).lower():
-                    missing.extend([
-                        'logging.logMetrics.list',
-                        'logging.logMetrics.get',
-                    ])
+                if "PERMISSION_DENIED" in str(e) or "permission" in str(e).lower():
+                    missing.extend(
+                        [
+                            "logging.logMetrics.list",
+                            "logging.logMetrics.get",
+                        ]
+                    )
                 else:
                     logger.warning("gcp_logging_check_error", error=str(e))
 
@@ -192,168 +207,238 @@ class GCPCredentialService:
                 config_client = logging_v2.ConfigServiceV2Client(credentials=creds)
                 parent = f"projects/{project_id}"
                 list(config_client.list_sinks(request={"parent": parent}, timeout=10))
-                granted.extend([
-                    'logging.sinks.list',
-                    'logging.sinks.get',
-                ])
+                granted.extend(
+                    [
+                        "logging.sinks.list",
+                        "logging.sinks.get",
+                    ]
+                )
             except Exception as e:
-                if 'PERMISSION_DENIED' in str(e) or 'permission' in str(e).lower():
-                    missing.extend([
-                        'logging.sinks.list',
-                        'logging.sinks.get',
-                    ])
+                if "PERMISSION_DENIED" in str(e) or "permission" in str(e).lower():
+                    missing.extend(
+                        [
+                            "logging.sinks.list",
+                            "logging.sinks.get",
+                        ]
+                    )
 
             # Test Cloud Monitoring permissions
             try:
-                monitoring_client = monitoring_v3.AlertPolicyServiceClient(credentials=creds)
+                monitoring_client = monitoring_v3.AlertPolicyServiceClient(
+                    credentials=creds
+                )
                 parent = f"projects/{project_id}"
-                list(monitoring_client.list_alert_policies(request={"name": parent}, timeout=10))
-                granted.extend([
-                    'monitoring.alertPolicies.list',
-                    'monitoring.alertPolicies.get',
-                ])
+                list(
+                    monitoring_client.list_alert_policies(
+                        request={"name": parent}, timeout=10
+                    )
+                )
+                granted.extend(
+                    [
+                        "monitoring.alertPolicies.list",
+                        "monitoring.alertPolicies.get",
+                    ]
+                )
             except Exception as e:
-                if 'PERMISSION_DENIED' in str(e) or 'permission' in str(e).lower():
-                    missing.extend([
-                        'monitoring.alertPolicies.list',
-                        'monitoring.alertPolicies.get',
-                    ])
+                if "PERMISSION_DENIED" in str(e) or "permission" in str(e).lower():
+                    missing.extend(
+                        [
+                            "monitoring.alertPolicies.list",
+                            "monitoring.alertPolicies.get",
+                        ]
+                    )
 
             # Test Notification Channels
             try:
-                nc_client = monitoring_v3.NotificationChannelServiceClient(credentials=creds)
+                nc_client = monitoring_v3.NotificationChannelServiceClient(
+                    credentials=creds
+                )
                 parent = f"projects/{project_id}"
-                list(nc_client.list_notification_channels(request={"name": parent}, timeout=10))
-                granted.extend([
-                    'monitoring.notificationChannels.list',
-                    'monitoring.notificationChannels.get',
-                ])
+                list(
+                    nc_client.list_notification_channels(
+                        request={"name": parent}, timeout=10
+                    )
+                )
+                granted.extend(
+                    [
+                        "monitoring.notificationChannels.list",
+                        "monitoring.notificationChannels.get",
+                    ]
+                )
             except Exception as e:
-                if 'PERMISSION_DENIED' in str(e) or 'permission' in str(e).lower():
-                    missing.extend([
-                        'monitoring.notificationChannels.list',
-                        'monitoring.notificationChannels.get',
-                    ])
+                if "PERMISSION_DENIED" in str(e) or "permission" in str(e).lower():
+                    missing.extend(
+                        [
+                            "monitoring.notificationChannels.list",
+                            "monitoring.notificationChannels.get",
+                        ]
+                    )
 
             # Test Security Command Center permissions
             if HAS_SCC:
                 try:
-                    scc_client = securitycenter_v1.SecurityCenterClient(credentials=creds)
+                    scc_client = securitycenter_v1.SecurityCenterClient(
+                        credentials=creds
+                    )
                     parent = f"projects/{project_id}/sources/-"
                     # List findings
-                    list(scc_client.list_findings(request={"parent": parent}, timeout=10))
-                    granted.extend([
-                        'securitycenter.findings.list',
-                        'securitycenter.findings.get',
-                        'securitycenter.sources.list',
-                        'securitycenter.sources.get',
-                    ])
+                    list(
+                        scc_client.list_findings(request={"parent": parent}, timeout=10)
+                    )
+                    granted.extend(
+                        [
+                            "securitycenter.findings.list",
+                            "securitycenter.findings.get",
+                            "securitycenter.sources.list",
+                            "securitycenter.sources.get",
+                        ]
+                    )
                 except Exception as e:
                     error_str = str(e).lower()
-                    if 'permission_denied' in error_str or 'permission' in error_str:
-                        missing.extend([
-                            'securitycenter.findings.list',
-                            'securitycenter.findings.get',
-                            'securitycenter.sources.list',
-                            'securitycenter.sources.get',
-                        ])
-                    elif 'not enabled' in error_str or 'not activated' in error_str:
+                    if "permission_denied" in error_str or "permission" in error_str:
+                        missing.extend(
+                            [
+                                "securitycenter.findings.list",
+                                "securitycenter.findings.get",
+                                "securitycenter.sources.list",
+                                "securitycenter.sources.get",
+                            ]
+                        )
+                    elif "not enabled" in error_str or "not activated" in error_str:
                         # SCC not enabled - that's OK, permission would work if enabled
-                        granted.extend([
-                            'securitycenter.findings.list',
-                            'securitycenter.findings.get',
-                            'securitycenter.sources.list',
-                            'securitycenter.sources.get',
-                        ])
+                        granted.extend(
+                            [
+                                "securitycenter.findings.list",
+                                "securitycenter.findings.get",
+                                "securitycenter.sources.list",
+                                "securitycenter.sources.get",
+                            ]
+                        )
             else:
                 # SCC library not installed - assume permissions would work if configured
-                granted.extend([
-                    'securitycenter.findings.list',
-                    'securitycenter.findings.get',
-                    'securitycenter.sources.list',
-                    'securitycenter.sources.get',
-                ])
+                granted.extend(
+                    [
+                        "securitycenter.findings.list",
+                        "securitycenter.findings.get",
+                        "securitycenter.sources.list",
+                        "securitycenter.sources.get",
+                    ]
+                )
 
             # Test Cloud Functions permissions
             try:
                 from google.cloud import functions_v1
-                functions_client = functions_v1.CloudFunctionsServiceClient(credentials=creds)
+
+                functions_client = functions_v1.CloudFunctionsServiceClient(
+                    credentials=creds
+                )
                 parent = f"projects/{project_id}/locations/-"
-                list(functions_client.list_functions(request={"parent": parent}, timeout=10))
-                granted.extend([
-                    'cloudfunctions.functions.list',
-                    'cloudfunctions.functions.get',
-                ])
+                list(
+                    functions_client.list_functions(
+                        request={"parent": parent}, timeout=10
+                    )
+                )
+                granted.extend(
+                    [
+                        "cloudfunctions.functions.list",
+                        "cloudfunctions.functions.get",
+                    ]
+                )
             except ImportError:
                 # Library not installed - skip this check
-                granted.extend([
-                    'cloudfunctions.functions.list',
-                    'cloudfunctions.functions.get',
-                ])
+                granted.extend(
+                    [
+                        "cloudfunctions.functions.list",
+                        "cloudfunctions.functions.get",
+                    ]
+                )
             except Exception as e:
-                if 'PERMISSION_DENIED' in str(e) or 'permission' in str(e).lower():
-                    missing.extend([
-                        'cloudfunctions.functions.list',
-                        'cloudfunctions.functions.get',
-                    ])
+                if "PERMISSION_DENIED" in str(e) or "permission" in str(e).lower():
+                    missing.extend(
+                        [
+                            "cloudfunctions.functions.list",
+                            "cloudfunctions.functions.get",
+                        ]
+                    )
 
             # Test Cloud Run permissions
             try:
                 from google.cloud import run_v2
+
                 run_client = run_v2.ServicesClient(credentials=creds)
                 parent = f"projects/{project_id}/locations/-"
                 list(run_client.list_services(request={"parent": parent}, timeout=10))
-                granted.extend([
-                    'run.services.list',
-                    'run.services.get',
-                ])
+                granted.extend(
+                    [
+                        "run.services.list",
+                        "run.services.get",
+                    ]
+                )
             except ImportError:
                 # Library not installed - skip this check
-                granted.extend([
-                    'run.services.list',
-                    'run.services.get',
-                ])
+                granted.extend(
+                    [
+                        "run.services.list",
+                        "run.services.get",
+                    ]
+                )
             except Exception as e:
-                if 'PERMISSION_DENIED' in str(e) or 'permission' in str(e).lower():
-                    missing.extend([
-                        'run.services.list',
-                        'run.services.get',
-                    ])
+                if "PERMISSION_DENIED" in str(e) or "permission" in str(e).lower():
+                    missing.extend(
+                        [
+                            "run.services.list",
+                            "run.services.get",
+                        ]
+                    )
 
             # Test Eventarc permissions
             try:
                 from google.cloud import eventarc_v1
+
                 eventarc_client = eventarc_v1.EventarcClient(credentials=creds)
                 parent = f"projects/{project_id}/locations/-"
-                list(eventarc_client.list_triggers(request={"parent": parent}, timeout=10))
-                granted.extend([
-                    'eventarc.triggers.list',
-                    'eventarc.triggers.get',
-                ])
+                list(
+                    eventarc_client.list_triggers(
+                        request={"parent": parent}, timeout=10
+                    )
+                )
+                granted.extend(
+                    [
+                        "eventarc.triggers.list",
+                        "eventarc.triggers.get",
+                    ]
+                )
             except ImportError:
                 # Library not installed - skip this check
-                granted.extend([
-                    'eventarc.triggers.list',
-                    'eventarc.triggers.get',
-                ])
+                granted.extend(
+                    [
+                        "eventarc.triggers.list",
+                        "eventarc.triggers.get",
+                    ]
+                )
             except Exception as e:
-                if 'PERMISSION_DENIED' in str(e) or 'permission' in str(e).lower():
-                    missing.extend([
-                        'eventarc.triggers.list',
-                        'eventarc.triggers.get',
-                    ])
+                if "PERMISSION_DENIED" in str(e) or "permission" in str(e).lower():
+                    missing.extend(
+                        [
+                            "eventarc.triggers.list",
+                            "eventarc.triggers.get",
+                        ]
+                    )
 
             # Test Resource Manager permissions
             try:
                 from google.cloud import resourcemanager_v3
+
                 rm_client = resourcemanager_v3.ProjectsClient(credentials=creds)
-                rm_client.get_project(request={"name": f"projects/{project_id}"}, timeout=10)
-                granted.append('resourcemanager.projects.get')
+                rm_client.get_project(
+                    request={"name": f"projects/{project_id}"}, timeout=10
+                )
+                granted.append("resourcemanager.projects.get")
             except ImportError:
-                granted.append('resourcemanager.projects.get')
+                granted.append("resourcemanager.projects.get")
             except Exception as e:
-                if 'PERMISSION_DENIED' in str(e) or 'permission' in str(e).lower():
-                    missing.append('resourcemanager.projects.get')
+                if "PERMISSION_DENIED" in str(e) or "permission" in str(e).lower():
+                    missing.append("resourcemanager.projects.get")
 
             # Test Google SecOps (Chronicle SIEM) permissions
             # These are optional - only available if the customer has Chronicle enabled
@@ -363,57 +448,65 @@ class GCPCredentialService:
                     # We'll try to list rules to check permissions
                     secops_client = SecOpsClient(credentials=creds)
                     secops_client.rules.list_rules(project_id=project_id)
-                    granted.extend([
-                        'chronicle.rules.list',
-                        'chronicle.rules.get',
-                        'chronicle.detections.list',
-                        'chronicle.detections.get',
-                        'chronicle.curatedRuleSets.list',
-                        'chronicle.curatedRuleSets.get',
-                        'chronicle.alertGroupingRules.list',
-                        'chronicle.alertGroupingRules.get',
-                        'chronicle.referenceLists.list',
-                        'chronicle.referenceLists.get',
-                    ])
+                    granted.extend(
+                        [
+                            "chronicle.rules.list",
+                            "chronicle.rules.get",
+                            "chronicle.detections.list",
+                            "chronicle.detections.get",
+                            "chronicle.curatedRuleSets.list",
+                            "chronicle.curatedRuleSets.get",
+                            "chronicle.alertGroupingRules.list",
+                            "chronicle.alertGroupingRules.get",
+                            "chronicle.referenceLists.list",
+                            "chronicle.referenceLists.get",
+                        ]
+                    )
                 except Exception as e:
                     error_str = str(e).lower()
-                    if 'permission_denied' in error_str or 'permission' in error_str:
+                    if "permission_denied" in error_str or "permission" in error_str:
                         # User has Chronicle but lacks permissions
-                        missing.extend([
-                            'chronicle.rules.list',
-                            'chronicle.rules.get',
-                        ])
-                    elif 'not found' in error_str or 'not enabled' in error_str:
+                        missing.extend(
+                            [
+                                "chronicle.rules.list",
+                                "chronicle.rules.get",
+                            ]
+                        )
+                    elif "not found" in error_str or "not enabled" in error_str:
                         # Chronicle not enabled for this project - that's OK
                         logger.info("secops_not_enabled", project_id=project_id)
-                        granted.extend([
-                            'chronicle.rules.list',
-                            'chronicle.rules.get',
-                            'chronicle.detections.list',
-                            'chronicle.detections.get',
-                            'chronicle.curatedRuleSets.list',
-                            'chronicle.curatedRuleSets.get',
-                            'chronicle.alertGroupingRules.list',
-                            'chronicle.alertGroupingRules.get',
-                            'chronicle.referenceLists.list',
-                            'chronicle.referenceLists.get',
-                        ])
+                        granted.extend(
+                            [
+                                "chronicle.rules.list",
+                                "chronicle.rules.get",
+                                "chronicle.detections.list",
+                                "chronicle.detections.get",
+                                "chronicle.curatedRuleSets.list",
+                                "chronicle.curatedRuleSets.get",
+                                "chronicle.alertGroupingRules.list",
+                                "chronicle.alertGroupingRules.get",
+                                "chronicle.referenceLists.list",
+                                "chronicle.referenceLists.get",
+                            ]
+                        )
                     else:
                         logger.warning("secops_check_error", error=str(e))
             else:
                 # SecOps SDK not installed - assume permissions would work if configured
-                granted.extend([
-                    'chronicle.rules.list',
-                    'chronicle.rules.get',
-                    'chronicle.detections.list',
-                    'chronicle.detections.get',
-                    'chronicle.curatedRuleSets.list',
-                    'chronicle.curatedRuleSets.get',
-                    'chronicle.alertGroupingRules.list',
-                    'chronicle.alertGroupingRules.get',
-                    'chronicle.referenceLists.list',
-                    'chronicle.referenceLists.get',
-                ])
+                granted.extend(
+                    [
+                        "chronicle.rules.list",
+                        "chronicle.rules.get",
+                        "chronicle.detections.list",
+                        "chronicle.detections.get",
+                        "chronicle.curatedRuleSets.list",
+                        "chronicle.curatedRuleSets.get",
+                        "chronicle.alertGroupingRules.list",
+                        "chronicle.alertGroupingRules.get",
+                        "chronicle.referenceLists.list",
+                        "chronicle.referenceLists.get",
+                    ]
+                )
 
             # Determine status
             if missing:
@@ -424,19 +517,19 @@ class GCPCredentialService:
                 message = f"All {len(granted)} required permissions verified."
 
             return {
-                'status': status,
-                'message': message,
-                'granted_permissions': granted,
-                'missing_permissions': missing,
+                "status": status,
+                "message": message,
+                "granted_permissions": granted,
+                "missing_permissions": missing,
             }
 
         except Exception as e:
             logger.exception("gcp_credential_validation_error", error=str(e))
             return {
-                'status': CredentialStatus.INVALID,
-                'message': f"Unexpected error during validation: {str(e)}",
-                'granted_permissions': [],
-                'missing_permissions': [],
+                "status": CredentialStatus.INVALID,
+                "message": f"Unexpected error during validation: {str(e)}",
+                "granted_permissions": [],
+                "missing_permissions": [],
             }
 
     def generate_gcloud_commands(
@@ -449,31 +542,48 @@ class GCPCredentialService:
         Returns:
             List of gcloud commands to run
         """
-        sa_email = service_account_email or f"a13e-scanner@{project_id}.iam.gserviceaccount.com"
+        sa_email = (
+            service_account_email
+            or f"a13e-scanner@{project_id}.iam.gserviceaccount.com"
+        )
 
         # All permissions for the custom role
         permissions = [
             # Cloud Logging
-            "logging.logMetrics.list", "logging.logMetrics.get",
-            "logging.sinks.list", "logging.sinks.get",
+            "logging.logMetrics.list",
+            "logging.logMetrics.get",
+            "logging.sinks.list",
+            "logging.sinks.get",
             # Cloud Monitoring
-            "monitoring.alertPolicies.list", "monitoring.alertPolicies.get",
-            "monitoring.notificationChannels.list", "monitoring.notificationChannels.get",
+            "monitoring.alertPolicies.list",
+            "monitoring.alertPolicies.get",
+            "monitoring.notificationChannels.list",
+            "monitoring.notificationChannels.get",
             # Security Command Center
-            "securitycenter.findings.list", "securitycenter.findings.get",
-            "securitycenter.sources.list", "securitycenter.sources.get",
+            "securitycenter.findings.list",
+            "securitycenter.findings.get",
+            "securitycenter.sources.list",
+            "securitycenter.sources.get",
             # Google SecOps / Chronicle SIEM
-            "chronicle.rules.list", "chronicle.rules.get",
-            "chronicle.detections.list", "chronicle.detections.get",
-            "chronicle.curatedRuleSets.list", "chronicle.curatedRuleSets.get",
-            "chronicle.alertGroupingRules.list", "chronicle.alertGroupingRules.get",
-            "chronicle.referenceLists.list", "chronicle.referenceLists.get",
+            "chronicle.rules.list",
+            "chronicle.rules.get",
+            "chronicle.detections.list",
+            "chronicle.detections.get",
+            "chronicle.curatedRuleSets.list",
+            "chronicle.curatedRuleSets.get",
+            "chronicle.alertGroupingRules.list",
+            "chronicle.alertGroupingRules.get",
+            "chronicle.referenceLists.list",
+            "chronicle.referenceLists.get",
             # Eventarc
-            "eventarc.triggers.list", "eventarc.triggers.get",
+            "eventarc.triggers.list",
+            "eventarc.triggers.get",
             # Cloud Functions
-            "cloudfunctions.functions.list", "cloudfunctions.functions.get",
+            "cloudfunctions.functions.list",
+            "cloudfunctions.functions.get",
             # Cloud Run
-            "run.services.list", "run.services.get",
+            "run.services.list",
+            "run.services.get",
             # Resource Manager
             "resourcemanager.projects.get",
         ]

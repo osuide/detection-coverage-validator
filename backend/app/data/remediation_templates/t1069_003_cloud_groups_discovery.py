@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Permission Groups Discovery: Cloud Groups",
     tactic_ids=["TA0007"],
     mitre_url="https://attack.mitre.org/techniques/T1069/003/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries enumerate IAM groups, roles, and permission sets to "
@@ -35,7 +34,7 @@ TEMPLATE = RemediationTemplate(
             "Identifies group membership patterns",
             "Shows role trust relationships",
             "Enables targeted privilege escalation",
-            "Maps administrative boundaries"
+            "Maps administrative boundaries",
         ],
         known_threat_actors=["APT29", "Scattered Spider", "TeamTNT"],
         recent_campaigns=[
@@ -43,7 +42,7 @@ TEMPLATE = RemediationTemplate(
                 name="Group Enumeration Attacks",
                 year=2024,
                 description="Systematic group enumeration to find privilege escalation paths",
-                reference_url="https://www.datadoghq.com/state-of-cloud-security/"
+                reference_url="https://www.datadoghq.com/state-of-cloud-security/",
             )
         ],
         prevalence="common",
@@ -57,13 +56,12 @@ TEMPLATE = RemediationTemplate(
             "Reveals privileged group structures",
             "Enables targeted attacks on high-value groups",
             "Indicates reconnaissance activity",
-            "Early warning opportunity"
+            "Early warning opportunity",
         ],
         typical_attack_phase="discovery",
         often_precedes=["T1098.003", "T1078.004"],
-        often_follows=["T1087.004", "T1078.004"]
+        often_follows=["T1087.004", "T1078.004"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - Group/Role Enumeration
         DetectionStrategy(
@@ -74,13 +72,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.arn, sourceIPAddress
+                query="""fields @timestamp, eventName, userIdentity.arn, sourceIPAddress
 | filter eventSource = "iam.amazonaws.com"
 | filter eventName in ["ListGroups", "ListRoles", "ListGroupsForUser", "ListAttachedGroupPolicies", "ListRolePolicies"]
 | stats count(*) as enum_count by userIdentity.arn, bin(1h)
 | filter enum_count > 15
-| sort enum_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort enum_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect IAM group enumeration
 
 Parameters:
@@ -121,8 +119,8 @@ Resources:
       Threshold: 25
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect IAM group enumeration
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect IAM group enumeration
 
 variable "cloudtrail_log_group" {
   type = string
@@ -167,7 +165,7 @@ resource "aws_cloudwatch_metric_alarm" "group_enum" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="IAM Group/Role Enumeration",
                 alert_description_template="High volume of IAM group/role queries from {userIdentity.arn}.",
@@ -175,14 +173,14 @@ resource "aws_cloudwatch_metric_alarm" "group_enum" {
                     "Identify who is enumerating groups",
                     "Check if this is authorised security scanning",
                     "Review what group data was accessed",
-                    "Look for follow-on privilege escalation"
+                    "Look for follow-on privilege escalation",
                 ],
                 containment_actions=[
                     "Review user's permissions",
                     "Monitor for privilege escalation",
                     "Consider limiting IAM read access",
-                    "Audit group memberships"
-                ]
+                    "Audit group memberships",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist CSPM and security tools",
@@ -191,9 +189,8 @@ resource "aws_cloudwatch_metric_alarm" "group_enum" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail logging to CloudWatch"]
+            prerequisites=["CloudTrail logging to CloudWatch"],
         ),
-
         # Strategy 2: GCP - IAM Group Enumeration
         DetectionStrategy(
             strategy_id="t1069003-gcp-groupenum",
@@ -205,7 +202,7 @@ resource "aws_cloudwatch_metric_alarm" "group_enum" {
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName=~"(ListGroups|GetGroup|ListMembers|GetIamPolicy)"''',
-                gcp_terraform_template='''# GCP: Detect IAM group enumeration
+                gcp_terraform_template="""# GCP: Detect IAM group enumeration
 
 variable "project_id" {
   type = string
@@ -253,7 +250,7 @@ resource "google_monitoring_alert_policy" "group_enum" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: IAM Group Enumeration",
                 alert_description_template="High volume of IAM group queries detected.",
@@ -261,14 +258,14 @@ resource "google_monitoring_alert_policy" "group_enum" {
                     "Identify the principal enumerating groups",
                     "Check if authorised security scanning",
                     "Review what group data was accessed",
-                    "Look for privilege escalation attempts"
+                    "Look for privilege escalation attempts",
                 ],
                 containment_actions=[
                     "Review principal's permissions",
                     "Monitor for role changes",
                     "Audit group memberships",
-                    "Consider IAM Conditions"
-                ]
+                    "Consider IAM Conditions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist security tools",
@@ -277,14 +274,10 @@ resource "google_monitoring_alert_policy" "group_enum" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Cloud Audit Logs enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled"],
+        ),
     ],
-
-    recommended_order=[
-        "t1069003-aws-groupenum",
-        "t1069003-gcp-groupenum"
-    ],
+    recommended_order=["t1069003-aws-groupenum", "t1069003-gcp-groupenum"],
     total_effort_hours=2.0,
-    coverage_improvement="+12% improvement for Discovery tactic"
+    coverage_improvement="+12% improvement for Discovery tactic",
 )

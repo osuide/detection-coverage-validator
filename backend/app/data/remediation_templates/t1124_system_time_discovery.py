@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="System Time Discovery",
     tactic_ids=["TA0007"],
     mitre_url="https://attack.mitre.org/techniques/T1124/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries gather system time, timezone settings, and uptime information from "
@@ -37,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Check system activity patterns before encryption/wiping",
             "Evade sandbox detection through timing analysis",
             "Synchronise command and control communications",
-            "Verify system uptime for persistence planning"
+            "Verify system uptime for persistence planning",
         ],
         known_threat_actors=[
             "BRONZE BUTLER (G0060)",
@@ -52,27 +51,27 @@ TEMPLATE = RemediationTemplate(
             "Volt Typhoon (G1017)",
             "UNC3886 (G1048)",
             "Sidewinder (G0121)",
-            "ZIRCONIUM (G0128)"
+            "ZIRCONIUM (G0128)",
         ],
         recent_campaigns=[
             Campaign(
                 name="Operation CuckooBees (C0012)",
                 year=2022,
                 description="Used 'net time' command during reconnaissance phase of long-term espionage campaign",
-                reference_url="https://attack.mitre.org/campaigns/C0012/"
+                reference_url="https://attack.mitre.org/campaigns/C0012/",
             ),
             Campaign(
                 name="Operation Wocao (C0014)",
                 year=2019,
                 description="Employed 'time' command on compromised Linux systems to gather temporal context",
-                reference_url="https://attack.mitre.org/campaigns/C0014/"
+                reference_url="https://attack.mitre.org/campaigns/C0014/",
             ),
             Campaign(
                 name="C0015",
                 year=2023,
                 description="Used 'net view /all time' to gather local time across networked systems",
-                reference_url="https://attack.mitre.org/campaigns/C0015/"
-            )
+                reference_url="https://attack.mitre.org/campaigns/C0015/",
+            ),
         ],
         prevalence="common",
         trend="stable",
@@ -89,13 +88,19 @@ TEMPLATE = RemediationTemplate(
             "Precursor to time-bombed malware deployment",
             "May signal ransomware preparation",
             "Early warning for scheduled destructive attacks",
-            "Potential geofencing for targeted operations"
+            "Potential geofencing for targeted operations",
         ],
         typical_attack_phase="discovery",
-        often_precedes=["T1053", "T1486", "T1485"],  # Scheduled Task, Data Encrypted for Impact, Data Destruction
-        often_follows=["T1078", "T1059"]  # Valid Accounts, Command and Scripting Interpreter
+        often_precedes=[
+            "T1053",
+            "T1486",
+            "T1485",
+        ],  # Scheduled Task, Data Encrypted for Impact, Data Destruction
+        often_follows=[
+            "T1078",
+            "T1059",
+        ],  # Valid Accounts, Command and Scripting Interpreter
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - EC2 Instance Time Queries
         DetectionStrategy(
@@ -106,13 +111,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message, instanceId, commandId
+                query="""fields @timestamp, @message, instanceId, commandId
 | filter @message like /date|timedatectl|w32tm|net time|systemsetup.*time|hwclock|GetSystemTime|gettimeofday/
 | filter @message not like /yum|apt|dpkg|systemd/
 | stats count(*) as time_queries by instanceId, bin(1h)
 | filter time_queries > 5
-| sort time_queries desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort time_queries desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect system time discovery attempts
 
 Parameters:
@@ -160,8 +165,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching''',
-                terraform_template='''# AWS: Detect system time discovery
+      TreatMissingData: notBreaching""",
+                terraform_template="""# AWS: Detect system time discovery
 
 variable "cloudwatch_log_group" {
   type        = string
@@ -212,7 +217,7 @@ resource "aws_cloudwatch_metric_alarm" "time_discovery" {
   comparison_operator = "GreaterThanThreshold"
   alarm_actions       = [aws_sns_topic.time_discovery_alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="low",
                 alert_title="System Time Discovery Detected",
                 alert_description_template="Multiple system time queries detected from instance {instanceId}. This may indicate reconnaissance activity.",
@@ -222,15 +227,15 @@ resource "aws_cloudwatch_metric_alarm" "time_discovery" {
                     "Review command history for the user account",
                     "Look for other reconnaissance activities (T1082, T1083, T1087)",
                     "Check for scheduled tasks or cron jobs created recently",
-                    "Investigate follow-on activities within the next 24-48 hours"
+                    "Investigate follow-on activities within the next 24-48 hours",
                 ],
                 containment_actions=[
                     "Review user account permissions and recent activity",
                     "Check for unauthorised scheduled tasks or persistence mechanisms",
                     "Monitor for time-based malware execution attempts",
                     "Consider isolating instance if part of broader attack pattern",
-                    "Audit system logs for suspicious modifications"
-                ]
+                    "Audit system logs for suspicious modifications",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning=(
@@ -250,10 +255,9 @@ resource "aws_cloudwatch_metric_alarm" "time_discovery" {
             prerequisites=[
                 "CloudWatch Logs agent installed on EC2 instances",
                 "System logs forwarded to CloudWatch",
-                "Command execution logging enabled"
-            ]
+                "Command execution logging enabled",
+            ],
         ),
-
         # Strategy 2: AWS - Systems Manager Command Execution
         DetectionStrategy(
             strategy_id="t1124-aws-ssm",
@@ -271,12 +275,12 @@ resource "aws_cloudwatch_metric_alarm" "time_discovery" {
                         "requestParameters": {
                             "documentName": [
                                 "AWS-RunShellScript",
-                                "AWS-RunPowerShellScript"
+                                "AWS-RunPowerShellScript",
                             ]
-                        }
-                    }
+                        },
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect time discovery via Systems Manager
 
 Parameters:
@@ -330,8 +334,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# AWS: Detect time discovery via Systems Manager
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# AWS: Detect time discovery via Systems Manager
 
 variable "alert_email" {
   type        = string
@@ -390,7 +394,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.ssm_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Time Discovery Command via SSM",
                 alert_description_template="Time-related command executed via Systems Manager. Requires manual review of command content.",
@@ -399,14 +403,14 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Identify the IAM principal who executed the command",
                     "Check target instances for command execution results",
                     "Verify if this is authorised administrative activity",
-                    "Look for patterns of multiple discovery commands"
+                    "Look for patterns of multiple discovery commands",
                 ],
                 containment_actions=[
                     "Review IAM permissions for SSM command execution",
                     "Check for unauthorised access to Systems Manager",
                     "Monitor target instances for suspicious activity",
-                    "Consider restricting SSM command execution permissions"
-                ]
+                    "Consider restricting SSM command execution permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning=(
@@ -421,10 +425,9 @@ resource "aws_sns_topic_policy" "allow_events" {
             estimated_monthly_cost="$3-8",
             prerequisites=[
                 "CloudTrail enabled with SSM API logging",
-                "Systems Manager in use"
-            ]
+                "Systems Manager in use",
+            ],
         ),
-
         # Strategy 3: GCP - Compute Instance Time Queries
         DetectionStrategy(
             strategy_id="t1124-gcp-compute",
@@ -438,7 +441,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                 gcp_logging_query='''resource.type="gce_instance"
 (textPayload=~"date" OR textPayload=~"timedatectl" OR textPayload=~"hwclock" OR textPayload=~"/etc/timezone")
 -textPayload=~"(yum|apt|dpkg|systemd|cron)"''',
-                gcp_terraform_template='''# GCP: Detect system time discovery
+                gcp_terraform_template="""# GCP: Detect system time discovery
 
 variable "project_id" {
   type        = string
@@ -503,7 +506,7 @@ resource "google_monitoring_alert_policy" "time_discovery_alert" {
   alert_strategy {
     auto_close = "1800s"
   }
-}''',
+}""",
                 alert_severity="low",
                 alert_title="GCP: System Time Discovery Detected",
                 alert_description_template="Multiple system time queries detected on GCP Compute Engine instance.",
@@ -513,15 +516,15 @@ resource "google_monitoring_alert_policy" "time_discovery_alert" {
                     "Check if this is legitimate administrative activity",
                     "Look for other discovery techniques (metadata queries, network enumeration)",
                     "Review recent VM access logs and SSH sessions",
-                    "Check for scheduled tasks or cron jobs"
+                    "Check for scheduled tasks or cron jobs",
                 ],
                 containment_actions=[
                     "Review IAM permissions for instance access",
                     "Check for unauthorised SSH keys or service accounts",
                     "Monitor instance for time-based malware execution",
                     "Consider VPC Service Controls for additional protection",
-                    "Review OS Login and metadata settings"
-                ]
+                    "Review OS Login and metadata settings",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning=(
@@ -539,10 +542,9 @@ resource "google_monitoring_alert_policy" "time_discovery_alert" {
             prerequisites=[
                 "Cloud Logging agent installed on GCE instances",
                 "System logs ingested into Cloud Logging",
-                "Audit logging enabled"
-            ]
+                "Audit logging enabled",
+            ],
         ),
-
         # Strategy 4: GCP - OS Login and SSH Session Monitoring
         DetectionStrategy(
             strategy_id="t1124-gcp-oslogin",
@@ -555,7 +557,7 @@ resource "google_monitoring_alert_policy" "time_discovery_alert" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName="ExecuteCommand"
 protoPayload.request.command=~"(date|timedatectl|hwclock|systemsetup|gettimeofday)"''',
-                gcp_terraform_template='''# GCP: Monitor OS Login sessions for time discovery
+                gcp_terraform_template="""# GCP: Monitor OS Login sessions for time discovery
 
 variable "project_id" {
   type        = string
@@ -618,7 +620,7 @@ resource "google_monitoring_alert_policy" "oslogin_time_alert" {
   alert_strategy {
     auto_close = "1800s"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Time Discovery in OS Login Session",
                 alert_description_template="Time discovery commands detected in OS Login session.",
@@ -628,15 +630,15 @@ resource "google_monitoring_alert_policy" "oslogin_time_alert" {
                     "Check if this is authorised administrative access",
                     "Look for other reconnaissance commands in the session",
                     "Verify user account is legitimate and not compromised",
-                    "Check for privilege escalation attempts"
+                    "Check for privilege escalation attempts",
                 ],
                 containment_actions=[
                     "Review OS Login IAM permissions",
                     "Verify SSH keys and service account access",
                     "Monitor for follow-on suspicious activities",
                     "Consider enabling 2FA for OS Login",
-                    "Review VPC firewall rules for SSH access"
-                ]
+                    "Review VPC firewall rules for SSH access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning=(
@@ -651,17 +653,16 @@ resource "google_monitoring_alert_policy" "oslogin_time_alert" {
             prerequisites=[
                 "OS Login enabled on GCE instances",
                 "Cloud Audit Logs enabled for Compute Engine",
-                "Command execution logging configured"
-            ]
-        )
+                "Command execution logging configured",
+            ],
+        ),
     ],
-
     recommended_order=[
-        "t1124-aws-ssm",         # Low effort, good coverage for AWS
-        "t1124-aws-ec2time",     # Broader coverage for EC2
-        "t1124-gcp-oslogin",     # Best coverage for GCP with OS Login
-        "t1124-gcp-compute"      # General GCP coverage
+        "t1124-aws-ssm",  # Low effort, good coverage for AWS
+        "t1124-aws-ec2time",  # Broader coverage for EC2
+        "t1124-gcp-oslogin",  # Best coverage for GCP with OS Login
+        "t1124-gcp-compute",  # General GCP coverage
     ],
     total_effort_hours=4.5,
-    coverage_improvement="+8% improvement for Discovery tactic"
+    coverage_improvement="+8% improvement for Discovery tactic",
 )

@@ -24,7 +24,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Email Bombing",
     tactic_ids=["TA0040"],
     mitre_url="https://attack.mitre.org/techniques/T1667/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries flood targeted email addresses with overwhelming message volumes "
@@ -40,7 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Creates frustration enabling social engineering",
             "Automated registration in unvalidated email lists",
             "Precursor to vishing and ransomware attacks",
-            "Low technical barrier to execution"
+            "Low technical barrier to execution",
         ],
         known_threat_actors=["Storm-1811"],
         recent_campaigns=[
@@ -48,7 +47,7 @@ TEMPLATE = RemediationTemplate(
                 name="Storm-1811 Black Basta Campaign",
                 year=2025,
                 description="Email bombing followed by vishing calls to deploy Black Basta ransomware",
-                reference_url="https://attack.mitre.org/groups/G1046/"
+                reference_url="https://attack.mitre.org/groups/G1046/",
             )
         ],
         prevalence="common",
@@ -63,13 +62,12 @@ TEMPLATE = RemediationTemplate(
             "Missed security alerts",
             "Delayed help desk response",
             "Enabler for social engineering",
-            "Potential ransomware deployment"
+            "Potential ransomware deployment",
         ],
         typical_attack_phase="impact",
         often_precedes=["T1566", "T1219"],
-        often_follows=[]
+        often_follows=[],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1667-aws-ses-rate",
@@ -79,12 +77,12 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, mail.destination, mail.messageId, mail.source
+                query="""fields @timestamp, mail.destination, mail.messageId, mail.source
 | filter eventName = "Receive"
 | stats count(*) as emailCount by mail.destination[0], bin(5m)
 | filter emailCount > 50
-| sort emailCount desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort emailCount desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect email bombing via SES inbound rate monitoring
 
 Parameters:
@@ -131,8 +129,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# AWS: Detect email bombing via SES rate monitoring
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# AWS: Detect email bombing via SES rate monitoring
 
 variable "ses_log_group" {
   type        = string
@@ -183,7 +181,7 @@ resource "aws_cloudwatch_metric_alarm" "email_bombing" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
   alarm_actions       = [aws_sns_topic.email_bombing_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Email Bombing Attack Detected",
                 alert_description_template="Abnormally high email volume detected to {destination}.",
@@ -193,7 +191,7 @@ resource "aws_cloudwatch_metric_alarm" "email_bombing" {
                     "Check for follow-up vishing attempts via phone logs",
                     "Review help desk tickets for unusual IT support calls",
                     "Check for remote access tool installations",
-                    "Verify no credential compromise occurred"
+                    "Verify no credential compromise occurred",
                 ],
                 containment_actions=[
                     "Implement rate limiting on recipient mailboxes",
@@ -201,8 +199,8 @@ resource "aws_cloudwatch_metric_alarm" "email_bombing" {
                     "Alert affected users about potential vishing",
                     "Monitor for remote access tool deployment",
                     "Review and block suspicious IP addresses",
-                    "Enable additional email filtering rules"
-                ]
+                    "Enable additional email filtering rules",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Tune threshold based on legitimate mailing lists and normal email volumes",
@@ -211,9 +209,8 @@ resource "aws_cloudwatch_metric_alarm" "email_bombing" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["AWS SES with CloudWatch logging enabled"]
+            prerequisites=["AWS SES with CloudWatch logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1667-aws-workmail-rate",
             name="AWS WorkMail Inbound Rate Detection",
@@ -222,12 +219,12 @@ resource "aws_cloudwatch_metric_alarm" "email_bombing" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, recipientAddress, senderAddress, messageId
+                query="""fields @timestamp, recipientAddress, senderAddress, messageId
 | filter eventType = "INBOUND"
 | stats count(*) as emailCount by recipientAddress, bin(5m)
 | filter emailCount > 50
-| sort emailCount desc''',
-                terraform_template='''# AWS: Detect email bombing via WorkMail monitoring
+| sort emailCount desc""",
+                terraform_template="""# AWS: Detect email bombing via WorkMail monitoring
 
 variable "workmail_log_group" {
   type        = string
@@ -278,7 +275,7 @@ resource "aws_cloudwatch_metric_alarm" "workmail_bombing" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
   alarm_actions       = [aws_sns_topic.workmail_bombing_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="WorkMail Email Bombing Detected",
                 alert_description_template="High email volume to {recipientAddress} in WorkMail.",
@@ -288,7 +285,7 @@ resource "aws_cloudwatch_metric_alarm" "workmail_bombing" {
                     "Check for vishing follow-up attempts",
                     "Review recent IT support interactions",
                     "Verify no credential compromise",
-                    "Check for remote access software installations"
+                    "Check for remote access software installations",
                 ],
                 containment_actions=[
                     "Apply rate limiting to affected mailboxes",
@@ -296,8 +293,8 @@ resource "aws_cloudwatch_metric_alarm" "workmail_bombing" {
                     "Alert users about social engineering risk",
                     "Monitor for ransomware indicators",
                     "Enable advanced email filtering",
-                    "Review and update email security policies"
-                ]
+                    "Review and update email security policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Adjust threshold for organisations with high legitimate email volume",
@@ -306,9 +303,8 @@ resource "aws_cloudwatch_metric_alarm" "workmail_bombing" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["AWS WorkMail with CloudWatch logging"]
+            prerequisites=["AWS WorkMail with CloudWatch logging"],
         ),
-
         DetectionStrategy(
             strategy_id="t1667-gcp-workspace-rate",
             name="GCP Workspace Email Rate Detection",
@@ -321,7 +317,7 @@ resource "aws_cloudwatch_metric_alarm" "workmail_bombing" {
                 gcp_logging_query='''resource.type="gmail_message"
 protoPayload.methodName="gmail.MessageReceived"
 severity="INFO"''',
-                gcp_terraform_template='''# GCP: Detect email bombing via Workspace logs
+                gcp_terraform_template="""# GCP: Detect email bombing via Workspace logs
 
 variable "project_id" {
   type        = string
@@ -398,7 +394,7 @@ resource "google_monitoring_alert_policy" "email_bombing" {
     content   = "High volume of inbound emails detected, possible email bombing attack. Review recipient and sender patterns."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Email Bombing Attack Detected",
                 alert_description_template="Abnormally high email volume in Google Workspace.",
@@ -408,7 +404,7 @@ resource "google_monitoring_alert_policy" "email_bombing" {
                     "Check sender domains and registration sources",
                     "Monitor for follow-up vishing calls",
                     "Review recent user activity logs",
-                    "Check for credential compromise indicators"
+                    "Check for credential compromise indicators",
                 ],
                 containment_actions=[
                     "Apply Gmail rate limiting rules",
@@ -416,8 +412,8 @@ resource "google_monitoring_alert_policy" "email_bombing" {
                     "Alert affected users about vishing risk",
                     "Enable advanced phishing protection",
                     "Review and update email filtering policies",
-                    "Monitor for ransomware deployment attempts"
-                ]
+                    "Monitor for ransomware deployment attempts",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Tune for legitimate bulk email and mailing list subscriptions",
@@ -426,9 +422,8 @@ resource "google_monitoring_alert_policy" "email_bombing" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Google Workspace with audit logging enabled"]
+            prerequisites=["Google Workspace with audit logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1667-aws-ses-pattern",
             name="AWS SES Repetitive Sender Detection",
@@ -437,12 +432,12 @@ resource "google_monitoring_alert_policy" "email_bombing" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, mail.source, mail.destination, mail.commonHeaders.subject
+                query="""fields @timestamp, mail.source, mail.destination, mail.commonHeaders.subject
 | filter eventName = "Receive"
 | stats count(*) as emailCount, count_distinct(mail.commonHeaders.subject) as uniqueSubjects by mail.source, mail.destination[0], bin(10m)
 | filter emailCount > 30 AND uniqueSubjects < 5
-| sort emailCount desc''',
-                terraform_template='''# AWS: Detect email bombing via sender pattern analysis
+| sort emailCount desc""",
+                terraform_template="""# AWS: Detect email bombing via sender pattern analysis
 
 variable "ses_log_group" {
   type        = string
@@ -486,7 +481,7 @@ resource "aws_cloudwatch_event_rule" "pattern_check" {
   name                = "email-bombing-pattern-check"
   description         = "Check for email bombing patterns every 15 minutes"
   schedule_expression = "rate(15 minutes)"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Email Bombing Pattern Detected",
                 alert_description_template="Repetitive email pattern from {source} to {destination}.",
@@ -496,7 +491,7 @@ resource "aws_cloudwatch_event_rule" "pattern_check" {
                     "Review email subject and content patterns",
                     "Identify if sender is legitimate service",
                     "Check for user complaints or help desk tickets",
-                    "Correlate with phone call logs for vishing"
+                    "Correlate with phone call logs for vishing",
                 ],
                 containment_actions=[
                     "Create email filtering rules for sender patterns",
@@ -504,8 +499,8 @@ resource "aws_cloudwatch_event_rule" "pattern_check" {
                     "Implement CAPTCHA for list registrations",
                     "Enable SPF/DKIM/DMARC validation",
                     "Alert affected users",
-                    "Monitor for escalation to vishing"
-                ]
+                    "Monitor for escalation to vishing",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Low false positive rate due to pattern analysis",
@@ -514,11 +509,15 @@ resource "aws_cloudwatch_event_rule" "pattern_check" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$5-10",
-            prerequisites=["AWS SES with detailed CloudWatch logging"]
-        )
+            prerequisites=["AWS SES with detailed CloudWatch logging"],
+        ),
     ],
-
-    recommended_order=["t1667-aws-ses-rate", "t1667-gcp-workspace-rate", "t1667-aws-workmail-rate", "t1667-aws-ses-pattern"],
+    recommended_order=[
+        "t1667-aws-ses-rate",
+        "t1667-gcp-workspace-rate",
+        "t1667-aws-workmail-rate",
+        "t1667-aws-ses-pattern",
+    ],
     total_effort_hours=7.0,
-    coverage_improvement="+25% improvement for Impact tactic detection"
+    coverage_improvement="+25% improvement for Impact tactic detection",
 )

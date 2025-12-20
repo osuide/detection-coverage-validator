@@ -40,7 +40,7 @@ class DetectionMapping(Base):
     confidence: Mapped[float] = mapped_column(Float, nullable=False)  # 0.0 to 1.0
     mapping_source: Mapped[MappingSource] = mapped_column(
         SQLEnum(MappingSource, values_callable=lambda x: [e.value for e in x]),
-        nullable=False
+        nullable=False,
     )
 
     # Explanation of why this mapping was made

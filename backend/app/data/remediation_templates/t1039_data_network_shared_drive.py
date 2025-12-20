@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Data from Network Shared Drive",
     tactic_ids=["TA0009"],  # Collection
     mitre_url="https://attack.mitre.org/techniques/T1039/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries search network shares on compromised systems to locate and collect sensitive files "
@@ -37,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "File access blends with legitimate user and application behaviour",
             "Shared drives frequently have weak access controls or overprivileged permissions",
             "Standard system tools can be used, avoiding custom malware detection",
-            "Cloud file systems may lack detailed access monitoring"
+            "Cloud file systems may lack detailed access monitoring",
         ],
         known_threat_actors=["APT28", "menuPass", "Gamaredon Group", "CosmicDuke"],
         recent_campaigns=[
@@ -45,20 +44,20 @@ TEMPLATE = RemediationTemplate(
                 name="APT28 Network Share Collection",
                 year=2023,
                 description="APT28 systematically collected files from network shared drives during espionage operations targeting government and military organisations",
-                reference_url="https://attack.mitre.org/groups/G0007/"
+                reference_url="https://attack.mitre.org/groups/G0007/",
             ),
             Campaign(
                 name="menuPass Robocopy Operations",
                 year=2022,
                 description="menuPass used 'net use' commands to mount network shares and Robocopy utility for bulk file collection from shared drives",
-                reference_url="https://attack.mitre.org/groups/G0045/"
+                reference_url="https://attack.mitre.org/groups/G0045/",
             ),
             Campaign(
                 name="Gamaredon Document Theft",
                 year=2023,
                 description="Gamaredon Group collected Microsoft Office documents (.docx, .xlsx, .pptx) from mapped network drives in targeted Ukrainian organisations",
-                reference_url="https://attack.mitre.org/groups/G0047/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0047/",
+            ),
         ],
         prevalence="common",
         trend="steady",
@@ -75,13 +74,12 @@ TEMPLATE = RemediationTemplate(
             "Exposure of credentials and configuration files",
             "Potential compliance violations from unauthorised data access",
             "Loss of competitive advantage from stolen proprietary information",
-            "Regulatory penalties if customer or personal data is accessed"
+            "Regulatory penalties if customer or personal data is accessed",
         ],
         typical_attack_phase="collection",
         often_precedes=["T1074", "T1560", "T1048", "T1041"],
-        often_follows=["T1078.004", "T1083", "T1021"]
+        often_follows=["T1078.004", "T1083", "T1021"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - EFS File System Access Monitoring
         DetectionStrategy(
@@ -92,14 +90,14 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn as user, requestParameters.fileSystemId as filesystem,
+                query="""fields @timestamp, userIdentity.arn as user, requestParameters.fileSystemId as filesystem,
        sourceIPAddress, eventName
 | filter eventSource = "elasticfilesystem.amazonaws.com"
 | filter eventName in ["CreateAccessPoint", "CreateMountTarget", "DescribeFileSystems", "DescribeMountTargets"]
 | stats count(*) as access_count by user, filesystem, bin(1h) as hour_window
 | filter access_count >= 5
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect unusual EFS file system access
 
 Parameters:
@@ -158,8 +156,8 @@ Resources:
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect unusual EFS file system access
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect unusual EFS file system access
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -221,7 +219,7 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
       Resource  = aws_sns_topic.efs_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Unusual EFS File System Access Detected",
                 alert_description_template=(
@@ -234,15 +232,15 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
                     "Check EFS access point configurations and permissions",
                     "Examine CloudWatch Logs for file-level operations if enabled",
                     "Verify if this matches the user's normal access patterns",
-                    "Review recent authentication activity for the principal"
+                    "Review recent authentication activity for the principal",
                 ],
                 containment_actions=[
                     "Remove unauthorised EFS access points and mount targets",
                     "Update EFS file system policies to restrict access",
                     "Review and tighten IAM permissions for EFS operations",
                     "Enable EFS access logging if not already configured",
-                    "Rotate credentials for compromised users/roles"
-                ]
+                    "Rotate credentials for compromised users/roles",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal EFS access patterns; exclude application and backup service accounts",
@@ -251,9 +249,8 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["CloudTrail enabled", "CloudWatch Logs configured"]
+            prerequisites=["CloudTrail enabled", "CloudWatch Logs configured"],
         ),
-
         # Strategy 2: AWS - FSx File System Access Monitoring
         DetectionStrategy(
             strategy_id="t1039-aws-fsx-access",
@@ -271,11 +268,11 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
                             "CreateFileSystem",
                             "CreateDataRepositoryAssociation",
                             "DescribeFileSystems",
-                            "DescribeBackups"
+                            "DescribeBackups",
                         ]
-                    }
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect FSx file system access for shared drive collection
 
 Parameters:
@@ -319,8 +316,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect FSx file system access
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect FSx file system access
 
 variable "alert_email" {
   type = string
@@ -371,7 +368,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="FSx File System Access Detected",
                 alert_description_template="FSx file system operation {eventName} performed. This may indicate access to shared Windows or Lustre file systems.",
@@ -381,15 +378,15 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Check which EC2 instances have the file system mounted",
                     "Examine FSx audit logs for file-level access patterns",
                     "Verify if this matches expected application behaviour",
-                    "Review security group rules for the file system"
+                    "Review security group rules for the file system",
                 ],
                 containment_actions=[
                     "Restrict FSx file system access using security groups",
                     "Update file system policies and Active Directory permissions",
                     "Review and restrict IAM permissions for FSx operations",
                     "Enable FSx audit logging to CloudWatch Logs",
-                    "Consider enabling MFA for sensitive FSx operations"
-                ]
+                    "Consider enabling MFA for sensitive FSx operations",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised backup and application service accounts",
@@ -398,9 +395,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         # Strategy 3: AWS - SMB/NFS Network Share Enumeration
         DetectionStrategy(
             strategy_id="t1039-aws-share-enum",
@@ -410,13 +406,13 @@ resource "aws_sns_topic_policy" "allow_events" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcaddr, dstaddr, dstport, protocol, action
+                query="""fields @timestamp, srcaddr, dstaddr, dstport, protocol, action
 | filter (dstport = 445 or dstport = 139 or dstport = 2049)
 | filter protocol = 6
 | stats count() as connection_count by srcaddr, dstaddr, dstport
 | filter connection_count >= 10
-| sort connection_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort connection_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect network share enumeration via SMB/NFS ports
 
 Parameters:
@@ -475,8 +471,8 @@ Resources:
       DisplayName: Network Share Enumeration Alerts
       Subscription:
         - Protocol: email
-          Endpoint: !Ref AlertEmail''',
-                terraform_template='''# Detect network share enumeration
+          Endpoint: !Ref AlertEmail""",
+                terraform_template="""# Detect network share enumeration
 
 variable "vpc_id" {
   type = string
@@ -532,7 +528,7 @@ resource "aws_flow_log" "main" {
   log_destination = aws_cloudwatch_log_group.flow_logs.arn
   traffic_type    = "ALL"
   vpc_id          = var.vpc_id
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Network Share Enumeration Detected",
                 alert_description_template="Instance {srcaddr} made {connection_count} connections to SMB/NFS ports on {dstaddr}. This may indicate network share enumeration.",
@@ -542,15 +538,15 @@ resource "aws_flow_log" "main" {
                     "Check if the source instance has legitimate file server access needs",
                     "Examine CloudWatch Logs for related process execution",
                     "Review recent authentication events from the source instance",
-                    "Verify security group rules allowing SMB/NFS traffic"
+                    "Verify security group rules allowing SMB/NFS traffic",
                 ],
                 containment_actions=[
                     "Restrict SMB/NFS traffic using security groups and NACLs",
                     "Isolate suspicious instances from the network",
                     "Review and update file share permissions",
                     "Enable detailed monitoring on affected instances",
-                    "Consider implementing network microsegmentation"
-                ]
+                    "Consider implementing network microsegmentation",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Baseline normal file server access; exclude file servers and backup systems from alerting",
@@ -559,9 +555,8 @@ resource "aws_flow_log" "main" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$15-30",
-            prerequisites=["VPC Flow Logs enabled", "CloudWatch Logs"]
+            prerequisites=["VPC Flow Logs enabled", "CloudWatch Logs"],
         ),
-
         # Strategy 4: GCP - Filestore Access Detection
         DetectionStrategy(
             strategy_id="t1039-gcp-filestore",
@@ -572,10 +567,10 @@ resource "aws_flow_log" "main" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''protoPayload.serviceName="file.googleapis.com"
+                gcp_logging_query="""protoPayload.serviceName="file.googleapis.com"
 protoPayload.methodName=~"google.cloud.filestore.v1.CloudFilestoreManager.(Get|List|Create)"
-severity>=WARNING''',
-                gcp_terraform_template='''# GCP: Detect Filestore access
+severity>=WARNING""",
+                gcp_terraform_template="""# GCP: Detect Filestore access
 
 variable "project_id" {
   type = string
@@ -634,7 +629,7 @@ resource "google_monitoring_alert_policy" "filestore_alert" {
       period = "3600s"
     }
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Unusual Filestore Access Detected",
                 alert_description_template="High volume of Filestore operations detected. This may indicate unauthorised access to shared NFS file storage.",
@@ -644,15 +639,15 @@ resource "google_monitoring_alert_policy" "filestore_alert" {
                     "Check which compute instances have the Filestore mounted",
                     "Examine VPC firewall rules for NFS traffic",
                     "Verify if this matches expected application behaviour",
-                    "Review recent authentication events for the principal"
+                    "Review recent authentication events for the principal",
                 ],
                 containment_actions=[
                     "Restrict Filestore access using VPC firewall rules",
                     "Review and update Filestore instance IAM permissions",
                     "Enable VPC Service Controls to limit access",
                     "Review NFS export settings and allowed networks",
-                    "Revoke service account credentials if compromised"
-                ]
+                    "Revoke service account credentials if compromised",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal Filestore access; exclude application and backup service accounts",
@@ -661,9 +656,8 @@ resource "google_monitoring_alert_policy" "filestore_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled"],
         ),
-
         # Strategy 5: GCP - Network File Access Pattern Detection
         DetectionStrategy(
             strategy_id="t1039-gcp-network-shares",
@@ -674,11 +668,11 @@ resource "google_monitoring_alert_policy" "filestore_alert" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_subnetwork"
+                gcp_logging_query="""resource.type="gce_subnetwork"
 logName="projects/PROJECT_ID/logs/compute.googleapis.com%2Fvpc_flows"
 (jsonPayload.connection.dest_port=445 OR jsonPayload.connection.dest_port=139 OR jsonPayload.connection.dest_port=2049)
-jsonPayload.connection.protocol=6''',
-                gcp_terraform_template='''# GCP: Detect network share access patterns
+jsonPayload.connection.protocol=6""",
+                gcp_terraform_template="""# GCP: Detect network share access patterns
 
 variable "project_id" {
   type = string
@@ -739,7 +733,7 @@ resource "google_monitoring_alert_policy" "share_access_alert" {
       period = "3600s"
     }
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Network Share Access Pattern Detected",
                 alert_description_template="High volume of SMB/NFS connections detected. This may indicate network share enumeration or data collection activity.",
@@ -749,15 +743,15 @@ resource "google_monitoring_alert_policy" "share_access_alert" {
                     "Check VPC firewall rules for SMB/NFS traffic",
                     "Examine instance logs for file access patterns",
                     "Verify if this is legitimate application behaviour",
-                    "Correlate with other security events"
+                    "Correlate with other security events",
                 ],
                 containment_actions=[
                     "Apply VPC firewall rules to restrict file sharing traffic",
                     "Review and update file share permissions",
                     "Enable enhanced monitoring on affected instances",
                     "Consider implementing network microsegmentation",
-                    "Review service account permissions and rotate credentials"
-                ]
+                    "Review service account permissions and rotate credentials",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Establish baselines for file server traffic; exclude legitimate file servers and backup systems",
@@ -766,17 +760,16 @@ resource "google_monitoring_alert_policy" "share_access_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$15-25",
-            prerequisites=["VPC Flow Logs enabled", "Cloud Logging"]
-        )
+            prerequisites=["VPC Flow Logs enabled", "Cloud Logging"],
+        ),
     ],
-
     recommended_order=[
         "t1039-aws-efs-access",
         "t1039-gcp-filestore",
         "t1039-aws-fsx-access",
         "t1039-aws-share-enum",
-        "t1039-gcp-network-shares"
+        "t1039-gcp-network-shares",
     ],
     total_effort_hours=6.5,
-    coverage_improvement="+25% improvement for Collection tactic"
+    coverage_improvement="+25% improvement for Collection tactic",
 )

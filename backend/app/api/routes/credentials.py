@@ -38,41 +38,47 @@ router = APIRouter()
 
 # === Request/Response Schemas ===
 
+
 class AWSCredentialCreate(BaseModel):
     """Request to create AWS credential."""
-    cloud_account_id: UUID
-    role_arn: str = Field(..., pattern=r'^arn:aws:iam::\d{12}:role/[\w+=,.@-]+$')
 
-    @field_validator('role_arn')
+    cloud_account_id: UUID
+    role_arn: str = Field(..., pattern=r"^arn:aws:iam::\d{12}:role/[\w+=,.@-]+$")
+
+    @field_validator("role_arn")
     @classmethod
     def validate_role_arn(cls, v: str) -> str:
-        if not v.startswith('arn:aws:iam::'):
-            raise ValueError('Invalid AWS role ARN format')
+        if not v.startswith("arn:aws:iam::"):
+            raise ValueError("Invalid AWS role ARN format")
         return v
 
 
 class GCPCredentialCreate(BaseModel):
     """Request to create GCP credential."""
+
     cloud_account_id: UUID
-    credential_type: str = Field(..., pattern='^(gcp_workload_identity|gcp_service_account_key)$')
+    credential_type: str = Field(
+        ..., pattern="^(gcp_workload_identity|gcp_service_account_key)$"
+    )
     service_account_email: Optional[str] = None
     service_account_key: Optional[str] = None  # JSON string
 
-    @field_validator('service_account_key')
+    @field_validator("service_account_key")
     @classmethod
     def validate_key(cls, v: Optional[str]) -> Optional[str]:
         if v:
             try:
                 key_data = json.loads(v)
-                if 'private_key' not in key_data:
-                    raise ValueError('Invalid service account key format')
+                if "private_key" not in key_data:
+                    raise ValueError("Invalid service account key format")
             except json.JSONDecodeError:
-                raise ValueError('Service account key must be valid JSON')
+                raise ValueError("Service account key must be valid JSON")
         return v
 
 
 class CredentialResponse(BaseModel):
     """Credential status response."""
+
     id: UUID
     cloud_account_id: UUID
     credential_type: str
@@ -91,6 +97,7 @@ class CredentialResponse(BaseModel):
 
 class SetupInstructionsResponse(BaseModel):
     """Setup instructions for connecting cloud account."""
+
     provider: str
     external_id: Optional[str]  # For AWS
     iam_policy: Optional[dict]  # For AWS
@@ -105,6 +112,7 @@ class SetupInstructionsResponse(BaseModel):
 
 class ValidationResponse(BaseModel):
     """Credential validation response."""
+
     status: str
     message: str
     granted_permissions: list[str]
@@ -112,6 +120,7 @@ class ValidationResponse(BaseModel):
 
 
 # === Endpoints ===
+
 
 @router.get("/setup/{cloud_account_id}", response_model=SetupInstructionsResponse)
 async def get_setup_instructions(
@@ -148,7 +157,11 @@ async def get_setup_instructions(
 
     if account.provider == CloudProvider.AWS:
         # Generate or get external ID
-        external_id = existing.aws_external_id if existing else CloudCredential.generate_external_id()
+        external_id = (
+            existing.aws_external_id
+            if existing
+            else CloudCredential.generate_external_id()
+        )
 
         # If no existing credential, create placeholder with external ID
         if not existing:
@@ -276,7 +289,10 @@ async def create_aws_credential(
         action=AuditLogAction.ORG_SETTINGS_UPDATED,
         resource_type="cloud_credential",
         resource_id=str(credential.id),
-        details={"action": "aws_credential_created", "role_arn": body.role_arn[:50] + "..."},
+        details={
+            "action": "aws_credential_created",
+            "role_arn": body.role_arn[:50] + "...",
+        },
         ip_address=request.client.host if request.client else None,
         success=True,
     )
@@ -395,11 +411,12 @@ async def validate_credential(
 
     # Update credential status
     from datetime import datetime, timezone
-    credential.status = validation['status']
-    credential.status_message = validation['message']
+
+    credential.status = validation["status"]
+    credential.status_message = validation["message"]
     credential.last_validated_at = datetime.now(timezone.utc)
-    credential.granted_permissions = validation['granted_permissions']
-    credential.missing_permissions = validation['missing_permissions']
+    credential.granted_permissions = validation["granted_permissions"]
+    credential.missing_permissions = validation["missing_permissions"]
 
     await db.commit()
 
@@ -412,27 +429,29 @@ async def validate_credential(
         resource_id=str(credential.id),
         details={
             "action": "credential_validated",
-            "status": validation['status'].value,
-            "missing_count": len(validation['missing_permissions']),
+            "status": validation["status"].value,
+            "missing_count": len(validation["missing_permissions"]),
         },
         ip_address=request.client.host if request.client else None,
-        success=validation['status'] == CredentialStatus.VALID,
+        success=validation["status"] == CredentialStatus.VALID,
     )
     db.add(audit_log)
     await db.commit()
 
     return ValidationResponse(
-        status=validation['status'].value,
-        message=validation['message'],
-        granted_permissions=validation['granted_permissions'],
-        missing_permissions=validation['missing_permissions'],
+        status=validation["status"].value,
+        message=validation["message"],
+        granted_permissions=validation["granted_permissions"],
+        missing_permissions=validation["missing_permissions"],
     )
 
 
 @router.get("/{cloud_account_id}", response_model=CredentialResponse)
 async def get_credential(
     cloud_account_id: UUID,
-    auth: AuthContext = Depends(require_role(UserRole.MEMBER, UserRole.ADMIN, UserRole.OWNER)),
+    auth: AuthContext = Depends(
+        require_role(UserRole.MEMBER, UserRole.ADMIN, UserRole.OWNER)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     """Get credential status for a cloud account."""
@@ -488,15 +507,16 @@ async def delete_credential(
 
 # === Template Endpoints ===
 
+
 @router.get("/templates/aws/cloudformation", response_class=PlainTextResponse)
 async def get_aws_cloudformation_template():
     """Download AWS CloudFormation template."""
     import os
+
     template_path = os.path.join(
-        os.path.dirname(__file__),
-        "../../templates/aws_cloudformation.yaml"
+        os.path.dirname(__file__), "../../templates/aws_cloudformation.yaml"
     )
-    with open(template_path, 'r') as f:
+    with open(template_path, "r") as f:
         return f.read()
 
 
@@ -504,11 +524,11 @@ async def get_aws_cloudformation_template():
 async def get_aws_terraform_template():
     """Download AWS Terraform module."""
     import os
+
     template_path = os.path.join(
-        os.path.dirname(__file__),
-        "../../templates/terraform/aws/main.tf"
+        os.path.dirname(__file__), "../../templates/terraform/aws/main.tf"
     )
-    with open(template_path, 'r') as f:
+    with open(template_path, "r") as f:
         return f.read()
 
 
@@ -516,11 +536,11 @@ async def get_aws_terraform_template():
 async def get_gcp_terraform_template():
     """Download GCP Terraform module."""
     import os
+
     template_path = os.path.join(
-        os.path.dirname(__file__),
-        "../../templates/terraform/gcp/main.tf"
+        os.path.dirname(__file__), "../../templates/terraform/gcp/main.tf"
     )
-    with open(template_path, 'r') as f:
+    with open(template_path, "r") as f:
         return f.read()
 
 
@@ -528,15 +548,16 @@ async def get_gcp_terraform_template():
 async def get_gcp_setup_script():
     """Download GCP setup shell script."""
     import os
+
     template_path = os.path.join(
-        os.path.dirname(__file__),
-        "../../templates/gcp_setup.sh"
+        os.path.dirname(__file__), "../../templates/gcp_setup.sh"
     )
-    with open(template_path, 'r') as f:
+    with open(template_path, "r") as f:
         return f.read()
 
 
 # === Helper Functions ===
+
 
 def _credential_to_response(credential: CloudCredential) -> CredentialResponse:
     """Convert credential model to response."""
@@ -546,7 +567,11 @@ def _credential_to_response(credential: CloudCredential) -> CredentialResponse:
         credential_type=credential.credential_type.value,
         status=credential.status.value,
         status_message=credential.status_message,
-        last_validated_at=credential.last_validated_at.isoformat() if credential.last_validated_at else None,
+        last_validated_at=(
+            credential.last_validated_at.isoformat()
+            if credential.last_validated_at
+            else None
+        ),
         granted_permissions=credential.granted_permissions,
         missing_permissions=credential.missing_permissions,
         aws_role_arn=credential.aws_role_arn,

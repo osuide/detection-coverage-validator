@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Endpoint Denial of Service",
     tactic_ids=["TA0040"],
     mitre_url="https://attack.mitre.org/techniques/T1499/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries perform Endpoint Denial of Service (DoS) attacks to degrade or block "
@@ -40,7 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Application-layer attacks bypass network defences",
             "Resource exhaustion causes service crashes",
             "Can trigger auto-scaling costs in cloud",
-            "May mask other attack activities"
+            "May mask other attack activities",
         ],
         known_threat_actors=["Sandworm Team"],
         recent_campaigns=[
@@ -48,7 +47,7 @@ TEMPLATE = RemediationTemplate(
                 name="Sandworm Georgian Website Attacks",
                 year=2019,
                 description="Disrupted over 2,000 Georgian government and private sector websites through DoS attacks",
-                reference_url="https://attack.mitre.org/groups/G0034/"
+                reference_url="https://attack.mitre.org/groups/G0034/",
             )
         ],
         prevalence="moderate",
@@ -65,13 +64,12 @@ TEMPLATE = RemediationTemplate(
             "Revenue loss during outages",
             "Excessive cloud costs from auto-scaling",
             "Customer dissatisfaction",
-            "Reputational damage"
+            "Reputational damage",
         ],
         typical_attack_phase="impact",
         often_precedes=[],
-        often_follows=["T1190", "T1078.004"]
+        often_follows=["T1190", "T1078.004"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1499-aws-cpu-exhaustion",
@@ -81,7 +79,7 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect CPU/Memory exhaustion attacks on EC2/ECS
 
 Parameters:
@@ -127,8 +125,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching''',
-                terraform_template='''# Detect CPU/Memory exhaustion attacks
+      TreatMissingData: notBreaching""",
+                terraform_template="""# Detect CPU/Memory exhaustion attacks
 
 variable "alert_email" { type = string }
 
@@ -182,7 +180,7 @@ resource "aws_cloudwatch_metric_alarm" "rds_cpu" {
   threshold           = 90
   alarm_actions       = [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Resource Exhaustion Detected",
                 alert_description_template="High CPU/Memory usage detected - possible DoS attack.",
@@ -191,15 +189,15 @@ resource "aws_cloudwatch_metric_alarm" "rds_cpu" {
                     "Review CloudWatch metrics for abnormal patterns",
                     "Analyse network traffic for attack signatures",
                     "Check for OOM kills or process crashes",
-                    "Review recent application deployments"
+                    "Review recent application deployments",
                 ],
                 containment_actions=[
                     "Enable AWS Shield for DDoS protection",
                     "Implement rate limiting on APIs",
                     "Scale resources if legitimate traffic",
                     "Block malicious source IPs via WAF",
-                    "Enable CloudFront caching to reduce load"
-                ]
+                    "Enable CloudFront caching to reduce load",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Adjust thresholds based on normal usage patterns, exclude scheduled high-load jobs",
@@ -208,9 +206,8 @@ resource "aws_cloudwatch_metric_alarm" "rds_cpu" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudWatch metrics enabled"]
+            prerequisites=["CloudWatch metrics enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1499-aws-lambda-throttle",
             name="AWS Lambda Throttling Detection",
@@ -219,7 +216,7 @@ resource "aws_cloudwatch_metric_alarm" "rds_cpu" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                terraform_template='''# Detect Lambda function exhaustion/throttling
+                terraform_template="""# Detect Lambda function exhaustion/throttling
 
 variable "alert_email" { type = string }
 
@@ -273,7 +270,7 @@ resource "aws_cloudwatch_metric_alarm" "lambda_concurrent" {
   threshold           = 900  # Near account limit
   alarm_actions       = [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Lambda Exhaustion Attack",
                 alert_description_template="Lambda function experiencing throttling or excessive errors.",
@@ -282,15 +279,15 @@ resource "aws_cloudwatch_metric_alarm" "lambda_concurrent" {
                     "Check X-Ray traces for error patterns",
                     "Identify source of excessive invocations",
                     "Review API Gateway or trigger metrics",
-                    "Check for malicious event sources"
+                    "Check for malicious event sources",
                 ],
                 containment_actions=[
                     "Implement reserved concurrency limits",
                     "Enable API Gateway throttling",
                     "Block malicious sources via WAF",
                     "Implement authentication on triggers",
-                    "Review and restrict function permissions"
-                ]
+                    "Review and restrict function permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Adjust throttle thresholds based on normal traffic, exclude legitimate spikes",
@@ -299,9 +296,8 @@ resource "aws_cloudwatch_metric_alarm" "lambda_concurrent" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudWatch metrics enabled"]
+            prerequisites=["CloudWatch metrics enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1499-aws-api-flood",
             name="AWS API Request Flood Detection",
@@ -310,12 +306,12 @@ resource "aws_cloudwatch_metric_alarm" "lambda_concurrent" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, sourceIPAddress, userAgent, errorCode
+                query="""fields @timestamp, eventName, sourceIPAddress, userAgent, errorCode
 | filter errorCode in ["Throttling", "RequestLimitExceeded", "TooManyRequestsException"]
 | stats count(*) as throttle_count by sourceIPAddress, bin(5m)
 | filter throttle_count > 100
-| sort throttle_count desc''',
-                terraform_template='''# Detect API request flood attacks
+| sort throttle_count desc""",
+                terraform_template="""# Detect API request flood attacks
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -355,7 +351,7 @@ resource "aws_cloudwatch_metric_alarm" "api_flood" {
   threshold           = 100
   alarm_actions       = [aws_sns_topic.alerts.arn]
   alarm_description   = "Detects API request flood attacks causing throttling"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="API Request Flood Detected",
                 alert_description_template="Excessive API requests causing throttling from {sourceIPAddress}.",
@@ -364,15 +360,15 @@ resource "aws_cloudwatch_metric_alarm" "api_flood" {
                     "Review CloudTrail for attack patterns",
                     "Check which APIs are being targeted",
                     "Determine if attack is distributed",
-                    "Review authentication method used"
+                    "Review authentication method used",
                 ],
                 containment_actions=[
                     "Block malicious IPs via security groups",
                     "Implement API Gateway resource policies",
                     "Enable AWS WAF with rate limiting",
                     "Revoke compromised credentials if applicable",
-                    "Contact AWS Support for assistance"
-                ]
+                    "Contact AWS Support for assistance",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Legitimate automation may trigger throttling - whitelist known tools",
@@ -381,9 +377,8 @@ resource "aws_cloudwatch_metric_alarm" "api_flood" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail logging to CloudWatch"]
+            prerequisites=["CloudTrail logging to CloudWatch"],
         ),
-
         DetectionStrategy(
             strategy_id="t1499-gcp-resource-exhaustion",
             name="GCP Resource Exhaustion Detection",
@@ -393,11 +388,11 @@ resource "aws_cloudwatch_metric_alarm" "api_flood" {
             gcp_service="cloud_monitoring",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 OR resource.type="k8s_container"
 severity>=WARNING
-(jsonPayload.message=~"out of memory" OR jsonPayload.message=~"OOM")''',
-                gcp_terraform_template='''# GCP: Detect resource exhaustion attacks
+(jsonPayload.message=~"out of memory" OR jsonPayload.message=~"OOM")""",
+                gcp_terraform_template="""# GCP: Detect resource exhaustion attacks
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -474,7 +469,7 @@ resource "google_monitoring_alert_policy" "oom_alert" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Resource Exhaustion Detected",
                 alert_description_template="High CPU/memory usage or OOM kills detected.",
@@ -483,15 +478,15 @@ resource "google_monitoring_alert_policy" "oom_alert" {
                     "Review application logs for errors",
                     "Analyse Cloud Logging for attack patterns",
                     "Check for crashlooping pods in GKE",
-                    "Review recent deployments or changes"
+                    "Review recent deployments or changes",
                 ],
                 containment_actions=[
                     "Enable Google Cloud Armour for DDoS protection",
                     "Implement rate limiting on APIs",
                     "Scale resources if legitimate traffic",
                     "Configure resource quotas and limits",
-                    "Block malicious sources via firewall rules"
-                ]
+                    "Block malicious sources via firewall rules",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Adjust CPU thresholds for workload patterns, exclude batch jobs",
@@ -500,9 +495,8 @@ resource "google_monitoring_alert_policy" "oom_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Cloud Monitoring and Cloud Logging enabled"]
+            prerequisites=["Cloud Monitoring and Cloud Logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1499-gcp-api-quota",
             name="GCP API Quota Exhaustion Detection",
@@ -515,7 +509,7 @@ resource "google_monitoring_alert_policy" "oom_alert" {
                 gcp_logging_query='''protoPayload.status.code=8
 OR protoPayload.status.message=~"quota.*exceeded"
 OR protoPayload.status.message=~"rate limit exceeded"''',
-                gcp_terraform_template='''# GCP: Detect API quota exhaustion attacks
+                gcp_terraform_template="""# GCP: Detect API quota exhaustion attacks
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -569,7 +563,7 @@ resource "google_monitoring_alert_policy" "quota_alert" {
   documentation {
     content = "API quota exhaustion detected - possible DoS attack or misconfigured application"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: API Quota Exhaustion",
                 alert_description_template="Excessive API quota errors - possible request flood attack.",
@@ -578,15 +572,15 @@ resource "google_monitoring_alert_policy" "quota_alert" {
                     "Review Cloud Logging for source IPs/identities",
                     "Check for distributed attack patterns",
                     "Review API quotas and current usage",
-                    "Determine if legitimate or malicious"
+                    "Determine if legitimate or malicious",
                 ],
                 containment_actions=[
                     "Implement Cloud Armour rate limiting",
                     "Configure API Gateway quotas",
                     "Block malicious sources via firewall",
                     "Request quota increase if legitimate",
-                    "Implement authentication and API keys"
-                ]
+                    "Implement authentication and API keys",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Legitimate spikes may occur - review quota limits and usage patterns",
@@ -595,17 +589,16 @@ resource "google_monitoring_alert_policy" "quota_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Cloud Audit Logs enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1499-aws-cpu-exhaustion",
         "t1499-aws-lambda-throttle",
         "t1499-aws-api-flood",
         "t1499-gcp-resource-exhaustion",
-        "t1499-gcp-api-quota"
+        "t1499-gcp-api-quota",
     ],
     total_effort_hours=4.0,
-    coverage_improvement="+18% improvement for Impact tactic"
+    coverage_improvement="+18% improvement for Impact tactic",
 )

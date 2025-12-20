@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Cloud Infrastructure Discovery",
     tactic_ids=["TA0007"],
     mitre_url="https://attack.mitre.org/techniques/T1580/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries enumerate cloud infrastructure including compute instances, "
@@ -35,7 +34,7 @@ TEMPLATE = RemediationTemplate(
             "Reveals database and storage locations",
             "Maps network topology and VPCs",
             "Finds exposed services",
-            "Required for targeted attacks"
+            "Required for targeted attacks",
         ],
         known_threat_actors=["APT29", "Scattered Spider", "TeamTNT"],
         recent_campaigns=[
@@ -43,7 +42,7 @@ TEMPLATE = RemediationTemplate(
                 name="Cloud Resource Enumeration",
                 year=2024,
                 description="Systematic resource enumeration to identify cryptomining targets and data stores",
-                reference_url="https://unit42.paloaltonetworks.com/2025-cloud-security-alert-trends/"
+                reference_url="https://unit42.paloaltonetworks.com/2025-cloud-security-alert-trends/",
             )
         ],
         prevalence="common",
@@ -57,13 +56,12 @@ TEMPLATE = RemediationTemplate(
             "Reveals infrastructure layout",
             "Identifies data storage locations",
             "Enables targeted attacks",
-            "Early warning opportunity"
+            "Early warning opportunity",
         ],
         typical_attack_phase="discovery",
         often_precedes=["T1530", "T1537", "T1496.001"],
-        often_follows=["T1078.004", "T1087.004"]
+        often_follows=["T1078.004", "T1087.004"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - EC2/VPC Enumeration
         DetectionStrategy(
@@ -74,13 +72,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.arn, eventSource
+                query="""fields @timestamp, eventName, userIdentity.arn, eventSource
 | filter eventName like /Describe|List/
 | filter eventSource in ["ec2.amazonaws.com", "rds.amazonaws.com", "elasticache.amazonaws.com"]
 | stats count(*) as enum_count by userIdentity.arn, bin(1h)
 | filter enum_count > 50
-| sort enum_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort enum_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect cloud infrastructure enumeration
 
 Parameters:
@@ -121,8 +119,8 @@ Resources:
       Threshold: 100
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect cloud infrastructure enumeration
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect cloud infrastructure enumeration
 
 variable "cloudtrail_log_group" {
   type = string
@@ -167,7 +165,7 @@ resource "aws_cloudwatch_metric_alarm" "infra_enum" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Infrastructure Enumeration Detected",
                 alert_description_template="High volume of infrastructure discovery calls from {userIdentity.arn}.",
@@ -175,14 +173,14 @@ resource "aws_cloudwatch_metric_alarm" "infra_enum" {
                     "Identify who is enumerating infrastructure",
                     "Check if this is authorised scanning",
                     "Review what resources were discovered",
-                    "Look for follow-on attack activity"
+                    "Look for follow-on attack activity",
                 ],
                 containment_actions=[
                     "Review user's permissions",
                     "Monitor for resource access",
                     "Consider restricting describe permissions",
-                    "Audit recent activity"
-                ]
+                    "Audit recent activity",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist automation, CSPM, and monitoring tools",
@@ -191,9 +189,8 @@ resource "aws_cloudwatch_metric_alarm" "infra_enum" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail logging to CloudWatch"]
+            prerequisites=["CloudTrail logging to CloudWatch"],
         ),
-
         # Strategy 2: GCP - Compute/Resource Enumeration
         DetectionStrategy(
             strategy_id="t1580-gcp-infra",
@@ -205,7 +202,7 @@ resource "aws_cloudwatch_metric_alarm" "infra_enum" {
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName=~"(compute.instances.list|compute.networks.list|cloudsql.instances.list|compute.zones.list)"''',
-                gcp_terraform_template='''# GCP: Detect infrastructure enumeration
+                gcp_terraform_template="""# GCP: Detect infrastructure enumeration
 
 variable "project_id" {
   type = string
@@ -253,7 +250,7 @@ resource "google_monitoring_alert_policy" "infra_enum" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Infrastructure Enumeration",
                 alert_description_template="High volume of infrastructure discovery calls.",
@@ -261,14 +258,14 @@ resource "google_monitoring_alert_policy" "infra_enum" {
                     "Identify the enumerating principal",
                     "Check if authorised scanning",
                     "Review resources discovered",
-                    "Look for follow-on attacks"
+                    "Look for follow-on attacks",
                 ],
                 containment_actions=[
                     "Review principal permissions",
                     "Monitor resource access",
                     "Consider IAM Conditions",
-                    "Audit recent activity"
-                ]
+                    "Audit recent activity",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist monitoring and CSPM tools",
@@ -277,14 +274,10 @@ resource "google_monitoring_alert_policy" "infra_enum" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Cloud Audit Logs enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled"],
+        ),
     ],
-
-    recommended_order=[
-        "t1580-aws-infra",
-        "t1580-gcp-infra"
-    ],
+    recommended_order=["t1580-aws-infra", "t1580-gcp-infra"],
     total_effort_hours=2.0,
-    coverage_improvement="+10% improvement for Discovery tactic"
+    coverage_improvement="+10% improvement for Discovery tactic",
 )

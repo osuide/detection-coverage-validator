@@ -41,24 +41,24 @@ class AuthService:
     def hash_password(password: str) -> str:
         """Hash a password using bcrypt."""
         salt = bcrypt.gensalt(rounds=12)
-        return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
+        return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
 
     @staticmethod
     def verify_password(password: str, password_hash: str) -> bool:
         """Verify a password against a hash."""
-        return bcrypt.checkpw(password.encode('utf-8'), password_hash.encode('utf-8'))
+        return bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8"))
 
     # Token generation
     @staticmethod
     def hash_token(token: str) -> str:
         """Hash a token for storage."""
-        return hashlib.sha256(token.encode('utf-8')).hexdigest()
+        return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
     @staticmethod
     def generate_access_token(
         user_id: UUID,
         organization_id: Optional[UUID] = None,
-        expires_minutes: Optional[int] = None
+        expires_minutes: Optional[int] = None,
     ) -> str:
         """Generate a JWT access token."""
         expire = datetime.now(timezone.utc) + timedelta(
@@ -101,7 +101,9 @@ class AuthService:
     def get_mfa_provisioning_uri(secret: str, email: str) -> str:
         """Get the provisioning URI for MFA setup."""
         totp = pyotp.TOTP(secret)
-        return totp.provisioning_uri(name=email, issuer_name="Detection Coverage Validator")
+        return totp.provisioning_uri(
+            name=email, issuer_name="Detection Coverage Validator"
+        )
 
     @staticmethod
     def verify_mfa_code(secret: str, code: str) -> bool:
@@ -121,16 +123,12 @@ class AuthService:
     # User operations
     async def get_user_by_email(self, email: str) -> Optional[User]:
         """Get a user by email address."""
-        result = await self.db.execute(
-            select(User).where(User.email == email.lower())
-        )
+        result = await self.db.execute(select(User).where(User.email == email.lower()))
         return result.scalar_one_or_none()
 
     async def get_user_by_id(self, user_id: UUID) -> Optional[User]:
         """Get a user by ID."""
-        result = await self.db.execute(
-            select(User).where(User.id == user_id)
-        )
+        result = await self.db.execute(select(User).where(User.id == user_id))
         return result.scalar_one_or_none()
 
     async def create_user(
@@ -185,7 +183,9 @@ class AuthService:
             return None, "Account is disabled"
 
         # Verify password
-        if not user.password_hash or not self.verify_password(password, user.password_hash):
+        if not user.password_hash or not self.verify_password(
+            password, user.password_hash
+        ):
             # Increment failed attempts
             user.failed_login_attempts += 1
             if user.failed_login_attempts >= settings.max_login_attempts:
@@ -198,7 +198,10 @@ class AuthService:
                 user_id=user.id,
                 ip_address=ip_address,
                 user_agent=user_agent,
-                details={"reason": "invalid_password", "attempts": user.failed_login_attempts},
+                details={
+                    "reason": "invalid_password",
+                    "attempts": user.failed_login_attempts,
+                },
                 success=False,
             )
             return None, "Invalid email or password"
@@ -224,7 +227,9 @@ class AuthService:
             Tuple of (access_token, refresh_token)
         """
         refresh_token = self.generate_refresh_token()
-        expires_at = datetime.now(timezone.utc) + timedelta(days=settings.refresh_token_expire_days)
+        expires_at = datetime.now(timezone.utc) + timedelta(
+            days=settings.refresh_token_expire_days
+        )
 
         session = UserSession(
             user_id=user.id,
@@ -350,9 +355,7 @@ class AuthService:
         return list(result.scalars().all())
 
     async def get_user_membership(
-        self,
-        user_id: UUID,
-        organization_id: UUID
+        self, user_id: UUID, organization_id: UUID
     ) -> Optional[OrganizationMember]:
         """Get a user's membership in an organization."""
         result = await self.db.execute(

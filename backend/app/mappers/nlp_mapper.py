@@ -65,7 +65,9 @@ class MITREEmbeddingsCache:
         cache_hash = hashlib.sha256(cache_key.encode()).hexdigest()[:8]
         return self.cache_dir / f"mitre_metadata_{cache_hash}.json"
 
-    def load_or_compute(self, techniques: list[dict]) -> tuple[dict[str, np.ndarray], dict[str, dict]]:
+    def load_or_compute(
+        self, techniques: list[dict]
+    ) -> tuple[dict[str, np.ndarray], dict[str, dict]]:
         """Load embeddings from cache or compute if not available."""
         if self._embeddings is not None and self._technique_metadata is not None:
             return self._embeddings, self._technique_metadata
@@ -83,7 +85,9 @@ class MITREEmbeddingsCache:
                 self.logger.warning("cache_load_failed", error=str(e))
 
         # Compute embeddings
-        self._embeddings, self._technique_metadata = self._compute_embeddings(techniques)
+        self._embeddings, self._technique_metadata = self._compute_embeddings(
+            techniques
+        )
         self._save_to_cache()
         return self._embeddings, self._technique_metadata
 
@@ -94,10 +98,7 @@ class MITREEmbeddingsCache:
         technique_ids = data["technique_ids"].tolist()
         embeddings_array = data["embeddings"]
 
-        embeddings = {
-            tid: embeddings_array[i]
-            for i, tid in enumerate(technique_ids)
-        }
+        embeddings = {tid: embeddings_array[i] for i, tid in enumerate(technique_ids)}
 
         # Load metadata
         with open(self.metadata_file, "r") as f:
@@ -105,7 +106,9 @@ class MITREEmbeddingsCache:
 
         return embeddings, metadata
 
-    def _compute_embeddings(self, techniques: list[dict]) -> tuple[dict[str, np.ndarray], dict[str, dict]]:
+    def _compute_embeddings(
+        self, techniques: list[dict]
+    ) -> tuple[dict[str, np.ndarray], dict[str, dict]]:
         """Compute embeddings for all MITRE techniques."""
         try:
             from sentence_transformers import SentenceTransformer
@@ -136,7 +139,9 @@ class MITREEmbeddingsCache:
                 "name": technique.get("name", ""),
                 "tactic_id": technique.get("tactic_id", ""),
                 "tactic_name": technique.get("tactic_name", ""),
-                "description": technique.get("description", "")[:500],  # Truncate for storage
+                "description": technique.get("description", "")[
+                    :500
+                ],  # Truncate for storage
                 "platforms": technique.get("platforms", []),
             }
 
@@ -171,7 +176,9 @@ class MITREEmbeddingsCache:
         try:
             # Save embeddings as numpy array
             technique_ids = list(self._embeddings.keys())
-            embeddings_array = np.array([self._embeddings[tid] for tid in technique_ids])
+            embeddings_array = np.array(
+                [self._embeddings[tid] for tid in technique_ids]
+            )
 
             np.savez(
                 str(self.cache_file),
@@ -237,8 +244,8 @@ class NLPMapper:
 
         Should be called once during application startup.
         """
-        self._embeddings, self._technique_metadata = self._embeddings_cache.load_or_compute(
-            techniques
+        self._embeddings, self._technique_metadata = (
+            self._embeddings_cache.load_or_compute(techniques)
         )
         self.logger.info(
             "nlp_mapper_initialized",
@@ -250,6 +257,7 @@ class NLPMapper:
         if self._model is None:
             try:
                 from sentence_transformers import SentenceTransformer
+
                 self._model = SentenceTransformer(self.model_name)
             except ImportError:
                 self.logger.error("sentence_transformers_not_installed")
@@ -297,7 +305,9 @@ class NLPMapper:
         # Compute similarities
         results = []
         for technique_id, technique_embedding in self._embeddings.items():
-            similarity = self._cosine_similarity(detection_embedding, technique_embedding)
+            similarity = self._cosine_similarity(
+                detection_embedding, technique_embedding
+            )
 
             # Skip low similarity matches
             if similarity < self.LOW_SIMILARITY_THRESHOLD:
@@ -306,17 +316,19 @@ class NLPMapper:
             metadata = self._technique_metadata.get(technique_id, {})
             confidence = self._calibrate_confidence(similarity)
 
-            results.append(NLPMappingResult(
-                technique_id=technique_id,
-                technique_name=metadata.get("name", ""),
-                confidence=confidence,
-                similarity_score=float(similarity),
-                rationale=self._build_rationale(similarity, metadata),
-            ))
+            results.append(
+                NLPMappingResult(
+                    technique_id=technique_id,
+                    technique_name=metadata.get("name", ""),
+                    confidence=confidence,
+                    similarity_score=float(similarity),
+                    rationale=self._build_rationale(similarity, metadata),
+                )
+            )
 
         # Sort by confidence and take top_k
         results.sort(key=lambda x: x.confidence, reverse=True)
-        return results[:self.top_k]
+        return results[: self.top_k]
 
     def _build_detection_text(
         self,
@@ -349,13 +361,42 @@ class NLPMapper:
         """Extract security-relevant keywords from a query pattern."""
         # Common security terms to look for
         security_terms = {
-            "delete", "create", "update", "modify", "remove", "terminate",
-            "unauthorized", "denied", "failed", "error", "suspicious",
-            "login", "authentication", "access", "permission", "role",
-            "admin", "root", "privilege", "escalation", "credential",
-            "key", "secret", "token", "password", "certificate",
-            "firewall", "security", "network", "vpc", "subnet",
-            "instance", "bucket", "storage", "database", "function",
+            "delete",
+            "create",
+            "update",
+            "modify",
+            "remove",
+            "terminate",
+            "unauthorized",
+            "denied",
+            "failed",
+            "error",
+            "suspicious",
+            "login",
+            "authentication",
+            "access",
+            "permission",
+            "role",
+            "admin",
+            "root",
+            "privilege",
+            "escalation",
+            "credential",
+            "key",
+            "secret",
+            "token",
+            "password",
+            "certificate",
+            "firewall",
+            "security",
+            "network",
+            "vpc",
+            "subnet",
+            "instance",
+            "bucket",
+            "storage",
+            "database",
+            "function",
         }
 
         # Simple keyword extraction
@@ -399,21 +440,28 @@ class NLPMapper:
             ratio = (similarity - self.MEDIUM_SIMILARITY_THRESHOLD) / (
                 self.HIGH_SIMILARITY_THRESHOLD - self.MEDIUM_SIMILARITY_THRESHOLD
             )
-            return self.MEDIUM_CONFIDENCE + ratio * (self.HIGH_CONFIDENCE - self.MEDIUM_CONFIDENCE)
+            return self.MEDIUM_CONFIDENCE + ratio * (
+                self.HIGH_CONFIDENCE - self.MEDIUM_CONFIDENCE
+            )
         else:
             # Linear interpolation between low and medium
             ratio = (similarity - self.LOW_SIMILARITY_THRESHOLD) / (
                 self.MEDIUM_SIMILARITY_THRESHOLD - self.LOW_SIMILARITY_THRESHOLD
             )
-            return self.LOW_CONFIDENCE + ratio * (self.MEDIUM_CONFIDENCE - self.LOW_CONFIDENCE)
+            return self.LOW_CONFIDENCE + ratio * (
+                self.MEDIUM_CONFIDENCE - self.LOW_CONFIDENCE
+            )
 
     def _build_rationale(self, similarity: float, metadata: dict) -> str:
         """Build explanation for the mapping."""
         technique_name = metadata.get("name", "Unknown")
         tactic_name = metadata.get("tactic_name", "Unknown")
 
-        confidence_level = "high" if similarity >= self.HIGH_SIMILARITY_THRESHOLD else \
-                          "medium" if similarity >= self.MEDIUM_SIMILARITY_THRESHOLD else "low"
+        confidence_level = (
+            "high"
+            if similarity >= self.HIGH_SIMILARITY_THRESHOLD
+            else "medium" if similarity >= self.MEDIUM_SIMILARITY_THRESHOLD else "low"
+        )
 
         return (
             f"NLP semantic similarity ({confidence_level} confidence): "

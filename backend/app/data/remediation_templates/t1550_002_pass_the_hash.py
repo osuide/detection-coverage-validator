@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Use Alternate Authentication Material: Pass the Hash",
     tactic_ids=["TA0005", "TA0008"],
     mitre_url="https://attack.mitre.org/techniques/T1550/002/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries leverage stolen NTLM password hashes to authenticate to remote systems "
@@ -41,31 +40,41 @@ TEMPLATE = RemediationTemplate(
             "Works even after password change in some cases",
             "Difficult to distinguish from legitimate authentication",
             "Effective against systems with shared local administrator passwords",
-            "Can be combined with credential dumping for broad access"
+            "Can be combined with credential dumping for broad access",
         ],
         known_threat_actors=[
-            "APT1", "APT28", "APT32", "APT41", "Wizard Spider", "Lazarus Group",
-            "Carbanak", "FIN6", "FIN7", "Turla", "OilRig", "Threat Group-3390"
+            "APT1",
+            "APT28",
+            "APT32",
+            "APT41",
+            "Wizard Spider",
+            "Lazarus Group",
+            "Carbanak",
+            "FIN6",
+            "FIN7",
+            "Turla",
+            "OilRig",
+            "Threat Group-3390",
         ],
         recent_campaigns=[
             Campaign(
                 name="APT41 Global Intrusion Campaign",
                 year=2023,
                 description="Used pass-the-hash techniques to move laterally across Windows domains in cloud-connected environments",
-                reference_url="https://attack.mitre.org/groups/G0096/"
+                reference_url="https://attack.mitre.org/groups/G0096/",
             ),
             Campaign(
                 name="Wizard Spider Ransomware Operations",
                 year=2022,
                 description="Leveraged stolen NTLM hashes to deploy ransomware across Windows networks including hybrid cloud deployments",
-                reference_url="https://attack.mitre.org/groups/G0102/"
+                reference_url="https://attack.mitre.org/groups/G0102/",
             ),
             Campaign(
                 name="APT28 Credential Harvesting",
                 year=2021,
                 description="Employed pass-the-hash after dumping credentials from compromised domain controllers",
-                reference_url="https://attack.mitre.org/groups/G0007/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0007/",
+            ),
         ],
         prevalence="common",
         trend="stable",
@@ -83,13 +92,12 @@ TEMPLATE = RemediationTemplate(
             "Ransomware deployment across multiple systems",
             "Data exfiltration from connected file servers and databases",
             "Compromise of hybrid cloud identity infrastructure",
-            "Persistent access through multiple compromised accounts"
+            "Persistent access through multiple compromised accounts",
         ],
         typical_attack_phase="lateral_movement",
         often_precedes=["T1021.002", "T1021.001", "T1047", "T1570"],
-        often_follows=["T1003.001", "T1003.002", "T1003.003", "T1078"]
+        often_follows=["T1003.001", "T1003.002", "T1003.003", "T1078"],
     ),
-
     detection_strategies=[
         # Strategy 1: NTLM Authentication Monitoring
         DetectionStrategy(
@@ -108,9 +116,9 @@ TEMPLATE = RemediationTemplate(
                     "UnauthorizedAccess:EC2/RDPBruteForce",
                     "UnauthorizedAccess:EC2/SSHBruteForce",
                     "Behavior:EC2/NetworkPortUnusual",
-                    "CredentialAccess:IAMUser/AnomalousBehavior"
+                    "CredentialAccess:IAMUser/AnomalousBehavior",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty monitoring for Pass the Hash indicators
 
 Parameters:
@@ -163,8 +171,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref SecurityAlertTopic''',
-                terraform_template='''# GuardDuty monitoring for Pass the Hash indicators
+            Resource: !Ref SecurityAlertTopic""",
+                terraform_template="""# GuardDuty monitoring for Pass the Hash indicators
 
 variable "alert_email" {
   type        = string
@@ -223,7 +231,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.pth_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Suspicious Windows Authentication Pattern Detected",
                 alert_description_template=(
@@ -238,7 +246,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Review recent credential dumping indicators (Event ID 4672, 4688 for LSASS access)",
                     "Examine network traffic for SMB/RPC connections between systems",
                     "Check for overpass-the-hash via Kerberos ticket requests (Event ID 4768, 4769)",
-                    "Review user's normal access patterns and compare with current activity"
+                    "Review user's normal access patterns and compare with current activity",
                 ],
                 containment_actions=[
                     "Immediately isolate affected Windows instances from the network",
@@ -247,8 +255,8 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Enable Restricted Admin mode for RDP if not already enabled",
                     "Review and rotate local administrator passwords across all systems",
                     "Enable NTLM auditing and restrict NTLM authentication where possible",
-                    "Force Kerberos authentication for lateral movement"
-                ]
+                    "Force Kerberos authentication for lateral movement",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning=(
@@ -265,9 +273,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="£10-30 depending on instance count",
-            prerequisites=["GuardDuty enabled", "Windows EC2 instances configured"]
+            prerequisites=["GuardDuty enabled", "Windows EC2 instances configured"],
         ),
-
         # Strategy 2: CloudWatch Logs Analysis for Windows Events
         DetectionStrategy(
             strategy_id="t1550002-cloudwatch-windows",
@@ -281,7 +288,7 @@ resource "aws_sns_topic_policy" "allow_events" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, EventID, LogonType, AuthenticationPackage,
+                query="""fields @timestamp, EventID, LogonType, AuthenticationPackage,
        WorkstationName, SourceNetworkAddress, TargetUserName
 | filter EventID = 4624 and LogonType = 3 and AuthenticationPackage = "NTLM"
 | stats count(*) as ntlm_logons,
@@ -289,8 +296,8 @@ resource "aws_sns_topic_policy" "allow_events" {
         count_distinct(WorkstationName) as unique_workstations
   by TargetUserName, bin(15m)
 | filter ntlm_logons > 5 or unique_sources > 3
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: CloudWatch analysis for Pass the Hash detection
 
 Parameters:
@@ -336,8 +343,8 @@ Resources:
       Threshold: 10
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
-        - !Ref AlertTopic''',
-                terraform_template='''# CloudWatch analysis for Pass the Hash detection
+        - !Ref AlertTopic""",
+                terraform_template="""# CloudWatch analysis for Pass the Hash detection
 
 variable "windows_log_group" {
   type        = string
@@ -385,7 +392,7 @@ resource "aws_cloudwatch_metric_alarm" "excessive_ntlm" {
   statistic           = "Sum"
   threshold           = 10
   alarm_actions       = [aws_sns_topic.ntlm_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Excessive NTLM Authentication Activity",
                 alert_description_template=(
@@ -399,7 +406,7 @@ resource "aws_cloudwatch_metric_alarm" "excessive_ntlm" {
                     "Review source workstation names for anomalies or unknown systems",
                     "Check if source IP addresses match expected administrative workstations",
                     "Investigate Event ID 4688 (process creation) for suspicious tools (Mimikatz, PSExec)",
-                    "Review user's authentication history for baseline comparison"
+                    "Review user's authentication history for baseline comparison",
                 ],
                 containment_actions=[
                     "Isolate source and target systems from network",
@@ -407,8 +414,8 @@ resource "aws_cloudwatch_metric_alarm" "excessive_ntlm" {
                     "Clear cached credentials on all potentially compromised systems",
                     "Review and update local administrator password policy",
                     "Enable Protected Users group membership for sensitive accounts",
-                    "Deploy Windows Defender Credential Guard if supported"
-                ]
+                    "Deploy Windows Defender Credential Guard if supported",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning=(
@@ -428,10 +435,9 @@ resource "aws_cloudwatch_metric_alarm" "excessive_ntlm" {
             prerequisites=[
                 "CloudWatch Agent installed on Windows EC2 instances",
                 "Windows Security Event logs forwarded to CloudWatch",
-                "Event IDs 4624, 4776, 4672, 4688 enabled in audit policy"
-            ]
+                "Event IDs 4624, 4776, 4672, 4688 enabled in audit policy",
+            ],
         ),
-
         # Strategy 3: GCP Windows VM Authentication Monitoring
         DetectionStrategy(
             strategy_id="t1550002-gcp-windows",
@@ -450,7 +456,7 @@ resource "aws_cloudwatch_metric_alarm" "excessive_ntlm" {
 jsonPayload.EventID="4624"
 jsonPayload.LogonType="3"
 jsonPayload.AuthenticationPackageName="NTLM"''',
-                gcp_terraform_template='''# GCP Cloud Logging for Pass the Hash detection
+                gcp_terraform_template="""# GCP Cloud Logging for Pass the Hash detection
 
 variable "project_id" {
   type        = string
@@ -539,7 +545,7 @@ resource "google_monitoring_alert_policy" "ntlm_alert" {
       - Review lateral movement paths
     EOT
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Suspicious NTLM Authentication Pattern",
                 alert_description_template=(
@@ -553,7 +559,7 @@ resource "google_monitoring_alert_policy" "ntlm_alert" {
                     "Identify all instances accessed by the suspicious user account",
                     "Review Cloud Audit Logs for any privilege escalation attempts",
                     "Check for credential dumping indicators in earlier timeframes",
-                    "Compare with baseline authentication patterns for the user"
+                    "Compare with baseline authentication patterns for the user",
                 ],
                 containment_actions=[
                     "Use GCP Console to stop affected GCE instances",
@@ -561,8 +567,8 @@ resource "google_monitoring_alert_policy" "ntlm_alert" {
                     "Reset passwords for compromised accounts in Cloud Identity/AD",
                     "Review and update firewall rules to restrict lateral movement",
                     "Enable VPC Service Controls to limit inter-resource access",
-                    "Deploy security patches and enable Windows Defender Credential Guard"
-                ]
+                    "Deploy security patches and enable Windows Defender Credential Guard",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning=(
@@ -582,16 +588,15 @@ resource "google_monitoring_alert_policy" "ntlm_alert" {
             prerequisites=[
                 "Windows GCE instances with logging agent installed",
                 "Windows Security Event logs forwarded to Cloud Logging",
-                "Appropriate IAM permissions to create logging metrics and alerts"
-            ]
-        )
+                "Appropriate IAM permissions to create logging metrics and alerts",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1550002-ntlm-lateral",
         "t1550002-cloudwatch-windows",
-        "t1550002-gcp-windows"
+        "t1550002-gcp-windows",
     ],
     total_effort_hours=6.0,
-    coverage_improvement="+15% improvement for Defence Evasion and Lateral Movement tactics in Windows-based cloud environments"
+    coverage_improvement="+15% improvement for Defence Evasion and Lateral Movement tactics in Windows-based cloud environments",
 )

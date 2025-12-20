@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Modify Authentication Process: Multi-Factor Authentication",
     tactic_ids=["TA0006", "TA0005", "TA0003"],
     mitre_url="https://attack.mitre.org/techniques/T1556/006/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries disable or modify MFA mechanisms to maintain persistent access to "
@@ -36,7 +35,7 @@ TEMPLATE = RemediationTemplate(
             "Maintains persistent access even if passwords are reset",
             "Often overlooked during incident response",
             "Can be done subtly to avoid detection",
-            "Allows access from any location without additional challenges"
+            "Allows access from any location without additional challenges",
         ],
         known_threat_actors=["Scattered Spider", "APT42"],
         recent_campaigns=[
@@ -44,20 +43,20 @@ TEMPLATE = RemediationTemplate(
                 name="Scattered Spider MFA Bypass",
                 year=2024,
                 description="Registered attacker-controlled MFA tokens after compromising user accounts",
-                reference_url="https://attack.mitre.org/groups/G1015/"
+                reference_url="https://attack.mitre.org/groups/G1015/",
             ),
             Campaign(
                 name="APT42 MFA Modification",
                 year=2024,
                 description="Leveraged MFA modification tactics to maintain persistent access",
-                reference_url="https://www.mandiant.com/resources/apt42"
+                reference_url="https://www.mandiant.com/resources/apt42",
             ),
             Campaign(
                 name="AADInternals MFA Disable",
                 year=2023,
                 description="Use of AADInternals tool to disable MFA on Azure AD accounts",
-                reference_url="https://attack.mitre.org/software/S0677/"
-            )
+                reference_url="https://attack.mitre.org/software/S0677/",
+            ),
         ],
         prevalence="moderate",
         trend="increasing",
@@ -72,13 +71,12 @@ TEMPLATE = RemediationTemplate(
             "Persistent unauthorised access to accounts",
             "Compliance violations (PCI DSS, NIST 800-63)",
             "Increased risk of data exfiltration",
-            "Difficult to detect without specific monitoring"
+            "Difficult to detect without specific monitoring",
         ],
         typical_attack_phase="persistence",
         often_precedes=["T1078.004", "T1530", "T1537"],
-        often_follows=["T1078.004", "T1528", "T1098.001"]
+        often_follows=["T1078.004", "T1528", "T1098.001"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS IAM MFA Deactivation
         DetectionStrategy(
@@ -96,11 +94,11 @@ TEMPLATE = RemediationTemplate(
                         "eventName": [
                             "DeactivateMFADevice",
                             "DeleteVirtualMFADevice",
-                            "DisableMFADevice"
+                            "DisableMFADevice",
                         ]
-                    }
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect MFA device deactivation
 
 Parameters:
@@ -146,8 +144,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect MFA device deactivation
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect MFA device deactivation
 
 variable "alert_email" {
   type = string
@@ -199,7 +197,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.mfa_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="MFA Device Deactivated",
                 alert_description_template=(
@@ -211,15 +209,15 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Check who performed the deactivation (userIdentity)",
                     "Review CloudTrail for other suspicious activity from the actor",
                     "Check if user has re-enabled MFA or registered new device",
-                    "Review user's recent access patterns and API calls"
+                    "Review user's recent access patterns and API calls",
                 ],
                 containment_actions=[
                     "Contact user immediately via out-of-band communication",
                     "Force re-enable MFA for the affected user",
                     "Disable console access until MFA is re-enabled",
                     "Rotate user's access keys and passwords",
-                    "Review and revoke active sessions"
-                ]
+                    "Review and revoke active sessions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Legitimate MFA device changes are rare; all events warrant review",
@@ -228,9 +226,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled", "IAM events logged"]
+            prerequisites=["CloudTrail enabled", "IAM events logged"],
         ),
-
         # Strategy 2: Azure AD Conditional Access Policy Changes
         DetectionStrategy(
             strategy_id="t1556006-aws-cognito-mfa",
@@ -240,11 +237,11 @@ resource "aws_sns_topic_policy" "allow_events" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.arn, requestParameters.userPoolId, responseElements
+                query="""fields @timestamp, eventName, userIdentity.arn, requestParameters.userPoolId, responseElements
 | filter eventSource = "cognito-idp.amazonaws.com"
 | filter eventName in ["SetUserPoolMfaConfig", "SetUserMFAPreference", "AdminSetUserMFAPreference"]
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Monitor Cognito MFA configuration changes
 
 Parameters:
@@ -288,8 +285,8 @@ Resources:
       Threshold: 0
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
-        - !Ref AlertTopic''',
-                terraform_template='''# Monitor Cognito MFA configuration changes
+        - !Ref AlertTopic""",
+                terraform_template="""# Monitor Cognito MFA configuration changes
 
 variable "cloudtrail_log_group" {
   type = string
@@ -335,7 +332,7 @@ resource "aws_cloudwatch_metric_alarm" "cognito_mfa" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.cognito_mfa_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Cognito MFA Configuration Changed",
                 alert_description_template=(
@@ -347,14 +344,14 @@ resource "aws_cloudwatch_metric_alarm" "cognito_mfa" {
                     "Verify if change was authorised",
                     "Check if MFA was disabled or weakened",
                     "Review who made the change and from where",
-                    "Check for other configuration changes to the user pool"
+                    "Check for other configuration changes to the user pool",
                 ],
                 containment_actions=[
                     "Revert MFA settings to secure configuration",
                     "Enable MFA enforcement if it was disabled",
                     "Audit user pool configuration",
-                    "Review IAM permissions for Cognito access"
-                ]
+                    "Review IAM permissions for Cognito access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known admin accounts during planned changes",
@@ -363,9 +360,8 @@ resource "aws_cloudwatch_metric_alarm" "cognito_mfa" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled", "Cognito events logged to CloudWatch"]
+            prerequisites=["CloudTrail enabled", "Cognito events logged to CloudWatch"],
         ),
-
         # Strategy 3: MFA Device Registration Monitoring
         DetectionStrategy(
             strategy_id="t1556006-aws-new-mfa",
@@ -375,10 +371,10 @@ resource "aws_cloudwatch_metric_alarm" "cognito_mfa" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.arn as actor, requestParameters.userName as target_user, sourceIPAddress
+                query="""fields @timestamp, eventName, userIdentity.arn as actor, requestParameters.userName as target_user, sourceIPAddress
 | filter eventName in ["EnableMFADevice", "CreateVirtualMFADevice"]
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Monitor new MFA device registrations
 
 Parameters:
@@ -424,8 +420,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Monitor new MFA device registrations
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Monitor new MFA device registrations
 
 variable "cloudtrail_log_group" {
   type = string
@@ -479,7 +475,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.new_mfa_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="New MFA Device Registered",
                 alert_description_template=(
@@ -491,14 +487,14 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Check if old MFA device was deactivated simultaneously",
                     "Review source IP and location of registration",
                     "Check for other suspicious activity on the account",
-                    "Verify user's recent authentication history"
+                    "Verify user's recent authentication history",
                 ],
                 containment_actions=[
                     "If unauthorised, immediately deactivate new MFA device",
                     "Force password reset for affected user",
                     "Re-enable only verified MFA device",
-                    "Review and terminate active sessions"
-                ]
+                    "Review and terminate active sessions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Legitimate MFA registration occurs during onboarding and device changes",
@@ -507,9 +503,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         # Strategy 4: GCP MFA Policy Changes
         DetectionStrategy(
             strategy_id="t1556006-gcp-mfa-policy",
@@ -523,7 +518,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                 gcp_logging_query='''protoPayload.methodName=~"SetIamPolicy|UpdateUser"
 protoPayload.request.policy.bindings.condition=~"mfa|2sv"
 OR protoPayload.metadata.mfa=~"DISABLED|REMOVED"''',
-                gcp_terraform_template='''# GCP: Detect MFA policy modifications
+                gcp_terraform_template="""# GCP: Detect MFA policy modifications
 
 variable "project_id" {
   type = string
@@ -577,7 +572,7 @@ resource "google_monitoring_alert_policy" "mfa_policy" {
   documentation {
     content = "MFA enforcement policy was modified. Verify this change was authorised."
   }
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GCP: MFA Policy Modified",
                 alert_description_template=(
@@ -589,15 +584,15 @@ resource "google_monitoring_alert_policy" "mfa_policy" {
                     "Verify if change was authorised",
                     "Check if MFA requirement was weakened or removed",
                     "Review who made the change (principalEmail)",
-                    "Check for other IAM policy modifications"
+                    "Check for other IAM policy modifications",
                 ],
                 containment_actions=[
                     "Revert MFA policy to secure configuration",
                     "Re-enable MFA enforcement immediately",
                     "Review IAM permissions for policy modification access",
                     "Audit recent authentication events",
-                    "Enable organisation policy constraints for MFA"
-                ]
+                    "Enable organisation policy constraints for MFA",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="MFA policy changes should be rare and well-documented",
@@ -606,9 +601,8 @@ resource "google_monitoring_alert_policy" "mfa_policy" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Cloud Audit Logs enabled", "Admin Activity logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled", "Admin Activity logs enabled"],
         ),
-
         # Strategy 5: GCP User 2SV Enrollment Changes
         DetectionStrategy(
             strategy_id="t1556006-gcp-2sv-disable",
@@ -619,10 +613,10 @@ resource "google_monitoring_alert_policy" "mfa_policy" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''protoPayload.serviceName="admin.googleapis.com"
+                gcp_logging_query="""protoPayload.serviceName="admin.googleapis.com"
 protoPayload.methodName="google.admin.AdminService.changeUserTwoStepVerificationEnrollment"
-protoPayload.request.new_value=false''',
-                gcp_terraform_template='''# GCP: Detect 2SV disabled for users
+protoPayload.request.new_value=false""",
+                gcp_terraform_template="""# GCP: Detect 2SV disabled for users
 
 variable "project_id" {
   type = string
@@ -676,7 +670,7 @@ resource "google_monitoring_alert_policy" "two_sv_alert" {
   documentation {
     content = "2-Step Verification was disabled for a user account. Immediate investigation required."
   }
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GCP: 2-Step Verification Disabled",
                 alert_description_template=(
@@ -688,15 +682,15 @@ resource "google_monitoring_alert_policy" "two_sv_alert" {
                     "Check who performed the action (actor)",
                     "Review user's recent access and authentication logs",
                     "Check for other suspicious administrative actions",
-                    "Verify if backup codes were accessed or modified"
+                    "Verify if backup codes were accessed or modified",
                 ],
                 containment_actions=[
                     "Immediately re-enable 2SV for the user",
                     "Force password reset for affected account",
                     "Suspend account until 2SV is re-enabled",
                     "Review and revoke active sessions",
-                    "Enable organisation policy to enforce 2SV"
-                ]
+                    "Enable organisation policy to enforce 2SV",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Legitimate 2SV changes are rare and should be investigated",
@@ -705,17 +699,16 @@ resource "google_monitoring_alert_policy" "two_sv_alert" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Google Workspace", "Admin audit logs enabled"]
-        )
+            prerequisites=["Google Workspace", "Admin audit logs enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1556006-aws-mfa-deactivate",
         "t1556006-gcp-2sv-disable",
         "t1556006-gcp-mfa-policy",
         "t1556006-aws-cognito-mfa",
-        "t1556006-aws-new-mfa"
+        "t1556006-aws-new-mfa",
     ],
     total_effort_hours=3.5,
-    coverage_improvement="+18% improvement for Credential Access and Persistence tactics"
+    coverage_improvement="+18% improvement for Credential Access and Persistence tactics",
 )

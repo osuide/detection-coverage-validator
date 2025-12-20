@@ -33,8 +33,10 @@ router = APIRouter()
 
 # === Request/Response Schemas ===
 
+
 class ConsentRequest(BaseModel):
     """Request to give consent for code analysis."""
+
     cloud_account_id: UUID
     scope: CodeAnalysisScope = CodeAnalysisScope.ALL
     acknowledged_risks: bool
@@ -43,6 +45,7 @@ class ConsentRequest(BaseModel):
 
 class ConsentResponse(BaseModel):
     """Response with consent status."""
+
     id: UUID
     cloud_account_id: UUID
     consent_given: bool
@@ -55,6 +58,7 @@ class ConsentResponse(BaseModel):
 
 class DisclosureResponse(BaseModel):
     """Response with feature disclosure information."""
+
     title: str
     summary: str
     benefits: list[str]
@@ -69,6 +73,7 @@ class DisclosureResponse(BaseModel):
 
 class PermissionCheckResponse(BaseModel):
     """Response from IAM permission check."""
+
     has_required_permissions: bool
     missing_permissions: list[str]
     warnings: list[str]
@@ -77,6 +82,7 @@ class PermissionCheckResponse(BaseModel):
 
 class FeatureStatusResponse(BaseModel):
     """Overall status of code analysis feature for an account."""
+
     feature_available: bool  # Tier allows it
     consent_given: bool
     consent_active: bool
@@ -88,6 +94,7 @@ class FeatureStatusResponse(BaseModel):
 
 
 # === Endpoints ===
+
 
 @router.get("/disclosure", response_model=DisclosureResponse)
 async def get_disclosure():
@@ -123,7 +130,10 @@ async def get_feature_status(
 
     feature_available = False
     if subscription:
-        feature_available = subscription.tier in [AccountTier.SUBSCRIBER, AccountTier.ENTERPRISE]
+        feature_available = subscription.tier in [
+            AccountTier.SUBSCRIBER,
+            AccountTier.ENTERPRISE,
+        ]
 
     # Check consent
     result = await db.execute(
@@ -139,9 +149,13 @@ async def get_feature_status(
     # Build blocking reasons
     blocking_reasons = []
     if not feature_available:
-        blocking_reasons.append("Upgrade to Subscriber or Enterprise tier to access code analysis")
+        blocking_reasons.append(
+            "Upgrade to Subscriber or Enterprise tier to access code analysis"
+        )
     if not consent_given:
-        blocking_reasons.append("Code analysis requires explicit consent - review disclosure and enable")
+        blocking_reasons.append(
+            "Code analysis requires explicit consent - review disclosure and enable"
+        )
     if consent and consent.consent_revoked:
         blocking_reasons.append("Consent was revoked - re-enable to use code analysis")
 
@@ -184,10 +198,13 @@ async def give_consent(
     )
     subscription = result.scalar_one_or_none()
 
-    if not subscription or subscription.tier not in [AccountTier.SUBSCRIBER, AccountTier.ENTERPRISE]:
+    if not subscription or subscription.tier not in [
+        AccountTier.SUBSCRIBER,
+        AccountTier.ENTERPRISE,
+    ]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Code analysis requires Subscriber or Enterprise tier. Please upgrade your subscription."
+            detail="Code analysis requires Subscriber or Enterprise tier. Please upgrade your subscription.",
         )
 
     # Verify account belongs to org
@@ -201,21 +218,20 @@ async def give_consent(
 
     if not account:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Cloud account not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Cloud account not found"
         )
 
     # Require explicit acknowledgments
     if not request.acknowledged_risks:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="You must acknowledge the risks before enabling code analysis. Please review the disclosure."
+            detail="You must acknowledge the risks before enabling code analysis. Please review the disclosure.",
         )
 
     if not request.acknowledged_data_handling:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="You must acknowledge the data handling practices before enabling code analysis. Please review the disclosure."
+            detail="You must acknowledge the data handling practices before enabling code analysis. Please review the disclosure.",
         )
 
     # Check for existing consent
@@ -297,7 +313,7 @@ async def revoke_consent(
     if not consent:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="No consent record found for this account"
+            detail="No consent record found for this account",
         )
 
     from datetime import datetime, timezone
@@ -313,7 +329,7 @@ async def revoke_consent(
         "message": "Consent revoked successfully",
         "account_id": str(cloud_account_id),
         "revoked_at": consent.consent_revoked_at.isoformat(),
-        "note": "Future scans will use metadata-only analysis. Existing mappings are preserved."
+        "note": "Future scans will use metadata-only analysis. Existing mappings are preserved.",
     }
 
 
@@ -337,7 +353,7 @@ async def get_consent(
     if not consent:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="No consent record found. Code analysis has not been enabled for this account."
+            detail="No consent record found. Code analysis has not been enabled for this account.",
         )
 
     return ConsentResponse(
@@ -379,7 +395,7 @@ async def get_iam_policy():
                 "Action": sorted(list(all_permissions)),
                 "Resource": "*",
             }
-        ]
+        ],
     }
 
     return {

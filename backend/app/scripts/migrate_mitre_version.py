@@ -111,25 +111,29 @@ class MITREMigration:
         added_ids = new_ids - old_ids
         for tid in added_ids:
             tech = new_by_id[tid]
-            report.added_techniques.append(TechniqueChange(
-                technique_id=tid,
-                change_type="added",
-                new_name=tech.get("name"),
-                new_tactic=tech.get("tactic_id"),
-                details=f"New technique in {new_version}",
-            ))
+            report.added_techniques.append(
+                TechniqueChange(
+                    technique_id=tid,
+                    change_type="added",
+                    new_name=tech.get("name"),
+                    new_tactic=tech.get("tactic_id"),
+                    details=f"New technique in {new_version}",
+                )
+            )
 
         # Find deprecated techniques
         deprecated_ids = old_ids - new_ids
         for tid in deprecated_ids:
             tech = old_by_id[tid]
-            report.deprecated_techniques.append(TechniqueChange(
-                technique_id=tid,
-                change_type="deprecated",
-                old_name=tech.get("name"),
-                old_tactic=tech.get("tactic_id"),
-                details=f"Technique deprecated in {new_version}",
-            ))
+            report.deprecated_techniques.append(
+                TechniqueChange(
+                    technique_id=tid,
+                    change_type="deprecated",
+                    old_name=tech.get("name"),
+                    old_tactic=tech.get("tactic_id"),
+                    details=f"Technique deprecated in {new_version}",
+                )
+            )
 
         # Find renamed/updated techniques
         common_ids = old_ids & new_ids
@@ -140,15 +144,17 @@ class MITREMigration:
             changes = self._compare_technique(old_tech, new_tech)
             if changes:
                 change_type = "renamed" if "name" in changes else "updated"
-                report.renamed_techniques.append(TechniqueChange(
-                    technique_id=tid,
-                    change_type=change_type,
-                    old_name=old_tech.get("name"),
-                    new_name=new_tech.get("name"),
-                    old_tactic=old_tech.get("tactic_id"),
-                    new_tactic=new_tech.get("tactic_id"),
-                    details=f"Changes: {', '.join(changes)}",
-                ))
+                report.renamed_techniques.append(
+                    TechniqueChange(
+                        technique_id=tid,
+                        change_type=change_type,
+                        old_name=old_tech.get("name"),
+                        new_name=new_tech.get("name"),
+                        old_tactic=old_tech.get("tactic_id"),
+                        new_tactic=new_tech.get("tactic_id"),
+                        details=f"Changes: {', '.join(changes)}",
+                    )
+                )
 
         self.logger.info(
             "comparison_complete",
@@ -175,7 +181,9 @@ class MITREMigration:
         if set(old_tech.get("platforms", [])) != set(new_tech.get("platforms", [])):
             changes.append("platforms")
 
-        if set(old_tech.get("data_sources", [])) != set(new_tech.get("data_sources", [])):
+        if set(old_tech.get("data_sources", [])) != set(
+            new_tech.get("data_sources", [])
+        ):
             changes.append("data_sources")
 
         return changes
@@ -239,7 +247,11 @@ class MITREMigration:
                 "detection_id": str(m.detection_id),
                 "technique_id": m.technique_id,
                 "confidence": m.confidence,
-                "mapping_source": m.mapping_source.value if hasattr(m.mapping_source, 'value') else m.mapping_source,
+                "mapping_source": (
+                    m.mapping_source.value
+                    if hasattr(m.mapping_source, "value")
+                    else m.mapping_source
+                ),
             }
             for m in mappings
         ]
@@ -293,9 +305,11 @@ class MITREMigration:
         from app.models.detection_mapping import DetectionMapping
 
         deprecated_ids = {t.technique_id for t in report.deprecated_techniques}
-        affected_mappings = self.db.query(DetectionMapping).filter(
-            DetectionMapping.technique_id.in_(deprecated_ids)
-        ).all()
+        affected_mappings = (
+            self.db.query(DetectionMapping)
+            .filter(DetectionMapping.technique_id.in_(deprecated_ids))
+            .all()
+        )
 
         report.affected_mappings = [
             {
@@ -336,27 +350,39 @@ class MITREMigration:
 
         # Mark deprecated techniques
         for change in report.deprecated_techniques:
-            technique = self.db.query(Technique).filter(
-                Technique.technique_id == change.technique_id
-            ).first()
+            technique = (
+                self.db.query(Technique)
+                .filter(Technique.technique_id == change.technique_id)
+                .first()
+            )
             if technique:
                 technique.is_deprecated = True
 
         # Update renamed/updated techniques
         for change in report.renamed_techniques + report.updated_techniques:
-            technique = self.db.query(Technique).filter(
-                Technique.technique_id == change.technique_id
-            ).first()
+            technique = (
+                self.db.query(Technique)
+                .filter(Technique.technique_id == change.technique_id)
+                .first()
+            )
             if technique:
                 new_tech = next(
-                    (t for t in new_techniques if t["technique_id"] == change.technique_id),
+                    (
+                        t
+                        for t in new_techniques
+                        if t["technique_id"] == change.technique_id
+                    ),
                     None,
                 )
                 if new_tech:
                     technique.name = new_tech.get("name", technique.name)
-                    technique.description = new_tech.get("description", technique.description)
+                    technique.description = new_tech.get(
+                        "description", technique.description
+                    )
                     technique.platforms = new_tech.get("platforms", technique.platforms)
-                    technique.data_sources = new_tech.get("data_sources", technique.data_sources)
+                    technique.data_sources = new_tech.get(
+                        "data_sources", technique.data_sources
+                    )
 
         # Add new techniques
         for change in report.added_techniques:
@@ -377,10 +403,14 @@ class MITREMigration:
 
         # Mark affected mappings as stale
         for mapping_info in report.affected_mappings:
-            mapping = self.db.query(DetectionMapping).filter(
-                DetectionMapping.detection_id == mapping_info["detection_id"],
-                DetectionMapping.technique_id == mapping_info["technique_id"],
-            ).first()
+            mapping = (
+                self.db.query(DetectionMapping)
+                .filter(
+                    DetectionMapping.detection_id == mapping_info["detection_id"],
+                    DetectionMapping.technique_id == mapping_info["technique_id"],
+                )
+                .first()
+            )
             if mapping:
                 mapping.is_stale = True
 
@@ -409,66 +439,76 @@ class MITREMigration:
         ]
 
         if report.added_techniques:
-            lines.extend([
-                "## New Techniques",
-                "",
-                "These techniques need detection coverage assessment:",
-                "",
-            ])
+            lines.extend(
+                [
+                    "## New Techniques",
+                    "",
+                    "These techniques need detection coverage assessment:",
+                    "",
+                ]
+            )
             for t in report.added_techniques:
                 lines.append(f"- **{t.technique_id}**: {t.new_name} ({t.new_tactic})")
             lines.append("")
 
         if report.deprecated_techniques:
-            lines.extend([
-                "## Deprecated Techniques",
-                "",
-                "Existing mappings to these techniques should be reviewed:",
-                "",
-            ])
+            lines.extend(
+                [
+                    "## Deprecated Techniques",
+                    "",
+                    "Existing mappings to these techniques should be reviewed:",
+                    "",
+                ]
+            )
             for t in report.deprecated_techniques:
                 lines.append(f"- **{t.technique_id}**: {t.old_name}")
             lines.append("")
 
         if report.renamed_techniques:
-            lines.extend([
-                "## Renamed/Reorganized Techniques",
-                "",
-            ])
+            lines.extend(
+                [
+                    "## Renamed/Reorganized Techniques",
+                    "",
+                ]
+            )
             for t in report.renamed_techniques:
                 lines.append(f"- **{t.technique_id}**: {t.old_name} -> {t.new_name}")
             lines.append("")
 
         if report.affected_mappings:
-            lines.extend([
-                "## Affected Mappings",
-                "",
-                "The following detection mappings reference deprecated techniques:",
-                "",
-            ])
+            lines.extend(
+                [
+                    "## Affected Mappings",
+                    "",
+                    "The following detection mappings reference deprecated techniques:",
+                    "",
+                ]
+            )
             for m in report.affected_mappings[:20]:  # Limit to 20
-                lines.append(f"- Detection `{m['detection_id']}` -> `{m['technique_id']}`")
+                lines.append(
+                    f"- Detection `{m['detection_id']}` -> `{m['technique_id']}`"
+                )
             if len(report.affected_mappings) > 20:
                 lines.append(f"- ... and {len(report.affected_mappings) - 20} more")
             lines.append("")
 
-        lines.extend([
-            "## Next Steps",
-            "",
-            "1. Review new techniques for applicable detections",
-            "2. Update mappings referencing deprecated techniques",
-            "3. Recalculate coverage for affected accounts",
-            "4. Generate new gap analysis",
-        ])
+        lines.extend(
+            [
+                "## Next Steps",
+                "",
+                "1. Review new techniques for applicable detections",
+                "2. Update mappings referencing deprecated techniques",
+                "3. Recalculate coverage for affected accounts",
+                "4. Generate new gap analysis",
+            ]
+        )
 
         return "\n".join(lines)
 
 
 def main():
     """CLI entry point for MITRE migration."""
-    parser = argparse.ArgumentParser(
-        description="MITRE ATT&CK version migration tool"
-    )
+    parser = argparse.ArgumentParser(description="MITRE ATT&CK version migration tool")
     parser.add_argument(
         "--old-version",
         type=str,

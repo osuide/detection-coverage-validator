@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Gather Victim Identity Information",
     tactic_ids=["TA0043"],
     mitre_url="https://attack.mitre.org/techniques/T1589/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries gather information about the victim's identity that can be used "
@@ -39,22 +38,30 @@ TEMPLATE = RemediationTemplate(
             "Facilitates social engineering attacks",
             "Identifies high-value targets within organisations",
             "Discovers valid usernames for credential attacks",
-            "Bypasses generic security awareness training"
+            "Bypasses generic security awareness training",
         ],
-        known_threat_actors=["APT32", "FIN13", "LAPSUS$", "Magic Hound", "Scattered Spider", "Star Blizzard", "Volt Typhoon"],
+        known_threat_actors=[
+            "APT32",
+            "FIN13",
+            "LAPSUS$",
+            "Magic Hound",
+            "Scattered Spider",
+            "Star Blizzard",
+            "Volt Typhoon",
+        ],
         recent_campaigns=[
             Campaign(
                 name="Operation Dream Job",
                 year=2024,
                 description="Lazarus Group conducted extensive reconnaissance on targets before deploying malware",
-                reference_url="https://attack.mitre.org/campaigns/C0022/"
+                reference_url="https://attack.mitre.org/campaigns/C0022/",
             ),
             Campaign(
                 name="Operation Wocao",
                 year=2021,
                 description="Targeted individuals based on organisational roles and privileges through identity research",
-                reference_url="https://attack.mitre.org/campaigns/C0014/"
-            )
+                reference_url="https://attack.mitre.org/campaigns/C0014/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -68,13 +75,12 @@ TEMPLATE = RemediationTemplate(
             "Enabler for targeted phishing campaigns",
             "Increased risk of credential compromise",
             "Social engineering attack preparation",
-            "Privacy and data protection concerns"
+            "Privacy and data protection concerns",
         ],
         typical_attack_phase="reconnaissance",
         often_precedes=["T1566", "T1078", "T1110", "T1598"],
-        often_follows=[]
+        often_follows=[],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1589-aws-username-enum",
@@ -84,13 +90,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, sourceIPAddress, errorCode, userIdentity.userName
+                query="""fields @timestamp, userIdentity.principalId, sourceIPAddress, errorCode, userIdentity.userName
 | filter eventName in ["ConsoleLogin", "GetUser", "ListUsers", "GetUserPolicy"]
 | filter errorCode in ["NoSuchEntity", "AccessDenied", "InvalidUserID.NotFound"]
 | stats count(*) as failures by sourceIPAddress, bin(5m)
 | filter failures > 10
-| sort failures desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort failures desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect username enumeration attempts via CloudTrail
 
 Parameters:
@@ -136,8 +142,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect username enumeration via CloudTrail
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect username enumeration via CloudTrail
 # This monitors for suspicious patterns of user lookup failures
 
 variable "cloudtrail_log_group" {
@@ -189,7 +195,7 @@ resource "aws_cloudwatch_metric_alarm" "username_enum_attack" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
   alarm_actions       = [aws_sns_topic.username_enum_alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Username Enumeration Activity Detected",
                 alert_description_template="Multiple failed user lookup attempts from {sourceIPAddress}.",
@@ -199,15 +205,15 @@ resource "aws_cloudwatch_metric_alarm" "username_enum_attack" {
                     "Analyse pattern of usernames being enumerated",
                     "Review other activity from same source IP",
                     "Check for successful authentications following enumeration",
-                    "Correlate with authentication logs for targeted accounts"
+                    "Correlate with authentication logs for targeted accounts",
                 ],
                 containment_actions=[
                     "Block source IP at network perimeter",
                     "Enable MFA for all identified enumerated accounts",
                     "Notify affected users of potential targeting",
                     "Review and restrict IAM user listing permissions",
-                    "Implement rate limiting on authentication endpoints"
-                ]
+                    "Implement rate limiting on authentication endpoints",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Legitimate automation tools may trigger this; whitelist known IPs and service accounts",
@@ -216,9 +222,8 @@ resource "aws_cloudwatch_metric_alarm" "username_enum_attack" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-45 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled and logging to CloudWatch"]
+            prerequisites=["CloudTrail enabled and logging to CloudWatch"],
         ),
-
         DetectionStrategy(
             strategy_id="t1589-aws-suspicious-auth",
             name="AWS Suspicious Authentication Pattern Detection",
@@ -227,13 +232,13 @@ resource "aws_cloudwatch_metric_alarm" "username_enum_attack" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, sourceIPAddress, eventName, errorCode
+                query="""fields @timestamp, userIdentity.principalId, sourceIPAddress, eventName, errorCode
 | filter eventName in ["ConsoleLogin", "AssumeRole", "GetSessionToken"]
 | filter errorCode in ["Failed", "InvalidUserID.NotFound"]
 | stats count(*) as attempts, count_distinct(userIdentity.principalId) as uniqueUsers by sourceIPAddress, bin(10m)
 | filter uniqueUsers > 5 or attempts > 20
-| sort attempts desc''',
-                terraform_template='''# Detect suspicious authentication patterns indicating reconnaissance
+| sort attempts desc""",
+                terraform_template="""# Detect suspicious authentication patterns indicating reconnaissance
 # Monitors for rapid authentication attempts across multiple accounts
 
 variable "cloudtrail_log_group" {
@@ -285,7 +290,7 @@ resource "aws_cloudwatch_metric_alarm" "auth_recon_attack" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
   alarm_actions       = [aws_sns_topic.auth_recon_alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Suspicious Authentication Pattern Detected",
                 alert_description_template="Multiple failed authentication attempts from {sourceIPAddress} across different accounts.",
@@ -295,15 +300,15 @@ resource "aws_cloudwatch_metric_alarm" "auth_recon_attack" {
                     "Check if any attempts succeeded",
                     "Analyse timing patterns for automation indicators",
                     "Review user-agent strings for reconnaissance tools",
-                    "Correlate with other security events"
+                    "Correlate with other security events",
                 ],
                 containment_actions=[
                     "Block offending IP addresses",
                     "Enforce MFA for targeted accounts",
                     "Review and strengthen password policies",
                     "Alert affected users to potential targeting",
-                    "Consider implementing CAPTCHA on login"
-                ]
+                    "Consider implementing CAPTCHA on login",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Adjust thresholds based on normal authentication patterns; exclude known service IPs",
@@ -312,9 +317,8 @@ resource "aws_cloudwatch_metric_alarm" "auth_recon_attack" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-45 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled with authentication logging"]
+            prerequisites=["CloudTrail enabled with authentication logging"],
         ),
-
         DetectionStrategy(
             strategy_id="t1589-gcp-identity-enum",
             name="GCP Identity Enumeration Detection",
@@ -328,7 +332,7 @@ resource "aws_cloudwatch_metric_alarm" "auth_recon_attack" {
 protoPayload.methodName=~"google.iam.admin.v1.*.Get*|google.iam.admin.v1.*.List*"
 protoPayload.status.code!=0
 protoPayload.status.code=~"5|7"''',
-                gcp_terraform_template='''# GCP: Detect identity enumeration via Cloud Logging
+                gcp_terraform_template="""# GCP: Detect identity enumeration via Cloud Logging
 # Monitors for repeated failed IAM lookups indicating reconnaissance
 
 variable "project_id" {
@@ -407,7 +411,7 @@ resource "google_monitoring_alert_policy" "identity_enum_attack" {
     content   = "Identity enumeration activity detected. Multiple failed IAM lookup attempts may indicate reconnaissance."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Identity Enumeration Activity",
                 alert_description_template="Multiple failed IAM lookup attempts detected from suspicious source.",
@@ -417,15 +421,15 @@ resource "google_monitoring_alert_policy" "identity_enum_attack" {
                     "Identify which identities were being enumerated",
                     "Review successful operations from same source",
                     "Check for privilege escalation attempts",
-                    "Correlate with authentication logs"
+                    "Correlate with authentication logs",
                 ],
                 containment_actions=[
                     "Block source IP via Cloud Armor",
                     "Review and restrict IAM permissions for listing operations",
                     "Enable VPC Service Controls if not already enabled",
                     "Notify affected identity owners",
-                    "Enable additional authentication requirements"
-                ]
+                    "Enable additional authentication requirements",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate automation service accounts and known IP ranges",
@@ -434,9 +438,8 @@ resource "google_monitoring_alert_policy" "identity_enum_attack" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-45 minutes",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Cloud Audit Logs enabled for IAM"]
+            prerequisites=["Cloud Audit Logs enabled for IAM"],
         ),
-
         DetectionStrategy(
             strategy_id="t1589-aws-public-exposure",
             name="AWS Public Identity Information Exposure Detection",
@@ -446,7 +449,7 @@ resource "google_monitoring_alert_policy" "identity_enum_attack" {
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
                 config_rule_identifier="s3-bucket-public-read-prohibited",
-                terraform_template='''# Detect public exposure of identity information
+                terraform_template="""# Detect public exposure of identity information
 # Monitors for publicly accessible resources that may leak identity data
 
 variable "alert_email" {
@@ -545,7 +548,7 @@ resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.public_exposure.name
   target_id = "SendToSNS"
   arn       = aws_sns_topic.public_exposure_alerts.arn
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Public Exposure of Identity Information Detected",
                 alert_description_template="Resource {resourceId} is publicly accessible and may expose identity information.",
@@ -555,15 +558,15 @@ resource "aws_cloudwatch_event_target" "sns" {
                     "Check access logs for external access",
                     "Determine who made the resource public",
                     "Assess potential data exposure scope",
-                    "Review other resources from same owner"
+                    "Review other resources from same owner",
                 ],
                 containment_actions=[
                     "Immediately remove public access permissions",
                     "Rotate any exposed credentials",
                     "Notify affected individuals if PII exposed",
                     "Review and restrict permissions for resource modification",
-                    "Implement preventive controls (S3 Block Public Access)"
-                ]
+                    "Implement preventive controls (S3 Block Public Access)",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Some public buckets are intentional; mark as exceptions where appropriate",
@@ -572,11 +575,15 @@ resource "aws_cloudwatch_event_target" "sns" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$15-25",
-            prerequisites=["AWS Config enabled", "S3 Block Public Access configured"]
-        )
+            prerequisites=["AWS Config enabled", "S3 Block Public Access configured"],
+        ),
     ],
-
-    recommended_order=["t1589-aws-public-exposure", "t1589-aws-username-enum", "t1589-gcp-identity-enum", "t1589-aws-suspicious-auth"],
+    recommended_order=[
+        "t1589-aws-public-exposure",
+        "t1589-aws-username-enum",
+        "t1589-gcp-identity-enum",
+        "t1589-aws-suspicious-auth",
+    ],
     total_effort_hours=3.0,
-    coverage_improvement="+15% improvement for Reconnaissance tactic"
+    coverage_improvement="+15% improvement for Reconnaissance tactic",
 )

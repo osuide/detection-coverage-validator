@@ -24,7 +24,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Data Manipulation: Stored Data Manipulation",
     tactic_ids=["TA0040"],
     mitre_url="https://attack.mitre.org/techniques/T1565/001/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries insert, delete, or manipulate data at rest in order to influence "
@@ -41,7 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Disrupt operations through data corruption",
             "Financial fraud via database manipulation",
             "Prevent forensic investigation",
-            "Manipulate backups to ensure persistence"
+            "Manipulate backups to ensure persistence",
         ],
         known_threat_actors=["APT38", "SUNSPOT operators", "DYEPACK users"],
         recent_campaigns=[
@@ -49,20 +48,20 @@ TEMPLATE = RemediationTemplate(
                 name="APT38 DYEPACK SWIFT Manipulation",
                 year=2024,
                 description="Used DYEPACK malware to create, delete, and alter records in SWIFT transaction databases to facilitate financial theft",
-                reference_url="https://attack.mitre.org/software/S0554/"
+                reference_url="https://attack.mitre.org/software/S0554/",
             ),
             Campaign(
                 name="SUNSPOT Supply Chain Attack",
                 year=2020,
                 description="Manipulated SolarWinds Orion source files during build process by creating backups and replacing original files with malicious code",
-                reference_url="https://attack.mitre.org/software/S0562/"
+                reference_url="https://attack.mitre.org/software/S0562/",
             ),
             Campaign(
                 name="MultiLayer Wiper",
                 year=2024,
                 description="Changed deleted file path information in file system metadata to prevent recovery of deleted files",
-                reference_url="https://attack.mitre.org/software/S1129/"
-            )
+                reference_url="https://attack.mitre.org/software/S1129/",
+            ),
         ],
         prevalence="moderate",
         trend="increasing",
@@ -78,13 +77,12 @@ TEMPLATE = RemediationTemplate(
             "Incorrect business decisions",
             "Regulatory compliance violations",
             "Loss of customer trust",
-            "Evidence destruction preventing forensics"
+            "Evidence destruction preventing forensics",
         ],
         typical_attack_phase="impact",
         often_precedes=["T1485", "T1486"],
-        often_follows=["T1078.004", "T1098.001", "T1552.001"]
+        often_follows=["T1078.004", "T1098.001", "T1552.001"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1565-001-aws-s3-integrity",
@@ -99,9 +97,9 @@ TEMPLATE = RemediationTemplate(
                     "detail-type": ["AWS API Call via CloudTrail"],
                     "detail": {
                         "eventName": ["PutObject", "CopyObject", "DeleteObject"]
-                    }
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect S3 data manipulation
 
 Parameters:
@@ -158,8 +156,8 @@ Resources:
 Outputs:
   TopicArn:
     Value: !Ref AlertTopic
-    Description: SNS topic ARN for alerts''',
-                terraform_template='''# AWS: Detect S3 data manipulation
+    Description: SNS topic ARN for alerts""",
+                terraform_template="""# AWS: Detect S3 data manipulation
 # Step 1: SNS topic for alerts
 # Step 2: EventBridge rule for S3 modifications
 # Step 3: Enable S3 Object Lock on critical buckets
@@ -240,7 +238,7 @@ resource "aws_s3_bucket_object_lock_configuration" "critical_data" {
       days = 90
     }
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="S3 Data Manipulation Detected",
                 alert_description_template="Critical S3 object modified by {userIdentity.arn} in bucket {requestParameters.bucketName}.",
@@ -250,7 +248,7 @@ resource "aws_s3_bucket_object_lock_configuration" "critical_data" {
                     "Compare object versions to identify what data was changed",
                     "Check if the modification aligns with expected application behaviour",
                     "Review IAM permissions for the user/role that made the change",
-                    "Investigate other objects modified by the same principal"
+                    "Investigate other objects modified by the same principal",
                 ],
                 containment_actions=[
                     "Enable S3 Object Lock on critical buckets to prevent modifications",
@@ -258,8 +256,8 @@ resource "aws_s3_bucket_object_lock_configuration" "critical_data" {
                     "Restore previous object version if manipulation confirmed",
                     "Revoke IAM credentials if compromise suspected",
                     "Enable MFA Delete for critical buckets",
-                    "Review and restrict S3 write permissions"
-                ]
+                    "Review and restrict S3 write permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Filter expected application writes and authorised maintenance windows. Create allowlists for legitimate automation.",
@@ -268,9 +266,11 @@ resource "aws_s3_bucket_object_lock_configuration" "critical_data" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-15 (CloudTrail data events, EventBridge)",
-            prerequisites=["CloudTrail enabled with S3 data events", "S3 bucket identification"]
+            prerequisites=[
+                "CloudTrail enabled with S3 data events",
+                "S3 bucket identification",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1565-001-aws-rds-modification",
             name="AWS RDS Database Modification Detection",
@@ -279,13 +279,13 @@ resource "aws_s3_bucket_object_lock_configuration" "critical_data" {
             aws_service="cloudwatch_logs",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn, eventName, requestParameters.dBInstanceIdentifier
+                query="""fields @timestamp, userIdentity.arn, eventName, requestParameters.dBInstanceIdentifier
 | filter eventSource = "rds.amazonaws.com"
 | filter eventName in ["ModifyDBInstance", "ModifyDBCluster", "RestoreDBInstanceFromDBSnapshot"]
 | filter errorCode not exists
 | stats count() by userIdentity.arn, eventName
-| filter count > 3''',
-                terraform_template='''# AWS: Detect RDS database manipulation
+| filter count > 3""",
+                terraform_template="""# AWS: Detect RDS database manipulation
 # Step 1: Enable RDS Enhanced Monitoring and Audit Logs
 # Step 2: Create CloudWatch query and alarm
 # Step 3: Alert on suspicious database modifications
@@ -383,7 +383,7 @@ resource "aws_cloudwatch_metric_alarm" "high_modification_rate" {
   threshold           = 100
   alarm_description   = "High rate of database modifications detected"
   alarm_actions       = [aws_sns_topic.rds_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="RDS Database Manipulation Detected",
                 alert_description_template="RDS instance {requestParameters.dBInstanceIdentifier} modified by {userIdentity.arn}.",
@@ -393,7 +393,7 @@ resource "aws_cloudwatch_metric_alarm" "high_modification_rate" {
                     "Verify modification was part of authorised maintenance",
                     "Review recent database query patterns for anomalies",
                     "Check if backup/restore operations were legitimate",
-                    "Investigate the user/role that made the modification"
+                    "Investigate the user/role that made the modification",
                 ],
                 containment_actions=[
                     "Enable RDS deletion protection",
@@ -401,8 +401,8 @@ resource "aws_cloudwatch_metric_alarm" "high_modification_rate" {
                     "Review and restore from automated backups if needed",
                     "Restrict IAM permissions for RDS modifications",
                     "Enable Multi-AZ for critical databases",
-                    "Implement database change management processes"
-                ]
+                    "Implement database change management processes",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude authorised maintenance windows, automated backups, and legitimate application operations",
@@ -411,9 +411,12 @@ resource "aws_cloudwatch_metric_alarm" "high_modification_rate" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$10-30 (CloudWatch Logs, Enhanced Monitoring)",
-            prerequisites=["CloudTrail enabled", "RDS Enhanced Monitoring", "Database audit logs"]
+            prerequisites=[
+                "CloudTrail enabled",
+                "RDS Enhanced Monitoring",
+                "Database audit logs",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1565-001-aws-dynamodb-modification",
             name="AWS DynamoDB Table Modification Detection",
@@ -426,10 +429,15 @@ resource "aws_cloudwatch_metric_alarm" "high_modification_rate" {
                     "source": ["aws.dynamodb"],
                     "detail-type": ["AWS API Call via CloudTrail"],
                     "detail": {
-                        "eventName": ["UpdateTable", "DeleteTable", "UpdateItem", "DeleteItem"]
-                    }
+                        "eventName": [
+                            "UpdateTable",
+                            "DeleteTable",
+                            "UpdateItem",
+                            "DeleteItem",
+                        ]
+                    },
                 },
-                terraform_template='''# AWS: Detect DynamoDB data manipulation
+                terraform_template="""# AWS: Detect DynamoDB data manipulation
 # Step 1: Enable DynamoDB Streams for data-level tracking
 # Step 2: Create EventBridge rule for table modifications
 # Step 3: Process DynamoDB Streams with Lambda for item-level changes
@@ -565,7 +573,7 @@ resource "aws_iam_role_policy" "lambda_dynamodb_sns" {
       }
     ]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="DynamoDB Data Manipulation Detected",
                 alert_description_template="DynamoDB table {requestParameters.tableName} modified by {userIdentity.arn}.",
@@ -575,7 +583,7 @@ resource "aws_iam_role_policy" "lambda_dynamodb_sns" {
                     "Verify modification was part of authorised operations",
                     "Review application logs for corresponding requests",
                     "Check if Point-in-Time Recovery is enabled",
-                    "Investigate the principal that made the changes"
+                    "Investigate the principal that made the changes",
                 ],
                 containment_actions=[
                     "Enable Point-in-Time Recovery for restoration",
@@ -583,8 +591,8 @@ resource "aws_iam_role_policy" "lambda_dynamodb_sns" {
                     "Restore table from backup if manipulation confirmed",
                     "Review and restrict IAM permissions",
                     "Enable deletion protection on critical tables",
-                    "Implement application-level change auditing"
-                ]
+                    "Implement application-level change auditing",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="High false positive rate for item operations; focus on table-level changes or implement application-level filtering",
@@ -593,9 +601,8 @@ resource "aws_iam_role_policy" "lambda_dynamodb_sns" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$15-40 (DynamoDB Streams, Lambda)",
-            prerequisites=["CloudTrail enabled", "DynamoDB Streams enabled"]
+            prerequisites=["CloudTrail enabled", "DynamoDB Streams enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1565-001-gcp-storage-integrity",
             name="GCP Cloud Storage Object Modification Detection",
@@ -605,10 +612,10 @@ resource "aws_iam_role_policy" "lambda_dynamodb_sns" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''protoPayload.methodName=~"storage.objects.(create|update|patch|delete)"
+                gcp_logging_query="""protoPayload.methodName=~"storage.objects.(create|update|patch|delete)"
 protoPayload.resourceName=~"projects/_/buckets/critical-.*"
-protoPayload.status.code=0''',
-                gcp_terraform_template='''# GCP: Detect Cloud Storage data manipulation
+protoPayload.status.code=0""",
+                gcp_terraform_template="""# GCP: Detect Cloud Storage data manipulation
 # Step 1: Enable Cloud Audit Logs for Storage
 # Step 2: Create log-based metric
 # Step 3: Create alert policy
@@ -716,7 +723,7 @@ resource "google_storage_bucket" "critical_data" {
   uniform_bucket_level_access {
     enabled = true
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Cloud Storage Data Manipulation",
                 alert_description_template="Critical Cloud Storage object modified by {protoPayload.authenticationInfo.principalEmail}.",
@@ -726,7 +733,7 @@ resource "google_storage_bucket" "critical_data" {
                     "Check Audit Logs for complete action sequence",
                     "Investigate the principal's recent activities",
                     "Review IAM permissions for the user/service account",
-                    "Check if modification aligns with application behaviour"
+                    "Check if modification aligns with application behaviour",
                 ],
                 containment_actions=[
                     "Enable Object Versioning to maintain history",
@@ -734,8 +741,8 @@ resource "google_storage_bucket" "critical_data" {
                     "Restore previous object version if needed",
                     "Review and restrict IAM permissions",
                     "Enable Bucket Lock for critical data",
-                    "Implement signed URLs for temporary access"
-                ]
+                    "Implement signed URLs for temporary access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Filter expected application writes and maintenance operations; adjust threshold based on normal activity",
@@ -744,9 +751,11 @@ resource "google_storage_bucket" "critical_data" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-20 (Cloud Logging, Monitoring)",
-            prerequisites=["Cloud Audit Logs enabled for Storage", "Critical buckets identified"]
+            prerequisites=[
+                "Cloud Audit Logs enabled for Storage",
+                "Critical buckets identified",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1565-001-gcp-sql-modification",
             name="GCP Cloud SQL Database Modification Detection",
@@ -756,9 +765,9 @@ resource "google_storage_bucket" "critical_data" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''protoPayload.methodName=~"cloudsql.(instances|databases).(update|patch|delete)"
-protoPayload.status.code=0''',
-                gcp_terraform_template='''# GCP: Detect Cloud SQL data manipulation
+                gcp_logging_query="""protoPayload.methodName=~"cloudsql.(instances|databases).(update|patch|delete)"
+protoPayload.status.code=0""",
+                gcp_terraform_template="""# GCP: Detect Cloud SQL data manipulation
 # Step 1: Enable Cloud SQL Audit Logging
 # Step 2: Create log-based metric
 # Step 3: Create alert policy
@@ -908,7 +917,7 @@ resource "google_storage_bucket_iam_member" "audit_writer" {
   bucket = google_storage_bucket.audit_logs.name
   role   = "roles/storage.objectCreator"
   member = google_logging_project_sink.database_audit.writer_identity
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Cloud SQL Database Manipulation",
                 alert_description_template="Cloud SQL instance {protoPayload.resourceName} modified by {protoPayload.authenticationInfo.principalEmail}.",
@@ -918,7 +927,7 @@ resource "google_storage_bucket_iam_member" "audit_writer" {
                     "Verify modification was part of authorised maintenance",
                     "Review recent database activity patterns",
                     "Check Point-in-Time Recovery status",
-                    "Investigate the principal's permissions and recent actions"
+                    "Investigate the principal's permissions and recent actions",
                 ],
                 containment_actions=[
                     "Enable deletion protection on instances",
@@ -926,8 +935,8 @@ resource "google_storage_bucket_iam_member" "audit_writer" {
                     "Restore from backup if manipulation confirmed",
                     "Review and restrict IAM database permissions",
                     "Enable database audit logging",
-                    "Implement database change management processes"
-                ]
+                    "Implement database change management processes",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Exclude authorised maintenance windows and automated operations",
@@ -936,17 +945,16 @@ resource "google_storage_bucket_iam_member" "audit_writer" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$10-35 (Cloud Logging, automated backups)",
-            prerequisites=["Cloud Audit Logs enabled", "Database audit flags enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled", "Database audit flags enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1565-001-aws-s3-integrity",
         "t1565-001-gcp-storage-integrity",
         "t1565-001-aws-rds-modification",
         "t1565-001-gcp-sql-modification",
-        "t1565-001-aws-dynamodb-modification"
+        "t1565-001-aws-dynamodb-modification",
     ],
     total_effort_hours=8.5,
-    coverage_improvement="+30% improvement for Impact tactic detection"
+    coverage_improvement="+30% improvement for Impact tactic detection",
 )

@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Input Capture",
     tactic_ids=["TA0006", "TA0009"],
     mitre_url="https://attack.mitre.org/techniques/T1056/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries use various methods to capture user input including keylogging, "
@@ -38,7 +37,7 @@ TEMPLATE = RemediationTemplate(
             "Fake login portals are difficult to distinguish from legitimate ones",
             "Browser extensions can intercept cloud console credentials",
             "Captured credentials often remain valid until rotation",
-            "Input capture is difficult to detect without behavioural analysis"
+            "Input capture is difficult to detect without behavioural analysis",
         ],
         known_threat_actors=[
             "APT39",
@@ -46,27 +45,27 @@ TEMPLATE = RemediationTemplate(
             "Storm-1811",
             "Leviathan (APT40)",
             "TA505",
-            "Scattered Spider"
+            "Scattered Spider",
         ],
         recent_campaigns=[
             Campaign(
                 name="North Korean Job Seeker Campaign",
                 year=2023,
                 description="North Korean actors deployed InvisibleFerret malware with keylogging capabilities targeting job seekers",
-                reference_url="https://www.mandiant.com/resources/blog/north-korea-invisible-ferret"
+                reference_url="https://www.mandiant.com/resources/blog/north-korea-invisible-ferret",
             ),
             Campaign(
                 name="Scattered Spider Credential Phishing",
                 year=2023,
                 description="Used fake single sign-on portals to capture cloud credentials from MGM and Caesars employees",
-                reference_url="https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-320a"
+                reference_url="https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-320a",
             ),
             Campaign(
                 name="APT39 Chaes Banking Trojan",
                 year=2022,
                 description="Brazilian banking trojan with keylogging capabilities targeting financial institutions",
-                reference_url="https://www.welivesecurity.com/2022/11/15/shining-light-chaes-malware-ecosystem/"
-            )
+                reference_url="https://www.welivesecurity.com/2022/11/15/shining-light-chaes-malware-ecosystem/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -82,13 +81,12 @@ TEMPLATE = RemediationTemplate(
             "Bypassing MFA through session token capture",
             "Lateral movement using captured credentials",
             "Regulatory compliance violations (GDPR, PCI DSS, HIPAA)",
-            "Reputational damage from credential theft"
+            "Reputational damage from credential theft",
         ],
         typical_attack_phase="credential_access",
         often_precedes=["T1078", "T1550", "T1528"],
-        often_follows=["T1566", "T1204", "T1189"]
+        often_follows=["T1566", "T1204", "T1189"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - Suspicious Console Login Patterns
         DetectionStrategy(
@@ -106,9 +104,9 @@ TEMPLATE = RemediationTemplate(
                     "UnauthorizedAccess:IAMUser/ConsoleLoginSuccess.B",
                     "UnauthorizedAccess:IAMUser/TorIPCaller",
                     "InitialAccess:IAMUser/AnomalousBehavior",
-                    "CredentialAccess:IAMUser/AnomalousBehavior"
+                    "CredentialAccess:IAMUser/AnomalousBehavior",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty alerts for suspicious login patterns indicating credential capture
 
 Parameters:
@@ -159,8 +157,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# GuardDuty alerts for suspicious login patterns indicating credential capture
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# GuardDuty alerts for suspicious login patterns indicating credential capture
 
 variable "alert_email" {
   type        = string
@@ -216,7 +214,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Suspicious Login Pattern Detected - Potential Credential Capture",
                 alert_description_template=(
@@ -231,7 +229,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Check for any MFA enrollment changes or access key creation",
                     "Analyse the source IP address for known malicious activity",
                     "Review recent emails and links clicked by the user for phishing attempts",
-                    "Check browser history and installed extensions for suspicious activity"
+                    "Check browser history and installed extensions for suspicious activity",
                 ],
                 containment_actions=[
                     "Immediately disable the compromised IAM user's console access",
@@ -240,8 +238,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Force password reset with MFA re-enrollment",
                     "Review and revoke any permissions or resources created during suspicious session",
                     "Block source IP addresses at WAF or security group level",
-                    "Enable advanced MFA protection (hardware tokens preferred)"
-                ]
+                    "Enable advanced MFA protection (hardware tokens preferred)",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist known VPN exit nodes; add trusted third-party service IPs to GuardDuty trusted IP lists",
@@ -250,9 +248,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$4 per million events analysed",
-            prerequisites=["AWS account with GuardDuty permissions", "CloudTrail enabled"]
+            prerequisites=[
+                "AWS account with GuardDuty permissions",
+                "CloudTrail enabled",
+            ],
         ),
-
         # Strategy 2: AWS - Failed Login Attempts Monitoring
         DetectionStrategy(
             strategy_id="t1056-aws-failed-logins",
@@ -265,7 +265,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.userName as user, sourceIPAddress,
+                query="""fields @timestamp, userIdentity.userName as user, sourceIPAddress,
        responseElements.ConsoleLogin as result, errorMessage
 | filter eventName = "ConsoleLogin"
 | stats count(*) as attempts,
@@ -275,8 +275,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
         latest(@timestamp) as last_attempt
   by user, sourceIPAddress, bin(1h) as window
 | filter failed >= 3 and successful >= 1
-| sort last_attempt desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort last_attempt desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Alert on failed logins followed by success (credential testing pattern)
 
 Parameters:
@@ -323,8 +323,8 @@ Resources:
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
       AlarmActions: [!Ref AlertTopic]
-      TreatMissingData: notBreaching''',
-                terraform_template='''# Alert on failed logins followed by success (credential testing pattern)
+      TreatMissingData: notBreaching""",
+                terraform_template="""# Alert on failed logins followed by success (credential testing pattern)
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -375,7 +375,7 @@ resource "aws_cloudwatch_metric_alarm" "failed_logins" {
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Failed Login Attempts with Subsequent Success",
                 alert_description_template=(
@@ -388,15 +388,15 @@ resource "aws_cloudwatch_metric_alarm" "failed_logins" {
                     "Check if the successful login came from a different IP than the failures",
                     "Review all actions taken during the successful session",
                     "Analyse error messages from failed attempts for credential stuffing patterns",
-                    "Check for similar patterns across other user accounts"
+                    "Check for similar patterns across other user accounts",
                 ],
                 containment_actions=[
                     "Force logout of the successful session if unverified",
                     "Require immediate password reset with MFA",
                     "Review and revoke any changes made during the session",
                     "Implement account lockout policies if not already enabled",
-                    "Block suspicious IP addresses"
-                ]
+                    "Block suspicious IP addresses",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Adjust thresholds based on baseline; exclude legitimate locked account scenarios; notify users of lockouts",
@@ -405,9 +405,11 @@ resource "aws_cloudwatch_metric_alarm" "failed_logins" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-15 depending on log volume",
-            prerequisites=["CloudTrail enabled", "CloudTrail logs sent to CloudWatch Logs"]
+            prerequisites=[
+                "CloudTrail enabled",
+                "CloudTrail logs sent to CloudWatch Logs",
+            ],
         ),
-
         # Strategy 3: AWS - Session Token Anomalies
         DetectionStrategy(
             strategy_id="t1056-aws-session-tokens",
@@ -420,7 +422,7 @@ resource "aws_cloudwatch_metric_alarm" "failed_logins" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn as user,
+                query="""fields @timestamp, userIdentity.arn as user,
        userIdentity.sessionContext.sessionIssuer.userName as sessionUser,
        sourceIPAddress, eventName, userAgent
 | filter userIdentity.type = "AssumedRole" or userIdentity.type = "FederatedUser"
@@ -429,8 +431,8 @@ resource "aws_cloudwatch_metric_alarm" "failed_logins" {
         count_distinct(eventName) as unique_apis
   by user, bin(15m) as window
 | filter unique_ips > 2
-| sort window desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort window desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect unusual session token usage patterns
 
 Parameters:
@@ -468,8 +470,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       AlarmActions: [!Ref SNSTopicArn]
-      TreatMissingData: notBreaching''',
-                terraform_template='''# Detect unusual session token usage patterns
+      TreatMissingData: notBreaching""",
+                terraform_template="""# Detect unusual session token usage patterns
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -508,7 +510,7 @@ resource "aws_cloudwatch_metric_alarm" "session_tokens" {
   evaluation_periods  = 1
   alarm_actions       = [var.sns_topic_arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Unusual Session Token Usage Pattern",
                 alert_description_template=(
@@ -521,15 +523,15 @@ resource "aws_cloudwatch_metric_alarm" "session_tokens" {
                     "Review user agent strings for anomalies or automation tools",
                     "Verify if user is legitimately using VPN or proxy services",
                     "Check for browser extension installations or modifications",
-                    "Review all API calls made with the session token"
+                    "Review all API calls made with the session token",
                 ],
                 containment_actions=[
                     "Revoke all active sessions for the affected user",
                     "Force re-authentication with MFA",
                     "Review and remove suspicious browser extensions",
                     "Scan endpoints for malware and keyloggers",
-                    "Implement session binding to IP addresses where feasible"
-                ]
+                    "Implement session binding to IP addresses where feasible",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Account for legitimate VPN and proxy usage; whitelist known automation tools; adjust IP threshold",
@@ -538,9 +540,8 @@ resource "aws_cloudwatch_metric_alarm" "session_tokens" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$10-25 depending on session volume",
-            prerequisites=["CloudTrail enabled", "CloudWatch Logs configured"]
+            prerequisites=["CloudTrail enabled", "CloudWatch Logs configured"],
         ),
-
         # Strategy 4: GCP - Suspicious Authentication Activity
         DetectionStrategy(
             strategy_id="t1056-gcp-auth-anomalies",
@@ -559,7 +560,7 @@ protoPayload.authenticationInfo.principalEmail!=""
 (protoPayload.metadata.event.eventType="login_failure" OR
  protoPayload.metadata.event.eventType="login_success")
 severity>="WARNING"''',
-                gcp_terraform_template='''# GCP: Detect authentication anomalies indicating credential capture
+                gcp_terraform_template="""# GCP: Detect authentication anomalies indicating credential capture
 
 variable "project_id" {
   type        = string
@@ -679,7 +680,7 @@ resource "google_monitoring_alert_policy" "suspicious_login_alert" {
     content   = "GCP detected a suspicious login. Credentials may have been captured through phishing or keylogging. Investigate immediately and verify with the user."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP Authentication Anomaly - Potential Credential Capture",
                 alert_description_template=(
@@ -693,7 +694,7 @@ resource "google_monitoring_alert_policy" "suspicious_login_alert" {
                     "Contact the user via out-of-band communication",
                     "Review all API calls made after the suspicious authentication",
                     "Check for MFA enrollment changes or disabling",
-                    "Look for new service account keys or OAuth tokens created"
+                    "Look for new service account keys or OAuth tokens created",
                 ],
                 containment_actions=[
                     "Suspend the affected user account immediately",
@@ -701,8 +702,8 @@ resource "google_monitoring_alert_policy" "suspicious_login_alert" {
                     "Force password reset with MFA re-enrollment",
                     "Audit and revoke any service account keys created during suspicious period",
                     "Review and revert any IAM policy changes",
-                    "Enable advanced protection programme for high-risk users"
-                ]
+                    "Enable advanced protection programme for high-risk users",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist known corporate VPN and proxy IPs; adjust failure threshold for users who frequently mistype passwords",
@@ -711,9 +712,11 @@ resource "google_monitoring_alert_policy" "suspicious_login_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$5-20 depending on authentication volume",
-            prerequisites=["GCP Cloud Logging enabled", "Audit logs enabled for login.googleapis.com"]
+            prerequisites=[
+                "GCP Cloud Logging enabled",
+                "Audit logs enabled for login.googleapis.com",
+            ],
         ),
-
         # Strategy 5: GCP - OAuth Token Anomalies
         DetectionStrategy(
             strategy_id="t1056-gcp-oauth-tokens",
@@ -732,7 +735,7 @@ resource "google_monitoring_alert_policy" "suspicious_login_alert" {
  protoPayload.methodName="GenerateIdToken" OR
  protoPayload.methodName="SignJwt")
 severity>="NOTICE"''',
-                gcp_terraform_template='''# GCP: Monitor OAuth token creation and usage
+                gcp_terraform_template="""# GCP: Monitor OAuth token creation and usage
 
 variable "project_id" {
   type        = string
@@ -808,7 +811,7 @@ resource "google_monitoring_alert_policy" "token_volume" {
     content   = "Unusual volume of OAuth token generation detected. This may indicate token harvesting after credential capture. Investigate the principal and recent authentication events."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Unusual OAuth Token Activity",
                 alert_description_template=(
@@ -821,7 +824,7 @@ resource "google_monitoring_alert_policy" "token_volume" {
                     "Check if this volume is normal for the principal",
                     "Verify recent authentication events for the principal",
                     "Review API calls made using the generated tokens",
-                    "Check for any new OAuth consent grants or service account keys"
+                    "Check for any new OAuth consent grants or service account keys",
                 ],
                 containment_actions=[
                     "Revoke the generated tokens if suspicious",
@@ -829,8 +832,8 @@ resource "google_monitoring_alert_policy" "token_volume" {
                     "Review and revoke OAuth consent grants",
                     "Rotate service account keys",
                     "Enable domain-wide delegation auditing",
-                    "Implement OAuth scope restrictions"
-                ]
+                    "Implement OAuth scope restrictions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal token generation patterns; exclude known automation and CI/CD service accounts",
@@ -839,17 +842,19 @@ resource "google_monitoring_alert_policy" "token_volume" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$10-25 depending on token generation volume",
-            prerequisites=["GCP Cloud Logging enabled", "IAM Credentials API audit logs enabled"]
-        )
+            prerequisites=[
+                "GCP Cloud Logging enabled",
+                "IAM Credentials API audit logs enabled",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1056-aws-suspicious-login",
         "t1056-aws-failed-logins",
         "t1056-gcp-auth-anomalies",
         "t1056-aws-session-tokens",
-        "t1056-gcp-oauth-tokens"
+        "t1056-gcp-oauth-tokens",
     ],
     total_effort_hours=7.5,
-    coverage_improvement="+25% improvement for Credential Access tactic"
+    coverage_improvement="+25% improvement for Credential Access tactic",
 )

@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Proxy",
     tactic_ids=["TA0011"],  # Command and Control
     mitre_url="https://attack.mitre.org/techniques/T1090/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries employ proxy connections to route network traffic between systems or function "
@@ -41,7 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Maintains operational resilience if individual proxies are blocked",
             "Exploits trusted third-party services and CDN infrastructure",
             "Reduces direct connections to adversary infrastructure",
-            "Facilitates domain fronting to bypass domain-based filtering"
+            "Facilitates domain fronting to bypass domain-based filtering",
         ],
         known_threat_actors=[
             "APT41",
@@ -51,33 +50,33 @@ TEMPLATE = RemediationTemplate(
             "APT29",
             "Turla",
             "FIN7",
-            "Lazarus Group"
+            "Lazarus Group",
         ],
         recent_campaigns=[
             Campaign(
                 name="APT41 Cloudflare CDN Proxying",
                 year=2024,
                 description="APT41 leveraged Cloudflare CDN infrastructure during the C0017 campaign to proxy C2 traffic, deploying CLASSFON for covert communications",
-                reference_url="https://attack.mitre.org/campaigns/C0017/"
+                reference_url="https://attack.mitre.org/campaigns/C0017/",
             ),
             Campaign(
                 name="Volt Typhoon Critical Infrastructure",
                 year=2024,
                 description="Volt Typhoon utilised compromised devices with customised versions of open-source tools including FRP (Fast Reverse Proxy), Earthworm, and Impacket to route network traffic whilst targeting critical infrastructure",
-                reference_url="https://attack.mitre.org/groups/G1017/"
+                reference_url="https://attack.mitre.org/groups/G1017/",
             ),
             Campaign(
                 name="Scattered Spider ESXi Compromise",
                 year=2023,
                 description="Scattered Spider installed rsocx reverse proxy tool on targeted ESXi appliances during the C0027 intrusion campaign",
-                reference_url="https://attack.mitre.org/campaigns/C0027/"
+                reference_url="https://attack.mitre.org/campaigns/C0027/",
             ),
             Campaign(
                 name="Gamaredon Cloudflare Tunnel",
                 year=2023,
                 description="Gamaredon Group deployed Cloudflare Tunnel client to proxy C2 communications in Eastern European operations",
-                reference_url="https://attack.mitre.org/groups/G0047/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0047/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -97,13 +96,12 @@ TEMPLATE = RemediationTemplate(
             "Bypassed network security controls and monitoring",
             "Abuse of trusted third-party services damages reputation",
             "Increased risk of regulatory compliance violations",
-            "Potential for persistent backdoor access"
+            "Potential for persistent backdoor access",
         ],
         typical_attack_phase="command_and_control",
         often_precedes=["T1041", "T1567", "T1048"],  # Exfiltration techniques
-        often_follows=["T1078.004", "T1190", "T1133"]  # Initial Access techniques
+        often_follows=["T1078.004", "T1190", "T1133"],  # Initial Access techniques
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - Proxy Tool Detection via CloudTrail
         DetectionStrategy(
@@ -114,15 +112,15 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudtrail",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, eventName, requestParameters, errorCode
+                query="""fields @timestamp, userIdentity.principalId, eventName, requestParameters, errorCode
 | filter eventName in ["RunInstances", "SendCommand", "CreateSession"]
 | filter requestParameters.instanceType like /t3|t2|m5/
   or requestParameters.commands like /(?i)(socat|ncat|ssh|chisel|frp|proxychains|squid|nginx proxy|stunnel)/
 | stats count() as deployment_count by userIdentity.principalId, eventName
 | filter deployment_count > 3
 | sort @timestamp desc
-| limit 100''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| limit 100""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect proxy tool deployment on EC2 instances
 
 Parameters:
@@ -173,8 +171,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect proxy tool deployment on EC2 instances
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect proxy tool deployment on EC2 instances
 
 variable "alert_email" {
   type        = string
@@ -235,7 +233,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.proxy_deployment_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Proxy Tool Deployment Detected",
                 alert_description_template="Proxy tool deployment detected via {eventName} by {userIdentity.principalId}. Instance: {requestParameters.instanceIds}",
@@ -245,7 +243,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Check instance logs for proxy service execution",
                     "Analyse VPC Flow Logs for proxy connection patterns",
                     "Review CloudTrail for related suspicious activities",
-                    "Determine if proxy deployment was authorised"
+                    "Determine if proxy deployment was authorised",
                 ],
                 containment_actions=[
                     "Isolate affected instances from the network",
@@ -253,8 +251,8 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Revoke IAM credentials used for deployment",
                     "Block proxy listening ports via security groups",
                     "Review and restrict Systems Manager permissions",
-                    "Create forensic snapshots before remediation"
-                ]
+                    "Create forensic snapshots before remediation",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised administrative use of SSH tunnelling and legitimate proxy deployments. Tag authorised proxy infrastructure.",
@@ -263,9 +261,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled", "Systems Manager access logging"]
+            prerequisites=["CloudTrail enabled", "Systems Manager access logging"],
         ),
-
         # Strategy 2: AWS - Unusual Proxy Port Activity
         DetectionStrategy(
             strategy_id="t1090-aws-proxy-ports",
@@ -275,15 +272,15 @@ resource "aws_sns_topic_policy" "allow_events" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcAddr, dstAddr, dstPort, protocol, bytes
+                query="""fields @timestamp, srcAddr, dstAddr, dstPort, protocol, bytes
 | filter dstPort in [1080, 3128, 8080, 8888, 9050, 9150, 4444, 8443]
   or srcPort in [1080, 3128, 8080, 8888, 9050, 9150]
 | filter protocol = 6
 | stats count() as connection_count, sum(bytes) as total_bytes by srcAddr, dstAddr, dstPort
 | filter connection_count > 10
 | sort connection_count desc
-| limit 100''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| limit 100""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect proxy port activity in VPC Flow Logs
 
 Parameters:
@@ -351,8 +348,8 @@ Resources:
         - MetricName: ProxyPortConnections
           MetricNamespace: Security/ProxyDetection
           MetricValue: '1'
-          DefaultValue: 0''',
-                terraform_template='''# Detect proxy port activity in VPC Flow Logs
+          DefaultValue: 0""",
+                terraform_template="""# Detect proxy port activity in VPC Flow Logs
 
 variable "vpc_id" {
   type        = string
@@ -410,7 +407,7 @@ resource "aws_flow_log" "main" {
   log_destination = aws_cloudwatch_log_group.flow_logs.arn
   traffic_type    = "ALL"
   vpc_id          = var.vpc_id
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Proxy Port Activity Detected",
                 alert_description_template="Connections to proxy ports detected from {srcAddr} to {dstAddr}:{dstPort}. Potential proxy usage.",
@@ -420,7 +417,7 @@ resource "aws_flow_log" "main" {
                     "Review the purpose of proxy connections",
                     "Analyse traffic patterns and data volume",
                     "Check for signs of data exfiltration or C2 activity",
-                    "Review instance running processes and network listeners"
+                    "Review instance running processes and network listeners",
                 ],
                 containment_actions=[
                     "Block proxy ports via security group rules",
@@ -428,8 +425,8 @@ resource "aws_flow_log" "main" {
                     "Terminate unauthorised proxy services",
                     "Review and restrict network egress rules",
                     "Enable enhanced monitoring on affected instances",
-                    "Implement proxy authentication and logging"
-                ]
+                    "Implement proxy authentication and logging",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate proxy infrastructure. Document and tag authorised proxy services and their port usage.",
@@ -438,9 +435,8 @@ resource "aws_flow_log" "main" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-30",
-            prerequisites=["VPC Flow Logs enabled", "CloudWatch Logs"]
+            prerequisites=["VPC Flow Logs enabled", "CloudWatch Logs"],
         ),
-
         # Strategy 3: AWS - Multi-hop Proxy Chain Detection
         DetectionStrategy(
             strategy_id="t1090-aws-multihop",
@@ -450,15 +446,15 @@ resource "aws_flow_log" "main" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcAddr, dstAddr, srcPort, dstPort, protocol
+                query="""fields @timestamp, srcAddr, dstAddr, srcPort, dstPort, protocol
 | filter protocol = 6
 | sort @timestamp asc
 | stats count() as hop_count by srcAddr, dstAddr
 | filter hop_count > 5
 | join srcAddr=dstAddr
 | filter @message like /10[.]|172[.]16[.]|192[.]168[.]/
-| limit 100''',
-                terraform_template='''# Detect multi-hop proxy chains through VPC Flow Logs
+| limit 100""",
+                terraform_template="""# Detect multi-hop proxy chains through VPC Flow Logs
 
 variable "vpc_flow_log_group" {
   type        = string
@@ -508,7 +504,7 @@ resource "aws_cloudwatch_metric_alarm" "multihop" {
   threshold           = 20
   alarm_description   = "Alert on potential multi-hop proxy chains"
   alarm_actions       = [aws_sns_topic.multihop_alerts.arn]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Multi-hop Proxy Chain Detected",
                 alert_description_template="Multiple sequential internal connections detected. Source: {srcAddr} through intermediate hops to external destinations.",
@@ -518,7 +514,7 @@ resource "aws_cloudwatch_metric_alarm" "multihop" {
                     "Review each instance's purpose and authorisation",
                     "Check for compromised instances in the chain",
                     "Analyse final destination of the proxy chain",
-                    "Review CloudTrail for suspicious API activity on chain instances"
+                    "Review CloudTrail for suspicious API activity on chain instances",
                 ],
                 containment_actions=[
                     "Isolate all instances in the proxy chain",
@@ -526,8 +522,8 @@ resource "aws_cloudwatch_metric_alarm" "multihop" {
                     "Terminate unauthorised proxy processes",
                     "Review and restrict IAM permissions",
                     "Enable GuardDuty for advanced threat detection",
-                    "Implement network segmentation to prevent chaining"
-                ]
+                    "Implement network segmentation to prevent chaining",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist legitimate multi-tier architectures and load balancer chains. Document expected internal routing patterns.",
@@ -536,9 +532,8 @@ resource "aws_cloudwatch_metric_alarm" "multihop" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="$15-25",
-            prerequisites=["VPC Flow Logs enabled", "Enhanced flow log format"]
+            prerequisites=["VPC Flow Logs enabled", "Enhanced flow log format"],
         ),
-
         # Strategy 4: GCP - Proxy Service Deployment Detection
         DetectionStrategy(
             strategy_id="t1090-gcp-proxy-deployment",
@@ -554,7 +549,7 @@ logName="projects/PROJECT_ID/logs/cloudaudit.googleapis.com%2Factivity"
 protoPayload.methodName:"compute.instances.insert"
 OR protoPayload.methodName:"compute.instances.setMetadata"
 protoPayload.request.metadata.items.value=~"(socat|ncat|chisel|frp|proxychains|squid|nginx.*proxy|stunnel|ssh.*-D|ssh.*-R)"''',
-                gcp_terraform_template='''# GCP: Detect proxy service deployment
+                gcp_terraform_template="""# GCP: Detect proxy service deployment
 
 variable "project_id" {
   type        = string
@@ -616,7 +611,7 @@ resource "google_monitoring_alert_policy" "proxy_deployment" {
   alert_strategy {
     auto_close = "86400s"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Proxy Service Deployment Detected",
                 alert_description_template="Proxy service deployment detected on instance {resource.labels.instance_id} via {protoPayload.methodName}",
@@ -626,7 +621,7 @@ resource "google_monitoring_alert_policy" "proxy_deployment" {
                     "Check instance metadata for proxy configuration",
                     "Analyse VPC Flow Logs for proxy traffic patterns",
                     "Review Cloud Audit Logs for related activities",
-                    "Verify if deployment was authorised"
+                    "Verify if deployment was authorised",
                 ],
                 containment_actions=[
                     "Isolate affected VM instances via firewall rules",
@@ -634,8 +629,8 @@ resource "google_monitoring_alert_policy" "proxy_deployment" {
                     "Revoke service account credentials",
                     "Review and restrict IAM permissions",
                     "Enable VPC Service Controls",
-                    "Create snapshots for forensic analysis"
-                ]
+                    "Create snapshots for forensic analysis",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised proxy deployments using labels. Document legitimate proxy infrastructure in the CMDB.",
@@ -644,9 +639,8 @@ resource "google_monitoring_alert_policy" "proxy_deployment" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Audit Logs enabled", "Cloud Logging"]
+            prerequisites=["Cloud Audit Logs enabled", "Cloud Logging"],
         ),
-
         # Strategy 5: GCP - Proxy Port Traffic Analysis
         DetectionStrategy(
             strategy_id="t1090-gcp-proxy-ports",
@@ -657,12 +651,12 @@ resource "google_monitoring_alert_policy" "proxy_deployment" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_subnetwork"
+                gcp_logging_query="""resource.type="gce_subnetwork"
 logName="projects/PROJECT_ID/logs/compute.googleapis.com%2Fvpc_flows"
 (jsonPayload.connection.dest_port:(1080 OR 3128 OR 8080 OR 8888 OR 9050 OR 9150 OR 4444)
 OR jsonPayload.connection.src_port:(1080 OR 3128 OR 8080 OR 8888 OR 9050 OR 9150))
-jsonPayload.connection.protocol=6''',
-                gcp_terraform_template='''# GCP: Detect proxy port traffic
+jsonPayload.connection.protocol=6""",
+                gcp_terraform_template="""# GCP: Detect proxy port traffic
 
 variable "project_id" {
   type        = string
@@ -724,7 +718,7 @@ resource "google_monitoring_alert_policy" "proxy_ports" {
   alert_strategy {
     auto_close = "86400s"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Proxy Port Traffic Detected",
                 alert_description_template="Traffic to proxy ports detected in VPC Flow Logs. Potential proxy usage between {jsonPayload.connection.src_ip} and {jsonPayload.connection.dest_ip}",
@@ -734,7 +728,7 @@ resource "google_monitoring_alert_policy" "proxy_ports" {
                     "Review connection patterns and data volumes",
                     "Analyse Cloud Logging for application logs",
                     "Check for signs of data exfiltration",
-                    "Review firewall rules allowing proxy ports"
+                    "Review firewall rules allowing proxy ports",
                 ],
                 containment_actions=[
                     "Block proxy ports via VPC firewall rules",
@@ -742,8 +736,8 @@ resource "google_monitoring_alert_policy" "proxy_ports" {
                     "Terminate proxy processes on affected VMs",
                     "Review and restrict egress firewall rules",
                     "Enable VPC Flow Logs sampling for detailed analysis",
-                    "Implement Cloud Armor for application-layer protection"
-                ]
+                    "Implement Cloud Armor for application-layer protection",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Tag and whitelist legitimate proxy infrastructure. Establish baseline for authorised proxy port usage.",
@@ -752,9 +746,8 @@ resource "google_monitoring_alert_policy" "proxy_ports" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$15-30",
-            prerequisites=["VPC Flow Logs enabled", "Cloud Logging"]
+            prerequisites=["VPC Flow Logs enabled", "Cloud Logging"],
         ),
-
         # Strategy 6: AWS - Domain Fronting Detection
         DetectionStrategy(
             strategy_id="t1090-aws-domain-fronting",
@@ -764,14 +757,14 @@ resource "google_monitoring_alert_policy" "proxy_ports" {
             aws_service="cloudfront",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, c-ip, cs-host, cs-uri-stem, sc-status, cs-protocol, ssl-protocol, ssl-cipher
+                query="""fields @timestamp, c-ip, cs-host, cs-uri-stem, sc-status, cs-protocol, ssl-protocol, ssl-cipher
 | filter cs-protocol = "https"
 | filter cs-host != ssl-protocol
 | stats count() as mismatch_count by c-ip, cs-host
 | filter mismatch_count > 10
 | sort mismatch_count desc
-| limit 100''',
-                terraform_template='''# Detect domain fronting via CloudFront
+| limit 100""",
+                terraform_template="""# Detect domain fronting via CloudFront
 
 variable "cloudfront_distribution_id" {
   type        = string
@@ -810,7 +803,7 @@ resource "aws_sns_topic_subscription" "email" {
 
 # Step 3: CloudWatch Logs Insights query (manual analysis required)
 # Note: CloudFront logs require custom processing for domain fronting detection
-# Consider using Lambda for automated analysis of Host header mismatches''',
+# Consider using Lambda for automated analysis of Host header mismatches""",
                 alert_severity="critical",
                 alert_title="Potential Domain Fronting Detected",
                 alert_description_template="SNI/Host header mismatch detected from {c-ip} accessing {cs-host}. Potential domain fronting attempt.",
@@ -820,7 +813,7 @@ resource "aws_sns_topic_subscription" "email" {
                     "Identify the source IP and geolocation",
                     "Check if the CloudFront distribution is authorised",
                     "Review origin server logs for suspicious requests",
-                    "Correlate with WAF logs and GuardDuty findings"
+                    "Correlate with WAF logs and GuardDuty findings",
                 ],
                 containment_actions=[
                     "Configure CloudFront to require specific Host headers",
@@ -828,8 +821,8 @@ resource "aws_sns_topic_subscription" "email" {
                     "Enable CloudFront signed URLs/cookies for authentication",
                     "Restrict CloudFront distribution access to known origins",
                     "Enable enhanced CloudFront security features",
-                    "Consider disabling the distribution if unauthorised"
-                ]
+                    "Consider disabling the distribution if unauthorised",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Review legitimate CDN usage patterns. Whitelist expected Host header variations for multi-domain distributions.",
@@ -838,18 +831,17 @@ resource "aws_sns_topic_subscription" "email" {
             implementation_effort=EffortLevel.HIGH,
             implementation_time="2 hours",
             estimated_monthly_cost="$20-40",
-            prerequisites=["CloudFront standard logging enabled", "S3 bucket for logs"]
-        )
+            prerequisites=["CloudFront standard logging enabled", "S3 bucket for logs"],
+        ),
     ],
-
     recommended_order=[
         "t1090-aws-proxy-deployment",
         "t1090-gcp-proxy-deployment",
         "t1090-aws-proxy-ports",
         "t1090-gcp-proxy-ports",
         "t1090-aws-multihop",
-        "t1090-aws-domain-fronting"
+        "t1090-aws-domain-fronting",
     ],
     total_effort_hours=7.0,
-    coverage_improvement="+30% improvement for Command and Control proxy detection"
+    coverage_improvement="+30% improvement for Command and Control proxy detection",
 )

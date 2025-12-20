@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Access Token Manipulation",
     tactic_ids=["TA0004", "TA0005"],
     mitre_url="https://attack.mitre.org/techniques/T1134/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries may modify Windows access tokens to operate under different user "
@@ -40,36 +39,34 @@ TEMPLATE = RemediationTemplate(
             "Stolen tokens can access instance metadata and cloud credentials",
             "Token manipulation enables lateral movement to other cloud instances",
             "Creates process trees that appear legitimate to security tools",
-            "SID-History injection can grant access to cross-forest resources in hybrid environments"
+            "SID-History injection can grant access to cross-forest resources in hybrid environments",
         ],
-        known_threat_actors=[
-            "APT41", "Blue Mockingbird", "FIN6", "Lotus Blossom"
-        ],
+        known_threat_actors=["APT41", "Blue Mockingbird", "FIN6", "Lotus Blossom"],
         recent_campaigns=[
             Campaign(
                 name="APT41 BADPOTATO Exploitation",
                 year=2024,
                 description="APT41 used BADPOTATO exploit for token manipulation to escalate privileges on compromised Windows servers",
-                reference_url="https://attack.mitre.org/groups/G0096/"
+                reference_url="https://attack.mitre.org/groups/G0096/",
             ),
             Campaign(
                 name="Blue Mockingbird JuicyPotato Attacks",
                 year=2023,
                 description="Leveraged JuicyPotato token manipulation exploit to escalate privileges on cloud instances for cryptomining",
-                reference_url="https://attack.mitre.org/groups/G0108/"
+                reference_url="https://attack.mitre.org/groups/G0108/",
             ),
             Campaign(
                 name="FIN6 Named-Pipe Impersonation",
                 year=2023,
                 description="Used named-pipe impersonation for token theft to move laterally across Windows infrastructure",
-                reference_url="https://attack.mitre.org/groups/G0037/"
+                reference_url="https://attack.mitre.org/groups/G0037/",
             ),
             Campaign(
                 name="BlackCat Ransomware Token Abuse",
                 year=2022,
                 description="BlackCat ransomware employed token manipulation with SeDebugPrivilege to evade security controls",
-                reference_url="https://attack.mitre.org/software/S1068/"
-            )
+                reference_url="https://attack.mitre.org/software/S1068/",
+            ),
         ],
         prevalence="common",
         trend="stable",
@@ -89,13 +86,12 @@ TEMPLATE = RemediationTemplate(
             "Ransomware deployment across Windows workloads",
             "Data exfiltration from databases and file shares",
             "Persistence through SYSTEM-level access mechanisms",
-            "Evasion of endpoint security and monitoring tools"
+            "Evasion of endpoint security and monitoring tools",
         ],
         typical_attack_phase="privilege_escalation",
         often_precedes=["T1003", "T1021", "T1558", "T1078"],
-        often_follows=["T1078.004", "T1190", "T1133", "T1210"]
+        often_follows=["T1078.004", "T1190", "T1133", "T1210"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS GuardDuty Runtime Monitoring
         DetectionStrategy(
@@ -115,9 +111,9 @@ TEMPLATE = RemediationTemplate(
                     "PrivilegeEscalation:Runtime/ContainerMountsHostDirectory",
                     "Execution:Runtime/NewBinaryExecuted",
                     "Defense Evasion:Runtime/ProcessInjectionAttempt",
-                    "PrivilegeEscalation:Runtime/AnomalousBehavior"
+                    "PrivilegeEscalation:Runtime/AnomalousBehavior",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty Runtime Monitoring for token manipulation detection
 
 Parameters:
@@ -172,8 +168,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref SecurityAlertTopic''',
-                terraform_template='''# GuardDuty Runtime Monitoring for token manipulation
+            Resource: !Ref SecurityAlertTopic""",
+                terraform_template="""# GuardDuty Runtime Monitoring for token manipulation
 
 variable "alert_email" {
   type        = string
@@ -247,7 +243,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Resource  = aws_sns_topic.token_manipulation_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GuardDuty: Access Token Manipulation Detected",
                 alert_description_template=(
@@ -262,7 +258,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Review Windows Security Event ID 4688 for process creation with token manipulation",
                     "Check for known token manipulation tools (mimikatz, incognito, JuicyPotato, etc.)",
                     "Investigate recent user logins and session activity",
-                    "Review CloudTrail for API calls from the instance IAM role"
+                    "Review CloudTrail for API calls from the instance IAM role",
                 ],
                 containment_actions=[
                     "Isolate the instance by modifying security group to block all traffic",
@@ -270,8 +266,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Terminate suspicious processes using SSM Session Manager",
                     "Rotate instance IAM role credentials immediately",
                     "Remove the instance from Active Directory if domain-joined",
-                    "Terminate the instance if compromise is confirmed"
-                ]
+                    "Terminate the instance if compromise is confirmed",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Exclude known security tools that legitimately use token manipulation; baseline normal administrative activities",
@@ -280,9 +276,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",
             estimated_monthly_cost="$4.60 per instance per month for Runtime Monitoring",
-            prerequisites=["GuardDuty enabled", "SSM Agent on EC2 instances for Runtime Monitoring"]
+            prerequisites=[
+                "GuardDuty enabled",
+                "SSM Agent on EC2 instances for Runtime Monitoring",
+            ],
         ),
-
         # Strategy 2: Windows Event Log Monitoring
         DetectionStrategy(
             strategy_id="t1134-windows-events",
@@ -296,12 +294,12 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, EventID, Computer, ProcessName, PrivilegeName, TokenElevationType
+                query="""fields @timestamp, EventID, Computer, ProcessName, PrivilegeName, TokenElevationType
 | filter EventID in [4672, 4673, 4674, 4688, 4697]
 | filter PrivilegeName in ["SeDebugPrivilege", "SeImpersonatePrivilege", "SeAssignPrimaryTokenPrivilege", "SeTcbPrivilege"]
 | stats count() as events by Computer, ProcessName, PrivilegeName, bin(10m)
 | filter events > 3
-| sort @timestamp desc''',
+| sort @timestamp desc""",
                 cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
 Description: Windows Event Log monitoring for token manipulation
 
@@ -352,7 +350,7 @@ Resources:
         - MetricName: SpecialPrivilegesAssigned
           MetricNamespace: Security/T1134
           MetricValue: "1"''',
-                terraform_template='''# Windows Event Log monitoring for token manipulation
+                terraform_template="""# Windows Event Log monitoring for token manipulation
 
 variable "cloudwatch_log_group" {
   type        = string
@@ -413,7 +411,7 @@ resource "aws_cloudwatch_log_metric_filter" "special_privileges" {
     namespace = "Security/T1134"
     value     = "1"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Windows Token Manipulation Detected",
                 alert_description_template=(
@@ -428,7 +426,7 @@ resource "aws_cloudwatch_log_metric_filter" "special_privileges" {
                     "Review process creation chain to identify parent processes",
                     "Search for known token manipulation tool signatures (mimikatz, incognito, potato exploits)",
                     "Check for concurrent network connections or data transfers",
-                    "Review recent user logon events (Event ID 4624, 4625)"
+                    "Review recent user logon events (Event ID 4624, 4625)",
                 ],
                 containment_actions=[
                     "Kill the suspicious process using Task Manager or PowerShell",
@@ -437,8 +435,8 @@ resource "aws_cloudwatch_log_metric_filter" "special_privileges" {
                     "Force logoff all active user sessions on the instance",
                     "Reset local administrator passwords",
                     "Remove the instance from domain if it's domain-joined",
-                    "Rebuild the instance from a known good AMI"
-                ]
+                    "Rebuild the instance from a known good AMI",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal administrative tool usage; whitelist authorised security software that uses these privileges",
@@ -447,9 +445,11 @@ resource "aws_cloudwatch_log_metric_filter" "special_privileges" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$10-25 depending on log volume",
-            prerequisites=["CloudWatch Agent installed on Windows instances", "Windows Security Event logging enabled and forwarded to CloudWatch"]
+            prerequisites=[
+                "CloudWatch Agent installed on Windows instances",
+                "Windows Security Event logging enabled and forwarded to CloudWatch",
+            ],
         ),
-
         # Strategy 3: Known Token Manipulation Tool Detection
         DetectionStrategy(
             strategy_id="t1134-tool-detection",
@@ -462,11 +462,11 @@ resource "aws_cloudwatch_log_metric_filter" "special_privileges" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message, instanceId, processName, commandLine
+                query="""fields @timestamp, @message, instanceId, processName, commandLine
 | filter @message like /mimikatz|incognito|JuicyPotato|RottenPotato|PrintSpoofer|RoguePotato|SweetPotato|token::elevate|token::impersonate|Invoke-TokenManipulation/
 | stats count() as executions by instanceId, processName, bin(5m)
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect token manipulation tool execution
 
 Parameters:
@@ -511,8 +511,8 @@ Resources:
     Properties:
       LogGroupName: !Ref CloudWatchLogGroup
       FilterPattern: '[time, instance, process, command="*mimikatz*" || command="*JuicyPotato*" || command="*token::elevate*"]'
-      DestinationArn: !Ref SNSTopicArn''',
-                terraform_template='''# Detect token manipulation tool execution
+      DestinationArn: !Ref SNSTopicArn""",
+                terraform_template="""# Detect token manipulation tool execution
 
 variable "cloudwatch_log_group" {
   type        = string
@@ -560,7 +560,7 @@ resource "aws_cloudwatch_metric_alarm" "token_manipulation_tool" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Token Manipulation Tool Detected",
                 alert_description_template=(
@@ -575,7 +575,7 @@ resource "aws_cloudwatch_metric_alarm" "token_manipulation_tool" {
                     "Review file system for the tool binary and any dropped files",
                     "Search for credential dumps or other artifacts created by the tool",
                     "Check for lateral movement attempts following execution",
-                    "Review network connections made during and after tool execution"
+                    "Review network connections made during and after tool execution",
                 ],
                 containment_actions=[
                     "Immediately isolate the instance from the network",
@@ -584,8 +584,8 @@ resource "aws_cloudwatch_metric_alarm" "token_manipulation_tool" {
                     "Rotate all credentials that may have been compromised",
                     "Delete the token manipulation tool binary",
                     "Reset local and domain passwords for affected accounts",
-                    "Rebuild the instance from a known good state"
-                ]
+                    "Rebuild the instance from a known good state",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised penetration testing with documented approval workflow",
@@ -594,9 +594,11 @@ resource "aws_cloudwatch_metric_alarm" "token_manipulation_tool" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="$5-15 depending on log volume",
-            prerequisites=["CloudWatch Logs Agent installed on Windows instances", "Process command-line logging enabled"]
+            prerequisites=[
+                "CloudWatch Logs Agent installed on Windows instances",
+                "Process command-line logging enabled",
+            ],
         ),
-
         # Strategy 4: GCP Instance Token Manipulation Detection
         DetectionStrategy(
             strategy_id="t1134-gcp-detection",
@@ -610,13 +612,13 @@ resource "aws_cloudwatch_metric_alarm" "token_manipulation_tool" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 (jsonPayload.EventID=4672 OR jsonPayload.EventID=4673 OR jsonPayload.EventID=4674)
 (jsonPayload.PrivilegeName="SeDebugPrivilege"
 OR jsonPayload.PrivilegeName="SeImpersonatePrivilege"
 OR jsonPayload.PrivilegeName="SeAssignPrimaryTokenPrivilege"
-OR textPayload=~"mimikatz|incognito|JuicyPotato|token::elevate")''',
-                gcp_terraform_template='''# GCP: Detect token manipulation on Windows GCE instances
+OR textPayload=~"mimikatz|incognito|JuicyPotato|token::elevate")""",
+                gcp_terraform_template="""# GCP: Detect token manipulation on Windows GCE instances
 
 variable "project_id" {
   type        = string
@@ -691,7 +693,7 @@ resource "google_monitoring_alert_policy" "token_manipulation" {
     content   = "Access token manipulation detected on Windows GCE instance. Investigate for privilege escalation or defence evasion."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GCP: Access Token Manipulation Detected",
                 alert_description_template=(
@@ -705,7 +707,7 @@ resource "google_monitoring_alert_policy" "token_manipulation" {
                     "Examine running processes and their privilege levels",
                     "Check for recent API calls made by the instance's service account",
                     "Review VPC Flow Logs for suspicious network activity",
-                    "Investigate user accounts and recent authentication events"
+                    "Investigate user accounts and recent authentication events",
                 ],
                 containment_actions=[
                     "Stop the GCE instance to prevent further compromise",
@@ -714,8 +716,8 @@ resource "google_monitoring_alert_policy" "token_manipulation" {
                     "Update firewall rules to isolate the instance",
                     "Remove the instance from Active Directory if domain-joined",
                     "Reset passwords for all accounts that logged into the instance",
-                    "Review and remove any unauthorised persistence mechanisms"
-                ]
+                    "Review and remove any unauthorised persistence mechanisms",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal administrative tool usage; exclude authorised security software",
@@ -724,9 +726,12 @@ resource "google_monitoring_alert_policy" "token_manipulation" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="$15-30",
-            prerequisites=["Cloud Logging API enabled", "Ops Agent or Cloud Logging agent installed on Windows GCE instances", "Windows Event logging configured"]
+            prerequisites=[
+                "Cloud Logging API enabled",
+                "Ops Agent or Cloud Logging agent installed on Windows GCE instances",
+                "Windows Event logging configured",
+            ],
         ),
-
         # Strategy 5: Process Creation with Token Anomalies
         DetectionStrategy(
             strategy_id="t1134-process-anomalies",
@@ -740,13 +745,13 @@ resource "google_monitoring_alert_policy" "token_manipulation" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, EventID, Computer, NewProcessName, ParentProcessName,
+                query="""fields @timestamp, EventID, Computer, NewProcessName, ParentProcessName,
        TokenElevationType, SubjectUserName, TargetUserName
 | filter EventID = 4688
 | filter TokenElevationType != "%%1936" or SubjectUserName != TargetUserName
 | stats count() as suspicious_processes by Computer, NewProcessName, ParentProcessName, bin(15m)
 | filter suspicious_processes > 2
-| sort @timestamp desc''',
+| sort @timestamp desc""",
                 cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect process creation with token anomalies
 
@@ -797,7 +802,7 @@ Resources:
         - MetricName: UserContextMismatch
           MetricNamespace: Security/T1134
           MetricValue: "1"''',
-                terraform_template='''# Detect process creation with token anomalies
+                terraform_template="""# Detect process creation with token anomalies
 
 variable "cloudwatch_log_group" {
   type        = string
@@ -857,7 +862,7 @@ resource "aws_cloudwatch_log_metric_filter" "user_context_mismatch" {
     namespace = "Security/T1134"
     value     = "1"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Process Created with Token Anomaly",
                 alert_description_template=(
@@ -872,7 +877,7 @@ resource "aws_cloudwatch_log_metric_filter" "user_context_mismatch" {
                     "Examine the full process tree for suspicious relationships",
                     "Review what privileges were assigned to the new process",
                     "Check if the process matches known token manipulation patterns",
-                    "Investigate other processes created by the same parent around the same time"
+                    "Investigate other processes created by the same parent around the same time",
                 ],
                 containment_actions=[
                     "Terminate the suspicious process and its parent process",
@@ -881,8 +886,8 @@ resource "aws_cloudwatch_log_metric_filter" "user_context_mismatch" {
                     "Isolate the instance to prevent lateral movement",
                     "Review Task Scheduler and startup locations for persistence",
                     "Check for new user accounts or modified group memberships",
-                    "Rebuild the instance if token manipulation is confirmed"
-                ]
+                    "Rebuild the instance if token manipulation is confirmed",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal administrative processes that use runas or Task Scheduler; whitelist known legitimate parent-child process relationships",
@@ -891,17 +896,20 @@ resource "aws_cloudwatch_log_metric_filter" "user_context_mismatch" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$10-25",
-            prerequisites=["Windows Advanced Audit Policy configured for Process Creation (4688)", "Process command-line logging enabled", "CloudWatch Agent configured to forward Security Event logs"]
-        )
+            prerequisites=[
+                "Windows Advanced Audit Policy configured for Process Creation (4688)",
+                "Process command-line logging enabled",
+                "CloudWatch Agent configured to forward Security Event logs",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1134-guardduty-runtime",
         "t1134-tool-detection",
         "t1134-windows-events",
         "t1134-process-anomalies",
-        "t1134-gcp-detection"
+        "t1134-gcp-detection",
     ],
     total_effort_hours=9.5,
-    coverage_improvement="+25% improvement for Defence Evasion and Privilege Escalation tactics"
+    coverage_improvement="+25% improvement for Defence Evasion and Privilege Escalation tactics",
 )

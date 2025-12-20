@@ -20,7 +20,7 @@ async def create_super_admin(email: str, password: str, full_name: str = "Super 
         # Check if admin already exists
         result = await conn.execute(
             text("SELECT id FROM admin_users WHERE email = :email"),
-            {"email": email.lower()}
+            {"email": email.lower()},
         )
         existing = result.fetchone()
 
@@ -30,7 +30,8 @@ async def create_super_admin(email: str, password: str, full_name: str = "Super 
 
         # Insert admin
         await conn.execute(
-            text("""
+            text(
+                """
                 INSERT INTO admin_users (
                     id, email, password_hash, role, full_name,
                     mfa_enabled, is_active, failed_login_attempts,
@@ -39,13 +40,14 @@ async def create_super_admin(email: str, password: str, full_name: str = "Super 
                     :id, :email, :password_hash, 'super_admin', :full_name,
                     false, true, 0, false
                 )
-            """),
+            """
+            ),
             {
                 "id": admin_id,
                 "email": email.lower(),
                 "password_hash": password_hash,
                 "full_name": full_name,
-            }
+            },
         )
 
         print("Super admin created successfully!")
@@ -58,7 +60,9 @@ async def create_super_admin(email: str, password: str, full_name: str = "Super 
 def main():
     if len(sys.argv) < 3:
         print("Usage: python -m app.cli.create_admin <email> <password> [full_name]")
-        print("Example: python -m app.cli.create_admin admin@a13e.io MySecurePass123! 'Platform Admin'")
+        print(
+            "Example: python -m app.cli.create_admin admin@a13e.io MySecurePass123! 'Platform Admin'"
+        )
         sys.exit(1)
 
     email = sys.argv[1]

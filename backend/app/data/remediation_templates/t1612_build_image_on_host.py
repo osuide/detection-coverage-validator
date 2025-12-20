@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Build Image on Host",
     tactic_ids=["TA0005"],  # Defense Evasion
     mitre_url="https://attack.mitre.org/techniques/T1612/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries construct container images directly on a host system to evade "
@@ -37,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Vanilla base images appear benign",
             "Locally-built images less suspicious",
             "Malware fetched during build process",
-            "Exploits gap in detection coverage"
+            "Exploits gap in detection coverage",
         ],
         known_threat_actors=[],  # No documented threat actors from MITRE
         recent_campaigns=[
@@ -45,7 +44,7 @@ TEMPLATE = RemediationTemplate(
                 name="Container Image Build Evasion",
                 year=2024,
                 description="Adversaries building malicious images on-host to evade detection",
-                reference_url="https://attack.mitre.org/techniques/T1612/"
+                reference_url="https://attack.mitre.org/techniques/T1612/",
             )
         ],
         prevalence="moderate",
@@ -60,13 +59,12 @@ TEMPLATE = RemediationTemplate(
             "Undetected malware deployment",
             "Container compromise",
             "Data exfiltration risk",
-            "Cryptomining abuse"
+            "Cryptomining abuse",
         ],
         typical_attack_phase="defense_evasion",
         often_precedes=["T1204.003", "T1496.001"],
-        often_follows=["T1078.004", "T1190"]
+        often_follows=["T1078.004", "T1190"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1612-aws-docker-build",
@@ -76,11 +74,11 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message
+                query="""fields @timestamp, @message
 | filter @message like /docker build/
 | filter @message like /RUN curl|RUN wget|RUN nc|ADD http/
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect suspicious Docker build activity
 
 Parameters:
@@ -119,8 +117,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect suspicious Docker build activity
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect suspicious Docker build activity
 
 variable "log_group_name" {
   type        = string
@@ -161,7 +159,7 @@ resource "aws_cloudwatch_metric_alarm" "docker_build" {
   threshold           = 1
   alarm_description   = "Alert on Docker build activity"
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Suspicious Docker Build Detected",
                 alert_description_template="Docker build with suspicious instructions detected on {instance_id}.",
@@ -170,15 +168,15 @@ resource "aws_cloudwatch_metric_alarm" "docker_build" {
                     "Check for malicious RUN/ADD/COPY commands",
                     "Identify who initiated the build",
                     "Examine network connections during build",
-                    "Scan resulting image for malware"
+                    "Scan resulting image for malware",
                 ],
                 containment_actions=[
                     "Delete suspicious images",
                     "Block Docker API access from internet",
                     "Require TLS authentication for Docker API",
                     "Implement image scanning pipeline",
-                    "Restrict Docker socket access"
-                ]
+                    "Restrict Docker socket access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate CI/CD build processes",
@@ -187,9 +185,11 @@ resource "aws_cloudwatch_metric_alarm" "docker_build" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["Docker daemon logging to CloudWatch", "Container Insights enabled"]
+            prerequisites=[
+                "Docker daemon logging to CloudWatch",
+                "Container Insights enabled",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1612-aws-ecr-rapid-build",
             name="AWS Rapid Build-Push Detection",
@@ -201,12 +201,9 @@ resource "aws_cloudwatch_metric_alarm" "docker_build" {
                 event_pattern={
                     "source": ["aws.ecr"],
                     "detail-type": ["ECR Image Action"],
-                    "detail": {
-                        "action-type": ["PUSH"],
-                        "result": ["SUCCESS"]
-                    }
+                    "detail": {"action-type": ["PUSH"], "result": ["SUCCESS"]},
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect rapid image build and push
 
 Parameters:
@@ -246,8 +243,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect rapid image build and push
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect rapid image build and push
 
 variable "alert_email" { type = string }
 
@@ -292,7 +289,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="ECR Image Push After Build",
                 alert_description_template="Image pushed to ECR repository {repository-name} by {identity}.",
@@ -301,14 +298,14 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Check if image went through scanning",
                     "Review image build history",
                     "Examine image for suspicious layers",
-                    "Check if immediately deployed"
+                    "Check if immediately deployed",
                 ],
                 containment_actions=[
                     "Enable ECR image scanning",
                     "Require image approval workflow",
                     "Implement immutability tags",
-                    "Use ECR lifecycle policies"
-                ]
+                    "Use ECR lifecycle policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Filter legitimate CI/CD service roles and tag conventions",
@@ -317,9 +314,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["ECR repositories configured", "EventBridge enabled"]
+            prerequisites=["ECR repositories configured", "EventBridge enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1612-gcp-docker-build",
             name="GCP Cloud Build Activity Detection",
@@ -332,7 +328,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                 gcp_logging_query='''protoPayload.methodName="google.devtools.cloudbuild.v1.CloudBuild.CreateBuild"
 OR protoPayload.methodName=~"docker.*build"
 OR resource.type="gce_instance" AND jsonPayload.message=~"docker build"''',
-                gcp_terraform_template='''# GCP: Detect Docker build activity
+                gcp_terraform_template="""# GCP: Detect Docker build activity
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -376,7 +372,7 @@ resource "google_monitoring_alert_policy" "docker_build" {
   documentation {
     content = "Docker build activity detected. Review for suspicious Dockerfile instructions."
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Docker Build Detected",
                 alert_description_template="Docker build operation detected on {resource.name}.",
@@ -385,15 +381,15 @@ resource "google_monitoring_alert_policy" "docker_build" {
                     "Check Dockerfile for malicious commands",
                     "Verify build was authorised",
                     "Scan resulting image",
-                    "Check for outbound connections during build"
+                    "Check for outbound connections during build",
                 ],
                 containment_actions=[
                     "Delete suspicious images",
                     "Enable Binary Authorization",
                     "Restrict Cloud Build permissions",
                     "Implement vulnerability scanning",
-                    "Use VPC Service Controls"
-                ]
+                    "Use VPC Service Controls",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate Cloud Build service accounts",
@@ -402,9 +398,8 @@ resource "google_monitoring_alert_policy" "docker_build" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Logging enabled", "Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Logging enabled", "Cloud Audit Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1612-gcp-artifact-push",
             name="GCP Artifact Registry Push Detection",
@@ -414,10 +409,10 @@ resource "google_monitoring_alert_policy" "docker_build" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''protoPayload.methodName="google.devtools.artifactregistry.v1.ArtifactRegistry.ImportAptArtifacts"
+                gcp_logging_query="""protoPayload.methodName="google.devtools.artifactregistry.v1.ArtifactRegistry.ImportAptArtifacts"
 OR protoPayload.methodName=~"artifactregistry.*UploadArtifact"
-OR (resource.type="artifact_registry_repository" AND protoPayload.methodName="storage.objects.create")''',
-                gcp_terraform_template='''# GCP: Detect Artifact Registry image pushes
+OR (resource.type="artifact_registry_repository" AND protoPayload.methodName="storage.objects.create")""",
+                gcp_terraform_template="""# GCP: Detect Artifact Registry image pushes
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -460,7 +455,7 @@ resource "google_monitoring_alert_policy" "artifact_push" {
   documentation {
     content = "Image pushed to Artifact Registry. Verify authorisation and scan for vulnerabilities."
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Artifact Registry Image Push",
                 alert_description_template="Image pushed to Artifact Registry {repository}.",
@@ -468,14 +463,14 @@ resource "google_monitoring_alert_policy" "artifact_push" {
                     "Verify push was authorised",
                     "Check pushing identity",
                     "Enable vulnerability scanning",
-                    "Review image layers and history"
+                    "Review image layers and history",
                 ],
                 containment_actions=[
                     "Delete unauthorised images",
                     "Enable Container Analysis",
                     "Implement Binary Authorization policies",
-                    "Restrict registry write permissions"
-                ]
+                    "Restrict registry write permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Filter CI/CD service account pushes",
@@ -484,16 +479,15 @@ resource "google_monitoring_alert_policy" "artifact_push" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Artifact Registry configured", "Cloud Audit Logs enabled"]
-        )
+            prerequisites=["Artifact Registry configured", "Cloud Audit Logs enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1612-aws-docker-build",
         "t1612-aws-ecr-rapid-build",
         "t1612-gcp-docker-build",
-        "t1612-gcp-artifact-push"
+        "t1612-gcp-artifact-push",
     ],
     total_effort_hours=4.0,
-    coverage_improvement="+18% improvement for Defence Evasion tactic"
+    coverage_improvement="+18% improvement for Defence Evasion tactic",
 )

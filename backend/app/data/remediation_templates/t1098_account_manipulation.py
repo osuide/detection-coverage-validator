@@ -20,7 +20,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Account Manipulation",
     tactic_ids=["TA0003"],
     mitre_url="https://attack.mitre.org/techniques/T1098/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries may manipulate accounts to maintain access to victim systems. "
@@ -33,28 +32,34 @@ TEMPLATE = RemediationTemplate(
             "Enables privilege escalation through permission changes",
             "Creates additional attack paths that may go unnoticed",
             "Access keys can be used externally without console access",
-            "Changes may persist through normal password rotations"
+            "Changes may persist through normal password rotations",
         ],
-        known_threat_actors=["APT29", "APT41", "Lazarus Group", "Scattered Spider", "FIN7"],
+        known_threat_actors=[
+            "APT29",
+            "APT41",
+            "Lazarus Group",
+            "Scattered Spider",
+            "FIN7",
+        ],
         recent_campaigns=[
             Campaign(
                 name="SolarWinds/SUNBURST",
                 year=2020,
                 description="APT29 added credentials to OAuth applications and service principals for persistent access",
-                reference_url="https://www.mandiant.com/resources/sunburst-additional-technical-details"
+                reference_url="https://www.mandiant.com/resources/sunburst-additional-technical-details",
             ),
             Campaign(
                 name="Scattered Spider",
                 year=2023,
                 description="Created additional IAM users and access keys after initial compromise for persistence",
-                reference_url="https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-320a"
+                reference_url="https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-320a",
             ),
             Campaign(
                 name="APT41 Cloud Attacks",
                 year=2022,
                 description="Modified IAM policies and added users to admin groups for lateral movement",
-                reference_url="https://www.mandiant.com/resources/apt41-dual-espionage-and-cyber-crime-operation"
-            )
+                reference_url="https://www.mandiant.com/resources/apt41-dual-espionage-and-cyber-crime-operation",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -69,13 +74,12 @@ TEMPLATE = RemediationTemplate(
             "Privilege escalation leading to full environment compromise",
             "Difficulty in fully remediating incidents",
             "Compliance violations for unauthorised access changes",
-            "Potential for future attacks using hidden access"
+            "Potential for future attacks using hidden access",
         ],
         typical_attack_phase="persistence",
         often_precedes=["T1530", "T1537", "T1562"],
-        often_follows=["T1078", "T1110"]
+        often_follows=["T1078", "T1110"],
     ),
-
     detection_strategies=[
         # Strategy 1: GuardDuty IAM Anomalies
         DetectionStrategy(
@@ -92,9 +96,9 @@ TEMPLATE = RemediationTemplate(
                     "Persistence:IAMUser/AnomalousBehavior",
                     "PrivilegeEscalation:IAMUser/AnomalousBehavior",
                     "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.OutsideAWS",
-                    "CredentialAccess:IAMUser/AnomalousBehavior"
+                    "CredentialAccess:IAMUser/AnomalousBehavior",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty + email alerts for IAM anomalies
 
 Parameters:
@@ -141,8 +145,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# GuardDuty + email alerts for IAM anomalies
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# GuardDuty + email alerts for IAM anomalies
 
 variable "alert_email" {
   type = string
@@ -195,7 +199,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GuardDuty: IAM Anomaly Detected",
                 alert_description_template=(
@@ -207,14 +211,14 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Check if new access keys or credentials were created",
                     "Verify if permissions were escalated",
                     "Review the principal's recent activity pattern",
-                    "Contact the account owner to verify legitimacy"
+                    "Contact the account owner to verify legitimacy",
                 ],
                 containment_actions=[
                     "Revoke any newly created access keys",
                     "Remove unauthorised permission changes",
                     "Disable the affected IAM user if compromised",
-                    "Review and restrict IAM permissions"
-                ]
+                    "Review and restrict IAM permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist known automation accounts and admin roles",
@@ -223,9 +227,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$4 per million events",
-            prerequisites=["AWS account with appropriate IAM permissions"]
+            prerequisites=["AWS account with appropriate IAM permissions"],
         ),
-
         # Strategy 2: Access Key Creation
         DetectionStrategy(
             strategy_id="t1098-access-key-creation",
@@ -245,11 +248,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                         "eventName": [
                             "CreateAccessKey",
                             "CreateLoginProfile",
-                            "UpdateLoginProfile"
-                        ]
-                    }
+                            "UpdateLoginProfile",
+                        ],
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: IAM access key creation monitoring
 
 Parameters:
@@ -277,7 +280,7 @@ Resources:
       State: ENABLED
       Targets:
         - Id: SNSAlert
-          Arn: !Ref SNSTopicArn''',
+          Arn: !Ref SNSTopicArn""",
                 alert_severity="high",
                 alert_title="IAM Credential Creation Detected",
                 alert_description_template=(
@@ -289,14 +292,14 @@ Resources:
                     "Check who requested the new credentials",
                     "Review the target account's current access keys",
                     "Determine if this follows normal provisioning procedures",
-                    "Check for other suspicious activity from the source IP"
+                    "Check for other suspicious activity from the source IP",
                 ],
                 containment_actions=[
                     "Delete any unauthorised access keys",
                     "Disable login profiles created without authorisation",
                     "Review and update IAM policies for least privilege",
-                    "Implement SCP controls for credential creation"
-                ]
+                    "Implement SCP controls for credential creation",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist automated provisioning systems; use change management tickets",
@@ -305,9 +308,8 @@ Resources:
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled", "EventBridge configured"]
+            prerequisites=["CloudTrail enabled", "EventBridge configured"],
         ),
-
         # Strategy 3: Permission Escalation
         DetectionStrategy(
             strategy_id="t1098-permission-escalation",
@@ -333,11 +335,11 @@ Resources:
                             "PutGroupPolicy",
                             "AddUserToGroup",
                             "CreatePolicyVersion",
-                            "SetDefaultPolicyVersion"
-                        ]
-                    }
+                            "SetDefaultPolicyVersion",
+                        ],
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: IAM permission escalation detection
 
 Parameters:
@@ -371,7 +373,7 @@ Resources:
       State: ENABLED
       Targets:
         - Id: SNSAlert
-          Arn: !Ref SNSTopicArn''',
+          Arn: !Ref SNSTopicArn""",
                 alert_severity="high",
                 alert_title="IAM Permission Change Detected",
                 alert_description_template=(
@@ -383,14 +385,14 @@ Resources:
                     "Determine if the change was authorised via change management",
                     "Check if sensitive permissions (IAM, KMS, etc.) were added",
                     "Verify the principal making the change",
-                    "Look for patterns indicating privilege escalation chain"
+                    "Look for patterns indicating privilege escalation chain",
                 ],
                 containment_actions=[
                     "Revert unauthorised permission changes",
                     "Review all policies attached to the affected entity",
                     "Implement approval workflows for IAM changes",
-                    "Consider using AWS Organisations SCPs to limit changes"
-                ]
+                    "Consider using AWS Organisations SCPs to limit changes",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Integrate with change management; whitelist IaC deployment roles",
@@ -399,9 +401,8 @@ Resources:
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled", "EventBridge configured"]
+            prerequisites=["CloudTrail enabled", "EventBridge configured"],
         ),
-
         # Strategy 4: Comprehensive IAM Change Monitoring
         DetectionStrategy(
             strategy_id="t1098-iam-changes",
@@ -413,7 +414,7 @@ Resources:
             detection_type=DetectionType.CLOUDWATCH_QUERY,
             aws_service="cloudwatch",
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn as user, eventName, sourceIPAddress,
+                query="""fields @timestamp, userIdentity.arn as user, eventName, sourceIPAddress,
        requestParameters.userName as targetUser, requestParameters.roleName as targetRole,
        requestParameters.policyArn as policy
 | filter eventSource = "iam.amazonaws.com"
@@ -423,8 +424,8 @@ Resources:
 | stats count(*) as change_count, count_distinct(eventName) as unique_actions
   by user, sourceIPAddress, bin(1h) as hour_window
 | filter change_count >= 5 or unique_actions >= 3
-| sort change_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort change_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Comprehensive IAM change monitoring
 
 Parameters:
@@ -457,7 +458,7 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanOrEqualToThreshold
       AlarmActions:
-        - !Ref SNSTopicArn''',
+        - !Ref SNSTopicArn""",
                 alert_severity="high",
                 alert_title="Excessive IAM Changes Detected",
                 alert_description_template=(
@@ -469,14 +470,14 @@ Resources:
                     "Determine if changes were part of authorised provisioning",
                     "Check for patterns (e.g., creating user then escalating permissions)",
                     "Review the resources created or modified",
-                    "Verify the source IP is expected for administrative tasks"
+                    "Verify the source IP is expected for administrative tasks",
                 ],
                 containment_actions=[
                     "Temporarily restrict the user's IAM permissions",
                     "Review and revert unauthorised changes",
                     "Implement stricter IAM permission boundaries",
-                    "Enable IAM Access Analyser for external access detection"
-                ]
+                    "Enable IAM Access Analyser for external access detection",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal IAM change patterns; exclude IaC deployments",
@@ -485,16 +486,15 @@ Resources:
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["CloudTrail enabled", "CloudTrail logs in CloudWatch"]
-        )
+            prerequisites=["CloudTrail enabled", "CloudTrail logs in CloudWatch"],
+        ),
     ],
-
     recommended_order=[
         "t1098-guardduty",
         "t1098-access-key-creation",
         "t1098-permission-escalation",
-        "t1098-iam-changes"
+        "t1098-iam-changes",
     ],
     total_effort_hours=4.5,
-    coverage_improvement="+35% improvement for Persistence tactic"
+    coverage_improvement="+35% improvement for Persistence tactic",
 )

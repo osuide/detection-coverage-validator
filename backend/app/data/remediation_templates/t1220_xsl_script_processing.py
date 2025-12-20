@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="XSL Script Processing",
     tactic_ids=["TA0005"],  # Defense Evasion
     mitre_url="https://attack.mitre.org/techniques/T1220/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries embed malicious scripts within XSL (Extensible Stylesheet Language) "
@@ -39,36 +38,40 @@ TEMPLATE = RemediationTemplate(
             "Uses trusted signed binaries (msxsl.exe, wmic.exe) to avoid detection",
             "Can execute scripts from remote locations including cloud storage",
             "Allows arbitrary file extensions to disguise malicious XSL files",
-            "Enables fileless execution through WMI-based script processing"
+            "Enables fileless execution through WMI-based script processing",
         ],
         known_threat_actors=[
-            "Cobalt Group", "Lazarus Group", "Higaisa", "APT32", "Kimsuky"
+            "Cobalt Group",
+            "Lazarus Group",
+            "Higaisa",
+            "APT32",
+            "Kimsuky",
         ],
         recent_campaigns=[
             Campaign(
                 name="Cobalt Group AppLocker Bypass",
                 year=2018,
                 description="Used msxsl.exe to bypass AppLocker controls and execute embedded JScript code for banking fraud operations",
-                reference_url="https://attack.mitre.org/groups/G0080/"
+                reference_url="https://attack.mitre.org/groups/G0080/",
             ),
             Campaign(
                 name="Lazarus Operation Dream Job",
                 year=2020,
                 description="Deployed remote XSL scripts in targeted attacks against aerospace and defence contractors",
-                reference_url="https://attack.mitre.org/groups/G0032/"
+                reference_url="https://attack.mitre.org/groups/G0032/",
             ),
             Campaign(
                 name="Astaroth Banking Malware",
                 year=2019,
                 description="Executed embedded scripts from remote XSL stylesheets to steal banking credentials in Brazil",
-                reference_url="https://attack.mitre.org/software/S0373/"
+                reference_url="https://attack.mitre.org/software/S0373/",
             ),
             Campaign(
                 name="Higaisa VBScript Deployment",
                 year=2020,
                 description="Used XSL files running VBScript code to establish persistence in government and trade organisations",
-                reference_url="https://attack.mitre.org/groups/G0126/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0126/",
+            ),
         ],
         prevalence="uncommon",
         trend="stable",
@@ -88,13 +91,12 @@ TEMPLATE = RemediationTemplate(
             "Persistence through scheduled XSL script execution",
             "Data exfiltration via embedded script payloads",
             "Credential theft from compromised Windows workloads",
-            "Lateral movement to other Windows systems in cloud environment"
+            "Lateral movement to other Windows systems in cloud environment",
         ],
         typical_attack_phase="defense_evasion",
         often_precedes=["T1059", "T1003", "T1055", "T1021"],
-        often_follows=["T1190", "T1078", "T1566", "T1105"]
+        often_follows=["T1190", "T1078", "T1566", "T1105"],
     ),
-
     detection_strategies=[
         # Strategy 1: msxsl.exe Execution Detection
         DetectionStrategy(
@@ -109,12 +111,12 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message, instanceId, processName, commandLine, parentProcess
+                query="""fields @timestamp, @message, instanceId, processName, commandLine, parentProcess
 | filter processName like /(?i)msxsl[.]exe/
 | filter commandLine like /[.]xsl|[.]xml|http/
 | stats count() as executions by instanceId, commandLine, parentProcess, bin(5m)
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect msxsl.exe execution for XSL script processing
 
 Parameters:
@@ -173,8 +175,8 @@ Resources:
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref SecurityAlertTopic''',
-                terraform_template='''# Detect msxsl.exe execution for XSL script processing
+            Resource: !Ref SecurityAlertTopic""",
+                terraform_template="""# Detect msxsl.exe execution for XSL script processing
 
 variable "cloudwatch_log_group" {
   type        = string
@@ -224,7 +226,7 @@ resource "aws_cloudwatch_metric_alarm" "msxsl_execution" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   alarm_actions       = [aws_sns_topic.xsl_script_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="msxsl.exe Execution Detected",
                 alert_description_template=(
@@ -239,7 +241,7 @@ resource "aws_cloudwatch_metric_alarm" "msxsl_execution" {
                     "Retrieve and analyse the XSL file content for embedded scripts",
                     "Check CloudTrail for S3 GetObject calls to retrieve XSL files",
                     "Review process tree to identify post-execution activity",
-                    "Search for additional msxsl.exe executions across the environment"
+                    "Search for additional msxsl.exe executions across the environment",
                 ],
                 containment_actions=[
                     "Terminate the msxsl.exe process immediately",
@@ -248,8 +250,8 @@ resource "aws_cloudwatch_metric_alarm" "msxsl_execution" {
                     "Delete any malicious XSL files from local disk and S3 buckets",
                     "Block msxsl.exe execution via AppLocker or application control policies",
                     "Review and rotate credentials accessible to the compromised instance",
-                    "Check for persistence mechanisms installed by the script"
-                ]
+                    "Check for persistence mechanisms installed by the script",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="msxsl.exe is not a standard Windows utility; any execution should be investigated",
@@ -258,9 +260,11 @@ resource "aws_cloudwatch_metric_alarm" "msxsl_execution" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="$8-15 depending on log volume",
-            prerequisites=["CloudWatch Logs Agent with Windows process logging", "Process creation logging enabled via Sysmon or Windows Events"]
+            prerequisites=[
+                "CloudWatch Logs Agent with Windows process logging",
+                "Process creation logging enabled via Sysmon or Windows Events",
+            ],
         ),
-
         # Strategy 2: WMIC Squiblytwo Detection
         DetectionStrategy(
             strategy_id="t1220-wmic-format",
@@ -274,12 +278,12 @@ resource "aws_cloudwatch_metric_alarm" "msxsl_execution" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message, instanceId, processName, commandLine, userName
+                query="""fields @timestamp, @message, instanceId, processName, commandLine, userName
 | filter processName like /(?i)wmic[.]exe/
 | filter commandLine like /(?i)[/]format|[/]f/
 | filter commandLine like /[.]xsl|http|s3[.]|amazonaws[.]com/
 | stats count() as wmic_format_executions by instanceId, userName, commandLine, bin(5m)
-| sort @timestamp desc''',
+| sort @timestamp desc""",
                 cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect WMIC /FORMAT XSL script execution (Squiblytwo)
 
@@ -329,7 +333,7 @@ Resources:
         - MetricName: RemoteXslDownload
           MetricNamespace: Security/T1220
           MetricValue: "1"''',
-                terraform_template='''# Detect WMIC /FORMAT XSL script execution (Squiblytwo)
+                terraform_template="""# Detect WMIC /FORMAT XSL script execution (Squiblytwo)
 
 variable "cloudwatch_log_group" {
   type        = string
@@ -388,7 +392,7 @@ resource "aws_cloudwatch_log_metric_filter" "remote_xsl" {
     namespace = "Security/T1220"
     value     = "1"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="WMIC /FORMAT Squiblytwo Technique Detected",
                 alert_description_template=(
@@ -403,7 +407,7 @@ resource "aws_cloudwatch_log_metric_filter" "remote_xsl" {
                     "Identify the user account or process that executed the WMIC command",
                     "Retrieve the XSL file content and analyse for embedded JScript/VBScript",
                     "Check for network connections to external IPs following execution",
-                    "Review child processes spawned by the XSL script execution"
+                    "Review child processes spawned by the XSL script execution",
                 ],
                 containment_actions=[
                     "Terminate the WMIC process and any child processes",
@@ -412,8 +416,8 @@ resource "aws_cloudwatch_log_metric_filter" "remote_xsl" {
                     "Block WMIC /FORMAT execution via GPO or AppLocker rules",
                     "Rotate credentials for the user account that executed the command",
                     "Review and restrict S3 bucket policies to prevent public XSL hosting",
-                    "Implement application control policies to prevent WMIC script execution"
-                ]
+                    "Implement application control policies to prevent WMIC script execution",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Legitimate use of WMIC /FORMAT is rare; investigate all occurrences",
@@ -422,9 +426,11 @@ resource "aws_cloudwatch_log_metric_filter" "remote_xsl" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="$8-15",
-            prerequisites=["Process execution logging enabled", "CloudWatch Logs Agent installed"]
+            prerequisites=[
+                "Process execution logging enabled",
+                "CloudWatch Logs Agent installed",
+            ],
         ),
-
         # Strategy 3: S3 XSL File Upload Detection
         DetectionStrategy(
             strategy_id="t1220-s3-xsl-upload",
@@ -438,13 +444,13 @@ resource "aws_cloudwatch_log_metric_filter" "remote_xsl" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, requestParameters.bucketName, requestParameters.key, sourceIPAddress
+                query="""fields @timestamp, userIdentity.principalId, requestParameters.bucketName, requestParameters.key, sourceIPAddress
 | filter eventSource = "s3.amazonaws.com"
 | filter eventName in ["PutObject", "CopyObject"]
 | filter requestParameters.key like /[.]xsl$/i
 | stats count() as xsl_uploads by userIdentity.principalId, requestParameters.bucketName, sourceIPAddress, bin(10m)
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect suspicious XSL file uploads to S3
 
 Parameters:
@@ -501,8 +507,8 @@ Resources:
       State: ENABLED
       Targets:
         - Id: AlertTopic
-          Arn: !Ref SNSTopicArn''',
-                terraform_template='''# Detect suspicious XSL file uploads to S3
+          Arn: !Ref SNSTopicArn""",
+                terraform_template="""# Detect suspicious XSL file uploads to S3
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -583,7 +589,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="XSL File Uploaded to S3",
                 alert_description_template=(
@@ -598,7 +604,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Review S3 bucket policies and public access settings",
                     "Search for GetObject calls to retrieve this XSL file",
                     "Check if any EC2 instances accessed this XSL file",
-                    "Look for other XSL files uploaded by the same principal"
+                    "Look for other XSL files uploaded by the same principal",
                 ],
                 containment_actions=[
                     "Delete the malicious XSL file from S3 immediately",
@@ -607,8 +613,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Review and restrict bucket IAM policies",
                     "Rotate credentials for the principal that uploaded the file",
                     "Enable S3 Object Lock on sensitive buckets",
-                    "Implement S3 bucket policies requiring VPC endpoint access"
-                ]
+                    "Implement S3 bucket policies requiring VPC endpoint access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate XSL files used for data transformation; review file content",
@@ -617,9 +623,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail S3 data events enabled", "S3 bucket logging enabled"]
+            prerequisites=[
+                "CloudTrail S3 data events enabled",
+                "S3 bucket logging enabled",
+            ],
         ),
-
         # Strategy 4: GuardDuty Runtime Monitoring
         DetectionStrategy(
             strategy_id="t1220-guardduty-runtime",
@@ -637,9 +645,9 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Execution:Runtime/NewBinaryExecuted",
                     "Execution:Runtime/ReverseShell",
                     "DefenseEvasion:Runtime/ProcessInjection",
-                    "PrivilegeEscalation:Runtime/UsersAndGroupsModified"
+                    "PrivilegeEscalation:Runtime/UsersAndGroupsModified",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty Runtime Monitoring for XSL script processing detection
 
 Parameters:
@@ -694,8 +702,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref SecurityAlertTopic''',
-                terraform_template='''# GuardDuty Runtime Monitoring for XSL script processing
+            Resource: !Ref SecurityAlertTopic""",
+                terraform_template="""# GuardDuty Runtime Monitoring for XSL script processing
 
 variable "alert_email" {
   type        = string
@@ -769,7 +777,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Resource  = aws_sns_topic.runtime_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GuardDuty: Suspicious Runtime Activity Detected",
                 alert_description_template=(
@@ -784,7 +792,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Review CloudTrail for API calls from the instance role",
                     "Inspect network connections for command-and-control activity",
                     "Search for XSL files on the instance file system",
-                    "Check for lateral movement attempts to other instances"
+                    "Check for lateral movement attempts to other instances",
                 ],
                 containment_actions=[
                     "Isolate the instance by modifying security group rules",
@@ -793,8 +801,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Revoke the instance IAM role session credentials",
                     "Rotate all credentials accessible from the instance",
                     "Review and patch the instance or rebuild from known-good AMI",
-                    "Enable application control policies to prevent future XSL execution"
-                ]
+                    "Enable application control policies to prevent future XSL execution",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="GuardDuty uses ML models; baseline normal instance behaviour to reduce false positives",
@@ -803,9 +811,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",
             estimated_monthly_cost="$4.60 per instance per month for Runtime Monitoring",
-            prerequisites=["GuardDuty enabled", "SSM Agent on EC2 instances for Runtime Monitoring"]
+            prerequisites=[
+                "GuardDuty enabled",
+                "SSM Agent on EC2 instances for Runtime Monitoring",
+            ],
         ),
-
         # Strategy 5: GCP Detection
         DetectionStrategy(
             strategy_id="t1220-gcp-xsl-detection",
@@ -820,12 +830,12 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 (protoPayload.request.commandLine=~"msxsl[.]exe|wmic.*/format|wmic.*/f"
 OR textPayload=~"msxsl[.]exe.*[.]xsl|wmic.*format.*[.]xsl"
 OR protoPayload.methodName="storage.objects.get"
-AND protoPayload.resourceName=~".*[.]xsl$")''',
-                gcp_terraform_template='''# GCP: Detect XSL script processing on Windows instances
+AND protoPayload.resourceName=~".*[.]xsl$")""",
+                gcp_terraform_template="""# GCP: Detect XSL script processing on Windows instances
 
 variable "project_id" {
   type        = string
@@ -915,7 +925,7 @@ resource "google_monitoring_alert_policy" "xsl_processing" {
     EOT
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: XSL Script Processing Detected",
                 alert_description_template=(
@@ -929,7 +939,7 @@ resource "google_monitoring_alert_policy" "xsl_processing" {
                     "Review VPC Flow Logs for network connections",
                     "Check for API calls made by the instance service account",
                     "Search for other instances with similar suspicious activity",
-                    "Retrieve and analyse the XSL file content"
+                    "Retrieve and analyse the XSL file content",
                 ],
                 containment_actions=[
                     "Stop the GCE instance immediately",
@@ -938,8 +948,8 @@ resource "google_monitoring_alert_policy" "xsl_processing" {
                     "Delete malicious XSL files from Cloud Storage buckets",
                     "Update VPC firewall rules to isolate the instance",
                     "Review and restrict Cloud Storage bucket IAM policies",
-                    "Implement OS Login for better process auditing"
-                ]
+                    "Implement OS Login for better process auditing",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="msxsl.exe and WMIC /FORMAT are rarely used legitimately; investigate all detections",
@@ -948,17 +958,20 @@ resource "google_monitoring_alert_policy" "xsl_processing" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="$12-20",
-            prerequisites=["Cloud Logging API enabled", "Ops Agent on GCE instances", "Process execution logging enabled"]
-        )
+            prerequisites=[
+                "Cloud Logging API enabled",
+                "Ops Agent on GCE instances",
+                "Process execution logging enabled",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1220-guardduty-runtime",
         "t1220-wmic-format",
         "t1220-msxsl-execution",
         "t1220-s3-xsl-upload",
-        "t1220-gcp-xsl-detection"
+        "t1220-gcp-xsl-detection",
     ],
     total_effort_hours=6.5,
-    coverage_improvement="+15% improvement for Defence Evasion tactic"
+    coverage_improvement="+15% improvement for Defence Evasion tactic",
 )

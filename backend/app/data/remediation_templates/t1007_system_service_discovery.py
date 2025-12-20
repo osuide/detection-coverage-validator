@@ -24,7 +24,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="System Service Discovery",
     tactic_ids=["TA0007"],
     mitre_url="https://attack.mitre.org/techniques/T1007/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries enumerate registered local system services to gather information "
@@ -40,32 +39,43 @@ TEMPLATE = RemediationTemplate(
             "Discovers security tool processes",
             "Maps scheduled tasks for backdoors",
             "Supports lateral movement planning",
-            "Helps evade detection by identifying security services"
+            "Helps evade detection by identifying security services",
         ],
         known_threat_actors=[
-            "APT1", "admin@338", "Aquatic Panda", "BRONZE BUTLER", "Chimera",
-            "Earth Lusca", "Indrik Spider", "Ke3chang", "Kimsuky", "OilRig",
-            "Poseidon Group", "TeamTNT", "Turla", "Volt Typhoon"
+            "APT1",
+            "admin@338",
+            "Aquatic Panda",
+            "BRONZE BUTLER",
+            "Chimera",
+            "Earth Lusca",
+            "Indrik Spider",
+            "Ke3chang",
+            "Kimsuky",
+            "OilRig",
+            "Poseidon Group",
+            "TeamTNT",
+            "Turla",
+            "Volt Typhoon",
         ],
         recent_campaigns=[
             Campaign(
                 name="Operation CuckooBees",
                 year=2022,
                 description="APT41 campaign using service discovery for reconnaissance",
-                reference_url="https://attack.mitre.org/campaigns/C0012/"
+                reference_url="https://attack.mitre.org/campaigns/C0012/",
             ),
             Campaign(
                 name="Operation Wocao",
                 year=2020,
                 description="Chinese APT using service enumeration for lateral movement",
-                reference_url="https://attack.mitre.org/campaigns/C0014/"
+                reference_url="https://attack.mitre.org/campaigns/C0014/",
             ),
             Campaign(
                 name="Black Basta Ransomware",
                 year=2024,
                 description="Service discovery used to identify security tools before encryption",
-                reference_url="https://attack.mitre.org/software/S1070/"
-            )
+                reference_url="https://attack.mitre.org/software/S1070/",
+            ),
         ],
         prevalence="common",
         trend="stable",
@@ -80,13 +90,12 @@ TEMPLATE = RemediationTemplate(
             "Indicates active threat actor in environment",
             "Precursor to persistence or privilege escalation",
             "Early detection opportunity",
-            "May precede security tool disablement"
+            "May precede security tool disablement",
         ],
         typical_attack_phase="discovery",
         often_precedes=["T1489", "T1562.001", "T1543"],
-        often_follows=["T1078", "T1059"]
+        often_follows=["T1078", "T1059"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - CloudWatch Agent Command Detection (Windows)
         DetectionStrategy(
@@ -97,14 +106,14 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query=r'''fields @timestamp, @message
+                query=r"""fields @timestamp, @message
 | filter @logStream like /windows-commands/
 | filter @message like /sc query|tasklist \/svc|net start|schtasks|Get-Service|Get-ScheduledTask/
 | parse @message "* * *" as timestamp, hostname, command
 | stats count(*) as cmd_count by hostname, bin(5m)
 | filter cmd_count > 5
-| sort cmd_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort cmd_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect Windows service discovery on EC2
 
 Parameters:
@@ -156,8 +165,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching''',
-                terraform_template='''# AWS: Detect Windows service discovery
+      TreatMissingData: notBreaching""",
+                terraform_template="""# AWS: Detect Windows service discovery
 
 variable "alert_email" {
   type        = string
@@ -207,7 +216,7 @@ resource "aws_cloudwatch_metric_alarm" "service_discovery" {
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Windows Service Discovery Detected",
                 alert_description_template="Multiple service enumeration commands detected on {hostname}.",
@@ -217,7 +226,7 @@ resource "aws_cloudwatch_metric_alarm" "service_discovery" {
                     "Review command timeline and sequence",
                     "Check for follow-on service manipulation or security tool disablement",
                     "Correlate with other suspicious activity on the host",
-                    "Review CloudTrail for related API calls"
+                    "Review CloudTrail for related API calls",
                 ],
                 containment_actions=[
                     "Isolate the instance if unauthorised activity is confirmed",
@@ -225,8 +234,8 @@ resource "aws_cloudwatch_metric_alarm" "service_discovery" {
                     "Enable enhanced monitoring on the instance",
                     "Check for persistence mechanisms (scheduled tasks, services)",
                     "Investigate other instances for similar activity",
-                    "Consider implementing Process Command Line auditing"
-                ]
+                    "Consider implementing Process Command Line auditing",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning=(
@@ -246,10 +255,9 @@ resource "aws_cloudwatch_metric_alarm" "service_discovery" {
             prerequisites=[
                 "CloudWatch Agent installed on EC2 instances",
                 "Process command line logging enabled",
-                "Windows Event Logs forwarded to CloudWatch"
-            ]
+                "Windows Event Logs forwarded to CloudWatch",
+            ],
         ),
-
         # Strategy 2: AWS - Linux Service Discovery
         DetectionStrategy(
             strategy_id="t1007-aws-linux",
@@ -259,14 +267,14 @@ resource "aws_cloudwatch_metric_alarm" "service_discovery" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message
+                query="""fields @timestamp, @message
 | filter @logStream like /linux-commands/
 | filter @message like /systemctl.*list|service --status-all|chkconfig --list|launchctl list|crontab -l/
 | parse @message "* * *" as timestamp, hostname, command
 | stats count(*) as cmd_count by hostname, bin(5m)
 | filter cmd_count > 3
-| sort cmd_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort cmd_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect Linux service discovery on EC2
 
 Parameters:
@@ -318,8 +326,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching''',
-                terraform_template='''# AWS: Detect Linux service discovery
+      TreatMissingData: notBreaching""",
+                terraform_template="""# AWS: Detect Linux service discovery
 
 variable "alert_email" {
   type        = string
@@ -369,7 +377,7 @@ resource "aws_cloudwatch_metric_alarm" "service_discovery" {
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Linux Service Discovery Detected",
                 alert_description_template="Multiple service enumeration commands detected on {hostname}.",
@@ -379,7 +387,7 @@ resource "aws_cloudwatch_metric_alarm" "service_discovery" {
                     "Review command sequence and timing",
                     "Look for subsequent service manipulation attempts",
                     "Correlate with other reconnaissance activities",
-                    "Check bash history for additional context"
+                    "Check bash history for additional context",
                 ],
                 containment_actions=[
                     "Isolate instance if compromise is suspected",
@@ -387,8 +395,8 @@ resource "aws_cloudwatch_metric_alarm" "service_discovery" {
                     "Enable detailed process auditing",
                     "Check for cron jobs and systemd timers",
                     "Review /etc/init.d and systemd unit files",
-                    "Investigate privilege escalation vectors"
-                ]
+                    "Investigate privilege escalation vectors",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning=(
@@ -408,10 +416,9 @@ resource "aws_cloudwatch_metric_alarm" "service_discovery" {
             prerequisites=[
                 "CloudWatch Agent installed on EC2 instances",
                 "auditd or process accounting configured",
-                "System logs forwarded to CloudWatch"
-            ]
+                "System logs forwarded to CloudWatch",
+            ],
         ),
-
         # Strategy 3: GCP - Windows Service Discovery
         DetectionStrategy(
             strategy_id="t1007-gcp-windows",
@@ -422,10 +429,10 @@ resource "aws_cloudwatch_metric_alarm" "service_discovery" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 jsonPayload.command=~"(sc query|tasklist /svc|net start|schtasks|Get-Service)"
-severity>=DEFAULT''',
-                gcp_terraform_template='''# GCP: Detect Windows service discovery
+severity>=DEFAULT""",
+                gcp_terraform_template="""# GCP: Detect Windows service discovery
 
 variable "project_id" {
   type        = string
@@ -493,7 +500,7 @@ resource "google_monitoring_alert_policy" "windows_service_discovery" {
   alert_strategy {
     auto_close = "86400s"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Windows Service Discovery Detected",
                 alert_description_template="Multiple service enumeration commands detected on GCP instance.",
@@ -503,7 +510,7 @@ resource "google_monitoring_alert_policy" "windows_service_discovery" {
                     "Check Cloud Logging for command history",
                     "Look for persistence mechanisms",
                     "Correlate with VPC Flow Logs",
-                    "Review OS Login audit logs"
+                    "Review OS Login audit logs",
                 ],
                 containment_actions=[
                     "Isolate instance using firewall rules",
@@ -511,8 +518,8 @@ resource "google_monitoring_alert_policy" "windows_service_discovery" {
                     "Rotate service account keys",
                     "Enable OS Config for patch verification",
                     "Review IAM permissions on the instance",
-                    "Check for malicious scheduled tasks"
-                ]
+                    "Check for malicious scheduled tasks",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning=(
@@ -532,10 +539,9 @@ resource "google_monitoring_alert_policy" "windows_service_discovery" {
             prerequisites=[
                 "Ops Agent installed on Compute Engine instances",
                 "Process monitoring enabled",
-                "Cloud Logging API enabled"
-            ]
+                "Cloud Logging API enabled",
+            ],
         ),
-
         # Strategy 4: GCP - Linux Service Discovery
         DetectionStrategy(
             strategy_id="t1007-gcp-linux",
@@ -546,10 +552,10 @@ resource "google_monitoring_alert_policy" "windows_service_discovery" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 jsonPayload.command=~"(systemctl.*list|service --status-all|chkconfig|launchctl|crontab -l)"
-severity>=DEFAULT''',
-                gcp_terraform_template='''# GCP: Detect Linux service discovery
+severity>=DEFAULT""",
+                gcp_terraform_template="""# GCP: Detect Linux service discovery
 
 variable "project_id" {
   type        = string
@@ -617,7 +623,7 @@ resource "google_monitoring_alert_policy" "linux_service_discovery" {
   alert_strategy {
     auto_close = "86400s"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Linux Service Discovery Detected",
                 alert_description_template="Multiple service enumeration commands detected on GCP instance.",
@@ -627,7 +633,7 @@ resource "google_monitoring_alert_policy" "linux_service_discovery" {
                     "Check Cloud Logging for full command history",
                     "Look for cron jobs or systemd timers",
                     "Correlate with network activity",
-                    "Review sudo and privilege escalation attempts"
+                    "Review sudo and privilege escalation attempts",
                 ],
                 containment_actions=[
                     "Isolate instance with firewall rules",
@@ -635,8 +641,8 @@ resource "google_monitoring_alert_policy" "linux_service_discovery" {
                     "Rotate SSH keys and credentials",
                     "Review systemd unit files for backdoors",
                     "Check /etc/cron* directories",
-                    "Audit IAM permissions and service accounts"
-                ]
+                    "Audit IAM permissions and service accounts",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning=(
@@ -656,17 +662,16 @@ resource "google_monitoring_alert_policy" "linux_service_discovery" {
             prerequisites=[
                 "Ops Agent installed on Compute Engine instances",
                 "auditd configured for process monitoring",
-                "Cloud Logging API enabled"
-            ]
-        )
+                "Cloud Logging API enabled",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1007-aws-windows",
         "t1007-aws-linux",
         "t1007-gcp-windows",
-        "t1007-gcp-linux"
+        "t1007-gcp-linux",
     ],
     total_effort_hours=10.0,
-    coverage_improvement="+8% improvement for Discovery tactic"
+    coverage_improvement="+8% improvement for Discovery tactic",
 )

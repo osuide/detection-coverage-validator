@@ -120,11 +120,31 @@ class CloudFormationParser:
 
     # Keywords indicating security purpose
     SECURITY_KEYWORDS = {
-        "security", "alert", "detect", "monitor", "guard", "audit",
-        "threat", "anomaly", "suspicious", "unauthorized", "incident",
-        "compliance", "remediation", "response", "siem", "soc",
-        "cloudtrail", "guardduty", "securityhub", "config",
-        "breach", "attack", "intrusion", "malicious", "violation",
+        "security",
+        "alert",
+        "detect",
+        "monitor",
+        "guard",
+        "audit",
+        "threat",
+        "anomaly",
+        "suspicious",
+        "unauthorized",
+        "incident",
+        "compliance",
+        "remediation",
+        "response",
+        "siem",
+        "soc",
+        "cloudtrail",
+        "guardduty",
+        "securityhub",
+        "config",
+        "breach",
+        "attack",
+        "intrusion",
+        "malicious",
+        "violation",
     }
 
     def __init__(self, session=None):
@@ -132,7 +152,9 @@ class CloudFormationParser:
         self.session = session
         self.logger = logger.bind(component="CloudFormationParser")
 
-    async def check_permissions(self, region: str = "us-east-1") -> PermissionCheckResult:
+    async def check_permissions(
+        self, region: str = "us-east-1"
+    ) -> PermissionCheckResult:
         """Check if required IAM permissions are available."""
         result = PermissionCheckResult(has_required_permissions=True)
 
@@ -289,18 +311,22 @@ class CloudFormationParser:
         results = []
 
         if not consent_verified:
-            return [IaCAnalysisResult(
-                source_type="cloudformation",
-                source_name="all",
-                errors=["IaC analysis requires explicit user consent."],
-            )]
+            return [
+                IaCAnalysisResult(
+                    source_type="cloudformation",
+                    source_name="all",
+                    errors=["IaC analysis requires explicit user consent."],
+                )
+            ]
 
         if not self.session:
-            return [IaCAnalysisResult(
-                source_type="cloudformation",
-                source_name="all",
-                errors=["AWS session not configured"],
-            )]
+            return [
+                IaCAnalysisResult(
+                    source_type="cloudformation",
+                    source_name="all",
+                    errors=["AWS session not configured"],
+                )
+            ]
 
         client = self.session.client("cloudformation", region_name=region)
 
@@ -327,12 +353,16 @@ class CloudFormationParser:
         except ClientError as e:
             error_code = e.response.get("Error", {}).get("Code", "")
             if error_code == "AccessDeniedException":
-                return [IaCAnalysisResult(
-                    source_type="cloudformation",
-                    source_name="all",
-                    permission_errors=["Missing cloudformation:ListStacks permission"],
-                    missing_permissions=["cloudformation:ListStacks"],
-                )]
+                return [
+                    IaCAnalysisResult(
+                        source_type="cloudformation",
+                        source_name="all",
+                        permission_errors=[
+                            "Missing cloudformation:ListStacks permission"
+                        ],
+                        missing_permissions=["cloudformation:ListStacks"],
+                    )
+                ]
 
         return results
 
@@ -379,7 +409,9 @@ class CloudFormationParser:
             return None
 
         # Suggest MITRE techniques based on event pattern
-        suggested_techniques = self._suggest_techniques_from_event_pattern(event_pattern)
+        suggested_techniques = self._suggest_techniques_from_event_pattern(
+            event_pattern
+        )
 
         return IaCDetection(
             name=name,
@@ -420,11 +452,13 @@ class CloudFormationParser:
         if namespace in security_namespaces:
             security_indicators.append(f"namespace:{namespace}")
 
-        security_indicators.extend(self._find_security_indicators(
-            name=name,
-            description=description,
-            config={"metric": metric_name, "namespace": namespace},
-        ))
+        security_indicators.extend(
+            self._find_security_indicators(
+                name=name,
+                description=description,
+                config={"metric": metric_name, "namespace": namespace},
+            )
+        )
 
         if not security_indicators:
             return None
@@ -538,8 +572,14 @@ class CloudFormationParser:
         # Map event sources to techniques
         source_to_technique = {
             "aws.cloudtrail": ["T1562.008"],  # Impair Defenses
-            "aws.iam": ["T1098", "T1087.004"],  # Account Manipulation, Account Discovery
-            "aws.ec2": ["T1562.007", "T1580"],  # Disable Firewall, Infrastructure Discovery
+            "aws.iam": [
+                "T1098",
+                "T1087.004",
+            ],  # Account Manipulation, Account Discovery
+            "aws.ec2": [
+                "T1562.007",
+                "T1580",
+            ],  # Disable Firewall, Infrastructure Discovery
             "aws.s3": ["T1530"],  # Data from Cloud Storage
             "aws.guardduty": ["T1562.008"],  # Impair Defenses
             "aws.securityhub": ["T1562.008"],
@@ -560,7 +600,9 @@ class CloudFormationParser:
             "AuthorizeSecurityGroupIngress": "T1562.007",
         }
 
-        for event_name in event_names if isinstance(event_names, list) else [event_names]:
+        for event_name in (
+            event_names if isinstance(event_names, list) else [event_names]
+        ):
             if event_name in event_name_to_technique:
                 techniques.append(event_name_to_technique[event_name])
 
@@ -579,7 +621,7 @@ class CloudFormationParser:
                         "Action": self.REQUIRED_PERMISSIONS,
                         "Resource": "*",
                     }
-                ]
+                ],
             },
             "description": (
                 "These permissions allow the Detection Coverage Validator to discover "
@@ -608,7 +650,7 @@ def parse_terraform_file(content: str, file_path: str) -> list[IaCDetection]:
     # Simple regex patterns for Terraform resources
     resource_pattern = re.compile(
         r'resource\s+"(aws_\w+)"\s+"(\w+)"\s*\{([^}]+(?:\{[^}]*\}[^}]*)*)\}',
-        re.MULTILINE | re.DOTALL
+        re.MULTILINE | re.DOTALL,
     )
 
     security_resource_types = {
@@ -629,8 +671,15 @@ def parse_terraform_file(content: str, file_path: str) -> list[IaCDetection]:
 
         # Check for security keywords
         security_keywords = {
-            "security", "alert", "detect", "monitor", "guard", "audit",
-            "cloudtrail", "guardduty", "securityhub",
+            "security",
+            "alert",
+            "detect",
+            "monitor",
+            "guard",
+            "audit",
+            "cloudtrail",
+            "guardduty",
+            "securityhub",
         }
 
         body_lower = resource_body.lower()
@@ -647,13 +696,15 @@ def parse_terraform_file(content: str, file_path: str) -> list[IaCDetection]:
             "aws_sns_topic": "sns_topic",
         }
 
-        detections.append(IaCDetection(
-            name=resource_name,
-            resource_type=resource_type,
-            detection_type=detection_type_map.get(resource_type, "unknown"),
-            template_type="terraform",
-            file_path=file_path,
-            security_indicators=[f"keyword:{ind}" for ind in indicators],
-        ))
+        detections.append(
+            IaCDetection(
+                name=resource_name,
+                resource_type=resource_type,
+                detection_type=detection_type_map.get(resource_type, "unknown"),
+                template_type="terraform",
+                file_path=file_path,
+                security_indicators=[f"keyword:{ind}" for ind in indicators],
+            )
+        )
 
     return detections

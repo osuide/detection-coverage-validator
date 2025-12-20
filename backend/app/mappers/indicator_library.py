@@ -532,7 +532,15 @@ CREDENTIAL_ACCESS_TECHNIQUES = [
         cloudtrail_events=[
             "ConsoleLogin",
         ],
-        keywords=["brute", "force", "password", "spray", "credential", "stuffing", "failed login"],
+        keywords=[
+            "brute",
+            "force",
+            "password",
+            "spray",
+            "credential",
+            "stuffing",
+            "failed login",
+        ],
         aws_services=["signin", "iam"],
         log_patterns=[r"brute", r"force", r"failed.*login", r"spray"],
         base_confidence=0.75,

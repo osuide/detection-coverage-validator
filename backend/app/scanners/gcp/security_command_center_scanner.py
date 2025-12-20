@@ -39,7 +39,11 @@ class SecurityCommandCenterScanner(BaseScanner):
             self.logger.error("organization_or_project_required")
             return []
 
-        parent = f"organizations/{organization_id}" if organization_id else f"projects/{project_id}"
+        parent = (
+            f"organizations/{organization_id}"
+            if organization_id
+            else f"projects/{project_id}"
+        )
 
         self.logger.info("scanning_scc", parent=parent)
 
@@ -51,7 +55,9 @@ class SecurityCommandCenterScanner(BaseScanner):
             client = securitycenter_v1.SecurityCenterClient(credentials=self.session)
 
             # Scan notification configs
-            notification_detections = await self._scan_notification_configs(client, parent)
+            notification_detections = await self._scan_notification_configs(
+                client, parent
+            )
             all_detections.extend(notification_detections)
 
             # Scan for active finding sources (managed detections)
@@ -121,10 +127,18 @@ class SecurityCommandCenterScanner(BaseScanner):
                 "name": config_name,
                 "description": description,
                 "pubsubTopic": pubsub_topic,
-                "streamingConfig": {
-                    "filter": filter_string,
-                } if streaming_config else None,
-                "serviceAccount": config.service_account if hasattr(config, 'service_account') else None,
+                "streamingConfig": (
+                    {
+                        "filter": filter_string,
+                    }
+                    if streaming_config
+                    else None
+                ),
+                "serviceAccount": (
+                    config.service_account
+                    if hasattr(config, "service_account")
+                    else None
+                ),
             },
             query_pattern=filter_string,
             description=description or f"SCC notification config: {config_name}",
@@ -178,7 +192,9 @@ class SecurityCommandCenterScanner(BaseScanner):
                 "name": source_name,
                 "displayName": display_name,
                 "description": description,
-                "canonicalName": source.canonical_name if hasattr(source, 'canonical_name') else None,
+                "canonicalName": (
+                    source.canonical_name if hasattr(source, "canonical_name") else None
+                ),
             },
             description=description or f"SCC finding source: {display_name}",
             is_managed=True,  # SCC sources are managed detections
@@ -204,7 +220,6 @@ SCC_FINDING_MITRE_MAPPING = {
     "LATERAL_MOVEMENT": ["T1550"],
     "EXFILTRATION": ["T1537"],
     "CREDENTIAL_ACCESS": ["T1552", "T1528"],
-
     # Security Health Analytics findings
     "MFA_NOT_ENFORCED": ["T1078"],
     "ADMIN_SERVICE_ACCOUNT": ["T1078.004"],
@@ -218,7 +233,6 @@ SCC_FINDING_MITRE_MAPPING = {
     "WEAK_SSL_POLICY": ["T1557"],
     "SQL_NO_ROOT_PASSWORD": ["T1078"],
     "SQL_PUBLIC_IP": ["T1190"],
-
     # Web Security Scanner findings
     "XSS": ["T1189"],
     "SQL_INJECTION": ["T1190"],

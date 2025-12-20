@@ -25,6 +25,7 @@ settings = get_settings()
 # Request/Response Models
 class SecuritySettingsResponse(BaseModel):
     """Security settings response."""
+
     id: str
     organization_id: str
     require_mfa: bool
@@ -46,10 +47,15 @@ class SecuritySettingsResponse(BaseModel):
 
 class SecuritySettingsUpdateRequest(BaseModel):
     """Request to update security settings."""
+
     require_mfa: Optional[bool] = None
     mfa_grace_period_days: Optional[int] = Field(None, ge=1, le=30)
-    session_timeout_minutes: Optional[int] = Field(None, ge=15, le=43200)  # 15 min to 30 days
-    idle_timeout_minutes: Optional[int] = Field(None, ge=5, le=1440)  # 5 min to 24 hours
+    session_timeout_minutes: Optional[int] = Field(
+        None, ge=15, le=43200
+    )  # 15 min to 30 days
+    idle_timeout_minutes: Optional[int] = Field(
+        None, ge=5, le=1440
+    )  # 5 min to 24 hours
     allowed_auth_methods: Optional[List[str]] = None
     password_min_length: Optional[int] = Field(None, ge=8, le=128)
     password_require_uppercase: Optional[bool] = None
@@ -63,6 +69,7 @@ class SecuritySettingsUpdateRequest(BaseModel):
 
 class VerifiedDomainResponse(BaseModel):
     """Verified domain response."""
+
     id: str
     domain: str
     verification_token: Optional[str]
@@ -75,17 +82,21 @@ class VerifiedDomainResponse(BaseModel):
 
 class AddDomainRequest(BaseModel):
     """Request to add a domain for verification."""
+
     domain: str = Field(..., min_length=3, max_length=255)
     verification_method: str = Field(default="dns_txt")  # dns_txt, dns_cname
 
 
 class UpdateDomainRequest(BaseModel):
     """Request to update domain settings."""
+
     auto_join_enabled: Optional[bool] = None
     sso_required: Optional[bool] = None
 
 
-def _settings_to_response(settings: OrganizationSecuritySettings) -> SecuritySettingsResponse:
+def _settings_to_response(
+    settings: OrganizationSecuritySettings,
+) -> SecuritySettingsResponse:
     """Convert settings model to response."""
     return SecuritySettingsResponse(
         id=str(settings.id),
@@ -113,7 +124,9 @@ def _domain_to_response(domain: VerifiedDomain) -> VerifiedDomainResponse:
     return VerifiedDomainResponse(
         id=str(domain.id),
         domain=domain.domain,
-        verification_token=domain.verification_token if not domain.verified_at else None,
+        verification_token=(
+            domain.verification_token if not domain.verified_at else None
+        ),
         verification_method=domain.verification_method,
         verified_at=domain.verified_at.isoformat() if domain.verified_at else None,
         auto_join_enabled=domain.auto_join_enabled,
@@ -195,7 +208,11 @@ async def update_security_settings(
     await db.commit()
     await db.refresh(settings_obj)
 
-    logger.info("security_settings_updated", org_id=str(auth.organization_id), changes=list(update_data.keys()))
+    logger.info(
+        "security_settings_updated",
+        org_id=str(auth.organization_id),
+        changes=list(update_data.keys()),
+    )
 
     return _settings_to_response(settings_obj)
 
@@ -208,16 +225,20 @@ async def list_domains(
 ):
     """List organization's verified domains."""
     result = await db.execute(
-        select(VerifiedDomain).where(
-            VerifiedDomain.organization_id == auth.organization_id
-        ).order_by(VerifiedDomain.created_at.desc())
+        select(VerifiedDomain)
+        .where(VerifiedDomain.organization_id == auth.organization_id)
+        .order_by(VerifiedDomain.created_at.desc())
     )
     domains = result.scalars().all()
 
     return [_domain_to_response(d) for d in domains]
 
 
-@router.post("/domains", response_model=VerifiedDomainResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/domains",
+    response_model=VerifiedDomainResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 async def add_domain(
     request: Request,
     body: AddDomainRequest,
@@ -238,19 +259,19 @@ async def add_domain(
         if existing.organization_id == auth.organization_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Domain already added to your organization"
+                detail="Domain already added to your organization",
             )
         if existing.verified_at:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Domain is already verified by another organization"
+                detail="Domain is already verified by another organization",
             )
         # Allow claiming unverified domains from other orgs after 7 days
         age = (datetime.now(timezone.utc) - existing.created_at).days
         if age < 7:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Domain is pending verification by another organization"
+                detail="Domain is pending verification by another organization",
             )
         # Remove stale claim
         await db.delete(existing)
@@ -303,15 +324,14 @@ async def verify_domain(
 
     if not domain:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Domain not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Domain not found"
         )
 
     if domain.verified_at:
         return {
             "verified": True,
             "verified_at": domain.verified_at.isoformat(),
-            "message": "Domain is already verified"
+            "message": "Domain is already verified",
         }
 
     # In production, this would check DNS records
@@ -354,8 +374,7 @@ async def confirm_domain_verification(
 
     if not domain:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Domain not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Domain not found"
         )
 
     if domain.verified_at:
@@ -364,8 +383,8 @@ async def confirm_domain_verification(
     # In production, this would actually check DNS records
     # For development, we'll auto-verify if the domain ends with .test or .local
     # or if a special header is present
-    is_dev = domain.domain.endswith(('.test', '.local', '.example'))
-    force_verify = request.headers.get('X-Force-Verify') == 'true'
+    is_dev = domain.domain.endswith((".test", ".local", ".example"))
+    force_verify = request.headers.get("X-Force-Verify") == "true"
 
     if not is_dev and not force_verify:
         # TODO: Implement actual DNS verification
@@ -392,7 +411,9 @@ async def confirm_domain_verification(
 
     await db.commit()
 
-    logger.info("domain_verified", org_id=str(auth.organization_id), domain=domain.domain)
+    logger.info(
+        "domain_verified", org_id=str(auth.organization_id), domain=domain.domain
+    )
 
     return {"verified": True, "message": "Domain verified successfully"}
 
@@ -416,15 +437,14 @@ async def update_domain(
 
     if not domain:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Domain not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Domain not found"
         )
 
     # Only allow settings changes on verified domains
     if not domain.verified_at:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Domain must be verified before changing settings"
+            detail="Domain must be verified before changing settings",
         )
 
     update_data = body.model_dump(exclude_unset=True)
@@ -469,8 +489,7 @@ async def remove_domain(
 
     if not domain:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Domain not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Domain not found"
         )
 
     domain_name = domain.domain

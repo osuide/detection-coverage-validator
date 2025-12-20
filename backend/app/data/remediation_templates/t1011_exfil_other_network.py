@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Exfiltration Over Other Network Medium",
     tactic_ids=["TA0010"],
     mitre_url="https://attack.mitre.org/techniques/T1011/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries leverage alternate network mediums for data exfiltration instead of "
@@ -42,33 +41,33 @@ TEMPLATE = RemediationTemplate(
             "Difficult to detect without comprehensive network visibility",
             "Can circumvent air-gapped network protections",
             "Wireless connections may be less monitored than wired",
-            "Enables covert data transfer in high-security environments"
+            "Enables covert data transfer in high-security environments",
         ],
         known_threat_actors=[
             "APT28 (Fancy Bear)",
             "Turla",
             "Equation Group",
-            "APT29 (Cozy Bear)"
+            "APT29 (Cozy Bear)",
         ],
         recent_campaigns=[
             Campaign(
                 name="Turla Satellite Exfiltration",
                 year=2023,
                 description="Turla group used satellite internet connections to exfiltrate data from air-gapped networks, bypassing traditional network monitoring",
-                reference_url="https://attack.mitre.org/groups/G0010/"
+                reference_url="https://attack.mitre.org/groups/G0010/",
             ),
             Campaign(
                 name="APT Air-Gap Jumping",
                 year=2023,
                 description="Advanced persistent threat actors employed Bluetooth and WiFi connections to exfiltrate data from isolated networks",
-                reference_url="https://attack.mitre.org/techniques/T1011/"
+                reference_url="https://attack.mitre.org/techniques/T1011/",
             ),
             Campaign(
                 name="Cellular Modem Exfiltration",
                 year=2024,
                 description="Nation-state actors installed cellular modems on compromised servers to create covert exfiltration channels",
-                reference_url="https://attack.mitre.org/techniques/T1011/"
-            )
+                reference_url="https://attack.mitre.org/techniques/T1011/",
+            ),
         ],
         prevalence="rare",
         trend="stable",
@@ -88,13 +87,12 @@ TEMPLATE = RemediationTemplate(
             "Bypass of air-gap protections and network isolation",
             "Intellectual property theft from high-security environments",
             "Regulatory violations and compliance breaches",
-            "Reputational damage from sophisticated security breach"
+            "Reputational damage from sophisticated security breach",
         ],
         typical_attack_phase="exfiltration",
         often_precedes=[],
-        often_follows=["T1074", "T1560", "T1005", "T1105"]
+        often_follows=["T1074", "T1560", "T1005", "T1105"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1011-aws-network-interface",
@@ -104,11 +102,11 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn, eventName, requestParameters.networkInterfaceId, requestParameters.instanceId
+                query="""fields @timestamp, userIdentity.arn, eventName, requestParameters.networkInterfaceId, requestParameters.instanceId
 | filter eventName in ["CreateNetworkInterface", "AttachNetworkInterface", "ModifyNetworkInterfaceAttribute"]
 | filter requestParameters.instanceId != ""
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect secondary network interface creation for potential alternate exfiltration
 
 Parameters:
@@ -156,8 +154,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect secondary network interface creation
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect secondary network interface creation
 
 variable "alert_email" {
   type        = string
@@ -213,7 +211,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.network_interface_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Secondary Network Interface Created or Modified",
                 alert_description_template="Network interface {networkInterfaceId} created/attached to instance {instanceId} by {userIdentity.arn}. May enable alternative exfiltration channel.",
@@ -224,7 +222,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Examine instance security groups and routing tables",
                     "Review VPC Flow Logs for traffic patterns on new interface",
                     "Verify authorisation for network configuration changes",
-                    "Check for recent suspicious activity on the instance"
+                    "Check for recent suspicious activity on the instance",
                 ],
                 containment_actions=[
                     "Detach unauthorised network interfaces immediately",
@@ -232,8 +230,8 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Enable VPC Flow Logs on all network interfaces",
                     "Implement SCPs to prevent unauthorised network changes",
                     "Isolate affected instances for forensic analysis",
-                    "Review security group rules for secondary interfaces"
-                ]
+                    "Review security group rules for secondary interfaces",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known multi-homed instances, NAT instances, and network appliances. Exclude infrastructure deployment automation.",
@@ -242,9 +240,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled with EC2 data events"]
+            prerequisites=["CloudTrail enabled with EC2 data events"],
         ),
-
         DetectionStrategy(
             strategy_id="t1011-aws-unusual-traffic",
             name="AWS Unusual Network Interface Traffic Pattern",
@@ -253,12 +250,12 @@ resource "aws_sns_topic_policy" "allow_events" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, interfaceId, srcAddr, dstAddr, bytes, protocol, action
+                query="""fields @timestamp, interfaceId, srcAddr, dstAddr, bytes, protocol, action
 | filter action = "ACCEPT"
 | stats sum(bytes) as total_bytes, count(*) as connection_count by interfaceId, bin(5m)
 | filter total_bytes > 104857600
-| sort total_bytes desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort total_bytes desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Monitor traffic patterns on network interfaces for exfiltration
 
 Parameters:
@@ -300,8 +297,8 @@ Resources:
       Threshold: 104857600
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Monitor network interface traffic patterns
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Monitor network interface traffic patterns
 
 variable "alert_email" {
   type = string
@@ -347,7 +344,7 @@ resource "aws_cloudwatch_metric_alarm" "large_transfer" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.traffic_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Unusual Network Interface Traffic Detected",
                 alert_description_template="Large data transfer ({total_bytes} bytes) detected on network interface {interfaceId}.",
@@ -358,7 +355,7 @@ resource "aws_cloudwatch_metric_alarm" "large_transfer" {
                     "Examine other network interfaces on the same instance",
                     "Review instance security configuration and recent changes",
                     "Correlate with CloudTrail events for suspicious activities",
-                    "Check for data staging activities on the instance"
+                    "Check for data staging activities on the instance",
                 ],
                 containment_actions=[
                     "Modify security groups to block suspicious traffic",
@@ -366,8 +363,8 @@ resource "aws_cloudwatch_metric_alarm" "large_transfer" {
                     "Isolate affected instance from network",
                     "Enable enhanced VPC Flow Logs monitoring",
                     "Implement network ACLs to restrict traffic",
-                    "Review and update routing tables"
-                ]
+                    "Review and update routing tables",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known data transfer workflows, backup operations, and legitimate high-bandwidth applications. Adjust byte thresholds based on environment.",
@@ -376,9 +373,8 @@ resource "aws_cloudwatch_metric_alarm" "large_transfer" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-25",
-            prerequisites=["VPC Flow Logs enabled on all interfaces"]
+            prerequisites=["VPC Flow Logs enabled on all interfaces"],
         ),
-
         DetectionStrategy(
             strategy_id="t1011-aws-network-mgmt",
             name="AWS Network Management Tool Execution Detection",
@@ -387,10 +383,10 @@ resource "aws_cloudwatch_metric_alarm" "large_transfer" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, commandInvoked, instanceId
+                query="""fields @timestamp, userIdentity.principalId, commandInvoked, instanceId
 | filter commandInvoked like /rfkill|nmcli|iw|hcitool|networksetup|blueutil|ifconfig|ip link/
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect network management tool execution for alternative interfaces
 
 Parameters:
@@ -432,8 +428,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect network management tool execution
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect network management tool execution
 
 variable "alert_email" {
   type = string
@@ -479,7 +475,7 @@ resource "aws_cloudwatch_metric_alarm" "network_tools" {
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.network_tool_alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Network Management Tool Execution Detected",
                 alert_description_template="Network management tool executed on instance {instanceId}: {commandInvoked}. May indicate preparation for alternative network exfiltration.",
@@ -490,7 +486,7 @@ resource "aws_cloudwatch_metric_alarm" "network_tools" {
                     "Examine instance for additional suspicious activities",
                     "Review CloudTrail for related API calls",
                     "Verify if network changes are authorised",
-                    "Check for data transfer activities following command execution"
+                    "Check for data transfer activities following command execution",
                 ],
                 containment_actions=[
                     "Restrict SSM access to prevent unauthorised commands",
@@ -498,8 +494,8 @@ resource "aws_cloudwatch_metric_alarm" "network_tools" {
                     "Disable unnecessary network interfaces",
                     "Implement Systems Manager Session Manager logging",
                     "Create SCPs to prevent sensitive network commands",
-                    "Enable enhanced CloudWatch logging"
-                ]
+                    "Enable enhanced CloudWatch logging",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist authorised network administrators and automated configuration management tools. Focus on unexpected command execution contexts.",
@@ -508,9 +504,11 @@ resource "aws_cloudwatch_metric_alarm" "network_tools" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$15-30",
-            prerequisites=["SSM Session Manager enabled", "CloudWatch Logs for SSM enabled"]
+            prerequisites=[
+                "SSM Session Manager enabled",
+                "CloudWatch Logs for SSM enabled",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1011-gcp-network-interface",
             name="GCP Secondary Network Interface Detection",
@@ -525,7 +523,7 @@ resource "aws_cloudwatch_metric_alarm" "network_tools" {
 OR protoPayload.methodName="v1.compute.instances.updateNetworkInterface"
 OR protoPayload.methodName="v1.compute.instances.addAccessConfig")
 protoPayload.serviceName="compute.googleapis.com"''',
-                gcp_terraform_template='''# GCP: Detect secondary network interface creation
+                gcp_terraform_template="""# GCP: Detect secondary network interface creation
 
 variable "project_id" {
   type        = string
@@ -592,7 +590,7 @@ resource "google_monitoring_alert_policy" "network_interface_alert" {
   alert_strategy {
     auto_close = "1800s"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Secondary Network Interface Created or Modified",
                 alert_description_template="Network interface created/modified on instance {instance_name}. May enable alternative exfiltration channel.",
@@ -603,7 +601,7 @@ resource "google_monitoring_alert_policy" "network_interface_alert" {
                     "Examine firewall rules for the new interface",
                     "Review VPC Flow Logs for traffic patterns",
                     "Verify authorisation for network changes",
-                    "Check instance for recent suspicious activities"
+                    "Check instance for recent suspicious activities",
                 ],
                 containment_actions=[
                     "Remove unauthorised network interfaces",
@@ -611,8 +609,8 @@ resource "google_monitoring_alert_policy" "network_interface_alert" {
                     "Enable VPC Flow Logs on all network interfaces",
                     "Implement organisation policies for network restrictions",
                     "Isolate affected instances for investigation",
-                    "Review firewall rules for secondary interfaces"
-                ]
+                    "Review firewall rules for secondary interfaces",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known multi-interface instances and network appliances. Exclude infrastructure automation tools.",
@@ -621,9 +619,8 @@ resource "google_monitoring_alert_policy" "network_interface_alert" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",
             estimated_monthly_cost="$8-15",
-            prerequisites=["Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1011-gcp-traffic-pattern",
             name="GCP Unusual VPC Flow Pattern Detection",
@@ -633,10 +630,10 @@ resource "google_monitoring_alert_policy" "network_interface_alert" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_subnetwork"
+                gcp_logging_query="""resource.type="gce_subnetwork"
 jsonPayload.connection.dest_ip!=""
-jsonPayload.bytes_sent > 104857600''',
-                gcp_terraform_template='''# GCP: Detect unusual VPC flow patterns
+jsonPayload.bytes_sent > 104857600""",
+                gcp_terraform_template="""# GCP: Detect unusual VPC flow patterns
 
 variable "project_id" {
   type = string
@@ -695,7 +692,7 @@ resource "google_monitoring_alert_policy" "large_transfer_alert" {
   alert_strategy {
     auto_close = "1800s"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Unusual Network Traffic Pattern Detected",
                 alert_description_template="Large data transfer detected through VPC. May indicate alternative exfiltration channel usage.",
@@ -706,7 +703,7 @@ resource "google_monitoring_alert_policy" "large_transfer_alert" {
                     "Examine traffic protocols and destinations",
                     "Review Cloud Audit Logs for network changes",
                     "Verify legitimacy of data transfer",
-                    "Check for data staging activities"
+                    "Check for data staging activities",
                 ],
                 containment_actions=[
                     "Update firewall rules to block suspicious traffic",
@@ -714,8 +711,8 @@ resource "google_monitoring_alert_policy" "large_transfer_alert" {
                     "Isolate affected instances",
                     "Enable enhanced VPC Flow Logs",
                     "Implement VPC Service Controls",
-                    "Review and update network policies"
-                ]
+                    "Review and update network policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known data transfer workflows and backup operations. Adjust byte thresholds for environment.",
@@ -724,17 +721,16 @@ resource "google_monitoring_alert_policy" "large_transfer_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["VPC Flow Logs enabled on subnets"]
-        )
+            prerequisites=["VPC Flow Logs enabled on subnets"],
+        ),
     ],
-
     recommended_order=[
         "t1011-aws-network-interface",
         "t1011-gcp-network-interface",
         "t1011-aws-unusual-traffic",
         "t1011-gcp-traffic-pattern",
-        "t1011-aws-network-mgmt"
+        "t1011-aws-network-mgmt",
     ],
     total_effort_hours=6.0,
-    coverage_improvement="+15% improvement for Exfiltration tactic detection"
+    coverage_improvement="+15% improvement for Exfiltration tactic detection",
 )

@@ -24,7 +24,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Forge Web Credentials: SAML Tokens",
     tactic_ids=["TA0006"],
     mitre_url="https://attack.mitre.org/techniques/T1606/002/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries forge SAML tokens to authenticate across services using SAML 2.0 "
@@ -40,7 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Enables privileged access escalation",
             "Hard to detect without proper logging",
             "Works across cloud and SaaS platforms",
-            "Long-lived tokens enable persistence"
+            "Long-lived tokens enable persistence",
         ],
         known_threat_actors=["APT29"],
         recent_campaigns=[
@@ -48,7 +47,7 @@ TEMPLATE = RemediationTemplate(
                 name="SolarWinds Compromise",
                 year=2020,
                 description="APT29 created tokens using compromised SAML signing certificates",
-                reference_url="https://attack.mitre.org/campaigns/C0024/"
+                reference_url="https://attack.mitre.org/campaigns/C0024/",
             )
         ],
         prevalence="rare",
@@ -63,13 +62,12 @@ TEMPLATE = RemediationTemplate(
             "Multi-factor authentication bypass",
             "Cross-cloud service access",
             "Data breach enabler",
-            "Regulatory compliance violations"
+            "Regulatory compliance violations",
         ],
         typical_attack_phase="credential_access",
         often_precedes=["T1550.001", "T1078.004"],
-        often_follows=["T1649", "T1003.006"]
+        often_follows=["T1649", "T1003.006"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1606-002-aws-saml-anomaly",
@@ -79,13 +77,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, sourceIPAddress, userAgent
+                query="""fields @timestamp, userIdentity.principalId, sourceIPAddress, userAgent
 | filter eventName = "AssumeRoleWithSAML"
 | filter errorCode not exists
 | stats count(*) as saml_logins by userIdentity.principalId, sourceIPAddress, bin(1h)
 | filter saml_logins > 10 OR sourceIPAddress like /^(?!10\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.|192\\.168\\.)/
-| sort saml_logins desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort saml_logins desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect suspicious SAML token usage in AWS
 
 Parameters:
@@ -128,8 +126,8 @@ Resources:
       Threshold: 20
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect suspicious SAML token usage in AWS
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect suspicious SAML token usage in AWS
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -168,7 +166,7 @@ resource "aws_cloudwatch_metric_alarm" "high_saml_activity" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.saml_alerts.arn]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Suspicious SAML Authentication Detected",
                 alert_description_template="Unusual SAML authentication activity from {sourceIPAddress}.",
@@ -178,7 +176,7 @@ resource "aws_cloudwatch_metric_alarm" "high_saml_activity" {
                     "Review user account activity following authentication",
                     "Check for privileged role assumptions",
                     "Verify token claims match expected user attributes",
-                    "Review AD FS server logs for certificate compromise"
+                    "Review AD FS server logs for certificate compromise",
                 ],
                 containment_actions=[
                     "Rotate SAML token-signing certificate twice in succession",
@@ -186,8 +184,8 @@ resource "aws_cloudwatch_metric_alarm" "high_saml_activity" {
                     "Review and remove unauthorised federation trusts",
                     "Enable advanced auditing on AD FS servers",
                     "Implement conditional access policies",
-                    "Review and restrict Directory Role membership"
-                ]
+                    "Review and restrict Directory Role membership",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal SAML authentication patterns for your organisation",
@@ -196,9 +194,8 @@ resource "aws_cloudwatch_metric_alarm" "high_saml_activity" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["CloudTrail logging enabled with SAML events"]
+            prerequisites=["CloudTrail logging enabled with SAML events"],
         ),
-
         DetectionStrategy(
             strategy_id="t1606-002-aws-mfa-bypass",
             name="AWS SAML Authentication Without MFA",
@@ -207,13 +204,13 @@ resource "aws_cloudwatch_metric_alarm" "high_saml_activity" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, requestParameters.roleArn, sourceIPAddress
+                query="""fields @timestamp, userIdentity.principalId, requestParameters.roleArn, sourceIPAddress
 | filter eventName = "AssumeRoleWithSAML"
 | filter requestParameters.roleArn like /Admin|Power|Elevated/
 | filter responseElements.credentials.sessionToken exists
 | filter additionalEventData.MFAUsed = "No" OR additionalEventData.MFAUsed not exists
-| sort @timestamp desc''',
-                terraform_template='''# Detect SAML authentication bypassing MFA
+| sort @timestamp desc""",
+                terraform_template="""# Detect SAML authentication bypassing MFA
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -252,7 +249,7 @@ resource "aws_cloudwatch_metric_alarm" "saml_mfa_bypass" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.mfa_bypass_alerts.arn]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Privileged SAML Authentication Without MFA",
                 alert_description_template="SAML authentication to privileged role {roleArn} without MFA from {sourceIPAddress}.",
@@ -262,7 +259,7 @@ resource "aws_cloudwatch_metric_alarm" "saml_mfa_bypass" {
                     "Review token claims for inconsistencies",
                     "Check for recent AD FS certificate changes",
                     "Review privileged actions taken after authentication",
-                    "Compare authentication location to user's normal patterns"
+                    "Compare authentication location to user's normal patterns",
                 ],
                 containment_actions=[
                     "Terminate active session immediately",
@@ -270,8 +267,8 @@ resource "aws_cloudwatch_metric_alarm" "saml_mfa_bypass" {
                     "Enable MFA requirements in IAM role trust policies",
                     "Review and revoke unauthorised federation trusts",
                     "Audit recent privileged access activity",
-                    "Implement conditional access policies requiring MFA"
-                ]
+                    "Implement conditional access policies requiring MFA",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Review organisation's MFA policies and exemptions",
@@ -280,9 +277,8 @@ resource "aws_cloudwatch_metric_alarm" "saml_mfa_bypass" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail logging enabled"]
+            prerequisites=["CloudTrail logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1606-002-gcp-saml-anomaly",
             name="GCP SAML Authentication Anomalies",
@@ -295,7 +291,7 @@ resource "aws_cloudwatch_metric_alarm" "saml_mfa_bypass" {
                 gcp_logging_query='''protoPayload.methodName="google.login.LoginService.samlResponse"
 protoPayload.status.code=0
 protoPayload.authenticationInfo.principalEmail!=""''',
-                gcp_terraform_template='''# GCP: Detect suspicious SAML authentication
+                gcp_terraform_template="""# GCP: Detect suspicious SAML authentication
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -348,7 +344,7 @@ resource "google_monitoring_alert_policy" "saml_anomaly" {
   alert_strategy {
     auto_close = "1800s"
   }
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GCP: Suspicious SAML Authentication",
                 alert_description_template="Unusual SAML authentication activity detected in GCP.",
@@ -358,7 +354,7 @@ resource "google_monitoring_alert_policy" "saml_anomaly" {
                     "Review GCP resource access following authentication",
                     "Check for privilege escalation attempts",
                     "Verify SAML provider configuration",
-                    "Review recent changes to SAML certificates"
+                    "Review recent changes to SAML certificates",
                 ],
                 containment_actions=[
                     "Suspend affected user accounts",
@@ -366,8 +362,8 @@ resource "google_monitoring_alert_policy" "saml_anomaly" {
                     "Review and remove unauthorised SAML providers",
                     "Enable organisation policy constraints",
                     "Audit IAM bindings for suspicious changes",
-                    "Implement context-aware access policies"
-                ]
+                    "Implement context-aware access policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal SAML authentication patterns",
@@ -376,9 +372,8 @@ resource "google_monitoring_alert_policy" "saml_anomaly" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Audit Logs enabled for Login events"]
+            prerequisites=["Cloud Audit Logs enabled for Login events"],
         ),
-
         DetectionStrategy(
             strategy_id="t1606-002-aws-cross-account-saml",
             name="AWS Cross-Account SAML Access",
@@ -387,13 +382,13 @@ resource "google_monitoring_alert_policy" "saml_anomaly" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, recipientAccountId, sourceIPAddress, errorCode
+                query="""fields @timestamp, userIdentity.principalId, recipientAccountId, sourceIPAddress, errorCode
 | filter eventName = "AssumeRoleWithSAML"
 | filter userIdentity.accountId != recipientAccountId
 | filter errorCode not exists
 | stats count(*) as cross_account_saml by userIdentity.principalId, recipientAccountId
-| sort cross_account_saml desc''',
-                terraform_template='''# Detect cross-account SAML authentication
+| sort cross_account_saml desc""",
+                terraform_template="""# Detect cross-account SAML authentication
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -432,7 +427,7 @@ resource "aws_cloudwatch_metric_alarm" "cross_account_saml" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.cross_account_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Cross-Account SAML Authentication Detected",
                 alert_description_template="SAML authentication from external account to {recipientAccountId}.",
@@ -442,7 +437,7 @@ resource "aws_cloudwatch_metric_alarm" "cross_account_saml" {
                     "Review trust policy configurations",
                     "Check for recent changes to federation settings",
                     "Audit activity in recipient account",
-                    "Verify SAML provider ARN matches expected values"
+                    "Verify SAML provider ARN matches expected values",
                 ],
                 containment_actions=[
                     "Remove unauthorised SAML provider trusts",
@@ -450,8 +445,8 @@ resource "aws_cloudwatch_metric_alarm" "cross_account_saml" {
                     "Terminate active cross-account sessions",
                     "Enable SCPs to restrict SAML providers",
                     "Audit all cross-account access",
-                    "Implement resource-based policies"
-                ]
+                    "Implement resource-based policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Maintain allowlist of legitimate cross-account SAML relationships",
@@ -460,16 +455,15 @@ resource "aws_cloudwatch_metric_alarm" "cross_account_saml" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail logging across all accounts"]
-        )
+            prerequisites=["CloudTrail logging across all accounts"],
+        ),
     ],
-
     recommended_order=[
         "t1606-002-aws-mfa-bypass",
         "t1606-002-aws-saml-anomaly",
         "t1606-002-aws-cross-account-saml",
-        "t1606-002-gcp-saml-anomaly"
+        "t1606-002-gcp-saml-anomaly",
     ],
     total_effort_hours=7.0,
-    coverage_improvement="+25% improvement for Credential Access tactic"
+    coverage_improvement="+25% improvement for Credential Access tactic",
 )

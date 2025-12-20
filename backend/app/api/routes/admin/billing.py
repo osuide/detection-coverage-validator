@@ -18,6 +18,7 @@ router = APIRouter(prefix="/billing", tags=["Admin Billing"])
 
 class BillingStatsResponse(BaseModel):
     """Billing stats response."""
+
     total_revenue: float
     mrr: float
     active_subscriptions: int
@@ -28,6 +29,7 @@ class BillingStatsResponse(BaseModel):
 
 class SubscriptionResponse(BaseModel):
     """Subscription response."""
+
     id: str
     organization_id: str
     organization_name: str
@@ -40,6 +42,7 @@ class SubscriptionResponse(BaseModel):
 
 class SubscriptionsListResponse(BaseModel):
     """Subscriptions list response."""
+
     subscriptions: list[SubscriptionResponse]
     total: int
 
@@ -94,9 +97,7 @@ async def get_billing_stats(
     # Calculate MRR (sum of active subscriptions)
     mrr = 0.0
     subscriptions_result = await db.execute(
-        select(Subscription).where(
-            Subscription.status == SubscriptionStatus.ACTIVE
-        )
+        select(Subscription).where(Subscription.status == SubscriptionStatus.ACTIVE)
     )
     active_subs = subscriptions_result.scalars().all()
     for sub in active_subs:
@@ -137,7 +138,9 @@ async def list_subscriptions(
                 organization_name=org.name,
                 plan=sub.tier.value if sub.tier else "free",
                 status=sub.status.value if sub.status else "unknown",
-                current_period_end=sub.current_period_end.isoformat() if sub.current_period_end else "",
+                current_period_end=(
+                    sub.current_period_end.isoformat() if sub.current_period_end else ""
+                ),
                 amount=TIER_PRICING.get(sub.tier, 0),
                 created_at=sub.created_at.isoformat() if sub.created_at else "",
             )

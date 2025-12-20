@@ -73,14 +73,14 @@ variable "stripe_webhook_secret" {
 
 variable "stripe_price_ids" {
   type = object({
-    subscriber          = string
-    enterprise          = string
-    additional_account  = string
+    subscriber         = string
+    enterprise         = string
+    additional_account = string
   })
   default = {
-    subscriber          = ""
-    enterprise          = ""
-    additional_account  = ""
+    subscriber         = ""
+    enterprise         = ""
+    additional_account = ""
   }
 }
 
@@ -487,24 +487,24 @@ resource "aws_ecs_task_definition" "backend" {
       { name = "STRIPE_PRICE_ID_ADDITIONAL_ACCOUNT", value = var.stripe_price_ids.additional_account },
       { name = "CORS_ORIGINS", value = var.frontend_url != "" && var.frontend_url != "http://localhost:3001" ? var.frontend_url : "*" },
       { name = "FRONTEND_URL", value = var.frontend_url }
-    ],
-    # Cognito OAuth configuration (only if Cognito is enabled)
-    var.cognito_user_pool_id != "" ? [
-      { name = "COGNITO_USER_POOL_ID", value = var.cognito_user_pool_id },
-      { name = "COGNITO_CLIENT_ID", value = var.cognito_client_id },
-      { name = "COGNITO_DOMAIN", value = var.cognito_domain },
-      { name = "COGNITO_ISSUER", value = var.cognito_issuer }
-    ] : [],
-    # OAuth provider client IDs (for backend to know which providers are enabled)
-    var.google_client_id != "" ? [{ name = "GOOGLE_CLIENT_ID", value = var.google_client_id }] : [],
-    var.github_client_id != "" ? [{ name = "GITHUB_CLIENT_ID", value = var.github_client_id }] : [],
-    var.github_client_secret != "" ? [{ name = "GITHUB_CLIENT_SECRET", value = var.github_client_secret }] : [],
-    var.microsoft_client_id != "" ? [{ name = "MICROSOFT_CLIENT_ID", value = var.microsoft_client_id }] : [],
-    # SES Email configuration
-    [
-      { name = "SES_ENABLED", value = "true" },
-      { name = "SES_FROM_EMAIL", value = "noreply@a13e.com" },
-      { name = "APP_URL", value = var.frontend_url }
+      ],
+      # Cognito OAuth configuration (only if Cognito is enabled)
+      var.cognito_user_pool_id != "" ? [
+        { name = "COGNITO_USER_POOL_ID", value = var.cognito_user_pool_id },
+        { name = "COGNITO_CLIENT_ID", value = var.cognito_client_id },
+        { name = "COGNITO_DOMAIN", value = var.cognito_domain },
+        { name = "COGNITO_ISSUER", value = var.cognito_issuer }
+      ] : [],
+      # OAuth provider client IDs (for backend to know which providers are enabled)
+      var.google_client_id != "" ? [{ name = "GOOGLE_CLIENT_ID", value = var.google_client_id }] : [],
+      var.github_client_id != "" ? [{ name = "GITHUB_CLIENT_ID", value = var.github_client_id }] : [],
+      var.github_client_secret != "" ? [{ name = "GITHUB_CLIENT_SECRET", value = var.github_client_secret }] : [],
+      var.microsoft_client_id != "" ? [{ name = "MICROSOFT_CLIENT_ID", value = var.microsoft_client_id }] : [],
+      # SES Email configuration
+      [
+        { name = "SES_ENABLED", value = "true" },
+        { name = "SES_FROM_EMAIL", value = "noreply@a13e.com" },
+        { name = "APP_URL", value = var.frontend_url }
     ])
 
     logConfiguration = {

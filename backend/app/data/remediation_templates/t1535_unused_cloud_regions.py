@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Unused/Unsupported Cloud Regions",
     tactic_ids=["TA0005"],
     mitre_url="https://attack.mitre.org/techniques/T1535/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries create resources in underutilised geographic cloud regions "
@@ -35,7 +34,7 @@ TEMPLATE = RemediationTemplate(
             "Detection tools may not cover all regions",
             "Security teams focus on primary regions",
             "Billing alerts may not be region-specific",
-            "Enables cryptomining without detection"
+            "Enables cryptomining without detection",
         ],
         known_threat_actors=["Cryptomining groups", "TeamTNT"],
         recent_campaigns=[
@@ -43,7 +42,7 @@ TEMPLATE = RemediationTemplate(
                 name="Unused Region Cryptomining",
                 year=2024,
                 description="Attackers leveraged unused AWS regions for cryptocurrency mining",
-                reference_url="https://attack.mitre.org/techniques/T1535/"
+                reference_url="https://attack.mitre.org/techniques/T1535/",
             )
         ],
         prevalence="moderate",
@@ -57,13 +56,12 @@ TEMPLATE = RemediationTemplate(
             "Unexpected cloud costs",
             "Undetected malicious activity",
             "Resource abuse",
-            "Compliance gaps in unused regions"
+            "Compliance gaps in unused regions",
         ],
         typical_attack_phase="defence_evasion",
         often_precedes=["T1496.001", "T1578.002"],
-        often_follows=["T1078.004"]
+        often_follows=["T1078.004"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1535-aws-unusedregion",
@@ -73,12 +71,12 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, awsRegion, eventName, userIdentity.arn
+                query="""fields @timestamp, awsRegion, eventName, userIdentity.arn
 | filter eventName like /Create|Run|Launch/
 | filter awsRegion not in ["eu-west-1", "eu-west-2", "us-east-1"]
 | stats count(*) as activity by awsRegion
-| sort activity desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort activity desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect activity in unused regions
 
 Parameters:
@@ -119,8 +117,8 @@ Resources:
       Threshold: 0
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect activity in unused AWS regions
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect activity in unused AWS regions
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -154,7 +152,7 @@ resource "aws_cloudwatch_event_rule" "unused_region" {
 resource "aws_cloudwatch_event_target" "sns" {
   rule = aws_cloudwatch_event_rule.unused_region.name
   arn  = aws_sns_topic.alerts.arn
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Activity in Unused Region",
                 alert_description_template="Resource created in region {awsRegion} which is not normally used.",
@@ -162,14 +160,14 @@ resource "aws_cloudwatch_event_target" "sns" {
                     "Verify if the region should have activity",
                     "Check what resources were created",
                     "Review who initiated the activity",
-                    "Check for cryptomining indicators"
+                    "Check for cryptomining indicators",
                 ],
                 containment_actions=[
                     "Terminate resources in unused regions",
                     "Use SCPs to deny actions in unused regions",
                     "Enable GuardDuty in all regions",
-                    "Set up billing alerts per region"
-                ]
+                    "Set up billing alerts per region",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Define allowed regions for your organisation",
@@ -178,9 +176,8 @@ resource "aws_cloudwatch_event_target" "sns" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["CloudTrail enabled in all regions"]
+            prerequisites=["CloudTrail enabled in all regions"],
         ),
-
         DetectionStrategy(
             strategy_id="t1535-gcp-unusedregion",
             name="GCP Unused Region Activity Detection",
@@ -192,7 +189,7 @@ resource "aws_cloudwatch_event_target" "sns" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName=~"compute.instances.insert"
 resource.labels.zone!~"europe-west2|us-central1"''',
-                gcp_terraform_template='''# GCP: Detect activity in unused regions
+                gcp_terraform_template="""# GCP: Detect activity in unused regions
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -232,7 +229,7 @@ resource "google_monitoring_alert_policy" "unused_region" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Activity in Unused Region",
                 alert_description_template="Resource created in region not normally used.",
@@ -240,13 +237,13 @@ resource "google_monitoring_alert_policy" "unused_region" {
                     "Verify if region should have activity",
                     "Check what resources were created",
                     "Review who initiated activity",
-                    "Check for cryptomining"
+                    "Check for cryptomining",
                 ],
                 containment_actions=[
                     "Delete resources in unused regions",
                     "Set organisation policy constraints",
-                    "Enable SCC in all regions"
-                ]
+                    "Enable SCC in all regions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Define allowed regions",
@@ -255,11 +252,10 @@ resource "google_monitoring_alert_policy" "unused_region" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Cloud Audit Logs enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled"],
+        ),
     ],
-
     recommended_order=["t1535-aws-unusedregion", "t1535-gcp-unusedregion"],
     total_effort_hours=3.0,
-    coverage_improvement="+12% improvement for Defence Evasion tactic"
+    coverage_improvement="+12% improvement for Defence Evasion tactic",
 )

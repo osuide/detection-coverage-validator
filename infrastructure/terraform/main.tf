@@ -150,12 +150,12 @@ module "backend" {
   ecr_repository_url         = module.ecr.repository_url
   domain_name                = var.domain_name != "" ? (var.subdomain != "" ? "api.${var.subdomain}.${var.domain_name}" : "api.${var.domain_name}") : ""
   # Certificate and HTTPS are enabled in phase 2 after initial deployment
-  certificate_arn            = var.enable_https && var.domain_name != "" ? module.dns[0].alb_certificate_arn : ""
-  enable_https               = var.enable_https
-  jwt_secret_key             = local.jwt_secret_key
-  stripe_secret_key          = var.stripe_secret_key
-  stripe_webhook_secret      = var.stripe_webhook_secret
-  stripe_price_ids           = var.stripe_price_ids
+  certificate_arn       = var.enable_https && var.domain_name != "" ? module.dns[0].alb_certificate_arn : ""
+  enable_https          = var.enable_https
+  jwt_secret_key        = local.jwt_secret_key
+  stripe_secret_key     = var.stripe_secret_key
+  stripe_webhook_secret = var.stripe_webhook_secret
+  stripe_price_ids      = var.stripe_price_ids
 
   # Cognito OAuth configuration
   cognito_user_pool_id = var.enable_cognito ? module.cognito[0].user_pool_id : ""

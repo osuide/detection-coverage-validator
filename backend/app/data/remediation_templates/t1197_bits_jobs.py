@@ -25,7 +25,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="BITS Jobs",
     tactic_ids=["TA0005", "TA0003"],  # Defense Evasion, Persistence
     mitre_url="https://attack.mitre.org/techniques/T1197/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries abuse Windows Background Intelligent Transfer Service (BITS) to download "
@@ -45,30 +44,34 @@ TEMPLATE = RemediationTemplate(
             "Difficult to distinguish from legitimate BITS activity",
             "Long-running jobs (90-day default lifespan) enable persistence",
             "Supports authenticated downloads using stored credentials",
-            "Executes under svchost.exe context, appearing legitimate"
+            "Executes under svchost.exe context, appearing legitimate",
         ],
         known_threat_actors=[
-            "APT39", "APT41", "Leviathan", "Patchwork", "Wizard Spider"
+            "APT39",
+            "APT41",
+            "Leviathan",
+            "Patchwork",
+            "Wizard Spider",
         ],
         recent_campaigns=[
             Campaign(
                 name="Egregor Ransomware BITS Persistence",
                 year=2024,
                 description="Egregor ransomware used BITS jobs to download additional payloads and maintain persistence on compromised networks",
-                reference_url="https://attack.mitre.org/software/S0554/"
+                reference_url="https://attack.mitre.org/software/S0554/",
             ),
             Campaign(
                 name="Bazar Backdoor BITS Downloads",
                 year=2024,
                 description="Bazar malware extensively used BITS for downloading second-stage payloads while evading detection",
-                reference_url="https://attack.mitre.org/software/S0534/"
+                reference_url="https://attack.mitre.org/software/S0534/",
             ),
             Campaign(
                 name="APT41 BITS Job Abuse",
                 year=2023,
                 description="APT41 created BITS jobs on Windows instances to download tools and establish persistence mechanisms",
-                reference_url="https://attack.mitre.org/groups/G0096/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0096/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -86,13 +89,12 @@ TEMPLATE = RemediationTemplate(
             "Command execution via notification callbacks",
             "Data exfiltration using BITS upload capabilities",
             "Difficult to detect among legitimate update traffic",
-            "Long-term compromise due to job persistence"
+            "Long-term compromise due to job persistence",
         ],
         typical_attack_phase="persistence",
         often_precedes=["T1486", "T1496.001", "T1105", "T1059.001"],
-        often_follows=["T1190", "T1078.004", "T1566"]
+        often_follows=["T1190", "T1078.004", "T1566"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1197-aws-windows-bits",
@@ -102,13 +104,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message, instanceId, commandLine
+                query="""fields @timestamp, @message, instanceId, commandLine
 | filter @message like /bitsadmin|Start-BitsTransfer|Add-BitsFile|Set-BitsTransfer|SetNotifyCmdLine/i
 | filter @message like /create|addfile|setnotifycmdline|transfer|complete/i
 | stats count(*) as bits_commands by instanceId, bin(10m)
 | filter bits_commands > 2
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect BITS job abuse on Windows EC2 instances
 
 Parameters:
@@ -156,8 +158,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching''',
-                terraform_template='''# AWS: Detect BITS job abuse on Windows EC2 instances
+      TreatMissingData: notBreaching""",
+                terraform_template="""# AWS: Detect BITS job abuse on Windows EC2 instances
 
 variable "cloudtrail_log_group" {
   description = "CloudTrail log group name"
@@ -207,7 +209,7 @@ resource "aws_cloudwatch_metric_alarm" "bits_jobs" {
   comparison_operator = "GreaterThanThreshold"
   alarm_actions       = [aws_sns_topic.bits_alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="BITS Job Activity Detected on Windows Instance",
                 alert_description_template="BITS job commands detected on instance {instanceId}. Command: {commandLine}.",
@@ -219,7 +221,7 @@ resource "aws_cloudwatch_metric_alarm" "bits_jobs" {
                     "Verify legitimacy of downloaded files via hash analysis",
                     "Review Windows Event Log ID 4688 for process creation",
                     "Check BITS-Client operational logs for job details",
-                    "Analyse network connections to download sources"
+                    "Analyse network connections to download sources",
                 ],
                 containment_actions=[
                     "Cancel malicious BITS jobs using 'bitsadmin /cancel' or 'Remove-BitsTransfer'",
@@ -228,8 +230,8 @@ resource "aws_cloudwatch_metric_alarm" "bits_jobs" {
                     "Review and remove any notification command persistence",
                     "Rotate instance credentials and IAM roles",
                     "Create snapshot for forensic analysis",
-                    "Block malicious download URLs at network level"
-                ]
+                    "Block malicious download URLs at network level",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Exclude authorised software deployment and Windows Update processes",
@@ -238,9 +240,11 @@ resource "aws_cloudwatch_metric_alarm" "bits_jobs" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["CloudTrail enabled with SSM logging", "SSM Agent installed on Windows instances"]
+            prerequisites=[
+                "CloudTrail enabled with SSM logging",
+                "SSM Agent installed on Windows instances",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1197-aws-windows-events",
             name="AWS Windows Event Log Analysis for BITS",
@@ -249,13 +253,13 @@ resource "aws_cloudwatch_metric_alarm" "bits_jobs" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, event.eventID, event.data.jobId, event.data.url, event.data.fileDestination
+                query="""fields @timestamp, event.eventID, event.data.jobId, event.data.url, event.data.fileDestination
 | filter event.channel = "Microsoft-Windows-Bits-Client/Operational"
 | filter event.eventID in [3, 59, 60, 61]
 | stats count(*) as job_events by event.data.jobId, event.data.url, bin(30m)
 | filter job_events > 1
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Monitor Windows Event Logs for BITS activity
 
 Parameters:
@@ -303,8 +307,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching''',
-                terraform_template='''# AWS: Monitor Windows Event Logs for BITS activity
+      TreatMissingData: notBreaching""",
+                terraform_template="""# AWS: Monitor Windows Event Logs for BITS activity
 
 variable "windows_event_log_group" {
   description = "CloudWatch log group receiving Windows Event Logs"
@@ -354,7 +358,7 @@ resource "aws_cloudwatch_metric_alarm" "bits_events" {
   comparison_operator = "GreaterThanThreshold"
   alarm_actions       = [aws_sns_topic.bits_event_alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="BITS Job Activity via Windows Event Logs",
                 alert_description_template="BITS job activity detected. Job ID: {jobId}, URL: {url}",
@@ -366,7 +370,7 @@ resource "aws_cloudwatch_metric_alarm" "bits_events" {
                     "Look for SetNotifyCmdLine in job properties",
                     "Correlate with network connection logs",
                     "Check for other suspicious processes on the instance",
-                    "Review user account associated with the job"
+                    "Review user account associated with the job",
                 ],
                 containment_actions=[
                     "Cancel suspicious BITS jobs immediately",
@@ -375,8 +379,8 @@ resource "aws_cloudwatch_metric_alarm" "bits_events" {
                     "Disable BITS service if not required for operations",
                     "Review scheduled tasks for persistence mechanisms",
                     "Rotate credentials for affected user accounts",
-                    "Enable BITS job auditing via Group Policy"
-                ]
+                    "Enable BITS job auditing via Group Policy",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal Windows Update and software deployment BITS activity",
@@ -385,9 +389,11 @@ resource "aws_cloudwatch_metric_alarm" "bits_events" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$15-30",
-            prerequisites=["Windows Event Log forwarding to CloudWatch configured", "CloudWatch Agent installed"]
+            prerequisites=[
+                "Windows Event Log forwarding to CloudWatch configured",
+                "CloudWatch Agent installed",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1197-aws-svchost-network",
             name="AWS Network Traffic from BITS Service",
@@ -396,13 +402,13 @@ resource "aws_cloudwatch_metric_alarm" "bits_events" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcAddr, dstAddr, dstPort, protocol, bytes
+                query="""fields @timestamp, srcAddr, dstAddr, dstPort, protocol, bytes
 | filter srcProcess = "svchost.exe" and srcService = "BITS"
 | filter dstPort in [80, 443, 445]
 | stats sum(bytes) as total_bytes, count(*) as connections by srcAddr, dstAddr, dstPort, bin(15m)
 | filter total_bytes > 10485760 or connections > 20
-| sort total_bytes desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort total_bytes desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect network activity from BITS service
 
 Parameters:
@@ -450,8 +456,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching''',
-                terraform_template='''# AWS: Detect network activity from BITS service
+      TreatMissingData: notBreaching""",
+                terraform_template="""# AWS: Detect network activity from BITS service
 
 variable "vpc_flow_log_group" {
   description = "VPC Flow Logs log group name"
@@ -501,7 +507,7 @@ resource "aws_cloudwatch_metric_alarm" "bits_network" {
   comparison_operator = "GreaterThanThreshold"
   alarm_actions       = [aws_sns_topic.bits_network_alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Large File Transfer via BITS Detected",
                 alert_description_template="Instance {srcAddr} transferred {total_bytes} bytes to {dstAddr} via BITS service",
@@ -512,7 +518,7 @@ resource "aws_cloudwatch_metric_alarm" "bits_network" {
                     "Review active BITS jobs on the instance",
                     "Correlate with process execution logs",
                     "Check for authorised software updates or deployments",
-                    "Review user activity on the instance during transfer period"
+                    "Review user activity on the instance during transfer period",
                 ],
                 containment_actions=[
                     "Block destination IP/domain if malicious",
@@ -521,8 +527,8 @@ resource "aws_cloudwatch_metric_alarm" "bits_network" {
                     "Enable VPC endpoint for Windows Update to restrict outbound",
                     "Implement security group rules restricting outbound traffic",
                     "Review and harden Windows firewall rules",
-                    "Consider disabling BITS if not operationally required"
-                ]
+                    "Consider disabling BITS if not operationally required",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Exclude Windows Update servers and known CDNs used for legitimate software distribution",
@@ -531,9 +537,11 @@ resource "aws_cloudwatch_metric_alarm" "bits_network" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-25",
-            prerequisites=["VPC Flow Logs enabled", "Enhanced network monitoring for process attribution"]
+            prerequisites=[
+                "VPC Flow Logs enabled",
+                "Enhanced network monitoring for process attribution",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1197-gcp-windows-bits",
             name="GCP Windows Instance BITS Job Detection",
@@ -543,10 +551,10 @@ resource "aws_cloudwatch_metric_alarm" "bits_network" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 (jsonPayload.message=~"bitsadmin|Start-BitsTransfer|Add-BitsFile|SetNotifyCmdLine"
-OR protoPayload.request.commandLine=~"bitsadmin.*create|bitsadmin.*addfile|bitsadmin.*setnotifycmdline")''',
-                gcp_terraform_template='''# GCP: Detect BITS job abuse on Windows GCE instances
+OR protoPayload.request.commandLine=~"bitsadmin.*create|bitsadmin.*addfile|bitsadmin.*setnotifycmdline")""",
+                gcp_terraform_template="""# GCP: Detect BITS job abuse on Windows GCE instances
 
 variable "project_id" {
   description = "GCP project ID"
@@ -620,7 +628,7 @@ resource "google_monitoring_alert_policy" "bits_jobs" {
     content   = "BITS job activity detected on Windows GCE instance. Review jobs for malicious download or persistence mechanisms."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: BITS Job Detected on Windows Instance",
                 alert_description_template="BITS job commands detected on instance {instance_id}",
@@ -632,7 +640,7 @@ resource "google_monitoring_alert_policy" "bits_jobs" {
                     "Review Windows Event Viewer for BITS-Client logs",
                     "Check service account permissions",
                     "Analyse network traffic from the instance",
-                    "Review recent user login activity"
+                    "Review recent user login activity",
                 ],
                 containment_actions=[
                     "Cancel malicious BITS jobs on the instance",
@@ -641,8 +649,8 @@ resource "google_monitoring_alert_policy" "bits_jobs" {
                     "Block malicious URLs via Cloud DNS or firewall rules",
                     "Revoke service account credentials",
                     "Review and remove persistence mechanisms",
-                    "Implement VPC firewall rules restricting outbound traffic"
-                ]
+                    "Implement VPC firewall rules restricting outbound traffic",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Exclude authorised Windows Update and software deployment activities",
@@ -651,9 +659,11 @@ resource "google_monitoring_alert_policy" "bits_jobs" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Logging enabled for GCE", "Windows logging configured on instances"]
+            prerequisites=[
+                "Cloud Logging enabled for GCE",
+                "Windows logging configured on instances",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1197-gcp-windows-events",
             name="GCP Windows Event Log Analysis for BITS",
@@ -663,10 +673,10 @@ resource "google_monitoring_alert_policy" "bits_jobs" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 jsonPayload.EventLog.Channel="Microsoft-Windows-Bits-Client/Operational"
-jsonPayload.EventLog.EventID IN (3, 59, 60, 61)''',
-                gcp_terraform_template='''# GCP: Monitor Windows Event Logs for BITS activity
+jsonPayload.EventLog.EventID IN (3, 59, 60, 61)""",
+                gcp_terraform_template="""# GCP: Monitor Windows Event Logs for BITS activity
 
 variable "project_id" {
   description = "GCP project ID"
@@ -746,7 +756,7 @@ resource "google_monitoring_alert_policy" "bits_events" {
     content   = "Multiple BITS-Client operational events detected. Review Event IDs: 3 (job created), 59/60/61 (transfer events)."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: BITS Client Activity via Windows Events",
                 alert_description_template="BITS-Client events detected on instance {instance_id}. Event ID: {event_id}",
@@ -758,7 +768,7 @@ resource "google_monitoring_alert_policy" "bits_events" {
                     "Look for notification command configuration",
                     "Review network connections from the instance",
                     "Check for lateral movement attempts",
-                    "Correlate with other security events"
+                    "Correlate with other security events",
                 ],
                 containment_actions=[
                     "Cancel active malicious BITS jobs",
@@ -768,8 +778,8 @@ resource "google_monitoring_alert_policy" "bits_events" {
                     "Disable BITS service if not required",
                     "Review and remove persistence mechanisms",
                     "Rotate credentials and service account keys",
-                    "Create snapshot for forensic investigation"
-                ]
+                    "Create snapshot for forensic investigation",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline legitimate Windows Update and patch management BITS activity",
@@ -778,17 +788,19 @@ resource "google_monitoring_alert_policy" "bits_events" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$15-30",
-            prerequisites=["Cloud Logging API enabled", "Windows Event Log forwarding configured on instances"]
-        )
+            prerequisites=[
+                "Cloud Logging API enabled",
+                "Windows Event Log forwarding configured on instances",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1197-aws-windows-bits",
         "t1197-gcp-windows-bits",
         "t1197-aws-windows-events",
         "t1197-gcp-windows-events",
-        "t1197-aws-svchost-network"
+        "t1197-aws-svchost-network",
     ],
     total_effort_hours=8.5,
-    coverage_improvement="+15% improvement for Defense Evasion and Persistence tactics"
+    coverage_improvement="+15% improvement for Defense Evasion and Persistence tactics",
 )

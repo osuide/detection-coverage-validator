@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Use Alternate Authentication Material: Application Access Token",
     tactic_ids=["TA0005", "TA0008"],
     mitre_url="https://attack.mitre.org/techniques/T1550/001/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries exploit stolen application access tokens to circumvent "
@@ -36,7 +35,7 @@ TEMPLATE = RemediationTemplate(
             "OAuth tokens often have long validity periods",
             "Tokens can be reused from any location without triggering location-based alerts",
             "API access negates effectiveness of second authentication factors",
-            "Service account tokens frequently have elevated permissions"
+            "Service account tokens frequently have elevated permissions",
         ],
         known_threat_actors=["APT28", "APT29", "HAFNIUM"],
         recent_campaigns=[
@@ -44,20 +43,20 @@ TEMPLATE = RemediationTemplate(
                 name="APT28 Gmail OAuth Abuse",
                 year=2022,
                 description="APT28 deployed malicious OAuth applications targeting Gmail and Yahoo Mail accounts for intelligence collection",
-                reference_url="https://attack.mitre.org/groups/G0007/"
+                reference_url="https://attack.mitre.org/groups/G0007/",
             ),
             Campaign(
                 name="HAFNIUM Exchange Server Attacks",
                 year=2021,
                 description="HAFNIUM abused compromised service principals with administrative permissions for data theft from Exchange servers",
-                reference_url="https://www.microsoft.com/security/blog/2021/03/02/hafnium-targeting-exchange-servers/"
+                reference_url="https://www.microsoft.com/security/blog/2021/03/02/hafnium-targeting-exchange-servers/",
             ),
             Campaign(
                 name="SolarWinds Supply Chain Attack",
                 year=2020,
                 description="APT29 used compromised service principals during the SolarWinds breach to modify Office 365 configurations",
-                reference_url="https://www.microsoft.com/security/blog/2020/12/18/analyzing-solorigate-the-compromised-dll-file-that-started-a-sophisticated-cyberattack-and-how-microsoft-defender-helps-protect/"
-            )
+                reference_url="https://www.microsoft.com/security/blog/2020/12/18/analyzing-solorigate-the-compromised-dll-file-that-started-a-sophisticated-cyberattack-and-how-microsoft-defender-helps-protect/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -72,13 +71,12 @@ TEMPLATE = RemediationTemplate(
             "Data exfiltration via legitimate API calls",
             "Persistent access until token expiration or rotation",
             "Lateral movement to connected cloud services",
-            "Compliance violations due to bypassed authentication controls"
+            "Compliance violations due to bypassed authentication controls",
         ],
         typical_attack_phase="lateral_movement",
         often_precedes=["T1530", "T1537", "T1114"],
-        often_follows=["T1528", "T1552", "T1566"]
+        often_follows=["T1528", "T1552", "T1566"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - STS Token Anomalies
         DetectionStrategy(
@@ -89,13 +87,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.arn, sourceIPAddress, requestParameters.durationSeconds
+                query="""fields @timestamp, eventName, userIdentity.arn, sourceIPAddress, requestParameters.durationSeconds
 | filter eventSource = "sts.amazonaws.com"
 | filter eventName in ["GetFederationToken", "AssumeRole", "GetSessionToken"]
 | stats count(*) as token_requests, count_distinct(sourceIPAddress) as unique_ips by userIdentity.arn, bin(1h)
 | filter token_requests > 20 or unique_ips > 3
-| sort token_requests desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort token_requests desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect STS token anomalies for T1550.001
 
 Parameters:
@@ -136,8 +134,8 @@ Resources:
       Threshold: 100
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect STS token anomalies
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect STS token anomalies
 
 variable "cloudtrail_log_group" {
   type = string
@@ -182,7 +180,7 @@ resource "aws_cloudwatch_metric_alarm" "sts_anomaly" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Unusual STS Token Activity",
                 alert_description_template="High volume of STS token requests detected from {userIdentity.arn}. {token_requests} requests from {unique_ips} IP addresses.",
@@ -191,15 +189,15 @@ resource "aws_cloudwatch_metric_alarm" "sts_anomaly" {
                     "Check source IP addresses for unusual geolocations",
                     "Verify if token requests match expected application behaviour",
                     "Review what actions were performed with issued tokens",
-                    "Check for impossible travel scenarios"
+                    "Check for impossible travel scenarios",
                 ],
                 containment_actions=[
                     "Revoke active sessions using AWS STS",
                     "Rotate credentials for the affected identity",
                     "Review and restrict STS permissions via IAM policies",
                     "Enable MFA requirement for sensitive STS operations",
-                    "Implement IP allowlisting for token requests"
-                ]
+                    "Implement IP allowlisting for token requests",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known automation systems and CI/CD pipelines; adjust threshold based on normal token usage patterns",
@@ -208,9 +206,8 @@ resource "aws_cloudwatch_metric_alarm" "sts_anomaly" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["CloudTrail logging STS events to CloudWatch Logs"]
+            prerequisites=["CloudTrail logging STS events to CloudWatch Logs"],
         ),
-
         # Strategy 2: AWS - OAuth Token Reuse Detection
         DetectionStrategy(
             strategy_id="t1550001-aws-oauth-reuse",
@@ -220,7 +217,7 @@ resource "aws_cloudwatch_metric_alarm" "sts_anomaly" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, sourceIPAddress, userAgent
+                query="""fields @timestamp, userIdentity.principalId, sourceIPAddress, userAgent
 | filter eventSource = "cognito-idp.amazonaws.com"
 | filter eventName in ["InitiateAuth", "RespondToAuthChallenge", "GetUser", "GetUserAttributeVerificationCode"]
 | stats count(*) as auth_count,
@@ -228,8 +225,8 @@ resource "aws_cloudwatch_metric_alarm" "sts_anomaly" {
         count_distinct(userAgent) as agent_count
   by userIdentity.principalId, bin(4h)
 | filter ip_count > 2 or agent_count > 2
-| sort auth_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort auth_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect OAuth token reuse anomalies
 
 Parameters:
@@ -270,8 +267,8 @@ Resources:
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect OAuth token reuse anomalies
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect OAuth token reuse anomalies
 
 variable "cloudtrail_log_group" {
   type = string
@@ -316,7 +313,7 @@ resource "aws_cloudwatch_metric_alarm" "token_reuse" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="OAuth Token Used from Multiple Locations",
                 alert_description_template="Token for {userIdentity.principalId} used from {ip_count} different IP addresses and {agent_count} user agents.",
@@ -325,15 +322,15 @@ resource "aws_cloudwatch_metric_alarm" "token_reuse" {
                     "Review user agent strings for suspicious patterns",
                     "Check if legitimate for user to access from multiple locations",
                     "Review all API calls made with the token",
-                    "Correlate with other security events for the user"
+                    "Correlate with other security events for the user",
                 ],
                 containment_actions=[
                     "Revoke the OAuth token immediately",
                     "Force user re-authentication with MFA",
                     "Enable token binding if supported",
                     "Review and restrict OAuth application permissions",
-                    "Implement context-aware access controls"
-                ]
+                    "Implement context-aware access controls",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Consider legitimate use cases like VPN users or mobile workers; whitelist known corporate IP ranges",
@@ -342,9 +339,8 @@ resource "aws_cloudwatch_metric_alarm" "token_reuse" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["CloudTrail logging Cognito events"]
+            prerequisites=["CloudTrail logging Cognito events"],
         ),
-
         # Strategy 3: GCP - Service Account Token Abuse
         DetectionStrategy(
             strategy_id="t1550001-gcp-sa-token",
@@ -355,10 +351,10 @@ resource "aws_cloudwatch_metric_alarm" "token_reuse" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''protoPayload.authenticationInfo.principalEmail=~".*@.*iam.gserviceaccount.com"
+                gcp_logging_query="""protoPayload.authenticationInfo.principalEmail=~".*@.*iam.gserviceaccount.com"
 protoPayload.requestMetadata.callerIp!~"^(10\\.|172\\.(1[6-9]|2[0-9]|3[0-1])\\.|192\\.168\\.|35\\.)"
-severity>=NOTICE''',
-                gcp_terraform_template='''# GCP: Detect service account token abuse
+severity>=NOTICE""",
+                gcp_terraform_template="""# GCP: Detect service account token abuse
 
 variable "project_id" {
   type = string
@@ -412,7 +408,7 @@ resource "google_monitoring_alert_policy" "sa_token_alert" {
   documentation {
     content = "Service account token detected in use from external IP address. This may indicate stolen credentials."
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Service Account Token Used from External Location",
                 alert_description_template="Service account token used from external IP address. This may indicate credential theft.",
@@ -421,15 +417,15 @@ resource "google_monitoring_alert_policy" "sa_token_alert" {
                     "Review the source IP address and geolocation",
                     "Check what API calls were made with the token",
                     "Verify if external access is legitimate",
-                    "Review service account key creation/download logs"
+                    "Review service account key creation/download logs",
                 ],
                 containment_actions=[
                     "Delete and rotate the service account key",
                     "Disable the service account if not actively needed",
                     "Review and reduce service account permissions",
                     "Enable VPC Service Controls to restrict access",
-                    "Implement Workload Identity where possible"
-                ]
+                    "Implement Workload Identity where possible",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known external services and CI/CD systems; exclude Google Cloud IP ranges",
@@ -438,9 +434,8 @@ resource "google_monitoring_alert_policy" "sa_token_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled"],
         ),
-
         # Strategy 4: GCP - OAuth Token Anomaly Detection
         DetectionStrategy(
             strategy_id="t1550001-gcp-oauth",
@@ -451,10 +446,10 @@ resource "google_monitoring_alert_policy" "sa_token_alert" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="audited_resource"
+                gcp_logging_query="""resource.type="audited_resource"
 (protoPayload.methodName=~"google.identity.*" OR protoPayload.serviceName="oauth2.googleapis.com")
-severity>=WARNING''',
-                gcp_terraform_template='''# GCP: Detect OAuth token anomalies
+severity>=WARNING""",
+                gcp_terraform_template="""# GCP: Detect OAuth token anomalies
 
 variable "project_id" {
   type = string
@@ -508,7 +503,7 @@ resource "google_monitoring_alert_policy" "oauth_alert" {
   documentation {
     content = "Unusual OAuth token activity detected. Review for potential token theft or abuse."
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP OAuth Token Anomalies",
                 alert_description_template="Unusual OAuth token activity detected in GCP environment.",
@@ -517,15 +512,15 @@ resource "google_monitoring_alert_policy" "oauth_alert" {
                     "Check for unauthorised third-party application authorisations",
                     "Verify token source IP addresses and locations",
                     "Review workspace admin activity logs",
-                    "Check for scope escalation attempts"
+                    "Check for scope escalation attempts",
                 ],
                 containment_actions=[
                     "Revoke suspicious OAuth application access",
                     "Remove unauthorised third-party applications",
                     "Enable OAuth app restrictions via workspace admin console",
                     "Review and limit OAuth scopes for applications",
-                    "Implement context-aware access policies"
-                ]
+                    "Implement context-aware access policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal OAuth patterns for your organisation; whitelist approved applications",
@@ -534,16 +529,15 @@ resource "google_monitoring_alert_policy" "oauth_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Audit Logs enabled", "Admin Activity logs enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled", "Admin Activity logs enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1550001-aws-sts",
         "t1550001-gcp-sa-token",
         "t1550001-aws-oauth-reuse",
-        "t1550001-gcp-oauth"
+        "t1550001-gcp-oauth",
     ],
     total_effort_hours=6.5,
-    coverage_improvement="+20% improvement for Defence Evasion and Lateral Movement tactics"
+    coverage_improvement="+20% improvement for Defence Evasion and Lateral Movement tactics",
 )

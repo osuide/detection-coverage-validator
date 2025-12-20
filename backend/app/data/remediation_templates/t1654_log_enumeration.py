@@ -25,7 +25,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Log Enumeration",
     tactic_ids=["TA0007"],
     mitre_url="https://attack.mitre.org/techniques/T1654/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries enumerate system and service logs to discover valuable intelligence "
@@ -42,22 +41,28 @@ TEMPLATE = RemediationTemplate(
             "Monitors incident response procedures",
             "Discovers network hosts and services",
             "Enables log deletion to evade detection",
-            "Cloud logs contain API activity and credentials"
+            "Cloud logs contain API activity and credentials",
         ],
-        known_threat_actors=["APT5", "Aquatic Panda", "Ember Bear", "Mustang Panda", "Volt Typhoon"],
+        known_threat_actors=[
+            "APT5",
+            "Aquatic Panda",
+            "Ember Bear",
+            "Mustang Panda",
+            "Volt Typhoon",
+        ],
         recent_campaigns=[
             Campaign(
                 name="Volt Typhoon Living-off-the-Land",
                 year=2024,
                 description="Used wevtutil.exe and PowerShell to search for successful logons in Security Event Logs",
-                reference_url="https://attack.mitre.org/groups/G1017/"
+                reference_url="https://attack.mitre.org/groups/G1017/",
             ),
             Campaign(
                 name="Mustang Panda Log Collection",
                 year=2023,
                 description="Employed Wevtutil for Windows Security Event Log gathering",
-                reference_url="https://attack.mitre.org/groups/G0129/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0129/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -73,13 +78,12 @@ TEMPLATE = RemediationTemplate(
             "Exposes incident response procedures",
             "Enables targeted credential theft",
             "Facilitates log tampering",
-            "Compromises forensic evidence"
+            "Compromises forensic evidence",
         ],
         typical_attack_phase="discovery",
         often_precedes=["T1070.001", "T1552.001", "T1078"],
-        often_follows=["T1078", "T1059"]
+        often_follows=["T1078", "T1059"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1654-aws-cloudtrail-logs",
@@ -89,12 +93,12 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, eventName, sourceIPAddress
+                query="""fields @timestamp, userIdentity.principalId, eventName, sourceIPAddress
 | filter eventName in ["DescribeLogStreams", "GetLogEvents", "FilterLogEvents", "LookupEvents", "DescribeEventAggregates"]
 | stats count(*) as api_calls by userIdentity.principalId, sourceIPAddress, bin(5m)
 | filter api_calls > 20
-| sort api_calls desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort api_calls desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect CloudTrail and CloudWatch log enumeration activity
 
 Parameters:
@@ -142,8 +146,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching''',
-                terraform_template='''# AWS: Detect CloudTrail and CloudWatch log enumeration
+      TreatMissingData: notBreaching""",
+                terraform_template="""# AWS: Detect CloudTrail and CloudWatch log enumeration
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -194,7 +198,7 @@ resource "aws_cloudwatch_metric_alarm" "excessive_log_enumeration" {
   comparison_operator = "GreaterThanThreshold"
   alarm_actions       = [aws_sns_topic.log_enumeration_alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Excessive Log Enumeration Detected",
                 alert_description_template="User {principalId} performed {api_calls} log enumeration API calls from {sourceIPAddress}.",
@@ -204,15 +208,15 @@ resource "aws_cloudwatch_metric_alarm" "excessive_log_enumeration" {
                     "Check if activity correlates with known incident response",
                     "Look for subsequent log deletion attempts (DeleteLogStream, DeleteLogGroup)",
                     "Review IAM permissions for the principal",
-                    "Check for data exfiltration after enumeration"
+                    "Check for data exfiltration after enumeration",
                 ],
                 containment_actions=[
                     "Revoke sessions for suspicious principals",
                     "Restrict CloudWatch Logs read permissions",
                     "Enable MFA for sensitive log access",
                     "Review and rotate exposed credentials",
-                    "Create SCPs to restrict log access patterns"
-                ]
+                    "Create SCPs to restrict log access patterns",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude legitimate monitoring tools and incident response activities. Tune threshold based on environment size.",
@@ -221,9 +225,11 @@ resource "aws_cloudwatch_metric_alarm" "excessive_log_enumeration" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-60 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail logging enabled", "CloudTrail logs sent to CloudWatch"]
+            prerequisites=[
+                "CloudTrail logging enabled",
+                "CloudTrail logs sent to CloudWatch",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1654-aws-ec2-log-access",
             name="EC2 Instance Log File Access Detection",
@@ -232,13 +238,13 @@ resource "aws_cloudwatch_metric_alarm" "excessive_log_enumeration" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, process, command, user
+                query="""fields @timestamp, process, command, user
 | filter process in ["cat", "grep", "tail", "head", "less", "more", "wevtutil.exe", "Get-EventLog", "Get-WinEvent"]
 | filter command like /\/var\/log|\/var\/log\/auth\.log|\/var\/log\/secure|\.evtx|Security|System/
 | stats count(*) as log_reads by user, bin(10m)
 | filter log_reads > 10
-| sort log_reads desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort log_reads desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect unusual system log file access on EC2 instances
 
 Parameters:
@@ -286,8 +292,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching''',
-                terraform_template='''# AWS: Detect unusual system log file access on EC2
+      TreatMissingData: notBreaching""",
+                terraform_template="""# AWS: Detect unusual system log file access on EC2
 
 variable "system_log_group" {
   type        = string
@@ -338,7 +344,7 @@ resource "aws_cloudwatch_metric_alarm" "excessive_log_access" {
   comparison_operator = "GreaterThanThreshold"
   alarm_actions       = [aws_sns_topic.log_access_alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Suspicious System Log Access",
                 alert_description_template="User {user} accessed system logs {log_reads} times.",
@@ -348,15 +354,15 @@ resource "aws_cloudwatch_metric_alarm" "excessive_log_access" {
                     "Check if logs were exfiltrated or deleted",
                     "Correlate with authentication events",
                     "Review CloudTrail for related API activity",
-                    "Check for credential dumping attempts"
+                    "Check for credential dumping attempts",
                 ],
                 containment_actions=[
                     "Isolate compromised instance",
                     "Revoke user sessions",
                     "Review file access permissions",
                     "Enable file integrity monitoring",
-                    "Capture memory/disk forensics"
-                ]
+                    "Capture memory/disk forensics",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude system administrators and monitoring tools. Requires process auditing (auditd/CloudWatch agent).",
@@ -365,9 +371,11 @@ resource "aws_cloudwatch_metric_alarm" "excessive_log_access" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["CloudWatch agent with process monitoring enabled", "System audit logs forwarded to CloudWatch"]
+            prerequisites=[
+                "CloudWatch agent with process monitoring enabled",
+                "System audit logs forwarded to CloudWatch",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1654-gcp-log-enumeration",
             name="GCP Cloud Logging Enumeration Detection",
@@ -380,7 +388,7 @@ resource "aws_cloudwatch_metric_alarm" "excessive_log_access" {
                 gcp_logging_query='''protoPayload.methodName=~"google.logging.v2.LoggingServiceV2.(ListLogEntries|ListLogs)"
 OR protoPayload.methodName="storage.objects.get"
 protoPayload.resourceName=~"logs/"''',
-                gcp_terraform_template='''# GCP: Detect Cloud Logging enumeration activity
+                gcp_terraform_template="""# GCP: Detect Cloud Logging enumeration activity
 
 variable "project_id" {
   type        = string
@@ -456,7 +464,7 @@ resource "google_monitoring_alert_policy" "excessive_log_enumeration" {
     content   = "Excessive Cloud Logging enumeration detected. Review the principal and investigate potential unauthorised log access."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Excessive Log Enumeration",
                 alert_description_template="Principal {principal} performed excessive log enumeration API calls.",
@@ -466,15 +474,15 @@ resource "google_monitoring_alert_policy" "excessive_log_enumeration" {
                     "Check for subsequent log deletion or export",
                     "Correlate with Cloud Audit Logs",
                     "Review IAM permissions for the principal",
-                    "Check for data exfiltration via Storage"
+                    "Check for data exfiltration via Storage",
                 ],
                 containment_actions=[
                     "Revoke service account keys or user sessions",
                     "Restrict logging.viewer and logging.privateLogViewer roles",
                     "Enable VPC Service Controls for Logging API",
                     "Review and rotate exposed credentials",
-                    "Create organisation policies to restrict log access"
-                ]
+                    "Create organisation policies to restrict log access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude legitimate monitoring services and SIEM integrations. Tune threshold based on environment.",
@@ -483,9 +491,8 @@ resource "google_monitoring_alert_policy" "excessive_log_enumeration" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-60 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled", "Admin Read audit logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled", "Admin Read audit logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1654-gcp-vm-log-access",
             name="GCP VM Instance Log File Access",
@@ -498,7 +505,7 @@ resource "google_monitoring_alert_policy" "excessive_log_enumeration" {
                 gcp_logging_query='''resource.type="gce_instance"
 jsonPayload.message=~"(cat|grep|tail|head|less) .*(\/var\/log|auth\.log|syslog|secure)"
 OR jsonPayload.process_name=~"(cat|grep|tail|journalctl)"''',
-                gcp_terraform_template='''# GCP: Detect system log file access on Compute instances
+                gcp_terraform_template="""# GCP: Detect system log file access on Compute instances
 
 variable "project_id" {
   type        = string
@@ -576,7 +583,7 @@ resource "google_monitoring_alert_policy" "excessive_vm_log_access" {
     content   = "Excessive system log file access detected on GCE instance. Investigate potential log enumeration activity."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Suspicious VM Log Access",
                 alert_description_template="User {user} on instance {instance} accessed system logs excessively.",
@@ -586,15 +593,15 @@ resource "google_monitoring_alert_policy" "excessive_vm_log_access" {
                     "Check for log exfiltration to Cloud Storage",
                     "Review command history via Cloud Logging",
                     "Check for credential dumping or privilege escalation",
-                    "Correlate with other suspicious VM activity"
+                    "Correlate with other suspicious VM activity",
                 ],
                 containment_actions=[
                     "Isolate compromised instance (firewall rules)",
                     "Revoke SSH keys and OS Login access",
                     "Take disk snapshot for forensics",
                     "Review IAM permissions",
-                    "Enable OS Config for vulnerability assessment"
-                ]
+                    "Enable OS Config for vulnerability assessment",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude system administrators. Requires Cloud Logging agent with process monitoring.",
@@ -603,16 +610,18 @@ resource "google_monitoring_alert_policy" "excessive_vm_log_access" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Logging agent (Ops Agent) installed", "Process monitoring enabled"]
-        )
+            prerequisites=[
+                "Cloud Logging agent (Ops Agent) installed",
+                "Process monitoring enabled",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1654-aws-cloudtrail-logs",
         "t1654-gcp-log-enumeration",
         "t1654-aws-ec2-log-access",
-        "t1654-gcp-vm-log-access"
+        "t1654-gcp-vm-log-access",
     ],
     total_effort_hours=6.0,
-    coverage_improvement="+15% improvement for Discovery tactic"
+    coverage_improvement="+15% improvement for Discovery tactic",
 )

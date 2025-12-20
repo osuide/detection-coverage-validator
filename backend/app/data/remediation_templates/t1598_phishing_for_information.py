@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Phishing for Information",
     tactic_ids=["TA0043"],
     mitre_url="https://attack.mitre.org/techniques/T1598/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries send phishing messages to elicit sensitive information "
@@ -37,22 +36,28 @@ TEMPLATE = RemediationTemplate(
             "Effective against human targets",
             "Enables reconnaissance for targeted attacks",
             "Can bypass technical security controls",
-            "Facilitates credential theft and account takeover"
+            "Facilitates credential theft and account takeover",
         ],
-        known_threat_actors=["APT28", "Kimsuky", "Moonstone Sleet", "Scattered Spider", "ZIRCONIUM"],
+        known_threat_actors=[
+            "APT28",
+            "Kimsuky",
+            "Moonstone Sleet",
+            "Scattered Spider",
+            "ZIRCONIUM",
+        ],
         recent_campaigns=[
             Campaign(
                 name="Scattered Spider Credential Phishing",
                 year=2024,
                 description="Combined credential phishing with social engineering to capture OTP codes",
-                reference_url="https://attack.mitre.org/groups/G1015/"
+                reference_url="https://attack.mitre.org/groups/G1015/",
             ),
             Campaign(
                 name="ZIRCONIUM Political Campaign Targeting",
                 year=2024,
                 description="Targeted political campaign staffers with credential phishing attacks",
-                reference_url="https://attack.mitre.org/groups/G0128/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0128/",
+            ),
         ],
         prevalence="very_common",
         trend="increasing",
@@ -66,13 +71,12 @@ TEMPLATE = RemediationTemplate(
             "Account takeover risk",
             "Intellectual property theft",
             "Enables targeted attacks",
-            "Regulatory compliance violations"
+            "Regulatory compliance violations",
         ],
         typical_attack_phase="reconnaissance",
         often_precedes=["T1078", "T1566", "T1534", "T1199"],
-        often_follows=[]
+        often_follows=[],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1598-aws-ses",
@@ -82,13 +86,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, mail.source, mail.destination, mail.commonHeaders.subject
+                query="""fields @timestamp, mail.source, mail.destination, mail.commonHeaders.subject
 | filter eventType = "Send"
 | filter mail.commonHeaders.subject like /verify|confirm|urgent|suspended|reset|account/i
 | stats count(*) as emails by mail.source, bin(1h)
 | filter emails > 50
-| sort emails desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort emails desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect phishing campaigns via SES logs
 
 Parameters:
@@ -126,8 +130,8 @@ Resources:
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect phishing campaigns via SES logs
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect phishing campaigns via SES logs
 
 variable "ses_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -164,7 +168,7 @@ resource "aws_cloudwatch_metric_alarm" "phishing_campaign" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Phishing Campaign Detected",
                 alert_description_template="High volume of suspicious emails from {source}.",
@@ -173,15 +177,15 @@ resource "aws_cloudwatch_metric_alarm" "phishing_campaign" {
                     "Check sender reputation and authentication",
                     "Analyse recipient list for targeting patterns",
                     "Review DKIM/SPF/DMARC records",
-                    "Check for compromised AWS credentials"
+                    "Check for compromised AWS credentials",
                 ],
                 containment_actions=[
                     "Suspend compromised SES identities",
                     "Rotate AWS credentials",
                     "Enable SES sending restrictions",
                     "Report phishing domains",
-                    "Notify affected recipients"
-                ]
+                    "Notify affected recipients",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Adjust keyword patterns for your organisation's email patterns",
@@ -190,9 +194,8 @@ resource "aws_cloudwatch_metric_alarm" "phishing_campaign" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["AWS SES with CloudWatch logging enabled"]
+            prerequisites=["AWS SES with CloudWatch logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1598-aws-guardduty",
             name="AWS GuardDuty Phishing Detection",
@@ -201,10 +204,10 @@ resource "aws_cloudwatch_metric_alarm" "phishing_campaign" {
             aws_service="guardduty",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, detail.type, detail.service.action.actionType
+                query="""fields @timestamp, detail.type, detail.service.action.actionType
 | filter detail.type like /Phishing|CredentialAccess/
-| stats count(*) by detail.type, bin(1h)''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| stats count(*) by detail.type, bin(1h)""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Alert on GuardDuty phishing findings
 
 Parameters:
@@ -236,8 +239,8 @@ Resources:
       State: ENABLED
       Targets:
         - Arn: !Ref AlertTopic
-          Id: PhishingAlert''',
-                terraform_template='''# Alert on GuardDuty phishing findings
+          Id: PhishingAlert""",
+                terraform_template="""# Alert on GuardDuty phishing findings
 
 variable "alert_email" { type = string }
 
@@ -272,7 +275,7 @@ resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.guardduty_phishing.name
   target_id = "SendToSNS"
   arn       = aws_sns_topic.alerts.arn
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GuardDuty: Credential Phishing Detected",
                 alert_description_template="GuardDuty detected potential credential compromise for {principal}.",
@@ -281,15 +284,15 @@ resource "aws_cloudwatch_event_target" "sns" {
                     "Check affected IAM user activity",
                     "Review CloudTrail logs for anomalous access",
                     "Verify MFA status and recent changes",
-                    "Check for lateral movement indicators"
+                    "Check for lateral movement indicators",
                 ],
                 containment_actions=[
                     "Disable compromised IAM credentials",
                     "Enable MFA if not present",
                     "Review and revoke sessions",
                     "Reset user credentials",
-                    "Enable CloudTrail if disabled"
-                ]
+                    "Enable CloudTrail if disabled",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="GuardDuty findings are generally reliable",
@@ -298,9 +301,8 @@ resource "aws_cloudwatch_event_target" "sns" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$10-50 (GuardDuty costs)",
-            prerequisites=["AWS GuardDuty enabled"]
+            prerequisites=["AWS GuardDuty enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1598-aws-workmail",
             name="AWS WorkMail Spoofing Detection",
@@ -309,12 +311,12 @@ resource "aws_cloudwatch_event_target" "sns" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, messageId, sender, recipients
+                query="""fields @timestamp, messageId, sender, recipients
 | filter outcome = "FAILED" and reason like /SPF|DKIM|DMARC/
 | stats count(*) as failures by sender, bin(1h)
 | filter failures > 10
-| sort failures desc''',
-                terraform_template='''# Detect email spoofing in WorkMail
+| sort failures desc""",
+                terraform_template="""# Detect email spoofing in WorkMail
 
 variable "workmail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -351,7 +353,7 @@ resource "aws_cloudwatch_metric_alarm" "spoofing_campaign" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Email Spoofing Attempts Detected",
                 alert_description_template="Multiple SPF/DKIM/DMARC failures from {sender}.",
@@ -360,15 +362,15 @@ resource "aws_cloudwatch_metric_alarm" "spoofing_campaign" {
                     "Check if legitimate domain is being spoofed",
                     "Analyse email content for phishing indicators",
                     "Review recipient list for targeting",
-                    "Check email headers for anomalies"
+                    "Check email headers for anomalies",
                 ],
                 containment_actions=[
                     "Block spoofed sender domains",
                     "Strengthen DMARC policy to reject",
                     "Alert affected users",
                     "Report to domain registrar",
-                    "Enable advanced threat protection"
-                ]
+                    "Enable advanced threat protection",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="SPF/DKIM/DMARC failures indicate misconfiguration or spoofing",
@@ -377,9 +379,11 @@ resource "aws_cloudwatch_metric_alarm" "spoofing_campaign" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["AWS WorkMail with logging enabled", "SPF/DKIM/DMARC configured"]
+            prerequisites=[
+                "AWS WorkMail with logging enabled",
+                "SPF/DKIM/DMARC configured",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1598-gcp-gmail",
             name="GCP Gmail API Suspicious Activity",
@@ -389,12 +393,12 @@ resource "aws_cloudwatch_metric_alarm" "spoofing_campaign" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="audited_resource"
+                gcp_logging_query="""resource.type="audited_resource"
 protoPayload.serviceName="gmail.googleapis.com"
 protoPayload.methodName="gmail.users.messages.send"
 protoPayload.metadata.event.event_name="send_messages"
-protoPayload.metadata.event.num_messages_sent>100''',
-                gcp_terraform_template='''# GCP: Detect phishing via Gmail API
+protoPayload.metadata.event.num_messages_sent>100""",
+                gcp_terraform_template="""# GCP: Detect phishing via Gmail API
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -431,7 +435,7 @@ resource "google_monitoring_alert_policy" "phishing_campaign" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: High Volume Email Activity",
                 alert_description_template="Unusual email sending volume detected via Gmail API.",
@@ -440,15 +444,15 @@ resource "google_monitoring_alert_policy" "phishing_campaign" {
                     "Check OAuth token usage",
                     "Analyse email content and recipients",
                     "Verify user account legitimacy",
-                    "Review API access patterns"
+                    "Review API access patterns",
                 ],
                 containment_actions=[
                     "Revoke suspicious OAuth tokens",
                     "Reset user credentials",
                     "Enable Gmail API restrictions",
                     "Contact affected recipients",
-                    "Enable advanced phishing protection"
-                ]
+                    "Enable advanced phishing protection",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Adjust thresholds based on normal email volumes",
@@ -457,9 +461,8 @@ resource "google_monitoring_alert_policy" "phishing_campaign" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Gmail API audit logging enabled"]
+            prerequisites=["Gmail API audit logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1598-gcp-workspace",
             name="GCP Workspace Security Investigation",
@@ -473,7 +476,7 @@ resource "google_monitoring_alert_policy" "phishing_campaign" {
 protoPayload.metadata.event.type="SUSPICIOUS_LOGIN"
 OR protoPayload.metadata.event.type="ACCOUNT_WARNING"
 OR protoPayload.metadata.event.type="GOVERNMENT_ATTACK_WARNING"''',
-                gcp_terraform_template='''# GCP: Workspace security alerts
+                gcp_terraform_template="""# GCP: Workspace security alerts
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -511,7 +514,7 @@ resource "google_monitoring_alert_policy" "workspace_threats" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Workspace Security Alert",
                 alert_description_template="Google Workspace detected suspicious account activity.",
@@ -520,15 +523,15 @@ resource "google_monitoring_alert_policy" "workspace_threats" {
                     "Check account activity and login history",
                     "Verify user identity and location",
                     "Review email forwarding rules",
-                    "Check for data exfiltration"
+                    "Check for data exfiltration",
                 ],
                 containment_actions=[
                     "Force password reset",
                     "Revoke active sessions",
                     "Enable 2-step verification",
                     "Review and remove email delegates",
-                    "Enable advanced protection programme"
-                ]
+                    "Enable advanced protection programme",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Workspace security alerts are highly reliable",
@@ -537,11 +540,16 @@ resource "google_monitoring_alert_policy" "workspace_threats" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="Included with Workspace",
-            prerequisites=["Google Workspace with security centre enabled"]
-        )
+            prerequisites=["Google Workspace with security centre enabled"],
+        ),
     ],
-
-    recommended_order=["t1598-aws-guardduty", "t1598-gcp-workspace", "t1598-aws-workmail", "t1598-aws-ses", "t1598-gcp-gmail"],
+    recommended_order=[
+        "t1598-aws-guardduty",
+        "t1598-gcp-workspace",
+        "t1598-aws-workmail",
+        "t1598-aws-ses",
+        "t1598-gcp-gmail",
+    ],
     total_effort_hours=6.0,
-    coverage_improvement="+25% improvement for Reconnaissance tactic"
+    coverage_improvement="+25% improvement for Reconnaissance tactic",
 )

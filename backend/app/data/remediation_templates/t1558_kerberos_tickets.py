@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Steal or Forge Kerberos Tickets",
     tactic_ids=["TA0006"],  # Credential Access
     mitre_url="https://attack.mitre.org/techniques/T1558/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries exploit Kerberos authentication by stealing or forging tickets to enable "
@@ -40,7 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Silver tickets grant service access without domain controller contact",
             "Kerberoasting enables offline password cracking",
             "Difficult to detect without proper logging",
-            "Valid tickets appear as legitimate authentication"
+            "Valid tickets appear as legitimate authentication",
         ],
         known_threat_actors=["Akira"],
         recent_campaigns=[
@@ -48,7 +47,7 @@ TEMPLATE = RemediationTemplate(
                 name="Akira Ransomware Credential Theft",
                 year=2024,
                 description="Akira ransomware group used scripts to extract Kerberos authentication credentials from compromised systems",
-                reference_url="https://attack.mitre.org/groups/G1024/"
+                reference_url="https://attack.mitre.org/groups/G1024/",
             )
         ],
         prevalence="moderate",
@@ -64,13 +63,12 @@ TEMPLATE = RemediationTemplate(
             "Persistent unauthorised access",
             "MFA and authentication bypass",
             "Lateral movement enablement",
-            "Difficult remediation requiring KRBTGT rotation"
+            "Difficult remediation requiring KRBTGT rotation",
         ],
         typical_attack_phase="credential_access",
         often_precedes=["T1550", "T1078", "T1021.002"],
-        often_follows=["T1003", "T1558.003"]
+        often_follows=["T1003", "T1558.003"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1558-aws-ad-auth",
@@ -80,13 +78,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.principalId, sourceIPAddress, errorCode
+                query="""fields @timestamp, eventName, userIdentity.principalId, sourceIPAddress, errorCode
 | filter eventSource = "ds.amazonaws.com"
 | filter eventName like /AuthenticateDirectory|DescribeDirectories|CreateTrust/
 | stats count(*) as auth_attempts by userIdentity.principalId, sourceIPAddress, bin(5m)
 | filter auth_attempts > 10
-| sort auth_attempts desc''',
-                terraform_template='''# AWS: Detect Kerberos ticket anomalies in Managed AD
+| sort auth_attempts desc""",
+                terraform_template="""# AWS: Detect Kerberos ticket anomalies in Managed AD
 # Step 1: Create SNS topic for alerts
 # Step 2: Set up CloudWatch log group filter for suspicious AD authentication
 # Step 3: Configure EventBridge rule for authentication anomalies
@@ -185,8 +183,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Resource  = aws_sns_topic.kerberos_alerts.arn
     }]
   })
-}''',
-                cloudformation_template='''# AWS CloudFormation: Detect Kerberos ticket anomalies
+}""",
+                cloudformation_template="""# AWS CloudFormation: Detect Kerberos ticket anomalies
 # Step 1: Create SNS topic for security alerts
 # Step 2: Configure CloudWatch alarms for suspicious AD authentication patterns
 # Step 3: Set up EventBridge rules for authentication anomalies
@@ -284,7 +282,7 @@ Resources:
 Outputs:
   TopicArn:
     Description: SNS Topic ARN for Kerberos alerts
-    Value: !Ref KerberosAlertsTopic''',
+    Value: !Ref KerberosAlertsTopic""",
                 alert_severity="critical",
                 alert_title="Kerberos Ticket Anomaly Detected",
                 alert_description_template="Suspicious Kerberos authentication detected in Directory Service: {eventName}.",
@@ -295,7 +293,7 @@ Outputs:
                     "Look for TGS requests without corresponding TGT requests (Silver Ticket)",
                     "Review security event logs for Event ID 4768 (TGT requests) and 4769 (TGS requests)",
                     "Check for Kerberoasting indicators (multiple SPN service ticket requests)",
-                    "Review domain controller logs for unusual KRBTGT account activity"
+                    "Review domain controller logs for unusual KRBTGT account activity",
                 ],
                 containment_actions=[
                     "Reset KRBTGT account password twice (renders Golden Tickets invalid)",
@@ -304,8 +302,8 @@ Outputs:
                     "Revoke all active Kerberos tickets for compromised accounts",
                     "Enable AES encryption and disable RC4 if possible",
                     "Review and strengthen service account passwords (25+ characters)",
-                    "Enable advanced AD auditing for Kerberos events"
-                ]
+                    "Enable advanced AD auditing for Kerberos events",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal authentication patterns for AD-integrated workloads",
@@ -314,9 +312,12 @@ Outputs:
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$10-25",
-            prerequisites=["AWS Managed AD or AD Connector", "CloudTrail enabled", "CloudWatch Logs configured"]
+            prerequisites=[
+                "AWS Managed AD or AD Connector",
+                "CloudTrail enabled",
+                "CloudWatch Logs configured",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1558-aws-kerberoasting",
             name="AWS Kerberoasting Detection",
@@ -325,13 +326,13 @@ Outputs:
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.principalId, sourceIPAddress, requestParameters
+                query="""fields @timestamp, eventName, userIdentity.principalId, sourceIPAddress, requestParameters
 | filter eventSource = "ds.amazonaws.com"
 | filter eventName = "AuthenticateDirectory"
 | stats count(*) as service_ticket_requests by userIdentity.principalId, bin(1h)
 | filter service_ticket_requests > 20
-| sort service_ticket_requests desc''',
-                terraform_template='''# AWS: Detect Kerberoasting attacks
+| sort service_ticket_requests desc""",
+                terraform_template="""# AWS: Detect Kerberoasting attacks
 # Step 1: Create CloudWatch log metric for excessive SPN ticket requests
 # Step 2: Configure alarm threshold based on baseline
 # Step 3: Set up SNS notifications for security team
@@ -414,8 +415,8 @@ resource "aws_cloudwatch_metric_alarm" "asrep_roasting_detected" {
   threshold           = "10"
   alarm_description   = "Detects potential AS-REP Roasting attack"
   alarm_actions       = [aws_sns_topic.kerberoasting_alerts.arn]
-}''',
-                cloudformation_template='''# AWS CloudFormation: Detect Kerberoasting attacks
+}""",
+                cloudformation_template="""# AWS CloudFormation: Detect Kerberoasting attacks
 # Step 1: Create metric filters for excessive SPN ticket requests
 # Step 2: Configure alarms with appropriate thresholds
 # Step 3: Set up SNS notifications
@@ -500,7 +501,7 @@ Resources:
 Outputs:
   TopicArn:
     Description: SNS Topic ARN for Kerberoasting alerts
-    Value: !Ref KerberoastingAlertsTopic''',
+    Value: !Ref KerberoastingAlertsTopic""",
                 alert_severity="high",
                 alert_title="Kerberoasting Attack Detected",
                 alert_description_template="Excessive service ticket requests detected from {principalId}.",
@@ -511,7 +512,7 @@ Outputs:
                     "Review security logs for Event ID 4769 (TGS requests)",
                     "Check if targeted service accounts have weak passwords",
                     "Look for offline password cracking attempts",
-                    "Review account privileges and access patterns"
+                    "Review account privileges and access patterns",
                 ],
                 containment_actions=[
                     "Disable compromised user account making requests",
@@ -520,8 +521,8 @@ Outputs:
                     "Use Group Managed Service Accounts (gMSA) where possible",
                     "Enable 'Account is sensitive and cannot be delegated' for privileged accounts",
                     "Monitor for subsequent authentication attempts with cracked credentials",
-                    "Review and reduce service account privileges"
-                ]
+                    "Review and reduce service account privileges",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Adjust threshold based on legitimate service ticket request patterns",
@@ -530,9 +531,12 @@ Outputs:
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["AWS Managed AD", "CloudTrail enabled", "Advanced AD auditing enabled"]
+            prerequisites=[
+                "AWS Managed AD",
+                "CloudTrail enabled",
+                "Advanced AD auditing enabled",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1558-gcp-ad-monitoring",
             name="GCP Managed AD Authentication Monitoring",
@@ -542,10 +546,10 @@ Outputs:
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="microsoft_ad_domain"
+                gcp_logging_query="""resource.type="microsoft_ad_domain"
 (protoPayload.methodName="AuthenticateUser" OR protoPayload.methodName="DescribeDomain")
-(protoPayload.status.code!=0 OR protoPayload.status.message=~".*authentication.*failed.*")''',
-                gcp_terraform_template='''# GCP: Monitor Kerberos authentication in Managed AD
+(protoPayload.status.code!=0 OR protoPayload.status.message=~".*authentication.*failed.*")""",
+                gcp_terraform_template="""# GCP: Monitor Kerberos authentication in Managed AD
 # Step 1: Create log-based metric for authentication anomalies
 # Step 2: Set up alerting policy with notification channel
 # Step 3: Configure Cloud Logging sink for long-term retention
@@ -731,7 +735,7 @@ resource "google_storage_bucket_iam_member" "log_writer" {
   bucket = google_storage_bucket.ad_logs.name
   role   = "roles/storage.objectCreator"
   member = google_logging_project_sink.ad_auth_logs.writer_identity
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP Managed AD Authentication Anomaly",
                 alert_description_template="Suspicious Kerberos authentication activity detected in Managed AD domain.",
@@ -742,7 +746,7 @@ resource "google_storage_bucket_iam_member" "log_writer" {
                     "Look for patterns indicating Golden Ticket (RC4 encryption)",
                     "Review for Kerberoasting (multiple SPN requests)",
                     "Check for AS-REP Roasting attempts",
-                    "Correlate with Windows Security Event logs if available"
+                    "Correlate with Windows Security Event logs if available",
                 ],
                 containment_actions=[
                     "Reset KRBTGT account password twice to invalidate Golden Tickets",
@@ -751,8 +755,8 @@ resource "google_storage_bucket_iam_member" "log_writer" {
                     "Enable AES encryption, disable RC4 if not already done",
                     "Strengthen service account passwords (25+ characters)",
                     "Enable 'Do not require Kerberos pre-authentication' flag review",
-                    "Implement Group Managed Service Accounts where possible"
-                ]
+                    "Implement Group Managed Service Accounts where possible",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal AD authentication patterns; exclude legitimate batch processes",
@@ -761,11 +765,18 @@ resource "google_storage_bucket_iam_member" "log_writer" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$15-30",
-            prerequisites=["GCP Managed Service for Microsoft AD", "Cloud Logging enabled", "Cloud Monitoring configured"]
-        )
+            prerequisites=[
+                "GCP Managed Service for Microsoft AD",
+                "Cloud Logging enabled",
+                "Cloud Monitoring configured",
+            ],
+        ),
     ],
-
-    recommended_order=["t1558-aws-ad-auth", "t1558-aws-kerberoasting", "t1558-gcp-ad-monitoring"],
+    recommended_order=[
+        "t1558-aws-ad-auth",
+        "t1558-aws-kerberoasting",
+        "t1558-gcp-ad-monitoring",
+    ],
     total_effort_hours=6.0,
-    coverage_improvement="+15% improvement for Credential Access tactic in hybrid cloud environments"
+    coverage_improvement="+15% improvement for Credential Access tactic in hybrid cloud environments",
 )

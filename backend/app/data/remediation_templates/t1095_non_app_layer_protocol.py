@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Non-Application Layer Protocol",
     tactic_ids=["TA0011"],  # Command and Control
     mitre_url="https://attack.mitre.org/techniques/T1095/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries use OSI non-application layer protocols for command and control "
@@ -39,32 +38,42 @@ TEMPLATE = RemediationTemplate(
             "Raw sockets bypass application layer detection",
             "VMCI communications invisible to standard network tools",
             "Difficult to distinguish from legitimate protocol usage",
-            "Often allowed through firewalls for operational reasons"
+            "Often allowed through firewalls for operational reasons",
         ],
         known_threat_actors=[
-            "APT3", "APT29", "APT30", "APT32", "APT41", "BITTER", "PLATINUM",
-            "Gamaredon Group", "Mustang Panda", "UNC3886", "ToddyCat", "Metador",
-            "Ember Bear"
+            "APT3",
+            "APT29",
+            "APT30",
+            "APT32",
+            "APT41",
+            "BITTER",
+            "PLATINUM",
+            "Gamaredon Group",
+            "Mustang Panda",
+            "UNC3886",
+            "ToddyCat",
+            "Metador",
+            "Ember Bear",
         ],
         recent_campaigns=[
             Campaign(
                 name="UNC3886 VMCI Exploitation",
                 year=2024,
                 description="UNC3886 exploited VMware ESXi environments using VMCI for C2 communications invisible to network monitoring tools",
-                reference_url="https://attack.mitre.org/groups/G1040/"
+                reference_url="https://attack.mitre.org/groups/G1040/",
             ),
             Campaign(
                 name="APT29 ICMP Tunnelling",
                 year=2023,
                 description="APT29 deployed COATHANGER malware using ICMP for C2 and PingPull for ICMP/TCP variant communications",
-                reference_url="https://attack.mitre.org/groups/G0016/"
+                reference_url="https://attack.mitre.org/groups/G0016/",
             ),
             Campaign(
                 name="Gamaredon ICMP C2",
                 year=2023,
                 description="Gamaredon Group used custom malware with ICMP-based command and control infrastructure for operations targeting Ukraine",
-                reference_url="https://attack.mitre.org/groups/G0047/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0047/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -82,13 +91,12 @@ TEMPLATE = RemediationTemplate(
             "Continued data exfiltration via covert channels",
             "Lateral movement and infrastructure compromise",
             "Regulatory compliance violations from undetected breaches",
-            "Extended incident response and remediation costs"
+            "Extended incident response and remediation costs",
         ],
         typical_attack_phase="command_and_control",
         often_precedes=["T1048", "T1041", "T1020"],
-        often_follows=["T1078.004", "T1190", "T1210"]
+        often_follows=["T1078.004", "T1190", "T1210"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1095-aws-icmp",
@@ -98,12 +106,12 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcAddr, dstAddr, protocol, packets, bytes
+                query="""fields @timestamp, srcAddr, dstAddr, protocol, packets, bytes
 | filter protocol = 1 and action = "ACCEPT"
 | stats sum(bytes) as total_bytes, sum(packets) as total_packets by srcAddr, dstAddr, bin(5m)
 | filter total_bytes > 1000 or total_packets > 100
-| sort total_bytes desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort total_bytes desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: ICMP traffic anomaly detection via VPC Flow Logs
 
 Parameters:
@@ -145,8 +153,8 @@ Resources:
       Threshold: 10000
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# ICMP traffic anomaly detection via VPC Flow Logs
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# ICMP traffic anomaly detection via VPC Flow Logs
 
 variable "alert_email" { type = string }
 variable "vpc_flow_log_group" { type = string }
@@ -187,7 +195,7 @@ resource "aws_cloudwatch_metric_alarm" "icmp_traffic" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Suspicious ICMP Traffic Detected",
                 alert_description_template="Unusual ICMP traffic from {srcAddr} to {dstAddr}: {total_bytes} bytes, {total_packets} packets in 5 minutes.",
@@ -197,15 +205,15 @@ resource "aws_cloudwatch_metric_alarm" "icmp_traffic" {
                     "Check for legitimate ICMP usage (ping, traceroute)",
                     "Examine instance for suspicious processes",
                     "Analyse packet payloads if captures available",
-                    "Correlate with other security events"
+                    "Correlate with other security events",
                 ],
                 containment_actions=[
                     "Block ICMP traffic at security group level",
                     "Isolate suspicious instances",
                     "Implement NACL rules to restrict ICMP",
                     "Enable detailed packet capture for investigation",
-                    "Review and restrict ICMP permissions"
-                ]
+                    "Review and restrict ICMP permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate monitoring tools; adjust byte/packet thresholds based on environment",
@@ -214,9 +222,8 @@ resource "aws_cloudwatch_metric_alarm" "icmp_traffic" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-20",
-            prerequisites=["VPC Flow Logs enabled"]
+            prerequisites=["VPC Flow Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1095-aws-raw-socket",
             name="AWS Raw Socket Usage Detection",
@@ -225,11 +232,11 @@ resource "aws_cloudwatch_metric_alarm" "icmp_traffic" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, requestParameters.protocol
+                query="""fields @timestamp, userIdentity.principalId, requestParameters.protocol
 | filter eventName in ["AuthorizeSecurityGroupIngress", "AuthorizeSecurityGroupEgress"]
 | filter requestParameters.protocol not in [6, 17, 1]
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect raw socket and unusual protocol usage
 
 Parameters:
@@ -271,8 +278,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect raw socket and unusual protocol usage
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect raw socket and unusual protocol usage
 
 variable "alert_email" { type = string }
 
@@ -319,7 +326,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Unusual Protocol Authorised in Security Group",
                 alert_description_template="Security group modified to allow protocol {protocol} which may indicate raw socket usage.",
@@ -328,14 +335,14 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Identify who authorised the protocol change",
                     "Verify if the protocol is required for business purposes",
                     "Check associated instances and their purpose",
-                    "Examine recent activity from the modifying principal"
+                    "Examine recent activity from the modifying principal",
                 ],
                 containment_actions=[
                     "Revoke unauthorised protocol rules",
                     "Review and restrict security group modification permissions",
                     "Enable AWS Config rules for security group monitoring",
-                    "Implement least privilege for network changes"
-                ]
+                    "Implement least privilege for network changes",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist infrastructure teams and approved protocols for specialised applications",
@@ -344,9 +351,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1095-aws-udp-anomaly",
             name="AWS UDP Traffic Anomaly Detection",
@@ -355,13 +361,13 @@ resource "aws_sns_topic_policy" "allow_events" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcAddr, dstAddr, dstPort, bytes, packets
+                query="""fields @timestamp, srcAddr, dstAddr, dstPort, bytes, packets
 | filter protocol = 17 and action = "ACCEPT"
 | filter dstPort not in [53, 123, 161, 162, 514, 1812, 1813]
 | stats sum(bytes) as total_bytes, count(*) as connections by srcAddr, dstAddr, dstPort, bin(5m)
 | filter total_bytes > 1048576 or connections > 50
-| sort total_bytes desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort total_bytes desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: UDP traffic anomaly detection
 
 Parameters:
@@ -403,8 +409,8 @@ Resources:
       Threshold: 1048576
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# UDP traffic anomaly detection
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# UDP traffic anomaly detection
 
 variable "alert_email" { type = string }
 variable "vpc_flow_log_group" { type = string }
@@ -445,7 +451,7 @@ resource "aws_cloudwatch_metric_alarm" "udp_traffic" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Unusual UDP Traffic Detected",
                 alert_description_template="Suspicious UDP traffic from {srcAddr} to {dstAddr}:{dstPort} - {total_bytes} bytes, {connections} connections.",
@@ -455,15 +461,15 @@ resource "aws_cloudwatch_metric_alarm" "udp_traffic" {
                     "Check for legitimate UDP applications (VoIP, gaming, streaming)",
                     "Examine instance processes and network connections",
                     "Analyse traffic patterns and timing",
-                    "Correlate with application logs"
+                    "Correlate with application logs",
                 ],
                 containment_actions=[
                     "Block suspicious UDP traffic at security group",
                     "Implement NACL rules for UDP port restrictions",
                     "Isolate source instance if malicious",
                     "Review and restrict UDP egress permissions",
-                    "Enable enhanced network monitoring"
-                ]
+                    "Enable enhanced network monitoring",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate UDP services; exclude common ports like DNS, NTP, SNMP, Syslog",
@@ -472,9 +478,8 @@ resource "aws_cloudwatch_metric_alarm" "udp_traffic" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-20",
-            prerequisites=["VPC Flow Logs enabled"]
+            prerequisites=["VPC Flow Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1095-gcp-icmp",
             name="GCP ICMP Traffic Anomaly Detection",
@@ -484,11 +489,11 @@ resource "aws_cloudwatch_metric_alarm" "udp_traffic" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_subnetwork"
+                gcp_logging_query="""resource.type="gce_subnetwork"
 jsonPayload.connection.protocol=1
 jsonPayload.bytes_sent>1000
-| stats sum(bytes_sent) as total_bytes by src_instance, dest_ip''',
-                gcp_terraform_template='''# GCP: ICMP traffic anomaly detection
+| stats sum(bytes_sent) as total_bytes by src_instance, dest_ip""",
+                gcp_terraform_template="""# GCP: ICMP traffic anomaly detection
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -529,7 +534,7 @@ resource "google_monitoring_alert_policy" "icmp_traffic" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Suspicious ICMP Traffic Detected",
                 alert_description_template="Unusual ICMP traffic pattern detected with high byte count.",
@@ -539,15 +544,15 @@ resource "google_monitoring_alert_policy" "icmp_traffic" {
                     "Check for legitimate ICMP usage",
                     "Examine instance for malware or suspicious processes",
                     "Analyse traffic timing and patterns",
-                    "Review Cloud Logging for related events"
+                    "Review Cloud Logging for related events",
                 ],
                 containment_actions=[
                     "Block ICMP via VPC firewall rules",
                     "Isolate suspicious instances",
                     "Enable packet mirroring for detailed analysis",
                     "Review and restrict ICMP permissions",
-                    "Implement egress firewall controls"
-                ]
+                    "Implement egress firewall controls",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist monitoring infrastructure; tune byte thresholds for environment",
@@ -556,9 +561,8 @@ resource "google_monitoring_alert_policy" "icmp_traffic" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-20",
-            prerequisites=["VPC Flow Logs enabled on subnets"]
+            prerequisites=["VPC Flow Logs enabled on subnets"],
         ),
-
         DetectionStrategy(
             strategy_id="t1095-gcp-protocol",
             name="GCP Non-Standard Protocol Detection",
@@ -568,10 +572,10 @@ resource "google_monitoring_alert_policy" "icmp_traffic" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_subnetwork"
+                gcp_logging_query="""resource.type="gce_subnetwork"
 jsonPayload.connection.protocol NOT IN (6, 17, 1, 58)
-jsonPayload.bytes_sent>0''',
-                gcp_terraform_template='''# GCP: Non-standard protocol detection
+jsonPayload.bytes_sent>0""",
+                gcp_terraform_template="""# GCP: Non-standard protocol detection
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -614,7 +618,7 @@ resource "google_monitoring_alert_policy" "unusual_protocol" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Non-Standard Protocol Detected",
                 alert_description_template="Non-standard network protocol usage detected (not TCP/UDP/ICMP).",
@@ -624,15 +628,15 @@ resource "google_monitoring_alert_policy" "unusual_protocol" {
                     "Determine if protocol usage is authorised",
                     "Check for specialised applications requiring custom protocols",
                     "Examine instance configuration and processes",
-                    "Review recent changes to firewall rules"
+                    "Review recent changes to firewall rules",
                 ],
                 containment_actions=[
                     "Block unauthorised protocols via firewall rules",
                     "Isolate instances using non-standard protocols",
                     "Review and restrict firewall rule creation permissions",
                     "Implement organisation policy for protocol restrictions",
-                    "Enable enhanced flow logging for investigation"
-                ]
+                    "Enable enhanced flow logging for investigation",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist legitimate specialised applications (GRE tunnels, OSPF, etc.)",
@@ -641,17 +645,16 @@ resource "google_monitoring_alert_policy" "unusual_protocol" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-15",
-            prerequisites=["VPC Flow Logs enabled on subnets", "Cloud Logging"]
-        )
+            prerequisites=["VPC Flow Logs enabled on subnets", "Cloud Logging"],
+        ),
     ],
-
     recommended_order=[
         "t1095-aws-icmp",
         "t1095-gcp-icmp",
         "t1095-aws-udp-anomaly",
         "t1095-aws-raw-socket",
-        "t1095-gcp-protocol"
+        "t1095-gcp-protocol",
     ],
     total_effort_hours=4.5,
-    coverage_improvement="+15% improvement for Command and Control tactic"
+    coverage_improvement="+15% improvement for Command and Control tactic",
 )

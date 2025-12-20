@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="System Services",
     tactic_ids=["TA0002"],
     mitre_url="https://attack.mitre.org/techniques/T1569/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries abuse system services or daemons to execute malicious commands or programs. "
@@ -35,28 +34,38 @@ TEMPLATE = RemediationTemplate(
             "Can provide persistence across reboots",
             "Legitimate admin tools make detection difficult",
             "Remote service execution enables lateral movement",
-            "Service creation may bypass application controls"
+            "Service creation may bypass application controls",
         ],
-        known_threat_actors=["APT32", "APT38", "APT39", "APT41", "FIN6", "FIN7", "Wizard Spider", "Chimera", "Blue Mockingbird"],
+        known_threat_actors=[
+            "APT32",
+            "APT38",
+            "APT39",
+            "APT41",
+            "FIN6",
+            "FIN7",
+            "Wizard Spider",
+            "Chimera",
+            "Blue Mockingbird",
+        ],
         recent_campaigns=[
             Campaign(
                 name="APT41 Cobalt Strike Service Execution",
                 year=2024,
                 description="Used svchost.exe and Net to launch Cobalt Strike BEACON loaders via Windows services",
-                reference_url="https://attack.mitre.org/groups/G0096/"
+                reference_url="https://attack.mitre.org/groups/G0096/",
             ),
             Campaign(
                 name="FIN7 Encoded PowerShell Services",
                 year=2024,
                 description="Created Windows services executing encoded PowerShell commands for malware deployment",
-                reference_url="https://attack.mitre.org/groups/G0046/"
+                reference_url="https://attack.mitre.org/groups/G0046/",
             ),
             Campaign(
                 name="Wizard Spider Ransomware Services",
                 year=2024,
                 description="Leveraged services.exe for lateral movement and ransomware deployment",
-                reference_url="https://attack.mitre.org/groups/G0102/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0102/",
+            ),
         ],
         prevalence="high",
         trend="stable",
@@ -70,13 +79,12 @@ TEMPLATE = RemediationTemplate(
             "Arbitrary code execution with elevated privileges",
             "Malware persistence",
             "Lateral movement to other systems",
-            "Ransomware deployment"
+            "Ransomware deployment",
         ],
         typical_attack_phase="execution",
         often_precedes=["T1486", "T1485", "T1570"],
-        often_follows=["T1078", "T1021"]
+        often_follows=["T1078", "T1021"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1569-aws-ssm-automation",
@@ -90,10 +98,15 @@ TEMPLATE = RemediationTemplate(
                     "source": ["aws.ssm"],
                     "detail-type": ["AWS API Call via CloudTrail"],
                     "detail": {
-                        "eventName": ["StartAutomationExecution", "SendCommand", "CreateDocument", "UpdateDocument"]
-                    }
+                        "eventName": [
+                            "StartAutomationExecution",
+                            "SendCommand",
+                            "CreateDocument",
+                            "UpdateDocument",
+                        ]
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect SSM service-like command execution
 
 Parameters:
@@ -147,8 +160,8 @@ Resources:
 Outputs:
   AlertTopicArn:
     Value: !Ref AlertTopic
-    Description: SNS topic for SSM execution alerts''',
-                terraform_template='''# AWS: Detect SSM service-like command execution
+    Description: SNS topic for SSM execution alerts""",
+                terraform_template="""# AWS: Detect SSM service-like command execution
 
 variable "alert_email" {
   type        = string
@@ -209,7 +222,7 @@ resource "aws_sns_topic_policy" "allow_events" {
 output "alert_topic_arn" {
   value       = aws_sns_topic.ssm_alerts.arn
   description = "SNS topic for SSM execution alerts"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="SSM Service Execution Detected",
                 alert_description_template="SSM automation or command execution by {userIdentity.arn} targeting {instanceIds}.",
@@ -218,15 +231,15 @@ output "alert_topic_arn" {
                     "Review the document content or command parameters",
                     "Check the user/role that initiated the execution",
                     "Review target instances for signs of compromise",
-                    "Examine command output in SSM Run Command history"
+                    "Examine command output in SSM Run Command history",
                 ],
                 containment_actions=[
                     "Terminate unauthorised automation executions",
                     "Review and restrict SSM document permissions",
                     "Audit IAM policies granting ssm:SendCommand",
                     "Enable SSM Session Manager logging to S3",
-                    "Isolate compromised instances"
-                ]
+                    "Isolate compromised instances",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known automation tools, patching systems, and CI/CD pipelines",
@@ -235,9 +248,8 @@ output "alert_topic_arn" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled with SSM events"]
+            prerequisites=["CloudTrail enabled with SSM events"],
         ),
-
         DetectionStrategy(
             strategy_id="t1569-aws-ecs-task-execution",
             name="AWS ECS Task Execution Detection",
@@ -251,9 +263,9 @@ output "alert_topic_arn" {
                     "detail-type": ["AWS API Call via CloudTrail"],
                     "detail": {
                         "eventName": ["RunTask", "StartTask", "RegisterTaskDefinition"]
-                    }
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect ECS task execution for service-like behaviour
 
 Parameters:
@@ -306,8 +318,8 @@ Resources:
 Outputs:
   AlertTopicArn:
     Value: !Ref AlertTopic
-    Description: SNS topic for ECS task execution alerts''',
-                terraform_template='''# AWS: Detect ECS task execution for service-like behaviour
+    Description: SNS topic for ECS task execution alerts""",
+                terraform_template="""# AWS: Detect ECS task execution for service-like behaviour
 
 variable "alert_email" {
   type        = string
@@ -367,7 +379,7 @@ resource "aws_sns_topic_policy" "allow_events" {
 output "alert_topic_arn" {
   value       = aws_sns_topic.ecs_alerts.arn
   description = "SNS topic for ECS task execution alerts"
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="ECS Task Execution Detected",
                 alert_description_template="ECS task execution by {userIdentity.arn} in cluster {cluster}.",
@@ -376,15 +388,15 @@ output "alert_topic_arn" {
                     "Review the task definition and container image",
                     "Check the IAM role attached to the task",
                     "Examine task logs in CloudWatch Logs",
-                    "Review network connections from the task"
+                    "Review network connections from the task",
                 ],
                 containment_actions=[
                     "Stop unauthorised tasks",
                     "Review ECS task execution permissions",
                     "Audit container images in ECR",
                     "Enable ECS Exec logging",
-                    "Review VPC flow logs for suspicious traffic"
-                ]
+                    "Review VPC flow logs for suspicious traffic",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known application deployments and CI/CD pipelines",
@@ -393,9 +405,8 @@ output "alert_topic_arn" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled with ECS events"]
+            prerequisites=["CloudTrail enabled with ECS events"],
         ),
-
         DetectionStrategy(
             strategy_id="t1569-gcp-compute-startup-scripts",
             name="GCP Compute Instance Startup Script Detection",
@@ -407,7 +418,7 @@ output "alert_topic_arn" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName="v1.compute.instances.setMetadata"
 AND protoPayload.request.metadata.items.key=~"startup-script|windows-startup-script-ps1"''',
-                gcp_terraform_template='''# GCP: Detect startup script modifications (service-like execution)
+                gcp_terraform_template="""# GCP: Detect startup script modifications (service-like execution)
 
 variable "project_id" {
   type        = string
@@ -472,7 +483,7 @@ resource "google_monitoring_alert_policy" "startup_script_alert" {
 output "metric_name" {
   value       = google_logging_metric.startup_script_modification.name
   description = "Log-based metric for startup script modifications"
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Compute Instance Startup Script Modified",
                 alert_description_template="VM instance startup script modified, enabling service-like execution.",
@@ -481,15 +492,15 @@ output "metric_name" {
                     "Review the startup script content",
                     "Check the user/service account that made the change",
                     "Examine instance logs for suspicious activity",
-                    "Review instance IAM permissions"
+                    "Review instance IAM permissions",
                 ],
                 containment_actions=[
                     "Revert unauthorised metadata changes",
                     "Review and restrict compute.instances.setMetadata permissions",
                     "Audit VM instance configurations",
                     "Enable OS Config for centralised management",
-                    "Isolate compromised instances"
-                ]
+                    "Isolate compromised instances",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known infrastructure-as-code deployments and automation tools",
@@ -498,9 +509,8 @@ output "metric_name" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled for Compute Engine"]
+            prerequisites=["Cloud Audit Logs enabled for Compute Engine"],
         ),
-
         DetectionStrategy(
             strategy_id="t1569-gcp-cloud-run-deployment",
             name="GCP Cloud Run Service Deployment Detection",
@@ -511,7 +521,7 @@ output "metric_name" {
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName=~"google.cloud.run.v1.Services.CreateService|google.cloud.run.v1.Services.ReplaceService"''',
-                gcp_terraform_template='''# GCP: Detect Cloud Run service deployments (service-like execution)
+                gcp_terraform_template="""# GCP: Detect Cloud Run service deployments (service-like execution)
 
 variable "project_id" {
   type        = string
@@ -575,7 +585,7 @@ resource "google_monitoring_alert_policy" "cloud_run_alert" {
 output "metric_name" {
   value       = google_logging_metric.cloud_run_deployment.name
   description = "Log-based metric for Cloud Run deployments"
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Cloud Run Service Deployed",
                 alert_description_template="Cloud Run service deployed, potentially executing arbitrary code.",
@@ -584,15 +594,15 @@ output "metric_name" {
                     "Review the container image and source",
                     "Check the service account attached to the service",
                     "Examine Cloud Run logs for suspicious activity",
-                    "Review service configuration and environment variables"
+                    "Review service configuration and environment variables",
                 ],
                 containment_actions=[
                     "Delete unauthorised Cloud Run services",
                     "Review and restrict run.services.create permissions",
                     "Audit container images in Artifact Registry",
                     "Enable Binary Authorisation for container validation",
-                    "Review VPC connector configurations"
-                ]
+                    "Review VPC connector configurations",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known application deployments and CI/CD pipelines",
@@ -601,16 +611,15 @@ output "metric_name" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled for Cloud Run"]
-        )
+            prerequisites=["Cloud Audit Logs enabled for Cloud Run"],
+        ),
     ],
-
     recommended_order=[
         "t1569-aws-ssm-automation",
         "t1569-aws-ecs-task-execution",
         "t1569-gcp-compute-startup-scripts",
-        "t1569-gcp-cloud-run-deployment"
+        "t1569-gcp-cloud-run-deployment",
     ],
     total_effort_hours=2.5,
-    coverage_improvement="+20% improvement for Execution tactic"
+    coverage_improvement="+20% improvement for Execution tactic",
 )

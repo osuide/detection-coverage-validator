@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Steal Application Access Token",
     tactic_ids=["TA0006"],
     mitre_url="https://attack.mitre.org/techniques/T1528/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries steal OAuth tokens, API keys, or service account credentials "
@@ -36,7 +35,7 @@ TEMPLATE = RemediationTemplate(
             "Service account keys often have elevated permissions",
             "Tokens may have long expiry times",
             "Applications often store tokens insecurely",
-            "Token reuse from multiple locations is common"
+            "Token reuse from multiple locations is common",
         ],
         known_threat_actors=["UNC5537", "APT29", "Lapsus$"],
         recent_campaigns=[
@@ -44,14 +43,14 @@ TEMPLATE = RemediationTemplate(
                 name="Snowflake Customer Breaches",
                 year=2024,
                 description="UNC5537 used stolen OAuth tokens to access 165+ Snowflake customer accounts",
-                reference_url="https://cloud.google.com/blog/topics/threat-intelligence/unc5537-snowflake-data-theft-extortion"
+                reference_url="https://cloud.google.com/blog/topics/threat-intelligence/unc5537-snowflake-data-theft-extortion",
             ),
             Campaign(
                 name="Microsoft OAuth Token Theft",
                 year=2024,
                 description="APT29 compromised OAuth apps to maintain persistent access to Microsoft 365",
-                reference_url="https://www.microsoft.com/en-us/security/blog/2024/01/25/midnight-blizzard-guidance/"
-            )
+                reference_url="https://www.microsoft.com/en-us/security/blog/2024/01/25/midnight-blizzard-guidance/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -65,13 +64,12 @@ TEMPLATE = RemediationTemplate(
             "Unauthorised access to cloud applications",
             "Data exfiltration without triggering MFA",
             "Persistent access until token rotation",
-            "Compliance violations and breach notifications"
+            "Compliance violations and breach notifications",
         ],
         typical_attack_phase="credential_access",
         often_precedes=["T1530", "T1537", "T1078.004"],
-        often_follows=["T1566", "T1190"]
+        often_follows=["T1566", "T1190"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - Cognito Token Anomalies
         DetectionStrategy(
@@ -82,13 +80,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, sourceIPAddress, userIdentity.principalId
+                query="""fields @timestamp, eventName, sourceIPAddress, userIdentity.principalId
 | filter eventSource = "cognito-idp.amazonaws.com"
 | filter eventName in ["InitiateAuth", "RespondToAuthChallenge", "GetUser"]
 | stats count(*) as auth_count by sourceIPAddress, bin(1h)
 | filter auth_count > 50
-| sort auth_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort auth_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect OAuth token anomalies
 
 Parameters:
@@ -129,8 +127,8 @@ Resources:
       Threshold: 500
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect OAuth token anomalies
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect OAuth token anomalies
 
 variable "cloudtrail_log_group" {
   type = string
@@ -175,7 +173,7 @@ resource "aws_cloudwatch_metric_alarm" "auth_spike" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Unusual OAuth Token Activity",
                 alert_description_template="High volume of authentication attempts detected from {sourceIPAddress}.",
@@ -183,14 +181,14 @@ resource "aws_cloudwatch_metric_alarm" "auth_spike" {
                     "Review source IPs for auth requests",
                     "Check if tokens used from new locations",
                     "Verify if legitimate application activity",
-                    "Review app client configurations"
+                    "Review app client configurations",
                 ],
                 containment_actions=[
                     "Revoke suspicious tokens",
                     "Rotate app client secrets",
                     "Enable advanced security features in Cognito",
-                    "Review OAuth app permissions"
-                ]
+                    "Review OAuth app permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known automation and CI/CD pipelines",
@@ -199,9 +197,8 @@ resource "aws_cloudwatch_metric_alarm" "auth_spike" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["CloudTrail logging Cognito events"]
+            prerequisites=["CloudTrail logging Cognito events"],
         ),
-
         # Strategy 2: AWS - API Key Usage Anomalies
         DetectionStrategy(
             strategy_id="t1528-aws-apikey",
@@ -211,12 +208,12 @@ resource "aws_cloudwatch_metric_alarm" "auth_spike" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, ip, apiKey, status
+                query="""fields @timestamp, ip, apiKey, status
 | filter status >= 400
 | stats count(*) as error_count by ip, apiKey, bin(1h)
 | filter error_count > 100
-| sort error_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort error_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect API key abuse
 
 Parameters:
@@ -257,8 +254,8 @@ Resources:
       Threshold: 500
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect API key abuse
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect API key abuse
 
 variable "api_gateway_log_group" {
   type = string
@@ -303,7 +300,7 @@ resource "aws_cloudwatch_metric_alarm" "api_abuse" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="API Key Abuse Detected",
                 alert_description_template="High error rate using API key from {ip}.",
@@ -311,14 +308,14 @@ resource "aws_cloudwatch_metric_alarm" "api_abuse" {
                     "Identify which API key is being abused",
                     "Check source IPs for unusual geolocations",
                     "Review API access patterns",
-                    "Verify key ownership and usage"
+                    "Verify key ownership and usage",
                 ],
                 containment_actions=[
                     "Rotate the affected API key",
                     "Add IP allowlist to API Gateway",
                     "Enable WAF rate limiting",
-                    "Review API key permissions"
-                ]
+                    "Review API key permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal error rates per client",
@@ -327,9 +324,8 @@ resource "aws_cloudwatch_metric_alarm" "api_abuse" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-10",
-            prerequisites=["API Gateway access logging enabled"]
+            prerequisites=["API Gateway access logging enabled"],
         ),
-
         # Strategy 3: GCP - Service Account Key Usage
         DetectionStrategy(
             strategy_id="t1528-gcp-sa-key",
@@ -343,7 +339,7 @@ resource "aws_cloudwatch_metric_alarm" "api_abuse" {
                 gcp_logging_query='''protoPayload.authenticationInfo.principalEmail:"-compute@"
 protoPayload.authenticationInfo.serviceAccountKeyName!=""
 protoPayload.requestMetadata.callerIp!~"^(10\\.|172\\.|192\\.168)"''',
-                gcp_terraform_template='''# GCP: Monitor service account key usage
+                gcp_terraform_template="""# GCP: Monitor service account key usage
 
 variable "project_id" {
   type = string
@@ -393,7 +389,7 @@ resource "google_monitoring_alert_policy" "sa_key_alert" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Service Account Key Used Externally",
                 alert_description_template="Service account key used from external IP address.",
@@ -401,14 +397,14 @@ resource "google_monitoring_alert_policy" "sa_key_alert" {
                     "Identify which service account key was used",
                     "Review the source IP geolocation",
                     "Check what actions were performed",
-                    "Verify if legitimate external access"
+                    "Verify if legitimate external access",
                 ],
                 containment_actions=[
                     "Delete and rotate the service account key",
                     "Review service account permissions",
                     "Enable VPC Service Controls",
-                    "Audit all actions taken with the key"
-                ]
+                    "Audit all actions taken with the key",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known external CI/CD IPs",
@@ -417,9 +413,8 @@ resource "google_monitoring_alert_policy" "sa_key_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled"],
         ),
-
         # Strategy 4: GCP - OAuth Token Abuse
         DetectionStrategy(
             strategy_id="t1528-gcp-oauth",
@@ -433,7 +428,7 @@ resource "google_monitoring_alert_policy" "sa_key_alert" {
                 gcp_logging_query='''resource.type="audited_resource"
 protoPayload.methodName=~"oauth2.*"
 OR protoPayload.serviceName="iap.googleapis.com"''',
-                gcp_terraform_template='''# GCP: Detect OAuth token anomalies
+                gcp_terraform_template="""# GCP: Detect OAuth token anomalies
 
 variable "project_id" {
   type = string
@@ -483,7 +478,7 @@ resource "google_monitoring_alert_policy" "oauth_alert" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: OAuth Token Anomaly",
                 alert_description_template="Unusual OAuth token activity detected.",
@@ -491,14 +486,14 @@ resource "google_monitoring_alert_policy" "oauth_alert" {
                     "Review OAuth consent logs",
                     "Check for new OAuth app authorisations",
                     "Verify token source locations",
-                    "Review workspace admin logs"
+                    "Review workspace admin logs",
                 ],
                 containment_actions=[
                     "Revoke suspicious OAuth app access",
                     "Remove unauthorised OAuth apps",
                     "Enable OAuth app restrictions",
-                    "Review third-party app access"
-                ]
+                    "Review third-party app access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal OAuth patterns",
@@ -507,16 +502,15 @@ resource "google_monitoring_alert_policy" "oauth_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Audit Logs enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1528-gcp-sa-key",
         "t1528-aws-cognito",
         "t1528-gcp-oauth",
-        "t1528-aws-apikey"
+        "t1528-aws-apikey",
     ],
     total_effort_hours=6.0,
-    coverage_improvement="+18% improvement for Credential Access tactic"
+    coverage_improvement="+18% improvement for Credential Access tactic",
 )

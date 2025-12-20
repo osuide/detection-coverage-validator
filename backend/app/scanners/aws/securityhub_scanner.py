@@ -35,9 +35,7 @@ class SecurityHubScanner(BaseScanner):
                 all_detections.extend(region_detections)
             except ClientError as e:
                 self.logger.warning(
-                    "securityhub_scan_error",
-                    region=region,
-                    error=str(e)
+                    "securityhub_scan_error", region=region, error=str(e)
                 )
 
         return all_detections
@@ -111,10 +109,16 @@ class SecurityHubScanner(BaseScanner):
                                 "hub_arn": hub_arn,
                                 "standard_arn": standard_arn,
                                 "standard_name": standard_info["name"],
-                                "standards_subscription_arn": subscription.get("StandardsSubscriptionArn"),
+                                "standards_subscription_arn": subscription.get(
+                                    "StandardsSubscriptionArn"
+                                ),
                                 "status": status,
-                                "enabled_controls_count": len([c for c in controls if c["status"] == "ENABLED"]),
-                                "disabled_controls_count": len([c for c in controls if c["status"] == "DISABLED"]),
+                                "enabled_controls_count": len(
+                                    [c for c in controls if c["status"] == "ENABLED"]
+                                ),
+                                "disabled_controls_count": len(
+                                    [c for c in controls if c["status"] == "DISABLED"]
+                                ),
                                 "total_controls_count": len(controls),
                                 "controls": controls,
                             },
@@ -125,9 +129,7 @@ class SecurityHubScanner(BaseScanner):
 
         except ClientError as e:
             self.logger.warning(
-                "securityhub_standards_error",
-                region=region,
-                error=str(e)
+                "securityhub_standards_error", region=region, error=str(e)
             )
 
         return detections
@@ -143,18 +145,24 @@ class SecurityHubScanner(BaseScanner):
         try:
             paginator = client.get_paginator("describe_standards_controls")
 
-            for page in paginator.paginate(StandardsSubscriptionArn=standards_subscription_arn):
+            for page in paginator.paginate(
+                StandardsSubscriptionArn=standards_subscription_arn
+            ):
                 for control in page.get("Controls", []):
-                    controls.append({
-                        "control_id": control.get("ControlId"),
-                        "control_arn": control.get("StandardsControlArn"),
-                        "title": control.get("Title"),
-                        "description": control.get("Description"),
-                        "status": control.get("ControlStatus"),
-                        "severity": control.get("SeverityRating"),
-                        "disabled_reason": control.get("DisabledReason"),
-                        "related_requirements": control.get("RelatedRequirements", []),
-                    })
+                    controls.append(
+                        {
+                            "control_id": control.get("ControlId"),
+                            "control_arn": control.get("StandardsControlArn"),
+                            "title": control.get("Title"),
+                            "description": control.get("Description"),
+                            "status": control.get("ControlStatus"),
+                            "severity": control.get("SeverityRating"),
+                            "disabled_reason": control.get("DisabledReason"),
+                            "related_requirements": control.get(
+                                "RelatedRequirements", []
+                            ),
+                        }
+                    )
 
         except ClientError:
             pass
@@ -166,19 +174,19 @@ class SecurityHubScanner(BaseScanner):
         standards = {
             "aws-foundational-security-best-practices": {
                 "name": "AWS-Foundational-Best-Practices",
-                "description": "AWS Foundational Security Best Practices - checks for security best practices across AWS services"
+                "description": "AWS Foundational Security Best Practices - checks for security best practices across AWS services",
             },
             "cis-aws-foundations-benchmark": {
                 "name": "CIS-AWS-Foundations",
-                "description": "CIS AWS Foundations Benchmark - industry best practice security configuration baseline"
+                "description": "CIS AWS Foundations Benchmark - industry best practice security configuration baseline",
             },
             "pci-dss": {
                 "name": "PCI-DSS",
-                "description": "PCI DSS - Payment Card Industry Data Security Standard compliance checks"
+                "description": "PCI DSS - Payment Card Industry Data Security Standard compliance checks",
             },
             "nist-800-53": {
                 "name": "NIST-800-53",
-                "description": "NIST 800-53 - Security and privacy controls for federal information systems"
+                "description": "NIST 800-53 - Security and privacy controls for federal information systems",
             },
         }
 
@@ -188,8 +196,10 @@ class SecurityHubScanner(BaseScanner):
                 return standards[key]
 
         return {
-            "name": standard_arn.split("/")[-1] if "/" in standard_arn else standard_arn,
-            "description": f"Security Hub standard: {standard_arn}"
+            "name": (
+                standard_arn.split("/")[-1] if "/" in standard_arn else standard_arn
+            ),
+            "description": f"Security Hub standard: {standard_arn}",
         }
 
     def _scan_insights(
@@ -227,16 +237,16 @@ class SecurityHubScanner(BaseScanner):
                             "group_by_attribute": group_by,
                             "is_managed_insight": is_managed,
                         },
-                        description=self._generate_insight_description(name, filters, group_by),
+                        description=self._generate_insight_description(
+                            name, filters, group_by
+                        ),
                         is_managed=is_managed,
                     )
                     detections.append(detection)
 
         except ClientError as e:
             self.logger.warning(
-                "securityhub_insights_error",
-                region=region,
-                error=str(e)
+                "securityhub_insights_error", region=region, error=str(e)
             )
 
         return detections
@@ -257,11 +267,15 @@ class SecurityHubScanner(BaseScanner):
         filter_descriptions = []
         for filter_key, filter_value in filters.items():
             if isinstance(filter_value, list) and filter_value:
-                values = [str(v.get("Value", v)) for v in filter_value if isinstance(v, dict)]
+                values = [
+                    str(v.get("Value", v)) for v in filter_value if isinstance(v, dict)
+                ]
                 if values:
                     filter_descriptions.append(f"{filter_key}: {', '.join(values[:3])}")
 
         if filter_descriptions:
-            description_parts.append(f"filtering on {'; '.join(filter_descriptions[:5])}")
+            description_parts.append(
+                f"filtering on {'; '.join(filter_descriptions[:5])}"
+            )
 
         return " - ".join(description_parts)

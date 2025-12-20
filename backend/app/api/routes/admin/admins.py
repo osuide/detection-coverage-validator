@@ -19,6 +19,7 @@ router = APIRouter(prefix="/admins", tags=["Admin Management"])
 
 class AdminUserResponse(BaseModel):
     """Admin user response."""
+
     id: str
     email: str
     full_name: str
@@ -32,12 +33,14 @@ class AdminUserResponse(BaseModel):
 
 class AdminsListResponse(BaseModel):
     """Admins list response."""
+
     admins: list[AdminUserResponse]
     total: int
 
 
 class CreateAdminRequest(BaseModel):
     """Create admin request."""
+
     email: EmailStr
     full_name: str
     password: str
@@ -46,11 +49,13 @@ class CreateAdminRequest(BaseModel):
 
 class AdminStatusRequest(BaseModel):
     """Admin status update request."""
+
     is_active: bool
 
 
 class ChangePasswordRequest(BaseModel):
     """Change password request."""
+
     password: str
 
 
@@ -64,12 +69,10 @@ async def list_admins(
     if admin.role != AdminRole.SUPER_ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only super_admin can view admin users"
+            detail="Only super_admin can view admin users",
         )
 
-    result = await db.execute(
-        select(AdminUser).order_by(AdminUser.created_at.desc())
-    )
+    result = await db.execute(select(AdminUser).order_by(AdminUser.created_at.desc()))
     admins = result.scalars().all()
 
     # Get created_by emails
@@ -113,7 +116,7 @@ async def create_admin(
     if admin.role != AdminRole.SUPER_ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only super_admin can create admin users"
+            detail="Only super_admin can create admin users",
         )
 
     # Validate role
@@ -121,8 +124,7 @@ async def create_admin(
         role = AdminRole(body.role)
     except ValueError:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid role: {body.role}"
+            status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid role: {body.role}"
         )
 
     auth_service = get_admin_auth_service(db)
@@ -136,10 +138,7 @@ async def create_admin(
             created_by=admin,
         )
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
     return AdminUserResponse(
         id=str(new_admin.id),
@@ -166,14 +165,14 @@ async def update_admin_status(
     if admin.role != AdminRole.SUPER_ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only super_admin can modify admin users"
+            detail="Only super_admin can modify admin users",
         )
 
     # Cannot disable yourself
     if admin_id == admin.id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot modify your own status"
+            detail="Cannot modify your own status",
         )
 
     result = await db.execute(select(AdminUser).where(AdminUser.id == admin_id))
@@ -181,8 +180,7 @@ async def update_admin_status(
 
     if not target_admin:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Admin user not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Admin user not found"
         )
 
     # Prevent disabling if this would leave no active super_admins
@@ -202,7 +200,7 @@ async def update_admin_status(
         if active_super_admin_count == 0:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot disable the last active super_admin. This would lock you out of the platform."
+                detail="Cannot disable the last active super_admin. This would lock you out of the platform.",
             )
 
     target_admin.is_active = body.is_active
@@ -224,14 +222,14 @@ async def change_admin_password(
     if admin.role != AdminRole.SUPER_ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only super_admin can change admin passwords"
+            detail="Only super_admin can change admin passwords",
         )
 
     # Validate password
     if len(body.password) < 16:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Password must be at least 16 characters"
+            detail="Password must be at least 16 characters",
         )
 
     result = await db.execute(select(AdminUser).where(AdminUser.id == admin_id))
@@ -239,14 +237,12 @@ async def change_admin_password(
 
     if not target_admin:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Admin user not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Admin user not found"
         )
 
     # Hash the new password using bcrypt
     password_hash = bcrypt.hashpw(
-        body.password.encode(),
-        bcrypt.gensalt(rounds=12)
+        body.password.encode(), bcrypt.gensalt(rounds=12)
     ).decode()
     target_admin.password_hash = password_hash
     await db.commit()

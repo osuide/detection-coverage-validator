@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Application Layer Protocol: Mail Protocols",
     tactic_ids=["TA0011"],
     mitre_url="https://attack.mitre.org/techniques/T1071/003/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries leverage email protocols (SMTP, POP3, IMAP) to establish "
@@ -37,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Protocol packets contain numerous fields for data concealment",
             "Mimics legitimate business communications",
             "Multiple protocols available (SMTP, POP3, IMAP)",
-            "Enables data exfiltration and command receipt"
+            "Enables data exfiltration and command receipt",
         ],
         known_threat_actors=["APT28", "APT32", "Turla", "Kimsuky", "OilRig"],
         recent_campaigns=[
@@ -45,14 +44,14 @@ TEMPLATE = RemediationTemplate(
                 name="APT28 IMAP C2",
                 year=2020,
                 description="Utilised IMAP, POP3, and SMTP via self-registered Google Mail accounts for C2",
-                reference_url="https://attack.mitre.org/groups/G0007/"
+                reference_url="https://attack.mitre.org/groups/G0007/",
             ),
             Campaign(
                 name="Turla ComRAT Email C2",
                 year=2020,
                 description="Deployed backdoors communicating via email attachments for command and control",
-                reference_url="https://attack.mitre.org/software/S0126/"
-            )
+                reference_url="https://attack.mitre.org/software/S0126/",
+            ),
         ],
         prevalence="moderate",
         trend="stable",
@@ -66,13 +65,12 @@ TEMPLATE = RemediationTemplate(
             "Persistent attacker access",
             "Data exfiltration enabler",
             "Difficult to detect C2 traffic",
-            "Compromised credential usage"
+            "Compromised credential usage",
         ],
         typical_attack_phase="command_and_control",
         often_precedes=["T1041", "T1048", "T1567"],
-        often_follows=["T1078", "T1566"]
+        often_follows=["T1078", "T1566"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1071-003-aws-smtp",
@@ -82,14 +80,14 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcaddr, dstaddr, dstport, action, protocol
+                query="""fields @timestamp, srcaddr, dstaddr, dstport, action, protocol
 | filter (dstport = 25 or dstport = 587 or dstport = 465 or dstport = 110 or dstport = 995 or dstport = 143 or dstport = 993)
 | filter protocol = 6
 | filter action = "ACCEPT"
 | stats count(*) as connections by srcaddr, dstport, bin(5m)
 | filter connections > 10
-| sort connections desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort connections desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect unauthorised email protocol usage from compute instances
 
 Parameters:
@@ -136,8 +134,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect unauthorised email protocol usage from compute instances
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect unauthorised email protocol usage from compute instances
 
 variable "vpc_flow_log_group" {
   type        = string
@@ -188,7 +186,7 @@ resource "aws_cloudwatch_metric_alarm" "email_protocol" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Unauthorised Email Protocol Traffic Detected",
                 alert_description_template="Suspicious SMTP/IMAP/POP3 connections from instance {srcaddr}.",
@@ -197,15 +195,15 @@ resource "aws_cloudwatch_metric_alarm" "email_protocol" {
                     "Review email destinations and external IPs",
                     "Check for known malware signatures",
                     "Analyse email content if accessible",
-                    "Review instance for unauthorised email clients"
+                    "Review instance for unauthorised email clients",
                 ],
                 containment_actions=[
                     "Block email protocol ports at security group level",
                     "Isolate affected instance from network",
                     "Review and revoke compromised credentials",
                     "Terminate unauthorised processes",
-                    "Scan for malware and backdoors"
-                ]
+                    "Scan for malware and backdoors",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude authorised mail servers and legitimate email clients. Baseline normal email traffic patterns.",
@@ -214,9 +212,8 @@ resource "aws_cloudwatch_metric_alarm" "email_protocol" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-60 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["VPC Flow Logs enabled", "CloudWatch Logs"]
+            prerequisites=["VPC Flow Logs enabled", "CloudWatch Logs"],
         ),
-
         DetectionStrategy(
             strategy_id="t1071-003-aws-guardduty",
             name="AWS GuardDuty Email Protocol Anomaly Detection",
@@ -225,12 +222,12 @@ resource "aws_cloudwatch_metric_alarm" "email_protocol" {
             aws_service="guardduty",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, type, severity, title, resource.instanceDetails.instanceId
+                query="""fields @timestamp, type, severity, title, resource.instanceDetails.instanceId
 | filter type like /Backdoor|CryptoCurrency|Trojan/
 | filter service.action.networkConnectionAction.connectionDirection = "OUTBOUND"
 | filter service.action.networkConnectionAction.remotePortDetails.port in [25, 587, 465, 110, 995, 143, 993]
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty email protocol anomaly detection
 
 Parameters:
@@ -282,8 +279,8 @@ Resources:
       State: ENABLED
       Targets:
         - Arn: !Ref AlertTopic
-          Id: SNSTarget''',
-                terraform_template='''# GuardDuty email protocol anomaly detection
+          Id: SNSTarget""",
+                terraform_template="""# GuardDuty email protocol anomaly detection
 
 variable "alert_email" {
   type        = string
@@ -350,7 +347,7 @@ resource "aws_sns_topic_policy" "guardduty" {
       Resource = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GuardDuty: Email Protocol C2 Activity",
                 alert_description_template="GuardDuty detected suspicious email protocol activity from instance {instanceId}.",
@@ -359,15 +356,15 @@ resource "aws_sns_topic_policy" "guardduty" {
                     "Identify affected EC2 instance",
                     "Analyse network connections and processes",
                     "Check for malware indicators",
-                    "Review instance access logs"
+                    "Review instance access logs",
                 ],
                 containment_actions=[
                     "Isolate affected instance",
                     "Block outbound email protocol ports",
                     "Terminate malicious processes",
                     "Analyse and remove malware",
-                    "Review and rotate credentials"
-                ]
+                    "Review and rotate credentials",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="GuardDuty uses machine learning and threat intelligence, reducing false positives significantly.",
@@ -376,9 +373,8 @@ resource "aws_sns_topic_policy" "guardduty" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$30-50",
-            prerequisites=["AWS GuardDuty enabled"]
+            prerequisites=["AWS GuardDuty enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1071-003-gcp-smtp",
             name="GCP Unauthorised Email Protocol Detection",
@@ -388,11 +384,11 @@ resource "aws_sns_topic_policy" "guardduty" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_subnetwork"
+                gcp_logging_query="""resource.type="gce_subnetwork"
 logName="projects/PROJECT_ID/logs/compute.googleapis.com%2Fvpc_flows"
 jsonPayload.connection.dest_port=(25 OR 587 OR 465 OR 110 OR 995 OR 143 OR 993)
-jsonPayload.connection.protocol=6''',
-                gcp_terraform_template='''# GCP: Detect unauthorised email protocol usage
+jsonPayload.connection.protocol=6""",
+                gcp_terraform_template="""# GCP: Detect unauthorised email protocol usage
 
 variable "project_id" {
   type        = string
@@ -470,7 +466,7 @@ resource "google_monitoring_alert_policy" "email_protocol" {
   }
 
   project = var.project_id
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Unauthorised Email Protocol Traffic",
                 alert_description_template="Suspicious SMTP/IMAP/POP3 connections from GCP instance.",
@@ -479,15 +475,15 @@ resource "google_monitoring_alert_policy" "email_protocol" {
                     "Review running processes and services",
                     "Analyse VPC flow logs for patterns",
                     "Check for malware signatures",
-                    "Review instance service account permissions"
+                    "Review instance service account permissions",
                 ],
                 containment_actions=[
                     "Apply firewall rules to block email ports",
                     "Isolate instance from network",
                     "Terminate malicious processes",
                     "Remove malware and backdoors",
-                    "Rotate service account credentials"
-                ]
+                    "Rotate service account credentials",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude authorised mail relays. Establish baseline for legitimate email traffic.",
@@ -496,9 +492,8 @@ resource "google_monitoring_alert_policy" "email_protocol" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-60 minutes",
             estimated_monthly_cost="$10-20",
-            prerequisites=["VPC Flow Logs enabled", "Cloud Logging API enabled"]
+            prerequisites=["VPC Flow Logs enabled", "Cloud Logging API enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1071-003-gcp-scc",
             name="GCP Security Command Centre Email Protocol Detection",
@@ -511,7 +506,7 @@ resource "google_monitoring_alert_policy" "email_protocol" {
                 gcp_logging_query='''resource.type="security_finding"
 protoPayload.serviceName="securitycenter.googleapis.com"
 protoPayload.response.finding.category="Persistence: Outbound Email Traffic from Compute Instance"''',
-                gcp_terraform_template='''# GCP: Security Command Centre email protocol detection
+                gcp_terraform_template="""# GCP: Security Command Centre email protocol detection
 
 variable "project_id" {
   type        = string
@@ -571,7 +566,7 @@ resource "google_pubsub_subscription" "scc_email" {
   push_config {
     push_endpoint = "https://pubsub.googleapis.com/v1/projects/${var.project_id}/topics/security-alerts"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP SCC: Email Protocol C2 Activity",
                 alert_description_template="Security Command Centre detected email protocol C2 activity.",
@@ -580,15 +575,15 @@ resource "google_pubsub_subscription" "scc_email" {
                     "Identify affected GCP resources",
                     "Analyse network traffic patterns",
                     "Check for malware indicators",
-                    "Review security policies and configurations"
+                    "Review security policies and configurations",
                 ],
                 containment_actions=[
                     "Isolate affected instances",
                     "Block email protocol ports",
                     "Remove malware and backdoors",
                     "Rotate compromised credentials",
-                    "Apply security hardening"
-                ]
+                    "Apply security hardening",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="SCC uses threat intelligence and anomaly detection, minimising false positives.",
@@ -597,16 +592,18 @@ resource "google_pubsub_subscription" "scc_email" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$50-100",
-            prerequisites=["Security Command Centre enabled", "Organisation-level permissions"]
-        )
+            prerequisites=[
+                "Security Command Centre enabled",
+                "Organisation-level permissions",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1071-003-aws-guardduty",
         "t1071-003-gcp-scc",
         "t1071-003-aws-smtp",
-        "t1071-003-gcp-smtp"
+        "t1071-003-gcp-smtp",
     ],
     total_effort_hours=3.5,
-    coverage_improvement="+25% improvement for Command and Control tactic"
+    coverage_improvement="+25% improvement for Command and Control tactic",
 )

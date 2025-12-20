@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Active Scanning: Scanning IP Blocks",
     tactic_ids=["TA0043"],  # Reconnaissance
     mitre_url="https://attack.mitre.org/techniques/T1595/001/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries scan victim IP blocks to gather reconnaissance information "
@@ -38,7 +37,7 @@ TEMPLATE = RemediationTemplate(
             "Gather detailed host information for further reconnaissance",
             "Discover opportunities for vulnerability assessment",
             "Establish operational infrastructure understanding",
-            "Discover initial access points"
+            "Discover initial access points",
         ],
         known_threat_actors=["Ember Bear", "TeamTNT"],
         recent_campaigns=[
@@ -46,14 +45,14 @@ TEMPLATE = RemediationTemplate(
                 name="Ember Bear Government Targeting",
                 year=2024,
                 description="Targeted IP ranges for vulnerability scanning related to government and critical infrastructure organisations",
-                reference_url="https://attack.mitre.org/groups/G1003/"
+                reference_url="https://attack.mitre.org/groups/G1003/",
             ),
             Campaign(
                 name="TeamTNT IP Scanning Operations",
                 year=2023,
                 description="Conducted scanning operations of specific lists of target IP addresses",
-                reference_url="https://attack.mitre.org/groups/G0139/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0139/",
+            ),
         ],
         prevalence="common",
         trend="stable",
@@ -67,13 +66,16 @@ TEMPLATE = RemediationTemplate(
             "Indicates targeted reconnaissance",
             "Precedes vulnerability scanning",
             "May lead to exploitation attempts",
-            "Reveals exposed infrastructure"
+            "Reveals exposed infrastructure",
         ],
         typical_attack_phase="reconnaissance",
-        often_precedes=["T1595.002", "T1190", "T1133"],  # Vulnerability Scanning, Exploit Public-Facing Application, External Remote Services
-        often_follows=[]
+        often_precedes=[
+            "T1595.002",
+            "T1190",
+            "T1133",
+        ],  # Vulnerability Scanning, Exploit Public-Facing Application, External Remote Services
+        often_follows=[],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1595.001-aws-vpc-flow",
@@ -83,12 +85,12 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcaddr, dstaddr, dstport, action
+                query="""fields @timestamp, srcaddr, dstaddr, dstport, action
 | filter action = "REJECT"
 | stats count(*) as attempts, count_distinct(dstport) as unique_ports by srcaddr, bin(5m)
 | filter attempts > 50 or unique_ports > 20
-| sort attempts desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort attempts desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect IP scanning via VPC Flow Logs
 
 Parameters:
@@ -127,8 +129,8 @@ Resources:
       Threshold: 100
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect IP scanning via VPC Flow Logs
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect IP scanning via VPC Flow Logs
 
 variable "vpc_flow_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -165,7 +167,7 @@ resource "aws_cloudwatch_metric_alarm" "scanning_detected" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="IP Scanning Activity Detected",
                 alert_description_template="High volume of rejected connections from {srcaddr} indicating scanning behaviour.",
@@ -174,15 +176,15 @@ resource "aws_cloudwatch_metric_alarm" "scanning_detected" {
                     "Analyse targeted ports and services",
                     "Check for successful connections from same source",
                     "Review other security logs for related activity",
-                    "Verify if scanning progressed to exploitation attempts"
+                    "Verify if scanning progressed to exploitation attempts",
                 ],
                 containment_actions=[
                     "Block source IP at network perimeter",
                     "Review and harden exposed services",
                     "Enable AWS Shield for DDoS protection",
                     "Update security group rules to reduce exposure",
-                    "Consider implementing AWS WAF rules"
-                ]
+                    "Consider implementing AWS WAF rules",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Tune thresholds based on normal traffic patterns. Security scanners and monitoring tools may trigger false positives.",
@@ -191,9 +193,8 @@ resource "aws_cloudwatch_metric_alarm" "scanning_detected" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-60 minutes",
             estimated_monthly_cost="$5-15",
-            prerequisites=["VPC Flow Logs enabled and sent to CloudWatch Logs"]
+            prerequisites=["VPC Flow Logs enabled and sent to CloudWatch Logs"],
         ),
-
         DetectionStrategy(
             strategy_id="t1595.001-aws-guardduty",
             name="AWS GuardDuty Reconnaissance Detection",
@@ -205,9 +206,9 @@ resource "aws_cloudwatch_metric_alarm" "scanning_detected" {
                 guardduty_finding_types=[
                     "Recon:EC2/PortProbeUnprotectedPort",
                     "Recon:EC2/PortProbeEMRUnprotectedPort",
-                    "Recon:EC2/Portscan"
+                    "Recon:EC2/Portscan",
                 ],
-                terraform_template='''# Enable GuardDuty scanning detection
+                terraform_template="""# Enable GuardDuty scanning detection
 
 variable "alert_email" { type = string }
 
@@ -264,7 +265,7 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
       Resource = aws_sns_topic.guardduty_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Port Scanning Activity Detected",
                 alert_description_template="GuardDuty detected port scanning or probing activity targeting your infrastructure.",
@@ -274,15 +275,15 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
                     "Check source IP reputation",
                     "Review VPC Flow Logs for detailed connection patterns",
                     "Determine if scanning was successful",
-                    "Check for follow-on exploitation attempts"
+                    "Check for follow-on exploitation attempts",
                 ],
                 containment_actions=[
                     "Block malicious IPs via NACL or security groups",
                     "Review and restrict security group rules",
                     "Enable AWS Shield Advanced if needed",
                     "Patch and harden targeted services",
-                    "Consider moving services behind load balancers"
-                ]
+                    "Consider moving services behind load balancers",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="GuardDuty findings are generally reliable. Review trusted IP list configuration.",
@@ -291,9 +292,8 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="15-30 minutes",
             estimated_monthly_cost="$30-50 for GuardDuty service",
-            prerequisites=["AWS GuardDuty enabled"]
+            prerequisites=["AWS GuardDuty enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1595.001-gcp-vpc-flow",
             name="GCP VPC Flow Logs Scanning Detection",
@@ -303,12 +303,12 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_subnetwork"
+                gcp_logging_query="""resource.type="gce_subnetwork"
 log_name="projects/YOUR_PROJECT/logs/compute.googleapis.com%2Fvpc_flows"
 jsonPayload.connection.dest_ip="YOUR_IP_RANGE"
 jsonPayload.connection.protocol=6
-NOT jsonPayload.packets_sent>10''',
-                gcp_terraform_template='''# GCP: Detect IP scanning via VPC Flow Logs
+NOT jsonPayload.packets_sent>10""",
+                gcp_terraform_template="""# GCP: Detect IP scanning via VPC Flow Logs
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -361,7 +361,7 @@ resource "google_monitoring_alert_policy" "scanning_detected" {
   documentation {
     content = "VPC Flow Logs detected scanning activity from external source."
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: IP Scanning Activity Detected",
                 alert_description_template="High rate of connection attempts detected in VPC Flow Logs.",
@@ -370,15 +370,15 @@ resource "google_monitoring_alert_policy" "scanning_detected" {
                     "Analyse targeted ports and services",
                     "Check Cloud Logging for successful connections",
                     "Review firewall rules and their effectiveness",
-                    "Verify if scanning progressed to exploitation"
+                    "Verify if scanning progressed to exploitation",
                 ],
                 containment_actions=[
                     "Add deny rules to VPC firewall",
                     "Enable Cloud Armor if using load balancers",
                     "Review and restrict firewall rules",
                     "Consider enabling Cloud IDS for deep inspection",
-                    "Harden exposed services"
-                ]
+                    "Harden exposed services",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Adjust thresholds based on legitimate traffic patterns. Monitoring services may cause alerts.",
@@ -387,9 +387,8 @@ resource "google_monitoring_alert_policy" "scanning_detected" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-25",
-            prerequisites=["VPC Flow Logs enabled", "Cloud Logging enabled"]
+            prerequisites=["VPC Flow Logs enabled", "Cloud Logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1595.001-gcp-cloud-ids",
             name="GCP Cloud IDS Scanning Detection",
@@ -402,9 +401,9 @@ resource "google_monitoring_alert_policy" "scanning_detected" {
                 scc_finding_categories=[
                     "NETWORK_RECONNAISSANCE",
                     "PORT_SCAN",
-                    "VULNERABILITY_SCAN"
+                    "VULNERABILITY_SCAN",
                 ],
-                gcp_terraform_template='''# GCP: Deploy Cloud IDS for scanning detection
+                gcp_terraform_template="""# GCP: Deploy Cloud IDS for scanning detection
 
 variable "project_id" { type = string }
 variable "network_name" { type = string }
@@ -453,7 +452,7 @@ resource "google_monitoring_alert_policy" "ids_alerts" {
   documentation {
     content = "Cloud IDS detected reconnaissance or scanning activity."
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Network Reconnaissance Detected",
                 alert_description_template="Cloud IDS detected network scanning or reconnaissance activity.",
@@ -462,15 +461,15 @@ resource "google_monitoring_alert_policy" "ids_alerts" {
                     "Identify targeted resources and attack patterns",
                     "Check Security Command Centre findings",
                     "Analyse VPC Flow Logs for additional context",
-                    "Determine threat severity and scope"
+                    "Determine threat severity and scope",
                 ],
                 containment_actions=[
                     "Block malicious IPs via VPC firewall",
                     "Enable Cloud Armor rules",
                     "Harden targeted services",
                     "Review network segmentation",
-                    "Consider implementing additional IDS/IPS rules"
-                ]
+                    "Consider implementing additional IDS/IPS rules",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Cloud IDS provides high-fidelity alerts. Configure threat exceptions as needed.",
@@ -479,11 +478,18 @@ resource "google_monitoring_alert_policy" "ids_alerts" {
             implementation_effort=EffortLevel.HIGH,
             implementation_time="3-4 hours",
             estimated_monthly_cost="$150-300+ for Cloud IDS service",
-            prerequisites=["Cloud IDS endpoint deployed", "Security Command Centre enabled"]
-        )
+            prerequisites=[
+                "Cloud IDS endpoint deployed",
+                "Security Command Centre enabled",
+            ],
+        ),
     ],
-
-    recommended_order=["t1595.001-aws-guardduty", "t1595.001-gcp-cloud-ids", "t1595.001-aws-vpc-flow", "t1595.001-gcp-vpc-flow"],
+    recommended_order=[
+        "t1595.001-aws-guardduty",
+        "t1595.001-gcp-cloud-ids",
+        "t1595.001-aws-vpc-flow",
+        "t1595.001-gcp-vpc-flow",
+    ],
     total_effort_hours=6.0,
-    coverage_improvement="+15% improvement for Reconnaissance tactic"
+    coverage_improvement="+15% improvement for Reconnaissance tactic",
 )

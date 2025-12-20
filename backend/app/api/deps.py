@@ -67,9 +67,7 @@ async def get_current_admin(
     session_id = UUID(payload.get("session_id", ""))
 
     # Get admin user
-    result = await db.execute(
-        select(AdminUser).where(AdminUser.id == admin_id)
-    )
+    result = await db.execute(select(AdminUser).where(AdminUser.id == admin_id))
     admin = result.scalar_one_or_none()
 
     if not admin:
@@ -117,6 +115,7 @@ def require_permission(permission: str) -> Callable:
         async def endpoint(admin: AdminUser = Depends(require_permission("org:read"))):
             ...
     """
+
     async def permission_checker(
         admin: AdminUser = Depends(get_current_admin),
     ) -> AdminUser:
@@ -135,6 +134,7 @@ def require_reauth(func: Callable) -> Callable:
 
     The admin must have authenticated within the last 5 minutes.
     """
+
     @wraps(func)
     async def wrapper(*args, **kwargs):
         request = kwargs.get("request")
@@ -174,6 +174,7 @@ def require_reauth(func: Callable) -> Callable:
 
         # Check last auth time
         from datetime import datetime, timedelta, timezone
+
         if session.last_auth_at < datetime.now(timezone.utc) - timedelta(minutes=5):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

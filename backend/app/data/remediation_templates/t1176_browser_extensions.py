@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Browser Extensions",
     tactic_ids=["TA0003"],  # Persistence
     mitre_url="https://attack.mitre.org/techniques/T1176/001/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries abuse internet browser extensions to establish persistent access "
@@ -39,36 +38,34 @@ TEMPLATE = RemediationTemplate(
             "Persist across reboots and system updates",
             "Difficult for users to detect malicious behaviour",
             "Extensions can serve as command and control channels",
-            "Access to cloud console credentials and session tokens"
+            "Access to cloud console credentials and session tokens",
         ],
-        known_threat_actors=[
-            "Kimsuky", "TA413", "Stantinko", "TeamTNT"
-        ],
+        known_threat_actors=["Kimsuky", "TA413", "Stantinko", "TeamTNT"],
         recent_campaigns=[
             Campaign(
                 name="Kimsuky Chrome Extension Campaign",
                 year=2024,
                 description="Kimsuky deployed Chrome extensions to steal passwords and cookies from compromised systems",
-                reference_url="https://attack.mitre.org/groups/G0094/"
+                reference_url="https://attack.mitre.org/groups/G0094/",
             ),
             Campaign(
                 name="TA413 FriarFox Extension",
                 year=2023,
                 description="TA413 used FriarFox browser extension specifically targeting Gmail accounts for credential theft",
-                reference_url="https://attack.mitre.org/groups/G0125/"
+                reference_url="https://attack.mitre.org/groups/G0125/",
             ),
             Campaign(
                 name="Malicious VSCode Extensions",
                 year=2024,
                 description="Malicious VSCode extensions with over 45,000 downloads exposed PII and enabled backdoors",
-                reference_url="https://attack.mitre.org/techniques/T1176/"
+                reference_url="https://attack.mitre.org/techniques/T1176/",
             ),
             Campaign(
                 name="Stantinko Botnet Extensions",
                 year=2023,
                 description="Massive adware campaign using persistent backdoor through malicious Chrome extensions for C2",
-                reference_url="https://attack.mitre.org/software/S0393/"
-            )
+                reference_url="https://attack.mitre.org/software/S0393/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -86,13 +83,12 @@ TEMPLATE = RemediationTemplate(
             "Exfiltration of sensitive data entered in browsers",
             "Persistent backdoor access to corporate systems",
             "Compliance violations from credential theft",
-            "Lateral movement using harvested credentials"
+            "Lateral movement using harvested credentials",
         ],
         typical_attack_phase="persistence",
         often_precedes=["T1078", "T1552", "T1539"],
-        often_follows=["T1078.004", "T1566", "T1204"]
+        often_follows=["T1078.004", "T1566", "T1204"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS WorkSpaces Browser Extension Monitoring
         DetectionStrategy(
@@ -106,14 +102,14 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, instanceId, processName, commandLine, networkDestination
+                query="""fields @timestamp, instanceId, processName, commandLine, networkDestination
 | filter @message like /chrome.exe|firefox.exe|msedge.exe/
 | filter @message like /extensions|add-ons|[.]crx|[.]xpi/
 | filter networkDestination not like /(chrome.google.com|addons.mozilla.org|microsoftedge.microsoft.com)/
 | stats count() as suspiciousActivity by instanceId, processName, bin(10m)
 | filter suspiciousActivity > 3
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect browser extension installations on WorkSpaces and EC2
 
 Parameters:
@@ -166,8 +162,8 @@ Resources:
 Outputs:
   SNSTopicArn:
     Description: SNS topic for browser extension alerts
-    Value: !Ref ExtensionAlertTopic''',
-                terraform_template='''# AWS: Monitor browser extension installations
+    Value: !Ref ExtensionAlertTopic""",
+                terraform_template="""# AWS: Monitor browser extension installations
 
 variable "cloudwatch_log_group" {
   description = "Log group for WorkSpaces/EC2 instance logs"
@@ -217,7 +213,7 @@ resource "aws_cloudwatch_metric_alarm" "extension_activity" {
   comparison_operator = "GreaterThanThreshold"
   alarm_actions       = [aws_sns_topic.extension_alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Suspicious Browser Extension Activity Detected",
                 alert_description_template=(
@@ -232,7 +228,7 @@ resource "aws_cloudwatch_metric_alarm" "extension_activity" {
                     "Review user activity during the installation timeframe",
                     "Examine network connections made by the browser after installation",
                     "Check for credential access or data exfiltration patterns",
-                    "Verify if extension is from official store or sideloaded"
+                    "Verify if extension is from official store or sideloaded",
                 ],
                 containment_actions=[
                     "Disable or remove the suspicious browser extension",
@@ -241,8 +237,8 @@ resource "aws_cloudwatch_metric_alarm" "extension_activity" {
                     "Block extension installation via Group Policy",
                     "Isolate the affected instance from network",
                     "Review browser sync settings to prevent propagation",
-                    "Implement browser extension allowlist policy"
-                ]
+                    "Implement browser extension allowlist policy",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist approved corporate extensions; establish extension approval process",
@@ -251,9 +247,11 @@ resource "aws_cloudwatch_metric_alarm" "extension_activity" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$10-20 depending on log volume",
-            prerequisites=["CloudWatch Logs Agent on instances", "Process and file system logging enabled"]
+            prerequisites=[
+                "CloudWatch Logs Agent on instances",
+                "Process and file system logging enabled",
+            ],
         ),
-
         # Strategy 2: AWS GuardDuty Malware Detection
         DetectionStrategy(
             strategy_id="t1176-aws-guardduty",
@@ -270,9 +268,9 @@ resource "aws_cloudwatch_metric_alarm" "extension_activity" {
                     "Execution:EC2/MaliciousFile",
                     "Execution:Runtime/NewBinaryExecuted",
                     "UnauthorizedAccess:EC2/MaliciousIPCaller.Custom",
-                    "Trojan:Runtime/SuspiciousFile"
+                    "Trojan:Runtime/SuspiciousFile",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty detection for malicious browser extensions
 
 Parameters:
@@ -329,8 +327,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref MalwareAlertTopic''',
-                terraform_template='''# AWS: GuardDuty malicious browser extension detection
+            Resource: !Ref MalwareAlertTopic""",
+                terraform_template="""# AWS: GuardDuty malicious browser extension detection
 
 variable "alert_email" {
   description = "Email for security alerts"
@@ -398,7 +396,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Resource  = aws_sns_topic.malware_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GuardDuty: Malicious Browser Extension Detected",
                 alert_description_template=(
@@ -413,7 +411,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Review user sessions and authentication logs",
                     "Examine network connections to identify C2 communication",
                     "Check for lateral movement or privilege escalation attempts",
-                    "Review CloudTrail for API calls from the instance"
+                    "Review CloudTrail for API calls from the instance",
                 ],
                 containment_actions=[
                     "Isolate the instance immediately",
@@ -422,8 +420,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Rotate all credentials accessed from the browser",
                     "Block malicious IPs and domains at network level",
                     "Create forensic snapshot before remediation",
-                    "Consider instance termination if fully compromised"
-                ]
+                    "Consider instance termination if fully compromised",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Review suppression rules for known development tools; whitelist approved software",
@@ -432,9 +430,12 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",
             estimated_monthly_cost="$4.60 per instance per month for Runtime Monitoring",
-            prerequisites=["GuardDuty enabled", "Malware Protection enabled", "SSM Agent on instances"]
+            prerequisites=[
+                "GuardDuty enabled",
+                "Malware Protection enabled",
+                "SSM Agent on instances",
+            ],
         ),
-
         # Strategy 3: CloudTrail Browser Configuration Changes
         DetectionStrategy(
             strategy_id="t1176-cloudtrail-configs",
@@ -447,13 +448,13 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, eventName, sourceIPAddress, requestParameters
+                query="""fields @timestamp, userIdentity.principalId, eventName, sourceIPAddress, requestParameters
 | filter eventSource = "ssm.amazonaws.com"
 | filter eventName in ["SendCommand", "StartSession"]
 | filter requestParameters.parameters.commands like /Preferences|Secure Preferences|extensions_to_install|ExtensionInstallForcelist|mobileconfig/
 | stats count() as modifications by userIdentity.principalId, sourceIPAddress, bin(1h)
-| sort @timestamp desc''',
-                terraform_template='''# AWS: Detect browser configuration modifications
+| sort @timestamp desc""",
+                terraform_template="""# AWS: Detect browser configuration modifications
 
 variable "cloudtrail_log_group" {
   description = "CloudTrail log group name"
@@ -503,7 +504,7 @@ resource "aws_cloudwatch_metric_alarm" "config_changes" {
   comparison_operator = "GreaterThanOrEqualToThreshold"
   alarm_actions       = [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Browser Configuration Modification Detected",
                 alert_description_template=(
@@ -517,7 +518,7 @@ resource "aws_cloudwatch_metric_alarm" "config_changes" {
                     "Verify if the modification was authorised",
                     "Review resulting browser extension installations",
                     "Check for other suspicious SSM commands from same principal",
-                    "Examine affected instances for compromise indicators"
+                    "Examine affected instances for compromise indicators",
                 ],
                 containment_actions=[
                     "Revert unauthorised browser configuration changes",
@@ -526,8 +527,8 @@ resource "aws_cloudwatch_metric_alarm" "config_changes" {
                     "Review and restrict SSM access permissions",
                     "Enable SCPs to prevent unauthorised configuration changes",
                     "Implement browser configuration management via Group Policy",
-                    "Monitor for reinfection attempts"
-                ]
+                    "Monitor for reinfection attempts",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist approved configuration management activities; establish change approval workflow",
@@ -536,9 +537,11 @@ resource "aws_cloudwatch_metric_alarm" "config_changes" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled with SSM logging", "Systems Manager in use"]
+            prerequisites=[
+                "CloudTrail enabled with SSM logging",
+                "Systems Manager in use",
+            ],
         ),
-
         # Strategy 4: GCP VM Browser Extension Detection
         DetectionStrategy(
             strategy_id="t1176-gcp-vm-extensions",
@@ -557,7 +560,7 @@ resource "aws_cloudwatch_metric_alarm" "config_changes" {
  jsonPayload.message=~"\\.crx|\\.xpi|extensions|add-ons")
 OR protoPayload.request.command=~"Preferences|extensions_to_install"
 severity>="INFO"''',
-                gcp_terraform_template='''# GCP: Detect browser extension installations on VMs
+                gcp_terraform_template="""# GCP: Detect browser extension installations on VMs
 
 variable "project_id" {
   description = "GCP project ID"
@@ -632,7 +635,7 @@ resource "google_monitoring_alert_policy" "extension_alert" {
     content   = "Browser extension installation detected on GCE instance. Investigate for malicious extensions."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Browser Extension Installation Detected",
                 alert_description_template=(
@@ -646,7 +649,7 @@ resource "google_monitoring_alert_policy" "extension_alert" {
                     "Verify service account permissions on the instance",
                     "Review network connections after installation",
                     "Check for credential access or data exfiltration",
-                    "Examine VPC Flow Logs for suspicious traffic"
+                    "Examine VPC Flow Logs for suspicious traffic",
                 ],
                 containment_actions=[
                     "Stop the GCE instance to prevent further activity",
@@ -655,8 +658,8 @@ resource "google_monitoring_alert_policy" "extension_alert" {
                     "Rotate service account credentials",
                     "Update firewall rules to isolate the instance",
                     "Implement browser extension policies via OS Config",
-                    "Review all instances for similar extension patterns"
-                ]
+                    "Review all instances for similar extension patterns",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal extension installations; whitelist approved corporate extensions",
@@ -665,9 +668,11 @@ resource "google_monitoring_alert_policy" "extension_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="$15-25",
-            prerequisites=["Cloud Logging enabled for GCE", "Ops Agent installed on instances"]
+            prerequisites=[
+                "Cloud Logging enabled for GCE",
+                "Ops Agent installed on instances",
+            ],
         ),
-
         # Strategy 5: GCP Workspace Browser Extension Policy
         DetectionStrategy(
             strategy_id="t1176-gcp-workspace-extensions",
@@ -686,7 +691,7 @@ protoPayload.methodName="google.admin.AdminService.modifyAppSettings"
 (protoPayload.request.setting.name="CHROME_EXTENSION_REQUEST" OR
  protoPayload.request.setting.name="CHROME_BLOCKED_APPS")
 protoPayload.request.setting.value="BLOCKED"''',
-                gcp_terraform_template='''# GCP: Workspace browser extension policy monitoring
+                gcp_terraform_template="""# GCP: Workspace browser extension policy monitoring
 
 variable "project_id" {
   description = "GCP project ID"
@@ -761,7 +766,7 @@ resource "google_monitoring_alert_policy" "policy_alert" {
     content   = "Browser extension policy modification detected in Workspace. Review for unauthorised changes."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Workspace Extension Policy Modified",
                 alert_description_template=(
@@ -775,7 +780,7 @@ resource "google_monitoring_alert_policy" "policy_alert" {
                     "Check which extensions were blocked or allowed",
                     "Review if any users installed blocked extensions before the change",
                     "Examine administrator account for compromise",
-                    "Check for other unauthorised Workspace configuration changes"
+                    "Check for other unauthorised Workspace configuration changes",
                 ],
                 containment_actions=[
                     "Revert unauthorised policy changes immediately",
@@ -784,8 +789,8 @@ resource "google_monitoring_alert_policy" "policy_alert" {
                     "Enable 2FA for all Workspace administrators",
                     "Implement extension allowlist policy",
                     "Review Workspace admin permissions",
-                    "Enable admin activity alerts for critical changes"
-                ]
+                    "Enable admin activity alerts for critical changes",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist approved admin changes; implement change management workflow",
@@ -794,17 +799,19 @@ resource "google_monitoring_alert_policy" "policy_alert" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Google Workspace Admin SDK enabled", "Cloud Logging for Workspace configured"]
-        )
+            prerequisites=[
+                "Google Workspace Admin SDK enabled",
+                "Cloud Logging for Workspace configured",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1176-aws-guardduty",
         "t1176-gcp-vm-extensions",
         "t1176-aws-workspaces",
         "t1176-cloudtrail-configs",
-        "t1176-gcp-workspace-extensions"
+        "t1176-gcp-workspace-extensions",
     ],
     total_effort_hours=7.25,
-    coverage_improvement="+25% improvement for Persistence tactic"
+    coverage_improvement="+25% improvement for Persistence tactic",
 )

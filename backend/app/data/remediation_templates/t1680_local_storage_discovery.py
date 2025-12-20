@@ -24,7 +24,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Local Storage Discovery",
     tactic_ids=["TA0007"],
     mitre_url="https://attack.mitre.org/techniques/T1680/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries enumerate local drives, disks, and volumes with attributes like "
@@ -41,31 +40,39 @@ TEMPLATE = RemediationTemplate(
             "Prepares ransomware encryption targets",
             "Discovers volume serial numbers for persistence",
             "Enables direct volume access bypassing file system",
-            "Cloud storage enumeration reveals attached EBS/persistent disks"
+            "Cloud storage enumeration reveals attached EBS/persistent disks",
         ],
         known_threat_actors=[
-            "APT29", "APT41", "Chimera", "Confucius", "Higaisa",
-            "Kimsuky", "Lazarus Group", "Patchwork", "Tropic Trooper", "Volt Typhoon"
+            "APT29",
+            "APT41",
+            "Chimera",
+            "Confucius",
+            "Higaisa",
+            "Kimsuky",
+            "Lazarus Group",
+            "Patchwork",
+            "Tropic Trooper",
+            "Volt Typhoon",
         ],
         recent_campaigns=[
             Campaign(
                 name="SolarWinds Compromise",
                 year=2020,
                 description="APT29 used fsutil to check free space on systems during reconnaissance",
-                reference_url="https://attack.mitre.org/campaigns/C0024/"
+                reference_url="https://attack.mitre.org/campaigns/C0024/",
             ),
             Campaign(
                 name="Operation Wocao",
                 year=2019,
                 description="Discovered disk hardware information as part of broader reconnaissance",
-                reference_url="https://attack.mitre.org/campaigns/C0014/"
+                reference_url="https://attack.mitre.org/campaigns/C0014/",
             ),
             Campaign(
                 name="APT41 Volume Enumeration",
                 year=2022,
                 description="Used ping commands to find volume serial numbers for persistence",
-                reference_url="https://attack.mitre.org/campaigns/C0017/"
-            )
+                reference_url="https://attack.mitre.org/campaigns/C0017/",
+            ),
         ],
         prevalence="common",
         trend="stable",
@@ -81,13 +88,12 @@ TEMPLATE = RemediationTemplate(
             "Identifies high-value data locations",
             "Enables targeted data exfiltration",
             "Reveals backup storage locations",
-            "Compromises disaster recovery planning"
+            "Compromises disaster recovery planning",
         ],
         typical_attack_phase="discovery",
         often_precedes=["T1486", "T1005", "T1560", "T1074"],
-        often_follows=["T1078", "T1059"]
+        often_follows=["T1078", "T1059"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1680-aws-ebs-enumeration",
@@ -97,12 +103,12 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, eventName, sourceIPAddress
+                query="""fields @timestamp, userIdentity.principalId, eventName, sourceIPAddress
 | filter eventName in ["DescribeVolumes", "DescribeVolumeStatus", "DescribeVolumeAttribute", "DescribeSnapshots", "DescribeSnapshotAttribute"]
 | stats count(*) as api_calls by userIdentity.principalId, sourceIPAddress, bin(5m)
 | filter api_calls > 50
-| sort api_calls desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort api_calls desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect EBS volume enumeration activity
 
 Parameters:
@@ -144,8 +150,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       AlarmActions:
-        - !Ref AlertTopic''',
-                terraform_template='''# Detect EBS volume enumeration activity
+        - !Ref AlertTopic""",
+                terraform_template="""# Detect EBS volume enumeration activity
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -189,7 +195,7 @@ resource "aws_cloudwatch_metric_alarm" "ebs_enumeration" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="EBS Volume Enumeration Detected",
                 alert_description_template="High volume of EBS storage enumeration API calls from {principalId}",
@@ -198,14 +204,14 @@ resource "aws_cloudwatch_metric_alarm" "ebs_enumeration" {
                     "Check if this is authorised automation or user activity",
                     "Review what volumes and snapshots were accessed",
                     "Check for subsequent snapshot creation or volume modifications",
-                    "Look for data exfiltration indicators"
+                    "Look for data exfiltration indicators",
                 ],
                 containment_actions=[
                     "Temporarily restrict EC2 read permissions",
                     "Enable additional CloudTrail logging",
                     "Review and rotate access credentials",
-                    "Implement resource-based policies on sensitive volumes"
-                ]
+                    "Implement resource-based policies on sensitive volumes",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude known automation roles and backup services",
@@ -214,9 +220,8 @@ resource "aws_cloudwatch_metric_alarm" "ebs_enumeration" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["CloudTrail logging to CloudWatch"]
+            prerequisites=["CloudTrail logging to CloudWatch"],
         ),
-
         DetectionStrategy(
             strategy_id="t1680-aws-ssm-storage-commands",
             name="AWS SSM Storage Discovery Commands",
@@ -225,12 +230,12 @@ resource "aws_cloudwatch_metric_alarm" "ebs_enumeration" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message
+                query="""fields @timestamp, @message
 | filter @message like /wmic.*logicaldisk|Get-PSDrive|fsutil|lsblk|fdisk|df -h|diskutil/
 | stats count(*) as commands by bin(1h)
 | filter commands > 5
-| sort commands desc''',
-                terraform_template='''# Detect storage discovery commands via SSM
+| sort commands desc""",
+                terraform_template="""# Detect storage discovery commands via SSM
 
 variable "ssm_log_group" {
   type        = string
@@ -274,7 +279,7 @@ resource "aws_cloudwatch_metric_alarm" "storage_discovery" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Storage Discovery Commands Detected",
                 alert_description_template="Storage enumeration commands detected via SSM Run Command",
@@ -282,14 +287,14 @@ resource "aws_cloudwatch_metric_alarm" "storage_discovery" {
                     "Review SSM session history for the instance",
                     "Identify the user or role that initiated commands",
                     "Check for follow-on ransomware indicators",
-                    "Review instance for unauthorised software"
+                    "Review instance for unauthorised software",
                 ],
                 containment_actions=[
                     "Isolate affected instance",
                     "Revoke SSM session permissions",
                     "Capture memory and disk forensics",
-                    "Review backup integrity"
-                ]
+                    "Review backup integrity",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude authorised system administration activities",
@@ -298,9 +303,8 @@ resource "aws_cloudwatch_metric_alarm" "storage_discovery" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["SSM Run Command logging to CloudWatch"]
+            prerequisites=["SSM Run Command logging to CloudWatch"],
         ),
-
         DetectionStrategy(
             strategy_id="t1680-gcp-disk-enumeration",
             name="GCP Persistent Disk Enumeration Detection",
@@ -310,10 +314,10 @@ resource "aws_cloudwatch_metric_alarm" "storage_discovery" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance" OR resource.type="gce_disk"
+                gcp_logging_query="""resource.type="gce_instance" OR resource.type="gce_disk"
 protoPayload.methodName=~"compute.disks.list|compute.disks.get|compute.snapshots.list|compute.snapshots.get"
-severity>=NOTICE''',
-                gcp_terraform_template='''# GCP: Detect persistent disk enumeration
+severity>=NOTICE""",
+                gcp_terraform_template="""# GCP: Detect persistent disk enumeration
 
 variable "project_id" {
   type        = string
@@ -365,7 +369,7 @@ resource "google_monitoring_alert_policy" "disk_enumeration" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Disk Enumeration Detected",
                 alert_description_template="High volume of persistent disk enumeration in GCP project",
@@ -373,14 +377,14 @@ resource "google_monitoring_alert_policy" "disk_enumeration" {
                     "Identify the service account or user making calls",
                     "Review what disks and snapshots were enumerated",
                     "Check for snapshot creation or export activity",
-                    "Look for VM creation with enumerated disks"
+                    "Look for VM creation with enumerated disks",
                 ],
                 containment_actions=[
                     "Restrict compute.disks.list permission",
                     "Enable VPC Service Controls",
                     "Review and rotate service account keys",
-                    "Enable additional audit logging"
-                ]
+                    "Enable additional audit logging",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude Terraform/Deployment Manager service accounts",
@@ -389,9 +393,8 @@ resource "google_monitoring_alert_policy" "disk_enumeration" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["GCP Cloud Audit Logs enabled"]
+            prerequisites=["GCP Cloud Audit Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1680-gcp-os-storage-commands",
             name="GCP OS Login Storage Discovery Commands",
@@ -401,10 +404,10 @@ resource "google_monitoring_alert_policy" "disk_enumeration" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 textPayload=~"lsblk|fdisk|parted|df -h|blkid|mount"
-severity>=INFO''',
-                gcp_terraform_template='''# GCP: Detect OS-level storage discovery commands
+severity>=INFO""",
+                gcp_terraform_template="""# GCP: Detect OS-level storage discovery commands
 
 variable "project_id" {
   type        = string
@@ -456,7 +459,7 @@ resource "google_monitoring_alert_policy" "os_storage_discovery" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: OS Storage Discovery Commands",
                 alert_description_template="Storage enumeration commands detected on GCP instance",
@@ -464,14 +467,14 @@ resource "google_monitoring_alert_policy" "os_storage_discovery" {
                     "Identify the user session running commands",
                     "Review OS Login audit logs",
                     "Check for ransomware indicators",
-                    "Examine instance metadata access"
+                    "Examine instance metadata access",
                 ],
                 containment_actions=[
                     "Terminate suspicious SSH sessions",
                     "Snapshot instance for forensics",
                     "Disable OS Login for the instance",
-                    "Review IAM bindings"
-                ]
+                    "Review IAM bindings",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Exclude system administration and maintenance windows",
@@ -480,16 +483,15 @@ resource "google_monitoring_alert_policy" "os_storage_discovery" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$15-25",
-            prerequisites=["OS Config agent with command logging"]
-        )
+            prerequisites=["OS Config agent with command logging"],
+        ),
     ],
-
     recommended_order=[
         "t1680-aws-ebs-enumeration",
         "t1680-gcp-disk-enumeration",
         "t1680-aws-ssm-storage-commands",
-        "t1680-gcp-os-storage-commands"
+        "t1680-gcp-os-storage-commands",
     ],
     total_effort_hours=8.0,
-    coverage_improvement="+15% improvement for Discovery tactic"
+    coverage_improvement="+15% improvement for Discovery tactic",
 )

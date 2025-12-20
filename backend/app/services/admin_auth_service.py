@@ -40,7 +40,7 @@ class AdminAuthService:
 
     # Security constants
     ACCESS_TOKEN_EXPIRE_MINUTES = 15  # Short-lived for security
-    REFRESH_TOKEN_EXPIRE_HOURS = 8   # Max session duration
+    REFRESH_TOKEN_EXPIRE_HOURS = 8  # Max session duration
     MAX_FAILED_ATTEMPTS = 3
     LOCKOUT_DURATION_MINUTES = 60
     PASSWORD_MIN_LENGTH = 16
@@ -195,9 +195,8 @@ class AdminAuthService:
             ip_address=ip_address,
             user_agent=user_agent,
             refresh_token_hash=refresh_token_hash,
-            expires_at=datetime.now(timezone.utc) + timedelta(
-                hours=self.REFRESH_TOKEN_EXPIRE_HOURS
-            ),
+            expires_at=datetime.now(timezone.utc)
+            + timedelta(hours=self.REFRESH_TOKEN_EXPIRE_HOURS),
             last_auth_at=datetime.now(timezone.utc),
         )
         self.db.add(session)
@@ -421,8 +420,7 @@ class AdminAuthService:
 
         # Hash password
         password_hash = bcrypt.hashpw(
-            password.encode(),
-            bcrypt.gensalt(rounds=12)
+            password.encode(), bcrypt.gensalt(rounds=12)
         ).decode()
 
         # Create admin
@@ -462,10 +460,7 @@ class AdminAuthService:
 
         # Generate provisioning URI
         totp = pyotp.TOTP(secret)
-        return totp.provisioning_uri(
-            name=admin.email,
-            issuer_name="A13E Admin"
-        )
+        return totp.provisioning_uri(name=admin.email, issuer_name="A13E Admin")
 
     async def enable_mfa(self, admin: AdminUser, totp_code: str) -> bool:
         """Enable MFA after verifying TOTP code."""
@@ -519,9 +514,7 @@ class AdminAuthService:
         """Create audit log entry."""
         # Get previous log hash for chain integrity
         result = await self.db.execute(
-            select(AdminAuditLog)
-            .order_by(AdminAuditLog.timestamp.desc())
-            .limit(1)
+            select(AdminAuditLog).order_by(AdminAuditLog.timestamp.desc()).limit(1)
         )
         previous_log = result.scalar_one_or_none()
         previous_hash = previous_log.log_hash if previous_log else None
@@ -539,7 +532,7 @@ class AdminAuthService:
 
         # Create log entry
         audit_log = AdminAuditLog(
-            admin_id=admin_id or UUID('00000000-0000-0000-0000-000000000000'),
+            admin_id=admin_id or UUID("00000000-0000-0000-0000-000000000000"),
             admin_email=admin_email or "unknown",
             admin_role=admin_role or AdminRole.READONLY_ADMIN,
             action=action,

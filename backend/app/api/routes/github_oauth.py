@@ -13,7 +13,16 @@ import structlog
 
 from app.core.config import get_settings
 from app.core.database import get_db
-from app.models.user import User, Organization, OrganizationMember, UserRole, MembershipStatus, FederatedIdentity, AuditLog, AuditLogAction
+from app.models.user import (
+    User,
+    Organization,
+    OrganizationMember,
+    UserRole,
+    MembershipStatus,
+    FederatedIdentity,
+    AuditLog,
+    AuditLogAction,
+)
 from app.models.billing import Subscription, AccountTier
 from app.services.github_oauth_service import github_oauth_service
 from app.services.auth_service import AuthService
@@ -26,12 +35,14 @@ router = APIRouter(prefix="/github", tags=["GitHub OAuth"])
 
 class GitHubAuthorizeResponse(BaseModel):
     """Response for GitHub authorize endpoint."""
+
     authorization_url: str
     state: str
 
 
 class GitHubTokenRequest(BaseModel):
     """Request for GitHub token exchange."""
+
     code: str
     redirect_uri: str
     state: str
@@ -39,6 +50,7 @@ class GitHubTokenRequest(BaseModel):
 
 class GitHubTokenResponse(BaseModel):
     """Response for GitHub token exchange."""
+
     access_token: str
     refresh_token: str
     expires_in: int
@@ -50,7 +62,9 @@ async def get_github_config():
     """Get GitHub OAuth configuration."""
     return {
         "enabled": github_oauth_service.is_configured(),
-        "client_id": settings.github_client_id if github_oauth_service.is_configured() else None,
+        "client_id": (
+            settings.github_client_id if github_oauth_service.is_configured() else None
+        ),
     }
 
 
@@ -60,7 +74,7 @@ async def get_authorization_url(redirect_uri: str) -> GitHubAuthorizeResponse:
     if not github_oauth_service.is_configured():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="GitHub OAuth is not configured"
+            detail="GitHub OAuth is not configured",
         )
 
     state = github_oauth_service.generate_state()
@@ -85,7 +99,7 @@ async def exchange_github_token(
     if not github_oauth_service.is_configured():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="GitHub OAuth is not configured"
+            detail="GitHub OAuth is not configured",
         )
 
     # Exchange code for GitHub access token
@@ -97,14 +111,14 @@ async def exchange_github_token(
     if not token_response:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Failed to exchange authorization code"
+            detail="Failed to exchange authorization code",
         )
 
     github_access_token = token_response.get("access_token")
     if not github_access_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="No access token received from GitHub"
+            detail="No access token received from GitHub",
         )
 
     # Get user info from GitHub
@@ -112,7 +126,7 @@ async def exchange_github_token(
     if not user_info:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Failed to get user info from GitHub"
+            detail="Failed to get user info from GitHub",
         )
 
     github_id = str(user_info.get("id"))
@@ -127,7 +141,7 @@ async def exchange_github_token(
     if not email:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Could not retrieve email from GitHub. Please ensure your email is verified on GitHub."
+            detail="Could not retrieve email from GitHub. Please ensure your email is verified on GitHub.",
         )
 
     logger.info(
@@ -139,9 +153,7 @@ async def exchange_github_token(
 
     # Find or create user
     result = await db.execute(
-        select(User).where(
-            (User.oauth_id == github_id) | (User.email == email)
-        )
+        select(User).where((User.oauth_id == github_id) | (User.email == email))
     )
     user = result.scalar_one_or_none()
 
@@ -235,7 +247,7 @@ async def exchange_github_token(
     if not membership:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="User has no active organization membership"
+            detail="User has no active organization membership",
         )
 
     # Get organization

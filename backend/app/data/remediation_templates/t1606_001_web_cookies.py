@@ -24,7 +24,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Forge Web Credentials: Web Cookies",
     tactic_ids=["TA0006"],
     mitre_url="https://attack.mitre.org/techniques/T1606/001/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries forge web cookies to gain unauthorised access to web applications "
@@ -39,7 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Enables persistent access to cloud services",
             "Difficult to detect without baseline behavioural analysis",
             "No additional authentication prompts required",
-            "Valid sessions appear legitimate to security tools"
+            "Valid sessions appear legitimate to security tools",
         ],
         known_threat_actors=["APT29"],
         recent_campaigns=[
@@ -47,7 +46,7 @@ TEMPLATE = RemediationTemplate(
                 name="SolarWinds Supply Chain Attack",
                 year=2020,
                 description="APT29 generated cookie values from stolen secret keys to bypass MFA on Outlook Web Access",
-                reference_url="https://attack.mitre.org/campaigns/C0024/"
+                reference_url="https://attack.mitre.org/campaigns/C0024/",
             )
         ],
         prevalence="rare",
@@ -63,13 +62,12 @@ TEMPLATE = RemediationTemplate(
             "Email and collaboration platform compromise",
             "Data exfiltration from cloud services",
             "Persistent access despite password changes",
-            "Regulatory compliance violations"
+            "Regulatory compliance violations",
         ],
         typical_attack_phase="credential_access",
         often_precedes=["T1078.004", "T1213.002", "T1114.002"],
-        often_follows=["T1552.001", "T1555.003", "T1552.004"]
+        often_follows=["T1552.001", "T1555.003", "T1552.004"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1606-001-aws-cloudtrail",
@@ -79,14 +77,14 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, sourceIPAddress, userAgent, requestParameters.userName
+                query="""fields @timestamp, userIdentity.principalId, sourceIPAddress, userAgent, requestParameters.userName
 | filter eventName in ["AssumeRole", "GetSessionToken", "AssumeRoleWithSAML", "AssumeRoleWithWebIdentity"]
 | filter responseElements.credentials.sessionToken like /.+/
 | filter userIdentity.sessionContext.attributes.mfaAuthenticated = "false" or ispresent(userIdentity.sessionContext.attributes.mfaAuthenticated) = false
 | stats count(*) as no_mfa_sessions by userIdentity.principalId, sourceIPAddress, bin(1h)
 | filter no_mfa_sessions > 0
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect authentication bypassing MFA in AWS
 
 Parameters:
@@ -134,8 +132,8 @@ Resources:
       ComparisonOperator: GreaterThanOrEqualToThreshold
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching''',
-                terraform_template='''# AWS: Detect authentication bypassing MFA
+      TreatMissingData: notBreaching""",
+                terraform_template="""# AWS: Detect authentication bypassing MFA
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -185,7 +183,7 @@ resource "aws_cloudwatch_metric_alarm" "mfa_bypass_alert" {
   comparison_operator = "GreaterThanOrEqualToThreshold"
   alarm_actions       = [aws_sns_topic.auth_alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Authentication Bypassing MFA Detected",
                 alert_description_template="Authentication session created bypassing MFA for {principalId} from {sourceIPAddress}.",
@@ -195,7 +193,7 @@ resource "aws_cloudwatch_metric_alarm" "mfa_bypass_alert" {
                     "Review CloudTrail for secret key access events",
                     "Examine user's recent authentication history",
                     "Check for cookie manipulation or session token abuse",
-                    "Verify MFA device registration status"
+                    "Verify MFA device registration status",
                 ],
                 containment_actions=[
                     "Immediately revoke active session tokens",
@@ -203,8 +201,8 @@ resource "aws_cloudwatch_metric_alarm" "mfa_bypass_alert" {
                     "Rotate potentially compromised secret keys",
                     "Enable conditional access policies",
                     "Block source IP if malicious",
-                    "Reset user credentials and review account permissions"
-                ]
+                    "Reset user credentials and review account permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Legacy applications or service accounts may legitimately authenticate without MFA. Exclude known service accounts.",
@@ -213,9 +211,8 @@ resource "aws_cloudwatch_metric_alarm" "mfa_bypass_alert" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled with CloudWatch Logs integration"]
+            prerequisites=["CloudTrail enabled with CloudWatch Logs integration"],
         ),
-
         DetectionStrategy(
             strategy_id="t1606-001-aws-guardduty",
             name="AWS GuardDuty Anomalous Behaviour Detection",
@@ -224,7 +221,7 @@ resource "aws_cloudwatch_metric_alarm" "mfa_bypass_alert" {
             aws_service="guardduty",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''# GuardDuty Finding Types for Cookie Forgery:
+                query="""# GuardDuty Finding Types for Cookie Forgery:
 # - UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration
 # - UnauthorizedAccess:IAMUser/ConsoleLoginSuccess.B
 # - PenTest:IAMUser/KaliLinux
@@ -233,8 +230,8 @@ resource "aws_cloudwatch_metric_alarm" "mfa_bypass_alert" {
 fields @timestamp, service.action.actionType, severity, type, resource.accessKeyDetails.userName
 | filter type like /CredentialAccess|UnauthorizedAccess/
 | filter type like /AnomalousBehavior|ConsoleLoginSuccess/
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Configure GuardDuty alerts for credential access anomalies
 
 Parameters:
@@ -284,8 +281,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref GuardDutyTopic''',
-                terraform_template='''# AWS: Configure GuardDuty alerts for credential access
+            Resource: !Ref GuardDutyTopic""",
+                terraform_template="""# AWS: Configure GuardDuty alerts for credential access
 
 variable "alert_email" {
   type        = string
@@ -341,7 +338,7 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
       Resource = aws_sns_topic.guardduty_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GuardDuty: Credential Access Anomaly",
                 alert_description_template="GuardDuty detected anomalous credential access: {type}.",
@@ -350,15 +347,15 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
                     "Check user authentication history for anomalies",
                     "Examine source IP and geolocation",
                     "Review concurrent sessions and access patterns",
-                    "Check for recent secret key or certificate access"
+                    "Check for recent secret key or certificate access",
                 ],
                 containment_actions=[
                     "Revoke active sessions for affected user",
                     "Rotate credentials and secret keys",
                     "Enable additional MFA requirements",
                     "Review and restrict IAM permissions",
-                    "Block malicious source IPs"
-                ]
+                    "Block malicious source IPs",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="GuardDuty uses ML models; tune by suppressing findings for known legitimate behaviour",
@@ -367,9 +364,8 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-15",
-            prerequisites=["GuardDuty enabled in account"]
+            prerequisites=["GuardDuty enabled in account"],
         ),
-
         DetectionStrategy(
             strategy_id="t1606-001-gcp-workspace",
             name="GCP Workspace Login Audit Detection",
@@ -385,7 +381,7 @@ protoPayload.metadata.event.eventType="login"
 protoPayload.metadata.event.parameters.login_challenge_method!="totp"
 protoPayload.metadata.event.parameters.login_challenge_method!="sms"
 protoPayload.metadata.event.parameters.login_challenge_method!="push"''',
-                gcp_terraform_template='''# GCP: Detect suspicious login patterns in Workspace
+                gcp_terraform_template="""# GCP: Detect suspicious login patterns in Workspace
 
 variable "project_id" {
   type        = string
@@ -455,7 +451,7 @@ resource "google_monitoring_alert_policy" "workspace_login_alert" {
   alert_strategy {
     auto_close = "1800s"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Workspace Suspicious Login",
                 alert_description_template="Login without MFA detected in Google Workspace.",
@@ -465,7 +461,7 @@ resource "google_monitoring_alert_policy" "workspace_login_alert" {
                     "Verify if user has MFA configured",
                     "Examine concurrent sessions",
                     "Check for recent admin or privilege changes",
-                    "Review user's recent activity in Workspace apps"
+                    "Review user's recent activity in Workspace apps",
                 ],
                 containment_actions=[
                     "Force sign-out from all active sessions",
@@ -473,8 +469,8 @@ resource "google_monitoring_alert_policy" "workspace_login_alert" {
                     "Reset user password",
                     "Review and revoke OAuth tokens",
                     "Enable context-aware access policies",
-                    "Block suspicious IP ranges"
-                ]
+                    "Block suspicious IP ranges",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude users with legitimate reasons for no MFA (e.g., service accounts, legacy systems)",
@@ -483,9 +479,8 @@ resource "google_monitoring_alert_policy" "workspace_login_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Google Workspace with audit logging enabled"]
+            prerequisites=["Google Workspace with audit logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1606-001-gcp-identity",
             name="GCP Cloud Identity Session Anomaly Detection",
@@ -500,7 +495,7 @@ protoPayload.serviceName="iap.googleapis.com"
 protoPayload.methodName="AuthorizeUser"
 protoPayload.authenticationInfo.principalEmail!=""
 severity="WARNING" OR severity="ERROR"''',
-                gcp_terraform_template='''# GCP: Detect session anomalies via Cloud Identity
+                gcp_terraform_template="""# GCP: Detect session anomalies via Cloud Identity
 
 variable "project_id" {
   type        = string
@@ -575,7 +570,7 @@ resource "google_monitoring_alert_policy" "session_anomaly" {
   }
 
   notification_channels = [google_monitoring_notification_channel.session_alerts.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Session Authorisation Anomaly",
                 alert_description_template="Unusual session authorisation patterns detected in GCP.",
@@ -584,15 +579,15 @@ resource "google_monitoring_alert_policy" "session_anomaly" {
                     "Check for session token abuse patterns",
                     "Examine user's authentication methods",
                     "Review IAP and Cloud Identity settings",
-                    "Check for concurrent access from multiple locations"
+                    "Check for concurrent access from multiple locations",
                 ],
                 containment_actions=[
                     "Revoke active OAuth tokens",
                     "Force session re-authentication",
                     "Enable advanced protection programme",
                     "Review IAM bindings and permissions",
-                    "Rotate service account keys if affected"
-                ]
+                    "Rotate service account keys if affected",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal authentication patterns; exclude transient network failures",
@@ -601,16 +596,15 @@ resource "google_monitoring_alert_policy" "session_anomaly" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-15",
-            prerequisites=["Cloud Identity, IAP, or Cloud Audit Logs enabled"]
-        )
+            prerequisites=["Cloud Identity, IAP, or Cloud Audit Logs enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1606-001-aws-guardduty",
         "t1606-001-aws-cloudtrail",
         "t1606-001-gcp-workspace",
-        "t1606-001-gcp-identity"
+        "t1606-001-gcp-identity",
     ],
     total_effort_hours=3.0,
-    coverage_improvement="+25% improvement for Credential Access tactic"
+    coverage_improvement="+25% improvement for Credential Access tactic",
 )

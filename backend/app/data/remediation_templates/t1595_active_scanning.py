@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Active Scanning",
     tactic_ids=["TA0043"],  # Reconnaissance
     mitre_url="https://attack.mitre.org/techniques/T1595/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries execute active reconnaissance scans to gather targeting "
@@ -38,15 +37,23 @@ TEMPLATE = RemediationTemplate(
             "Discover vulnerabilities before exploitation",
             "Map network infrastructure",
             "Enumerate cloud resources",
-            "Identify software versions and configurations"
+            "Identify software versions and configurations",
         ],
-        known_threat_actors=["TEMP.Veles", "APT28", "APT41", "Magic Hound", "Ember Bear", "TeamTNT", "Winter Vivern"],
+        known_threat_actors=[
+            "TEMP.Veles",
+            "APT28",
+            "APT41",
+            "Magic Hound",
+            "Ember Bear",
+            "TeamTNT",
+            "Winter Vivern",
+        ],
         recent_campaigns=[
             Campaign(
                 name="Triton Safety Instrumented System Attack",
                 year=2017,
                 description="TEMP.Veles conducted network reconnaissance during critical infrastructure attack",
-                reference_url="https://attack.mitre.org/campaigns/C0030/"
+                reference_url="https://attack.mitre.org/campaigns/C0030/",
             )
         ],
         prevalence="common",
@@ -61,13 +68,16 @@ TEMPLATE = RemediationTemplate(
             "Exposure of infrastructure details",
             "Vulnerability enumeration",
             "Precursor to targeted attacks",
-            "Cloud resource discovery"
+            "Cloud resource discovery",
         ],
         typical_attack_phase="reconnaissance",
-        often_precedes=["T1190", "T1210", "T1133"],  # Exploit Public-Facing App, Exploitation of Remote Services, External Remote Services
-        often_follows=[]
+        often_precedes=[
+            "T1190",
+            "T1210",
+            "T1133",
+        ],  # Exploit Public-Facing App, Exploitation of Remote Services, External Remote Services
+        often_follows=[],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1595-aws-vpc-flow",
@@ -77,12 +87,12 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcaddr, dstaddr, dstport, action
+                query="""fields @timestamp, srcaddr, dstaddr, dstport, action
 | filter action = "REJECT"
 | stats count(*) as port_scans by srcaddr, bin(5m)
 | filter port_scans > 50
-| sort port_scans desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort port_scans desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect port scanning via VPC Flow Logs
 
 Parameters:
@@ -120,8 +130,8 @@ Resources:
       Threshold: 100
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect port scanning via VPC Flow Logs
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect port scanning via VPC Flow Logs
 
 variable "vpc_flow_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -158,7 +168,7 @@ resource "aws_cloudwatch_metric_alarm" "port_scanning" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Port Scanning Activity Detected",
                 alert_description_template="High volume of rejected connections from {srcaddr} indicating port scanning.",
@@ -167,14 +177,14 @@ resource "aws_cloudwatch_metric_alarm" "port_scanning" {
                     "Analyse scanned ports and patterns",
                     "Check for successful connections from same source",
                     "Review GuardDuty findings for correlation",
-                    "Verify if source is legitimate security scanner"
+                    "Verify if source is legitimate security scanner",
                 ],
                 containment_actions=[
                     "Block source IP at NACL or security group",
                     "Review and harden security group rules",
                     "Enable GuardDuty if not active",
-                    "Consider AWS WAF rules for web services"
-                ]
+                    "Consider AWS WAF rules for web services",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude authorised security scanners and monitoring tools",
@@ -183,9 +193,8 @@ resource "aws_cloudwatch_metric_alarm" "port_scanning" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-60 minutes",
             estimated_monthly_cost="$5-15",
-            prerequisites=["VPC Flow Logs enabled"]
+            prerequisites=["VPC Flow Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1595-aws-guardduty",
             name="AWS GuardDuty - Reconnaissance Detection",
@@ -197,9 +206,9 @@ resource "aws_cloudwatch_metric_alarm" "port_scanning" {
                 guardduty_finding_types=[
                     "Recon:EC2/PortProbeUnprotectedPort",
                     "Recon:EC2/PortProbeEMRUnprotectedPort",
-                    "Recon:EC2/Portscan"
+                    "Recon:EC2/Portscan",
                 ],
-                terraform_template='''# Route GuardDuty reconnaissance findings to alerts
+                terraform_template="""# Route GuardDuty reconnaissance findings to alerts
 
 variable "alert_email" { type = string }
 
@@ -247,7 +256,7 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Network Reconnaissance Detected",
                 alert_description_template="GuardDuty detected reconnaissance activity against AWS resources.",
@@ -256,14 +265,14 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
                     "Identify targeted resources",
                     "Check VPC Flow Logs for full activity",
                     "Verify no successful exploitation occurred",
-                    "Correlate with other security findings"
+                    "Correlate with other security findings",
                 ],
                 containment_actions=[
                     "Block malicious IPs via NACL",
                     "Review security group configurations",
                     "Patch vulnerable services",
-                    "Enable additional monitoring"
-                ]
+                    "Enable additional monitoring",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="GuardDuty findings are generally reliable",
@@ -272,9 +281,8 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$10-50 (GuardDuty fees)",
-            prerequisites=["GuardDuty enabled"]
+            prerequisites=["GuardDuty enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1595-aws-waf-scanner",
             name="AWS WAF - Web Vulnerability Scanner Detection",
@@ -283,13 +291,13 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, httpRequest.clientIp, httpRequest.uri, httpRequest.headers
+                query="""fields @timestamp, httpRequest.clientIp, httpRequest.uri, httpRequest.headers
 | filter httpRequest.headers.0.name = "User-Agent"
 | filter httpRequest.headers.0.value like /Nmap|Nikto|sqlmap|Nessus|OpenVAS|Acunetix|Burp|ZAP/
 | stats count(*) as scan_requests by httpRequest.clientIp, bin(10m)
 | filter scan_requests > 10
-| sort scan_requests desc''',
-                terraform_template='''# Detect web vulnerability scanners via WAF
+| sort scan_requests desc""",
+                terraform_template="""# Detect web vulnerability scanners via WAF
 
 variable "waf_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -326,7 +334,7 @@ resource "aws_cloudwatch_metric_alarm" "vuln_scanning" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Web Vulnerability Scanning Detected",
                 alert_description_template="Vulnerability scanner detected from {clientIp}.",
@@ -335,14 +343,14 @@ resource "aws_cloudwatch_metric_alarm" "vuln_scanning" {
                     "Review scanned endpoints and parameters",
                     "Check for successful vulnerability exploitation",
                     "Verify if authorised security assessment",
-                    "Review application logs for correlation"
+                    "Review application logs for correlation",
                 ],
                 containment_actions=[
                     "Block scanner IP at WAF",
                     "Review and patch identified vulnerabilities",
                     "Enable additional WAF managed rules",
-                    "Implement rate limiting"
-                ]
+                    "Implement rate limiting",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Exclude authorised penetration testing IPs",
@@ -351,9 +359,8 @@ resource "aws_cloudwatch_metric_alarm" "vuln_scanning" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-25",
-            prerequisites=["AWS WAF with logging enabled"]
+            prerequisites=["AWS WAF with logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1595-gcp-vpc-flow",
             name="GCP VPC Flow Logs - Port Scanning Detection",
@@ -363,12 +370,12 @@ resource "aws_cloudwatch_metric_alarm" "vuln_scanning" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_subnetwork"
+                gcp_logging_query="""resource.type="gce_subnetwork"
 log_name="projects/PROJECT_ID/logs/compute.googleapis.com%2Fvpc_flows"
 jsonPayload.connection.dest_port>1
 jsonPayload.reporter="DEST"
--jsonPayload.connection.dest_port=(22 OR 443 OR 80)''',
-                gcp_terraform_template='''# GCP: Detect port scanning via VPC Flow Logs
+-jsonPayload.connection.dest_port=(22 OR 443 OR 80)""",
+                gcp_terraform_template="""# GCP: Detect port scanning via VPC Flow Logs
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -419,7 +426,7 @@ resource "google_monitoring_alert_policy" "port_scan_alert" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Port Scanning Activity",
                 alert_description_template="Port scanning detected against GCP resources.",
@@ -428,14 +435,14 @@ resource "google_monitoring_alert_policy" "port_scan_alert" {
                     "Analyse targeted ports and services",
                     "Check for successful connections",
                     "Review Security Command Center",
-                    "Verify firewall rule effectiveness"
+                    "Verify firewall rule effectiveness",
                 ],
                 containment_actions=[
                     "Create deny firewall rule",
                     "Review and harden firewall rules",
                     "Enable Cloud Armor for web services",
-                    "Implement VPC Service Controls"
-                ]
+                    "Implement VPC Service Controls",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude legitimate monitoring and authorised scanners",
@@ -444,9 +451,8 @@ resource "google_monitoring_alert_policy" "port_scan_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-20",
-            prerequisites=["VPC Flow Logs enabled"]
+            prerequisites=["VPC Flow Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1595-gcp-armor-scanner",
             name="GCP Cloud Armor - Scanner Detection",
@@ -460,7 +466,7 @@ resource "google_monitoring_alert_policy" "port_scan_alert" {
 jsonPayload.enforcedSecurityPolicy.name:*
 jsonPayload.enforcedSecurityPolicy.preconfiguredExprIds:"scannerdetection"
 jsonPayload.enforcedSecurityPolicy.outcome="DENY"''',
-                gcp_terraform_template='''# GCP: Detect web scanners via Cloud Armor
+                gcp_terraform_template="""# GCP: Detect web scanners via Cloud Armor
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -497,7 +503,7 @@ resource "google_monitoring_alert_policy" "scanner_activity" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Web Scanner Detected",
                 alert_description_template="Cloud Armor detected web vulnerability scanner activity.",
@@ -506,14 +512,14 @@ resource "google_monitoring_alert_policy" "scanner_activity" {
                     "Identify scanner type and source",
                     "Check for successful bypasses",
                     "Review application logs",
-                    "Verify if authorised assessment"
+                    "Verify if authorised assessment",
                 ],
                 containment_actions=[
                     "Add custom blocking rules",
                     "Review security policy configuration",
                     "Patch identified vulnerabilities",
-                    "Implement rate limiting"
-                ]
+                    "Implement rate limiting",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Cloud Armor scanner detection is reliable",
@@ -522,11 +528,16 @@ resource "google_monitoring_alert_policy" "scanner_activity" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$15-30",
-            prerequisites=["Cloud Armor with scanner detection rule enabled"]
-        )
+            prerequisites=["Cloud Armor with scanner detection rule enabled"],
+        ),
     ],
-
-    recommended_order=["t1595-aws-guardduty", "t1595-gcp-armor-scanner", "t1595-aws-vpc-flow", "t1595-gcp-vpc-flow", "t1595-aws-waf-scanner"],
+    recommended_order=[
+        "t1595-aws-guardduty",
+        "t1595-gcp-armor-scanner",
+        "t1595-aws-vpc-flow",
+        "t1595-gcp-vpc-flow",
+        "t1595-aws-waf-scanner",
+    ],
     total_effort_hours=4.5,
-    coverage_improvement="+15% improvement for Reconnaissance tactic"
+    coverage_improvement="+15% improvement for Reconnaissance tactic",
 )

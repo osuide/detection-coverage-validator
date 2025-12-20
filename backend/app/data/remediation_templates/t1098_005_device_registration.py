@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Account Manipulation: Device Registration",
     tactic_ids=["TA0003", "TA0004"],
     mitre_url="https://attack.mitre.org/techniques/T1098/005/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries register devices to compromised accounts to establish persistence "
@@ -36,7 +35,7 @@ TEMPLATE = RemediationTemplate(
             "Circumvents conditional access policies in Azure AD/Intune",
             "Enables internal phishing with reduced suspicion",
             "Provides persistent access even after password resets",
-            "Allows device-based authentication from attacker-controlled systems"
+            "Allows device-based authentication from attacker-controlled systems",
         ],
         known_threat_actors=["APT29", "Scattered Spider", "DEV-0537"],
         recent_campaigns=[
@@ -44,20 +43,20 @@ TEMPLATE = RemediationTemplate(
                 name="SolarWinds Compromise (C0024)",
                 year=2020,
                 description="APT29 registered devices to enable mailbox synchronisation via administrative commands",
-                reference_url="https://attack.mitre.org/campaigns/C0024/"
+                reference_url="https://attack.mitre.org/campaigns/C0024/",
             ),
             Campaign(
                 name="Scattered Spider MFA Bypass (C0027)",
                 year=2023,
                 description="Scattered Spider registered MFA devices to maintain VPN persistence during operations",
-                reference_url="https://attack.mitre.org/campaigns/C0027/"
+                reference_url="https://attack.mitre.org/campaigns/C0027/",
             ),
             Campaign(
                 name="Azure AD Device Registration",
                 year=2024,
                 description="APT29 enrolled devices in compromised Azure AD environments, targeting dormant accounts",
-                reference_url="https://attack.mitre.org/groups/G0016/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0016/",
+            ),
         ],
         prevalence="moderate",
         trend="increasing",
@@ -72,13 +71,12 @@ TEMPLATE = RemediationTemplate(
             "Bypass of conditional access and zero-trust policies",
             "Internal phishing capabilities from trusted devices",
             "Difficult to detect without proper monitoring",
-            "Potential for mass device registration DoS attacks"
+            "Potential for mass device registration DoS attacks",
         ],
         typical_attack_phase="persistence",
         often_precedes=["T1114.003", "T1530", "T1537"],
-        often_follows=["T1078.004", "T1110", "T1621"]
+        often_follows=["T1078.004", "T1110", "T1621"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - Device Registration in IAM Identity Center
         DetectionStrategy(
@@ -92,11 +90,9 @@ TEMPLATE = RemediationTemplate(
                 event_pattern={
                     "source": ["aws.sso"],
                     "detail-type": ["AWS API Call via CloudTrail"],
-                    "detail": {
-                        "eventName": ["RegisterDevice", "CreateDevice"]
-                    }
+                    "detail": {"eventName": ["RegisterDevice", "CreateDevice"]},
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect device registration in IAM Identity Center
 
 Parameters:
@@ -141,8 +137,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect device registration in IAM Identity Center
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect device registration in IAM Identity Center
 
 variable "alert_email" {
   type        = string
@@ -194,7 +190,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.device_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Device Registered in IAM Identity Center",
                 alert_description_template="New device registered for user {userName} from IP {sourceIPAddress}.",
@@ -203,15 +199,15 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Check the source IP address and location",
                     "Review the user's recent authentication history",
                     "Verify the device details match expected corporate devices",
-                    "Check for other suspicious activity on the account"
+                    "Check for other suspicious activity on the account",
                 ],
                 containment_actions=[
                     "Deregister the suspicious device immediately",
                     "Force MFA re-registration for the user",
                     "Reset the user's credentials",
                     "Review and revoke any active sessions",
-                    "Enable device trust policies"
-                ]
+                    "Enable device trust policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Expected during employee onboarding or device replacement - correlate with HR systems",
@@ -220,9 +216,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled", "IAM Identity Center logging enabled"]
+            prerequisites=["CloudTrail enabled", "IAM Identity Center logging enabled"],
         ),
-
         # Strategy 2: AWS - Azure AD/Entra ID Device Registration (hybrid)
         DetectionStrategy(
             strategy_id="t1098005-aws-azuread-device",
@@ -232,13 +227,13 @@ resource "aws_sns_topic_policy" "allow_events" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.userName, sourceIPAddress, requestParameters
+                query="""fields @timestamp, eventName, userIdentity.userName, sourceIPAddress, requestParameters
 | filter eventSource = "sso.amazonaws.com" or eventSource = "identitystore.amazonaws.com"
 | filter eventName in ["RegisterDevice", "CreateDevice", "UpdateDevice"]
 | stats count(*) as registrations by userIdentity.userName, sourceIPAddress, bin(1h)
 | filter registrations > 3
-| sort registrations desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort registrations desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Monitor for suspicious device registration patterns
 
 Parameters:
@@ -283,8 +278,8 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
-        - !Ref AlertTopic''',
-                terraform_template='''# Monitor for suspicious device registration patterns
+        - !Ref AlertTopic""",
+                terraform_template="""# Monitor for suspicious device registration patterns
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -331,7 +326,7 @@ resource "aws_cloudwatch_metric_alarm" "high_registrations" {
   threshold           = 5
   comparison_operator = "GreaterThanThreshold"
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Suspicious Device Registration Pattern",
                 alert_description_template="Multiple device registrations detected: {registrations} devices in 1 hour.",
@@ -340,15 +335,15 @@ resource "aws_cloudwatch_metric_alarm" "high_registrations" {
                     "Check if registrations correlate with legitimate business activity",
                     "Verify source IP addresses and geolocations",
                     "Look for signs of automated registration",
-                    "Check if dormant accounts are being targeted"
+                    "Check if dormant accounts are being targeted",
                 ],
                 containment_actions=[
                     "Suspend accounts with suspicious registrations",
                     "Deregister all suspicious devices",
                     "Implement device registration approval workflow",
                     "Enable device trust requirements",
-                    "Review and update conditional access policies"
-                ]
+                    "Review and update conditional access policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Adjust threshold based on organisation size and device refresh cycles",
@@ -357,9 +352,8 @@ resource "aws_cloudwatch_metric_alarm" "high_registrations" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail logging to CloudWatch Logs"]
+            prerequisites=["CloudTrail logging to CloudWatch Logs"],
         ),
-
         # Strategy 3: GCP - Workspace Device Registration
         DetectionStrategy(
             strategy_id="t1098005-gcp-device-reg",
@@ -373,7 +367,7 @@ resource "aws_cloudwatch_metric_alarm" "high_registrations" {
                 gcp_logging_query='''protoPayload.serviceName="admin.googleapis.com"
 protoPayload.methodName=~"device.register|mobile.register|chrome.register"
 OR protoPayload.methodName="google.admin.AdminService.registerDevice"''',
-                gcp_terraform_template='''# GCP: Detect device registration in Workspace
+                gcp_terraform_template="""# GCP: Detect device registration in Workspace
 
 variable "project_id" {
   type        = string
@@ -432,7 +426,7 @@ resource "google_monitoring_alert_policy" "device_registration" {
   alert_strategy {
     auto_close = "86400s"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Workspace Device Registered",
                 alert_description_template="New device registered in Google Workspace for user {userEmail}.",
@@ -441,15 +435,15 @@ resource "google_monitoring_alert_policy" "device_registration" {
                     "Check the device type and operating system",
                     "Review user's recent authentication history",
                     "Verify the registration location matches expected user location",
-                    "Check for signs of account compromise"
+                    "Check for signs of account compromise",
                 ],
                 containment_actions=[
                     "Remove the suspicious device from Workspace",
                     "Revoke device access to corporate resources",
                     "Force user to re-authenticate",
                     "Reset user credentials if compromise suspected",
-                    "Enable device approval workflow"
-                ]
+                    "Enable device approval workflow",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Expected for new employees or device replacements - integrate with IT asset management",
@@ -458,9 +452,8 @@ resource "google_monitoring_alert_policy" "device_registration" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Workspace Admin audit logs enabled"]
+            prerequisites=["Workspace Admin audit logs enabled"],
         ),
-
         # Strategy 4: GCP - Unusual Device Registration Patterns
         DetectionStrategy(
             strategy_id="t1098005-gcp-device-pattern",
@@ -471,11 +464,11 @@ resource "google_monitoring_alert_policy" "device_registration" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''protoPayload.serviceName="admin.googleapis.com"
+                gcp_logging_query="""protoPayload.serviceName="admin.googleapis.com"
 protoPayload.methodName=~"device.register|mobile.register"
 | stats count() as device_count by protoPayload.authenticationInfo.principalEmail, timestamp
-| filter device_count > 3''',
-                gcp_terraform_template='''# GCP: Detect unusual device registration patterns
+| filter device_count > 3""",
+                gcp_terraform_template="""# GCP: Detect unusual device registration patterns
 
 variable "project_id" {
   type = string
@@ -538,7 +531,7 @@ resource "google_monitoring_alert_policy" "bulk_registration" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Bulk Device Registration Detected",
                 alert_description_template="Unusual device registration volume detected: {device_count} devices.",
@@ -547,15 +540,15 @@ resource "google_monitoring_alert_policy" "bulk_registration" {
                     "Check if pattern matches legitimate IT operations",
                     "Review device details for anomalies",
                     "Check for compromised admin accounts",
-                    "Correlate with other security events"
+                    "Correlate with other security events",
                 ],
                 containment_actions=[
                     "Suspend affected user accounts",
                     "Remove all suspicious devices",
                     "Implement device approval requirements",
                     "Enable advanced device management policies",
-                    "Review admin privileges"
-                ]
+                    "Review admin privileges",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist IT admin accounts performing bulk provisioning",
@@ -564,9 +557,8 @@ resource "google_monitoring_alert_policy" "bulk_registration" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Workspace Admin API enabled", "Cloud Logging configured"]
+            prerequisites=["Workspace Admin API enabled", "Cloud Logging configured"],
         ),
-
         # Strategy 5: AWS - Dormant Account Device Registration
         DetectionStrategy(
             strategy_id="t1098005-aws-dormant-device",
@@ -576,11 +568,11 @@ resource "google_monitoring_alert_policy" "bulk_registration" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.userName, sourceIPAddress
+                query="""fields @timestamp, eventName, userIdentity.userName, sourceIPAddress
 | filter eventName in ["RegisterDevice", "CreateDevice"]
 | stats earliest(@timestamp) as device_reg_time by userIdentity.userName
-# Correlate with user activity logs to identify dormant accounts''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+# Correlate with user activity logs to identify dormant accounts""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect device registration on dormant accounts
 
 Parameters:
@@ -642,8 +634,8 @@ Resources:
             Principal: { Service: lambda.amazonaws.com }
             Action: sts:AssumeRole
       ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole''',
-                terraform_template='''# Detect device registration on dormant accounts
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole""",
+                terraform_template="""# Detect device registration on dormant accounts
 
 variable "cloudtrail_log_group" {
   type = string
@@ -709,7 +701,7 @@ resource "aws_iam_role" "lambda_role" {
       Action    = "sts:AssumeRole"
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Device Registered on Dormant Account",
                 alert_description_template="Device registered for dormant account {userName} - no activity in {days_dormant} days.",
@@ -718,15 +710,15 @@ resource "aws_iam_role" "lambda_role" {
                     "Check for recent password reset attempts",
                     "Review how credentials were obtained",
                     "Identify all devices registered to this account",
-                    "Check for similar activity on other dormant accounts"
+                    "Check for similar activity on other dormant accounts",
                 ],
                 containment_actions=[
                     "Immediately deregister the device",
                     "Disable the dormant account",
                     "Force password reset",
                     "Review all dormant accounts for compromise",
-                    "Implement automatic dormant account disablement"
-                ]
+                    "Implement automatic dormant account disablement",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Account reactivation for returning employees is expected - integrate with HR systems",
@@ -735,17 +727,16 @@ resource "aws_iam_role" "lambda_role" {
             implementation_effort=EffortLevel.HIGH,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["CloudTrail", "Lambda", "Historical user activity baseline"]
-        )
+            prerequisites=["CloudTrail", "Lambda", "Historical user activity baseline"],
+        ),
     ],
-
     recommended_order=[
         "t1098005-aws-device-reg",
         "t1098005-gcp-device-reg",
         "t1098005-aws-azuread-device",
         "t1098005-gcp-device-pattern",
-        "t1098005-aws-dormant-device"
+        "t1098005-aws-dormant-device",
     ],
     total_effort_hours=5.5,
-    coverage_improvement="+18% improvement for Persistence and Privilege Escalation tactics"
+    coverage_improvement="+18% improvement for Persistence and Privilege Escalation tactics",
 )

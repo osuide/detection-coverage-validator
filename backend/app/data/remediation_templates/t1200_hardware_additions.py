@@ -25,7 +25,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Hardware Additions",
     tactic_ids=["TA0001"],  # Initial Access
     mitre_url="https://attack.mitre.org/techniques/T1200/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries introduce physical computing devices into systems or networks "
@@ -41,7 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Enables traffic interception and modification",
             "Can exfiltrate data via wireless channels",
             "Difficult to detect without physical inspection",
-            "Low-cost devices provide advanced capabilities"
+            "Low-cost devices provide advanced capabilities",
         ],
         known_threat_actors=["DarkVishnya"],
         recent_campaigns=[
@@ -49,7 +48,7 @@ TEMPLATE = RemediationTemplate(
                 name="DarkVishnya Banking Attacks",
                 year=2018,
                 description="Physically connected Bash Bunny, Raspberry Pi, netbooks, and inexpensive laptops to target organisation's environment to access company's local network, specifically targeting banking institutions",
-                reference_url="https://attack.mitre.org/groups/G0105/"
+                reference_url="https://attack.mitre.org/groups/G0105/",
             )
         ],
         prevalence="rare",
@@ -66,13 +65,17 @@ TEMPLATE = RemediationTemplate(
             "Traffic interception and data theft",
             "Lateral movement enabler",
             "Persistent backdoor access",
-            "Compliance violations"
+            "Compliance violations",
         ],
         typical_attack_phase="initial_access",
-        often_precedes=["T1040", "T1557", "T1021", "T1078"],  # Network sniffing, AiTM, Remote Services, Valid Accounts
-        often_follows=[]
+        often_precedes=[
+            "T1040",
+            "T1557",
+            "T1021",
+            "T1078",
+        ],  # Network sniffing, AiTM, Remote Services, Valid Accounts
+        often_follows=[],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1200-aws-usb",
@@ -82,12 +85,12 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, detail.instance-id, detail.device-type, detail.device-name
+                query="""fields @timestamp, detail.instance-id, detail.device-type, detail.device-name
 | filter @message like /USB|Thunderbolt|PCI/
 | filter detail.event-name = "DeviceConnected"
 | stats count(*) as devices by detail.instance-id, detail.device-type, bin(1h)
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect unauthorised USB/hardware device connections on EC2
 
 Parameters:
@@ -155,8 +158,8 @@ Resources:
       Targets:
         - Key: InstanceIds
           Values: [!Ref InstanceId]
-      ScheduleExpression: rate(1 hour)''',
-                terraform_template='''# Detect unauthorised USB/hardware device connections on EC2
+      ScheduleExpression: rate(1 hour)""",
+                terraform_template="""# Detect unauthorised USB/hardware device connections on EC2
 
 variable "instance_id" {
   type        = string
@@ -227,7 +230,7 @@ resource "aws_ssm_association" "hardware_audit" {
     key    = "InstanceIds"
     values = [var.instance_id]
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Unauthorised Hardware Device Detected",
                 alert_description_template="USB or hardware device connected to instance {instance_id}.",
@@ -237,7 +240,7 @@ resource "aws_ssm_association" "hardware_audit" {
                     "Review physical access logs for the data centre",
                     "Inspect instance for unfamiliar network interfaces",
                     "Check for unusual network traffic patterns",
-                    "Review user login activity around device connection time"
+                    "Review user login activity around device connection time",
                 ],
                 containment_actions=[
                     "Physically disconnect unauthorised device",
@@ -245,8 +248,8 @@ resource "aws_ssm_association" "hardware_audit" {
                     "Review and rotate credentials",
                     "Image instance for forensic analysis",
                     "Enable USB device restrictions",
-                    "Review physical security controls"
-                ]
+                    "Review physical security controls",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Filter for authorised device types and scheduled maintenance windows",
@@ -255,9 +258,12 @@ resource "aws_ssm_association" "hardware_audit" {
             implementation_effort=EffortLevel.HIGH,
             implementation_time="3-4 hours",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Systems Manager agent installed", "EventBridge enabled", "CloudWatch Logs"]
+            prerequisites=[
+                "Systems Manager agent installed",
+                "EventBridge enabled",
+                "CloudWatch Logs",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1200-aws-network",
             name="AWS Network Interface Anomaly Detection",
@@ -266,13 +272,13 @@ resource "aws_ssm_association" "hardware_audit" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, detail.requestParameters.networkInterfaceId, detail.userIdentity.principalId
+                query="""fields @timestamp, detail.requestParameters.networkInterfaceId, detail.userIdentity.principalId
 | filter detail.eventName = "CreateNetworkInterface" or detail.eventName = "AttachNetworkInterface"
 | filter detail.userIdentity.principalId not like /expected-service/
 | stats count(*) as interfaces by detail.userIdentity.principalId, bin(1h)
 | filter interfaces > 0
-| sort @timestamp desc''',
-                terraform_template='''# Detect unauthorised network interface additions
+| sort @timestamp desc""",
+                terraform_template="""# Detect unauthorised network interface additions
 
 variable "vpc_flow_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -310,7 +316,7 @@ resource "aws_cloudwatch_metric_alarm" "interface_alarm" {
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Unauthorised Network Interface Detected",
                 alert_description_template="New network interface created by {principalId}.",
@@ -319,14 +325,14 @@ resource "aws_cloudwatch_metric_alarm" "interface_alarm" {
                     "Check CloudTrail for API call source IP",
                     "Review associated security groups",
                     "Check for data exfiltration attempts",
-                    "Inspect VPC Flow Logs for unusual traffic"
+                    "Inspect VPC Flow Logs for unusual traffic",
                 ],
                 containment_actions=[
                     "Detach unauthorised network interface",
                     "Block source IP in NACLs",
                     "Review and update IAM permissions",
-                    "Enable GuardDuty if not active"
-                ]
+                    "Enable GuardDuty if not active",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist expected automation and service principals",
@@ -335,9 +341,8 @@ resource "aws_cloudwatch_metric_alarm" "interface_alarm" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["VPC Flow Logs enabled", "CloudTrail logging"]
+            prerequisites=["VPC Flow Logs enabled", "CloudTrail logging"],
         ),
-
         DetectionStrategy(
             strategy_id="t1200-gcp-compute",
             name="GCP Compute Instance Hardware Monitoring",
@@ -350,7 +355,7 @@ resource "aws_cloudwatch_metric_alarm" "interface_alarm" {
                 gcp_logging_query='''resource.type="gce_instance"
 protoPayload.methodName=~"compute.instances.attachDisk|compute.instances.insert|compute.instances.setMetadata"
 severity="NOTICE"''',
-                gcp_terraform_template='''# GCP: Detect hardware additions and network changes
+                gcp_terraform_template="""# GCP: Detect hardware additions and network changes
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -416,7 +421,7 @@ resource "google_storage_bucket" "audit_logs" {
       type = "Delete"
     }
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Hardware Addition Detected",
                 alert_description_template="Hardware or network changes detected on GCP Compute instance.",
@@ -426,15 +431,15 @@ resource "google_storage_bucket" "audit_logs" {
                     "Verify changes are authorised",
                     "Inspect attached disks and network interfaces",
                     "Review VPC Flow Logs for unusual traffic",
-                    "Check for data exfiltration attempts"
+                    "Check for data exfiltration attempts",
                 ],
                 containment_actions=[
                     "Detach unauthorised hardware",
                     "Isolate affected instance via firewall rules",
                     "Review and rotate service account keys",
                     "Take disk snapshot for forensics",
-                    "Review IAM permissions"
-                ]
+                    "Review IAM permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Filter for authorised service accounts and maintenance windows",
@@ -443,9 +448,8 @@ resource "google_storage_bucket" "audit_logs" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$15-25",
-            prerequisites=["Cloud Logging enabled", "Compute Engine API logging"]
+            prerequisites=["Cloud Logging enabled", "Compute Engine API logging"],
         ),
-
         DetectionStrategy(
             strategy_id="t1200-gcp-dhcp",
             name="GCP DHCP Lease Anomaly Detection",
@@ -458,7 +462,7 @@ resource "google_storage_bucket" "audit_logs" {
                 gcp_logging_query='''resource.type="gce_subnetwork"
 jsonPayload.event_type="DHCP_LEASE"
 jsonPayload.lease_action="ASSIGN"''',
-                gcp_terraform_template='''# GCP: Detect unauthorised DHCP activity
+                gcp_terraform_template="""# GCP: Detect unauthorised DHCP activity
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -507,7 +511,7 @@ resource "google_monitoring_alert_policy" "dhcp_alert" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Unauthorised DHCP Activity",
                 alert_description_template="Unusual DHCP lease activity detected in VPC network.",
@@ -516,14 +520,14 @@ resource "google_monitoring_alert_policy" "dhcp_alert" {
                     "Check if devices are registered in asset inventory",
                     "Correlate with physical access logs",
                     "Inspect VPC Flow Logs for device traffic",
-                    "Verify subnet configurations are correct"
+                    "Verify subnet configurations are correct",
                 ],
                 containment_actions=[
                     "Block MAC address at network level",
                     "Implement 802.1x authentication",
                     "Restrict DHCP to known devices only",
-                    "Review firewall rules"
-                ]
+                    "Review firewall rules",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist known MAC addresses and expected device types",
@@ -532,11 +536,15 @@ resource "google_monitoring_alert_policy" "dhcp_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$10-15",
-            prerequisites=["VPC Flow Logs with DHCP events", "Cloud Logging"]
-        )
+            prerequisites=["VPC Flow Logs with DHCP events", "Cloud Logging"],
+        ),
     ],
-
-    recommended_order=["t1200-aws-usb", "t1200-aws-network", "t1200-gcp-compute", "t1200-gcp-dhcp"],
+    recommended_order=[
+        "t1200-aws-usb",
+        "t1200-aws-network",
+        "t1200-gcp-compute",
+        "t1200-gcp-dhcp",
+    ],
     total_effort_hours=10.0,
-    coverage_improvement="+15% improvement for Initial Access tactic"
+    coverage_improvement="+15% improvement for Initial Access tactic",
 )

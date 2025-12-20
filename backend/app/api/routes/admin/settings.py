@@ -17,6 +17,7 @@ router = APIRouter(prefix="/settings", tags=["Admin Settings"])
 # Request/Response schemas
 class SettingResponse(BaseModel):
     """Setting response (secrets are masked)."""
+
     key: str
     value: Optional[str]  # Masked for secrets
     is_secret: bool
@@ -28,18 +29,21 @@ class SettingResponse(BaseModel):
 
 class SettingListResponse(BaseModel):
     """List of settings."""
+
     items: list[SettingResponse]
     total: int
 
 
 class UpdateSettingRequest(BaseModel):
     """Update setting request."""
+
     value: str
     reason: Optional[str] = None
 
 
 class CreateSettingRequest(BaseModel):
     """Create setting request."""
+
     key: str
     value: str
     is_secret: bool = False
@@ -50,6 +54,7 @@ class CreateSettingRequest(BaseModel):
 
 class StripeConfigResponse(BaseModel):
     """Stripe configuration response."""
+
     publishable_key: Optional[str]
     secret_key_configured: bool
     webhook_secret_configured: bool
@@ -57,6 +62,7 @@ class StripeConfigResponse(BaseModel):
 
 class StripeConfigRequest(BaseModel):
     """Stripe configuration request."""
+
     publishable_key: Optional[str] = None
     secret_key: Optional[str] = None
     webhook_secret: Optional[str] = None
@@ -65,6 +71,7 @@ class StripeConfigRequest(BaseModel):
 
 class SettingAuditResponse(BaseModel):
     """Setting audit log entry."""
+
     id: str
     setting_key: str
     action: str
@@ -121,7 +128,7 @@ async def list_settings(
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid category: {category}"
+                detail=f"Invalid category: {category}",
             )
     else:
         settings_list = await service.get_all_settings()
@@ -143,8 +150,7 @@ async def get_setting(
 
     if not setting:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Setting not found: {key}"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Setting not found: {key}"
         )
 
     return _setting_to_response(setting)
@@ -167,8 +173,7 @@ async def update_setting(
 
     if not setting:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Setting not found: {key}"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Setting not found: {key}"
         )
 
     # Check if setting is restricted to super_admin
@@ -179,7 +184,7 @@ async def update_setting(
         if admin.role != AdminRole.SUPER_ADMIN:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only super_admin can modify billing/auth secrets"
+                detail="Only super_admin can modify billing/auth secrets",
             )
 
     ip_address = get_client_ip(request)
@@ -216,7 +221,7 @@ async def create_setting(
     if existing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Setting already exists: {body.key}"
+            detail=f"Setting already exists: {body.key}",
         )
 
     # Check if restricted category
@@ -227,7 +232,7 @@ async def create_setting(
         if admin.role != AdminRole.SUPER_ADMIN:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only super_admin can create billing/auth secrets"
+                detail="Only super_admin can create billing/auth secrets",
             )
 
     ip_address = get_client_ip(request)
@@ -261,7 +266,7 @@ async def delete_setting(
     if admin.role != AdminRole.SUPER_ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only super_admin can delete settings"
+            detail="Only super_admin can delete settings",
         )
 
     service = get_platform_settings_service(db)
@@ -276,8 +281,7 @@ async def delete_setting(
 
     if not deleted:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Setting not found: {key}"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Setting not found: {key}"
         )
 
     return {"message": f"Setting deleted: {key}"}
@@ -299,7 +303,8 @@ async def get_stripe_config(
     return StripeConfigResponse(
         publishable_key=publishable.value_text if publishable else None,
         secret_key_configured=secret is not None and secret.value_encrypted is not None,
-        webhook_secret_configured=webhook is not None and webhook.value_encrypted is not None,
+        webhook_secret_configured=webhook is not None
+        and webhook.value_encrypted is not None,
     )
 
 
@@ -317,7 +322,7 @@ async def update_stripe_config(
     if admin.role != AdminRole.SUPER_ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only super_admin can modify Stripe configuration"
+            detail="Only super_admin can modify Stripe configuration",
         )
 
     service = get_platform_settings_service(db)
@@ -404,7 +409,7 @@ async def seed_default_settings(
     if admin.role != AdminRole.SUPER_ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only super_admin can seed settings"
+            detail="Only super_admin can seed settings",
         )
 
     service = get_platform_settings_service(db)
@@ -426,7 +431,7 @@ async def seed_mitre_data(
     if admin.role != AdminRole.SUPER_ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only super_admin can seed MITRE data"
+            detail="Only super_admin can seed MITRE data",
         )
 
     from app.scripts.seed_mitre import TACTICS, TECHNIQUES
@@ -462,7 +467,9 @@ async def seed_mitre_data(
 
     # Get existing techniques
     existing_techniques_result = await db.execute(select(Technique))
-    existing_techniques = {t.technique_id: t for t in existing_techniques_result.scalars().all()}
+    existing_techniques = {
+        t.technique_id: t for t in existing_techniques_result.scalars().all()
+    }
 
     # Insert missing techniques
     techniques_added = 0

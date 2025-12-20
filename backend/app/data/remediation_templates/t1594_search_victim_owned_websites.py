@@ -24,7 +24,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Search Victim-Owned Websites",
     tactic_ids=["TA0043"],
     mitre_url="https://attack.mitre.org/techniques/T1594/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries conduct reconnaissance by searching websites owned by the "
@@ -40,22 +39,31 @@ TEMPLATE = RemediationTemplate(
             "Automated web crawling tools are readily available",
             "Activity occurs outside defender's network",
             "Reveals organisational structure and personnel",
-            "Enables tailored phishing campaigns"
+            "Enables tailored phishing campaigns",
         ],
-        known_threat_actors=["APT41", "Kimsuky", "Leviathan", "Sandworm Team", "Silent Librarian", "EXOTIC LILY", "TA578", "Volt Typhoon"],
+        known_threat_actors=[
+            "APT41",
+            "Kimsuky",
+            "Leviathan",
+            "Sandworm Team",
+            "Silent Librarian",
+            "EXOTIC LILY",
+            "TA578",
+            "Volt Typhoon",
+        ],
         recent_campaigns=[
             Campaign(
                 name="EXOTIC LILY Contact Form Abuse",
                 year=2022,
                 description="Utilised contact forms on victim websites to generate phishing emails",
-                reference_url="https://attack.mitre.org/groups/G1011/"
+                reference_url="https://attack.mitre.org/groups/G1011/",
             ),
             Campaign(
                 name="Silent Librarian Phishing Infrastructure",
                 year=2018,
                 description="Scraped source code, branding, and contact information from victim websites for phishing pages",
-                reference_url="https://attack.mitre.org/groups/G0122/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0122/",
+            ),
         ],
         prevalence="common",
         trend="stable",
@@ -69,13 +77,12 @@ TEMPLATE = RemediationTemplate(
             "Enables targeted phishing campaigns",
             "Reveals organisational structure",
             "Exposes employee information",
-            "Identifies potential attack surfaces"
+            "Identifies potential attack surfaces",
         ],
         typical_attack_phase="reconnaissance",
         often_precedes=["T1589", "T1598", "T1566"],
-        often_follows=[]
+        often_follows=[],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1594-aws-cloudfront",
@@ -85,12 +92,12 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, c-ip, cs-uri-stem, cs-user-agent
+                query="""fields @timestamp, c-ip, cs-uri-stem, cs-user-agent
 | filter cs-uri-stem like /robots\.txt|sitemap\.xml/
 | stats count(*) as requests by c-ip, bin(1h)
 | filter requests > 5
-| sort requests desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort requests desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect web reconnaissance via CloudFront
 
 Parameters:
@@ -128,8 +135,8 @@ Resources:
       Threshold: 10
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect web reconnaissance via CloudFront
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect web reconnaissance via CloudFront
 
 variable "cloudfront_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -166,7 +173,7 @@ resource "aws_cloudwatch_metric_alarm" "recon_detection" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Website Reconnaissance Detected",
                 alert_description_template="Suspicious reconnaissance activity from {c-ip} accessing sensitive site files.",
@@ -174,14 +181,14 @@ resource "aws_cloudwatch_metric_alarm" "recon_detection" {
                     "Review source IP geolocation and reputation",
                     "Check user-agent strings for automated tools",
                     "Analyse request patterns and frequency",
-                    "Review accessed URIs for sensitive paths"
+                    "Review accessed URIs for sensitive paths",
                 ],
                 containment_actions=[
                     "Rate-limit suspicious IPs via WAF",
                     "Review exposed information in robots.txt/sitemap",
                     "Monitor for follow-on phishing attempts",
-                    "Consider implementing CAPTCHA for high-volume sources"
-                ]
+                    "Consider implementing CAPTCHA for high-volume sources",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Legitimate search engines and SEO tools may trigger alerts. Whitelist known crawlers.",
@@ -190,9 +197,8 @@ resource "aws_cloudwatch_metric_alarm" "recon_detection" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudFront with logging enabled"]
+            prerequisites=["CloudFront with logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1594-aws-alb-crawl",
             name="ALB Web Crawling Detection",
@@ -201,12 +207,12 @@ resource "aws_cloudwatch_metric_alarm" "recon_detection" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, client_ip, user_agent, request_url
+                query="""fields @timestamp, client_ip, user_agent, request_url
 | filter request_url like /robots\.txt|sitemap|\.xml|admin|login|api/
 | stats count(*) as requests, count_distinct(request_url) as unique_paths by client_ip, user_agent, bin(10m)
 | filter requests > 20 or unique_paths > 15
-| sort requests desc''',
-                terraform_template='''# Detect web crawling via ALB logs
+| sort requests desc""",
+                terraform_template="""# Detect web crawling via ALB logs
 
 variable "alb_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -243,7 +249,7 @@ resource "aws_cloudwatch_metric_alarm" "crawl_detection" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Web Crawling Activity Detected",
                 alert_description_template="Automated crawling detected from {client_ip} with user-agent {user_agent}.",
@@ -251,14 +257,14 @@ resource "aws_cloudwatch_metric_alarm" "crawl_detection" {
                     "Identify user-agent and compare to known crawlers",
                     "Review request rate and patterns",
                     "Check for access to sensitive endpoints",
-                    "Correlate with other reconnaissance indicators"
+                    "Correlate with other reconnaissance indicators",
                 ],
                 containment_actions=[
                     "Implement rate limiting for suspicious sources",
                     "Update robots.txt to restrict sensitive paths",
                     "Enable WAF rules for bot management",
-                    "Monitor for subsequent attack attempts"
-                ]
+                    "Monitor for subsequent attack attempts",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate search engine crawlers (Googlebot, Bingbot). Adjust thresholds based on normal traffic patterns.",
@@ -267,9 +273,8 @@ resource "aws_cloudwatch_metric_alarm" "crawl_detection" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["ALB access logging enabled"]
+            prerequisites=["ALB access logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1594-gcp-lb-recon",
             name="GCP Load Balancer Reconnaissance Detection",
@@ -282,7 +287,7 @@ resource "aws_cloudwatch_metric_alarm" "crawl_detection" {
                 gcp_logging_query='''resource.type="http_load_balancer"
 (httpRequest.requestUrl=~"robots.txt" OR httpRequest.requestUrl=~"sitemap")
 NOT httpRequest.userAgent=~"Googlebot|Bingbot|compatible"''',
-                gcp_terraform_template='''# GCP: Detect website reconnaissance via Load Balancer
+                gcp_terraform_template="""# GCP: Detect website reconnaissance via Load Balancer
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -319,7 +324,7 @@ resource "google_monitoring_alert_policy" "recon_activity" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Website Reconnaissance Detected",
                 alert_description_template="Reconnaissance activity detected accessing sensitive site files.",
@@ -327,14 +332,14 @@ resource "google_monitoring_alert_policy" "recon_activity" {
                     "Review source IP addresses",
                     "Analyse user-agent patterns",
                     "Check request frequency and timing",
-                    "Review accessed resources"
+                    "Review accessed resources",
                 ],
                 containment_actions=[
                     "Apply Cloud Armor rate limiting",
                     "Restrict access to sensitive paths",
                     "Enable bot management features",
-                    "Monitor for follow-on attacks"
-                ]
+                    "Monitor for follow-on attacks",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude known legitimate crawlers. Adjust thresholds based on site traffic.",
@@ -343,9 +348,8 @@ resource "google_monitoring_alert_policy" "recon_activity" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-15",
-            prerequisites=["HTTP(S) Load Balancer logging enabled"]
+            prerequisites=["HTTP(S) Load Balancer logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1594-aws-contact-form",
             name="AWS Contact Form Abuse Detection",
@@ -354,13 +358,13 @@ resource "google_monitoring_alert_policy" "recon_activity" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, client_ip, request_url, user_agent
+                query="""fields @timestamp, client_ip, request_url, user_agent
 | filter request_url like /contact|form|submit/
 | filter elb_status_code = 200
 | stats count(*) as submissions by client_ip, bin(1h)
 | filter submissions > 5
-| sort submissions desc''',
-                terraform_template='''# Detect contact form abuse
+| sort submissions desc""",
+                terraform_template="""# Detect contact form abuse
 
 variable "application_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -397,7 +401,7 @@ resource "aws_cloudwatch_metric_alarm" "form_abuse_detection" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Contact Form Abuse Detected",
                 alert_description_template="Multiple contact form submissions from {client_ip}.",
@@ -405,14 +409,14 @@ resource "aws_cloudwatch_metric_alarm" "form_abuse_detection" {
                     "Review form submission content",
                     "Check for automated submission patterns",
                     "Identify source IP reputation",
-                    "Look for phishing URLs in submissions"
+                    "Look for phishing URLs in submissions",
                 ],
                 containment_actions=[
                     "Implement CAPTCHA on contact forms",
                     "Rate-limit form submissions per IP",
                     "Add honeypot fields to detect bots",
-                    "Review and sanitise form data handling"
-                ]
+                    "Review and sanitise form data handling",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Adjust threshold based on legitimate form traffic. Consider implementing CAPTCHA before alerting.",
@@ -421,11 +425,15 @@ resource "aws_cloudwatch_metric_alarm" "form_abuse_detection" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Application logging with form submission tracking"]
-        )
+            prerequisites=["Application logging with form submission tracking"],
+        ),
     ],
-
-    recommended_order=["t1594-aws-cloudfront", "t1594-gcp-lb-recon", "t1594-aws-alb-crawl", "t1594-aws-contact-form"],
+    recommended_order=[
+        "t1594-aws-cloudfront",
+        "t1594-gcp-lb-recon",
+        "t1594-aws-alb-crawl",
+        "t1594-aws-contact-form",
+    ],
     total_effort_hours=5.0,
-    coverage_improvement="+15% improvement for Reconnaissance tactic"
+    coverage_improvement="+15% improvement for Reconnaissance tactic",
 )

@@ -8,7 +8,28 @@ from fastapi.middleware.cors import CORSMiddleware
 import structlog
 
 from app.core.config import get_settings
-from app.api.routes import accounts, scans, detections, coverage, mappings, health, schedules, alerts, reports, auth, teams, api_keys, audit, cognito, org_security, billing, code_analysis, credentials, github_oauth, recommendations
+from app.api.routes import (
+    accounts,
+    scans,
+    detections,
+    coverage,
+    mappings,
+    health,
+    schedules,
+    alerts,
+    reports,
+    auth,
+    teams,
+    api_keys,
+    audit,
+    cognito,
+    org_security,
+    billing,
+    code_analysis,
+    credentials,
+    github_oauth,
+    recommendations,
+)
 from app.api.routes.admin import router as admin_router
 from app.services.scheduler_service import scheduler_service
 
@@ -19,18 +40,25 @@ logger = structlog.get_logger()
 def run_migrations():
     """Run database migrations on startup using subprocess."""
     import subprocess
+
     try:
         result = subprocess.run(
             ["alembic", "upgrade", "head"],
             cwd="/app",
             capture_output=True,
             text=True,
-            timeout=60
+            timeout=60,
         )
         if result.returncode == 0:
-            logger.info("migrations_completed", output=result.stdout[-500:] if result.stdout else "")
+            logger.info(
+                "migrations_completed",
+                output=result.stdout[-500:] if result.stdout else "",
+            )
         else:
-            logger.warning("migrations_failed", stderr=result.stderr[-500:] if result.stderr else "")
+            logger.warning(
+                "migrations_failed",
+                stderr=result.stderr[-500:] if result.stderr else "",
+            )
     except Exception as e:
         logger.warning("migrations_failed", error=str(e))
 
@@ -55,7 +83,9 @@ def seed_mitre_data():
             result = conn.execute(text("SELECT COUNT(*) FROM techniques"))
             count = result.scalar()
             if count > 0:
-                logger.info("mitre_seed_skipped", reason=f"{count} techniques already exist")
+                logger.info(
+                    "mitre_seed_skipped", reason=f"{count} techniques already exist"
+                )
                 return
 
             now = datetime.now(timezone.utc)
@@ -72,11 +102,13 @@ def seed_mitre_data():
                 if tactic_id not in existing_tactics:
                     tactic_uuid = str(uuid4())
                     conn.execute(
-                        text("""
+                        text(
+                            """
                             INSERT INTO tactics (id, tactic_id, name, short_name, display_order, mitre_version, created_at)
                             VALUES (:id, :tactic_id, :name, :short_name, :display_order, :mitre_version, :created_at)
                             ON CONFLICT (tactic_id) DO NOTHING
-                        """),
+                        """
+                        ),
                         {
                             "id": tactic_uuid,
                             "tactic_id": tactic_id,
@@ -85,7 +117,7 @@ def seed_mitre_data():
                             "display_order": display_order,
                             "mitre_version": "14.1",
                             "created_at": now,
-                        }
+                        },
                     )
                     existing_tactics[tactic_id] = tactic_uuid
                     tactics_added += 1
@@ -114,7 +146,7 @@ def seed_mitre_data():
                     # Look up parent in DB
                     parent_result = conn.execute(
                         text("SELECT id FROM techniques WHERE technique_id = :tid"),
-                        {"tid": parent_tech_id}
+                        {"tid": parent_tech_id},
                     )
                     parent_row = parent_result.fetchone()
                     if parent_row:
@@ -122,7 +154,8 @@ def seed_mitre_data():
 
                 tech_uuid = str(uuid4())
                 conn.execute(
-                    text("""
+                    text(
+                        """
                         INSERT INTO techniques (
                             id, technique_id, name, description, tactic_id, parent_technique_id,
                             platforms, mitre_version, is_subtechnique, created_at, updated_at
@@ -132,7 +165,8 @@ def seed_mitre_data():
                             CAST(:platforms AS jsonb), :mitre_version, :is_subtechnique, :created_at, :updated_at
                         )
                         ON CONFLICT (technique_id) DO NOTHING
-                    """),
+                    """
+                    ),
                     {
                         "id": tech_uuid,
                         "technique_id": technique_id,
@@ -145,12 +179,16 @@ def seed_mitre_data():
                         "is_subtechnique": is_subtechnique,
                         "created_at": now,
                         "updated_at": now,
-                    }
+                    },
                 )
                 techniques_added += 1
             conn.commit()
 
-            logger.info("mitre_seeded", tactics_added=tactics_added, techniques_added=techniques_added)
+            logger.info(
+                "mitre_seeded",
+                tactics_added=tactics_added,
+                techniques_added=techniques_added,
+            )
     except Exception as e:
         logger.warning("mitre_seed_failed", error=str(e))
 
@@ -188,7 +226,9 @@ app = FastAPI(
 )
 
 # CORS middleware - origins from environment or defaults for local dev
-cors_origins_str = os.environ.get("CORS_ORIGINS", "http://localhost:3000,http://localhost:3001,http://localhost:5173")
+cors_origins_str = os.environ.get(
+    "CORS_ORIGINS", "http://localhost:3000,http://localhost:3001,http://localhost:5173"
+)
 cors_origins = [origin.strip() for origin in cors_origins_str.split(",")]
 app.add_middleware(
     CORSMiddleware,
@@ -214,11 +254,19 @@ app.include_router(api_keys.router, prefix="/api/v1/api-keys", tags=["API Keys"]
 app.include_router(audit.router, prefix="/api/v1/audit-logs", tags=["Audit Logs"])
 app.include_router(cognito.router, prefix="/api/v1/auth/cognito", tags=["Cognito SSO"])
 app.include_router(github_oauth.router, prefix="/api/v1/auth", tags=["GitHub OAuth"])
-app.include_router(org_security.router, prefix="/api/v1/org", tags=["Organization Security"])
+app.include_router(
+    org_security.router, prefix="/api/v1/org", tags=["Organization Security"]
+)
 app.include_router(billing.router, prefix="/api/v1/billing", tags=["Billing"])
-app.include_router(code_analysis.router, prefix="/api/v1/code-analysis", tags=["Code Analysis"])
-app.include_router(credentials.router, prefix="/api/v1/credentials", tags=["Cloud Credentials"])
-app.include_router(recommendations.router, prefix="/api/v1/recommendations", tags=["Recommendations"])
+app.include_router(
+    code_analysis.router, prefix="/api/v1/code-analysis", tags=["Code Analysis"]
+)
+app.include_router(
+    credentials.router, prefix="/api/v1/credentials", tags=["Cloud Credentials"]
+)
+app.include_router(
+    recommendations.router, prefix="/api/v1/recommendations", tags=["Recommendations"]
+)
 
 # Admin Portal routes (separate from user routes)
 app.include_router(admin_router, prefix="/api/v1/admin")

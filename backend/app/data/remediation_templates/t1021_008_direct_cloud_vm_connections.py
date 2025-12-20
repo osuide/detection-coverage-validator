@@ -24,7 +24,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Remote Services: Direct Cloud VM Connections",
     tactic_ids=["TA0008"],
     mitre_url="https://attack.mitre.org/techniques/T1021/008/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries exploit valid cloud accounts to gain direct access to cloud-hosted "
@@ -39,7 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Bypasses traditional network security controls",
             "Uses legitimate cloud-native tools (appears as normal admin activity)",
             "Enables lateral movement across cloud infrastructure",
-            "Can evade endpoint detection solutions"
+            "Can evade endpoint detection solutions",
         ],
         known_threat_actors=["Scattered Spider"],
         recent_campaigns=[
@@ -47,7 +46,7 @@ TEMPLATE = RemediationTemplate(
                 name="Scattered Spider Cloud-Based Attacks",
                 year=2023,
                 description="Conducted sophisticated cloud-based attacks leveraging direct VM connection methods",
-                reference_url="https://attack.mitre.org/techniques/T1021/008/"
+                reference_url="https://attack.mitre.org/techniques/T1021/008/",
             )
         ],
         prevalence="uncommon",
@@ -63,13 +62,12 @@ TEMPLATE = RemediationTemplate(
             "Lateral movement across cloud infrastructure",
             "Privilege escalation to SYSTEM/root",
             "Data exfiltration from compute instances",
-            "Potential for persistent backdoor installation"
+            "Potential for persistent backdoor installation",
         ],
         typical_attack_phase="lateral_movement",
         often_precedes=["T1078.004", "T1548", "T1005", "T1087"],
-        often_follows=["T1078.004", "T1110"]
+        often_follows=["T1078.004", "T1110"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1021_008-aws-ec2-connect",
@@ -79,11 +77,11 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudtrail",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, requestParameters.instanceId, sourceIPAddress, userAgent
+                query="""fields @timestamp, userIdentity.principalId, requestParameters.instanceId, sourceIPAddress, userAgent
 | filter eventName = "SendSSHPublicKey"
 | stats count(*) as connections by userIdentity.principalId, requestParameters.instanceId, sourceIPAddress, bin(1h)
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect EC2 Instance Connect usage
 
 Parameters:
@@ -128,8 +126,8 @@ Resources:
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
       AlarmActions: [!Ref AlertTopic]
-      TreatMissingData: notBreaching''',
-                terraform_template='''# Detect EC2 Instance Connect usage
+      TreatMissingData: notBreaching""",
+                terraform_template="""# Detect EC2 Instance Connect usage
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -178,7 +176,7 @@ resource "aws_cloudwatch_metric_alarm" "ec2_connect_detection" {
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.ec2_connect_alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="EC2 Instance Connect Session Detected",
                 alert_description_template="EC2 Instance Connect used by {principalId} to access instance {instanceId} from {sourceIPAddress}.",
@@ -188,7 +186,7 @@ resource "aws_cloudwatch_metric_alarm" "ec2_connect_detection" {
                     "Review the timing (after-hours or unusual time)",
                     "Check what commands were executed on the instance (review OS logs)",
                     "Verify if MFA was used for the cloud account",
-                    "Check for subsequent suspicious activity on the instance"
+                    "Check for subsequent suspicious activity on the instance",
                 ],
                 containment_actions=[
                     "Disable the compromised user account",
@@ -196,8 +194,8 @@ resource "aws_cloudwatch_metric_alarm" "ec2_connect_detection" {
                     "Rotate instance credentials and SSH keys",
                     "Review and restrict IAM permissions for ec2-instance-connect:SendSSHPublicKey",
                     "Enable EC2 Instance Connect Endpoint for network isolation",
-                    "Review instance security groups and network access"
-                ]
+                    "Review instance security groups and network access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Filter known administrative users and expected source IPs",
@@ -206,9 +204,8 @@ resource "aws_cloudwatch_metric_alarm" "ec2_connect_detection" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled with CloudWatch Logs integration"]
+            prerequisites=["CloudTrail enabled with CloudWatch Logs integration"],
         ),
-
         DetectionStrategy(
             strategy_id="t1021_008-aws-ssm-sessions",
             name="AWS Systems Manager Session Activity",
@@ -217,11 +214,11 @@ resource "aws_cloudwatch_metric_alarm" "ec2_connect_detection" {
             aws_service="cloudtrail",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, requestParameters.target, sourceIPAddress, responseElements.sessionId
+                query="""fields @timestamp, userIdentity.principalId, requestParameters.target, sourceIPAddress, responseElements.sessionId
 | filter eventName = "StartSession"
 | stats count(*) as sessions by userIdentity.principalId, requestParameters.target, bin(1h)
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect AWS Systems Manager Session Manager usage
 
 Parameters:
@@ -266,8 +263,8 @@ Resources:
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
       AlarmActions: [!Ref AlertTopic]
-      TreatMissingData: notBreaching''',
-                terraform_template='''# Detect AWS Systems Manager Session Manager usage
+      TreatMissingData: notBreaching""",
+                terraform_template="""# Detect AWS Systems Manager Session Manager usage
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -316,7 +313,7 @@ resource "aws_cloudwatch_metric_alarm" "ssm_session_detection" {
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.ssm_session_alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Systems Manager Session Started",
                 alert_description_template="SSM session started by {principalId} to target {target} (Session: {sessionId}).",
@@ -327,7 +324,7 @@ resource "aws_cloudwatch_metric_alarm" "ssm_session_detection" {
                     "Check commands executed during the session (review SSM session logs)",
                     "Verify if MFA was required and used",
                     "Check for data access or modification during session",
-                    "Review timing and duration of session"
+                    "Review timing and duration of session",
                 ],
                 containment_actions=[
                     "Terminate active SSM sessions if suspicious",
@@ -335,8 +332,8 @@ resource "aws_cloudwatch_metric_alarm" "ssm_session_detection" {
                     "Review and restrict IAM permissions for ssm:StartSession",
                     "Enable session logging to S3 for forensic analysis",
                     "Implement session document restrictions",
-                    "Review instance IAM roles and permissions"
-                ]
+                    "Review instance IAM roles and permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="SSM is commonly used for legitimate administration; filter known admin users and maintenance windows",
@@ -345,9 +342,8 @@ resource "aws_cloudwatch_metric_alarm" "ssm_session_detection" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled with CloudWatch Logs integration"]
+            prerequisites=["CloudTrail enabled with CloudWatch Logs integration"],
         ),
-
         DetectionStrategy(
             strategy_id="t1021_008-gcp-serial-console",
             name="GCP Serial Console Access Detection",
@@ -361,7 +357,7 @@ resource "aws_cloudwatch_metric_alarm" "ssm_session_detection" {
 protoPayload.methodName="v1.compute.instances.getSerialPortOutput"
 OR protoPayload.methodName="beta.compute.instances.getSerialPortOutput"
 OR protoPayload.methodName="v1.compute.projects.setCommonInstanceMetadata"''',
-                gcp_terraform_template='''# GCP: Detect serial console access to Compute Engine instances
+                gcp_terraform_template="""# GCP: Detect serial console access to Compute Engine instances
 
 variable "project_id" {
   type        = string
@@ -426,7 +422,7 @@ resource "google_monitoring_alert_policy" "serial_console_alert" {
   alert_strategy {
     auto_close = "1800s"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP Serial Console Access Detected",
                 alert_description_template="Serial console access to GCP instance by {principalEmail}.",
@@ -437,7 +433,7 @@ resource "google_monitoring_alert_policy" "serial_console_alert" {
                     "Check if serial port access is enabled on the instance",
                     "Review instance metadata changes",
                     "Check for suspicious commands or configuration changes",
-                    "Verify if the user has legitimate need for serial console access"
+                    "Verify if the user has legitimate need for serial console access",
                 ],
                 containment_actions=[
                     "Disable serial port access on sensitive instances",
@@ -445,8 +441,8 @@ resource "google_monitoring_alert_policy" "serial_console_alert" {
                     "Disable compromised user account",
                     "Review and restrict IAM roles granting serial console access",
                     "Enable organisation policy to disable serial port access",
-                    "Review instance logs for compromise indicators"
-                ]
+                    "Review instance logs for compromise indicators",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Serial console access is rarely needed; investigate all instances",
@@ -455,9 +451,8 @@ resource "google_monitoring_alert_policy" "serial_console_alert" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Logging enabled"]
+            prerequisites=["Cloud Logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1021_008-gcp-iap-tunnel",
             name="GCP IAP TCP Forwarding Detection",
@@ -470,7 +465,7 @@ resource "google_monitoring_alert_policy" "serial_console_alert" {
                 gcp_logging_query='''resource.type="gce_instance"
 protoPayload.methodName="AuthorizeUser"
 protoPayload.serviceName="iap.googleapis.com"''',
-                gcp_terraform_template='''# GCP: Detect IAP TCP forwarding to Compute instances
+                gcp_terraform_template="""# GCP: Detect IAP TCP forwarding to Compute instances
 
 variable "project_id" {
   type        = string
@@ -540,7 +535,7 @@ resource "google_monitoring_alert_policy" "iap_tunnel_alert" {
   alert_strategy {
     auto_close = "1800s"
   }
-}''',
+}""",
                 alert_severity="low",
                 alert_title="GCP IAP TCP Forwarding Detected",
                 alert_description_template="IAP tunnel established by {principalEmail} to instance {instance}.",
@@ -550,7 +545,7 @@ resource "google_monitoring_alert_policy" "iap_tunnel_alert" {
                     "Review the timing and duration of tunnel usage",
                     "Check what services were accessed through the tunnel",
                     "Verify if MFA was used for IAP access",
-                    "Review instance logs for suspicious activity during tunnel session"
+                    "Review instance logs for suspicious activity during tunnel session",
                 ],
                 containment_actions=[
                     "Revoke IAM permissions for iap.tunnelInstances.accessViaIAP",
@@ -558,8 +553,8 @@ resource "google_monitoring_alert_policy" "iap_tunnel_alert" {
                     "Review and restrict IAP-secured resources",
                     "Enable context-aware access policies for IAP",
                     "Review instance firewall rules allowing IAP",
-                    "Implement IP allowlisting for IAP access if appropriate"
-                ]
+                    "Implement IP allowlisting for IAP access if appropriate",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="IAP is commonly used for secure access; filter known admin users and expected access patterns",
@@ -568,16 +563,15 @@ resource "google_monitoring_alert_policy" "iap_tunnel_alert" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Logging enabled", "IAP enabled for TCP forwarding"]
-        )
+            prerequisites=["Cloud Logging enabled", "IAP enabled for TCP forwarding"],
+        ),
     ],
-
     recommended_order=[
         "t1021_008-aws-ssm-sessions",
         "t1021_008-aws-ec2-connect",
         "t1021_008-gcp-serial-console",
-        "t1021_008-gcp-iap-tunnel"
+        "t1021_008-gcp-iap-tunnel",
     ],
     total_effort_hours=2.0,
-    coverage_improvement="+15% improvement for Lateral Movement tactic"
+    coverage_improvement="+15% improvement for Lateral Movement tactic",
 )

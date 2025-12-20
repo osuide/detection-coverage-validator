@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Create Account: Cloud Account",
     tactic_ids=["TA0003"],
     mitre_url="https://attack.mitre.org/techniques/T1136/003/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries create new IAM users, service accounts, or federated identities "
@@ -35,7 +34,7 @@ TEMPLATE = RemediationTemplate(
             "Shadow admins persist after initial remediation",
             "Service accounts blend with automation",
             "Federated users may bypass MFA",
-            "Multiple accounts complicate forensics"
+            "Multiple accounts complicate forensics",
         ],
         known_threat_actors=["APT29", "Scattered Spider", "Lapsus$"],
         recent_campaigns=[
@@ -43,14 +42,14 @@ TEMPLATE = RemediationTemplate(
                 name="Shadow Admin Accounts",
                 year=2024,
                 description="Attackers created hidden admin accounts during compromises for persistent access",
-                reference_url="https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-320a"
+                reference_url="https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-320a",
             ),
             Campaign(
                 name="Service Account Backdoors",
                 year=2024,
                 description="Attackers created service accounts named similarly to legitimate automation",
-                reference_url="https://unit42.paloaltonetworks.com/2025-cloud-security-alert-trends/"
-            )
+                reference_url="https://unit42.paloaltonetworks.com/2025-cloud-security-alert-trends/",
+            ),
         ],
         prevalence="common",
         trend="stable",
@@ -64,13 +63,12 @@ TEMPLATE = RemediationTemplate(
             "Persistent backdoor access",
             "Difficult incident remediation",
             "Ongoing compromise risk",
-            "Compliance violations"
+            "Compliance violations",
         ],
         typical_attack_phase="persistence",
         often_precedes=["T1098.001", "T1530"],
-        often_follows=["T1078.004", "T1098.003"]
+        often_follows=["T1078.004", "T1098.003"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - IAM User Creation
         DetectionStrategy(
@@ -84,11 +82,9 @@ TEMPLATE = RemediationTemplate(
                 event_pattern={
                     "source": ["aws.iam"],
                     "detail-type": ["AWS API Call via CloudTrail"],
-                    "detail": {
-                        "eventName": ["CreateUser"]
-                    }
+                    "detail": {"eventName": ["CreateUser"]},
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect IAM user creation
 
 Parameters:
@@ -127,8 +123,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect IAM user creation
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect IAM user creation
 
 variable "alert_email" {
   type = string
@@ -173,7 +169,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="IAM User Created",
                 alert_description_template="New IAM user {userName} was created.",
@@ -181,14 +177,14 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Verify the user creation was authorised",
                     "Check who created the user",
                     "Review permissions assigned to new user",
-                    "Check for access key creation"
+                    "Check for access key creation",
                 ],
                 containment_actions=[
                     "Delete unauthorised users",
                     "Review and remove admin permissions",
                     "Audit the creator's activity",
-                    "Review all recent user creations"
-                ]
+                    "Review all recent user creations",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist HR/provisioning automation",
@@ -197,9 +193,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         # Strategy 2: AWS - IAM User with Admin
         DetectionStrategy(
             strategy_id="t1136003-aws-adminuser",
@@ -209,12 +204,12 @@ resource "aws_sns_topic_policy" "allow_events" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, requestParameters.userName, userIdentity.arn
+                query="""fields @timestamp, eventName, requestParameters.userName, userIdentity.arn
 | filter eventSource = "iam.amazonaws.com"
 | filter eventName in ["CreateUser", "AttachUserPolicy", "PutUserPolicy"]
 | filter requestParameters.policyArn like /AdministratorAccess/ or requestParameters.policyDocument like /"*"/
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect admin user creation
 
 Parameters:
@@ -255,8 +250,8 @@ Resources:
       Threshold: 0
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect admin user creation
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect admin user creation
 
 variable "cloudtrail_log_group" {
   type = string
@@ -301,7 +296,7 @@ resource "aws_cloudwatch_metric_alarm" "admin_user" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Admin User Created",
                 alert_description_template="User {userName} was granted administrator access.",
@@ -309,14 +304,14 @@ resource "aws_cloudwatch_metric_alarm" "admin_user" {
                     "Verify admin access was authorised",
                     "Check who granted admin permissions",
                     "Review user's immediate activity",
-                    "Check for data access patterns"
+                    "Check for data access patterns",
                 ],
                 containment_actions=[
                     "Remove admin permissions immediately",
                     "Disable or delete the user",
                     "Audit all admin users",
-                    "Review creator's permissions"
-                ]
+                    "Review creator's permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised admin provisioning",
@@ -325,9 +320,8 @@ resource "aws_cloudwatch_metric_alarm" "admin_user" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail logging to CloudWatch"]
+            prerequisites=["CloudTrail logging to CloudWatch"],
         ),
-
         # Strategy 3: GCP - Service Account Creation
         DetectionStrategy(
             strategy_id="t1136003-gcp-serviceaccount",
@@ -339,7 +333,7 @@ resource "aws_cloudwatch_metric_alarm" "admin_user" {
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName="google.iam.admin.v1.CreateServiceAccount"''',
-                gcp_terraform_template='''# GCP: Detect service account creation
+                gcp_terraform_template="""# GCP: Detect service account creation
 
 variable "project_id" {
   type = string
@@ -387,7 +381,7 @@ resource "google_monitoring_alert_policy" "sa_creation" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Service Account Created",
                 alert_description_template="New service account was created.",
@@ -395,14 +389,14 @@ resource "google_monitoring_alert_policy" "sa_creation" {
                     "Verify service account creation was authorised",
                     "Check who created the service account",
                     "Review permissions assigned",
-                    "Check for key creation"
+                    "Check for key creation",
                 ],
                 containment_actions=[
                     "Delete unauthorised service accounts",
                     "Remove assigned permissions",
                     "Audit the creator's activity",
-                    "Review all recent SA creations"
-                ]
+                    "Review all recent SA creations",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist CI/CD and automation",
@@ -411,9 +405,8 @@ resource "google_monitoring_alert_policy" "sa_creation" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled"],
         ),
-
         # Strategy 4: GCP - Federated Identity Creation
         DetectionStrategy(
             strategy_id="t1136003-gcp-federated",
@@ -425,7 +418,7 @@ resource "google_monitoring_alert_policy" "sa_creation" {
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName=~"CreateWorkloadIdentityPool|CreateWorkloadIdentityPoolProvider"''',
-                gcp_terraform_template='''# GCP: Detect federated identity creation
+                gcp_terraform_template="""# GCP: Detect federated identity creation
 
 variable "project_id" {
   type = string
@@ -473,7 +466,7 @@ resource "google_monitoring_alert_policy" "wif_creation" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Federated Identity Configured",
                 alert_description_template="Workload Identity Federation was configured.",
@@ -481,14 +474,14 @@ resource "google_monitoring_alert_policy" "wif_creation" {
                     "Review the federation configuration",
                     "Check which external provider was added",
                     "Verify the change was authorised",
-                    "Review attribute mappings"
+                    "Review attribute mappings",
                 ],
                 containment_actions=[
                     "Delete unauthorised WIF pools",
                     "Review all federated identities",
                     "Enable organisation policies",
-                    "Audit federation activity"
-                ]
+                    "Audit federation activity",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="WIF creation is relatively rare",
@@ -497,16 +490,15 @@ resource "google_monitoring_alert_policy" "wif_creation" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1136003-aws-createuser",
         "t1136003-gcp-serviceaccount",
         "t1136003-aws-adminuser",
-        "t1136003-gcp-federated"
+        "t1136003-gcp-federated",
     ],
     total_effort_hours=3.0,
-    coverage_improvement="+18% improvement for Persistence tactic"
+    coverage_improvement="+18% improvement for Persistence tactic",
 )

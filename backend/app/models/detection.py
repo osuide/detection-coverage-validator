@@ -64,11 +64,12 @@ class Detection(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     detection_type: Mapped[DetectionType] = mapped_column(
         SQLEnum(DetectionType, values_callable=lambda x: [e.value for e in x]),
-        nullable=False, index=True
+        nullable=False,
+        index=True,
     )
     status: Mapped[DetectionStatus] = mapped_column(
         SQLEnum(DetectionStatus, values_callable=lambda x: [e.value for e in x]),
-        default=DetectionStatus.UNKNOWN
+        default=DetectionStatus.UNKNOWN,
     )
     source_arn: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     region: Mapped[str] = mapped_column(String(64), nullable=False)
@@ -89,7 +90,7 @@ class Detection(Base):
     health_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     health_status: Mapped[HealthStatus] = mapped_column(
         SQLEnum(HealthStatus, values_callable=lambda x: [e.value for e in x]),
-        default=HealthStatus.UNKNOWN
+        default=HealthStatus.UNKNOWN,
     )
     health_issues: Mapped[Optional[list]] = mapped_column(JSONB, nullable=True)
     last_validated_at: Mapped[Optional[datetime]] = mapped_column(

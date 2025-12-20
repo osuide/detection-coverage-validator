@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Password Policy Discovery",
     tactic_ids=["TA0007"],
     mitre_url="https://attack.mitre.org/techniques/T1201/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries gather information about an organisation's password policies "
@@ -37,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Enables policy-compliant password spraying",
             "Reveals weak security posture",
             "Available via native commands on all platforms",
-            "Low detection risk for reconnaissance"
+            "Low detection risk for reconnaissance",
         ],
         known_threat_actors=["Chimera", "OilRig", "Turla"],
         recent_campaigns=[
@@ -45,7 +44,7 @@ TEMPLATE = RemediationTemplate(
                 name="Operation CuckooBees",
                 year=2022,
                 description="Campaign involving password policy discovery activities",
-                reference_url="https://attack.mitre.org/techniques/T1201/"
+                reference_url="https://attack.mitre.org/techniques/T1201/",
             )
         ],
         prevalence="common",
@@ -59,13 +58,12 @@ TEMPLATE = RemediationTemplate(
             "Precursor to credential attacks",
             "Intelligence gathering for targeted attacks",
             "Reveals security posture weaknesses",
-            "Enables optimised password spraying"
+            "Enables optimised password spraying",
         ],
         typical_attack_phase="discovery",
         often_precedes=["T1110.003", "T1110.004", "T1078"],
-        often_follows=["T1078", "T1059"]
+        often_follows=["T1078", "T1059"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1201-aws-api",
@@ -75,12 +73,12 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, sourceIPAddress, errorCode
+                query="""fields @timestamp, userIdentity.principalId, sourceIPAddress, errorCode
 | filter eventName = "GetAccountPasswordPolicy"
 | stats count(*) as calls by userIdentity.principalId, sourceIPAddress, bin(1h)
 | filter calls > 2
-| sort calls desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort calls desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect AWS password policy discovery attempts
 
 Parameters:
@@ -124,8 +122,8 @@ Resources:
       Threshold: 3
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect AWS password policy discovery attempts
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect AWS password policy discovery attempts
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -173,7 +171,7 @@ resource "aws_cloudwatch_metric_alarm" "password_policy_discovery" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="AWS Password Policy Discovery Detected",
                 alert_description_template="User {principalId} queried password policy from {sourceIPAddress}.",
@@ -182,15 +180,15 @@ resource "aws_cloudwatch_metric_alarm" "password_policy_discovery" {
                     "Review user's recent activity and access patterns",
                     "Check if the call is from expected IP/location",
                     "Look for subsequent credential attack attempts",
-                    "Review CloudTrail for other reconnaissance activities"
+                    "Review CloudTrail for other reconnaissance activities",
                 ],
                 containment_actions=[
                     "Review IAM user/role permissions",
                     "Consider restricting GetAccountPasswordPolicy access",
                     "Enable MFA if not already enabled",
                     "Monitor for password spray or brute-force attempts",
-                    "Reset credentials if compromise suspected"
-                ]
+                    "Reset credentials if compromise suspected",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Legitimate security tools may query this. Whitelist known security scanners.",
@@ -199,9 +197,8 @@ resource "aws_cloudwatch_metric_alarm" "password_policy_discovery" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail logging to CloudWatch Logs"]
+            prerequisites=["CloudTrail logging to CloudWatch Logs"],
         ),
-
         DetectionStrategy(
             strategy_id="t1201-aws-ec2-commands",
             name="Windows Password Policy Commands on EC2",
@@ -210,12 +207,12 @@ resource "aws_cloudwatch_metric_alarm" "password_policy_discovery" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, detail.eventName, detail.commandName, detail.instanceId
+                query="""fields @timestamp, detail.eventName, detail.commandName, detail.instanceId
 | filter detail.eventName = "SendCommand"
 | filter detail.commandName like /net accounts|Get-ADDefaultDomainPasswordPolicy|secedit/
 | stats count(*) as executions by detail.instanceId, detail.commandName, bin(1h)
-| sort executions desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort executions desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect Windows password policy discovery commands
 
 Parameters:
@@ -263,8 +260,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect Windows password policy discovery commands
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect Windows password policy discovery commands
 
 variable "alert_email" {
   type        = string
@@ -317,7 +314,7 @@ resource "aws_sns_topic_policy" "default" {
       Resource = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Windows Password Policy Discovery Command Executed",
                 alert_description_template="Password policy command executed on instance {instanceId}.",
@@ -326,15 +323,15 @@ resource "aws_sns_topic_policy" "default" {
                     "Review SSM Session Manager logs for full command output",
                     "Check if instance is part of legitimate security scanning",
                     "Look for subsequent authentication attempts",
-                    "Review instance for other reconnaissance activities"
+                    "Review instance for other reconnaissance activities",
                 ],
                 containment_actions=[
                     "Isolate instance if compromise suspected",
                     "Review SSM permissions and access",
                     "Enable CloudWatch Logs for Session Manager",
                     "Check for unauthorised users or processes",
-                    "Reset passwords if necessary"
-                ]
+                    "Reset passwords if necessary",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Legitimate administrators may check policies. Review context and user.",
@@ -343,9 +340,8 @@ resource "aws_sns_topic_policy" "default" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-15",
-            prerequisites=["SSM agent on instances", "CloudTrail logging"]
+            prerequisites=["SSM agent on instances", "CloudTrail logging"],
         ),
-
         DetectionStrategy(
             strategy_id="t1201-gcp-logging",
             name="GCP Policy Discovery via Cloud Logging",
@@ -358,7 +354,7 @@ resource "aws_sns_topic_policy" "default" {
                 gcp_logging_query='''protoPayload.methodName=~"google.admin.AdminService.getPasswordPolicy|google.iam.admin.v1.GetIamPolicy"
 OR
 textPayload=~"gcloud organizations get-iam-policy|gcloud iam service-accounts get-iam-policy"''',
-                gcp_terraform_template='''# GCP: Detect password policy discovery attempts
+                gcp_terraform_template="""# GCP: Detect password policy discovery attempts
 
 variable "project_id" {
   type        = string
@@ -421,7 +417,7 @@ resource "google_monitoring_alert_policy" "password_policy_discovery" {
   alert_strategy {
     auto_close = "1800s"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP Password Policy Discovery Detected",
                 alert_description_template="User queried password or IAM policies multiple times.",
@@ -430,15 +426,15 @@ resource "google_monitoring_alert_policy" "password_policy_discovery" {
                     "Review user's recent GCP activity",
                     "Check if queries are from expected source IP",
                     "Look for subsequent credential attacks",
-                    "Review IAM permissions granted to user"
+                    "Review IAM permissions granted to user",
                 ],
                 containment_actions=[
                     "Review and restrict IAM permissions",
                     "Enable MFA for affected accounts",
                     "Monitor for password spray attempts",
                     "Review organisation password policies",
-                    "Suspend account if compromise suspected"
-                ]
+                    "Suspend account if compromise suspected",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Security tools and administrators may legitimately query policies. Review context.",
@@ -447,9 +443,8 @@ resource "google_monitoring_alert_policy" "password_policy_discovery" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1201-gcp-compute",
             name="GCP Compute Instance Password Policy Commands",
@@ -459,10 +454,10 @@ resource "google_monitoring_alert_policy" "password_policy_discovery" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 (textPayload=~"net accounts|chage -l|pwpolicy getaccountpolicies|/etc/pam.d/common-password"
-OR jsonPayload.message=~"net accounts|chage -l|pwpolicy getaccountpolicies")''',
-                gcp_terraform_template='''# GCP: Detect password policy commands on Compute instances
+OR jsonPayload.message=~"net accounts|chage -l|pwpolicy getaccountpolicies")""",
+                gcp_terraform_template="""# GCP: Detect password policy commands on Compute instances
 
 variable "project_id" {
   type        = string
@@ -527,7 +522,7 @@ resource "google_monitoring_alert_policy" "password_commands" {
   alert_strategy {
     auto_close = "1800s"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP Password Policy Command Executed",
                 alert_description_template="Password policy discovery command executed on instance.",
@@ -536,15 +531,15 @@ resource "google_monitoring_alert_policy" "password_commands" {
                     "Review OS logs for full command context",
                     "Check if instance runs security scanning tools",
                     "Look for other reconnaissance activities",
-                    "Review SSH access logs and users"
+                    "Review SSH access logs and users",
                 ],
                 containment_actions=[
                     "Review instance access and permissions",
                     "Check for unauthorised SSH keys",
                     "Enable OS logging if not configured",
                     "Isolate instance if compromise suspected",
-                    "Review and rotate credentials"
-                ]
+                    "Review and rotate credentials",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Requires OS logging agent. Legitimate admins may check policies.",
@@ -553,11 +548,15 @@ resource "google_monitoring_alert_policy" "password_commands" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Logging agent on Compute instances"]
-        )
+            prerequisites=["Cloud Logging agent on Compute instances"],
+        ),
     ],
-
-    recommended_order=["t1201-aws-api", "t1201-gcp-logging", "t1201-aws-ec2-commands", "t1201-gcp-compute"],
+    recommended_order=[
+        "t1201-aws-api",
+        "t1201-gcp-logging",
+        "t1201-aws-ec2-commands",
+        "t1201-gcp-compute",
+    ],
     total_effort_hours=3.0,
-    coverage_improvement="+15% improvement for Discovery tactic"
+    coverage_improvement="+15% improvement for Discovery tactic",
 )

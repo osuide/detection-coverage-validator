@@ -163,4 +163,6 @@ class GapHistory(Base):
     user = relationship("User")
 
     def __repr__(self) -> str:
-        return f"<GapHistory {self.gap_id}: {self.previous_status} -> {self.new_status}>"
+        return (
+            f"<GapHistory {self.gap_id}: {self.previous_status} -> {self.new_status}>"
+        )

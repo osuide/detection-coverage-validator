@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Account Discovery: Cloud Account",
     tactic_ids=["TA0007"],
     mitre_url="https://attack.mitre.org/techniques/T1087/004/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries enumerate IAM users, roles, and service accounts to map "
@@ -35,7 +34,7 @@ TEMPLATE = RemediationTemplate(
             "Reveals privilege escalation opportunities",
             "Maps service account relationships",
             "Identifies inactive or orphaned accounts",
-            "Required for targeted attacks"
+            "Required for targeted attacks",
         ],
         known_threat_actors=["APT29", "Scattered Spider", "TeamTNT"],
         recent_campaigns=[
@@ -43,14 +42,14 @@ TEMPLATE = RemediationTemplate(
                 name="IAM Enumeration Attacks",
                 year=2024,
                 description="Attackers systematically enumerate IAM to find privilege escalation paths",
-                reference_url="https://www.datadoghq.com/state-of-cloud-security/"
+                reference_url="https://www.datadoghq.com/state-of-cloud-security/",
             ),
             Campaign(
                 name="Cloud Reconnaissance",
                 year=2024,
                 description="Post-compromise enumeration to identify valuable targets",
-                reference_url="https://unit42.paloaltonetworks.com/2025-cloud-security-alert-trends/"
-            )
+                reference_url="https://unit42.paloaltonetworks.com/2025-cloud-security-alert-trends/",
+            ),
         ],
         prevalence="common",
         trend="stable",
@@ -64,13 +63,12 @@ TEMPLATE = RemediationTemplate(
             "Indicates active threat actor in environment",
             "Precursor to privilege escalation",
             "Mapping of sensitive accounts",
-            "Early warning opportunity"
+            "Early warning opportunity",
         ],
         typical_attack_phase="discovery",
         often_precedes=["T1098.001", "T1098.003", "T1078.004"],
-        often_follows=["T1078.004", "T1528"]
+        often_follows=["T1078.004", "T1528"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - IAM Enumeration
         DetectionStrategy(
@@ -81,13 +79,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.arn, sourceIPAddress
+                query="""fields @timestamp, eventName, userIdentity.arn, sourceIPAddress
 | filter eventSource = "iam.amazonaws.com"
 | filter eventName in ["ListUsers", "ListRoles", "ListGroups", "GetAccountAuthorizationDetails"]
 | stats count(*) as enum_count by userIdentity.arn, bin(1h)
 | filter enum_count > 10
-| sort enum_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort enum_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect IAM enumeration
 
 Parameters:
@@ -128,8 +126,8 @@ Resources:
       Threshold: 20
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect IAM enumeration
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect IAM enumeration
 
 variable "cloudtrail_log_group" {
   type = string
@@ -174,7 +172,7 @@ resource "aws_cloudwatch_metric_alarm" "iam_enum" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="IAM Enumeration Detected",
                 alert_description_template="High volume of IAM list operations from {userIdentity.arn}.",
@@ -182,14 +180,14 @@ resource "aws_cloudwatch_metric_alarm" "iam_enum" {
                     "Identify who is performing enumeration",
                     "Check if this is normal behaviour for the user",
                     "Review what IAM data was accessed",
-                    "Look for follow-on privilege escalation"
+                    "Look for follow-on privilege escalation",
                 ],
                 containment_actions=[
                     "Review user's permissions",
                     "Check for unauthorised access",
                     "Monitor for privilege escalation attempts",
-                    "Consider limiting IAM read permissions"
-                ]
+                    "Consider limiting IAM read permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist security scanning tools and CSPM",
@@ -198,9 +196,8 @@ resource "aws_cloudwatch_metric_alarm" "iam_enum" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail logging to CloudWatch"]
+            prerequisites=["CloudTrail logging to CloudWatch"],
         ),
-
         # Strategy 2: AWS - GetAccountAuthorizationDetails
         DetectionStrategy(
             strategy_id="t1087004-aws-authdetails",
@@ -213,11 +210,9 @@ resource "aws_cloudwatch_metric_alarm" "iam_enum" {
                 event_pattern={
                     "source": ["aws.iam"],
                     "detail-type": ["AWS API Call via CloudTrail"],
-                    "detail": {
-                        "eventName": ["GetAccountAuthorizationDetails"]
-                    }
+                    "detail": {"eventName": ["GetAccountAuthorizationDetails"]},
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect full IAM enumeration
 
 Parameters:
@@ -256,8 +251,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect full IAM enumeration
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect full IAM enumeration
 
 variable "alert_email" {
   type = string
@@ -302,7 +297,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Full IAM Enumeration Attempted",
                 alert_description_template="GetAccountAuthorizationDetails called - complete IAM dump.",
@@ -310,14 +305,14 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Identify who called this API",
                     "This reveals all IAM policies and permissions",
                     "Check for follow-on privilege escalation",
-                    "Review user's recent activity"
+                    "Review user's recent activity",
                 ],
                 containment_actions=[
                     "Review caller's permissions",
                     "Check for data exfiltration",
                     "Monitor for privilege escalation",
-                    "Consider restricting IAM read access"
-                ]
+                    "Consider restricting IAM read access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist security tools using this API",
@@ -326,9 +321,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         # Strategy 3: GCP - IAM Enumeration
         DetectionStrategy(
             strategy_id="t1087004-gcp-iamenum",
@@ -340,7 +334,7 @@ resource "aws_sns_topic_policy" "allow_events" {
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName=~"(GetIamPolicy|ListServiceAccounts|testIamPermissions)"''',
-                gcp_terraform_template='''# GCP: Detect IAM enumeration
+                gcp_terraform_template="""# GCP: Detect IAM enumeration
 
 variable "project_id" {
   type = string
@@ -388,7 +382,7 @@ resource "google_monitoring_alert_policy" "iam_enum" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: IAM Enumeration Detected",
                 alert_description_template="High volume of IAM queries detected.",
@@ -396,14 +390,14 @@ resource "google_monitoring_alert_policy" "iam_enum" {
                     "Identify the principal performing enumeration",
                     "Check if this is authorised security scanning",
                     "Review what IAM data was accessed",
-                    "Look for privilege escalation attempts"
+                    "Look for privilege escalation attempts",
                 ],
                 containment_actions=[
                     "Review principal's permissions",
                     "Monitor for follow-on attacks",
                     "Consider IAM Conditions",
-                    "Audit service account usage"
-                ]
+                    "Audit service account usage",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist security tools and CSPM",
@@ -412,9 +406,8 @@ resource "google_monitoring_alert_policy" "iam_enum" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled"],
         ),
-
         # Strategy 4: GCP - testIamPermissions
         DetectionStrategy(
             strategy_id="t1087004-gcp-testperm",
@@ -426,7 +419,7 @@ resource "google_monitoring_alert_policy" "iam_enum" {
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName=~"testIamPermissions"''',
-                gcp_terraform_template='''# GCP: Detect permission testing
+                gcp_terraform_template="""# GCP: Detect permission testing
 
 variable "project_id" {
   type = string
@@ -474,7 +467,7 @@ resource "google_monitoring_alert_policy" "test_permissions" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Permission Testing Detected",
                 alert_description_template="Bulk testIamPermissions calls detected.",
@@ -482,14 +475,14 @@ resource "google_monitoring_alert_policy" "test_permissions" {
                     "Identify who is testing permissions",
                     "Review which resources were tested",
                     "Check for privilege escalation patterns",
-                    "Verify if security tool activity"
+                    "Verify if security tool activity",
                 ],
                 containment_actions=[
                     "Review the principal's activity",
                     "Monitor for resource access",
                     "Consider restricting test permissions",
-                    "Audit recent activities"
-                ]
+                    "Audit recent activities",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Some apps legitimately test permissions",
@@ -498,16 +491,15 @@ resource "google_monitoring_alert_policy" "test_permissions" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1087004-aws-authdetails",
         "t1087004-aws-iamenum",
         "t1087004-gcp-iamenum",
-        "t1087004-gcp-testperm"
+        "t1087004-gcp-testperm",
     ],
     total_effort_hours=3.0,
-    coverage_improvement="+15% improvement for Discovery tactic"
+    coverage_improvement="+15% improvement for Discovery tactic",
 )

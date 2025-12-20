@@ -21,7 +21,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Brute Force",
     tactic_ids=["TA0006"],
     mitre_url="https://attack.mitre.org/techniques/T1110/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries may use brute force techniques to gain access to accounts "
@@ -34,22 +33,27 @@ TEMPLATE = RemediationTemplate(
             "Automated tools make large-scale attempts feasible",
             "Weak password policies make success likely",
             "Password reuse across services increases success rate",
-            "Cloud services often lack account lockout by default"
+            "Cloud services often lack account lockout by default",
         ],
-        known_threat_actors=["APT28 (Fancy Bear)", "APT29", "Iranian threat actors", "Lazarus Group"],
+        known_threat_actors=[
+            "APT28 (Fancy Bear)",
+            "APT29",
+            "Iranian threat actors",
+            "Lazarus Group",
+        ],
         recent_campaigns=[
             Campaign(
                 name="SolarWinds Password Spraying",
                 year=2020,
                 description="APT29 conducted password spraying against cloud services prior to supply chain compromise",
-                reference_url="https://www.microsoft.com/security/blog/2020/12/21/advice-for-incident-responders-on-recovery-from-systemic-identity-compromises/"
+                reference_url="https://www.microsoft.com/security/blog/2020/12/21/advice-for-incident-responders-on-recovery-from-systemic-identity-compromises/",
             ),
             Campaign(
                 name="MuddyWater Campaigns",
                 year=2022,
                 description="Iranian APT conducted password spraying against government and telecommunications targets",
-                reference_url="https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-055a"
-            )
+                reference_url="https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-055a",
+            ),
         ],
         prevalence="common",
         trend="stable",
@@ -63,13 +67,12 @@ TEMPLATE = RemediationTemplate(
             "Account compromise and data access",
             "Account lockouts causing business disruption",
             "Reputational damage if breach is publicised",
-            "Compliance violations for inadequate access controls"
+            "Compliance violations for inadequate access controls",
         ],
         typical_attack_phase="credential_access",
         often_precedes=["T1078", "T1087", "T1069"],
-        often_follows=["T1589", "T1590"]
+        often_follows=["T1589", "T1590"],
     ),
-
     detection_strategies=[
         # Strategy 1: GuardDuty
         DetectionStrategy(
@@ -86,9 +89,9 @@ TEMPLATE = RemediationTemplate(
                     "UnauthorizedAccess:EC2/SSHBruteForce",
                     "UnauthorizedAccess:EC2/RDPBruteForce",
                     "CredentialAccess:IAMUser/AnomalousBehavior",
-                    "InitialAccess:IAMUser/AnomalousBehavior"
+                    "InitialAccess:IAMUser/AnomalousBehavior",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty + email alerts for brute force attacks
 
 Parameters:
@@ -135,8 +138,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# GuardDuty + email alerts for brute force attacks
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# GuardDuty + email alerts for brute force attacks
 
 variable "alert_email" {
   type = string
@@ -189,7 +192,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GuardDuty: Brute Force Attack Detected",
                 alert_description_template=(
@@ -202,14 +205,14 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Check if the source IP is known malicious",
                     "Review authentication logs for the target",
                     "Determine if any attempts were successful",
-                    "Check for post-compromise activity if successful"
+                    "Check for post-compromise activity if successful",
                 ],
                 containment_actions=[
                     "Block source IP at security group or WAF level",
                     "Enable MFA on targeted accounts",
                     "Reset passwords for potentially compromised accounts",
-                    "Review and strengthen password policies"
-                ]
+                    "Review and strengthen password policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist known vulnerability scanners and penetration testing IPs",
@@ -218,9 +221,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$4 per million events",
-            prerequisites=["AWS account with appropriate IAM permissions"]
+            prerequisites=["AWS account with appropriate IAM permissions"],
         ),
-
         # Strategy 2: Failed Login Monitoring
         DetectionStrategy(
             strategy_id="t1110-failed-logins",
@@ -232,7 +234,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             detection_type=DetectionType.CLOUDWATCH_QUERY,
             aws_service="cloudwatch",
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.userName as user, sourceIPAddress,
+                query="""fields @timestamp, userIdentity.userName as user, sourceIPAddress,
        responseElements.ConsoleLogin as result, errorMessage
 | filter eventName = "ConsoleLogin"
 | stats count(*) as total_attempts,
@@ -240,8 +242,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
         count_distinct(sourceIPAddress) as unique_ips
   by user, bin(15m) as time_window
 | filter failed_attempts >= 5
-| sort time_window desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort time_window desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Alert on 5+ failed console logins in 5 minutes
 
 Parameters:
@@ -282,8 +284,8 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Alert on 5+ failed console logins in 5 minutes
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Alert on 5+ failed console logins in 5 minutes
 
 variable "cloudtrail_log_group" {
   type = string
@@ -328,7 +330,7 @@ resource "aws_cloudwatch_metric_alarm" "failed_logins" {
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Excessive Failed Login Attempts",
                 alert_description_template=(
@@ -340,14 +342,14 @@ resource "aws_cloudwatch_metric_alarm" "failed_logins" {
                     "Check if any attempts were successful after failures",
                     "Determine if targeted user account is valid",
                     "Review timing and pattern of attempts",
-                    "Check threat intelligence for source IPs"
+                    "Check threat intelligence for source IPs",
                 ],
                 containment_actions=[
                     "Temporarily lock the targeted account",
                     "Block source IPs at network level",
                     "Force password reset for targeted accounts",
-                    "Enable MFA if not already required"
-                ]
+                    "Enable MFA if not already required",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Adjust threshold based on normal failed login baseline; exclude service accounts",
@@ -356,9 +358,8 @@ resource "aws_cloudwatch_metric_alarm" "failed_logins" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-15",
-            prerequisites=["CloudTrail enabled", "CloudTrail logs in CloudWatch"]
+            prerequisites=["CloudTrail enabled", "CloudTrail logs in CloudWatch"],
         ),
-
         # Strategy 3: Password Spray Detection
         DetectionStrategy(
             strategy_id="t1110-password-spray",
@@ -370,7 +371,7 @@ resource "aws_cloudwatch_metric_alarm" "failed_logins" {
             detection_type=DetectionType.CLOUDWATCH_QUERY,
             aws_service="cloudwatch",
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.userName as user, sourceIPAddress,
+                query="""fields @timestamp, userIdentity.userName as user, sourceIPAddress,
        responseElements.ConsoleLogin as result
 | filter eventName = "ConsoleLogin"
 | stats count_distinct(user) as targeted_users,
@@ -378,7 +379,7 @@ resource "aws_cloudwatch_metric_alarm" "failed_logins" {
         sum(case when result = "Failure" then 1 else 0 end) as failures
   by sourceIPAddress, bin(30m) as time_window
 | filter targeted_users >= 3 and failures >= 3
-| sort time_window desc''',
+| sort time_window desc""",
                 alert_severity="critical",
                 alert_title="Password Spray Attack Detected",
                 alert_description_template=(
@@ -391,14 +392,14 @@ resource "aws_cloudwatch_metric_alarm" "failed_logins" {
                     "Check if any authentications were successful",
                     "Gather threat intelligence on the source IP",
                     "Review if targeted accounts follow a pattern (e.g., executives)",
-                    "Check for similar activity from related IP ranges"
+                    "Check for similar activity from related IP ranges",
                 ],
                 containment_actions=[
                     "Block the source IP immediately",
                     "Force password reset for all targeted accounts",
                     "Enable MFA on all targeted accounts",
-                    "Notify affected users of potential compromise attempt"
-                ]
+                    "Notify affected users of potential compromise attempt",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Exclude known SSO/federation services; adjust user threshold",
@@ -407,9 +408,8 @@ resource "aws_cloudwatch_metric_alarm" "failed_logins" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["CloudTrail enabled", "CloudTrail logs in CloudWatch"]
+            prerequisites=["CloudTrail enabled", "CloudTrail logs in CloudWatch"],
         ),
-
         # Strategy 4: API-Based Brute Force
         DetectionStrategy(
             strategy_id="t1110-api-brute-force",
@@ -421,14 +421,14 @@ resource "aws_cloudwatch_metric_alarm" "failed_logins" {
             detection_type=DetectionType.CLOUDWATCH_QUERY,
             aws_service="cloudwatch",
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.accessKeyId as accessKey,
+                query="""fields @timestamp, userIdentity.accessKeyId as accessKey,
        sourceIPAddress, eventName, errorCode, errorMessage
 | filter errorCode in ["AccessDenied", "UnauthorizedAccess", "InvalidClientTokenId",
     "SignatureDoesNotMatch", "IncompleteSignature"]
 | stats count(*) as error_count, count_distinct(eventName) as unique_apis
   by sourceIPAddress, bin(15m) as time_window
 | filter error_count >= 10
-| sort time_window desc''',
+| sort time_window desc""",
                 alert_severity="high",
                 alert_title="API Authentication Brute Force Detected",
                 alert_description_template=(
@@ -440,14 +440,14 @@ resource "aws_cloudwatch_metric_alarm" "failed_logins" {
                     "Check if any valid access keys were exposed",
                     "Review recent code deployments for credential leaks",
                     "Search for the source IP in threat intelligence",
-                    "Check for any successful API calls from the same IP"
+                    "Check for any successful API calls from the same IP",
                 ],
                 containment_actions=[
                     "Block the source IP at WAF/security group",
                     "Rotate any potentially exposed access keys",
                     "Review IAM access key inventory",
-                    "Enable CloudTrail insights for anomaly detection"
-                ]
+                    "Enable CloudTrail insights for anomaly detection",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude known development/test environments; tune threshold for your baseline",
@@ -456,16 +456,15 @@ resource "aws_cloudwatch_metric_alarm" "failed_logins" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["CloudTrail enabled", "All API events logged"]
-        )
+            prerequisites=["CloudTrail enabled", "All API events logged"],
+        ),
     ],
-
     recommended_order=[
         "t1110-guardduty",
         "t1110-failed-logins",
         "t1110-password-spray",
-        "t1110-api-brute-force"
+        "t1110-api-brute-force",
     ],
     total_effort_hours=5.5,
-    coverage_improvement="+30% improvement for Credential Access tactic"
+    coverage_improvement="+30% improvement for Credential Access tactic",
 )

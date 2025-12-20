@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Supply Chain Compromise: Compromise Hardware Supply Chain",
     tactic_ids=["TA0001"],
     mitre_url="https://attack.mitre.org/techniques/T1195/003/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries manipulate hardware components or firmware in servers, "
@@ -37,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Survives OS reinstallation",
             "System-level privileges",
             "Affects all cloud instances using hardware",
-            "Bypasses software security controls"
+            "Bypasses software security controls",
         ],
         known_threat_actors=["Nation-state actors", "Advanced persistent threats"],
         recent_campaigns=[
@@ -45,7 +44,7 @@ TEMPLATE = RemediationTemplate(
                 name="Hardware Supply Chain Interdiction",
                 year=2024,
                 description="Nation-state actors compromising hardware during shipping or manufacturing",
-                reference_url="https://attack.mitre.org/techniques/T1195/003/"
+                reference_url="https://attack.mitre.org/techniques/T1195/003/",
             )
         ],
         prevalence="rare",
@@ -61,13 +60,12 @@ TEMPLATE = RemediationTemplate(
             "Complete system control",
             "Difficult remediation",
             "Potential fleet-wide impact",
-            "Loss of hardware trust"
+            "Loss of hardware trust",
         ],
         typical_attack_phase="initial_access",
         often_precedes=["T1078.004", "T1552.005", "T1530", "T1098"],
-        often_follows=[]
+        often_follows=[],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1195.003-aws-boot",
@@ -77,13 +75,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, instance_id, @message
+                query="""fields @timestamp, instance_id, @message
 | filter @message like /boot|firmware|UEFI|BIOS|TPM/
 | filter @message like /fail|error|anomaly|unexpected|modified/
 | stats count(*) as anomalies by instance_id, bin(1h)
 | filter anomalies > 0
-| sort anomalies desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort anomalies desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect EC2 boot integrity issues and firmware anomalies
 
 Parameters:
@@ -127,8 +125,8 @@ Resources:
       EvaluationPeriods: 1
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching''',
-                terraform_template='''# AWS: Detect EC2 boot integrity and firmware anomalies
+      TreatMissingData: notBreaching""",
+                terraform_template="""# AWS: Detect EC2 boot integrity and firmware anomalies
 
 variable "alert_email" {
   type        = string
@@ -173,7 +171,7 @@ resource "aws_cloudwatch_metric_alarm" "boot_integrity" {
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.boot_alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="EC2 Boot Integrity Failure Detected",
                 alert_description_template="Boot integrity or firmware anomaly detected on instance {instance_id}.",
@@ -185,7 +183,7 @@ resource "aws_cloudwatch_metric_alarm" "boot_integrity" {
                     "Compare with other instances from same hardware batch",
                     "Review AWS Systems Manager inventory data",
                     "Check for unexpected hardware changes",
-                    "Consult AWS Support for hardware verification"
+                    "Consult AWS Support for hardware verification",
                 ],
                 containment_actions=[
                     "Quarantine affected instance immediately",
@@ -194,8 +192,8 @@ resource "aws_cloudwatch_metric_alarm" "boot_integrity" {
                     "Identify all instances from same hardware batch",
                     "Deploy replacement instances from verified AMIs",
                     "Enable EC2 Instance Connect Endpoint for secure access",
-                    "Report to AWS Security if hardware compromise suspected"
-                ]
+                    "Report to AWS Security if hardware compromise suspected",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal boot patterns; exclude planned firmware updates",
@@ -204,9 +202,8 @@ resource "aws_cloudwatch_metric_alarm" "boot_integrity" {
             implementation_effort=EffortLevel.HIGH,
             implementation_time="3-4 hours",
             estimated_monthly_cost="$10-25",
-            prerequisites=["EC2 system logs enabled", "CloudWatch Logs configured"]
+            prerequisites=["EC2 system logs enabled", "CloudWatch Logs configured"],
         ),
-
         DetectionStrategy(
             strategy_id="t1195.003-aws-nitro",
             name="AWS Nitro System Attestation",
@@ -218,11 +215,9 @@ resource "aws_cloudwatch_metric_alarm" "boot_integrity" {
                 event_pattern={
                     "source": ["aws.ec2"],
                     "detail-type": ["EC2 Instance State-change Notification"],
-                    "detail": {
-                        "state": ["running"]
-                    }
+                    "detail": {"state": ["running"]},
                 },
-                terraform_template='''# AWS: Monitor Nitro attestation and hardware verification
+                terraform_template="""# AWS: Monitor Nitro attestation and hardware verification
 
 variable "alert_email" {
   type        = string
@@ -300,7 +295,7 @@ resource "aws_lambda_permission" "allow_eventbridge" {
   function_name = aws_lambda_function.verify_attestation.function_name
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.instance_launch.arn
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Nitro Attestation Verification Failure",
                 alert_description_template="Hardware attestation failed for instance {instance_id}.",
@@ -310,15 +305,15 @@ resource "aws_lambda_permission" "allow_eventbridge" {
                     "Compare against known-good attestation baseline",
                     "Check instance metadata for hardware details",
                     "Review instance placement and availability zone",
-                    "Verify instance type supports Nitro attestation"
+                    "Verify instance type supports Nitro attestation",
                 ],
                 containment_actions=[
                     "Terminate instance immediately",
                     "Launch replacement from verified AMI",
                     "Document attestation failure details",
                     "Report to AWS Security team",
-                    "Review all instances in same placement group"
-                ]
+                    "Review all instances in same placement group",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Requires proper Nitro attestation baseline configuration",
@@ -327,9 +322,8 @@ resource "aws_lambda_permission" "allow_eventbridge" {
             implementation_effort=EffortLevel.HIGH,
             implementation_time="4-6 hours",
             estimated_monthly_cost="$15-40",
-            prerequisites=["EC2 Nitro instances", "Lambda execution permissions"]
+            prerequisites=["EC2 Nitro instances", "Lambda execution permissions"],
         ),
-
         DetectionStrategy(
             strategy_id="t1195.003-gcp-shielded",
             name="GCP Shielded VM Integrity Monitoring",
@@ -339,15 +333,15 @@ resource "aws_lambda_permission" "allow_eventbridge" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 protoPayload.methodName="v1.compute.instances.insert"
 OR protoPayload.methodName="beta.compute.instances.start"
 OR logName=~"logs/serialconsole"
 AND (jsonPayload.message=~".*integrity.*fail.*"
 OR jsonPayload.message=~".*boot.*verif.*fail.*"
 OR jsonPayload.message=~".*TPM.*fail.*"
-OR jsonPayload.message=~".*secure.*boot.*fail.*")''',
-                gcp_terraform_template='''# GCP: Monitor Shielded VM integrity and boot verification
+OR jsonPayload.message=~".*secure.*boot.*fail.*")""",
+                gcp_terraform_template="""# GCP: Monitor Shielded VM integrity and boot verification
 
 variable "project_id" {
   type        = string
@@ -463,7 +457,7 @@ resource "google_monitoring_alert_policy" "vtpm_alert" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GCP: Shielded VM Integrity Failure",
                 alert_description_template="Boot integrity or vTPM verification failed for instance {instance_name}.",
@@ -474,7 +468,7 @@ resource "google_monitoring_alert_policy" "vtpm_alert" {
                     "Review instance boot sequence logs",
                     "Compare with other instances from same image",
                     "Check for firmware update history",
-                    "Verify image provenance and checksum"
+                    "Verify image provenance and checksum",
                 ],
                 containment_actions=[
                     "Stop instance immediately",
@@ -483,8 +477,8 @@ resource "google_monitoring_alert_policy" "vtpm_alert" {
                     "Launch replacement from verified image",
                     "Enable Shielded VM on all instances",
                     "Review all instances from same image source",
-                    "Report to Google Cloud Security if hardware suspected"
-                ]
+                    "Report to Google Cloud Security if hardware suspected",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Baseline Shielded VM measurements; exclude planned updates",
@@ -493,9 +487,8 @@ resource "google_monitoring_alert_policy" "vtpm_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Shielded VM enabled", "Serial console logging enabled"]
+            prerequisites=["Shielded VM enabled", "Serial console logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1195.003-gcp-integrity",
             name="GCP Instance Integrity Verification",
@@ -505,10 +498,10 @@ resource "google_monitoring_alert_policy" "vtpm_alert" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 protoPayload.methodName="v1.compute.instances.insert"
-AND operation.first=true''',
-                gcp_terraform_template='''# GCP: Verify instance integrity on creation
+AND operation.first=true""",
+                gcp_terraform_template="""# GCP: Verify instance integrity on creation
 
 variable "project_id" {
   type        = string
@@ -566,7 +559,7 @@ resource "google_pubsub_topic_iam_binding" "log_sink" {
   topic   = google_pubsub_topic.verification.name
   role    = "roles/pubsub.publisher"
   members = [google_logging_project_sink.instance_creation.writer_identity]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: New Instance Requires Integrity Verification",
                 alert_description_template="New instance {instance_name} created - verify hardware integrity.",
@@ -576,14 +569,14 @@ resource "google_pubsub_topic_iam_binding" "log_sink" {
                     "Review instance creation logs",
                     "Verify image source and integrity",
                     "Check instance zone and hardware platform",
-                    "Compare with security baseline"
+                    "Compare with security baseline",
                 ],
                 containment_actions=[
                     "Require Shielded VM for all instances",
                     "Enable Confidential Computing where possible",
                     "Implement organisation policy for Shielded VM",
-                    "Document hardware verification process"
-                ]
+                    "Document hardware verification process",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist automated deployment service accounts",
@@ -592,16 +585,15 @@ resource "google_pubsub_topic_iam_binding" "log_sink" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["Cloud Audit Logs enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1195.003-aws-nitro",
         "t1195.003-gcp-shielded",
         "t1195.003-aws-boot",
-        "t1195.003-gcp-integrity"
+        "t1195.003-gcp-integrity",
     ],
     total_effort_hours=12.0,
-    coverage_improvement="+25% improvement for Initial Access tactic"
+    coverage_improvement="+25% improvement for Initial Access tactic",
 )

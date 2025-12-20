@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Encrypted Channel",
     tactic_ids=["TA0011"],  # Command and Control
     mitre_url="https://attack.mitre.org/techniques/T1573/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries employ encryption algorithms to mask command-and-control traffic rather than "
@@ -39,7 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Blends with legitimate encrypted business traffic",
             "Prevents exposure of commands and exfiltrated data",
             "Protects C2 infrastructure from identification",
-            "Enables persistent covert communications"
+            "Enables persistent covert communications",
         ],
         known_threat_actors=[
             "APT29",
@@ -49,33 +48,33 @@ TEMPLATE = RemediationTemplate(
             "Kimsuky",
             "Lazarus Group",
             "FIN7",
-            "Turla"
+            "Turla",
         ],
         recent_campaigns=[
             Campaign(
                 name="APT29 Multi-Layer Encryption",
                 year=2024,
                 description="APT29 deployed multiple layers of encryption within malware to protect C2 communications, making detection extremely challenging",
-                reference_url="https://attack.mitre.org/groups/G0016/"
+                reference_url="https://attack.mitre.org/groups/G0016/",
             ),
             Campaign(
                 name="Emotet TLS C2 Infrastructure",
                 year=2024,
                 description="Emotet malware utilised TLS-encrypted channels for C2 communications, blending with legitimate HTTPS traffic",
-                reference_url="https://attack.mitre.org/software/S0367/"
+                reference_url="https://attack.mitre.org/software/S0367/",
             ),
             Campaign(
                 name="BITTER Encrypted Communications",
                 year=2023,
                 description="BITTER APT group employed encrypted C2 channels in targeted espionage operations",
-                reference_url="https://attack.mitre.org/groups/G1002/"
+                reference_url="https://attack.mitre.org/groups/G1002/",
             ),
             Campaign(
                 name="Magic Hound Custom Encryption",
                 year=2023,
                 description="Magic Hound deployed custom encryption schemes for C2 traffic in attacks against critical infrastructure",
-                reference_url="https://attack.mitre.org/groups/G0059/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0059/",
+            ),
         ],
         prevalence="very_common",
         trend="increasing",
@@ -93,13 +92,12 @@ TEMPLATE = RemediationTemplate(
             "Extended attacker persistence and dwell time",
             "Difficulty in forensic investigation",
             "Compliance violations from undetected breaches",
-            "Potential for sustained espionage or sabotage"
+            "Potential for sustained espionage or sabotage",
         ],
         typical_attack_phase="command_and_control",
         often_precedes=["T1041", "T1048", "T1567"],  # Exfiltration techniques
-        often_follows=["T1078.004", "T1190", "T1566"]  # Initial Access techniques
+        often_follows=["T1078.004", "T1190", "T1566"],  # Initial Access techniques
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - Unusual TLS/SSL Patterns
         DetectionStrategy(
@@ -110,15 +108,15 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcAddr, dstAddr, dstPort, protocol, bytes
+                query="""fields @timestamp, srcAddr, dstAddr, dstPort, protocol, bytes
 | filter protocol = 6
 | filter dstPort not in [443, 8443]
 | filter bytes > 0
 | stats count() as connection_count, sum(bytes) as total_bytes by srcAddr, dstAddr, dstPort
 | filter connection_count > 50 and total_bytes < 50000
 | sort connection_count desc
-| limit 100''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| limit 100""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect unusual TLS/SSL connection patterns for encrypted C2 detection
 
 Parameters:
@@ -186,8 +184,8 @@ Resources:
         - MetricName: UnusualEncryptedConnections
           MetricNamespace: Security/C2Detection
           MetricValue: '1'
-          DefaultValue: 0''',
-                terraform_template='''# Detect unusual TLS/SSL connection patterns
+          DefaultValue: 0""",
+                terraform_template="""# Detect unusual TLS/SSL connection patterns
 
 variable "vpc_id" {
   type        = string
@@ -245,7 +243,7 @@ resource "aws_flow_log" "main" {
   log_destination = aws_cloudwatch_log_group.flow_logs.arn
   traffic_type    = "ALL"
   vpc_id          = var.vpc_id
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Unusual TLS/SSL Connection Pattern Detected",
                 alert_description_template="Unusual encrypted connection detected from {srcAddr} to {dstAddr}:{dstPort}. Non-standard TLS port usage may indicate encrypted C2 activity.",
@@ -256,7 +254,7 @@ resource "aws_flow_log" "main" {
                     "Check for legitimate applications using non-standard TLS ports",
                     "Examine TLS certificate details if available",
                     "Review instance processes and installed software",
-                    "Check CloudTrail for suspicious API activity from source"
+                    "Check CloudTrail for suspicious API activity from source",
                 ],
                 containment_actions=[
                     "Block suspicious destination IPs via security groups",
@@ -264,8 +262,8 @@ resource "aws_flow_log" "main" {
                     "Enable TLS/SSL inspection using AWS Network Firewall",
                     "Review and restrict outbound internet access",
                     "Deploy endpoint detection and response (EDR) tools",
-                    "Capture network traffic for forensic analysis"
-                ]
+                    "Capture network traffic for forensic analysis",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate applications using non-standard encrypted ports. Establish baseline for normal encrypted traffic patterns.",
@@ -274,9 +272,8 @@ resource "aws_flow_log" "main" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-30",
-            prerequisites=["VPC Flow Logs enabled", "CloudWatch Logs"]
+            prerequisites=["VPC Flow Logs enabled", "CloudWatch Logs"],
         ),
-
         # Strategy 2: AWS - TLS/SSL Certificate Anomalies
         DetectionStrategy(
             strategy_id="t1573-aws-cert-anomaly",
@@ -290,13 +287,10 @@ resource "aws_flow_log" "main" {
                     "source": ["aws.acm"],
                     "detail-type": ["AWS API Call via CloudTrail"],
                     "detail": {
-                        "eventName": [
-                            "RequestCertificate",
-                            "ImportCertificate"
-                        ]
-                    }
+                        "eventName": ["RequestCertificate", "ImportCertificate"]
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect suspicious TLS certificate operations
 
 Parameters:
@@ -341,8 +335,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect suspicious TLS certificate operations
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect suspicious TLS certificate operations
 
 variable "alert_email" {
   type        = string
@@ -395,7 +389,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.cert_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Suspicious TLS Certificate Operation Detected",
                 alert_description_template="TLS certificate {eventName} performed by {userIdentity.principalId}. May indicate C2 infrastructure setup.",
@@ -405,15 +399,15 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Check if certificate is for legitimate business use",
                     "Examine recent activities by the principal",
                     "Review IAM permissions for ACM operations",
-                    "Check for other suspicious AWS API calls"
+                    "Check for other suspicious AWS API calls",
                 ],
                 containment_actions=[
                     "Review and revoke suspicious certificates",
                     "Restrict acm:RequestCertificate and acm:ImportCertificate permissions",
                     "Enable MFA for certificate management operations",
                     "Audit all existing certificates in the account",
-                    "Review CloudTrail logs for certificate usage patterns"
-                ]
+                    "Review CloudTrail logs for certificate usage patterns",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist authorised DevOps and infrastructure teams. Filter legitimate application certificate requests.",
@@ -422,9 +416,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         # Strategy 3: AWS - Encrypted Traffic to Rare Destinations
         DetectionStrategy(
             strategy_id="t1573-aws-rare-dest",
@@ -440,9 +433,9 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "UnauthorizedAccess:EC2/TorClient",
                     "UnauthorizedAccess:EC2/TorRelay",
                     "CryptoCurrency:EC2/BitcoinTool.B!DNS",
-                    "Impact:EC2/BitcoinDomainRequest.Reputation"
+                    "Impact:EC2/BitcoinDomainRequest.Reputation",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Configure GuardDuty alerts for encrypted C2 detection
 
 Parameters:
@@ -495,8 +488,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Configure GuardDuty for encrypted C2 detection
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Configure GuardDuty for encrypted C2 detection
 
 variable "alert_email" {
   type        = string
@@ -556,7 +549,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.guardduty_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GuardDuty: Encrypted C2 Activity Detected",
                 alert_description_template="GuardDuty detected {type} on instance {resource.instanceDetails.instanceId}. This indicates potential encrypted command and control activity.",
@@ -567,7 +560,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Review CloudTrail logs for suspicious API activity",
                     "Examine VPC Flow Logs for the timeframe",
                     "Check for lateral movement from affected instances",
-                    "Investigate any TOR or anonymisation network usage"
+                    "Investigate any TOR or anonymisation network usage",
                 ],
                 containment_actions=[
                     "Isolate affected instances immediately",
@@ -576,8 +569,8 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Block malicious IPs via security groups and NACLs",
                     "Enable AWS Network Firewall for deep packet inspection",
                     "Review and rotate any exposed credentials",
-                    "Deploy replacement instances from clean images"
-                ]
+                    "Deploy replacement instances from clean images",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Review and suppress findings for legitimate use of TOR or VPNs. Update threat intelligence feed regularly.",
@@ -586,9 +579,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$30-100 depending on data volume",
-            prerequisites=["GuardDuty enabled", "VPC Flow Logs", "DNS Logs"]
+            prerequisites=["GuardDuty enabled", "VPC Flow Logs", "DNS Logs"],
         ),
-
         # Strategy 4: GCP - Encrypted Connection Anomaly Detection
         DetectionStrategy(
             strategy_id="t1573-gcp-encrypted-anomaly",
@@ -599,13 +591,13 @@ resource "aws_sns_topic_policy" "allow_events" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_subnetwork"
+                gcp_logging_query="""resource.type="gce_subnetwork"
 logName="projects/PROJECT_ID/logs/compute.googleapis.com%2Fvpc_flows"
 jsonPayload.connection.dest_port!=443 AND jsonPayload.connection.dest_port!=8443
 jsonPayload.connection.protocol=6
 jsonPayload.bytes_sent>0
-jsonPayload.packets>50''',
-                gcp_terraform_template='''# GCP: Detect unusual encrypted connection patterns
+jsonPayload.packets>50""",
+                gcp_terraform_template="""# GCP: Detect unusual encrypted connection patterns
 
 variable "project_id" {
   type        = string
@@ -669,7 +661,7 @@ resource "google_monitoring_alert_policy" "encrypted_c2" {
   alert_strategy {
     auto_close = "86400s"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Unusual Encrypted Connection Pattern Detected",
                 alert_description_template="Non-standard encrypted traffic pattern detected in VPC Flow Logs. May indicate encrypted C2 communications.",
@@ -680,7 +672,7 @@ resource "google_monitoring_alert_policy" "encrypted_c2" {
                     "Analyse Cloud Logging for application-level logs",
                     "Review VM metadata and startup scripts",
                     "Examine TLS/SSL certificate details if available",
-                    "Check for unauthorised changes to the instance"
+                    "Check for unauthorised changes to the instance",
                 ],
                 containment_actions=[
                     "Isolate affected VM instances using firewall rules",
@@ -689,8 +681,8 @@ resource "google_monitoring_alert_policy" "encrypted_c2" {
                     "Block malicious IPs via Cloud Armor or VPC firewall",
                     "Enable VPC Service Controls to prevent data exfiltration",
                     "Review IAM permissions for affected resources",
-                    "Deploy Cloud IDS for deep packet inspection"
-                ]
+                    "Deploy Cloud IDS for deep packet inspection",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Establish baselines for legitimate encrypted traffic patterns. Whitelist known applications using non-standard encrypted ports.",
@@ -699,9 +691,8 @@ resource "google_monitoring_alert_policy" "encrypted_c2" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-30",
-            prerequisites=["VPC Flow Logs enabled", "Cloud Logging"]
+            prerequisites=["VPC Flow Logs enabled", "Cloud Logging"],
         ),
-
         # Strategy 5: GCP - Security Command Centre Encrypted Malware Detection
         DetectionStrategy(
             strategy_id="t1573-gcp-scc-encrypted",
@@ -718,9 +709,9 @@ resource "google_monitoring_alert_policy" "encrypted_c2" {
                     "Malware: Bad IP",
                     "Malware: Outgoing DoS",
                     "Initial Access: Suspicious Login",
-                    "Persistence: IAM Anomalous Grant"
+                    "Persistence: IAM Anomalous Grant",
                 ],
-                gcp_terraform_template='''# GCP: Configure Security Command Centre for encrypted C2 detection
+                gcp_terraform_template="""# GCP: Configure Security Command Centre for encrypted C2 detection
 
 variable "organization_id" {
   type        = string
@@ -762,7 +753,7 @@ resource "google_pubsub_subscription" "scc_findings" {
 
 # Note: SCC notification configs require organisation-level API access
 # Configure via: gcloud scc notifications create
-# Or use google_scc_notification_config resource with appropriate permissions''',
+# Or use google_scc_notification_config resource with appropriate permissions""",
                 alert_severity="critical",
                 alert_title="GCP: Encrypted Malware Communication Detected by SCC",
                 alert_description_template="Security Command Centre detected {category} on {resourceName}. This indicates potential encrypted C2 activity.",
@@ -773,7 +764,7 @@ resource "google_pubsub_subscription" "scc_findings" {
                     "Review VPC Flow Logs for network connections",
                     "Analyse VM instance metadata and configurations",
                     "Examine any encrypted traffic patterns",
-                    "Check for lateral movement across projects"
+                    "Check for lateral movement across projects",
                 ],
                 containment_actions=[
                     "Isolate affected resources immediately",
@@ -783,8 +774,8 @@ resource "google_pubsub_subscription" "scc_findings" {
                     "Block malicious domains and IPs via Cloud Armor",
                     "Review and rotate any exposed credentials",
                     "Apply organisation policy constraints",
-                    "Deploy Cloud IDS for network intrusion detection"
-                ]
+                    "Deploy Cloud IDS for network intrusion detection",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Review findings for legitimate security tools and development environments. Configure SCC muting rules for known benign activities.",
@@ -793,9 +784,11 @@ resource "google_pubsub_subscription" "scc_findings" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$50-150 depending on assets",
-            prerequisites=["Security Command Centre enabled", "Event Threat Detection enabled"]
+            prerequisites=[
+                "Security Command Centre enabled",
+                "Event Threat Detection enabled",
+            ],
         ),
-
         # Strategy 6: AWS - Network Firewall TLS Inspection
         DetectionStrategy(
             strategy_id="t1573-aws-network-firewall",
@@ -805,7 +798,7 @@ resource "google_pubsub_subscription" "scc_findings" {
             aws_service="network-firewall",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message
+                query="""fields @timestamp, @message
 | filter event.event_type = "tls"
 | filter tls.sni not like /.amazonaws.com$/
 | filter tls.sni not like /.microsoft.com$/
@@ -813,8 +806,8 @@ resource "google_pubsub_subscription" "scc_findings" {
 | stats count() as connection_count by src_ip, dest_ip, tls.sni
 | filter connection_count > 50
 | sort connection_count desc
-| limit 100''',
-                terraform_template='''# Deploy AWS Network Firewall with TLS inspection
+| limit 100""",
+                terraform_template="""# Deploy AWS Network Firewall with TLS inspection
 
 variable "vpc_id" {
   type        = string
@@ -889,7 +882,7 @@ resource "aws_networkfirewall_logging_configuration" "main" {
       log_type             = "ALERT"
     }
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Network Firewall: Suspicious Encrypted Traffic Detected",
                 alert_description_template="AWS Network Firewall detected suspicious TLS traffic from {src_ip} to {dest_ip} ({tls.sni}).",
@@ -900,7 +893,7 @@ resource "aws_networkfirewall_logging_configuration" "main" {
                     "Check destination domain reputation",
                     "Review recent activities from source instance",
                     "Examine other network connections from source",
-                    "Correlate with GuardDuty and CloudTrail events"
+                    "Correlate with GuardDuty and CloudTrail events",
                 ],
                 containment_actions=[
                     "Block suspicious domains via Network Firewall rules",
@@ -908,8 +901,8 @@ resource "aws_networkfirewall_logging_configuration" "main" {
                     "Update Network Firewall policy to drop suspicious traffic",
                     "Enable enhanced logging and monitoring",
                     "Review and update security group rules",
-                    "Deploy additional IDS/IPS capabilities"
-                ]
+                    "Deploy additional IDS/IPS capabilities",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate business domains and applications. Tune TLS inspection rules based on baseline traffic.",
@@ -918,10 +911,12 @@ resource "aws_networkfirewall_logging_configuration" "main" {
             implementation_effort=EffortLevel.HIGH,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$100-300 depending on throughput",
-            prerequisites=["VPC with appropriate subnet architecture", "CloudWatch Logs"]
-        )
+            prerequisites=[
+                "VPC with appropriate subnet architecture",
+                "CloudWatch Logs",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1573-aws-guardduty",
         "t1573-gcp-scc-encrypted",
@@ -929,8 +924,8 @@ resource "aws_networkfirewall_logging_configuration" "main" {
         "t1573-gcp-encrypted-anomaly",
         "t1573-aws-network-firewall",
         "t1573-aws-rare-dest",
-        "t1573-aws-cert-anomaly"
+        "t1573-aws-cert-anomaly",
     ],
     total_effort_hours=7.0,
-    coverage_improvement="+30% improvement for Command and Control tactic detection"
+    coverage_improvement="+30% improvement for Command and Control tactic detection",
 )

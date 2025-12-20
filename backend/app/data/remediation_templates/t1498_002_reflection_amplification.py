@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Network Denial of Service: Reflection Amplification",
     tactic_ids=["TA0040"],
     mitre_url="https://attack.mitre.org/techniques/T1498/002/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries exploit third-party servers (reflectors) by sending spoofed "
@@ -38,7 +37,7 @@ TEMPLATE = RemediationTemplate(
             "Spoofed packets hide attacker identity",
             "Exploits publicly accessible UDP services",
             "Requires minimal attacker resources",
-            "Difficult to block without affecting legitimate traffic"
+            "Difficult to block without affecting legitimate traffic",
         ],
         known_threat_actors=[],
         recent_campaigns=[],
@@ -55,13 +54,12 @@ TEMPLATE = RemediationTemplate(
             "Service unavailability and downtime",
             "Revenue loss during outage",
             "Bandwidth costs from amplified traffic",
-            "Reputation damage from service disruption"
+            "Reputation damage from service disruption",
         ],
         typical_attack_phase="impact",
         often_precedes=[],
-        often_follows=["T1595.002"]
+        often_follows=["T1595.002"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1498-002-aws-vpc-outbound",
@@ -71,13 +69,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcAddr, dstAddr, dstPort, bytes, packets
+                query="""fields @timestamp, srcAddr, dstAddr, dstPort, bytes, packets
 | filter action = "ACCEPT" and protocol = 17
 | filter dstPort in [53, 123, 11211, 161, 389, 1900]
 | stats sum(bytes) as totalBytes, sum(packets) as totalPackets by srcAddr, dstPort, bin(5m)
 | filter totalPackets > 1000
-| sort totalBytes desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort totalBytes desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect potential reflection amplification attack sources
 
 Parameters:
@@ -119,8 +117,8 @@ Resources:
       Threshold: 5000
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect potential reflection amplification attack sources
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect potential reflection amplification attack sources
 
 variable "vpc_flow_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -158,7 +156,7 @@ resource "aws_cloudwatch_metric_alarm" "amplification_attack" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Potential Reflection Amplification Attack Source Detected",
                 alert_description_template="Instance {srcAddr} sending high-volume UDP traffic to amplification ports.",
@@ -167,15 +165,15 @@ resource "aws_cloudwatch_metric_alarm" "amplification_attack" {
                     "Check instance for compromise indicators",
                     "Review instance creation and modification history",
                     "Analyse outbound traffic patterns and destinations",
-                    "Check for unauthorised access or lateral movement"
+                    "Check for unauthorised access or lateral movement",
                 ],
                 containment_actions=[
                     "Isolate affected instances immediately",
                     "Block outbound UDP traffic to amplification ports",
                     "Terminate compromised instances",
                     "Review security group configurations",
-                    "Contact AWS abuse team if necessary"
-                ]
+                    "Contact AWS abuse team if necessary",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Legitimate DNS or NTP traffic is typically much lower volume. Adjust thresholds based on environment.",
@@ -184,9 +182,8 @@ resource "aws_cloudwatch_metric_alarm" "amplification_attack" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-60 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["VPC Flow Logs enabled with CloudWatch Logs destination"]
+            prerequisites=["VPC Flow Logs enabled with CloudWatch Logs destination"],
         ),
-
         DetectionStrategy(
             strategy_id="t1498-002-aws-guardduty",
             name="AWS GuardDuty DDoS Detection",
@@ -195,10 +192,10 @@ resource "aws_cloudwatch_metric_alarm" "amplification_attack" {
             aws_service="guardduty",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, type, severity, resource.instanceDetails.instanceId, service.action.networkConnectionAction
+                query="""fields @timestamp, type, severity, resource.instanceDetails.instanceId, service.action.networkConnectionAction
 | filter type like /Backdoor:EC2\/DenialOfService/
-| sort @timestamp desc''',
-                terraform_template='''# Enable GuardDuty DDoS finding alerts
+| sort @timestamp desc""",
+                terraform_template="""# Enable GuardDuty DDoS finding alerts
 
 variable "alert_email" { type = string }
 
@@ -255,7 +252,7 @@ resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.ddos_findings.name
   target_id = "SendToSNS"
   arn       = aws_sns_topic.guardduty_alerts.arn
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GuardDuty: DDoS Activity Detected",
                 alert_description_template="GuardDuty detected DDoS activity from instance {instanceId}.",
@@ -264,15 +261,15 @@ resource "aws_cloudwatch_event_target" "sns" {
                     "Identify affected EC2 instances",
                     "Check instance for compromise indicators",
                     "Analyse network traffic patterns",
-                    "Review CloudTrail for suspicious API activity"
+                    "Review CloudTrail for suspicious API activity",
                 ],
                 containment_actions=[
                     "Isolate affected instances immediately",
                     "Block malicious traffic via security groups",
                     "Terminate compromised instances",
                     "Rotate exposed credentials",
-                    "Review and harden security configurations"
-                ]
+                    "Review and harden security configurations",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="GuardDuty findings are high-confidence. Review context before acting.",
@@ -281,9 +278,8 @@ resource "aws_cloudwatch_event_target" "sns" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="15-30 minutes",
             estimated_monthly_cost="$15-50 depending on data volume",
-            prerequisites=["AWS GuardDuty enabled in account"]
+            prerequisites=["AWS GuardDuty enabled in account"],
         ),
-
         DetectionStrategy(
             strategy_id="t1498-002-aws-shield",
             name="AWS Shield Advanced DDoS Metrics",
@@ -292,7 +288,7 @@ resource "aws_cloudwatch_event_target" "sns" {
             aws_service="shield",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                terraform_template='''# Monitor AWS Shield Advanced DDoS metrics
+                terraform_template="""# Monitor AWS Shield Advanced DDoS metrics
 
 variable "protected_resource_arn" {
   type        = string
@@ -348,7 +344,7 @@ resource "aws_cloudwatch_metric_alarm" "attack_volume" {
   }
 
   alarm_actions = [aws_sns_topic.shield_alerts.arn]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="AWS Shield: DDoS Attack Detected",
                 alert_description_template="AWS Shield detected DDoS attack on protected resource.",
@@ -357,15 +353,15 @@ resource "aws_cloudwatch_metric_alarm" "attack_volume" {
                     "Check attack vector and volume metrics",
                     "Review Shield Response Team (SRT) recommendations",
                     "Analyse traffic patterns and source IPs",
-                    "Check application health and availability"
+                    "Check application health and availability",
                 ],
                 containment_actions=[
                     "Engage AWS Shield Response Team if Advanced tier",
                     "Review automatic mitigation actions taken",
                     "Implement additional Route 53 routing policies",
                     "Scale infrastructure if needed",
-                    "Document attack patterns for future prevention"
-                ]
+                    "Document attack patterns for future prevention",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="AWS Shield metrics are highly accurate. Review attack details before taking action.",
@@ -374,9 +370,11 @@ resource "aws_cloudwatch_metric_alarm" "attack_volume" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="20-30 minutes",
             estimated_monthly_cost="$3000+ for Shield Advanced subscription",
-            prerequisites=["AWS Shield Advanced subscription", "Protected resources configured"]
+            prerequisites=[
+                "AWS Shield Advanced subscription",
+                "Protected resources configured",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1498-002-gcp-armor-ddos",
             name="GCP Cloud Armor DDoS Detection",
@@ -389,7 +387,7 @@ resource "aws_cloudwatch_metric_alarm" "attack_volume" {
                 gcp_logging_query='''resource.type="http_load_balancer"
 jsonPayload.enforcedSecurityPolicy.configuredAction="DENY"
 jsonPayload.enforcedSecurityPolicy.name=~"ddos-protection"''',
-                gcp_terraform_template='''# GCP: Detect DDoS attacks via Cloud Armor
+                gcp_terraform_template="""# GCP: Detect DDoS attacks via Cloud Armor
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -471,7 +469,7 @@ resource "google_monitoring_alert_policy" "traffic_spike" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GCP: DDoS Attack Detected",
                 alert_description_template="Cloud Armor detected high-volume DDoS attack traffic.",
@@ -480,15 +478,15 @@ resource "google_monitoring_alert_policy" "traffic_spike" {
                     "Analyse traffic sources and patterns",
                     "Check load balancer metrics and health",
                     "Review blocked request characteristics",
-                    "Verify backend service availability"
+                    "Verify backend service availability",
                 ],
                 containment_actions=[
                     "Enable Cloud Armor adaptive protection if not enabled",
                     "Add rate limiting rules to security policy",
                     "Implement geo-blocking if attack is regional",
                     "Scale backend services if needed",
-                    "Contact Google Cloud Support for assistance"
-                ]
+                    "Contact Google Cloud Support for assistance",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Adjust rate thresholds based on normal traffic patterns. Cloud Armor adaptive protection learns over time.",
@@ -497,9 +495,11 @@ resource "google_monitoring_alert_policy" "traffic_spike" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$20-50 depending on traffic volume",
-            prerequisites=["Cloud Armor security policy configured", "HTTPS load balancer with logging enabled"]
+            prerequisites=[
+                "Cloud Armor security policy configured",
+                "HTTPS load balancer with logging enabled",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1498-002-gcp-vpc-flow",
             name="GCP VPC Flow Logs Amplification Detection",
@@ -509,12 +509,12 @@ resource "google_monitoring_alert_policy" "traffic_spike" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_subnetwork"
+                gcp_logging_query="""resource.type="gce_subnetwork"
 logName="projects/PROJECT_ID/logs/compute.googleapis.com%2Fvpc_flows"
 jsonPayload.connection.protocol=17
 jsonPayload.dest_port=(53 OR 123 OR 11211 OR 161 OR 389 OR 1900)
-jsonPayload.bytes_sent>1000000''',
-                gcp_terraform_template='''# GCP: Detect reflection amplification via VPC Flow Logs
+jsonPayload.bytes_sent>1000000""",
+                gcp_terraform_template="""# GCP: Detect reflection amplification via VPC Flow Logs
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -586,7 +586,7 @@ resource "google_monitoring_alert_policy" "amplification_attack" {
   documentation {
     content = "Potential reflection amplification attack originating from GCP instance. Investigate source VM immediately."
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Reflection Amplification Attack Source Detected",
                 alert_description_template="GCP instance sending high-volume UDP traffic to amplification protocol ports.",
@@ -595,15 +595,15 @@ resource "google_monitoring_alert_policy" "amplification_attack" {
                     "Check instance for compromise indicators",
                     "Review instance creation and access logs",
                     "Analyse VPC flow logs for traffic patterns",
-                    "Check Cloud Audit Logs for suspicious activity"
+                    "Check Cloud Audit Logs for suspicious activity",
                 ],
                 containment_actions=[
                     "Stop affected instances immediately",
                     "Create firewall rules to block outbound UDP to amplification ports",
                     "Delete compromised instances and create new ones from clean images",
                     "Review and strengthen IAM policies",
-                    "Enable VPC Service Controls if not already enabled"
-                ]
+                    "Enable VPC Service Controls if not already enabled",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Legitimate DNS resolvers or NTP servers may trigger alerts. Whitelist known legitimate sources.",
@@ -612,17 +612,16 @@ resource "google_monitoring_alert_policy" "amplification_attack" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-25",
-            prerequisites=["VPC Flow Logs enabled on subnets"]
-        )
+            prerequisites=["VPC Flow Logs enabled on subnets"],
+        ),
     ],
-
     recommended_order=[
         "t1498-002-aws-guardduty",
         "t1498-002-aws-shield",
         "t1498-002-aws-vpc-outbound",
         "t1498-002-gcp-armor-ddos",
-        "t1498-002-gcp-vpc-flow"
+        "t1498-002-gcp-vpc-flow",
     ],
     total_effort_hours=4.5,
-    coverage_improvement="+25% improvement for Impact tactic detection"
+    coverage_improvement="+25% improvement for Impact tactic detection",
 )

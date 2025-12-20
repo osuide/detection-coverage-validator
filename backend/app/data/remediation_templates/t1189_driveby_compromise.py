@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Drive-by Compromise",
     tactic_ids=["TA0001"],
     mitre_url="https://attack.mitre.org/techniques/T1189/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries gain system access when users visit websites during normal browsing. "
@@ -40,39 +39,52 @@ TEMPLATE = RemediationTemplate(
             "Leverages trusted websites to deliver payloads",
             "Exploits unpatched browsers and plugins",
             "Difficult for users to identify malicious sites",
-            "Malvertising reaches wide audiences via legitimate ad networks"
+            "Malvertising reaches wide audiences via legitimate ad networks",
         ],
         known_threat_actors=[
-            "APT28", "APT29", "APT32", "APT37", "APT38", "APT19",
-            "Lazarus Group", "Andariel", "PLATINUM", "Dragonfly",
-            "Turla", "APT40", "Threat Group-3390", "Elderwood",
-            "Patchwork", "Transparent Tribe", "Leafminer"
+            "APT28",
+            "APT29",
+            "APT32",
+            "APT37",
+            "APT38",
+            "APT19",
+            "Lazarus Group",
+            "Andariel",
+            "PLATINUM",
+            "Dragonfly",
+            "Turla",
+            "APT40",
+            "Threat Group-3390",
+            "Elderwood",
+            "Patchwork",
+            "Transparent Tribe",
+            "Leafminer",
         ],
         recent_campaigns=[
             Campaign(
                 name="3CX Supply Chain Attack (AppleJeus)",
                 year=2023,
                 description="Compromised tradingtechnologies.com with malicious iFrame to exploit visitors before distributing compromised X_TRADER software",
-                reference_url="https://attack.mitre.org/campaigns/C0057/"
+                reference_url="https://attack.mitre.org/campaigns/C0057/",
             ),
             Campaign(
                 name="Operation Dust Storm",
                 year=2014,
                 description="Exploited zero-day Internet Explorer vulnerability (CVE-2014-0322) via watering hole on software reseller site",
-                reference_url="https://attack.mitre.org/campaigns/C0016/"
+                reference_url="https://attack.mitre.org/campaigns/C0016/",
             ),
             Campaign(
                 name="RICECURRY Watering Holes",
                 year=2017,
                 description="APT37 compromised South Korean websites, deploying RICECURRY profiler to deliver customised malicious code to targets",
-                reference_url="https://attack.mitre.org/groups/G0067/"
+                reference_url="https://attack.mitre.org/groups/G0067/",
             ),
             Campaign(
                 name="BRONZE BUTLER Flash Exploits",
                 year=2016,
                 description="Conducted watering hole attacks against Japanese websites using Flash exploits to compromise visitors",
-                reference_url="https://attack.mitre.org/groups/G0060/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0060/",
+            ),
         ],
         prevalence="moderate",
         trend="stable",
@@ -89,13 +101,12 @@ TEMPLATE = RemediationTemplate(
             "Credential theft from compromised endpoints",
             "Lateral movement enabler from initial foothold",
             "Data exfiltration from infected systems",
-            "Bypass of perimeter security controls"
+            "Bypass of perimeter security controls",
         ],
         typical_attack_phase="initial_access",
         often_precedes=["T1078.004", "T1059", "T1105", "T1003"],
-        often_follows=["T1566", "T1598"]
+        often_follows=["T1566", "T1598"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1189-aws-guardduty-dns",
@@ -114,9 +125,9 @@ TEMPLATE = RemediationTemplate(
                     "Trojan:EC2/BlackholeTraffic",
                     "Trojan:EC2/DropPoint",
                     "UnauthorizedAccess:EC2/MaliciousIPCaller.Custom",
-                    "Trojan:EC2/DriveBySourceTraffic!DNS"
+                    "Trojan:EC2/DriveBySourceTraffic!DNS",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty monitoring for drive-by compromise indicators (T1189)
 
 Parameters:
@@ -167,8 +178,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref GuardDutyAlertTopic''',
-                terraform_template='''# AWS: GuardDuty monitoring for drive-by compromise (T1189)
+            Resource: !Ref GuardDutyAlertTopic""",
+                terraform_template="""# AWS: GuardDuty monitoring for drive-by compromise (T1189)
 
 variable "alert_email" {
   type        = string
@@ -222,7 +233,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Resource  = aws_sns_topic.guardduty_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Drive-by Compromise: Malicious Domain Connection",
                 alert_description_template=(
@@ -237,7 +248,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Examine VPC Flow Logs for suspicious traffic patterns",
                     "Check for unauthorised software installations",
                     "Review IAM credentials accessed from the instance",
-                    "Identify whether instance has internet gateway access"
+                    "Identify whether instance has internet gateway access",
                 ],
                 containment_actions=[
                     "Isolate the affected instance in a quarantine security group",
@@ -246,8 +257,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Rotate all IAM credentials accessed from the instance",
                     "Review and revoke any temporary credentials issued",
                     "Create forensic snapshot before termination",
-                    "Update security group rules to restrict outbound access"
-                ]
+                    "Update security group rules to restrict outbound access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="GuardDuty uses threat intelligence feeds; false positives are rare",
@@ -256,9 +267,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$15-50 depending on instance count",
-            prerequisites=["GuardDuty enabled in region", "VPC DNS logging enabled"]
+            prerequisites=["GuardDuty enabled in region", "VPC DNS logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1189-aws-cloudwatch-browser",
             name="AWS CloudWatch Suspicious Browser Process Detection",
@@ -270,15 +280,15 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, process.name, process.parent, commandLine, sourceIPAddress
+                query="""fields @timestamp, process.name, process.parent, commandLine, sourceIPAddress
 | filter process.parent like /chrome|firefox|safari|msedge|iexplore/
 | filter process.name in ["powershell", "cmd", "bash", "sh", "python", "perl", "ruby", "wscript", "cscript"]
 | stats count(*) as spawn_count,
         count_distinct(process.name) as unique_processes
   by process.parent, sourceIPAddress, bin(1h)
 | filter spawn_count > 3 or unique_processes > 2
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect suspicious browser child processes (T1189)
 
 Parameters:
@@ -335,8 +345,8 @@ Resources:
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# AWS: Detect suspicious browser child processes (T1189)
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# AWS: Detect suspicious browser child processes (T1189)
 
 variable "log_group_name" {
   type        = string
@@ -396,7 +406,7 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
       Resource  = aws_sns_topic.browser_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Drive-by Compromise: Browser Exploitation Detected",
                 alert_description_template=(
@@ -411,7 +421,7 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
                     "Review DNS queries immediately before process spawn",
                     "Analyse memory dumps of browser process if available",
                     "Check for persistence mechanisms created",
-                    "Review network connections from spawned processes"
+                    "Review network connections from spawned processes",
                 ],
                 containment_actions=[
                     "Isolate the affected workstation immediately",
@@ -420,8 +430,8 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
                     "Scan the endpoint with updated antivirus",
                     "Remove browser cache and temporary files",
                     "Rotate user credentials accessed from the endpoint",
-                    "Re-image the workstation if compromise confirmed"
-                ]
+                    "Re-image the workstation if compromise confirmed",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate browser extensions and automation tools",
@@ -430,9 +440,11 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-25",
-            prerequisites=["Endpoint logging to CloudWatch", "Process creation logging enabled"]
+            prerequisites=[
+                "Endpoint logging to CloudWatch",
+                "Process creation logging enabled",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1189-aws-waf-malvertising",
             name="AWS WAF Malicious JavaScript Detection",
@@ -444,14 +456,14 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, request.uri, response.status, request.headers.referer
+                query="""fields @timestamp, request.uri, response.status, request.headers.referer
 | filter request.uri like /\\.js$|<iframe|<script/
 | filter response.headers.content_type like /javascript|html/
 | filter request.uri like /eval\\(|document\\.write|window\\.location|atob\\(/
 | stats count(*) as suspicious_js by request.uri, bin(5m)
 | filter suspicious_js > 10
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect malicious JavaScript in web responses (T1189)
 
 Parameters:
@@ -508,8 +520,8 @@ Resources:
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# AWS: Detect malicious JavaScript serving (T1189)
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# AWS: Detect malicious JavaScript serving (T1189)
 
 variable "alb_log_group" {
   type        = string
@@ -569,7 +581,7 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
       Resource  = aws_sns_topic.malvertising_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Drive-by Compromise: Malicious JavaScript Detected",
                 alert_description_template=(
@@ -584,7 +596,7 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
                     "Scan web server for compromise indicators",
                     "Check for SQL injection or other web vulnerabilities",
                     "Review CDN/CloudFront cache for poisoned content",
-                    "Identify visitor IPs that received malicious content"
+                    "Identify visitor IPs that received malicious content",
                 ],
                 containment_actions=[
                     "Remove malicious JavaScript files immediately",
@@ -593,8 +605,8 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
                     "Deploy known-good version from version control",
                     "Enable CloudFront signed URLs if not already enabled",
                     "Review and patch web application vulnerabilities",
-                    "Notify affected users if visitor data compromised"
-                ]
+                    "Notify affected users if visitor data compromised",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline legitimate JavaScript patterns and obfuscation techniques",
@@ -603,9 +615,11 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$8-20",
-            prerequisites=["ALB or CloudFront logging enabled", "Web application logs forwarded to CloudWatch"]
+            prerequisites=[
+                "ALB or CloudFront logging enabled",
+                "Web application logs forwarded to CloudWatch",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1189-gcp-dns-threat-intel",
             name="GCP Cloud DNS Threat Intelligence",
@@ -623,7 +637,7 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
 OR jsonPayload.responseCode="NOERROR"
    jsonPayload.queryName=~".*exploit.*|.*malware.*|.*payload.*")
 severity>="WARNING"''',
-                gcp_terraform_template='''# GCP: Monitor DNS queries for drive-by compromise indicators (T1189)
+                gcp_terraform_template="""# GCP: Monitor DNS queries for drive-by compromise indicators (T1189)
 
 variable "project_id" {
   type        = string
@@ -686,7 +700,7 @@ resource "google_monitoring_alert_policy" "dns_threats" {
   alert_strategy {
     auto_close = "86400s"  # 24 hours
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Drive-by Compromise DNS Activity",
                 alert_description_template=(
@@ -700,7 +714,7 @@ resource "google_monitoring_alert_policy" "dns_threats" {
                     "Examine running processes on querying instances",
                     "Review browser history if queries from user workstations",
                     "Check for correlation with threat intelligence feeds",
-                    "Identify applications making the DNS requests"
+                    "Identify applications making the DNS requests",
                 ],
                 containment_actions=[
                     "Block the malicious domains using Cloud DNS policies",
@@ -709,8 +723,8 @@ resource "google_monitoring_alert_policy" "dns_threats" {
                     "Scan instances with Cloud Security Scanner",
                     "Rotate service account credentials from affected VMs",
                     "Review and remove any malware or backdoors",
-                    "Re-create instances from known-good images"
-                ]
+                    "Re-create instances from known-good images",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Filter legitimate use of free TLDs and tune domain patterns",
@@ -719,9 +733,8 @@ resource "google_monitoring_alert_policy" "dns_threats" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="45 minutes - 1 hour",
             estimated_monthly_cost="$12-25",
-            prerequisites=["Cloud DNS logging enabled", "VPC Flow Logs enabled"]
+            prerequisites=["Cloud DNS logging enabled", "VPC Flow Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1189-gcp-chrome-policy",
             name="GCP Chrome Enterprise Browser Policy Violations",
@@ -739,7 +752,7 @@ resource "google_monitoring_alert_policy" "dns_threats" {
 OR protoPayload.metadata.event.eventType="EXTENSION_INSTALL_BLOCKED"
 OR protoPayload.metadata.event.eventType="DOWNLOAD_BLOCKED")
 severity="ERROR"''',
-                gcp_terraform_template='''# GCP: Monitor Chrome browser policy violations (T1189)
+                gcp_terraform_template="""# GCP: Monitor Chrome browser policy violations (T1189)
 
 variable "project_id" {
   type        = string
@@ -793,7 +806,7 @@ resource "google_monitoring_alert_policy" "browser_exploitation" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Browser Policy Violation - Potential Drive-by Attack",
                 alert_description_template=(
@@ -807,7 +820,7 @@ resource "google_monitoring_alert_policy" "browser_exploitation" {
                     "Examine blocked download file types and sources",
                     "Review recent browsing history for the user",
                     "Check for multiple violations in short timeframe",
-                    "Verify Chrome Enterprise policies are correctly configured"
+                    "Verify Chrome Enterprise policies are correctly configured",
                 ],
                 containment_actions=[
                     "Contact user to verify browsing activity was legitimate",
@@ -815,8 +828,8 @@ resource "google_monitoring_alert_policy" "browser_exploitation" {
                     "Strengthen browser security policies if needed",
                     "Review and update extension whitelists",
                     "Enable additional Chrome Enterprise security features",
-                    "Provide security awareness training to affected users"
-                ]
+                    "Provide security awareness training to affected users",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Distinguish between policy violations from malware vs user behaviour",
@@ -825,17 +838,16 @@ resource "google_monitoring_alert_policy" "browser_exploitation" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-12",
-            prerequisites=["Chrome Enterprise Browser Cloud Management enabled"]
-        )
+            prerequisites=["Chrome Enterprise Browser Cloud Management enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1189-aws-guardduty-dns",
         "t1189-gcp-dns-threat-intel",
         "t1189-aws-cloudwatch-browser",
         "t1189-aws-waf-malvertising",
-        "t1189-gcp-chrome-policy"
+        "t1189-gcp-chrome-policy",
     ],
     total_effort_hours=5.5,
-    coverage_improvement="+18% improvement for Initial Access tactic"
+    coverage_improvement="+18% improvement for Initial Access tactic",
 )

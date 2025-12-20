@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Develop Capabilities",
     tactic_ids=["TA0042"],
     mitre_url="https://attack.mitre.org/techniques/T1587/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries develop their own tools and capabilities rather than acquiring them "
@@ -38,7 +37,7 @@ TEMPLATE = RemediationTemplate(
             "Enables custom functionality",
             "Maintains operational security",
             "Reduces attribution risk",
-            "Provides exclusive capabilities"
+            "Provides exclusive capabilities",
         ],
         known_threat_actors=["Contagious Interview", "Kimsuky", "Moonstone Sleet"],
         recent_campaigns=[
@@ -46,14 +45,14 @@ TEMPLATE = RemediationTemplate(
                 name="Contagious Interview NPM Packages",
                 year=2024,
                 description="North Korean threat actors developed malicious NPM packages for delivery to or retrieval by victims",
-                reference_url="https://attack.mitre.org/groups/G1052/"
+                reference_url="https://attack.mitre.org/groups/G1052/",
             ),
             Campaign(
                 name="Kimsuky Spearphishing Toolkit",
                 year=2024,
                 description="Created and deployed a mailing toolkit for use in spearphishing attacks",
-                reference_url="https://attack.mitre.org/groups/G0094/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0094/",
+            ),
         ],
         prevalence="moderate",
         trend="increasing",
@@ -68,13 +67,12 @@ TEMPLATE = RemediationTemplate(
             "Sophisticated targeted attacks",
             "Reduced detection capability",
             "Extended dwell time",
-            "Supply chain compromise risk"
+            "Supply chain compromise risk",
         ],
         typical_attack_phase="resource_development",
         often_precedes=["T1566.001", "T1204.002", "T1195.002", "T1608.001"],
-        often_follows=[]
+        often_follows=[],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1587-aws-guardduty",
@@ -84,11 +82,11 @@ TEMPLATE = RemediationTemplate(
             aws_service="guardduty",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, service.action.actionType, resource.s3BucketDetails.name, severity
+                query="""fields @timestamp, service.action.actionType, resource.s3BucketDetails.name, severity
 | filter service.serviceName = "guardduty"
 | filter (type like /Malware/ or type like /Trojan/ or type like /Backdoor/)
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect malware and suspicious files via GuardDuty
 
 Parameters:
@@ -125,8 +123,8 @@ Resources:
       State: ENABLED
       Targets:
         - Arn: !Ref AlertTopic
-          Id: MalwareAlertTarget''',
-                terraform_template='''# Detect malware and suspicious files via GuardDuty
+          Id: MalwareAlertTarget""",
+                terraform_template="""# Detect malware and suspicious files via GuardDuty
 
 variable "alert_email" { type = string }
 
@@ -164,7 +162,7 @@ resource "aws_cloudwatch_event_target" "malware_alert" {
   rule      = aws_cloudwatch_event_rule.malware_finding.name
   target_id = "MalwareAlertTarget"
   arn       = aws_sns_topic.alerts.arn
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Malware Detected in AWS Environment",
                 alert_description_template="GuardDuty detected malware or suspicious files: {finding_type}",
@@ -174,15 +172,15 @@ resource "aws_cloudwatch_event_target" "malware_alert" {
                     "Check for compiler artifacts or debugging symbols",
                     "Review S3 bucket access logs",
                     "Identify file origin and upload source",
-                    "Check for related findings or indicators"
+                    "Check for related findings or indicators",
                 ],
                 containment_actions=[
                     "Quarantine affected S3 objects",
                     "Block malicious IPs at security group level",
                     "Rotate exposed credentials",
                     "Review IAM policies for compromised accounts",
-                    "Enable GuardDuty malware protection if not active"
-                ]
+                    "Enable GuardDuty malware protection if not active",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="GuardDuty uses threat intelligence feeds with low false positive rates",
@@ -191,9 +189,8 @@ resource "aws_cloudwatch_event_target" "malware_alert" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-20",
-            prerequisites=["GuardDuty enabled", "S3 malware protection enabled"]
+            prerequisites=["GuardDuty enabled", "S3 malware protection enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1587-aws-s3-suspicious",
             name="S3 Suspicious File Upload Detection",
@@ -202,15 +199,15 @@ resource "aws_cloudwatch_event_target" "malware_alert" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, requestParameters.bucketName, requestParameters.key, userIdentity.principalId
+                query="""fields @timestamp, requestParameters.bucketName, requestParameters.key, userIdentity.principalId
 | filter eventName = "PutObject"
 | filter (requestParameters.key like /\.exe$/ or requestParameters.key like /\.dll$/
          or requestParameters.key like /\.scr$/ or requestParameters.key like /\.vbs$/
          or requestParameters.key like /\.ps1$/ or requestParameters.key like /\.bat$/)
 | stats count(*) as uploads by userIdentity.principalId, requestParameters.bucketName
 | filter uploads > 10
-| sort uploads desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort uploads desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect suspicious file uploads to S3
 
 Parameters:
@@ -251,8 +248,8 @@ Resources:
       Threshold: 10
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect suspicious file uploads to S3
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect suspicious file uploads to S3
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -290,7 +287,7 @@ resource "aws_cloudwatch_metric_alarm" "suspicious_uploads_alarm" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Suspicious File Uploads to S3",
                 alert_description_template="High volume of executable file uploads by {principalId}",
@@ -299,15 +296,15 @@ resource "aws_cloudwatch_metric_alarm" "suspicious_uploads_alarm" {
                     "Check user identity and access patterns",
                     "Analyse file hashes against threat intelligence",
                     "Review bucket policies and permissions",
-                    "Check for automated upload patterns"
+                    "Check for automated upload patterns",
                 ],
                 containment_actions=[
                     "Enable S3 Object Lock on sensitive buckets",
                     "Review and restrict bucket policies",
                     "Enable GuardDuty S3 protection",
                     "Implement bucket encryption",
-                    "Review IAM permissions for uploading principals"
-                ]
+                    "Review IAM permissions for uploading principals",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Adjust file extensions and thresholds based on legitimate software distribution needs",
@@ -316,9 +313,11 @@ resource "aws_cloudwatch_metric_alarm" "suspicious_uploads_alarm" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$3-10",
-            prerequisites=["CloudTrail enabled with S3 data events", "CloudTrail logs in CloudWatch"]
+            prerequisites=[
+                "CloudTrail enabled with S3 data events",
+                "CloudTrail logs in CloudWatch",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1587-gcp-artifact",
             name="GCP Artifact Registry Suspicious Uploads",
@@ -331,7 +330,7 @@ resource "aws_cloudwatch_metric_alarm" "suspicious_uploads_alarm" {
                 gcp_logging_query='''resource.type="artifact_registry_repository"
 protoPayload.methodName=~"CreatePackage|UploadArtifact"
 severity="NOTICE"''',
-                gcp_terraform_template='''# GCP: Detect suspicious Artifact Registry uploads
+                gcp_terraform_template="""# GCP: Detect suspicious Artifact Registry uploads
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -375,7 +374,7 @@ resource "google_monitoring_alert_policy" "artifact_upload_alert" {
   alert_strategy {
     auto_close = "604800s"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Suspicious Artifact Registry Activity",
                 alert_description_template="High volume of package uploads detected in Artifact Registry",
@@ -384,15 +383,15 @@ resource "google_monitoring_alert_policy" "artifact_upload_alert" {
                     "Check authentication method and identity",
                     "Analyse package contents and dependencies",
                     "Review repository access logs",
-                    "Check for malicious package patterns"
+                    "Check for malicious package patterns",
                 ],
                 containment_actions=[
                     "Review repository IAM permissions",
                     "Enable Binary Authorization",
                     "Implement package scanning",
                     "Review artifact retention policies",
-                    "Delete suspicious packages"
-                ]
+                    "Delete suspicious packages",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude CI/CD service accounts and adjust threshold for your deployment frequency",
@@ -401,9 +400,8 @@ resource "google_monitoring_alert_policy" "artifact_upload_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-25",
-            prerequisites=["Artifact Registry enabled", "Audit logging enabled"]
+            prerequisites=["Artifact Registry enabled", "Audit logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1587-gcp-code-build",
             name="GCP Cloud Build Suspicious Activity",
@@ -413,11 +411,11 @@ resource "google_monitoring_alert_policy" "artifact_upload_alert" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="cloud_build"
+                gcp_logging_query="""resource.type="cloud_build"
 protoPayload.methodName="google.devtools.cloudbuild.v1.CloudBuild.CreateBuild"
 (protoPayload.request.steps.args=~"gcc|g\+\+|make|cmake|cargo|go build"
- OR protoPayload.request.steps.name=~"compiler|builder")''',
-                gcp_terraform_template='''# GCP: Detect suspicious build activities
+ OR protoPayload.request.steps.name=~"compiler|builder")""",
+                gcp_terraform_template="""# GCP: Detect suspicious build activities
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -465,7 +463,7 @@ resource "google_monitoring_alert_policy" "build_alert" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Suspicious Cloud Build Activity",
                 alert_description_template="Unusual compilation activity detected in Cloud Build",
@@ -474,15 +472,15 @@ resource "google_monitoring_alert_policy" "build_alert" {
                     "Check build trigger authenticity",
                     "Analyse compiled artifacts",
                     "Review build service account permissions",
-                    "Check for obfuscation or packing tools"
+                    "Check for obfuscation or packing tools",
                 ],
                 containment_actions=[
                     "Review Cloud Build IAM permissions",
                     "Restrict build trigger sources",
                     "Enable build approval requirements",
                     "Implement artifact scanning",
-                    "Review and delete suspicious builds"
-                ]
+                    "Review and delete suspicious builds",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Exclude legitimate CI/CD pipelines and adjust threshold based on normal build frequency",
@@ -491,11 +489,15 @@ resource "google_monitoring_alert_policy" "build_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Build enabled", "Audit logging enabled"]
-        )
+            prerequisites=["Cloud Build enabled", "Audit logging enabled"],
+        ),
     ],
-
-    recommended_order=["t1587-aws-guardduty", "t1587-gcp-artifact", "t1587-aws-s3-suspicious", "t1587-gcp-code-build"],
+    recommended_order=[
+        "t1587-aws-guardduty",
+        "t1587-gcp-artifact",
+        "t1587-aws-s3-suspicious",
+        "t1587-gcp-code-build",
+    ],
     total_effort_hours=5.5,
-    coverage_improvement="+15% improvement for Resource Development tactic"
+    coverage_improvement="+15% improvement for Resource Development tactic",
 )

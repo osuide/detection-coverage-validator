@@ -116,7 +116,8 @@ class HealthCalculator:
         """Convert score to health status."""
         # Check for critical issues first
         has_critical = any(
-            i.get("severity") == "critical" or i.get("severity") == ValidationSeverity.CRITICAL
+            i.get("severity") == "critical"
+            or i.get("severity") == ValidationSeverity.CRITICAL
             for i in issues
         )
 
@@ -139,13 +140,15 @@ class HealthCalculator:
             if hasattr(severity, "value"):
                 severity = severity.value
 
-            issues.append({
-                "validator": result.validator_name,
-                "message": issue.message,
-                "severity": severity,
-                "code": issue.code,
-                "details": issue.details or {},
-            })
+            issues.append(
+                {
+                    "validator": result.validator_name,
+                    "message": issue.message,
+                    "severity": severity,
+                    "code": issue.code,
+                    "details": issue.details or {},
+                }
+            )
 
         return issues
 
@@ -159,7 +162,11 @@ class DetectionHealthService:
         syntax_validator: Any = None,
         reference_validator: Any = None,
     ):
-        from app.validators import StalenessValidator, SyntaxValidator, ReferenceValidator
+        from app.validators import (
+            StalenessValidator,
+            SyntaxValidator,
+            ReferenceValidator,
+        )
 
         self.staleness_validator = staleness_validator or StalenessValidator()
         self.syntax_validator = syntax_validator or SyntaxValidator()
@@ -252,13 +259,15 @@ class DetectionHealthService:
                 results[str(detection.id)] = HealthScore(
                     score=0.0,
                     status=HealthStatus.UNKNOWN,
-                    issues=[{
-                        "validator": "health_service",
-                        "message": f"Validation failed: {str(e)}",
-                        "severity": "critical",
-                        "code": "VALIDATION_ERROR",
-                        "details": {"error": str(e)},
-                    }],
+                    issues=[
+                        {
+                            "validator": "health_service",
+                            "message": f"Validation failed: {str(e)}",
+                            "severity": "critical",
+                            "code": "VALIDATION_ERROR",
+                            "details": {"error": str(e)},
+                        }
+                    ],
                     component_scores={},
                     calculated_at=datetime.utcnow(),
                 )

@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Execution Guardrails",
     tactic_ids=["TA0005"],
     mitre_url="https://attack.mitre.org/techniques/T1480/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries employ execution guardrails to restrict malware activation based on "
@@ -38,7 +37,7 @@ TEMPLATE = RemediationTemplate(
             "Minimises collateral damage and reduces visibility",
             "Ensures payload delivery only to specific targets",
             "Validates environment before executing malicious actions",
-            "Protects malware from analysis in security sandboxes"
+            "Protects malware from analysis in security sandboxes",
         ],
         known_threat_actors=["Gamaredon Group", "Mustang Panda", "RedDelta"],
         recent_campaigns=[
@@ -46,20 +45,20 @@ TEMPLATE = RemediationTemplate(
                 name="Contagious Interview",
                 year=2024,
                 description="C2 endpoints review IP geolocation and victim environment details before payload delivery",
-                reference_url="https://attack.mitre.org/campaigns/C0039/"
+                reference_url="https://attack.mitre.org/campaigns/C0039/",
             ),
             Campaign(
                 name="RedDelta PlugX Distribution",
                 year=2023,
                 description="Used Cloudflare geofencing during PlugX distribution to target specific regions",
-                reference_url="https://attack.mitre.org/groups/G0088/"
+                reference_url="https://attack.mitre.org/groups/G0088/",
             ),
             Campaign(
                 name="Gamaredon Geofencing",
                 year=2022,
                 description="Geofencing limiting malware downloads to specific geographical regions",
-                reference_url="https://attack.mitre.org/groups/G0047/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0047/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -75,13 +74,12 @@ TEMPLATE = RemediationTemplate(
             "Reduced efficacy of sandbox analysis systems",
             "Incomplete security telemetry and forensic evidence",
             "Increased complexity of incident response",
-            "Potential for undetected compromise in production environments"
+            "Potential for undetected compromise in production environments",
         ],
         typical_attack_phase="defence_evasion",
         often_precedes=["T1059", "T1053", "T1486"],
-        often_follows=["T1204", "T1566", "T1105"]
+        often_follows=["T1204", "T1566", "T1105"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - Lambda Environmental Validation
         DetectionStrategy(
@@ -96,15 +94,15 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message, @logStream
+                query="""fields @timestamp, @message, @logStream
 | filter @message like /(?i)(hostname|domain|ip.*address|network.*share|registry.*key|file.*exists)/
   or @message like /(?i)(environment.*check|validation|guardrail|target.*system)/
   or @message like /(?i)(geolocation|region.*check|language.*setting)/
 | filter @message not like /normal-application-pattern/
 | stats count(*) as validation_checks by @logStream, bin(5m) as time_window
 | filter validation_checks >= 3
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Lambda execution guardrail detection for T1480
 
 Parameters:
@@ -154,8 +152,8 @@ Resources:
         fields @timestamp, @message, @logStream
         | filter @message like /(?i)(hostname|domain|ip.*address|network|registry|geolocation)/
         | stats count(*) as validation_checks by @logStream, bin(5m)
-        | sort @timestamp desc''',
-                terraform_template='''# Lambda execution guardrail detection for T1480
+        | sort @timestamp desc""",
+                terraform_template="""# Lambda execution guardrail detection for T1480
 
 variable "lambda_log_group" {
   type        = string
@@ -206,7 +204,7 @@ resource "aws_cloudwatch_query_definition" "execution_guardrails" {
     | stats count(*) as validation_checks by @logStream, bin(5m)
     | sort @timestamp desc
   EOT
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Lambda Execution Guardrail Pattern Detected",
                 alert_description_template=(
@@ -221,7 +219,7 @@ resource "aws_cloudwatch_query_definition" "execution_guardrails" {
                     "Check who deployed or last updated the function",
                     "Review function's execution history and invocation patterns",
                     "Analyse IAM permissions granted to the function",
-                    "Check for conditional logic that gates payload execution"
+                    "Check for conditional logic that gates payload execution",
                 ],
                 containment_actions=[
                     "Disable or quarantine the suspicious Lambda function",
@@ -229,8 +227,8 @@ resource "aws_cloudwatch_query_definition" "execution_guardrails" {
                     "Analyse function code for malicious conditional payloads",
                     "Check for similar functions deployed by the same principal",
                     "Enable AWS Lambda Insights for enhanced monitoring",
-                    "Review function's network connections and external communications"
-                ]
+                    "Review function's network connections and external communications",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate environment-aware applications; baseline normal validation patterns",
@@ -239,9 +237,8 @@ resource "aws_cloudwatch_query_definition" "execution_guardrails" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Lambda function logs sent to CloudWatch"]
+            prerequisites=["Lambda function logs sent to CloudWatch"],
         ),
-
         # Strategy 2: AWS - EC2 Geolocation Validation
         DetectionStrategy(
             strategy_id="t1480-aws-geolocation",
@@ -254,7 +251,7 @@ resource "aws_cloudwatch_query_definition" "execution_guardrails" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn as user, sourceIPAddress,
+                query="""fields @timestamp, userIdentity.arn as user, sourceIPAddress,
        requestParameters.filterSet.items.0.name as filter_name
 | filter eventSource = "ec2.amazonaws.com"
   and (requestParameters.filterSet.items.0.name like /(?i)(availability-zone|region|placement)/
@@ -262,8 +259,8 @@ resource "aws_cloudwatch_query_definition" "execution_guardrails" {
        or eventName = "DescribeAvailabilityZones")
 | stats count(*) as geo_checks by sourceIPAddress, user, bin(5m) as time_window
 | filter geo_checks >= 5
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Geolocation-based execution guardrail detection for T1480
 
 Parameters:
@@ -313,8 +310,8 @@ Resources:
         fields @timestamp, userIdentity.arn, sourceIPAddress, eventName
         | filter eventName = "DescribeRegions" or eventName = "DescribeAvailabilityZones"
         | stats count(*) as geo_checks by sourceIPAddress, userIdentity.arn, bin(5m)
-        | sort @timestamp desc''',
-                terraform_template='''# Geolocation-based execution guardrail detection for T1480
+        | sort @timestamp desc""",
+                terraform_template="""# Geolocation-based execution guardrail detection for T1480
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -364,7 +361,7 @@ resource "aws_cloudwatch_query_definition" "geolocation_checks" {
     | stats count(*) as geo_checks by sourceIPAddress, userIdentity.arn, bin(5m)
     | sort @timestamp desc
   EOT
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Geolocation Validation Pattern Detected",
                 alert_description_template=(
@@ -377,7 +374,7 @@ resource "aws_cloudwatch_query_definition" "geolocation_checks" {
                     "Check if the source IP matches known legitimate workloads",
                     "Review what actions occurred after geolocation validation",
                     "Analyse the IAM principal's other recent API calls",
-                    "Look for patterns of conditional execution based on location"
+                    "Look for patterns of conditional execution based on location",
                 ],
                 containment_actions=[
                     "Investigate the source instance or principal",
@@ -385,8 +382,8 @@ resource "aws_cloudwatch_query_definition" "geolocation_checks" {
                     "Check for signs of compromise on the source system",
                     "Monitor for subsequent malicious activity",
                     "Enable VPC Flow Logs for network analysis",
-                    "Consider SCPs to restrict regional operations if appropriate"
-                ]
+                    "Consider SCPs to restrict regional operations if appropriate",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal infrastructure automation; exclude multi-region management tools",
@@ -395,9 +392,8 @@ resource "aws_cloudwatch_query_definition" "geolocation_checks" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["CloudTrail enabled", "CloudTrail logs in CloudWatch"]
+            prerequisites=["CloudTrail enabled", "CloudTrail logs in CloudWatch"],
         ),
-
         # Strategy 3: AWS - S3 Bucket Regional Validation
         DetectionStrategy(
             strategy_id="t1480-aws-s3-region",
@@ -410,14 +406,14 @@ resource "aws_cloudwatch_query_definition" "geolocation_checks" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn as user, requestParameters.bucketName,
+                query="""fields @timestamp, userIdentity.arn as user, requestParameters.bucketName,
        sourceIPAddress
 | filter eventSource = "s3.amazonaws.com"
   and eventName = "GetBucketLocation"
 | stats count(*) as location_checks by sourceIPAddress, user, bin(5m) as time_window
 | filter location_checks >= 10
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: S3 bucket regional validation detection for T1480
 
 Parameters:
@@ -467,8 +463,8 @@ Resources:
         fields @timestamp, userIdentity.arn, sourceIPAddress, requestParameters.bucketName
         | filter eventSource = "s3.amazonaws.com" and eventName = "GetBucketLocation"
         | stats count(*) as location_checks by sourceIPAddress, userIdentity.arn, bin(5m)
-        | sort @timestamp desc''',
-                terraform_template='''# S3 bucket regional validation detection for T1480
+        | sort @timestamp desc""",
+                terraform_template="""# S3 bucket regional validation detection for T1480
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -518,7 +514,7 @@ resource "aws_cloudwatch_query_definition" "s3_location_checks" {
     | stats count(*) as location_checks by sourceIPAddress, userIdentity.arn, bin(5m)
     | sort @timestamp desc
   EOT
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="S3 Regional Validation Pattern Detected",
                 alert_description_template=(
@@ -532,7 +528,7 @@ resource "aws_cloudwatch_query_definition" "s3_location_checks" {
                     "Check if the pattern correlates with data exfiltration or encryption",
                     "Verify if the source IP matches known legitimate automation",
                     "Analyse the IAM principal's other recent S3 operations",
-                    "Look for conditional logic based on bucket location"
+                    "Look for conditional logic based on bucket location",
                 ],
                 containment_actions=[
                     "Investigate the source principal for signs of compromise",
@@ -540,8 +536,8 @@ resource "aws_cloudwatch_query_definition" "s3_location_checks" {
                     "Check for unauthorised data modifications or deletions",
                     "Enable S3 Object Lock if not already configured",
                     "Review and restrict S3 permissions",
-                    "Monitor for subsequent suspicious S3 activity"
-                ]
+                    "Monitor for subsequent suspicious S3 activity",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Baseline normal S3 management tools; whitelist legitimate multi-region operations",
@@ -550,9 +546,8 @@ resource "aws_cloudwatch_query_definition" "s3_location_checks" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1.5 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["CloudTrail S3 data events enabled"]
+            prerequisites=["CloudTrail S3 data events enabled"],
         ),
-
         # Strategy 4: GCP - Compute Engine Instance Validation
         DetectionStrategy(
             strategy_id="t1480-gcp-instance-validation",
@@ -569,7 +564,7 @@ resource "aws_cloudwatch_query_definition" "s3_location_checks" {
                 gcp_logging_query='''resource.type="gce_instance"
 protoPayload.methodName=~".*instances.get.*|.*zones.get.*|.*regions.get.*"
 protoPayload.metadata.@type="type.googleapis.com/google.cloud.audit.AuditLog"''',
-                gcp_terraform_template='''# GCP: Compute Engine instance validation detection for T1480
+                gcp_terraform_template="""# GCP: Compute Engine instance validation detection for T1480
 
 variable "project_id" {
   type        = string
@@ -647,7 +642,7 @@ resource "google_monitoring_alert_policy" "instance_validation" {
       5. Review service account permissions
     EOT
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Compute Engine Validation Guardrail Pattern",
                 alert_description_template=(
@@ -660,7 +655,7 @@ resource "google_monitoring_alert_policy" "instance_validation" {
                     "Check for conditional logic following validation",
                     "Analyse subsequent API calls or operations",
                     "Review service account permissions and bindings",
-                    "Look for patterns of environment-based execution"
+                    "Look for patterns of environment-based execution",
                 ],
                 containment_actions=[
                     "Investigate the principal for signs of compromise",
@@ -668,8 +663,8 @@ resource "google_monitoring_alert_policy" "instance_validation" {
                     "Check for unauthorised instance modifications",
                     "Revoke or restrict service account permissions if needed",
                     "Enable VPC Flow Logs for network analysis",
-                    "Monitor for subsequent suspicious activity"
-                ]
+                    "Monitor for subsequent suspicious activity",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal infrastructure management tools; exclude monitoring workloads",
@@ -678,9 +673,8 @@ resource "google_monitoring_alert_policy" "instance_validation" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["Cloud Audit Logs enabled for Compute Engine"]
+            prerequisites=["Cloud Audit Logs enabled for Compute Engine"],
         ),
-
         # Strategy 5: GCP - Cloud Functions Language and Region Checks
         DetectionStrategy(
             strategy_id="t1480-gcp-function-guardrails",
@@ -697,7 +691,7 @@ resource "google_monitoring_alert_policy" "instance_validation" {
                 gcp_logging_query='''resource.type="cloud_function"
 textPayload=~"(?i)(language.*setting|locale|region.*check|project.*id|environment.*validation|target.*system|guardrail)"
 severity>="INFO"''',
-                gcp_terraform_template='''# GCP: Cloud Functions environmental guardrail detection for T1480
+                gcp_terraform_template="""# GCP: Cloud Functions environmental guardrail detection for T1480
 
 variable "project_id" {
   type        = string
@@ -778,7 +772,7 @@ resource "google_monitoring_alert_policy" "function_guardrails" {
       6. Analyse IAM permissions and service account
     EOT
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Cloud Function Execution Guardrail Detected",
                 alert_description_template=(
@@ -793,7 +787,7 @@ resource "google_monitoring_alert_policy" "function_guardrails" {
                     "Check who deployed or last updated the function",
                     "Review function invocation logs and patterns",
                     "Analyse IAM bindings and service account permissions",
-                    "Look for conditional execution based on environment"
+                    "Look for conditional execution based on environment",
                 ],
                 containment_actions=[
                     "Disable or delete the suspicious Cloud Function",
@@ -801,8 +795,8 @@ resource "google_monitoring_alert_policy" "function_guardrails" {
                     "Analyse function code for malicious conditional payloads",
                     "Check for similar functions deployed by same principal",
                     "Review Cloud Build or deployment history",
-                    "Enable Cloud Functions detailed monitoring and logging"
-                ]
+                    "Enable Cloud Functions detailed monitoring and logging",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate multi-region or internationalised applications; adjust patterns",
@@ -811,17 +805,16 @@ resource "google_monitoring_alert_policy" "function_guardrails" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["Cloud Logging enabled for Cloud Functions"]
-        )
+            prerequisites=["Cloud Logging enabled for Cloud Functions"],
+        ),
     ],
-
     recommended_order=[
         "t1480-aws-lambda-guardrails",
         "t1480-gcp-function-guardrails",
         "t1480-aws-geolocation",
         "t1480-gcp-instance-validation",
-        "t1480-aws-s3-region"
+        "t1480-aws-s3-region",
     ],
     total_effort_hours=9.5,
-    coverage_improvement="+18% improvement for Defence Evasion tactic"
+    coverage_improvement="+18% improvement for Defence Evasion tactic",
 )

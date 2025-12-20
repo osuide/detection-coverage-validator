@@ -10,14 +10,14 @@ GUARDDUTY_MITRE_MAPPINGS: dict[str, list[tuple[str, float]]] = {
     # Reconnaissance findings
     "Recon:EC2/PortProbeUnprotectedPort": [
         ("T1595.001", 0.9),  # Active Scanning: Scanning IP Blocks
-        ("T1046", 0.85),     # Network Service Discovery
+        ("T1046", 0.85),  # Network Service Discovery
     ],
     "Recon:EC2/Portscan": [
         ("T1595.001", 0.9),
         ("T1046", 0.85),
     ],
     "Recon:IAMUser/NetworkPermissions": [
-        ("T1526", 0.85),     # Cloud Service Discovery
+        ("T1526", 0.85),  # Cloud Service Discovery
     ],
     "Recon:IAMUser/ResourcePermissions": [
         ("T1526", 0.85),
@@ -25,18 +25,17 @@ GUARDDUTY_MITRE_MAPPINGS: dict[str, list[tuple[str, float]]] = {
     "Recon:IAMUser/UserPermissions": [
         ("T1526", 0.85),
     ],
-
     # Unauthorized Access findings
     "UnauthorizedAccess:EC2/SSHBruteForce": [
         ("T1110.001", 0.95),  # Brute Force: Password Guessing
-        ("T1078.004", 0.8),   # Valid Accounts: Cloud Accounts
+        ("T1078.004", 0.8),  # Valid Accounts: Cloud Accounts
     ],
     "UnauthorizedAccess:EC2/RDPBruteForce": [
         ("T1110.001", 0.95),
         ("T1078.004", 0.8),
     ],
     "UnauthorizedAccess:IAMUser/ConsoleLoginSuccess.B": [
-        ("T1078.004", 0.9),   # Valid Accounts: Cloud Accounts
+        ("T1078.004", 0.9),  # Valid Accounts: Cloud Accounts
     ],
     "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.InsideAWS": [
         ("T1552.005", 0.95),  # Unsecured Credentials: Cloud Instance Metadata API
@@ -44,19 +43,18 @@ GUARDDUTY_MITRE_MAPPINGS: dict[str, list[tuple[str, float]]] = {
     ],
     "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.OutsideAWS": [
         ("T1552.005", 0.95),
-        ("T1537", 0.85),      # Transfer Data to Cloud Account
+        ("T1537", 0.85),  # Transfer Data to Cloud Account
     ],
     "UnauthorizedAccess:IAMUser/MaliciousIPCaller": [
         ("T1078.004", 0.85),
     ],
     "UnauthorizedAccess:IAMUser/TorIPCaller": [
         ("T1078.004", 0.85),
-        ("T1090.003", 0.8),   # Proxy: Multi-hop Proxy
+        ("T1090.003", 0.8),  # Proxy: Multi-hop Proxy
     ],
-
     # Persistence findings
     "Persistence:IAMUser/NetworkPermissions": [
-        ("T1098", 0.9),       # Account Manipulation
+        ("T1098", 0.9),  # Account Manipulation
         ("T1098.003", 0.85),  # Account Manipulation: Additional Cloud Roles
     ],
     "Persistence:IAMUser/ResourcePermissions": [
@@ -67,14 +65,13 @@ GUARDDUTY_MITRE_MAPPINGS: dict[str, list[tuple[str, float]]] = {
         ("T1098", 0.9),
         ("T1098.001", 0.85),  # Account Manipulation: Additional Cloud Credentials
     ],
-
     # Privilege Escalation findings
     "PrivilegeEscalation:IAMUser/AdministrativePermissions": [
-        ("T1548.005", 0.9),   # Abuse Elevation Control: Temporary Elevated Cloud Access
+        ("T1548.005", 0.9),  # Abuse Elevation Control: Temporary Elevated Cloud Access
         ("T1098.003", 0.85),
     ],
     "PrivilegeEscalation:Runtime/DockerSocketAccessed": [
-        ("T1611", 0.9),       # Escape to Host
+        ("T1611", 0.9),  # Escape to Host
     ],
     "PrivilegeEscalation:Runtime/RuncContainerEscape": [
         ("T1611", 0.95),
@@ -85,22 +82,21 @@ GUARDDUTY_MITRE_MAPPINGS: dict[str, list[tuple[str, float]]] = {
     "PrivilegeEscalation:Kubernetes/PrivilegedContainer": [
         ("T1611", 0.85),
     ],
-
     # Defense Evasion findings
     "DefenseEvasion:EC2/UnusualDNSResolver": [
         ("T1568.002", 0.85),  # Dynamic Resolution: Domain Generation Algorithms
     ],
     "DefenseEvasion:EC2/UnusualDoHActivity": [
-        ("T1572", 0.8),       # Protocol Tunneling
+        ("T1572", 0.8),  # Protocol Tunneling
     ],
     "DefenseEvasion:EC2/UnusualDoTActivity": [
         ("T1572", 0.8),
     ],
     "DefenseEvasion:Runtime/FilelessExecution": [
-        ("T1620", 0.9),       # Reflective Code Loading
+        ("T1620", 0.9),  # Reflective Code Loading
     ],
     "DefenseEvasion:Runtime/ProcessInjection.Ptrace": [
-        ("T1055", 0.95),      # Process Injection
+        ("T1055", 0.95),  # Process Injection
     ],
     "DefenseEvasion:Runtime/ProcessInjection.VirtualMemoryWrite": [
         ("T1055", 0.95),
@@ -114,10 +110,9 @@ GUARDDUTY_MITRE_MAPPINGS: dict[str, list[tuple[str, float]]] = {
     "Stealth:IAMUser/LoggingConfigurationModified": [
         ("T1562.008", 0.95),
     ],
-
     # Credential Access findings
     "CredentialAccess:IAMUser/AnomalousBehavior": [
-        ("T1528", 0.8),       # Steal Application Access Token
+        ("T1528", 0.8),  # Steal Application Access Token
         ("T1552.005", 0.75),
     ],
     "CredentialAccess:Kubernetes/MaliciousIPCaller": [
@@ -126,10 +121,9 @@ GUARDDUTY_MITRE_MAPPINGS: dict[str, list[tuple[str, float]]] = {
     "CredentialAccess:Kubernetes/SuccessfulAnonymousAccess": [
         ("T1078.004", 0.85),
     ],
-
     # Crypto Mining findings
     "CryptoCurrency:EC2/BitcoinTool.B": [
-        ("T1496", 0.95),      # Resource Hijacking
+        ("T1496", 0.95),  # Resource Hijacking
     ],
     "CryptoCurrency:EC2/BitcoinTool.B!DNS": [
         ("T1496", 0.95),
@@ -140,17 +134,16 @@ GUARDDUTY_MITRE_MAPPINGS: dict[str, list[tuple[str, float]]] = {
     "CryptoCurrency:Runtime/BitcoinTool.B!DNS": [
         ("T1496", 0.95),
     ],
-
     # Backdoor findings
     "Backdoor:EC2/C&CActivity.B": [
-        ("T1071.001", 0.9),   # Application Layer Protocol: Web Protocols
-        ("T1571", 0.85),      # Non-Standard Port
+        ("T1071.001", 0.9),  # Application Layer Protocol: Web Protocols
+        ("T1571", 0.85),  # Non-Standard Port
     ],
     "Backdoor:EC2/C&CActivity.B!DNS": [
-        ("T1071.004", 0.9),   # Application Layer Protocol: DNS
+        ("T1071.004", 0.9),  # Application Layer Protocol: DNS
     ],
     "Backdoor:EC2/DenialOfService.Dns": [
-        ("T1498", 0.9),       # Network Denial of Service
+        ("T1498", 0.9),  # Network Denial of Service
     ],
     "Backdoor:EC2/DenialOfService.Tcp": [
         ("T1498", 0.9),
@@ -161,7 +154,6 @@ GUARDDUTY_MITRE_MAPPINGS: dict[str, list[tuple[str, float]]] = {
     "Backdoor:EC2/Spambot": [
         ("T1071.003", 0.85),  # Application Layer Protocol: Mail Protocols
     ],
-
     # Trojan findings
     "Trojan:EC2/BlackholeTraffic": [
         ("T1071.001", 0.85),
@@ -173,16 +165,18 @@ GUARDDUTY_MITRE_MAPPINGS: dict[str, list[tuple[str, float]]] = {
         ("T1568.002", 0.95),
     ],
     "Trojan:EC2/DNSDataExfiltration": [
-        ("T1048.003", 0.95),  # Exfiltration Over Alternative Protocol: Exfiltration Over Unencrypted Non-C2 Protocol
+        (
+            "T1048.003",
+            0.95,
+        ),  # Exfiltration Over Alternative Protocol: Exfiltration Over Unencrypted Non-C2 Protocol
         ("T1071.004", 0.9),
     ],
     "Trojan:EC2/DropPoint": [
         ("T1071.001", 0.85),
     ],
     "Trojan:EC2/PhishingDomainRequest!DNS": [
-        ("T1566", 0.85),      # Phishing
+        ("T1566", 0.85),  # Phishing
     ],
-
     # Impact findings
     "Impact:EC2/AbusedDomainRequest.Reputation": [
         ("T1071.001", 0.75),
@@ -199,17 +193,16 @@ GUARDDUTY_MITRE_MAPPINGS: dict[str, list[tuple[str, float]]] = {
     "Impact:EC2/WinRMBruteForce": [
         ("T1110.001", 0.9),
     ],
-
     # S3 Data Protection findings
     "Exfiltration:S3/MaliciousIPCaller": [
-        ("T1530", 0.9),       # Data from Cloud Storage
+        ("T1530", 0.9),  # Data from Cloud Storage
         ("T1537", 0.85),
     ],
     "Exfiltration:S3/ObjectRead.Unusual": [
         ("T1530", 0.85),
     ],
     "Impact:S3/MaliciousIPCaller": [
-        ("T1485", 0.8),       # Data Destruction
+        ("T1485", 0.8),  # Data Destruction
     ],
     "Policy:S3/AccountBlockPublicAccessDisabled": [
         ("T1562.007", 0.85),  # Impair Defenses: Disable or Modify Cloud Firewall
@@ -233,13 +226,12 @@ GUARDDUTY_MITRE_MAPPINGS: dict[str, list[tuple[str, float]]] = {
         ("T1530", 0.85),
         ("T1090.003", 0.8),
     ],
-
     # EKS/Kubernetes findings
     "Discovery:Kubernetes/MaliciousIPCaller": [
         ("T1526", 0.85),
     ],
     "Execution:Kubernetes/ExecInKubeSystemPod": [
-        ("T1609", 0.9),       # Container Administration Command
+        ("T1609", 0.9),  # Container Administration Command
     ],
     "Impact:Kubernetes/MaliciousIPCaller": [
         ("T1485", 0.8),
@@ -257,15 +249,14 @@ GUARDDUTY_MITRE_MAPPINGS: dict[str, list[tuple[str, float]]] = {
         ("T1078.004", 0.85),
     ],
     "Policy:Kubernetes/ExposedDashboard": [
-        ("T1133", 0.85),      # External Remote Services
+        ("T1133", 0.85),  # External Remote Services
     ],
-
     # Runtime findings
     "Execution:Runtime/NewBinaryExecuted": [
-        ("T1059", 0.8),       # Command and Scripting Interpreter
+        ("T1059", 0.8),  # Command and Scripting Interpreter
     ],
     "Execution:Runtime/NewLibraryLoaded": [
-        ("T1055.001", 0.8),   # Process Injection: Dynamic-link Library Injection
+        ("T1055.001", 0.8),  # Process Injection: Dynamic-link Library Injection
     ],
     "Execution:Runtime/ReverseShell": [
         ("T1059.004", 0.95),  # Command and Scripting Interpreter: Unix Shell
@@ -275,10 +266,10 @@ GUARDDUTY_MITRE_MAPPINGS: dict[str, list[tuple[str, float]]] = {
         ("T1059", 0.85),
     ],
     "Execution:Runtime/SuspiciousTool": [
-        ("T1588.002", 0.8),   # Obtain Capabilities: Tool
+        ("T1588.002", 0.8),  # Obtain Capabilities: Tool
     ],
     "Execution:EC2/MaliciousFile": [
-        ("T1204.002", 0.9),   # User Execution: Malicious File
+        ("T1204.002", 0.9),  # User Execution: Malicious File
     ],
     "Execution:ECS/MaliciousFile": [
         ("T1204.002", 0.9),
@@ -304,7 +295,7 @@ def get_mitre_mappings_for_finding(finding_type: str) -> list[tuple[str, float]]
 
     # Check for prefix match (handles variations)
     for prefix, mappings in GUARDDUTY_MITRE_MAPPINGS.items():
-        if finding_type.startswith(prefix.split('/')[0]):
+        if finding_type.startswith(prefix.split("/")[0]):
             return mappings
 
     return []

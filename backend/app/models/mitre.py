@@ -86,7 +86,9 @@ class Technique(Base):
 
     # Relationships
     tactic = relationship("Tactic", back_populates="techniques")
-    parent_technique = relationship("Technique", remote_side=[id], backref="subtechniques")
+    parent_technique = relationship(
+        "Technique", remote_side=[id], backref="subtechniques"
+    )
     mappings = relationship("DetectionMapping", back_populates="technique")
 
     def __repr__(self) -> str:

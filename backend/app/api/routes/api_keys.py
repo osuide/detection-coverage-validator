@@ -30,6 +30,7 @@ router = APIRouter()
 # Request/Response schemas
 class APIKeyCreateRequest(BaseModel):
     """Create API key request."""
+
     name: str = Field(..., min_length=1, max_length=255)
     scopes: list[str] = Field(default_factory=list)
     expires_days: Optional[int] = Field(None, ge=1, le=365)
@@ -38,6 +39,7 @@ class APIKeyCreateRequest(BaseModel):
 
 class APIKeyResponse(BaseModel):
     """API key response (without secret)."""
+
     id: UUID
     name: str
     key_prefix: str
@@ -57,11 +59,13 @@ class APIKeyResponse(BaseModel):
 
 class APIKeyCreatedResponse(APIKeyResponse):
     """API key response with secret (only shown once)."""
+
     key: str  # Full API key, only returned on creation
 
 
 class APIKeyUpdateRequest(BaseModel):
     """Update API key request."""
+
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     scopes: Optional[list[str]] = None
     ip_allowlist: Optional[list[str]] = None
@@ -123,7 +127,7 @@ async def list_available_scopes(
             "write:mappings": "Update custom mappings",
             "read:reports": "View and download reports",
             "write:reports": "Generate reports",
-        }
+        },
     }
 
 
@@ -166,7 +170,9 @@ async def list_api_keys(
     ]
 
 
-@router.post("", response_model=APIKeyCreatedResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "", response_model=APIKeyCreatedResponse, status_code=status.HTTP_201_CREATED
+)
 async def create_api_key(
     request: Request,
     body: APIKeyCreateRequest,
@@ -200,6 +206,7 @@ async def create_api_key(
     expires_at = None
     if body.expires_days:
         from datetime import timedelta
+
         expires_at = datetime.now(timezone.utc) + timedelta(days=body.expires_days)
 
     # Create API key

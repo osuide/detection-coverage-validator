@@ -27,9 +27,7 @@ class AlertConfigBase(BaseModel):
     alert_type: AlertType
     severity: AlertSeverity = AlertSeverity.WARNING
     threshold_value: Optional[float] = None
-    threshold_operator: Optional[str] = Field(
-        None, pattern="^(lt|gt|eq|lte|gte)$"
-    )
+    threshold_operator: Optional[str] = Field(None, pattern="^(lt|gt|eq|lte|gte)$")
     channels: list[ChannelConfig] = Field(default_factory=list)
     cooldown_minutes: int = Field(60, ge=1, le=1440)
 
@@ -117,6 +115,4 @@ class AlertHistoryListResponse(BaseModel):
 class TestAlertRequest(BaseModel):
     """Schema for testing an alert."""
 
-    channel_index: int = Field(
-        0, ge=0, description="Index of the channel to test"
-    )
+    channel_index: int = Field(0, ge=0, description="Index of the channel to test")

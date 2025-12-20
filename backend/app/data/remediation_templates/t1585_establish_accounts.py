@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Establish Accounts",
     tactic_ids=["TA0042"],
     mitre_url="https://attack.mitre.org/techniques/T1585/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries create and cultivate accounts on various services including "
@@ -37,15 +36,21 @@ TEMPLATE = RemediationTemplate(
             "Enable phishing campaigns via email accounts",
             "Abuse free trial cloud services",
             "Create personas on code repositories",
-            "Establish communication channels for ransomware"
+            "Establish communication channels for ransomware",
         ],
-        known_threat_actors=["APT17", "Kimsuky", "Ember Bear", "Fox Kitten", "Contagious Interview"],
+        known_threat_actors=[
+            "APT17",
+            "Kimsuky",
+            "Ember Bear",
+            "Fox Kitten",
+            "Contagious Interview",
+        ],
         recent_campaigns=[
             Campaign(
                 name="Salesforce Data Exfiltration",
                 year=2023,
                 description="Threat actors registered trial Salesforce accounts to deploy malicious applications",
-                reference_url="https://attack.mitre.org/campaigns/C0059/"
+                reference_url="https://attack.mitre.org/campaigns/C0059/",
             )
         ],
         prevalence="common",
@@ -60,13 +65,12 @@ TEMPLATE = RemediationTemplate(
             "Enabler for phishing campaigns",
             "Cloud resource abuse and costs",
             "Brand impersonation risk",
-            "Social engineering targeting"
+            "Social engineering targeting",
         ],
         typical_attack_phase="resource_development",
         often_precedes=["T1566.001", "T1566.002", "T1078.004"],
-        often_follows=[]
+        often_follows=[],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1585-aws-trial-abuse",
@@ -76,13 +80,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, eventName, sourceIPAddress, userAgent
+                query="""fields @timestamp, userIdentity.principalId, eventName, sourceIPAddress, userAgent
 | filter eventName like /CreateAccount|SignIn/
 | filter userIdentity.type = "Root"
 | stats count(*) as events by sourceIPAddress, userAgent, bin(1h)
 | filter events > 5
-| sort events desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort events desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect suspicious AWS account creation patterns
 
 Parameters:
@@ -123,8 +127,8 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect suspicious AWS account creation patterns
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect suspicious AWS account creation patterns
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -162,7 +166,7 @@ resource "aws_cloudwatch_metric_alarm" "account_abuse" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Suspicious AWS Account Activity Detected",
                 alert_description_template="Unusual account creation or root login patterns from {sourceIPAddress}.",
@@ -170,14 +174,14 @@ resource "aws_cloudwatch_metric_alarm" "account_abuse" {
                     "Review source IP geolocation and reputation",
                     "Check account creation velocity",
                     "Verify account ownership and legitimacy",
-                    "Review resource provisioning in new accounts"
+                    "Review resource provisioning in new accounts",
                 ],
                 containment_actions=[
                     "Suspend suspicious accounts",
                     "Enable MFA requirements",
                     "Implement account creation approval process",
-                    "Review and limit trial service quotas"
-                ]
+                    "Review and limit trial service quotas",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="May trigger during legitimate organisation onboarding; adjust threshold for your environment",
@@ -186,9 +190,8 @@ resource "aws_cloudwatch_metric_alarm" "account_abuse" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes - 1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled with CloudWatch Logs integration"]
+            prerequisites=["CloudTrail enabled with CloudWatch Logs integration"],
         ),
-
         DetectionStrategy(
             strategy_id="t1585-aws-free-tier",
             name="AWS Free Tier Service Abuse",
@@ -197,13 +200,13 @@ resource "aws_cloudwatch_metric_alarm" "account_abuse" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, eventName, requestParameters.instanceType, sourceIPAddress
+                query="""fields @timestamp, userIdentity.principalId, eventName, requestParameters.instanceType, sourceIPAddress
 | filter eventName like /RunInstances|CreateFunction|CreateDBInstance/
 | filter userIdentity.accountId like /-trial|-free/
 | stats count(*) as resources by userIdentity.accountId, eventName, bin(1h)
 | filter resources > 3
-| sort resources desc''',
-                terraform_template='''# Detect abuse of AWS free tier services
+| sort resources desc""",
+                terraform_template="""# Detect abuse of AWS free tier services
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -240,7 +243,7 @@ resource "aws_cloudwatch_metric_alarm" "rapid_provisioning" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Rapid Free Tier Resource Provisioning",
                 alert_description_template="Unusual volume of resource creation in account {accountId}.",
@@ -248,14 +251,14 @@ resource "aws_cloudwatch_metric_alarm" "rapid_provisioning" {
                     "Review account creation date and ownership",
                     "Check resource types and configurations",
                     "Verify business justification",
-                    "Review billing alerts and usage"
+                    "Review billing alerts and usage",
                 ],
                 containment_actions=[
                     "Implement service quotas",
                     "Enable billing alerts",
                     "Review and terminate unauthorised resources",
-                    "Require approval for new accounts"
-                ]
+                    "Require approval for new accounts",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Adjust threshold based on legitimate development activity",
@@ -264,9 +267,8 @@ resource "aws_cloudwatch_metric_alarm" "rapid_provisioning" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes - 1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled", "AWS Budgets configured"]
+            prerequisites=["CloudTrail enabled", "AWS Budgets configured"],
         ),
-
         DetectionStrategy(
             strategy_id="t1585-gcp-trial-abuse",
             name="GCP Trial Account Abuse Detection",
@@ -279,7 +281,7 @@ resource "aws_cloudwatch_metric_alarm" "rapid_provisioning" {
                 gcp_logging_query='''resource.type="gce_instance"
 protoPayload.methodName="v1.compute.instances.insert"
 protoPayload.authenticationInfo.principalEmail=~".*trial.*|.*test.*"''',
-                gcp_terraform_template='''# GCP: Detect trial account abuse
+                gcp_terraform_template="""# GCP: Detect trial account abuse
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -328,7 +330,7 @@ resource "google_monitoring_alert_policy" "trial_abuse" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP Trial Account Abuse Detected",
                 alert_description_template="Unusual resource provisioning in trial account.",
@@ -336,14 +338,14 @@ resource "google_monitoring_alert_policy" "trial_abuse" {
                     "Review account creation date and ownership",
                     "Check instance types and regions",
                     "Verify legitimate business use",
-                    "Review billing and quotas"
+                    "Review billing and quotas",
                 ],
                 containment_actions=[
                     "Suspend suspicious projects",
                     "Implement resource quotas",
                     "Enable budget alerts",
-                    "Review IAM policies"
-                ]
+                    "Review IAM policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Adjust for legitimate testing and development activity",
@@ -352,9 +354,8 @@ resource "google_monitoring_alert_policy" "trial_abuse" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes - 1 hour",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Logging enabled", "Budget alerts configured"]
+            prerequisites=["Cloud Logging enabled", "Budget alerts configured"],
         ),
-
         DetectionStrategy(
             strategy_id="t1585-aws-iam-abuse",
             name="Unusual IAM User Creation Patterns",
@@ -363,12 +364,12 @@ resource "google_monitoring_alert_policy" "trial_abuse" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, eventName, requestParameters.userName, sourceIPAddress
+                query="""fields @timestamp, userIdentity.principalId, eventName, requestParameters.userName, sourceIPAddress
 | filter eventName in ["CreateUser", "CreateAccessKey", "CreateLoginProfile"]
 | stats count(*) as created by sourceIPAddress, userIdentity.principalId, bin(1h)
 | filter created > 3
-| sort created desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort created desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect suspicious IAM user creation patterns
 
 Parameters:
@@ -406,8 +407,8 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect suspicious IAM user creation patterns
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect suspicious IAM user creation patterns
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -444,7 +445,7 @@ resource "aws_cloudwatch_metric_alarm" "rapid_iam_creation" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Suspicious IAM User Creation Activity",
                 alert_description_template="Rapid IAM user/key creation from {principalId}.",
@@ -452,14 +453,14 @@ resource "aws_cloudwatch_metric_alarm" "rapid_iam_creation" {
                     "Review created user names and permissions",
                     "Check source IP and user agent",
                     "Verify business justification",
-                    "Review access key usage patterns"
+                    "Review access key usage patterns",
                 ],
                 containment_actions=[
                     "Disable suspicious IAM users and keys",
                     "Review and revoke excessive permissions",
                     "Enable CloudTrail for all regions",
-                    "Implement IAM approval workflows"
-                ]
+                    "Implement IAM approval workflows",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="May trigger during legitimate onboarding; baseline normal activity",
@@ -468,11 +469,15 @@ resource "aws_cloudwatch_metric_alarm" "rapid_iam_creation" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes - 1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled across all regions"]
-        )
+            prerequisites=["CloudTrail enabled across all regions"],
+        ),
     ],
-
-    recommended_order=["t1585-aws-trial-abuse", "t1585-gcp-trial-abuse", "t1585-aws-iam-abuse", "t1585-aws-free-tier"],
+    recommended_order=[
+        "t1585-aws-trial-abuse",
+        "t1585-gcp-trial-abuse",
+        "t1585-aws-iam-abuse",
+        "t1585-aws-free-tier",
+    ],
     total_effort_hours=3.0,
-    coverage_improvement="+15% improvement for Resource Development tactic"
+    coverage_improvement="+15% improvement for Resource Development tactic",
 )

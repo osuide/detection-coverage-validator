@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Financial Theft",
     tactic_ids=["TA0040"],
     mitre_url="https://attack.mitre.org/techniques/T1657/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries steal monetary resources through extortion, social engineering, "
@@ -40,34 +39,40 @@ TEMPLATE = RemediationTemplate(
             "Cryptocurrency theft highly lucrative",
             "Cloud payment systems accessible remotely",
             "Double-extortion increases pressure on victims",
-            "SaaS financial applications easy to manipulate"
+            "SaaS financial applications easy to manipulate",
         ],
-        known_threat_actors=["Akira", "Scattered Spider", "SilverTerrier", "FIN13", "Kimsuky"],
+        known_threat_actors=[
+            "Akira",
+            "Scattered Spider",
+            "SilverTerrier",
+            "FIN13",
+            "Kimsuky",
+        ],
         recent_campaigns=[
             Campaign(
                 name="Akira Double-Extortion Ransomware",
                 year=2024,
                 description="Deploys ransomware with data theft threats for financial extortion",
-                reference_url="https://attack.mitre.org/groups/G1024/"
+                reference_url="https://attack.mitre.org/groups/G1024/",
             ),
             Campaign(
                 name="Scattered Spider Ransomware Operations",
                 year=2024,
                 description="Deploys ransomware and threatens data leaks for financial gain",
-                reference_url="https://attack.mitre.org/groups/G1015/"
+                reference_url="https://attack.mitre.org/groups/G1015/",
             ),
             Campaign(
                 name="SilverTerrier BEC Campaigns",
                 year=2024,
                 description="Conducts business email compromise targeting technology and manufacturing sectors",
-                reference_url="https://attack.mitre.org/groups/G0083/"
+                reference_url="https://attack.mitre.org/groups/G0083/",
             ),
             Campaign(
                 name="FIN13 Fraudulent Transactions",
                 year=2024,
                 description="Studies victim financial processes before executing fraudulent transactions",
-                reference_url="https://attack.mitre.org/groups/G1016/"
-            )
+                reference_url="https://attack.mitre.org/groups/G1016/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -84,13 +89,12 @@ TEMPLATE = RemediationTemplate(
             "Business operations disruption",
             "Reputational damage from data leaks",
             "Regulatory compliance violations",
-            "Customer trust erosion"
+            "Customer trust erosion",
         ],
         typical_attack_phase="impact",
         often_precedes=[],
-        often_follows=["T1078.004", "T1114.003", "T1486", "T1530", "T1555.006"]
+        often_follows=["T1078.004", "T1114.003", "T1486", "T1530", "T1555.006"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1657-aws-payment-api",
@@ -100,13 +104,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.arn, sourceIPAddress, requestParameters
+                query="""fields @timestamp, eventName, userIdentity.arn, sourceIPAddress, requestParameters
 | filter eventSource = "organizations.amazonaws.com" or eventSource = "billing.amazonaws.com"
 | filter eventName in ["CreateAccount", "ModifyBilling", "UpdatePaymentMethod", "CreatePaymentMethod"]
 | stats count(*) as api_calls by userIdentity.arn, sourceIPAddress, bin(1h)
 | filter api_calls > 5
-| sort api_calls desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort api_calls desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect unauthorised financial API activity
 
 Parameters:
@@ -146,8 +150,8 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect unauthorised financial API activity
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect unauthorised financial API activity
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -184,7 +188,7 @@ resource "aws_cloudwatch_metric_alarm" "financial_api" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Unusual Financial API Activity Detected",
                 alert_description_template="High volume of payment/billing API calls from {userIdentity.arn} at {sourceIPAddress}.",
@@ -193,15 +197,15 @@ resource "aws_cloudwatch_metric_alarm" "financial_api" {
                     "Check identity and source IP address",
                     "Review payment method changes",
                     "Check for unauthorised account creation",
-                    "Review recent authentication logs"
+                    "Review recent authentication logs",
                 ],
                 containment_actions=[
                     "Immediately revoke suspicious credentials",
                     "Revert unauthorised billing changes",
                     "Enable MFA on financial accounts",
                     "Contact payment provider",
-                    "Review all recent transactions"
-                ]
+                    "Review all recent transactions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Legitimate financial operations are rare and scheduled",
@@ -210,9 +214,8 @@ resource "aws_cloudwatch_metric_alarm" "financial_api" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled with management events"]
+            prerequisites=["CloudTrail enabled with management events"],
         ),
-
         DetectionStrategy(
             strategy_id="t1657-aws-crypto-exfil",
             name="AWS Cryptocurrency Wallet Exfiltration",
@@ -221,15 +224,15 @@ resource "aws_cloudwatch_metric_alarm" "financial_api" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.arn, requestParameters
+                query="""fields @timestamp, eventName, userIdentity.arn, requestParameters
 | filter eventSource = "secretsmanager.amazonaws.com" or eventSource = "s3.amazonaws.com"
 | filter eventName in ["GetSecretValue", "GetObject"]
 | filter requestParameters.secretId like /(?i)(wallet|crypto|bitcoin|ethereum|private.?key)/
     or requestParameters.key like /(?i)(wallet|crypto|bitcoin|ethereum|\.key$)/
 | stats count(*) as access_count by userIdentity.arn, bin(5m)
 | filter access_count > 10
-| sort access_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort access_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect cryptocurrency wallet theft
 
 Parameters:
@@ -267,8 +270,8 @@ Resources:
       Threshold: 10
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect cryptocurrency wallet theft
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect cryptocurrency wallet theft
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -305,7 +308,7 @@ resource "aws_cloudwatch_metric_alarm" "crypto_theft" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Suspicious Cryptocurrency Wallet Access",
                 alert_description_template="High-frequency access to cryptocurrency credentials by {userIdentity.arn}.",
@@ -314,15 +317,15 @@ resource "aws_cloudwatch_metric_alarm" "crypto_theft" {
                     "Check if access was authorised",
                     "Review wallet transaction history",
                     "Check for clipboard monitoring tools",
-                    "Review compromised identity's activities"
+                    "Review compromised identity's activities",
                 ],
                 containment_actions=[
                     "Revoke compromised credentials immediately",
                     "Transfer funds to secure wallets",
                     "Rotate all cryptocurrency keys",
                     "Enable additional authentication",
-                    "Review network connections to crypto nodes"
-                ]
+                    "Review network connections to crypto nodes",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate automated cryptocurrency operations",
@@ -331,9 +334,11 @@ resource "aws_cloudwatch_metric_alarm" "crypto_theft" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail S3 data events enabled", "Secrets Manager logging enabled"]
+            prerequisites=[
+                "CloudTrail S3 data events enabled",
+                "Secrets Manager logging enabled",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1657-aws-ransomware",
             name="AWS Ransomware Payment Infrastructure Detection",
@@ -350,11 +355,11 @@ resource "aws_cloudwatch_metric_alarm" "crypto_theft" {
                         "$or": [
                             {"requestParameters.policy": [{"wildcard": "*ransom*"}]},
                             {"requestParameters.policy": [{"wildcard": "*payment*"}]},
-                            {"requestParameters.policy": [{"wildcard": "*bitcoin*"}]}
-                        ]
-                    }
+                            {"requestParameters.policy": [{"wildcard": "*bitcoin*"}]},
+                        ],
+                    },
                 },
-                terraform_template='''# Detect ransomware payment infrastructure
+                terraform_template="""# Detect ransomware payment infrastructure
 
 variable "alert_email" { type = string }
 
@@ -396,7 +401,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Ransomware Payment Infrastructure Detected",
                 alert_description_template="S3 bucket {requestParameters.bucketName} configured with suspicious public access by {userIdentity.arn}.",
@@ -405,15 +410,15 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Check bucket contents for ransom notes",
                     "Verify if change was authorised",
                     "Check for encrypted data or leak sites",
-                    "Review identity's recent activities"
+                    "Review identity's recent activities",
                 ],
                 containment_actions=[
                     "Disable bucket public access immediately",
                     "Revoke compromised credentials",
                     "Check for encrypted data",
                     "Review backups availability",
-                    "Engage incident response team"
-                ]
+                    "Engage incident response team",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Public bucket configuration is rare for most organisations",
@@ -422,9 +427,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1657-gcp-payment",
             name="GCP Payment Service API Anomalies",
@@ -437,7 +441,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                 gcp_logging_query='''protoPayload.serviceName="cloudbilling.googleapis.com"
 AND protoPayload.methodName=~".*Update.*|.*Modify.*|.*Create.*"
 AND severity="NOTICE"''',
-                gcp_terraform_template='''# GCP: Detect payment service anomalies
+                gcp_terraform_template="""# GCP: Detect payment service anomalies
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -476,7 +480,7 @@ resource "google_monitoring_alert_policy" "billing_alerts" {
   alert_strategy {
     auto_close = "604800s"  # 7 days
   }
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GCP: Unusual Billing API Activity",
                 alert_description_template="Suspicious payment/billing API calls detected in project.",
@@ -485,15 +489,15 @@ resource "google_monitoring_alert_policy" "billing_alerts" {
                     "Verify caller identity and authorisation",
                     "Check for payment method changes",
                     "Review project billing configuration",
-                    "Check authentication logs"
+                    "Check authentication logs",
                 ],
                 containment_actions=[
                     "Revoke suspicious credentials",
                     "Revert unauthorised billing changes",
                     "Enable MFA on billing accounts",
                     "Review IAM permissions",
-                    "Contact billing support"
-                ]
+                    "Contact billing support",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Billing changes are typically infrequent and controlled",
@@ -502,9 +506,8 @@ resource "google_monitoring_alert_policy" "billing_alerts" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1657-gcp-crypto",
             name="GCP Cryptocurrency Credential Access",
@@ -514,10 +517,10 @@ resource "google_monitoring_alert_policy" "billing_alerts" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''(protoPayload.serviceName="secretmanager.googleapis.com" AND protoPayload.methodName="AccessSecretVersion")
+                gcp_logging_query="""(protoPayload.serviceName="secretmanager.googleapis.com" AND protoPayload.methodName="AccessSecretVersion")
 OR (protoPayload.serviceName="storage.googleapis.com" AND protoPayload.methodName="storage.objects.get")
-AND (protoPayload.resourceName=~".*wallet.*|.*crypto.*|.*bitcoin.*|.*ethereum.*|.*privatekey.*|.*\\.key$")''',
-                gcp_terraform_template='''# GCP: Detect cryptocurrency credential theft
+AND (protoPayload.resourceName=~".*wallet.*|.*crypto.*|.*bitcoin.*|.*ethereum.*|.*privatekey.*|.*\\.key$")""",
+                gcp_terraform_template="""# GCP: Detect cryptocurrency credential theft
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -557,7 +560,7 @@ resource "google_monitoring_alert_policy" "crypto_access" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GCP: Cryptocurrency Credential Access Detected",
                 alert_description_template="High-frequency access to cryptocurrency-related secrets or storage objects.",
@@ -566,15 +569,15 @@ resource "google_monitoring_alert_policy" "crypto_access" {
                     "Verify caller identity and IP",
                     "Check wallet transaction history",
                     "Review authentication logs",
-                    "Check for data exfiltration"
+                    "Check for data exfiltration",
                 ],
                 containment_actions=[
                     "Revoke compromised credentials",
                     "Rotate all cryptocurrency keys",
                     "Transfer funds to secure wallets",
                     "Enable additional MFA",
-                    "Review IAM permissions"
-                ]
+                    "Review IAM permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate cryptocurrency operations and scheduled jobs",
@@ -583,17 +586,16 @@ resource "google_monitoring_alert_policy" "crypto_access" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Cloud Audit Logs enabled for GCS data access"]
-        )
+            prerequisites=["Cloud Audit Logs enabled for GCS data access"],
+        ),
     ],
-
     recommended_order=[
         "t1657-aws-ransomware",
         "t1657-aws-payment-api",
         "t1657-gcp-payment",
         "t1657-aws-crypto-exfil",
-        "t1657-gcp-crypto"
+        "t1657-gcp-crypto",
     ],
     total_effort_hours=4.5,
-    coverage_improvement="+25% improvement for Impact tactic"
+    coverage_improvement="+25% improvement for Impact tactic",
 )

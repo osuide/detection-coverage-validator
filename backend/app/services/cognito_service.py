@@ -25,8 +25,10 @@ def generate_pkce() -> Tuple[str, str]:
     code_verifier = secrets.token_urlsafe(64)[:128]
 
     # Generate code challenge using S256 method
-    code_challenge_bytes = hashlib.sha256(code_verifier.encode('ascii')).digest()
-    code_challenge = base64.urlsafe_b64encode(code_challenge_bytes).rstrip(b'=').decode('ascii')
+    code_challenge_bytes = hashlib.sha256(code_verifier.encode("ascii")).digest()
+    code_challenge = (
+        base64.urlsafe_b64encode(code_challenge_bytes).rstrip(b"=").decode("ascii")
+    )
 
     return code_verifier, code_challenge
 
@@ -134,7 +136,9 @@ class CognitoService:
 
             # Check token expiration
             exp = claims.get("exp")
-            if exp and datetime.fromtimestamp(exp, tz=timezone.utc) < datetime.now(timezone.utc):
+            if exp and datetime.fromtimestamp(exp, tz=timezone.utc) < datetime.now(
+                timezone.utc
+            ):
                 logger.warning("token_expired")
                 return None
 
@@ -148,10 +152,7 @@ class CognitoService:
             return None
 
     async def exchange_code_for_tokens(
-        self,
-        code: str,
-        redirect_uri: str,
-        code_verifier: Optional[str] = None
+        self, code: str, redirect_uri: str, code_verifier: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
         """Exchange authorization code for tokens with PKCE."""
         try:
@@ -166,7 +167,12 @@ class CognitoService:
             if code_verifier:
                 data["code_verifier"] = code_verifier
 
-            logger.info("token_exchange_starting", token_url=self.token_url, redirect_uri=redirect_uri, client_id=self.client_id)
+            logger.info(
+                "token_exchange_starting",
+                token_url=self.token_url,
+                redirect_uri=redirect_uri,
+                client_id=self.client_id,
+            )
 
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.post(
@@ -178,23 +184,44 @@ class CognitoService:
                 logger.info("token_exchange_response", status=response.status_code)
 
                 if response.status_code != 200:
-                    logger.error("token_exchange_failed", status=response.status_code, body=response.text)
+                    logger.error(
+                        "token_exchange_failed",
+                        status=response.status_code,
+                        body=response.text,
+                    )
                     return None
 
                 try:
                     return response.json()
                 except Exception as json_error:
-                    logger.error("token_exchange_json_parse_error", error=str(json_error), body=response.text[:500])
+                    logger.error(
+                        "token_exchange_json_parse_error",
+                        error=str(json_error),
+                        body=response.text[:500],
+                    )
                     return None
 
         except httpx.HTTPStatusError as e:
-            logger.error("token_exchange_http_error", error=str(e), status_code=e.response.status_code if e.response else None)
+            logger.error(
+                "token_exchange_http_error",
+                error=str(e),
+                status_code=e.response.status_code if e.response else None,
+            )
             return None
         except httpx.RequestError as e:
-            logger.error("token_exchange_request_error", error=str(e), error_type=type(e).__name__)
+            logger.error(
+                "token_exchange_request_error",
+                error=str(e),
+                error_type=type(e).__name__,
+            )
             return None
         except Exception as e:
-            logger.error("token_exchange_error", error=str(e), error_type=type(e).__name__, token_url=self.token_url)
+            logger.error(
+                "token_exchange_error",
+                error=str(e),
+                error_type=type(e).__name__,
+                token_url=self.token_url,
+            )
             return None
 
     async def get_user_info(self, access_token: str) -> Optional[Dict[str, Any]]:

@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Forced Authentication",
     tactic_ids=["TA0006"],
     mitre_url="https://attack.mitre.org/techniques/T1187/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries may gather credential material by invoking or forcing a user to "
@@ -39,28 +38,32 @@ TEMPLATE = RemediationTemplate(
             "User interaction may be minimal or invisible",
             "Can capture NTLM hashes without user awareness",
             "Difficult for users to distinguish malicious from legitimate authentication prompts",
-            "In cloud environments, can abuse OAuth flows and metadata services"
+            "In cloud environments, can abuse OAuth flows and metadata services",
         ],
-        known_threat_actors=["DarkHydrus (G0079)", "Dragonfly (G0035)", "EnvyScout (S0634)"],
+        known_threat_actors=[
+            "DarkHydrus (G0079)",
+            "Dragonfly (G0035)",
+            "EnvyScout (S0634)",
+        ],
         recent_campaigns=[
             Campaign(
                 name="DarkHydrus Template Injection",
                 year=2019,
                 description="DarkHydrus used template injection in phishing documents to launch authentication windows for credential harvesting",
-                reference_url="https://attack.mitre.org/groups/G0079/"
+                reference_url="https://attack.mitre.org/groups/G0079/",
             ),
             Campaign(
                 name="Dragonfly SMB Hash Capture",
                 year=2018,
                 description="Dragonfly gathered hashed user credentials via spearphishing attachments with modified .LNK icon resources pointing to external SMB shares",
-                reference_url="https://attack.mitre.org/groups/G0035/"
+                reference_url="https://attack.mitre.org/groups/G0035/",
             ),
             Campaign(
                 name="EnvyScout NTLM Coercion",
                 year=2021,
                 description="EnvyScout malware deployed protocol handlers to coerce NTLMv2 authentication responses to attacker-controlled infrastructure",
-                reference_url="https://attack.mitre.org/software/S0634/"
-            )
+                reference_url="https://attack.mitre.org/software/S0634/",
+            ),
         ],
         prevalence="moderate",
         trend="stable",
@@ -77,13 +80,12 @@ TEMPLATE = RemediationTemplate(
             "Offline password cracking of captured hashes",
             "NTLM relay attacks leading to privilege escalation",
             "OAuth token theft enabling cloud account takeover",
-            "Loss of sensitive authentication material"
+            "Loss of sensitive authentication material",
         ],
         typical_attack_phase="credential_access",
         often_precedes=["T1550", "T1078", "T1021"],
-        often_follows=["T1566", "T1204"]
+        often_follows=["T1566", "T1204"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - Unusual Outbound SMB/Authentication Traffic
         DetectionStrategy(
@@ -101,9 +103,9 @@ TEMPLATE = RemediationTemplate(
                 guardduty_finding_types=[
                     "Behavior:EC2/NetworkPortUnusual",
                     "Behavior:EC2/TrafficVolumeUnusual",
-                    "UnauthorizedAccess:EC2/MaliciousIPCaller.Custom"
+                    "UnauthorizedAccess:EC2/MaliciousIPCaller.Custom",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Monitor for unusual outbound authentication traffic
 
 Parameters:
@@ -149,8 +151,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Monitor for unusual outbound authentication traffic
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Monitor for unusual outbound authentication traffic
 
 variable "alert_email" {
   type = string
@@ -202,7 +204,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GuardDuty: Unusual Network Authentication Activity",
                 alert_description_template=(
@@ -216,15 +218,15 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Check destination IPs against threat intelligence",
                     "Examine instance for phishing lures (LNK, SCF files, malicious documents)",
                     "Review CloudTrail for recent changes to the instance",
-                    "Check for SMB/WebDAV connections to external hosts"
+                    "Check for SMB/WebDAV connections to external hosts",
                 ],
                 containment_actions=[
                     "Isolate the affected instance using security groups",
                     "Block outbound SMB (139/445) and WebDAV traffic at the network level",
                     "Scan the instance for malicious files",
                     "Review and rotate credentials for users who accessed the instance",
-                    "Enable VPC Flow Logs if not already active"
-                ]
+                    "Enable VPC Flow Logs if not already active",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal network behaviour; whitelist known file servers and authentication endpoints",
@@ -233,9 +235,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$4 per million events",
-            prerequisites=["AWS account with appropriate IAM permissions", "GuardDuty supported region"]
+            prerequisites=[
+                "AWS account with appropriate IAM permissions",
+                "GuardDuty supported region",
+            ],
         ),
-
         # Strategy 2: AWS - VPC Flow Logs Analysis for SMB/WebDAV
         DetectionStrategy(
             strategy_id="t1187-aws-flowlogs",
@@ -249,7 +253,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcaddr, dstaddr, dstport, bytes, packets
+                query="""fields @timestamp, srcaddr, dstaddr, dstport, bytes, packets
 | filter dstport in [139, 445] and action = "ACCEPT"
 | filter dstaddr not like /^10\.|^172\.(1[6-9]|2[0-9]|3[01])\.|^192\.168\./
 | stats count(*) as connection_count,
@@ -257,8 +261,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
         count_distinct(dstaddr) as unique_destinations
   by srcaddr, bin(1h) as time_window
 | filter connection_count > 3 or unique_destinations > 2
-| sort time_window desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort time_window desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Alert on outbound SMB connections to external hosts
 
 Parameters:
@@ -299,8 +303,8 @@ Resources:
       Threshold: 3
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Alert on outbound SMB connections to external hosts
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Alert on outbound SMB connections to external hosts
 
 variable "vpc_flow_log_group" {
   type = string
@@ -345,7 +349,7 @@ resource "aws_cloudwatch_metric_alarm" "outbound_smb" {
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Outbound SMB Connections to External Hosts Detected",
                 alert_description_template=(
@@ -359,15 +363,15 @@ resource "aws_cloudwatch_metric_alarm" "outbound_smb" {
                     "Review the source instance for malicious files (LNK, SCF, documents with external links)",
                     "Check CloudTrail for recent S3 downloads or file modifications",
                     "Examine user activity on the affected instance",
-                    "Look for scheduled tasks or cron jobs making these connections"
+                    "Look for scheduled tasks or cron jobs making these connections",
                 ],
                 containment_actions=[
                     "Block SMB ports (139/445) outbound at VPC level using NACLs",
                     "Isolate the affected instance",
                     "Scan for and remove malicious lure files",
                     "Force password reset for users who accessed the instance",
-                    "Review and update security group rules"
-                ]
+                    "Review and update security group rules",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist known external file servers; exclude instances with legitimate SMB requirements",
@@ -376,9 +380,8 @@ resource "aws_cloudwatch_metric_alarm" "outbound_smb" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-20",
-            prerequisites=["VPC Flow Logs enabled", "Flow logs sent to CloudWatch"]
+            prerequisites=["VPC Flow Logs enabled", "Flow logs sent to CloudWatch"],
         ),
-
         # Strategy 3: AWS - IMDS Credential Theft Detection
         DetectionStrategy(
             strategy_id="t1187-aws-imds",
@@ -392,7 +395,7 @@ resource "aws_cloudwatch_metric_alarm" "outbound_smb" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, sourceIPAddress,
+                query="""fields @timestamp, userIdentity.principalId, sourceIPAddress,
        eventName, errorCode
 | filter eventSource = "sts.amazonaws.com"
   and eventName = "AssumeRole"
@@ -402,8 +405,8 @@ resource "aws_cloudwatch_metric_alarm" "outbound_smb" {
         count_distinct(sourceIPAddress) as unique_ips
   by userIdentity.principalId, bin(15m) as time_window
 | filter assume_role_count > 10 or unique_ips > 3
-| sort time_window desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort time_window desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect unusual IMDS credential retrieval patterns
 
 Parameters:
@@ -444,8 +447,8 @@ Resources:
       Threshold: 20
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect unusual IMDS credential retrieval patterns
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect unusual IMDS credential retrieval patterns
 
 variable "cloudtrail_log_group" {
   type = string
@@ -490,7 +493,7 @@ resource "aws_cloudwatch_metric_alarm" "imds_abuse" {
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Unusual EC2 Instance Metadata Service Access",
                 alert_description_template=(
@@ -504,15 +507,15 @@ resource "aws_cloudwatch_metric_alarm" "imds_abuse" {
                     "Review VPC Flow Logs for unusual HTTP requests",
                     "Examine CloudTrail for API calls made with the retrieved credentials",
                     "Check if IMDSv2 (session-based) is enforced",
-                    "Look for web application or service exploitation"
+                    "Look for web application or service exploitation",
                 ],
                 containment_actions=[
                     "Enforce IMDSv2 (require session tokens) on all EC2 instances",
                     "Rotate IAM role credentials immediately",
                     "Restrict instance metadata access using iptables if needed",
                     "Patch any SSRF vulnerabilities in applications",
-                    "Review IAM role permissions and apply least privilege"
-                ]
+                    "Review IAM role permissions and apply least privilege",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal IMDS access patterns for each instance role; exclude auto-scaling groups with high turnover",
@@ -521,9 +524,8 @@ resource "aws_cloudwatch_metric_alarm" "imds_abuse" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="$10-15",
-            prerequisites=["CloudTrail enabled with STS events logged"]
+            prerequisites=["CloudTrail enabled with STS events logged"],
         ),
-
         # Strategy 4: GCP - Unusual Metadata Service Access
         DetectionStrategy(
             strategy_id="t1187-gcp-metadata",
@@ -537,11 +539,11 @@ resource "aws_cloudwatch_metric_alarm" "imds_abuse" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 httpRequest.requestUrl=~"metadata.google.internal/computeMetadata/v1/instance/service-accounts"
 httpRequest.status>=200
-httpRequest.status<300''',
-                gcp_terraform_template='''# GCP: Detect metadata service credential theft
+httpRequest.status<300""",
+                gcp_terraform_template="""# GCP: Detect metadata service credential theft
 
 variable "project_id" {
   type = string
@@ -600,7 +602,7 @@ resource "google_monitoring_alert_policy" "metadata_theft" {
   alert_strategy {
     auto_close = "86400s"
   }
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GCP Metadata Service Credential Access Detected",
                 alert_description_template=(
@@ -614,7 +616,7 @@ resource "google_monitoring_alert_policy" "metadata_theft" {
                     "Check Cloud Logging for the source of metadata requests",
                     "Examine what APIs were called with the stolen token",
                     "Verify if metadata concealment is enabled",
-                    "Check for compromised web applications or services"
+                    "Check for compromised web applications or services",
                 ],
                 containment_actions=[
                     "Enable metadata concealment on the instance",
@@ -622,8 +624,8 @@ resource "google_monitoring_alert_policy" "metadata_theft" {
                     "Restrict metadata access using firewall rules",
                     "Patch SSRF vulnerabilities in applications",
                     "Apply least privilege to service account permissions",
-                    "Consider using Workload Identity instead of instance service accounts"
-                ]
+                    "Consider using Workload Identity instead of instance service accounts",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal metadata access for each instance; exclude instances with known high metadata usage",
@@ -632,9 +634,11 @@ resource "google_monitoring_alert_policy" "metadata_theft" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="£8-12",
-            prerequisites=["Cloud Logging enabled", "HTTP request logging enabled on GCE instances"]
+            prerequisites=[
+                "Cloud Logging enabled",
+                "HTTP request logging enabled on GCE instances",
+            ],
         ),
-
         # Strategy 5: GCP - VPC Flow Logs for SMB Traffic
         DetectionStrategy(
             strategy_id="t1187-gcp-flowlogs",
@@ -648,14 +652,14 @@ resource "google_monitoring_alert_policy" "metadata_theft" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_subnetwork"
+                gcp_logging_query="""resource.type="gce_subnetwork"
 logName=~"vpc_flows"
 jsonPayload.connection.dest_port=(139 OR 445)
 jsonPayload.reporter="SRC"
 NOT ip_in_net(jsonPayload.connection.dest_ip, "10.0.0.0/8")
 NOT ip_in_net(jsonPayload.connection.dest_ip, "172.16.0.0/12")
-NOT ip_in_net(jsonPayload.connection.dest_ip, "192.168.0.0/16")''',
-                gcp_terraform_template='''# GCP: Monitor outbound SMB traffic
+NOT ip_in_net(jsonPayload.connection.dest_ip, "192.168.0.0/16")""",
+                gcp_terraform_template="""# GCP: Monitor outbound SMB traffic
 
 variable "project_id" {
   type = string
@@ -713,7 +717,7 @@ resource "google_monitoring_alert_policy" "outbound_smb" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Outbound SMB Connections from GCP Instance",
                 alert_description_template=(
@@ -727,15 +731,15 @@ resource "google_monitoring_alert_policy" "outbound_smb" {
                     "Review instance for malicious files (LNK, SCF, documents)",
                     "Examine Cloud Logging for recent file operations",
                     "Check for SSH access or compromised accounts",
-                    "Review firewall rules allowing outbound SMB"
+                    "Review firewall rules allowing outbound SMB",
                 ],
                 containment_actions=[
                     "Create firewall rule blocking outbound SMB (tcp:139,445)",
                     "Isolate the affected instance using VPC firewall tags",
                     "Scan for and remove malicious lure files",
                     "Reset passwords for users with instance access",
-                    "Review and update VPC firewall rules to deny outbound SMB by default"
-                ]
+                    "Review and update VPC firewall rules to deny outbound SMB by default",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist known external file servers; exclude instances with documented SMB requirements",
@@ -744,17 +748,16 @@ resource "google_monitoring_alert_policy" "outbound_smb" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="£10-18",
-            prerequisites=["VPC Flow Logs enabled", "Flow logs sent to Cloud Logging"]
-        )
+            prerequisites=["VPC Flow Logs enabled", "Flow logs sent to Cloud Logging"],
+        ),
     ],
-
     recommended_order=[
         "t1187-aws-network",
         "t1187-aws-flowlogs",
         "t1187-aws-imds",
         "t1187-gcp-metadata",
-        "t1187-gcp-flowlogs"
+        "t1187-gcp-flowlogs",
     ],
     total_effort_hours=6.0,
-    coverage_improvement="+25% improvement for Credential Access tactic"
+    coverage_improvement="+25% improvement for Credential Access tactic",
 )

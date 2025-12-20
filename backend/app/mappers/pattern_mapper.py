@@ -73,9 +73,7 @@ class PatternMapper:
             if indicator.technique_id in existing_ids:
                 continue
 
-            confidence, matched, rationale = self._calculate_match(
-                detection, indicator
-            )
+            confidence, matched, rationale = self._calculate_match(detection, indicator)
 
             if confidence >= min_confidence:
                 results.append(
@@ -133,7 +131,10 @@ class PatternMapper:
             standard_name = raw_config.get("standard_name", "")
 
             # Map Security Hub standards to general techniques
-            if "foundational" in standard_name.lower() or "best-practices" in standard_name.lower():
+            if (
+                "foundational" in standard_name.lower()
+                or "best-practices" in standard_name.lower()
+            ):
                 # AWS Foundational Best Practices covers multiple defense areas
                 for tech_id in ["T1562.008", "T1078.004", "T1098"]:
                     indicator = TECHNIQUE_BY_ID.get(tech_id)
@@ -206,7 +207,10 @@ class PatternMapper:
         # Deduplicate by technique_id, keeping highest confidence
         seen = {}
         for r in results:
-            if r.technique_id not in seen or r.confidence > seen[r.technique_id].confidence:
+            if (
+                r.technique_id not in seen
+                or r.confidence > seen[r.technique_id].confidence
+            ):
                 seen[r.technique_id] = r
 
         return list(seen.values())
@@ -259,9 +263,9 @@ class PatternMapper:
             return 0.0, [], ""
 
         total_weight = sum(weight for _, _, weight in score_components)
-        weighted_score = sum(
-            score * weight for _, score, weight in score_components
-        ) / total_weight
+        weighted_score = (
+            sum(score * weight for _, score, weight in score_components) / total_weight
+        )
 
         # Apply base confidence modifier
         final_confidence = min(

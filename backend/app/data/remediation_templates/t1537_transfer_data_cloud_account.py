@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Transfer Data to Cloud Account",
     tactic_ids=["TA0010"],
     mitre_url="https://attack.mitre.org/techniques/T1537/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries exfiltrate data by transferring it to cloud accounts under "
@@ -35,7 +34,7 @@ TEMPLATE = RemediationTemplate(
             "Appears as normal cloud operations",
             "Bypasses network-based exfil detection",
             "Maintains cloud-native format",
-            "Can exfiltrate large volumes quickly"
+            "Can exfiltrate large volumes quickly",
         ],
         known_threat_actors=["APT29", "UNC5537", "Scattered Spider"],
         recent_campaigns=[
@@ -43,14 +42,14 @@ TEMPLATE = RemediationTemplate(
                 name="Snowflake Data Exfiltration",
                 year=2024,
                 description="UNC5537 exfiltrated data to attacker-controlled storage accounts",
-                reference_url="https://cloud.google.com/blog/topics/threat-intelligence/unc5537-snowflake-data-theft-extortion"
+                reference_url="https://cloud.google.com/blog/topics/threat-intelligence/unc5537-snowflake-data-theft-extortion",
             ),
             Campaign(
                 name="AWS Snapshot Exfiltration",
                 year=2024,
                 description="45% increase in snapshot-based exfiltration observed in late 2024",
-                reference_url="https://unit42.paloaltonetworks.com/2025-cloud-security-alert-trends/"
-            )
+                reference_url="https://unit42.paloaltonetworks.com/2025-cloud-security-alert-trends/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -64,13 +63,12 @@ TEMPLATE = RemediationTemplate(
             "Complete data exfiltration",
             "Intellectual property theft",
             "Regulatory compliance violations",
-            "Customer data exposure"
+            "Customer data exposure",
         ],
         typical_attack_phase="exfiltration",
         often_precedes=["T1486"],
-        often_follows=["T1530", "T1078.004", "T1528"]
+        often_follows=["T1530", "T1078.004", "T1528"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - S3 Cross-Account Copy
         DetectionStrategy(
@@ -81,12 +79,12 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, requestParameters.bucketName, userIdentity.accountId
+                query="""fields @timestamp, eventName, requestParameters.bucketName, userIdentity.accountId
 | filter eventSource = "s3.amazonaws.com"
 | filter eventName in ["PutBucketPolicy", "PutBucketAcl", "CopyObject"]
 | filter requestParameters.accessControlList.grant.grantee.id != userIdentity.accountId
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect S3 cross-account transfers
 
 Parameters:
@@ -130,8 +128,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect S3 cross-account transfers
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect S3 cross-account transfers
 
 variable "alert_email" {
   type = string
@@ -176,7 +174,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="S3 Cross-Account Access Granted",
                 alert_description_template="S3 bucket {bucketName} policy modified to allow external account access.",
@@ -184,14 +182,14 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Review the bucket policy change",
                     "Identify the external account granted access",
                     "Check if this is an authorised partner account",
-                    "Review S3 access logs for data transfers"
+                    "Review S3 access logs for data transfers",
                 ],
                 containment_actions=[
                     "Revert bucket policy to deny external access",
                     "Enable S3 Object Lock if not already",
                     "Review and revoke cross-account IAM roles",
-                    "Enable S3 Block Public Access"
-                ]
+                    "Enable S3 Block Public Access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist known partner/backup accounts",
@@ -200,9 +198,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail logging S3 data events"]
+            prerequisites=["CloudTrail logging S3 data events"],
         ),
-
         # Strategy 2: AWS - Snapshot Sharing
         DetectionStrategy(
             strategy_id="t1537-aws-snapshot",
@@ -214,9 +211,9 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation=DetectionImplementation(
                 guardduty_finding_types=[
                     "Exfiltration:S3/MaliciousIPCaller",
-                    "Exfiltration:S3/ObjectRead.Unusual"
+                    "Exfiltration:S3/ObjectRead.Unusual",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect snapshot external sharing
 
 Parameters:
@@ -257,8 +254,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect snapshot external sharing
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect snapshot external sharing
 
 variable "alert_email" {
   type = string
@@ -307,7 +304,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Snapshot Shared to External Account",
                 alert_description_template="EBS/RDS snapshot shared to external AWS account.",
@@ -315,14 +312,14 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Identify which snapshot was shared",
                     "Review the target account ID",
                     "Check what data was in the snapshot",
-                    "Verify if legitimate disaster recovery"
+                    "Verify if legitimate disaster recovery",
                 ],
                 containment_actions=[
                     "Remove external account from snapshot permissions",
                     "Delete the shared snapshot",
                     "Enable AWS Backup with no external sharing",
-                    "Review IAM policies for snapshot permissions"
-                ]
+                    "Review IAM policies for snapshot permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist DR/backup account IDs",
@@ -331,9 +328,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         # Strategy 3: GCP - Cross-Project Data Transfer
         DetectionStrategy(
             strategy_id="t1537-gcp-crossproject",
@@ -347,7 +343,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                 gcp_logging_query='''resource.type="gcs_bucket"
 protoPayload.methodName=~"storage.objects.(copy|rewrite)"
 protoPayload.request.destinationBucket!~"projects/_/buckets/${PROJECT_ID}"''',
-                gcp_terraform_template='''# GCP: Detect cross-project data transfer
+                gcp_terraform_template="""# GCP: Detect cross-project data transfer
 
 variable "project_id" {
   type = string
@@ -399,7 +395,7 @@ resource "google_monitoring_alert_policy" "crossproject" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GCP: Cross-Project Data Transfer",
                 alert_description_template="Data copied from GCS to external project.",
@@ -407,14 +403,14 @@ resource "google_monitoring_alert_policy" "crossproject" {
                     "Identify source and destination projects",
                     "Review what data was transferred",
                     "Verify destination project ownership",
-                    "Check for authorised data sharing"
+                    "Check for authorised data sharing",
                 ],
                 containment_actions=[
                     "Remove cross-project IAM bindings",
                     "Enable VPC Service Controls",
                     "Review organisation policies",
-                    "Revoke external service account access"
-                ]
+                    "Revoke external service account access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known partner projects",
@@ -423,9 +419,8 @@ resource "google_monitoring_alert_policy" "crossproject" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Audit Logs enabled for GCS"]
+            prerequisites=["Cloud Audit Logs enabled for GCS"],
         ),
-
         # Strategy 4: GCP - Disk/Image External Sharing
         DetectionStrategy(
             strategy_id="t1537-gcp-image",
@@ -438,7 +433,7 @@ resource "google_monitoring_alert_policy" "crossproject" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''resource.type="gce_image" OR resource.type="gce_disk"
 protoPayload.methodName=~"compute.images.setIamPolicy|compute.disks.setIamPolicy"''',
-                gcp_terraform_template='''# GCP: Detect disk/image external sharing
+                gcp_terraform_template="""# GCP: Detect disk/image external sharing
 
 variable "project_id" {
   type = string
@@ -487,7 +482,7 @@ resource "google_monitoring_alert_policy" "image_share" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GCP: Compute Image/Disk Shared Externally",
                 alert_description_template="GCE image or disk IAM policy modified for external access.",
@@ -495,14 +490,14 @@ resource "google_monitoring_alert_policy" "image_share" {
                     "Identify which image/disk was shared",
                     "Review the IAM policy change",
                     "Check if external principals added",
-                    "Verify authorised image sharing"
+                    "Verify authorised image sharing",
                 ],
                 containment_actions=[
                     "Remove external IAM bindings",
                     "Delete shared images if compromised",
                     "Enable organisation policy constraints",
-                    "Review image sharing permissions"
-                ]
+                    "Review image sharing permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised shared images",
@@ -511,16 +506,15 @@ resource "google_monitoring_alert_policy" "image_share" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1537-aws-snapshot",
         "t1537-aws-s3-crossaccount",
         "t1537-gcp-image",
-        "t1537-gcp-crossproject"
+        "t1537-gcp-crossproject",
     ],
     total_effort_hours=4.0,
-    coverage_improvement="+22% improvement for Exfiltration tactic"
+    coverage_improvement="+22% improvement for Exfiltration tactic",
 )

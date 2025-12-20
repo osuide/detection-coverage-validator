@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Brute Force: Password Spraying",
     tactic_ids=["TA0006"],
     mitre_url="https://attack.mitre.org/techniques/T1110/003/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries use one password or a small list of commonly used passwords "
@@ -38,7 +37,7 @@ TEMPLATE = RemediationTemplate(
             "Lower detection threshold than brute force",
             "Effective against weak password policies",
             "Can leverage cloud SSO and federated auth",
-            "Automation tools widely available"
+            "Automation tools widely available",
         ],
         known_threat_actors=[
             "APT28",
@@ -51,27 +50,27 @@ TEMPLATE = RemediationTemplate(
             "HEXANE",
             "Leafminer",
             "Agrius",
-            "Silent Librarian"
+            "Silent Librarian",
         ],
         recent_campaigns=[
             Campaign(
                 name="APT28 Nearest Neighbor Campaign",
                 year=2024,
                 description="Performed password-spray attacks against public services",
-                reference_url="https://attack.mitre.org/groups/G0007/"
+                reference_url="https://attack.mitre.org/groups/G0007/",
             ),
             Campaign(
                 name="APT28 Kubernetes-Based Attacks",
                 year=2023,
                 description="Used Kubernetes infrastructure for distributed password spraying (~4 attempts/hour over weeks)",
-                reference_url="https://attack.mitre.org/groups/G0007/"
+                reference_url="https://attack.mitre.org/groups/G0007/",
             ),
             Campaign(
                 name="Quad7 Throttled Password Spraying",
                 year=2024,
                 description="Used extremely throttled variant with single attempts per 24-hour period",
-                reference_url="https://attack.mitre.org/techniques/T1110/003/"
-            )
+                reference_url="https://attack.mitre.org/techniques/T1110/003/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -86,13 +85,12 @@ TEMPLATE = RemediationTemplate(
             "Unauthorised account access",
             "Cloud tenant compromise",
             "Email and data exfiltration",
-            "Lateral movement enabler"
+            "Lateral movement enabler",
         ],
         typical_attack_phase="credential_access",
         often_precedes=["T1078.004", "T1114", "T1021.001", "T1021.004"],
-        often_follows=["T1589.001", "T1589.002", "T1594"]
+        often_follows=["T1589.001", "T1589.002", "T1594"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1110-003-aws-cloudtrail",
@@ -102,12 +100,12 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, sourceIPAddress, errorMessage
+                query="""fields @timestamp, userIdentity.principalId, sourceIPAddress, errorMessage
 | filter eventName = "ConsoleLogin" and errorMessage = "Failed authentication"
 | stats count(*) as failures, count_distinct(userIdentity.principalId) as unique_accounts by sourceIPAddress, bin(1h)
 | filter unique_accounts > 5 and failures > 5
-| sort failures desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort failures desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect password spraying via CloudTrail failed logins
 
 Parameters:
@@ -152,8 +150,8 @@ Resources:
       EvaluationPeriods: 1
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching''',
-                terraform_template='''# Detect password spraying via CloudTrail failed logins
+      TreatMissingData: notBreaching""",
+                terraform_template="""# Detect password spraying via CloudTrail failed logins
 
 variable "alert_email" {
   type        = string
@@ -198,7 +196,7 @@ resource "aws_cloudwatch_metric_alarm" "password_spraying" {
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.password_spray_alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Password Spraying Attack Detected",
                 alert_description_template="Multiple failed login attempts from {sourceIPAddress} across {unique_accounts} accounts.",
@@ -207,15 +205,15 @@ resource "aws_cloudwatch_metric_alarm" "password_spraying" {
                     "Check user accounts targeted for any successful logins",
                     "Review CloudTrail logs for patterns (timing, user agents)",
                     "Identify if accounts have MFA enabled",
-                    "Check for successful logins after failed attempts"
+                    "Check for successful logins after failed attempts",
                 ],
                 containment_actions=[
                     "Block source IP address via NACL/Security Group",
                     "Enable MFA on targeted accounts",
                     "Reset passwords for affected accounts",
                     "Review and enforce password policies",
-                    "Enable GuardDuty for continuous monitoring"
-                ]
+                    "Enable GuardDuty for continuous monitoring",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Tune threshold based on organisation size; exclude known internal IPs",
@@ -224,9 +222,8 @@ resource "aws_cloudwatch_metric_alarm" "password_spraying" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail logging enabled"]
+            prerequisites=["CloudTrail logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1110-003-aws-iam-api",
             name="AWS IAM API Authentication Failures",
@@ -235,12 +232,12 @@ resource "aws_cloudwatch_metric_alarm" "password_spraying" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn, sourceIPAddress, errorCode
+                query="""fields @timestamp, userIdentity.arn, sourceIPAddress, errorCode
 | filter errorCode = "AccessDenied" or errorCode = "UnauthorizedOperation"
 | stats count(*) as failures, count_distinct(userIdentity.arn) as unique_identities by sourceIPAddress, bin(1h)
 | filter unique_identities > 3 and failures > 10
-| sort failures desc''',
-                terraform_template='''# Detect API-based password spraying
+| sort failures desc""",
+                terraform_template="""# Detect API-based password spraying
 
 variable "alert_email" {
   type        = string
@@ -285,7 +282,7 @@ resource "aws_cloudwatch_metric_alarm" "api_spraying" {
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.api_spray_alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="API Password Spraying Detected",
                 alert_description_template="Multiple API authentication failures from {sourceIPAddress}.",
@@ -294,15 +291,15 @@ resource "aws_cloudwatch_metric_alarm" "api_spraying" {
                     "Check for successful API calls after failures",
                     "Identify access keys being targeted",
                     "Review user agents and tooling signatures",
-                    "Check for credential stuffing patterns"
+                    "Check for credential stuffing patterns",
                 ],
                 containment_actions=[
                     "Block source IP via NACL",
                     "Rotate potentially compromised access keys",
                     "Enable MFA for API access",
                     "Review IAM policies and permissions",
-                    "Enable AWS GuardDuty"
-                ]
+                    "Enable AWS GuardDuty",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude legitimate automation tools; adjust threshold per environment",
@@ -311,9 +308,8 @@ resource "aws_cloudwatch_metric_alarm" "api_spraying" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail API logging enabled"]
+            prerequisites=["CloudTrail API logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1110-003-gcp-failed-auth",
             name="GCP Failed Authentication Detection",
@@ -327,7 +323,7 @@ resource "aws_cloudwatch_metric_alarm" "api_spraying" {
 protoPayload.authenticationInfo.principalEmail!=""
 protoPayload.status.code=16 OR protoPayload.status.code=7
 severity="ERROR"''',
-                gcp_terraform_template='''# GCP: Detect password spraying via Cloud Logging
+                gcp_terraform_template="""# GCP: Detect password spraying via Cloud Logging
 
 variable "project_id" {
   type        = string
@@ -397,7 +393,7 @@ resource "google_monitoring_alert_policy" "password_spraying" {
     auto_close = "86400s"
   }
   project = var.project_id
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Password Spraying Attack Detected",
                 alert_description_template="Multiple authentication failures detected across GCP services.",
@@ -406,15 +402,15 @@ resource "google_monitoring_alert_policy" "password_spraying" {
                     "Check targeted service accounts and users",
                     "Review successful authentications after failures",
                     "Check for unusual API access patterns",
-                    "Review IAM policy changes"
+                    "Review IAM policy changes",
                 ],
                 containment_actions=[
                     "Block source IPs via Cloud Armor/VPC firewall",
                     "Enable 2FA for affected accounts",
                     "Rotate service account keys",
                     "Review and enforce password policies",
-                    "Enable Security Command Centre Premium"
-                ]
+                    "Enable Security Command Centre Premium",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Adjust thresholds based on organisation authentication patterns",
@@ -423,9 +419,8 @@ resource "google_monitoring_alert_policy" "password_spraying" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Logging enabled", "Admin Activity logs enabled"]
+            prerequisites=["Cloud Logging enabled", "Admin Activity logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1110-003-gcp-workspace",
             name="GCP Workspace Login Monitoring",
@@ -438,7 +433,7 @@ resource "google_monitoring_alert_policy" "password_spraying" {
                 gcp_logging_query='''resource.type="audited_resource"
 protoPayload.serviceName="login.googleapis.com"
 protoPayload.metadata.event.eventName="login_failure"''',
-                gcp_terraform_template='''# GCP: Detect Workspace password spraying
+                gcp_terraform_template="""# GCP: Detect Workspace password spraying
 
 variable "project_id" {
   type        = string
@@ -499,7 +494,7 @@ resource "google_monitoring_alert_policy" "workspace_spraying" {
     auto_close = "86400s"
   }
   project = var.project_id
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Workspace Password Spraying",
                 alert_description_template="Multiple Workspace login failures detected.",
@@ -508,15 +503,15 @@ resource "google_monitoring_alert_policy" "workspace_spraying" {
                     "Check source IPs and geolocations",
                     "Identify successful logins after failures",
                     "Review 2FA status for affected accounts",
-                    "Check for account compromise indicators"
+                    "Check for account compromise indicators",
                 ],
                 containment_actions=[
                     "Enforce 2-Step Verification for all users",
                     "Block suspicious IPs via context-aware access",
                     "Reset passwords for targeted accounts",
                     "Review Workspace security settings",
-                    "Enable security alerts in Admin console"
-                ]
+                    "Enable security alerts in Admin console",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Workspace login failures are generally reliable indicators",
@@ -525,16 +520,19 @@ resource "google_monitoring_alert_policy" "workspace_spraying" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Google Workspace", "Admin SDK API enabled", "Audit logging enabled"]
-        )
+            prerequisites=[
+                "Google Workspace",
+                "Admin SDK API enabled",
+                "Audit logging enabled",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1110-003-aws-cloudtrail",
         "t1110-003-gcp-workspace",
         "t1110-003-gcp-failed-auth",
-        "t1110-003-aws-iam-api"
+        "t1110-003-aws-iam-api",
     ],
     total_effort_hours=3.5,
-    coverage_improvement="+15% improvement for Credential Access tactic"
+    coverage_improvement="+15% improvement for Credential Access tactic",
 )

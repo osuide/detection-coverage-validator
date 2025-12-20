@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Remote Access Software",
     tactic_ids=["TA0011"],
     mitre_url="https://attack.mitre.org/techniques/T1219/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries employ legitimate remote access tools to establish interactive command "
@@ -40,7 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Encrypted communication channels",
             "Provides redundant access if primary C2 fails",
             "Often whitelisted by security tools",
-            "Enables interactive GUI access to compromised systems"
+            "Enables interactive GUI access to compromised systems",
         ],
         known_threat_actors=[
             "Akira",
@@ -53,33 +52,33 @@ TEMPLATE = RemediationTemplate(
             "OilRig",
             "Sandworm Team",
             "TeamTNT",
-            "Medusa Group"
+            "Medusa Group",
         ],
         recent_campaigns=[
             Campaign(
                 name="Night Dragon Remote Administration",
                 year=2024,
                 description="Deployed several remote administration tools as persistent infiltration channels",
-                reference_url="https://attack.mitre.org/techniques/T1219/"
+                reference_url="https://attack.mitre.org/techniques/T1219/",
             ),
             Campaign(
                 name="Medusa Group Multi-RMM Campaign",
                 year=2024,
                 description="Utilised AnyDesk, Atera, ConnectWise, eHorus, N-Able, PDQ Deploy, and SimpleHelp",
-                reference_url="https://attack.mitre.org/techniques/T1219/"
+                reference_url="https://attack.mitre.org/techniques/T1219/",
             ),
             Campaign(
                 name="MuddyWater RMM Deployment",
                 year=2024,
                 description="Deployed ScreenConnect, AteraAgent, and SimpleHelp on compromised cloud infrastructure",
-                reference_url="https://attack.mitre.org/groups/G0069/"
+                reference_url="https://attack.mitre.org/groups/G0069/",
             ),
             Campaign(
                 name="FIN7 Atera Tool Abuse",
                 year=2023,
                 description="Leveraged Atera remote management tool for persistent access to cloud environments",
-                reference_url="https://attack.mitre.org/groups/G0046/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0046/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -96,13 +95,12 @@ TEMPLATE = RemediationTemplate(
             "Lateral movement to other cloud services",
             "Credential harvesting and privilege escalation",
             "Compliance violations due to unauthorised software",
-            "Difficulty in detection and remediation"
+            "Difficulty in detection and remediation",
         ],
         typical_attack_phase="command_and_control",
         often_precedes=["T1078.004", "T1530", "T1552.001", "T1486", "T1567"],
-        often_follows=["T1190", "T1078.004", "T1552.005", "T1105"]
+        often_follows=["T1190", "T1078.004", "T1552.005", "T1105"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1219-aws-ec2-remote-tools",
@@ -112,13 +110,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message, userIdentity.principalId, requestParameters.instanceId
+                query="""fields @timestamp, @message, userIdentity.principalId, requestParameters.instanceId
 | filter eventSource = "ssm.amazonaws.com" or eventSource = "ec2.amazonaws.com"
 | filter @message like /anydesk|teamviewer|screenconnect|ammyy|vnc|ngrok|atera|simplehelp|connectwise|pdq|eHorus|tmate|dameware/i
 | stats count(*) as tool_installations by userIdentity.principalId, requestParameters.instanceId, bin(1h)
 | filter tool_installations > 0
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect remote access tool installation on EC2 instances
 
 Parameters:
@@ -166,8 +164,8 @@ Resources:
       ComparisonOperator: GreaterThanOrEqualToThreshold
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching''',
-                terraform_template='''# AWS: Detect remote access tool installation on EC2
+      TreatMissingData: notBreaching""",
+                terraform_template="""# AWS: Detect remote access tool installation on EC2
 
 variable "cloudtrail_log_group" {
   description = "CloudTrail log group name"
@@ -217,7 +215,7 @@ resource "aws_cloudwatch_metric_alarm" "remote_tool_alert" {
   comparison_operator = "GreaterThanOrEqualToThreshold"
   alarm_actions       = [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Remote Access Tool Detected on EC2",
                 alert_description_template="Instance {instanceId} has remote access software installed: {toolName}.",
@@ -227,7 +225,7 @@ resource "aws_cloudwatch_metric_alarm" "remote_tool_alert" {
                     "Check if tool was installed via authorised change management",
                     "Analyse network connections from the instance",
                     "Review process execution history and timeline",
-                    "Check for other indicators of compromise"
+                    "Check for other indicators of compromise",
                 ],
                 containment_actions=[
                     "Isolate instance via security group modification",
@@ -235,8 +233,8 @@ resource "aws_cloudwatch_metric_alarm" "remote_tool_alert" {
                     "Terminate remote access tool processes",
                     "Block remote access tool domains at VPC level",
                     "Revoke instance profile credentials",
-                    "Consider instance replacement if compromised"
-                ]
+                    "Consider instance replacement if compromised",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude authorised IT support tools and approved remote access solutions",
@@ -245,9 +243,11 @@ resource "aws_cloudwatch_metric_alarm" "remote_tool_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["CloudTrail enabled with SSM and EC2 logging", "CloudWatch Logs integration"]
+            prerequisites=[
+                "CloudTrail enabled with SSM and EC2 logging",
+                "CloudWatch Logs integration",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1219-aws-vpc-remote-connections",
             name="AWS VPC Remote Access Tool Network Patterns",
@@ -256,13 +256,13 @@ resource "aws_cloudwatch_metric_alarm" "remote_tool_alert" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcAddr, dstAddr, dstPort, protocol, bytes
+                query="""fields @timestamp, srcAddr, dstAddr, dstPort, protocol, bytes
 | filter action = "ACCEPT"
 | filter dstPort in [5938, 5656, 7070, 8000, 4899, 5900, 3389]
 | stats count(*) as connections, sum(bytes) as total_bytes by srcAddr, dstPort, bin(5m)
 | filter connections > 5
-| sort connections desc''',
-                terraform_template='''# AWS: Detect remote access tool network patterns via VPC Flow Logs
+| sort connections desc""",
+                terraform_template="""# AWS: Detect remote access tool network patterns via VPC Flow Logs
 
 variable "vpc_flow_log_group" {
   description = "VPC Flow Logs log group name"
@@ -312,7 +312,7 @@ resource "aws_cloudwatch_metric_alarm" "remote_connection_alert" {
   comparison_operator = "GreaterThanThreshold"
   alarm_actions       = [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Remote Access Tool Network Activity Detected",
                 alert_description_template="Instance {srcAddr} established connections to remote access ports: {dstPort}.",
@@ -322,7 +322,7 @@ resource "aws_cloudwatch_metric_alarm" "remote_connection_alert" {
                     "Check if remote access is authorised for this instance",
                     "Review instance security group rules",
                     "Analyse connection patterns and duration",
-                    "Check for other suspicious network activity"
+                    "Check for other suspicious network activity",
                 ],
                 containment_actions=[
                     "Block destination IPs via security groups",
@@ -330,8 +330,8 @@ resource "aws_cloudwatch_metric_alarm" "remote_connection_alert" {
                     "Isolate affected instance",
                     "Review and tighten security group rules",
                     "Implement VPC endpoint policies",
-                    "Enable GuardDuty for enhanced monitoring"
-                ]
+                    "Enable GuardDuty for enhanced monitoring",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist approved remote access solutions and IT support infrastructure",
@@ -340,9 +340,8 @@ resource "aws_cloudwatch_metric_alarm" "remote_connection_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["VPC Flow Logs enabled"]
+            prerequisites=["VPC Flow Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1219-aws-guardduty-c2",
             name="AWS GuardDuty C2 Detection for Remote Tools",
@@ -354,9 +353,9 @@ resource "aws_cloudwatch_metric_alarm" "remote_connection_alert" {
                 guardduty_finding_types=[
                     "Backdoor:EC2/C&CActivity.B!DNS",
                     "Behavior:EC2/NetworkPortUnusual",
-                    "Behavior:EC2/TrafficVolumeUnusual"
+                    "Behavior:EC2/TrafficVolumeUnusual",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty detection for remote access tool C2 activity
 
 Parameters:
@@ -407,8 +406,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref GuardDutyAlertTopic''',
-                terraform_template='''# AWS: GuardDuty remote access tool C2 detection
+            Resource: !Ref GuardDutyAlertTopic""",
+                terraform_template="""# AWS: GuardDuty remote access tool C2 detection
 
 variable "alert_email" {
   description = "Email for security alerts"
@@ -463,7 +462,7 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
       Resource  = aws_sns_topic.guardduty_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GuardDuty: Remote Access Tool C2 Activity",
                 alert_description_template="Instance {instanceId} exhibiting remote access tool C2 behaviour.",
@@ -473,7 +472,7 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
                     "Check instance for installed remote access software",
                     "Review instance timeline and network connections",
                     "Correlate with CloudTrail for user activity",
-                    "Check for persistence mechanisms"
+                    "Check for persistence mechanisms",
                 ],
                 containment_actions=[
                     "Isolate affected instance immediately",
@@ -481,8 +480,8 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
                     "Terminate remote access tool processes",
                     "Rotate instance credentials and keys",
                     "Scan for additional compromised instances",
-                    "Consider full instance replacement"
-                ]
+                    "Consider full instance replacement",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="GuardDuty findings are pre-vetted; configure suppression rules for known legitimate remote tools",
@@ -491,9 +490,8 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$1-5 (requires GuardDuty)",
-            prerequisites=["AWS GuardDuty enabled"]
+            prerequisites=["AWS GuardDuty enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1219-gcp-vm-remote-tools",
             name="GCP VM Remote Access Tool Detection",
@@ -503,10 +501,10 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 (jsonPayload.message=~"anydesk|teamviewer|screenconnect|ammyy|vnc|ngrok|atera|simplehelp|connectwise|tmate" OR
- protoPayload.request.commands=~"anydesk|teamviewer|screenconnect|ammyy|vnc|ngrok|atera|simplehelp|connectwise|tmate")''',
-                gcp_terraform_template='''# GCP: Detect remote access tools on VM instances
+ protoPayload.request.commands=~"anydesk|teamviewer|screenconnect|ammyy|vnc|ngrok|atera|simplehelp|connectwise|tmate")""",
+                gcp_terraform_template="""# GCP: Detect remote access tools on VM instances
 
 variable "project_id" {
   description = "GCP project ID"
@@ -575,7 +573,7 @@ resource "google_monitoring_alert_policy" "remote_tool_alert" {
   alert_strategy {
     auto_close = "1800s"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Remote Access Tool Detected on VM",
                 alert_description_template="VM instance {instance_id} has remote access software installed.",
@@ -585,7 +583,7 @@ resource "google_monitoring_alert_policy" "remote_tool_alert" {
                     "Check if installation was authorised",
                     "Verify service account permissions",
                     "Analyse network connections from the VM",
-                    "Review recent API activity for the project"
+                    "Review recent API activity for the project",
                 ],
                 containment_actions=[
                     "Isolate VM using firewall rules",
@@ -593,8 +591,8 @@ resource "google_monitoring_alert_policy" "remote_tool_alert" {
                     "Stop remote access tool services",
                     "Revoke service account access",
                     "Block remote tool domains via Cloud DNS",
-                    "Consider VM replacement if compromised"
-                ]
+                    "Consider VM replacement if compromised",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude authorised IT support infrastructure and approved remote access solutions",
@@ -603,9 +601,11 @@ resource "google_monitoring_alert_policy" "remote_tool_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Logging enabled for GCE", "OS Login or SSH logging configured"]
+            prerequisites=[
+                "Cloud Logging enabled for GCE",
+                "OS Login or SSH logging configured",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1219-gcp-firewall-remote-ports",
             name="GCP Firewall Remote Access Port Monitoring",
@@ -619,7 +619,7 @@ resource "google_monitoring_alert_policy" "remote_tool_alert" {
 logName="projects/PROJECT_ID/logs/compute.googleapis.com%2Ffirewall"
 jsonPayload.connection.dest_port:(5938 OR 5656 OR 7070 OR 8000 OR 4899 OR 5900 OR 3389)
 jsonPayload.disposition="ALLOWED"''',
-                gcp_terraform_template='''# GCP: Monitor remote access tool network connections
+                gcp_terraform_template="""# GCP: Monitor remote access tool network connections
 
 variable "project_id" {
   description = "GCP project ID"
@@ -689,7 +689,7 @@ resource "google_monitoring_alert_policy" "remote_port_alert" {
   alert_strategy {
     auto_close = "1800s"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Remote Access Tool Port Activity",
                 alert_description_template="Network connections detected to remote access tool ports: {dest_port}.",
@@ -699,7 +699,7 @@ resource "google_monitoring_alert_policy" "remote_port_alert" {
                     "Check VPC firewall rules for misconfigurations",
                     "Review if remote access is authorised",
                     "Analyse connection patterns and frequency",
-                    "Check for other suspicious network activity"
+                    "Check for other suspicious network activity",
                 ],
                 containment_actions=[
                     "Block destination IPs via firewall rules",
@@ -707,8 +707,8 @@ resource "google_monitoring_alert_policy" "remote_port_alert" {
                     "Isolate affected VMs",
                     "Review and tighten firewall policies",
                     "Implement VPC Service Controls",
-                    "Enable Cloud IDS for enhanced detection"
-                ]
+                    "Enable Cloud IDS for enhanced detection",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist approved remote access infrastructure and IT support systems",
@@ -717,9 +717,8 @@ resource "google_monitoring_alert_policy" "remote_port_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["VPC firewall logging enabled"]
+            prerequisites=["VPC firewall logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1219-gcp-scc-remote-tools",
             name="GCP Security Command Centre Remote Tool Detection",
@@ -732,9 +731,9 @@ resource "google_monitoring_alert_policy" "remote_port_alert" {
                 scc_finding_categories=[
                     "Persistence: Remote Access Tool",
                     "Execution: Suspicious Binary",
-                    "Command and Control: Suspicious Network"
+                    "Command and Control: Suspicious Network",
                 ],
-                gcp_terraform_template='''# GCP: Security Command Centre remote tool detection
+                gcp_terraform_template="""# GCP: Security Command Centre remote tool detection
 
 variable "organization_id" {
   description = "GCP organisation ID"
@@ -782,7 +781,7 @@ resource "google_pubsub_subscription" "scc_email" {
   }
 
   ack_deadline_seconds = 20
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP SCC: Remote Access Tool Detected",
                 alert_description_template="Security Command Centre detected remote access tool activity.",
@@ -792,7 +791,7 @@ resource "google_pubsub_subscription" "scc_email" {
                     "Check for authorised remote access deployments",
                     "Analyse finding severity and confidence",
                     "Correlate with other security events",
-                    "Review resource access logs"
+                    "Review resource access logs",
                 ],
                 containment_actions=[
                     "Isolate affected resources using firewall rules",
@@ -800,8 +799,8 @@ resource "google_pubsub_subscription" "scc_email" {
                     "Remove remote access tool installations",
                     "Block C2 infrastructure at network level",
                     "Enable additional SCC detections",
-                    "Consider resource replacement if compromised"
-                ]
+                    "Consider resource replacement if compromised",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Configure SCC exceptions for authorised remote access infrastructure",
@@ -810,18 +809,20 @@ resource "google_pubsub_subscription" "scc_email" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$15-30 (requires SCC Standard or Premium)",
-            prerequisites=["Security Command Centre Standard/Premium enabled", "Asset Discovery enabled"]
-        )
+            prerequisites=[
+                "Security Command Centre Standard/Premium enabled",
+                "Asset Discovery enabled",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1219-aws-guardduty-c2",
         "t1219-gcp-scc-remote-tools",
         "t1219-aws-ec2-remote-tools",
         "t1219-gcp-vm-remote-tools",
         "t1219-aws-vpc-remote-connections",
-        "t1219-gcp-firewall-remote-ports"
+        "t1219-gcp-firewall-remote-ports",
     ],
     total_effort_hours=9.5,
-    coverage_improvement="+18% improvement for Command and Control tactic"
+    coverage_improvement="+18% improvement for Command and Control tactic",
 )

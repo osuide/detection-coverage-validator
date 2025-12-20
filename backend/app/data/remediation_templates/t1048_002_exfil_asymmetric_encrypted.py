@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Exfiltration Over Asymmetric Encrypted Non-C2 Protocol",
     tactic_ids=["TA0010"],
     mitre_url="https://attack.mitre.org/techniques/T1048/002/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries steal data by exfiltrating it through asymmetrically encrypted "
@@ -37,34 +36,41 @@ TEMPLATE = RemediationTemplate(
             "Blends with legitimate encrypted traffic",
             "HTTPS and TLS are rarely blocked",
             "Multiple protocol options provide flexibility",
-            "Bypasses traditional content-based detection"
+            "Bypasses traditional content-based detection",
         ],
-        known_threat_actors=["APT28", "APT29", "CURIUM (G1012)", "IcedID", "Storm-1811 (G1046)", "Rclone"],
+        known_threat_actors=[
+            "APT28",
+            "APT29",
+            "CURIUM (G1012)",
+            "IcedID",
+            "Storm-1811 (G1046)",
+            "Rclone",
+        ],
         recent_campaigns=[
             Campaign(
                 name="APT28 OWA HTTPS Exfiltration",
                 year=2021,
                 description="Exfiltrated archives of collected data previously staged on a target's OWA server via HTTPS",
-                reference_url="https://attack.mitre.org/groups/G0007/"
+                reference_url="https://attack.mitre.org/groups/G0007/",
             ),
             Campaign(
                 name="APT29 SolarWinds Campaign",
                 year=2020,
                 description="Exfiltrated collected data over a simple HTTPS request to a password-protected archive staged on compromised infrastructure",
-                reference_url="https://attack.mitre.org/groups/G0016/"
+                reference_url="https://attack.mitre.org/groups/G0016/",
             ),
             Campaign(
                 name="Storm-1811 SCP Credential Theft",
                 year=2024,
                 description="Exfiltrated user credentials via Secure Copy Protocol (SCP) to attacker-controlled servers",
-                reference_url="https://attack.mitre.org/groups/G1046/"
+                reference_url="https://attack.mitre.org/groups/G1046/",
             ),
             Campaign(
                 name="CURIUM SMTPS Exfiltration",
                 year=2023,
                 description="Used SMTPS for exfiltrating collected data over encrypted email channels",
-                reference_url="https://attack.mitre.org/groups/G1012/"
-            )
+                reference_url="https://attack.mitre.org/groups/G1012/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -82,13 +88,12 @@ TEMPLATE = RemediationTemplate(
             "Regulatory fines and compliance violations (GDPR, HIPAA)",
             "Reputational damage and customer trust loss",
             "Operational disruption from incident response",
-            "Loss of competitive advantage"
+            "Loss of competitive advantage",
         ],
         typical_attack_phase="exfiltration",
         often_precedes=[],
-        often_follows=["T1074", "T1560", "T1552.001", "T1530", "T1005"]
+        often_follows=["T1074", "T1560", "T1552.001", "T1530", "T1005"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1048.002-aws-https-non-browser",
@@ -98,15 +103,15 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcAddr, dstAddr, dstPort, bytes, action
+                query="""fields @timestamp, srcAddr, dstAddr, dstPort, bytes, action
 | filter dstPort = 443 and action = "ACCEPT"
 | filter dstAddr not like /^10\\./ and dstAddr not like /^172\\.1[6-9]\\./
 | filter dstAddr not like /^172\\.2[0-9]\\./ and dstAddr not like /^172\\.3[0-1]\\./
 | filter dstAddr not like /^192\\.168\\./
 | stats sum(bytes) as total_bytes, count(*) as connections by srcAddr, dstAddr, bin(5m)
 | filter total_bytes > 52428800
-| sort total_bytes desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort total_bytes desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect non-browser HTTPS exfiltration after data staging
 
 Parameters:
@@ -148,8 +153,8 @@ Resources:
       Threshold: 104857600
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect non-browser HTTPS exfiltration after data staging
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect non-browser HTTPS exfiltration after data staging
 
 variable "alert_email" { type = string }
 variable "vpc_flow_log_group" { type = string }
@@ -190,7 +195,7 @@ resource "aws_cloudwatch_metric_alarm" "https_exfil" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Large HTTPS Transfer Detected from Non-Browser Process",
                 alert_description_template="Large encrypted transfer detected from {srcAddr} to {dstAddr}: {total_bytes} bytes in {connections} connections.",
@@ -200,7 +205,7 @@ resource "aws_cloudwatch_metric_alarm" "https_exfil" {
                     "Check for recent data staging or compression activities",
                     "Examine destination IP/domain reputation",
                     "Review user activity and authentication logs",
-                    "Correlate with file access events for sensitive data"
+                    "Correlate with file access events for sensitive data",
                 ],
                 containment_actions=[
                     "Isolate the source instance immediately",
@@ -208,8 +213,8 @@ resource "aws_cloudwatch_metric_alarm" "https_exfil" {
                     "Revoke credentials for compromised accounts",
                     "Capture network traffic for forensic analysis",
                     "Review and restrict outbound HTTPS access",
-                    "Enable TLS inspection for outbound traffic where feasible"
-                ]
+                    "Enable TLS inspection for outbound traffic where feasible",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known API endpoints, CDN destinations, and legitimate backup services; tune byte threshold based on baseline",
@@ -218,9 +223,8 @@ resource "aws_cloudwatch_metric_alarm" "https_exfil" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-20",
-            prerequisites=["VPC Flow Logs enabled"]
+            prerequisites=["VPC Flow Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1048.002-aws-sftp-scp",
             name="AWS SFTP/SCP Transfer Detection",
@@ -229,13 +233,13 @@ resource "aws_cloudwatch_metric_alarm" "https_exfil" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcAddr, dstAddr, dstPort, bytes, action
+                query="""fields @timestamp, srcAddr, dstAddr, dstPort, bytes, action
 | filter dstPort = 22 and action = "ACCEPT"
 | filter dstAddr not like /^10\\./ and dstAddr not like /^172\\.1[6-9]\\./
 | stats sum(bytes) as total_bytes, count(*) as sessions by srcAddr, dstAddr, bin(1h)
 | filter total_bytes > 10485760
-| sort total_bytes desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort total_bytes desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect SFTP/SCP exfiltration activity
 
 Parameters:
@@ -277,8 +281,8 @@ Resources:
       Threshold: 52428800
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect SFTP/SCP exfiltration activity
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect SFTP/SCP exfiltration activity
 
 variable "alert_email" { type = string }
 variable "vpc_flow_log_group" { type = string }
@@ -319,7 +323,7 @@ resource "aws_cloudwatch_metric_alarm" "sftp" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Large SFTP/SCP Transfer Detected",
                 alert_description_template="Large secure file transfer from {srcAddr} to {dstAddr}: {total_bytes} bytes in {sessions} sessions.",
@@ -329,7 +333,7 @@ resource "aws_cloudwatch_metric_alarm" "sftp" {
                     "Check for authorised file transfer operations",
                     "Examine transferred files if accessible",
                     "Review user activity and recent logins",
-                    "Correlate with data staging events"
+                    "Correlate with data staging events",
                 ],
                 containment_actions=[
                     "Isolate source instance",
@@ -337,8 +341,8 @@ resource "aws_cloudwatch_metric_alarm" "sftp" {
                     "Revoke SSH keys and credentials",
                     "Disable SFTP/SCP if not required",
                     "Review and restrict SSH access policies",
-                    "Enable SSH session logging and monitoring"
-                ]
+                    "Enable SSH session logging and monitoring",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known SFTP servers; exclude scheduled backups and deployments",
@@ -347,9 +351,8 @@ resource "aws_cloudwatch_metric_alarm" "sftp" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-20",
-            prerequisites=["VPC Flow Logs enabled"]
+            prerequisites=["VPC Flow Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1048.002-aws-smtps",
             name="AWS Encrypted Email Exfiltration (SMTPS)",
@@ -358,12 +361,12 @@ resource "aws_cloudwatch_metric_alarm" "sftp" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcAddr, dstAddr, dstPort, bytes, packets
+                query="""fields @timestamp, srcAddr, dstAddr, dstPort, bytes, packets
 | filter dstPort in [465, 587] and action = "ACCEPT"
 | stats sum(bytes) as total_bytes, count(*) as connections by srcAddr, dstAddr, bin(1h)
 | filter total_bytes > 10485760 or connections > 50
-| sort total_bytes desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort total_bytes desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect encrypted email exfiltration via SMTPS
 
 Parameters:
@@ -404,8 +407,8 @@ Resources:
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect encrypted email exfiltration via SMTPS
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect encrypted email exfiltration via SMTPS
 
 variable "alert_email" { type = string }
 variable "vpc_flow_log_group" { type = string }
@@ -445,7 +448,7 @@ resource "aws_cloudwatch_metric_alarm" "smtps" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Encrypted Email Exfiltration Detected",
                 alert_description_template="Unusual encrypted SMTP activity from {srcAddr}: {connections} connections, {total_bytes} bytes.",
@@ -455,7 +458,7 @@ resource "aws_cloudwatch_metric_alarm" "smtps" {
                     "Check for compromised email accounts",
                     "Examine email content and attachments if accessible",
                     "Verify against legitimate bulk email operations",
-                    "Review authentication logs for unauthorised access"
+                    "Review authentication logs for unauthorised access",
                 ],
                 containment_actions=[
                     "Block SMTPS traffic from source instance",
@@ -463,8 +466,8 @@ resource "aws_cloudwatch_metric_alarm" "smtps" {
                     "Disable mail relay if compromised",
                     "Review and restrict SMTP access policies",
                     "Enable email authentication (SPF, DKIM, DMARC)",
-                    "Implement rate limiting for outbound email"
-                ]
+                    "Implement rate limiting for outbound email",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist mail servers and SES; tune thresholds for legitimate email volume",
@@ -473,9 +476,8 @@ resource "aws_cloudwatch_metric_alarm" "smtps" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-20",
-            prerequisites=["VPC Flow Logs enabled"]
+            prerequisites=["VPC Flow Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1048.002-aws-cloudtrail",
             name="AWS CloudTrail API Data Access Before Encrypted Transfer",
@@ -484,13 +486,13 @@ resource "aws_cloudwatch_metric_alarm" "smtps" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn, eventName, sourceIPAddress, requestParameters
+                query="""fields @timestamp, userIdentity.arn, eventName, sourceIPAddress, requestParameters
 | filter eventSource in ["s3.amazonaws.com", "secretsmanager.amazonaws.com", "ssm.amazonaws.com"]
 | filter eventName in ["GetObject", "GetSecretValue", "GetParameter", "DescribeDBSnapshots"]
 | stats count(*) as access_count by userIdentity.arn, sourceIPAddress, bin(5m)
 | filter access_count > 10
-| sort access_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort access_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect sensitive data access before encrypted exfiltration
 
 Parameters:
@@ -531,8 +533,8 @@ Resources:
       Threshold: 20
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect sensitive data access before encrypted exfiltration
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect sensitive data access before encrypted exfiltration
 
 variable "alert_email" { type = string }
 variable "cloudtrail_log_group" { type = string }
@@ -572,7 +574,7 @@ resource "aws_cloudwatch_metric_alarm" "data_access" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Rapid Sensitive Data Access Detected",
                 alert_description_template="Rapid access to sensitive data by {userIdentity.arn} from {sourceIPAddress}: {access_count} operations.",
@@ -582,7 +584,7 @@ resource "aws_cloudwatch_metric_alarm" "data_access" {
                     "Check for recent network connections from source IP",
                     "Correlate with VPC Flow Logs for encrypted transfers",
                     "Review user's authentication history",
-                    "Examine timing between data access and network transfers"
+                    "Examine timing between data access and network transfers",
                 ],
                 containment_actions=[
                     "Revoke compromised credentials immediately",
@@ -590,8 +592,8 @@ resource "aws_cloudwatch_metric_alarm" "data_access" {
                     "Enable S3 Object Lock on sensitive buckets",
                     "Rotate accessed secrets and parameters",
                     "Review and restrict IAM policies",
-                    "Enable MFA for sensitive operations"
-                ]
+                    "Enable MFA for sensitive operations",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Exclude automated backup systems and CI/CD pipelines; tune access count threshold",
@@ -600,9 +602,11 @@ resource "aws_cloudwatch_metric_alarm" "data_access" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["CloudTrail enabled with S3 data events", "CloudTrail logs in CloudWatch"]
+            prerequisites=[
+                "CloudTrail enabled with S3 data events",
+                "CloudTrail logs in CloudWatch",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1048.002-gcp-https",
             name="GCP Non-Standard HTTPS Exfiltration",
@@ -618,7 +622,7 @@ jsonPayload.bytes_sent > 52428800
 NOT jsonPayload.connection.dest_ip=~"^10\\."
 NOT jsonPayload.connection.dest_ip=~"^172\\.(1[6-9]|2[0-9]|3[0-1])\\."
 NOT jsonPayload.connection.dest_ip=~"^192\\.168\\."''',
-                gcp_terraform_template='''# GCP: Detect HTTPS exfiltration
+                gcp_terraform_template="""# GCP: Detect HTTPS exfiltration
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -662,7 +666,7 @@ resource "google_monitoring_alert_policy" "https_exfil" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Large HTTPS Exfiltration Detected",
                 alert_description_template="Large encrypted transfer to external destination detected from GCP instance.",
@@ -672,7 +676,7 @@ resource "google_monitoring_alert_policy" "https_exfil" {
                     "Check for data staging or compression activities",
                     "Examine destination IP/domain reputation",
                     "Review user access and authentication logs",
-                    "Correlate with Cloud Storage or secret access events"
+                    "Correlate with Cloud Storage or secret access events",
                 ],
                 containment_actions=[
                     "Isolate source VM instance",
@@ -680,8 +684,8 @@ resource "google_monitoring_alert_policy" "https_exfil" {
                     "Revoke compromised service account credentials",
                     "Review and restrict VPC egress rules",
                     "Enable VPC Service Controls",
-                    "Implement Cloud NAT logging for visibility"
-                ]
+                    "Implement Cloud NAT logging for visibility",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known API endpoints and CDN destinations; adjust byte threshold",
@@ -690,9 +694,8 @@ resource "google_monitoring_alert_policy" "https_exfil" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["VPC Flow Logs enabled on subnets"]
+            prerequisites=["VPC Flow Logs enabled on subnets"],
         ),
-
         DetectionStrategy(
             strategy_id="t1048.002-gcp-storage-access",
             name="GCP Cloud Storage Access Before Encrypted Transfer",
@@ -702,11 +705,11 @@ resource "google_monitoring_alert_policy" "https_exfil" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''protoPayload.methodName="storage.objects.get"
+                gcp_logging_query="""protoPayload.methodName="storage.objects.get"
 protoPayload.authenticationInfo.principalEmail!=""
 | stats count() as access_count by protoPayload.authenticationInfo.principalEmail, protoPayload.requestMetadata.callerIp
-| access_count > 20''',
-                gcp_terraform_template='''# GCP: Detect Cloud Storage access before exfiltration
+| access_count > 20""",
+                gcp_terraform_template="""# GCP: Detect Cloud Storage access before exfiltration
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -749,7 +752,7 @@ resource "google_monitoring_alert_policy" "storage_access" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Rapid Cloud Storage Access Detected",
                 alert_description_template="Rapid access to Cloud Storage objects detected, potential data staging for exfiltration.",
@@ -759,7 +762,7 @@ resource "google_monitoring_alert_policy" "storage_access" {
                     "Check for recent encrypted network connections",
                     "Correlate with VPC Flow Logs",
                     "Review IAM policy changes",
-                    "Examine authentication and access patterns"
+                    "Examine authentication and access patterns",
                 ],
                 containment_actions=[
                     "Revoke compromised service account keys",
@@ -767,8 +770,8 @@ resource "google_monitoring_alert_policy" "storage_access" {
                     "Implement VPC Service Controls",
                     "Review and restrict IAM permissions",
                     "Enable uniform bucket-level access",
-                    "Implement Cloud Data Loss Prevention scanning"
-                ]
+                    "Implement Cloud Data Loss Prevention scanning",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Exclude backup systems and data processing pipelines; tune access rate threshold",
@@ -777,18 +780,20 @@ resource "google_monitoring_alert_policy" "storage_access" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Audit Logs for Cloud Storage enabled", "VPC Flow Logs enabled"]
-        )
+            prerequisites=[
+                "Cloud Audit Logs for Cloud Storage enabled",
+                "VPC Flow Logs enabled",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1048.002-aws-cloudtrail",
         "t1048.002-gcp-storage-access",
         "t1048.002-aws-https-non-browser",
         "t1048.002-gcp-https",
         "t1048.002-aws-sftp-scp",
-        "t1048.002-aws-smtps"
+        "t1048.002-aws-smtps",
     ],
     total_effort_hours=8.0,
-    coverage_improvement="+22% improvement for Exfiltration tactic"
+    coverage_improvement="+22% improvement for Exfiltration tactic",
 )

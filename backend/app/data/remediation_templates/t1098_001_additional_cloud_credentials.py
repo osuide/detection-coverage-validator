@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Account Manipulation: Additional Cloud Credentials",
     tactic_ids=["TA0003", "TA0004"],
     mitre_url="https://attack.mitre.org/techniques/T1098/001/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries create additional access keys or service account keys to "
@@ -35,7 +34,7 @@ TEMPLATE = RemediationTemplate(
             "Keys bypass MFA requirements",
             "Multiple keys make detection harder",
             "Keys persist after password reset",
-            "Often overlooked in incident response"
+            "Often overlooked in incident response",
         ],
         known_threat_actors=["APT29", "Scattered Spider", "UNC5537"],
         recent_campaigns=[
@@ -43,14 +42,14 @@ TEMPLATE = RemediationTemplate(
                 name="Scattered Spider Persistence",
                 year=2024,
                 description="Created additional access keys on compromised accounts for persistent access",
-                reference_url="https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-320a"
+                reference_url="https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-320a",
             ),
             Campaign(
                 name="AWS Access Key Attacks",
                 year=2024,
                 description="Increased reports of attackers creating backup access keys for persistence",
-                reference_url="https://www.datadoghq.com/state-of-cloud-security/"
-            )
+                reference_url="https://www.datadoghq.com/state-of-cloud-security/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -64,13 +63,12 @@ TEMPLATE = RemediationTemplate(
             "Persistent unauthorised access",
             "Difficult to fully remediate compromise",
             "Ongoing data exfiltration risk",
-            "Compliance violations"
+            "Compliance violations",
         ],
         typical_attack_phase="persistence",
         often_precedes=["T1530", "T1537"],
-        often_follows=["T1078.004", "T1528"]
+        often_follows=["T1078.004", "T1528"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - Access Key Creation
         DetectionStrategy(
@@ -84,11 +82,9 @@ TEMPLATE = RemediationTemplate(
                 event_pattern={
                     "source": ["aws.iam"],
                     "detail-type": ["AWS API Call via CloudTrail"],
-                    "detail": {
-                        "eventName": ["CreateAccessKey"]
-                    }
+                    "detail": {"eventName": ["CreateAccessKey"]},
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect IAM access key creation
 
 Parameters:
@@ -127,8 +123,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect IAM access key creation
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect IAM access key creation
 
 variable "alert_email" {
   type = string
@@ -173,7 +169,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="IAM Access Key Created",
                 alert_description_template="New access key created for user {userName}.",
@@ -181,14 +177,14 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Verify the access key creation was authorised",
                     "Check who created the key",
                     "Review the target user's permissions",
-                    "Check for concurrent suspicious activity"
+                    "Check for concurrent suspicious activity",
                 ],
                 containment_actions=[
                     "Disable the newly created access key",
                     "Review and disable old access keys",
                     "Rotate credentials for affected user",
-                    "Audit IAM permissions"
-                ]
+                    "Audit IAM permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist CI/CD automation accounts",
@@ -197,9 +193,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         # Strategy 2: AWS - Multiple Access Keys
         DetectionStrategy(
             strategy_id="t1098001-aws-multikey",
@@ -210,7 +205,7 @@ resource "aws_sns_topic_policy" "allow_events" {
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
                 config_rule_identifier="iam-user-no-policies-check",
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect users with multiple access keys
 
 Parameters:
@@ -260,8 +255,8 @@ Resources:
           - Effect: Allow
             Principal:
               Service: lambda.amazonaws.com
-            Action: sts:AssumeRole''',
-                terraform_template='''# Detect users with multiple access keys
+            Action: sts:AssumeRole""",
+                terraform_template="""# Detect users with multiple access keys
 
 variable "alert_email" {
   type = string
@@ -289,7 +284,7 @@ resource "aws_sns_topic_subscription" "email" {
 resource "aws_cloudwatch_event_rule" "multi_key_check" {
   name                = "check-multi-accesskeys"
   schedule_expression = "rate(1 day)"
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="User Has Multiple Access Keys",
                 alert_description_template="User {userName} has multiple active access keys.",
@@ -297,14 +292,14 @@ resource "aws_cloudwatch_event_rule" "multi_key_check" {
                     "Review why multiple keys exist",
                     "Check creation dates of each key",
                     "Verify keys are used for different purposes",
-                    "Identify unused keys"
+                    "Identify unused keys",
                 ],
                 containment_actions=[
                     "Disable unused access keys",
                     "Consolidate to single key per use case",
                     "Rotate remaining keys",
-                    "Document key usage purposes"
-                ]
+                    "Document key usage purposes",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Some users legitimately need multiple keys",
@@ -313,9 +308,8 @@ resource "aws_cloudwatch_event_rule" "multi_key_check" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-10",
-            prerequisites=["AWS Config enabled"]
+            prerequisites=["AWS Config enabled"],
         ),
-
         # Strategy 3: GCP - Service Account Key Creation
         DetectionStrategy(
             strategy_id="t1098001-gcp-sakey",
@@ -328,7 +322,7 @@ resource "aws_cloudwatch_event_rule" "multi_key_check" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName="google.iam.admin.v1.CreateServiceAccountKey"
 OR protoPayload.methodName=~"iam.serviceAccountKeys.create"''',
-                gcp_terraform_template='''# GCP: Detect service account key creation
+                gcp_terraform_template="""# GCP: Detect service account key creation
 
 variable "project_id" {
   type = string
@@ -376,7 +370,7 @@ resource "google_monitoring_alert_policy" "sa_key" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Service Account Key Created",
                 alert_description_template="New service account key created for {serviceAccount}.",
@@ -384,14 +378,14 @@ resource "google_monitoring_alert_policy" "sa_key" {
                     "Verify the key creation was authorised",
                     "Check who created the key",
                     "Review the service account permissions",
-                    "Check for other suspicious activity"
+                    "Check for other suspicious activity",
                 ],
                 containment_actions=[
                     "Delete the newly created key",
                     "Rotate existing service account keys",
                     "Review service account permissions",
-                    "Enable organisation policy for key creation"
-                ]
+                    "Enable organisation policy for key creation",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist CI/CD service accounts",
@@ -400,9 +394,8 @@ resource "google_monitoring_alert_policy" "sa_key" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled"],
         ),
-
         # Strategy 4: AWS - Console Login After Key Creation
         DetectionStrategy(
             strategy_id="t1098001-aws-keylogin",
@@ -412,12 +405,12 @@ resource "google_monitoring_alert_policy" "sa_key" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.accessKeyId, sourceIPAddress, userIdentity.userName
+                query="""fields @timestamp, eventName, userIdentity.accessKeyId, sourceIPAddress, userIdentity.userName
 | filter userIdentity.accessKeyId != ""
 | filter eventName not in ["CreateAccessKey", "GetAccessKeyLastUsed"]
 | stats earliest(@timestamp) as first_use, count(*) as api_calls by userIdentity.accessKeyId, sourceIPAddress
-| sort first_use asc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort first_use asc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Monitor access key usage patterns
 
 Parameters:
@@ -465,8 +458,8 @@ Resources:
         Statement:
           - Effect: Allow
             Principal: { Service: lambda.amazonaws.com }
-            Action: sts:AssumeRole''',
-                terraform_template='''# Monitor access key usage patterns
+            Action: sts:AssumeRole""",
+                terraform_template="""# Monitor access key usage patterns
 
 variable "cloudtrail_log_group" {
   type = string
@@ -511,7 +504,7 @@ resource "aws_cloudwatch_metric_alarm" "key_anomaly" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Unusual Access Key Usage Pattern",
                 alert_description_template="Access key {accessKeyId} used from unusual location.",
@@ -519,14 +512,14 @@ resource "aws_cloudwatch_metric_alarm" "key_anomaly" {
                     "Compare usage location to key creation location",
                     "Check if key used from expected geography",
                     "Review API calls made with the key",
-                    "Verify legitimate usage"
+                    "Verify legitimate usage",
                 ],
                 containment_actions=[
                     "Disable suspicious access key",
                     "Review CloudTrail for key activity",
                     "Rotate user credentials",
-                    "Enable MFA for the user"
-                ]
+                    "Enable MFA for the user",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal key usage patterns",
@@ -535,16 +528,15 @@ resource "aws_cloudwatch_metric_alarm" "key_anomaly" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["CloudTrail logging to CloudWatch"]
-        )
+            prerequisites=["CloudTrail logging to CloudWatch"],
+        ),
     ],
-
     recommended_order=[
         "t1098001-aws-accesskey",
         "t1098001-gcp-sakey",
         "t1098001-aws-multikey",
-        "t1098001-aws-keylogin"
+        "t1098001-aws-keylogin",
     ],
     total_effort_hours=4.0,
-    coverage_improvement="+20% improvement for Persistence tactic"
+    coverage_improvement="+20% improvement for Persistence tactic",
 )

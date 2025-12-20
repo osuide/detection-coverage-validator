@@ -22,6 +22,7 @@ settings = get_settings()
 # Request/Response Models
 class SubscriptionResponse(BaseModel):
     """Subscription info response."""
+
     id: Optional[str] = None
     tier: str
     status: str
@@ -40,6 +41,7 @@ class SubscriptionResponse(BaseModel):
 
 class CreateCheckoutRequest(BaseModel):
     """Request to create a checkout session."""
+
     success_url: str
     cancel_url: str
     additional_accounts: int = Field(default=0, ge=0, le=100)
@@ -47,22 +49,26 @@ class CreateCheckoutRequest(BaseModel):
 
 class CheckoutResponse(BaseModel):
     """Checkout session response."""
+
     checkout_url: str
     session_id: str
 
 
 class PortalRequest(BaseModel):
     """Request to create a portal session."""
+
     return_url: str
 
 
 class PortalResponse(BaseModel):
     """Portal session response."""
+
     portal_url: str
 
 
 class InvoiceResponse(BaseModel):
     """Invoice response."""
+
     id: str
     stripe_invoice_id: str
     amount_cents: int
@@ -79,6 +85,7 @@ class InvoiceResponse(BaseModel):
 
 class PricingResponse(BaseModel):
     """Pricing info response."""
+
     subscriber_monthly_cents: int
     subscriber_monthly_dollars: float
     enterprise_monthly_cents: int
@@ -94,12 +101,14 @@ class PricingResponse(BaseModel):
 
 class PricingCalculatorRequest(BaseModel):
     """Request to calculate pricing for a number of accounts."""
+
     account_count: int = Field(ge=1, le=10000)
     tier: str = Field(pattern="^(free_scan|subscriber|enterprise)$")
 
 
 class PricingCalculatorResponse(BaseModel):
     """Calculated pricing response."""
+
     tier: str
     account_count: int
     included_accounts: int
@@ -118,7 +127,9 @@ class PricingCalculatorResponse(BaseModel):
 # Endpoints
 @router.get("/subscription", response_model=SubscriptionResponse)
 async def get_subscription(
-    auth: AuthContext = Depends(require_role(UserRole.MEMBER, UserRole.VIEWER, UserRole.ADMIN, UserRole.OWNER)),
+    auth: AuthContext = Depends(
+        require_role(UserRole.MEMBER, UserRole.VIEWER, UserRole.ADMIN, UserRole.OWNER)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     """Get current subscription info."""
@@ -129,7 +140,12 @@ async def get_subscription(
 @router.get("/pricing", response_model=PricingResponse)
 async def get_pricing():
     """Get pricing info (public endpoint within authenticated context)."""
-    from app.models.billing import STRIPE_PRICES, TIER_LIMITS, ACCOUNT_VOLUME_TIERS, AccountTier
+    from app.models.billing import (
+        STRIPE_PRICES,
+        TIER_LIMITS,
+        ACCOUNT_VOLUME_TIERS,
+        AccountTier,
+    )
 
     # Format volume tiers for response
     volume_tiers = []
@@ -138,31 +154,42 @@ async def get_pricing():
         if max_accounts == 0:
             continue
         tier_info = {
-            'min_accounts': prev_max + 1,
-            'max_accounts': max_accounts if max_accounts else 'unlimited',
-            'price_per_account_cents': price_cents,
-            'price_per_account_dollars': price_cents / 100 if price_cents else 0,
+            "min_accounts": prev_max + 1,
+            "max_accounts": max_accounts if max_accounts else "unlimited",
+            "price_per_account_cents": price_cents,
+            "price_per_account_dollars": price_cents / 100 if price_cents else 0,
         }
         if max_accounts is None:
-            tier_info['label'] = f'{prev_max + 1}+ accounts'
+            tier_info["label"] = f"{prev_max + 1}+ accounts"
         elif price_cents == 0:
-            tier_info['label'] = f'1-{max_accounts} accounts (included)'
+            tier_info["label"] = f"1-{max_accounts} accounts (included)"
         else:
-            tier_info['label'] = f'{prev_max + 1}-{max_accounts} accounts'
+            tier_info["label"] = f"{prev_max + 1}-{max_accounts} accounts"
         volume_tiers.append(tier_info)
         prev_max = max_accounts if max_accounts else prev_max
 
     return PricingResponse(
-        subscriber_monthly_cents=STRIPE_PRICES['subscriber_monthly'],
-        subscriber_monthly_dollars=STRIPE_PRICES['subscriber_monthly'] / 100,
-        enterprise_monthly_cents=STRIPE_PRICES['enterprise_monthly'],
-        enterprise_monthly_dollars=STRIPE_PRICES['enterprise_monthly'] / 100,
-        additional_account_subscriber_cents=STRIPE_PRICES['additional_account_subscriber'],
-        additional_account_subscriber_dollars=STRIPE_PRICES['additional_account_subscriber'] / 100,
-        free_tier_accounts=TIER_LIMITS[AccountTier.FREE_SCAN]['included_accounts'],
-        subscriber_tier_accounts=TIER_LIMITS[AccountTier.SUBSCRIBER]['included_accounts'],
-        enterprise_included_accounts=TIER_LIMITS[AccountTier.ENTERPRISE]['included_accounts'],
-        free_scan_retention_days=TIER_LIMITS[AccountTier.FREE_SCAN]['results_retention_days'],
+        subscriber_monthly_cents=STRIPE_PRICES["subscriber_monthly"],
+        subscriber_monthly_dollars=STRIPE_PRICES["subscriber_monthly"] / 100,
+        enterprise_monthly_cents=STRIPE_PRICES["enterprise_monthly"],
+        enterprise_monthly_dollars=STRIPE_PRICES["enterprise_monthly"] / 100,
+        additional_account_subscriber_cents=STRIPE_PRICES[
+            "additional_account_subscriber"
+        ],
+        additional_account_subscriber_dollars=STRIPE_PRICES[
+            "additional_account_subscriber"
+        ]
+        / 100,
+        free_tier_accounts=TIER_LIMITS[AccountTier.FREE_SCAN]["included_accounts"],
+        subscriber_tier_accounts=TIER_LIMITS[AccountTier.SUBSCRIBER][
+            "included_accounts"
+        ],
+        enterprise_included_accounts=TIER_LIMITS[AccountTier.ENTERPRISE][
+            "included_accounts"
+        ],
+        free_scan_retention_days=TIER_LIMITS[AccountTier.FREE_SCAN][
+            "results_retention_days"
+        ],
         volume_tiers=volume_tiers,
     )
 
@@ -173,9 +200,9 @@ async def calculate_pricing(body: PricingCalculatorRequest):
     from app.models.billing import AccountTier, calculate_account_cost
 
     tier_map = {
-        'free_scan': AccountTier.FREE_SCAN,
-        'subscriber': AccountTier.SUBSCRIBER,
-        'enterprise': AccountTier.ENTERPRISE,
+        "free_scan": AccountTier.FREE_SCAN,
+        "subscriber": AccountTier.SUBSCRIBER,
+        "enterprise": AccountTier.ENTERPRISE,
     }
     tier = tier_map.get(body.tier)
     if not tier:
@@ -189,12 +216,12 @@ async def calculate_pricing(body: PricingCalculatorRequest):
     # Format breakdown for response
     breakdown = [
         {
-            'description': item[0],
-            'quantity': item[1],
-            'unit_price_cents': item[2],
-            'subtotal_cents': item[3],
+            "description": item[0],
+            "quantity": item[1],
+            "unit_price_cents": item[2],
+            "subtotal_cents": item[3],
         }
-        for item in result['breakdown']
+        for item in result["breakdown"]
     ]
 
     # Calculate recommended tier if applicable
@@ -202,26 +229,26 @@ async def calculate_pricing(body: PricingCalculatorRequest):
     savings = None
 
     if body.account_count > 1 and tier == AccountTier.FREE_SCAN:
-        recommended_tier = 'subscriber'
+        recommended_tier = "subscriber"
     elif body.account_count > 3 and tier == AccountTier.SUBSCRIBER:
         # Compare subscriber vs enterprise cost
         sub_cost = calculate_account_cost(body.account_count, AccountTier.SUBSCRIBER)
         ent_cost = calculate_account_cost(body.account_count, AccountTier.ENTERPRISE)
-        if ent_cost['total_cost_cents'] < sub_cost['total_cost_cents']:
-            recommended_tier = 'enterprise'
-            savings = sub_cost['total_cost_cents'] - ent_cost['total_cost_cents']
+        if ent_cost["total_cost_cents"] < sub_cost["total_cost_cents"]:
+            recommended_tier = "enterprise"
+            savings = sub_cost["total_cost_cents"] - ent_cost["total_cost_cents"]
 
     return PricingCalculatorResponse(
         tier=body.tier,
         account_count=body.account_count,
-        included_accounts=result['included_accounts'],
-        additional_accounts=result['additional_accounts'],
-        base_cost_cents=result['base_cost_cents'],
-        base_cost_dollars=result['base_cost_cents'] / 100,
-        additional_cost_cents=result['additional_cost_cents'],
-        additional_cost_dollars=result['additional_cost_cents'] / 100,
-        total_cost_cents=result['total_cost_cents'],
-        total_cost_dollars=result['total_cost_cents'] / 100,
+        included_accounts=result["included_accounts"],
+        additional_accounts=result["additional_accounts"],
+        base_cost_cents=result["base_cost_cents"],
+        base_cost_dollars=result["base_cost_cents"] / 100,
+        additional_cost_cents=result["additional_cost_cents"],
+        additional_cost_dollars=result["additional_cost_cents"] / 100,
+        total_cost_cents=result["total_cost_cents"],
+        total_cost_dollars=result["total_cost_cents"] / 100,
         breakdown=breakdown,
         recommended_tier=recommended_tier,
         savings_vs_current=savings,
@@ -239,7 +266,7 @@ async def create_checkout(
     if not settings.stripe_secret_key:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Stripe billing is not configured"
+            detail="Stripe billing is not configured",
         )
 
     try:
@@ -258,7 +285,10 @@ async def create_checkout(
             user_id=auth.user.id,
             action=AuditLogAction.ORG_SETTINGS_UPDATED,
             resource_type="billing",
-            details={"action": "checkout_created", "additional_accounts": body.additional_accounts},
+            details={
+                "action": "checkout_created",
+                "additional_accounts": body.additional_accounts,
+            },
             ip_address=request.client.host if request.client else None,
             success=True,
         )
@@ -273,7 +303,7 @@ async def create_checkout(
         logger.error("stripe_error", error=str(e))
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Failed to create checkout session"
+            detail="Failed to create checkout session",
         )
 
 
@@ -288,7 +318,7 @@ async def create_portal(
     if not settings.stripe_secret_key:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Stripe billing is not configured"
+            detail="Stripe billing is not configured",
         )
 
     try:
@@ -319,7 +349,7 @@ async def create_portal(
         logger.error("stripe_error", error=str(e))
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Failed to create portal session"
+            detail="Failed to create portal session",
         )
 
 
@@ -347,7 +377,7 @@ async def stripe_webhook(
         logger.warning("stripe_webhook_secret_not_configured")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Webhook secret not configured"
+            detail="Webhook secret not configured",
         )
 
     try:
@@ -356,10 +386,14 @@ async def stripe_webhook(
         )
     except ValueError:
         logger.error("stripe_webhook_invalid_payload")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid payload")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid payload"
+        )
     except stripe.error.SignatureVerificationError:
         logger.error("stripe_webhook_invalid_signature")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid signature")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid signature"
+        )
 
     event_type = event["type"]
     data = event["data"]["object"]
@@ -381,7 +415,9 @@ async def stripe_webhook(
             logger.debug("stripe_webhook_unhandled", event_type=event_type)
 
     except Exception as e:
-        logger.error("stripe_webhook_handler_error", event_type=event_type, error=str(e))
+        logger.error(
+            "stripe_webhook_handler_error", event_type=event_type, error=str(e)
+        )
         # Return 200 to prevent Stripe retries for non-critical errors
         # In production, you might want to handle this differently
 

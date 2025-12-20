@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Video Capture",
     tactic_ids=["TA0009"],  # Collection
     mitre_url="https://attack.mitre.org/techniques/T1125/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries exploit webcams or video applications to capture video recordings for "
@@ -39,31 +38,35 @@ TEMPLATE = RemediationTemplate(
             "Provides intelligence on security controls and physical layouts",
             "Can be used for targeted social engineering attacks",
             "Often goes undetected as legitimate camera usage",
-            "Video conferencing API access provides covert recording capability"
+            "Video conferencing API access provides covert recording capability",
         ],
         known_threat_actors=[
-            "FIN7", "Silence", "Ember Bear", "APT group Patchwork",
-            "Static Kitten", "TA505"
+            "FIN7",
+            "Silence",
+            "Ember Bear",
+            "APT group Patchwork",
+            "Static Kitten",
+            "TA505",
         ],
         recent_campaigns=[
             Campaign(
                 name="FIN7 Video Surveillance Operations",
                 year=2023,
                 description="FIN7 deployed custom video recording malware to monitor bank environments and employee activities for intelligence gathering",
-                reference_url="https://attack.mitre.org/groups/G0046/"
+                reference_url="https://attack.mitre.org/groups/G0046/",
             ),
             Campaign(
                 name="Silence Banking Surveillance",
                 year=2022,
                 description="Silence APT group made videos of bank employees' activities to understand security procedures and workflows for targeted attacks",
-                reference_url="https://attack.mitre.org/groups/G0091/"
+                reference_url="https://attack.mitre.org/groups/G0091/",
             ),
             Campaign(
                 name="Ember Bear IP Camera Exfiltration",
                 year=2023,
                 description="Ember Bear (UAC-0056) exfiltrated images and video from compromised IP cameras during Eastern European operations",
-                reference_url="https://attack.mitre.org/groups/G1003/"
-            )
+                reference_url="https://attack.mitre.org/groups/G1003/",
+            ),
         ],
         prevalence="rare",
         trend="stable",
@@ -80,13 +83,12 @@ TEMPLATE = RemediationTemplate(
             "Intelligence gathering on physical security measures",
             "Exposure of confidential business strategies and meetings",
             "Regulatory compliance violations (GDPR, privacy laws)",
-            "Reputational damage from surveillance incidents"
+            "Reputational damage from surveillance incidents",
         ],
         typical_attack_phase="collection",
         often_precedes=["T1048", "T1041", "T1567"],
-        often_follows=["T1078.004", "T1190", "T1566"]
+        often_follows=["T1078.004", "T1190", "T1566"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - Unusual Camera Device Access on EC2
         DetectionStrategy(
@@ -100,9 +102,9 @@ TEMPLATE = RemediationTemplate(
                 guardduty_finding_types=[
                     "Execution:Runtime/NewBinaryExecuted",
                     "Execution:Runtime/ReverseShell",
-                    "CredentialAccess:Runtime/MemoryDumpCreated"
+                    "CredentialAccess:Runtime/MemoryDumpCreated",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect video capture activity on EC2 instances
 
 Parameters:
@@ -156,8 +158,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref SecurityAlertTopic''',
-                terraform_template='''# GuardDuty Runtime Monitoring for video capture detection
+            Resource: !Ref SecurityAlertTopic""",
+                terraform_template="""# GuardDuty Runtime Monitoring for video capture detection
 
 variable "alert_email" {
   type        = string
@@ -219,7 +221,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Resource  = aws_sns_topic.video_capture_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GuardDuty: Suspicious Runtime Activity Detected",
                 alert_description_template=(
@@ -232,7 +234,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Examine CloudWatch logs for camera library loading (avicap32.dll, mf.dll)",
                     "Review network connections for video file exfiltration",
                     "Check for large video files in unusual locations",
-                    "Investigate recent user sessions and authentication activity"
+                    "Investigate recent user sessions and authentication activity",
                 ],
                 containment_actions=[
                     "Isolate the instance by modifying security groups",
@@ -240,8 +242,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Review and remove unauthorised video capture software",
                     "Disable USB device passthrough if enabled",
                     "Audit IAM permissions for the instance role",
-                    "Terminate the instance if compromise is confirmed"
-                ]
+                    "Terminate the instance if compromise is confirmed",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised video conferencing and remote desktop instances",
@@ -250,9 +252,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",
             estimated_monthly_cost="$4.60 per instance per month for Runtime Monitoring",
-            prerequisites=["GuardDuty enabled", "SSM Agent on EC2 instances"]
+            prerequisites=["GuardDuty enabled", "SSM Agent on EC2 instances"],
         ),
-
         # Strategy 2: AWS - Video File Creation and Exfiltration
         DetectionStrategy(
             strategy_id="t1125-aws-video-files",
@@ -262,13 +263,13 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message, instanceId, fileName, fileSize
+                query="""fields @timestamp, @message, instanceId, fileName, fileSize
 | filter @message like /\.mp4|\.avi|\.mov|\.wmv|\.flv|\.mkv|\.webm/
 | filter @message like /\/tmp|\/var\/tmp|unusual|capture|recording/
 | stats count() as video_files, sum(fileSize) as total_size by instanceId, bin(1h)
 | filter video_files > 3 or total_size > 100000000
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect video file creation and exfiltration
 
 Parameters:
@@ -315,8 +316,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect video file creation and exfiltration
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect video file creation and exfiltration
 
 variable "alert_email" {
   type = string
@@ -371,7 +372,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Video File Upload Detected",
                 alert_description_template=(
@@ -384,7 +385,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Check CloudTrail for the upload source IP address",
                     "Review other files uploaded by the same principal",
                     "Examine the instance for video capture software",
-                    "Check for additional exfiltration methods (network transfers)"
+                    "Check for additional exfiltration methods (network transfers)",
                 ],
                 containment_actions=[
                     "Quarantine or delete the suspicious video files",
@@ -392,8 +393,8 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Review and restrict S3 bucket policies",
                     "Enable S3 Object Lock for critical buckets",
                     "Implement bucket policies to restrict video file uploads",
-                    "Enable GuardDuty S3 Protection for anomaly detection"
-                ]
+                    "Enable GuardDuty S3 Protection for anomaly detection",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised video storage buckets and media processing workflows",
@@ -402,9 +403,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled with S3 data events"]
+            prerequisites=["CloudTrail enabled with S3 data events"],
         ),
-
         # Strategy 3: AWS - Video Conferencing API Abuse
         DetectionStrategy(
             strategy_id="t1125-aws-conferencing-api",
@@ -414,13 +414,13 @@ resource "aws_sns_topic_policy" "allow_events" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, eventName, requestParameters
+                query="""fields @timestamp, userIdentity.principalId, eventName, requestParameters
 | filter eventSource = "chime.amazonaws.com"
 | filter eventName in ["CreateMediaCapturePipeline", "StartMeetingTranscription", "CreateAttendee"]
 | stats count() as api_calls by userIdentity.principalId, eventName, bin(1h)
 | filter api_calls > 10
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect Amazon Chime SDK recording abuse
 
 Parameters:
@@ -463,8 +463,8 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
-        - !Ref AlertTopic''',
-                terraform_template='''# Detect Amazon Chime SDK recording abuse
+        - !Ref AlertTopic""",
+                terraform_template="""# Detect Amazon Chime SDK recording abuse
 
 variable "cloudtrail_log_group" {
   type = string
@@ -510,7 +510,7 @@ resource "aws_cloudwatch_metric_alarm" "recording_abuse" {
   threshold           = 5
   comparison_operator = "GreaterThanThreshold"
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Video Conferencing Recording Abuse Detected",
                 alert_description_template=(
@@ -523,7 +523,7 @@ resource "aws_cloudwatch_metric_alarm" "recording_abuse" {
                     "Check if recording notifications were properly sent to participants",
                     "Examine where recorded media was stored or streamed",
                     "Review access logs for the media storage location",
-                    "Verify if the activity aligns with legitimate use cases"
+                    "Verify if the activity aligns with legitimate use cases",
                 ],
                 containment_actions=[
                     "Revoke the principal's credentials immediately",
@@ -531,8 +531,8 @@ resource "aws_cloudwatch_metric_alarm" "recording_abuse" {
                     "Review and restrict Chime SDK permissions",
                     "Implement resource-based policies requiring approval for recording",
                     "Enable CloudTrail logging for all Chime API calls",
-                    "Notify affected meeting participants of unauthorised recording"
-                ]
+                    "Notify affected meeting participants of unauthorised recording",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal recording patterns for authorised services and users",
@@ -541,9 +541,8 @@ resource "aws_cloudwatch_metric_alarm" "recording_abuse" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-15",
-            prerequisites=["CloudTrail enabled", "Amazon Chime SDK in use"]
+            prerequisites=["CloudTrail enabled", "Amazon Chime SDK in use"],
         ),
-
         # Strategy 4: GCP - Video Device Access Detection
         DetectionStrategy(
             strategy_id="t1125-gcp-camera-access",
@@ -554,11 +553,11 @@ resource "aws_cloudwatch_metric_alarm" "recording_abuse" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 (textPayload=~"/dev/video|camera|webcam|video4linux|v4l2"
 OR protoPayload.request.commandLine=~"ffmpeg.*video|gstreamer.*camera|opencv")
-severity>=WARNING''',
-                gcp_terraform_template='''# GCP: Detect camera device access on GCE instances
+severity>=WARNING""",
+                gcp_terraform_template="""# GCP: Detect camera device access on GCE instances
 
 variable "project_id" {
   type        = string
@@ -630,7 +629,7 @@ resource "google_monitoring_alert_policy" "camera_access" {
     content   = "Camera or video device access detected on GCE instance. Investigate for unauthorised video capture activity."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Camera Device Access Detected",
                 alert_description_template=(
@@ -643,7 +642,7 @@ resource "google_monitoring_alert_policy" "camera_access" {
                     "Examine the instance's installed software and recent changes",
                     "Review network connections for video file transfers",
                     "Check Cloud Storage for uploaded video files",
-                    "Verify if the instance legitimately requires camera access"
+                    "Verify if the instance legitimately requires camera access",
                 ],
                 containment_actions=[
                     "Stop the GCE instance to prevent further recording",
@@ -651,8 +650,8 @@ resource "google_monitoring_alert_policy" "camera_access" {
                     "Remove video capture software and unauthorised applications",
                     "Review and restrict USB device passthrough settings",
                     "Update firewall rules to block suspicious outbound traffic",
-                    "Audit service account permissions for the instance"
-                ]
+                    "Audit service account permissions for the instance",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist instances legitimately used for video processing or conferencing",
@@ -661,9 +660,11 @@ resource "google_monitoring_alert_policy" "camera_access" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Logging API enabled", "Ops Agent installed on GCE instances"]
+            prerequisites=[
+                "Cloud Logging API enabled",
+                "Ops Agent installed on GCE instances",
+            ],
         ),
-
         # Strategy 5: GCP - Video File Storage Monitoring
         DetectionStrategy(
             strategy_id="t1125-gcp-video-storage",
@@ -677,7 +678,7 @@ resource "google_monitoring_alert_policy" "camera_access" {
                 gcp_logging_query='''resource.type="gcs_bucket"
 protoPayload.methodName="storage.objects.create"
 protoPayload.resourceName=~".*\.(mp4|avi|mov|wmv|flv|mkv|webm)$"''',
-                gcp_terraform_template='''# GCP: Monitor Cloud Storage for video file uploads
+                gcp_terraform_template="""# GCP: Monitor Cloud Storage for video file uploads
 
 variable "project_id" {
   type        = string
@@ -755,7 +756,7 @@ resource "google_monitoring_alert_policy" "video_uploads" {
     content   = "Video files uploaded to Cloud Storage. Investigate for potential video capture and exfiltration activity."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Video File Upload Detected",
                 alert_description_template=(
@@ -768,7 +769,7 @@ resource "google_monitoring_alert_policy" "video_uploads" {
                     "Check the video file metadata and timestamps",
                     "Examine the bucket's access controls and policies",
                     "Review other objects uploaded by the same principal",
-                    "Check for corresponding camera access logs on GCE instances"
+                    "Check for corresponding camera access logs on GCE instances",
                 ],
                 containment_actions=[
                     "Quarantine or delete suspicious video files",
@@ -776,8 +777,8 @@ resource "google_monitoring_alert_policy" "video_uploads" {
                     "Review and restrict Cloud Storage bucket IAM policies",
                     "Enable uniform bucket-level access for better control",
                     "Implement organisation policies to restrict video uploads",
-                    "Enable VPC Service Controls for Cloud Storage"
-                ]
+                    "Enable VPC Service Controls for Cloud Storage",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised media storage buckets and video processing pipelines",
@@ -786,17 +787,16 @@ resource "google_monitoring_alert_policy" "video_uploads" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",
             estimated_monthly_cost="$5-15",
-            prerequisites=["Cloud Storage audit logs enabled"]
-        )
+            prerequisites=["Cloud Storage audit logs enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1125-aws-camera-access",
         "t1125-gcp-camera-access",
         "t1125-aws-video-files",
         "t1125-gcp-video-storage",
-        "t1125-aws-conferencing-api"
+        "t1125-aws-conferencing-api",
     ],
     total_effort_hours=4.0,
-    coverage_improvement="+15% improvement for Collection tactic"
+    coverage_improvement="+15% improvement for Collection tactic",
 )

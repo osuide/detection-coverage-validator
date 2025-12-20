@@ -24,6 +24,7 @@ from app.core.database import Base
 
 class CodeAnalysisScope(str, enum.Enum):
     """Scope of code analysis consent."""
+
     LAMBDA_FUNCTIONS = "lambda_functions"
     CLOUDFORMATION = "cloudformation"
     TERRAFORM = "terraform"
@@ -43,12 +44,14 @@ class CodeAnalysisConsent(Base):
         PGUUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid()
     )
     organization_id: Mapped[UUID] = mapped_column(
-        PGUUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"),
-        nullable=False
+        PGUUID(as_uuid=True),
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=False,
     )
     cloud_account_id: Mapped[UUID] = mapped_column(
-        PGUUID(as_uuid=True), ForeignKey("cloud_accounts.id", ondelete="CASCADE"),
-        nullable=False
+        PGUUID(as_uuid=True),
+        ForeignKey("cloud_accounts.id", ondelete="CASCADE"),
+        nullable=False,
     )
 
     # Consent details
@@ -62,16 +65,23 @@ class CodeAnalysisConsent(Base):
 
     # Scope of consent
     scope: Mapped[CodeAnalysisScope] = mapped_column(
-        Enum(CodeAnalysisScope, name='code_analysis_scope', create_type=False),
-        nullable=False, default=CodeAnalysisScope.ALL
+        Enum(CodeAnalysisScope, name="code_analysis_scope", create_type=False),
+        nullable=False,
+        default=CodeAnalysisScope.ALL,
     )
 
     # What they acknowledged
-    acknowledged_risks: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    acknowledged_data_handling: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    acknowledged_risks: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
+    acknowledged_data_handling: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
 
     # Revocation
-    consent_revoked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    consent_revoked: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
     consent_revoked_by: Mapped[Optional[UUID]] = mapped_column(
         PGUUID(as_uuid=True), ForeignKey("users.id"), nullable=True
     )
@@ -85,7 +95,10 @@ class CodeAnalysisConsent(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
     )
 
     # Relationships

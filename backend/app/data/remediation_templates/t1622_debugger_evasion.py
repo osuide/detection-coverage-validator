@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Debugger Evasion",
     tactic_ids=["TA0005", "TA0007"],
     mitre_url="https://attack.mitre.org/techniques/T1622/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries employ debugger detection techniques to avoid reverse engineering analysis. "
@@ -36,7 +35,7 @@ TEMPLATE = RemediationTemplate(
             "Hides malicious payloads from automated analysis systems",
             "Enables selective execution of malicious code only when not being debugged",
             "Reduces likelihood of detection signatures being created",
-            "Protects malware intellectual property from analysis"
+            "Protects malware intellectual property from analysis",
         ],
         known_threat_actors=["Lazarus Group", "Mustang Panda", "APT28"],
         recent_campaigns=[
@@ -44,20 +43,20 @@ TEMPLATE = RemediationTemplate(
                 name="Operation Dream Job",
                 year=2024,
                 description="Lazarus Group campaign using debugger detection in custom malware to evade analysis",
-                reference_url="https://attack.mitre.org/groups/G0032/"
+                reference_url="https://attack.mitre.org/groups/G0032/",
             ),
             Campaign(
                 name="Black Basta Ransomware",
                 year=2023,
                 description="Ransomware employing anti-debugging techniques to avoid sandbox detection and analysis",
-                reference_url="https://attack.mitre.org/software/S1070/"
+                reference_url="https://attack.mitre.org/software/S1070/",
             ),
             Campaign(
                 name="DarkGate Malware",
                 year=2023,
                 description="Malware using IsDebuggerPresent() and exception handling to detect debugging attempts",
-                reference_url="https://attack.mitre.org/software/S1111/"
-            )
+                reference_url="https://attack.mitre.org/software/S1111/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -73,13 +72,12 @@ TEMPLATE = RemediationTemplate(
             "Delayed threat detection and malware characterisation",
             "Incomplete forensic evidence and behavioural telemetry",
             "Potential for undetected malware execution in production",
-            "Increased complexity in threat hunting operations"
+            "Increased complexity in threat hunting operations",
         ],
         typical_attack_phase="defence_evasion",
         often_precedes=["T1059", "T1105", "T1486"],
-        often_follows=["T1204", "T1566", "T1190"]
+        often_follows=["T1204", "T1566", "T1190"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - Lambda Anti-Debugging Behaviour
         DetectionStrategy(
@@ -93,14 +91,14 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message, @logStream
+                query="""fields @timestamp, @message, @logStream
 | filter @message like /(?i)(IsDebuggerPresent|CheckRemoteDebuggerPresent|NtQueryInformationProcess|BeingDebugged|DebuggerPresent)/
   or @message like /(?i)(ptrace|PTRACE_TRACEME|PTRACE_DENY_ATTACH|TracerPid)/
   or @message like /(?i)(OutputDebugString|UnhandledExceptionFilter|SEH|exception.*debug)/
 | stats count(*) as debug_checks by @logStream, bin(5m) as time_window
 | filter debug_checks >= 2
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Lambda anti-debugging behaviour detection for T1622
 
 Parameters:
@@ -150,8 +148,8 @@ Resources:
         fields @timestamp, @message, @logStream
         | filter @message like /(?i)(IsDebuggerPresent|ptrace|BeingDebugged|TracerPid)/
         | stats count(*) as debug_checks by @logStream, bin(5m)
-        | sort @timestamp desc''',
-                terraform_template='''# Lambda anti-debugging behaviour detection for T1622
+        | sort @timestamp desc""",
+                terraform_template="""# Lambda anti-debugging behaviour detection for T1622
 
 variable "lambda_log_group" {
   type        = string
@@ -202,7 +200,7 @@ resource "aws_cloudwatch_query_definition" "debugger_evasion" {
     | stats count(*) as debug_checks by @logStream, bin(5m)
     | sort @timestamp desc
   EOT
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Lambda Anti-Debugging Behaviour Detected",
                 alert_description_template=(
@@ -217,7 +215,7 @@ resource "aws_cloudwatch_query_definition" "debugger_evasion" {
                     "Analyse what the function does when debugger is not detected",
                     "Review IAM permissions granted to the function",
                     "Check for code obfuscation or packing techniques",
-                    "Examine function dependencies and imported libraries"
+                    "Examine function dependencies and imported libraries",
                 ],
                 containment_actions=[
                     "Immediately disable or quarantine the suspicious Lambda function",
@@ -225,8 +223,8 @@ resource "aws_cloudwatch_query_definition" "debugger_evasion" {
                     "Extract and analyse function code in isolated environment",
                     "Check for similar functions deployed by the same principal",
                     "Review CloudTrail for function deployment and update events",
-                    "Enable AWS Lambda Insights for enhanced monitoring"
-                ]
+                    "Enable AWS Lambda Insights for enhanced monitoring",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Legitimate debugging tools rare in Lambda; validate any whitelisted functions",
@@ -235,9 +233,8 @@ resource "aws_cloudwatch_query_definition" "debugger_evasion" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Lambda function logs sent to CloudWatch"]
+            prerequisites=["Lambda function logs sent to CloudWatch"],
         ),
-
         # Strategy 2: AWS - ECS Container Anti-Debugging
         DetectionStrategy(
             strategy_id="t1622-aws-ecs-debug-detection",
@@ -250,14 +247,14 @@ resource "aws_cloudwatch_query_definition" "debugger_evasion" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message, @logStream, @log
+                query="""fields @timestamp, @message, @logStream, @log
 | filter @message like /(?i)(proc.self.status|TracerPid|proc.*status)/
   or @message like /(?i)(ptrace|PTRACE_TRACEME|PTRACE_DENY_ATTACH|anti.*debug)/
   or @message like /(?i)(sysctl.*debug|kern[.]proc|process.*tracer)/
 | stats count(*) as proc_checks by @logStream, bin(10m) as time_window
 | filter proc_checks >= 3
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: ECS container debugger detection for T1622
 
 Parameters:
@@ -307,8 +304,8 @@ Resources:
         fields @timestamp, @message, @logStream
         | filter @message like /(?i)(proc.self.status|TracerPid|ptrace)/
         | stats count(*) as proc_checks by @logStream, bin(10m)
-        | sort @timestamp desc''',
-                terraform_template='''# ECS container debugger detection for T1622
+        | sort @timestamp desc""",
+                terraform_template="""# ECS container debugger detection for T1622
 
 variable "ecs_log_group" {
   type        = string
@@ -358,7 +355,7 @@ resource "aws_cloudwatch_query_definition" "container_debug_checks" {
     | stats count(*) as proc_checks by @logStream, bin(10m)
     | sort @timestamp desc
   EOT
-}''',
+}""",
                 alert_severity="high",
                 alert_title="ECS Container Debugger Detection Activity",
                 alert_description_template=(
@@ -373,7 +370,7 @@ resource "aws_cloudwatch_query_definition" "container_debug_checks" {
                     "Analyse container's subsequent behaviour after checks",
                     "Review task IAM role permissions",
                     "Examine network connections from the container",
-                    "Check if container image is from trusted registry"
+                    "Check if container image is from trusted registry",
                 ],
                 containment_actions=[
                     "Stop the suspicious ECS task immediately",
@@ -382,8 +379,8 @@ resource "aws_cloudwatch_query_definition" "container_debug_checks" {
                     "Check for similar tasks using the same image",
                     "Enable ECS Container Insights for enhanced monitoring",
                     "Scan container image with security tools",
-                    "Review ECR repository access and push events"
-                ]
+                    "Review ECR repository access and push events",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Exclude legitimate monitoring or diagnostic containers; validate security tools",
@@ -392,9 +389,8 @@ resource "aws_cloudwatch_query_definition" "container_debug_checks" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["ECS container logs sent to CloudWatch"]
+            prerequisites=["ECS container logs sent to CloudWatch"],
         ),
-
         # Strategy 3: AWS - EC2 Process Debugging Checks
         DetectionStrategy(
             strategy_id="t1622-aws-ec2-debug-api",
@@ -407,15 +403,15 @@ resource "aws_cloudwatch_query_definition" "container_debug_checks" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn as user, sourceIPAddress, errorCode,
+                query="""fields @timestamp, userIdentity.arn as user, sourceIPAddress, errorCode,
        eventName, requestParameters
 | filter eventSource = "ssm.amazonaws.com" or eventSource = "ec2.amazonaws.com"
 | filter eventName like /(?i)(DescribeInstanceAttribute|GetParameter|DescribeInstances)/
   and requestParameters.attributeName like /(?i)(kernel|platform|instanceType)/
 | stats count(*) as api_checks by sourceIPAddress, user, bin(10m) as time_window
 | filter api_checks >= 5
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: EC2 debugging API pattern detection for T1622
 
 Parameters:
@@ -465,8 +461,8 @@ Resources:
         fields @timestamp, userIdentity.arn, sourceIPAddress, eventName, requestParameters.attributeName
         | filter eventName = "DescribeInstanceAttribute" or eventName = "DescribeInstances"
         | stats count(*) as api_checks by sourceIPAddress, userIdentity.arn, bin(10m)
-        | sort @timestamp desc''',
-                terraform_template='''# EC2 debugging API pattern detection for T1622
+        | sort @timestamp desc""",
+                terraform_template="""# EC2 debugging API pattern detection for T1622
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -516,7 +512,7 @@ resource "aws_cloudwatch_query_definition" "debug_api_checks" {
     | stats count(*) as api_checks by sourceIPAddress, userIdentity.arn, bin(10m)
     | sort @timestamp desc
   EOT
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="EC2 Debugging API Pattern Detected",
                 alert_description_template=(
@@ -529,7 +525,7 @@ resource "aws_cloudwatch_query_definition" "debug_api_checks" {
                     "Check if the source matches known legitimate workloads",
                     "Look for subsequent suspicious activity from the same source",
                     "Review the principal's other recent API calls in CloudTrail",
-                    "Check for any new instances or functions deployed recently"
+                    "Check for any new instances or functions deployed recently",
                 ],
                 containment_actions=[
                     "Investigate the source instance or principal for compromise",
@@ -537,8 +533,8 @@ resource "aws_cloudwatch_query_definition" "debug_api_checks" {
                     "Check for signs of malware on the querying instance",
                     "Consider isolating the instance for forensic analysis",
                     "Enable VPC Flow Logs for network traffic analysis",
-                    "Review and restrict IAM permissions if over-permissive"
-                ]
+                    "Review and restrict IAM permissions if over-permissive",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal infrastructure automation; exclude monitoring and management tools",
@@ -547,9 +543,8 @@ resource "aws_cloudwatch_query_definition" "debug_api_checks" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["CloudTrail enabled", "CloudTrail logs in CloudWatch"]
+            prerequisites=["CloudTrail enabled", "CloudTrail logs in CloudWatch"],
         ),
-
         # Strategy 4: GCP - Cloud Functions Debugger Detection
         DetectionStrategy(
             strategy_id="t1622-gcp-function-debug",
@@ -566,7 +561,7 @@ resource "aws_cloudwatch_query_definition" "debug_api_checks" {
                 gcp_logging_query='''resource.type="cloud_function"
 textPayload=~"(?i)(ptrace|PTRACE_DENY_ATTACH|TracerPid|proc/self/status|anti.*debug|debugger.*detect|IsDebuggerPresent)"
 severity>="WARNING"''',
-                gcp_terraform_template='''# GCP: Cloud Functions anti-debugging behaviour detection
+                gcp_terraform_template="""# GCP: Cloud Functions anti-debugging behaviour detection
 
 variable "project_id" {
   type        = string
@@ -646,7 +641,7 @@ resource "google_monitoring_alert_policy" "function_debug_checks" {
       5. Review IAM bindings and permissions
     EOT
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Cloud Function Debugger Detection",
                 alert_description_template=(
@@ -660,7 +655,7 @@ resource "google_monitoring_alert_policy" "function_debug_checks" {
                     "Analyse what the function does when debugger is not detected",
                     "Review IAM bindings and service account permissions",
                     "Check for code obfuscation or unusual dependencies",
-                    "Examine Cloud Build history if applicable"
+                    "Examine Cloud Build history if applicable",
                 ],
                 containment_actions=[
                     "Immediately disable or delete the suspicious Cloud Function",
@@ -669,8 +664,8 @@ resource "google_monitoring_alert_policy" "function_debug_checks" {
                     "Check for similar functions deployed by the same principal",
                     "Review Cloud Audit Logs for function deployment events",
                     "Enable Cloud Functions detailed monitoring",
-                    "Scan function deployment package with security tools"
-                ]
+                    "Scan function deployment package with security tools",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Legitimate debugging rare in production functions; validate any whitelisted functions",
@@ -679,9 +674,8 @@ resource "google_monitoring_alert_policy" "function_debug_checks" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["Cloud Logging enabled for Cloud Functions"]
+            prerequisites=["Cloud Logging enabled for Cloud Functions"],
         ),
-
         # Strategy 5: GCP - Compute Engine Process Inspection
         DetectionStrategy(
             strategy_id="t1622-gcp-compute-debug",
@@ -695,11 +689,11 @@ resource "google_monitoring_alert_policy" "function_debug_checks" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 (textPayload=~"(?i)(/proc/self/status|TracerPid|proc.*status)" OR
  textPayload=~"(?i)(ptrace|PTRACE_TRACEME|PTRACE_DENY_ATTACH|anti.*debug)" OR
- textPayload=~"(?i)(sysctl.*debug|kern\\.proc|process.*tracer)")''',
-                gcp_terraform_template='''# GCP: Compute Engine debugger detection
+ textPayload=~"(?i)(sysctl.*debug|kern\\.proc|process.*tracer)")""",
+                gcp_terraform_template="""# GCP: Compute Engine debugger detection
 
 variable "project_id" {
   type        = string
@@ -778,7 +772,7 @@ resource "google_monitoring_alert_policy" "instance_debug_checks" {
       6. Check for signs of compromise
     EOT
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Compute Engine Debugger Detection",
                 alert_description_template=(
@@ -793,7 +787,7 @@ resource "google_monitoring_alert_policy" "instance_debug_checks" {
                     "Analyse what processes execute after checks",
                     "Review service account IAM bindings",
                     "Examine network connections and firewall rules",
-                    "Check instance creation and configuration history"
+                    "Check instance creation and configuration history",
                 ],
                 containment_actions=[
                     "Stop the suspicious GCE instance immediately",
@@ -802,8 +796,8 @@ resource "google_monitoring_alert_policy" "instance_debug_checks" {
                     "Check for similar instances in the project",
                     "Enable VPC Flow Logs for network analysis",
                     "Review Cloud Audit Logs for instance operations",
-                    "Scan instance disk with security tools if safe to do so"
-                ]
+                    "Scan instance disk with security tools if safe to do so",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Exclude legitimate monitoring or diagnostic workloads; validate security tools",
@@ -812,17 +806,19 @@ resource "google_monitoring_alert_policy" "instance_debug_checks" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["Cloud Logging enabled for Compute Engine", "Instance logging configured"]
-        )
+            prerequisites=[
+                "Cloud Logging enabled for Compute Engine",
+                "Instance logging configured",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1622-aws-lambda-debug-checks",
         "t1622-gcp-function-debug",
         "t1622-aws-ecs-debug-detection",
         "t1622-gcp-compute-debug",
-        "t1622-aws-ec2-debug-api"
+        "t1622-aws-ec2-debug-api",
     ],
     total_effort_hours=10.0,
-    coverage_improvement="+12% improvement for Defence Evasion tactic"
+    coverage_improvement="+12% improvement for Defence Evasion tactic",
 )

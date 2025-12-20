@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Data Destruction",
     tactic_ids=["TA0040"],
     mitre_url="https://attack.mitre.org/techniques/T1485/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries destroy data to disrupt availability. In cloud environments, "
@@ -36,7 +35,7 @@ TEMPLATE = RemediationTemplate(
             "Ransomware pressure tactic",
             "Evidence destruction",
             "Cloud resources easily deleted",
-            "May affect backups if not protected"
+            "May affect backups if not protected",
         ],
         known_threat_actors=["LAPSUS$", "Sandworm Team", "Lazarus Group"],
         recent_campaigns=[
@@ -44,14 +43,14 @@ TEMPLATE = RemediationTemplate(
                 name="LAPSUS$ Cloud Destruction",
                 year=2024,
                 description="Deleted on-premises and cloud-based systems and resources",
-                reference_url="https://attack.mitre.org/groups/G1004/"
+                reference_url="https://attack.mitre.org/groups/G1004/",
             ),
             Campaign(
                 name="Sandworm CaddyWiper",
                 year=2022,
                 description="Deployed CaddyWiper to wipe OT-related files during Ukraine attacks",
-                reference_url="https://attack.mitre.org/groups/G0034/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0034/",
+            ),
         ],
         prevalence="moderate",
         trend="stable",
@@ -65,13 +64,12 @@ TEMPLATE = RemediationTemplate(
             "Data loss",
             "Business disruption",
             "Recovery costs",
-            "Potential permanent data loss"
+            "Potential permanent data loss",
         ],
         typical_attack_phase="impact",
         often_precedes=[],
-        often_follows=["T1078.004", "T1486"]
+        often_follows=["T1078.004", "T1486"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1485-aws-s3delete",
@@ -86,9 +84,9 @@ TEMPLATE = RemediationTemplate(
                     "detail-type": ["AWS API Call via CloudTrail"],
                     "detail": {
                         "eventName": ["DeleteBucket", "DeleteObject", "DeleteObjects"]
-                    }
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect S3 data destruction
 
 Parameters:
@@ -125,8 +123,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect S3 data destruction
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect S3 data destruction
 
 variable "alert_email" { type = string }
 
@@ -165,7 +163,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="S3 Data Deletion",
                 alert_description_template="S3 bucket/objects deleted by {userIdentity.arn}.",
@@ -173,14 +171,14 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Verify deletion was authorised",
                     "Check what data was deleted",
                     "Review versioning/backup status",
-                    "Check for other destructive actions"
+                    "Check for other destructive actions",
                 ],
                 containment_actions=[
                     "Enable S3 Object Lock",
                     "Enable MFA Delete",
                     "Review delete permissions",
-                    "Restore from backups if available"
-                ]
+                    "Restore from backups if available",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist lifecycle management and authorised cleanup",
@@ -189,9 +187,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled with S3 data events"]
+            prerequisites=["CloudTrail enabled with S3 data events"],
         ),
-
         DetectionStrategy(
             strategy_id="t1485-aws-rds",
             name="AWS RDS Deletion Detection",
@@ -203,11 +200,9 @@ resource "aws_sns_topic_policy" "allow_events" {
                 event_pattern={
                     "source": ["aws.rds"],
                     "detail-type": ["AWS API Call via CloudTrail"],
-                    "detail": {
-                        "eventName": ["DeleteDBInstance", "DeleteDBCluster"]
-                    }
+                    "detail": {"eventName": ["DeleteDBInstance", "DeleteDBCluster"]},
                 },
-                terraform_template='''# Detect RDS deletion
+                terraform_template="""# Detect RDS deletion
 
 variable "alert_email" { type = string }
 
@@ -246,7 +241,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="RDS Database Deleted",
                 alert_description_template="RDS database deleted by {userIdentity.arn}.",
@@ -254,13 +249,13 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Verify deletion was authorised",
                     "Check if snapshot was created",
                     "Review backup status",
-                    "Check for other deletions"
+                    "Check for other deletions",
                 ],
                 containment_actions=[
                     "Enable deletion protection",
                     "Review RDS permissions",
-                    "Restore from snapshot if needed"
-                ]
+                    "Restore from snapshot if needed",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="RDS deletions are typically rare",
@@ -269,9 +264,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1485-gcp-storage",
             name="GCP Storage Deletion Detection",
@@ -282,7 +276,7 @@ resource "aws_sns_topic_policy" "allow_events" {
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName=~"storage.(buckets|objects).delete"''',
-                gcp_terraform_template='''# GCP: Detect storage deletion
+                gcp_terraform_template="""# GCP: Detect storage deletion
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -317,7 +311,7 @@ resource "google_monitoring_alert_policy" "storage_delete" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GCP: Storage Deletion",
                 alert_description_template="GCS bucket/objects deleted.",
@@ -325,13 +319,13 @@ resource "google_monitoring_alert_policy" "storage_delete" {
                     "Verify deletion was authorised",
                     "Check what was deleted",
                     "Review backup status",
-                    "Check for other deletions"
+                    "Check for other deletions",
                 ],
                 containment_actions=[
                     "Enable Object Versioning",
                     "Enable Retention Policies",
-                    "Review IAM permissions"
-                ]
+                    "Review IAM permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist lifecycle management",
@@ -340,11 +334,10 @@ resource "google_monitoring_alert_policy" "storage_delete" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled"],
+        ),
     ],
-
     recommended_order=["t1485-aws-s3delete", "t1485-aws-rds", "t1485-gcp-storage"],
     total_effort_hours=2.0,
-    coverage_improvement="+25% improvement for Impact tactic"
+    coverage_improvement="+25% improvement for Impact tactic",
 )

@@ -39,7 +39,7 @@ class ScanSchedule(Base):
     # Schedule configuration
     frequency: Mapped[ScheduleFrequency] = mapped_column(
         SQLEnum(ScheduleFrequency, values_callable=lambda x: [e.value for e in x]),
-        default=ScheduleFrequency.DAILY
+        default=ScheduleFrequency.DAILY,
     )
     cron_expression: Mapped[Optional[str]] = mapped_column(
         String(100), nullable=True

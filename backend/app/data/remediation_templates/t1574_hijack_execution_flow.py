@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Hijack Execution Flow",
     tactic_ids=["TA0003", "TA0004", "TA0005"],
     mitre_url="https://attack.mitre.org/techniques/T1574/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries execute malicious payloads by intercepting how operating systems "
@@ -38,28 +37,38 @@ TEMPLATE = RemediationTemplate(
             "Difficult to detect as it mimics legitimate program behaviour",
             "Can escalate privileges by hijacking privileged processes",
             "Evades detection by not creating suspicious files",
-            "Survives reboots and system updates"
+            "Survives reboots and system updates",
         ],
-        known_threat_actors=["APT41", "DarkGate", "Denis", "Dtrack", "Nightdoor", "Pikabot", "Raspberry Robin", "Saint Bot", "ShimRat"],
+        known_threat_actors=[
+            "APT41",
+            "DarkGate",
+            "Denis",
+            "Dtrack",
+            "Nightdoor",
+            "Pikabot",
+            "Raspberry Robin",
+            "Saint Bot",
+            "ShimRat",
+        ],
         recent_campaigns=[
             Campaign(
                 name="APT41 Library Manipulation",
                 year=2024,
                 description="APT41 established persistence via malicious library modifications to Import Address Tables",
-                reference_url="https://attack.mitre.org/groups/G0096/"
+                reference_url="https://attack.mitre.org/groups/G0096/",
             ),
             Campaign(
                 name="Saint Bot ntdll.dll Hijacking",
                 year=2024,
                 description="Saint Bot loaded alternate ntdll.dll files to evade endpoint detection",
-                reference_url="https://attack.mitre.org/software/S1018/"
+                reference_url="https://attack.mitre.org/software/S1018/",
             ),
             Campaign(
                 name="Container Image Supply Chain Attacks",
                 year=2024,
                 description="Multiple threat actors poisoning container images with malicious libraries in shared registries",
-                reference_url="https://www.aquasec.com/cloud-native-academy/supply-chain-security/container-security-best-practices/"
-            )
+                reference_url="https://www.aquasec.com/cloud-native-academy/supply-chain-security/container-security-best-practices/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -75,13 +84,12 @@ TEMPLATE = RemediationTemplate(
             "Privilege escalation to root or administrator",
             "Compromise of multiple systems through shared images",
             "Data theft through compromised application execution",
-            "Supply chain compromise affecting customers"
+            "Supply chain compromise affecting customers",
         ],
         typical_attack_phase="persistence",
         often_precedes=["T1003", "T1068", "T1082"],
-        often_follows=["T1078", "T1190", "T1610"]
+        often_follows=["T1078", "T1190", "T1610"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - Container Image Modifications
         DetectionStrategy(
@@ -98,9 +106,9 @@ TEMPLATE = RemediationTemplate(
             implementation=DetectionImplementation(
                 guardduty_finding_types=[
                     "Execution:Runtime/MaliciousFile",
-                    "Execution:Container/SuspiciousProcess"
+                    "Execution:Container/SuspiciousProcess",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: ECR image scanning with GuardDuty for execution hijacking detection
 
 Parameters:
@@ -154,8 +162,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# ECR image scanning for execution hijacking detection
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# ECR image scanning for execution hijacking detection
 
 variable "alert_email" {
   type = string
@@ -215,7 +223,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="ECR: Critical Vulnerabilities in Container Image",
                 alert_description_template=(
@@ -227,15 +235,15 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Check if vulnerable libraries match known hijacking patterns",
                     "Identify which containers are running the affected image",
                     "Review image build process for supply chain compromise",
-                    "Check image signature and verify image provenance"
+                    "Check image signature and verify image provenance",
                 ],
                 containment_actions=[
                     "Prevent deployment of vulnerable images using admission controllers",
                     "Update base images and rebuild containers",
                     "Implement image signing and verification",
                     "Enable GuardDuty Runtime Monitoring for running containers",
-                    "Quarantine affected images in ECR"
-                ]
+                    "Quarantine affected images in ECR",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Set severity thresholds based on risk tolerance; suppress known acceptable vulnerabilities",
@@ -244,9 +252,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",
             estimated_monthly_cost="$0.09 per image scan",
-            prerequisites=["ECR repository with images"]
+            prerequisites=["ECR repository with images"],
         ),
-
         # Strategy 2: AWS - Instance Userdata Modification
         DetectionStrategy(
             strategy_id="t1574-aws-userdata-mod",
@@ -264,10 +271,10 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "detail-type": ["AWS API Call via CloudTrail"],
                     "detail": {
                         "eventSource": ["ec2.amazonaws.com"],
-                        "eventName": ["ModifyInstanceAttribute"]
-                    }
+                        "eventName": ["ModifyInstanceAttribute"],
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect EC2 userdata modifications for execution hijacking
 
 Parameters:
@@ -293,8 +300,8 @@ Resources:
       State: ENABLED
       Targets:
         - Id: SNSAlert
-          Arn: !Ref SNSTopicArn''',
-                terraform_template='''# Detect EC2 userdata modifications
+          Arn: !Ref SNSTopicArn""",
+                terraform_template="""# Detect EC2 userdata modifications
 
 variable "sns_topic_arn" {
   type = string
@@ -317,7 +324,7 @@ resource "aws_cloudwatch_event_rule" "userdata_mod" {
 resource "aws_cloudwatch_event_target" "sns" {
   rule = aws_cloudwatch_event_rule.userdata_mod.name
   arn  = var.sns_topic_arn
-}''',
+}""",
                 alert_severity="high",
                 alert_title="EC2 Instance Userdata Modified",
                 alert_description_template=(
@@ -330,15 +337,15 @@ resource "aws_cloudwatch_event_target" "sns" {
                     "Check if the modification was authorised",
                     "Identify who made the change and verify their credentials",
                     "Review CloudTrail for other suspicious activity from this principal",
-                    "Check if instance has been rebooted since modification"
+                    "Check if instance has been rebooted since modification",
                 ],
                 containment_actions=[
                     "Stop the affected instance if compromised",
                     "Revert userdata to known-good configuration",
                     "Review and rotate compromised credentials",
                     "Enable IMDSv2 to prevent metadata exploitation",
-                    "Implement Systems Manager for secure configuration management"
-                ]
+                    "Implement Systems Manager for secure configuration management",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised configuration management tools and CI/CD pipelines",
@@ -347,9 +354,8 @@ resource "aws_cloudwatch_event_target" "sns" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled", "EventBridge configured"]
+            prerequisites=["CloudTrail enabled", "EventBridge configured"],
         ),
-
         # Strategy 3: AWS - Runtime Process Execution Monitoring
         DetectionStrategy(
             strategy_id="t1574-aws-runtime-monitor",
@@ -367,9 +373,9 @@ resource "aws_cloudwatch_event_target" "sns" {
                     "Execution:Runtime/SuspiciousProcess",
                     "Execution:Runtime/ModifiedBinary",
                     "Execution:Runtime/NewLibraryLoaded",
-                    "PrivilegeEscalation:Runtime/ContainerMountsHostDirectory"
+                    "PrivilegeEscalation:Runtime/ContainerMountsHostDirectory",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty Runtime Monitoring for execution hijacking
 
 Parameters:
@@ -418,8 +424,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# GuardDuty Runtime Monitoring for execution hijacking
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# GuardDuty Runtime Monitoring for execution hijacking
 
 variable "alert_email" {
   type = string
@@ -479,7 +485,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GuardDuty: Suspicious Runtime Execution Detected",
                 alert_description_template=(
@@ -493,7 +499,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Examine loaded libraries for suspicious or unexpected paths",
                     "Review file system for modified binaries or libraries",
                     "Correlate with network activity for command and control",
-                    "Check container image provenance and scan results"
+                    "Check container image provenance and scan results",
                 ],
                 containment_actions=[
                     "Isolate affected instance or container immediately",
@@ -501,8 +507,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Terminate compromised processes",
                     "Rebuild instance or container from known-good images",
                     "Review and update security group rules",
-                    "Enable EBS encryption and snapshots for evidence"
-                ]
+                    "Enable EBS encryption and snapshots for evidence",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Baseline normal runtime behaviour; suppress findings for known debugging activities",
@@ -511,9 +517,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$4.60 per instance/month for Runtime Monitoring",
-            prerequisites=["GuardDuty enabled", "ECS or EKS with Runtime Monitoring enabled"]
+            prerequisites=[
+                "GuardDuty enabled",
+                "ECS or EKS with Runtime Monitoring enabled",
+            ],
         ),
-
         # Strategy 4: GCP - Container Analysis and Binary Authorization
         DetectionStrategy(
             strategy_id="t1574-gcp-container-analysis",
@@ -530,7 +538,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                 gcp_logging_query='''resource.type="container_analysis_note"
 severity>=WARNING
 protoPayload.request.vulnerability.severity=~"CRITICAL|HIGH"''',
-                gcp_terraform_template='''# GCP: Container Analysis and Binary Authorization
+                gcp_terraform_template="""# GCP: Container Analysis and Binary Authorization
 
 variable "project_id" {
   type = string
@@ -630,7 +638,7 @@ resource "google_monitoring_alert_policy" "critical_vulns" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Critical Vulnerabilities in Container Image",
                 alert_description_template=(
@@ -642,15 +650,15 @@ resource "google_monitoring_alert_policy" "critical_vulns" {
                     "Check if vulnerabilities affect libraries used for dynamic loading",
                     "Identify which clusters are running vulnerable images",
                     "Review image build pipeline for supply chain risks",
-                    "Verify image signatures and attestations"
+                    "Verify image signatures and attestations",
                 ],
                 containment_actions=[
                     "Block deployment of vulnerable images using Binary Authorization",
                     "Update base images and rebuild containers",
                     "Implement continuous vulnerability scanning",
                     "Use distroless or minimal base images",
-                    "Enable GKE Security Posture dashboard"
-                ]
+                    "Enable GKE Security Posture dashboard",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Set acceptable vulnerability severity levels; maintain exception list for accepted risks",
@@ -659,9 +667,8 @@ resource "google_monitoring_alert_policy" "critical_vulns" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$0.26 per image + $5/month per policy",
-            prerequisites=["GKE cluster", "Artifact Registry or Container Registry"]
+            prerequisites=["GKE cluster", "Artifact Registry or Container Registry"],
         ),
-
         # Strategy 5: GCP - Compute Instance Metadata Modifications
         DetectionStrategy(
             strategy_id="t1574-gcp-metadata-mod",
@@ -678,7 +685,7 @@ resource "google_monitoring_alert_policy" "critical_vulns" {
                 gcp_logging_query='''protoPayload.methodName=~"(setMetadata|setCommonInstanceMetadata)"
 protoPayload.serviceName="compute.googleapis.com"
 protoPayload.request.metadata.items.key=~"(startup-script|shutdown-script)"''',
-                gcp_terraform_template='''# GCP: Detect instance metadata modifications
+                gcp_terraform_template="""# GCP: Detect instance metadata modifications
 
 variable "project_id" {
   type = string
@@ -740,7 +747,7 @@ resource "google_monitoring_alert_policy" "metadata_mod" {
       3. Check for other suspicious activity from the same principal
     EOT
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Instance Startup Script Modified",
                 alert_description_template=(
@@ -752,15 +759,15 @@ resource "google_monitoring_alert_policy" "metadata_mod" {
                     "Check if the modification was authorised",
                     "Identify the service account or user that made the change",
                     "Review audit logs for other suspicious activity",
-                    "Verify current running state of the instance"
+                    "Verify current running state of the instance",
                 ],
                 containment_actions=[
                     "Stop the affected instance if compromised",
                     "Revert metadata to known-good configuration",
                     "Review and rotate service account keys",
                     "Implement organisation policy constraints for metadata",
-                    "Use OS Config for secure configuration management"
-                ]
+                    "Use OS Config for secure configuration management",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised deployment tools and infrastructure-as-code pipelines",
@@ -769,17 +776,16 @@ resource "google_monitoring_alert_policy" "metadata_mod" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1574-aws-ecr-image-scan",
         "t1574-gcp-container-analysis",
         "t1574-aws-runtime-monitor",
         "t1574-aws-userdata-mod",
-        "t1574-gcp-metadata-mod"
+        "t1574-gcp-metadata-mod",
     ],
     total_effort_hours=5.0,
-    coverage_improvement="+30% improvement for Persistence and Privilege Escalation tactics"
+    coverage_improvement="+30% improvement for Persistence and Privilege Escalation tactics",
 )

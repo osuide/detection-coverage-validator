@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Deobfuscate/Decode Files or Information",
     tactic_ids=["TA0005"],  # Defense Evasion
     mitre_url="https://attack.mitre.org/techniques/T1140/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries reverse obfuscation applied to artefacts to enable the use of hidden "
@@ -39,32 +38,39 @@ TEMPLATE = RemediationTemplate(
             "Conceals malicious tools during transfer and storage",
             "Evades file-based security scanning of obfuscated artefacts",
             "Allows manual DLL mapping and shellcode decryption at runtime",
-            "Facilitates payload reassembly from fragmented binary components"
+            "Facilitates payload reassembly from fragmented binary components",
         ],
         known_threat_actors=[
-            "APT28", "APT29", "Lazarus Group", "OilRig", "Kimsuky",
-            "FIN7", "Volt Typhoon", "Conti operators", "REvil operators",
-            "LockBit operators"
+            "APT28",
+            "APT29",
+            "Lazarus Group",
+            "OilRig",
+            "Kimsuky",
+            "FIN7",
+            "Volt Typhoon",
+            "Conti operators",
+            "REvil operators",
+            "LockBit operators",
         ],
         recent_campaigns=[
             Campaign(
                 name="SolarWinds Compromise (C0024)",
                 year=2020,
                 description="APT29 used 7-Zip decompression to extract Raindrop malware components during the SolarWinds supply chain attack",
-                reference_url="https://attack.mitre.org/campaigns/C0024/"
+                reference_url="https://attack.mitre.org/campaigns/C0024/",
             ),
             Campaign(
                 name="APT28 Nearest Neighbour Campaign",
                 year=2023,
                 description="APT28 used certutil -decode to decode base64-encoded payloads and WinRAR GUI for data extraction",
-                reference_url="https://attack.mitre.org/groups/G0007/"
+                reference_url="https://attack.mitre.org/groups/G0007/",
             ),
             Campaign(
                 name="Operation Dust Storm",
                 year=2016,
                 description="VBS code decoded and executed malicious payloads to establish persistence and exfiltrate data",
-                reference_url="https://attack.mitre.org/software/S0213/"
-            )
+                reference_url="https://attack.mitre.org/software/S0213/",
+            ),
         ],
         prevalence="very_common",
         trend="increasing",
@@ -83,13 +89,12 @@ TEMPLATE = RemediationTemplate(
             "Data exfiltration using decoded stealer malware",
             "Credential theft via decoded keyloggers and infostealers",
             "Persistent backdoor access through runtime-decoded RATs",
-            "Cloud resource compromise from decoded serverless malware"
+            "Cloud resource compromise from decoded serverless malware",
         ],
         typical_attack_phase="defense_evasion",
         often_precedes=["T1059", "T1105", "T1003", "T1486"],
-        often_follows=["T1027", "T1566", "T1190", "T1078"]
+        often_follows=["T1027", "T1566", "T1190", "T1078"],
     ),
-
     detection_strategies=[
         # Strategy 1: Certutil and Decoding Utility Detection
         DetectionStrategy(
@@ -104,13 +109,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message, instanceId, userName, commandLine
+                query="""fields @timestamp, @message, instanceId, userName, commandLine
 | filter @message like /certutil.*-decode|certutil.*-f|base64 -d|openssl.*-d|python.*decode|perl.*decode/
 | filter @message like /[.]txt|[.]dat|[.]bin|[.]tmp|[.]enc|[.]b64/
 | stats count() as decode_operations by instanceId, userName, bin(10m)
 | filter decode_operations > 2
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect certutil and decoding utility abuse
 
 Parameters:
@@ -168,8 +173,8 @@ Resources:
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref SecurityAlertTopic''',
-                terraform_template='''# Detect certutil and decoding utility abuse
+            Resource: !Ref SecurityAlertTopic""",
+                terraform_template="""# Detect certutil and decoding utility abuse
 
 variable "cloudwatch_log_group" {
   type        = string
@@ -218,7 +223,7 @@ resource "aws_cloudwatch_metric_alarm" "decoding_activity" {
   threshold           = 2
   comparison_operator = "GreaterThanThreshold"
   alarm_actions       = [aws_sns_topic.deobfuscation_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Decoding Utility Abuse Detected",
                 alert_description_template=(
@@ -232,7 +237,7 @@ resource "aws_cloudwatch_metric_alarm" "decoding_activity" {
                     "Examine the user or service account executing the decoding commands",
                     "Check for subsequent execution of the decoded file",
                     "Review CloudTrail for S3 downloads or external data transfers",
-                    "Analyse the decoded content for malicious indicators"
+                    "Analyse the decoded content for malicious indicators",
                 ],
                 containment_actions=[
                     "Isolate the instance to prevent decoded payload execution",
@@ -240,8 +245,8 @@ resource "aws_cloudwatch_metric_alarm" "decoding_activity" {
                     "Terminate any processes spawned after decoding activity",
                     "Delete decoded payloads from the instance filesystem",
                     "Rotate credentials that may have been compromised",
-                    "Review and restrict use of decoding utilities via Systems Manager"
-                ]
+                    "Review and restrict use of decoding utilities via Systems Manager",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Exclude legitimate certificate operations and known deployment automation using certutil",
@@ -250,9 +255,11 @@ resource "aws_cloudwatch_metric_alarm" "decoding_activity" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$8-15 depending on log volume",
-            prerequisites=["CloudWatch Logs Agent with process logging", "Bash history or auditd logging enabled"]
+            prerequisites=[
+                "CloudWatch Logs Agent with process logging",
+                "Bash history or auditd logging enabled",
+            ],
         ),
-
         # Strategy 2: PowerShell Decode and Decompression
         DetectionStrategy(
             strategy_id="t1140-powershell-decode",
@@ -266,13 +273,13 @@ resource "aws_cloudwatch_metric_alarm" "decoding_activity" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message, commandLine, userName
+                query="""fields @timestamp, @message, commandLine, userName
 | filter commandLine like /FromBase64String|IO[.]Compression|ConvertFrom-SecureString|BinaryFormatter/i
 | filter commandLine like /GZipStream|DeflateStream|MemoryStream|Decompress/i
   or commandLine like /System[.]Text[.]Encoding|ToCharArray|ToString[(]/i
 | stats count() as decode_commands by userName, bin(15m)
 | filter decode_commands > 1
-| sort @timestamp desc''',
+| sort @timestamp desc""",
                 cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect PowerShell decoding and decompression activity
 
@@ -323,7 +330,7 @@ Resources:
         - MetricName: ArchiveDecompression
           MetricNamespace: Security/T1140
           MetricValue: "1"''',
-                terraform_template='''# Detect PowerShell decoding and decompression
+                terraform_template="""# Detect PowerShell decoding and decompression
 
 variable "ssm_log_group" {
   type        = string
@@ -383,7 +390,7 @@ resource "aws_cloudwatch_log_metric_filter" "archive_decompression" {
     namespace = "Security/T1140"
     value     = "1"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="PowerShell Decoding Activity Detected",
                 alert_description_template=(
@@ -396,7 +403,7 @@ resource "aws_cloudwatch_log_metric_filter" "archive_decompression" {
                     "Check for file writes following the decoding operation",
                     "Review process tree for child processes spawned after decoding",
                     "Examine CloudTrail for S3 or external downloads preceding this activity",
-                    "Search for related deobfuscation commands in the session history"
+                    "Search for related deobfuscation commands in the session history",
                 ],
                 containment_actions=[
                     "Terminate the PowerShell session immediately",
@@ -404,8 +411,8 @@ resource "aws_cloudwatch_log_metric_filter" "archive_decompression" {
                     "Review and revoke IAM credentials used in the session",
                     "Delete decoded artefacts from the instance filesystem",
                     "Isolate the instance for forensic analysis",
-                    "Enable PowerShell script block logging for future visibility"
-                ]
+                    "Enable PowerShell script block logging for future visibility",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist known deployment scripts using compression; exclude legitimate certificate operations",
@@ -414,9 +421,11 @@ resource "aws_cloudwatch_log_metric_filter" "archive_decompression" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="$10-18",
-            prerequisites=["SSM Session Manager logging enabled", "PowerShell execution logging configured"]
+            prerequisites=[
+                "SSM Session Manager logging enabled",
+                "PowerShell execution logging configured",
+            ],
         ),
-
         # Strategy 3: XOR and Runtime Decryption
         DetectionStrategy(
             strategy_id="t1140-runtime-decrypt",
@@ -430,14 +439,14 @@ resource "aws_cloudwatch_log_metric_filter" "archive_decompression" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message, processName, commandLine
+                query="""fields @timestamp, @message, processName, commandLine
 | filter @message like /VirtualAlloc|VirtualProtect|CreateThread|LoadLibrary|GetProcAddress/
 | filter @message like /xor|decrypt|RC4|AES|shellcode|payload/i
   or processName like /rundll32|regsvr32|mshta|wscript|cscript/
 | stats count() as decrypt_operations by instanceId, processName, bin(5m)
 | filter decrypt_operations > 3
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect runtime decryption and manual DLL mapping
 
 Parameters:
@@ -495,8 +504,8 @@ Resources:
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref SecurityAlertTopic''',
-                terraform_template='''# Detect runtime decryption and manual DLL mapping
+            Resource: !Ref SecurityAlertTopic""",
+                terraform_template="""# Detect runtime decryption and manual DLL mapping
 
 variable "cloudwatch_log_group" {
   type        = string
@@ -545,7 +554,7 @@ resource "aws_cloudwatch_metric_alarm" "runtime_decryption" {
   threshold           = 3
   comparison_operator = "GreaterThanThreshold"
   alarm_actions       = [aws_sns_topic.runtime_decrypt_alerts.arn]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Runtime Decryption Activity Detected",
                 alert_description_template=(
@@ -558,7 +567,7 @@ resource "aws_cloudwatch_metric_alarm" "runtime_decryption" {
                     "Review process command line and DLL load events",
                     "Check for network connections from the suspicious process",
                     "Examine recent file downloads or S3 transfers to the instance",
-                    "Search for additional indicators of compromise on the instance"
+                    "Search for additional indicators of compromise on the instance",
                 ],
                 containment_actions=[
                     "Terminate the suspicious process and all child processes immediately",
@@ -566,8 +575,8 @@ resource "aws_cloudwatch_metric_alarm" "runtime_decryption" {
                     "Capture full memory dump for forensic analysis",
                     "Delete any suspicious executables or libraries",
                     "Rotate all credentials accessible from the instance",
-                    "Review security group rules and remove unnecessary access"
-                ]
+                    "Review security group rules and remove unnecessary access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Requires EDR or advanced logging; baseline legitimate software using memory operations",
@@ -576,9 +585,11 @@ resource "aws_cloudwatch_metric_alarm" "runtime_decryption" {
             implementation_effort=EffortLevel.HIGH,
             implementation_time="3 hours",
             estimated_monthly_cost="$20-35 depending on EDR integration",
-            prerequisites=["Advanced process logging or EDR agent", "Sysmon or equivalent monitoring"]
+            prerequisites=[
+                "Advanced process logging or EDR agent",
+                "Sysmon or equivalent monitoring",
+            ],
         ),
-
         # Strategy 4: GCP Deobfuscation Detection
         DetectionStrategy(
             strategy_id="t1140-gcp-decode",
@@ -592,12 +603,12 @@ resource "aws_cloudwatch_metric_alarm" "runtime_decryption" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type=("gce_instance" OR "cloud_function" OR "cloud_run_revision")
+                gcp_logging_query="""resource.type=("gce_instance" OR "cloud_function" OR "cloud_run_revision")
 (textPayload=~"base64 -d|certutil.*-decode|openssl.*-d|python.*decode|unzip|gunzip|7z x"
 OR protoPayload.request.commandLine=~"FromBase64String|IO.Compression|GZipStream|Decompress"
 OR textPayload=~"VirtualAlloc|decrypt|xor.*key|RC4|AES.*decrypt")
-severity>=WARNING''',
-                gcp_terraform_template='''# GCP: Detect decoding and deobfuscation activity
+severity>=WARNING""",
+                gcp_terraform_template="""# GCP: Detect decoding and deobfuscation activity
 
 variable "project_id" {
   type        = string
@@ -671,7 +682,7 @@ resource "google_monitoring_alert_policy" "deobfuscation_detection" {
     content   = "Decoding or deobfuscation activity detected. Investigate for potential malicious payload extraction."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Deobfuscation Activity Detected",
                 alert_description_template=(
@@ -684,7 +695,7 @@ resource "google_monitoring_alert_policy" "deobfuscation_detection" {
                     "Check VPC Flow Logs for network activity from the resource",
                     "Examine recent API calls and file operations",
                     "Look for file uploads to Cloud Storage with suspicious patterns",
-                    "Review the resource's IAM permissions and recent permission changes"
+                    "Review the resource's IAM permissions and recent permission changes",
                 ],
                 containment_actions=[
                     "Stop the GCE instance or disable the Cloud Function/Cloud Run service",
@@ -692,8 +703,8 @@ resource "google_monitoring_alert_policy" "deobfuscation_detection" {
                     "Create a snapshot of the instance for forensic analysis",
                     "Delete decoded payloads from the filesystem",
                     "Update VPC firewall rules to isolate the resource",
-                    "Enable VPC Service Controls to restrict API access"
-                ]
+                    "Enable VPC Service Controls to restrict API access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Exclude known CI/CD pipelines and deployment automation using compression",
@@ -702,9 +713,11 @@ resource "google_monitoring_alert_policy" "deobfuscation_detection" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$15-28",
-            prerequisites=["Cloud Logging API enabled", "Ops Agent on GCE instances for enhanced logging"]
+            prerequisites=[
+                "Cloud Logging API enabled",
+                "Ops Agent on GCE instances for enhanced logging",
+            ],
         ),
-
         # Strategy 5: Lambda Function Decoding
         DetectionStrategy(
             strategy_id="t1140-lambda-decode",
@@ -718,14 +731,14 @@ resource "google_monitoring_alert_policy" "deobfuscation_detection" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message, @logStream, requestId
+                query="""fields @timestamp, @message, @logStream, requestId
 | filter @message like /base64[.]b64decode|atob|Buffer[.]from.*base64|decode[(]|decrypt[(]/
 | filter @message like /zlib|gzip|decompress|inflate|unzip/i
   or @message like /Crypto|AES|RC4|XOR.*key/
 | stats count() as decode_operations by @logStream, bin(10m)
 | filter decode_operations > 2
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect Lambda function decoding and deobfuscation
 
 Parameters:
@@ -781,8 +794,8 @@ Resources:
       State: ENABLED
       Targets:
         - Id: AlertTopic
-          Arn: !Ref SNSTopicArn''',
-                terraform_template='''# Detect Lambda function decoding operations
+          Arn: !Ref SNSTopicArn""",
+                terraform_template="""# Detect Lambda function decoding operations
 
 variable "lambda_log_group_prefix" {
   type        = string
@@ -861,7 +874,7 @@ resource "aws_sns_topic_policy" "lambda_alerts" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Lambda Function Decoding Detected",
                 alert_description_template=(
@@ -874,7 +887,7 @@ resource "aws_sns_topic_policy" "lambda_alerts" {
                     "Review CloudWatch Logs for the complete execution flow",
                     "Check the function's IAM role permissions for sensitive access",
                     "Identify API calls made by the function during/after decoding",
-                    "Review recent deployments and who updated the function"
+                    "Review recent deployments and who updated the function",
                 ],
                 containment_actions=[
                     "Disable the Lambda function immediately",
@@ -882,8 +895,8 @@ resource "aws_sns_topic_policy" "lambda_alerts" {
                     "Review and delete any S3 objects or data written by the function",
                     "Check for secrets or credentials exposed in environment variables",
                     "Delete the function if confirmed malicious",
-                    "Enable Lambda code signing to prevent unauthorised deployments"
-                ]
+                    "Enable Lambda code signing to prevent unauthorised deployments",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline legitimate Lambda functions using compression or encoding for data processing",
@@ -892,17 +905,19 @@ resource "aws_sns_topic_policy" "lambda_alerts" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$8-18",
-            prerequisites=["CloudTrail enabled", "Lambda execution logs sent to CloudWatch"]
-        )
+            prerequisites=[
+                "CloudTrail enabled",
+                "Lambda execution logs sent to CloudWatch",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1140-certutil-decode",
         "t1140-powershell-decode",
         "t1140-lambda-decode",
         "t1140-gcp-decode",
-        "t1140-runtime-decrypt"
+        "t1140-runtime-decrypt",
     ],
     total_effort_hours=9.5,
-    coverage_improvement="+30% improvement for Defence Evasion tactic"
+    coverage_improvement="+30% improvement for Defence Evasion tactic",
 )

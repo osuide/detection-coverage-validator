@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Application Layer Protocol: Web Protocols",
     tactic_ids=["TA0011"],  # Command and Control
     mitre_url="https://attack.mitre.org/techniques/T1071/001/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries leverage web protocols (HTTP/HTTPS and WebSocket) to blend command and "
@@ -41,7 +40,7 @@ TEMPLATE = RemediationTemplate(
             "HTTP headers and cookies provide numerous concealment options",
             "WebSocket enables persistent bidirectional communication",
             "Difficult to distinguish from legitimate application behaviour",
-            "Wide availability of tools supporting HTTP-based C2"
+            "Wide availability of tools supporting HTTP-based C2",
         ],
         known_threat_actors=[
             "APT28",
@@ -58,33 +57,33 @@ TEMPLATE = RemediationTemplate(
             "MuddyWater",
             "Sandworm Team",
             "FIN8",
-            "Cobalt Group"
+            "Cobalt Group",
         ],
         recent_campaigns=[
             Campaign(
                 name="3CX Supply Chain Attack",
                 year=2023,
                 description="Sophisticated supply chain compromise using HTTP-based C2 communications to control infected endpoints via legitimate-looking web traffic",
-                reference_url="https://attack.mitre.org/campaigns/C0022/"
+                reference_url="https://attack.mitre.org/campaigns/C0022/",
             ),
             Campaign(
                 name="Operation Dream Job",
                 year=2023,
                 description="Lazarus Group campaign using HTTPS-based C2 infrastructure to manage implants and exfiltrate data from targeted organisations",
-                reference_url="https://attack.mitre.org/campaigns/C0022/"
+                reference_url="https://attack.mitre.org/campaigns/C0022/",
             ),
             Campaign(
                 name="ArcaneDoor",
                 year=2024,
                 description="State-sponsored campaign exploiting network devices with custom HTTP-based backdoors for persistent C2 access",
-                reference_url="https://attack.mitre.org/campaigns/C0035/"
+                reference_url="https://attack.mitre.org/campaigns/C0035/",
             ),
             Campaign(
                 name="2015 Ukraine Electric Power Attack",
                 year=2015,
                 description="BlackEnergy malware used HTTP protocols for command and control in critical infrastructure attack",
-                reference_url="https://attack.mitre.org/software/S0089/"
-            )
+                reference_url="https://attack.mitre.org/software/S0089/",
+            ),
         ],
         prevalence="very common",
         trend="stable",
@@ -103,13 +102,17 @@ TEMPLATE = RemediationTemplate(
             "Difficulty in detection leading to extended dwell time",
             "Potential for lateral movement and privilege escalation",
             "Compliance violations from undetected malicious communications",
-            "Compromise of SSL/TLS trust model"
+            "Compromise of SSL/TLS trust model",
         ],
         typical_attack_phase="command_and_control",
         often_precedes=["T1041", "T1567", "T1048"],  # Exfiltration techniques
-        often_follows=["T1078.004", "T1190", "T1566", "T1203"]  # Initial Access techniques
+        often_follows=[
+            "T1078.004",
+            "T1190",
+            "T1566",
+            "T1203",
+        ],  # Initial Access techniques
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - WAF HTTP Anomaly Detection
         DetectionStrategy(
@@ -120,14 +123,14 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, httpRequest.clientIp, httpRequest.uri, httpRequest.headers, action
+                query="""fields @timestamp, httpRequest.clientIp, httpRequest.uri, httpRequest.headers, action
 | filter httpRequest.headers like /User-Agent.*python|curl|wget|powershell/
   or httpRequest.uri like /\\/api\\/.*[a-zA-Z0-9]{50,}/
   or httpRequest.headers like /Cookie:.*[a-zA-Z0-9+\/=]{100,}/
 | stats count(*) as suspicious_requests by httpRequest.clientIp, bin(5m)
 | filter suspicious_requests > 10
-| sort suspicious_requests desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort suspicious_requests desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect suspicious HTTP patterns for C2 activity
 
 Parameters:
@@ -172,8 +175,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       AlarmActions:
-        - !Ref AlertTopic''',
-                terraform_template='''# Detect suspicious HTTP patterns for C2 activity
+        - !Ref AlertTopic""",
+                terraform_template="""# Detect suspicious HTTP patterns for C2 activity
 
 variable "waf_log_group" {
   type        = string
@@ -222,7 +225,7 @@ resource "aws_cloudwatch_metric_alarm" "http_c2" {
   threshold           = 20
   alarm_description   = "Alert on suspicious HTTP patterns indicative of C2"
   alarm_actions       = [aws_sns_topic.http_c2_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Suspicious HTTP C2 Pattern Detected",
                 alert_description_template="Suspicious HTTP patterns detected from {clientIp}. Unusual user agents or high-entropy data in headers may indicate C2 activity.",
@@ -233,7 +236,7 @@ resource "aws_cloudwatch_metric_alarm" "http_c2" {
                     "Identify the source IP and associated AWS resources",
                     "Review application logs for the timeframe",
                     "Check destination domain reputation and ownership",
-                    "Analyse request frequency and timing patterns"
+                    "Analyse request frequency and timing patterns",
                 ],
                 containment_actions=[
                     "Block suspicious client IPs via WAF",
@@ -241,8 +244,8 @@ resource "aws_cloudwatch_metric_alarm" "http_c2" {
                     "Isolate affected instances from network",
                     "Review and restrict security group egress rules",
                     "Enable enhanced WAF logging",
-                    "Deploy endpoint detection on affected resources"
-                ]
+                    "Deploy endpoint detection on affected resources",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate automation tools, monitoring agents, and CI/CD pipelines using non-browser user agents",
@@ -251,9 +254,8 @@ resource "aws_cloudwatch_metric_alarm" "http_c2" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$15-40",
-            prerequisites=["AWS WAF enabled", "WAF logging to CloudWatch"]
+            prerequisites=["AWS WAF enabled", "WAF logging to CloudWatch"],
         ),
-
         # Strategy 2: AWS - ALB Access Log Analysis
         DetectionStrategy(
             strategy_id="t1071-001-aws-alb",
@@ -263,12 +265,12 @@ resource "aws_cloudwatch_metric_alarm" "http_c2" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, client_ip, request_url, user_agent, elb_status_code, sent_bytes
+                query="""fields @timestamp, client_ip, request_url, user_agent, elb_status_code, sent_bytes
 | filter user_agent not like /Mozilla|Chrome|Safari|Edge/
 | stats count(*) as request_count, avg(sent_bytes) as avg_response by client_ip, user_agent, bin(5m)
 | filter request_count > 30 and avg_response < 5000
-| sort request_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort request_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect HTTP beaconing behaviour via ALB logs
 
 Parameters:
@@ -313,8 +315,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       AlarmActions:
-        - !Ref AlertTopic''',
-                terraform_template='''# Detect HTTP beaconing behaviour via ALB logs
+        - !Ref AlertTopic""",
+                terraform_template="""# Detect HTTP beaconing behaviour via ALB logs
 
 variable "alb_log_group" {
   type        = string
@@ -363,7 +365,7 @@ resource "aws_cloudwatch_metric_alarm" "beaconing" {
   threshold           = 50
   alarm_description   = "Alert on HTTP beaconing behaviour"
   alarm_actions       = [aws_sns_topic.beaconing_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="HTTP Beaconing Pattern Detected",
                 alert_description_template="HTTP beaconing behaviour detected from {client_ip}. Regular small requests may indicate C2 check-ins.",
@@ -374,7 +376,7 @@ resource "aws_cloudwatch_metric_alarm" "beaconing" {
                     "Check response sizes and status codes",
                     "Examine request URIs for encoded data",
                     "Review instance processes and scheduled tasks",
-                    "Correlate with other suspicious activities"
+                    "Correlate with other suspicious activities",
                 ],
                 containment_actions=[
                     "Block suspicious client IPs at security group level",
@@ -382,8 +384,8 @@ resource "aws_cloudwatch_metric_alarm" "beaconing" {
                     "Review and terminate suspicious processes",
                     "Enable enhanced monitoring and logging",
                     "Deploy EDR solution on affected instances",
-                    "Review IAM roles and permissions"
-                ]
+                    "Review IAM roles and permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate health checks, monitoring tools, and API clients. Establish baseline for normal request patterns.",
@@ -392,9 +394,11 @@ resource "aws_cloudwatch_metric_alarm" "beaconing" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-25",
-            prerequisites=["ALB access logging enabled", "Logs delivered to CloudWatch"]
+            prerequisites=[
+                "ALB access logging enabled",
+                "Logs delivered to CloudWatch",
+            ],
         ),
-
         # Strategy 3: AWS - VPC Flow Logs HTTPS Analysis
         DetectionStrategy(
             strategy_id="t1071-001-aws-vpc",
@@ -404,13 +408,13 @@ resource "aws_cloudwatch_metric_alarm" "beaconing" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcAddr, dstAddr, dstPort, bytes
+                query="""fields @timestamp, srcAddr, dstAddr, dstPort, bytes
 | filter dstPort = 443 and protocol = 6
 | stats count() as connection_count, sum(bytes) as total_bytes by srcAddr, dstAddr, bin(5m)
 | filter connection_count > 100
 | sort connection_count desc
-| limit 50''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| limit 50""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect unusual HTTPS connection patterns for C2 detection
 
 Parameters:
@@ -455,8 +459,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       AlarmActions:
-        - !Ref AlertTopic''',
-                terraform_template='''# Detect unusual HTTPS connection patterns
+        - !Ref AlertTopic""",
+                terraform_template="""# Detect unusual HTTPS connection patterns
 
 variable "vpc_flow_log_group" {
   type        = string
@@ -505,7 +509,7 @@ resource "aws_cloudwatch_metric_alarm" "https_anomaly" {
   threshold           = 200
   alarm_description   = "Alert on unusual HTTPS connection patterns"
   alarm_actions       = [aws_sns_topic.https_anomaly_alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Unusual HTTPS Connection Pattern Detected",
                 alert_description_template="High-frequency HTTPS connections detected from {srcAddr} to {dstAddr}. May indicate C2 activity.",
@@ -516,7 +520,7 @@ resource "aws_cloudwatch_metric_alarm" "https_anomaly" {
                     "Analyse connection timing and duration patterns",
                     "Review application logs for context",
                     "Check for certificate anomalies or pinning",
-                    "Examine instance for malware or backdoors"
+                    "Examine instance for malware or backdoors",
                 ],
                 containment_actions=[
                     "Block suspicious destination IPs via security groups",
@@ -524,8 +528,8 @@ resource "aws_cloudwatch_metric_alarm" "https_anomaly" {
                     "Isolate affected instances for investigation",
                     "Review and restrict outbound internet access",
                     "Deploy network-based IDS/IPS",
-                    "Review and update security group rules"
-                ]
+                    "Review and update security group rules",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist legitimate high-traffic HTTPS destinations (CDNs, APIs, SaaS platforms). Establish baseline for each application.",
@@ -534,9 +538,8 @@ resource "aws_cloudwatch_metric_alarm" "https_anomaly" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",
             estimated_monthly_cost="$5-15",
-            prerequisites=["VPC Flow Logs enabled", "CloudWatch Logs"]
+            prerequisites=["VPC Flow Logs enabled", "CloudWatch Logs"],
         ),
-
         # Strategy 4: GCP - Cloud Armor HTTP Anomaly Detection
         DetectionStrategy(
             strategy_id="t1071-001-gcp-armor",
@@ -547,13 +550,13 @@ resource "aws_cloudwatch_metric_alarm" "https_anomaly" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="http_load_balancer"
+                gcp_logging_query="""resource.type="http_load_balancer"
 jsonPayload.enforcedSecurityPolicy.outcome="DENY"
 OR (
   httpRequest.userAgent!~"Mozilla|Chrome|Safari|Edge"
   AND httpRequest.requestUrl=~".*[a-zA-Z0-9]{50,}.*"
-)''',
-                gcp_terraform_template='''# GCP: Detect HTTP anomalies via Cloud Armor
+)""",
+                gcp_terraform_template="""# GCP: Detect HTTP anomalies via Cloud Armor
 
 variable "project_id" {
   type        = string
@@ -616,7 +619,7 @@ resource "google_monitoring_alert_policy" "http_c2_detection" {
   alert_strategy {
     auto_close = "86400s"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Suspicious HTTP C2 Pattern Detected",
                 alert_description_template="Suspicious HTTP patterns detected in Cloud Armor logs. Unusual user agents or high-entropy URIs may indicate C2 activity.",
@@ -627,7 +630,7 @@ resource "google_monitoring_alert_policy" "http_c2_detection" {
                     "Review Load Balancer backend logs",
                     "Identify affected GCP resources",
                     "Check for other suspicious activities from same source",
-                    "Analyse request frequency and timing"
+                    "Analyse request frequency and timing",
                 ],
                 containment_actions=[
                     "Add Cloud Armor rules to block suspicious patterns",
@@ -635,8 +638,8 @@ resource "google_monitoring_alert_policy" "http_c2_detection" {
                     "Enable additional Cloud Armor security policies",
                     "Isolate affected backend instances",
                     "Review and restrict VPC firewall rules",
-                    "Deploy additional security monitoring"
-                ]
+                    "Deploy additional security monitoring",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate automation, API clients, and monitoring tools. Review and tune Cloud Armor rules regularly.",
@@ -645,9 +648,12 @@ resource "google_monitoring_alert_policy" "http_c2_detection" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$20-50",
-            prerequisites=["Cloud Armor enabled", "HTTP(S) Load Balancer", "Cloud Logging"]
+            prerequisites=[
+                "Cloud Armor enabled",
+                "HTTP(S) Load Balancer",
+                "Cloud Logging",
+            ],
         ),
-
         # Strategy 5: GCP - VPC Flow Logs HTTPS Analysis
         DetectionStrategy(
             strategy_id="t1071-001-gcp-vpc",
@@ -658,12 +664,12 @@ resource "google_monitoring_alert_policy" "http_c2_detection" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_subnetwork"
+                gcp_logging_query="""resource.type="gce_subnetwork"
 logName=~"projects/.*/logs/compute.googleapis.com%2Fvpc_flows"
 jsonPayload.connection.dest_port:(443 OR 80 OR 8080 OR 8443)
 jsonPayload.connection.protocol=6
-jsonPayload.bytes_sent<5000''',
-                gcp_terraform_template='''# GCP: Detect HTTP/HTTPS beaconing in VPC Flow Logs
+jsonPayload.bytes_sent<5000""",
+                gcp_terraform_template="""# GCP: Detect HTTP/HTTPS beaconing in VPC Flow Logs
 
 variable "project_id" {
   type        = string
@@ -725,7 +731,7 @@ resource "google_monitoring_alert_policy" "beaconing_detection" {
   alert_strategy {
     auto_close = "86400s"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: HTTP/HTTPS Beaconing Pattern Detected",
                 alert_description_template="HTTP/HTTPS beaconing behaviour detected in VPC Flow Logs. Regular small connections may indicate C2 activity.",
@@ -736,7 +742,7 @@ resource "google_monitoring_alert_policy" "beaconing_detection" {
                     "Analyse VPC Flow Logs for patterns",
                     "Review VM instance metadata and startup scripts",
                     "Check running processes on affected VMs",
-                    "Correlate with other security findings"
+                    "Correlate with other security findings",
                 ],
                 containment_actions=[
                     "Isolate affected VMs using VPC firewall rules",
@@ -744,8 +750,8 @@ resource "google_monitoring_alert_policy" "beaconing_detection" {
                     "Block suspicious destination IPs",
                     "Revoke service account credentials",
                     "Review and restrict egress firewall rules",
-                    "Deploy security agents on affected instances"
-                ]
+                    "Deploy security agents on affected instances",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate health checks, monitoring, and API polling. Establish per-application baselines.",
@@ -754,9 +760,8 @@ resource "google_monitoring_alert_policy" "beaconing_detection" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$15-35",
-            prerequisites=["VPC Flow Logs enabled", "Cloud Logging"]
+            prerequisites=["VPC Flow Logs enabled", "Cloud Logging"],
         ),
-
         # Strategy 6: AWS - GuardDuty C2 Detection
         DetectionStrategy(
             strategy_id="t1071-001-aws-guardduty",
@@ -772,9 +777,9 @@ resource "google_monitoring_alert_policy" "beaconing_detection" {
                     "Trojan:EC2/BlackholeTraffic",
                     "Trojan:EC2/DropPoint",
                     "UnauthorizedAccess:EC2/TorClient",
-                    "UnauthorizedAccess:EC2/TorRelay"
+                    "UnauthorizedAccess:EC2/TorRelay",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Configure GuardDuty for HTTP C2 detection
 
 Parameters:
@@ -827,8 +832,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Configure GuardDuty for HTTP C2 detection
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Configure GuardDuty for HTTP C2 detection
 
 variable "alert_email" {
   type        = string
@@ -888,7 +893,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.c2_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GuardDuty HTTP C2 Activity Detected",
                 alert_description_template="GuardDuty detected {type} on instance {resource.instanceDetails.instanceId}. This indicates HTTP-based command and control activity.",
@@ -899,7 +904,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Review CloudTrail logs for suspicious API activity",
                     "Analyse VPC Flow Logs for connection patterns",
                     "Examine instance for malware or backdoors",
-                    "Check for lateral movement indicators"
+                    "Check for lateral movement indicators",
                 ],
                 containment_actions=[
                     "Isolate affected instances immediately",
@@ -908,8 +913,8 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Block malicious IPs via security groups",
                     "Review and rotate any exposed credentials",
                     "Deploy replacement instances from clean AMIs",
-                    "Update security group rules to prevent recurrence"
-                ]
+                    "Update security group rules to prevent recurrence",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Review and suppress findings for known security tools and monitoring systems. Maintain updated threat intelligence feeds.",
@@ -918,18 +923,17 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$30-100 depending on data volume",
-            prerequisites=["GuardDuty enabled", "VPC Flow Logs", "DNS Logs"]
-        )
+            prerequisites=["GuardDuty enabled", "VPC Flow Logs", "DNS Logs"],
+        ),
     ],
-
     recommended_order=[
         "t1071-001-aws-guardduty",
         "t1071-001-aws-waf",
         "t1071-001-gcp-armor",
         "t1071-001-aws-alb",
         "t1071-001-aws-vpc",
-        "t1071-001-gcp-vpc"
+        "t1071-001-gcp-vpc",
     ],
     total_effort_hours=7.0,
-    coverage_improvement="+30% improvement for Command and Control tactic detection"
+    coverage_improvement="+30% improvement for Command and Control tactic detection",
 )

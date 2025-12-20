@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Compromise Accounts",
     tactic_ids=["TA0042"],
     mitre_url="https://attack.mitre.org/techniques/T1586/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries compromise existing accounts on social media, email, or cloud "
@@ -37,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Access to existing social networks",
             "Facilitate credential phishing",
             "Cloud account access for infrastructure",
-            "Evade detection through legitimate appearance"
+            "Evade detection through legitimate appearance",
         ],
         known_threat_actors=[],
         recent_campaigns=[],
@@ -54,13 +53,12 @@ TEMPLATE = RemediationTemplate(
             "Social engineering campaigns",
             "Cloud infrastructure abuse",
             "Reputational damage",
-            "Supply chain attack vector"
+            "Supply chain attack vector",
         ],
         typical_attack_phase="resource_development",
         often_precedes=["T1566.001", "T1566.002", "T1598", "T1078.004"],
-        often_follows=["T1589", "T1594"]
+        often_follows=["T1589", "T1594"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1586-aws-cloudtrail-anomalous",
@@ -70,14 +68,14 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, sourceIPAddress, eventName, userAgent
+                query="""fields @timestamp, userIdentity.principalId, sourceIPAddress, eventName, userAgent
 | filter eventName in ["ConsoleLogin", "AssumeRole", "GetSessionToken"]
 | filter errorCode != "AccessDenied"
 | stats count(*) as logins, count_distinct(sourceIPAddress) as ip_count,
         count_distinct(userAgent) as agent_count by userIdentity.principalId, bin(1h)
 | filter ip_count > 3 or agent_count > 2
-| sort logins desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort logins desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect compromised AWS accounts via anomalous authentication
 
 Parameters:
@@ -124,8 +122,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       AlarmActions:
-        - !Ref AlertTopic''',
-                terraform_template='''# AWS: Detect compromised accounts via anomalous authentication
+        - !Ref AlertTopic""",
+                terraform_template="""# AWS: Detect compromised accounts via anomalous authentication
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -174,7 +172,7 @@ resource "aws_cloudwatch_metric_alarm" "compromised_account" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.compromised_account_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Potential Compromised AWS Account Detected",
                 alert_description_template="Anomalous authentication patterns detected for {principalId} with multiple source IPs or user agents.",
@@ -184,7 +182,7 @@ resource "aws_cloudwatch_metric_alarm" "compromised_account" {
                     "Verify user agent strings against known devices",
                     "Review recent API calls and resource changes",
                     "Check for MFA usage on suspicious logins",
-                    "Contact account owner to verify activity"
+                    "Contact account owner to verify activity",
                 ],
                 containment_actions=[
                     "Reset account credentials immediately",
@@ -192,8 +190,8 @@ resource "aws_cloudwatch_metric_alarm" "compromised_account" {
                     "Enable MFA if not already active",
                     "Review and revoke suspicious IAM permissions",
                     "Check for unauthorised resource creation",
-                    "Enable CloudTrail across all regions"
-                ]
+                    "Enable CloudTrail across all regions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Adjust thresholds for travelling users or VPN usage. Whitelist known automation patterns.",
@@ -202,9 +200,8 @@ resource "aws_cloudwatch_metric_alarm" "compromised_account" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-60 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled with logging to CloudWatch Logs"]
+            prerequisites=["CloudTrail enabled with logging to CloudWatch Logs"],
         ),
-
         DetectionStrategy(
             strategy_id="t1586-aws-guardduty",
             name="AWS GuardDuty Compromised Credentials",
@@ -213,11 +210,11 @@ resource "aws_cloudwatch_metric_alarm" "compromised_account" {
             aws_service="guardduty",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, detail.type, detail.severity, detail.resource.accessKeyDetails.userName
+                query="""fields @timestamp, detail.type, detail.severity, detail.resource.accessKeyDetails.userName
 | filter detail.type like /UnauthorizedAccess|PenTest|CredentialAccess/
 | filter detail.severity >= 7
-| sort @timestamp desc''',
-                terraform_template='''# AWS: GuardDuty findings for compromised credentials
+| sort @timestamp desc""",
+                terraform_template="""# AWS: GuardDuty findings for compromised credentials
 
 variable "alert_email" {
   type        = string
@@ -281,7 +278,7 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
       Resource = aws_sns_topic.guardduty_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GuardDuty: Compromised Credentials Detected",
                 alert_description_template="GuardDuty detected compromised credential activity: {finding_type}",
@@ -291,7 +288,7 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
                     "Check CloudTrail for unauthorised API calls",
                     "Review resource changes and data access",
                     "Determine compromise timeline and scope",
-                    "Check for lateral movement indicators"
+                    "Check for lateral movement indicators",
                 ],
                 containment_actions=[
                     "Rotate compromised credentials immediately",
@@ -299,8 +296,8 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
                     "Attach deny-all policy to affected principal",
                     "Review and remove unauthorised resources",
                     "Enable MFA for all accounts",
-                    "Implement IP-based access restrictions"
-                ]
+                    "Implement IP-based access restrictions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="GuardDuty findings are pre-tuned; review severity 7+ findings carefully",
@@ -309,9 +306,8 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="15-30 minutes",
             estimated_monthly_cost="$30-100+ depending on CloudTrail volume",
-            prerequisites=["GuardDuty enabled", "EventBridge configured"]
+            prerequisites=["GuardDuty enabled", "EventBridge configured"],
         ),
-
         DetectionStrategy(
             strategy_id="t1586-gcp-login-anomaly",
             name="GCP Anomalous Login Detection",
@@ -324,7 +320,7 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
                 gcp_logging_query='''protoPayload.serviceName="login.googleapis.com"
 protoPayload.methodName="google.login.LoginService.loginSuccess"
 severity="NOTICE"''',
-                gcp_terraform_template='''# GCP: Detect compromised accounts via anomalous authentication
+                gcp_terraform_template="""# GCP: Detect compromised accounts via anomalous authentication
 
 variable "project_id" {
   type        = string
@@ -446,7 +442,7 @@ resource "google_monitoring_alert_policy" "credential_stuffing" {
   }
 
   notification_channels = [google_monitoring_notification_channel.security_email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Anomalous Account Activity Detected",
                 alert_description_template="Unusual authentication patterns detected for GCP account.",
@@ -456,7 +452,7 @@ resource "google_monitoring_alert_policy" "credential_stuffing" {
                     "Verify device and browser fingerprints",
                     "Review API activity after suspicious logins",
                     "Check for new service account key creation",
-                    "Verify workspace admin activity"
+                    "Verify workspace admin activity",
                 ],
                 containment_actions=[
                     "Reset account password immediately",
@@ -464,8 +460,8 @@ resource "google_monitoring_alert_policy" "credential_stuffing" {
                     "Enforce 2-Step Verification",
                     "Review and revoke suspicious OAuth grants",
                     "Check for unauthorised GCP resources",
-                    "Enable advanced security features in Workspace"
-                ]
+                    "Enable advanced security features in Workspace",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Adjust thresholds for organisations with mobile workforce. Consider implementing context-aware access policies.",
@@ -474,9 +470,11 @@ resource "google_monitoring_alert_policy" "credential_stuffing" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Audit Logs enabled", "Login audit logging configured"]
+            prerequisites=[
+                "Cloud Audit Logs enabled",
+                "Login audit logging configured",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1586-aws-iam-access-analyzer",
             name="AWS IAM Access Analyzer External Access",
@@ -485,11 +483,11 @@ resource "google_monitoring_alert_policy" "credential_stuffing" {
             aws_service="access_analyzer",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, detail.resourceType, detail.principal.AWS, detail.findingType
+                query="""fields @timestamp, detail.resourceType, detail.principal.AWS, detail.findingType
 | filter detail.findingType = "ExternalAccess"
 | filter detail.isPublic = false
-| sort @timestamp desc''',
-                terraform_template='''# AWS: IAM Access Analyzer for external access detection
+| sort @timestamp desc""",
+                terraform_template="""# AWS: IAM Access Analyzer for external access detection
 
 variable "alert_email" {
   type        = string
@@ -553,7 +551,7 @@ resource "aws_sns_topic_policy" "eventbridge_publish" {
       Resource = aws_sns_topic.access_analyzer_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="External Access to AWS Resource Detected",
                 alert_description_template="IAM Access Analyzer detected external access to {resourceType}.",
@@ -563,7 +561,7 @@ resource "aws_sns_topic_policy" "eventbridge_publish" {
                     "Check resource policy and sharing configuration",
                     "Review CloudTrail for resource modification events",
                     "Verify if external access is authorised",
-                    "Check for other resources with similar access"
+                    "Check for other resources with similar access",
                 ],
                 containment_actions=[
                     "Remove unauthorised external access",
@@ -571,8 +569,8 @@ resource "aws_sns_topic_policy" "eventbridge_publish" {
                     "Review and rotate potentially compromised credentials",
                     "Enable SCPs to prevent cross-account sharing",
                     "Implement resource sharing approval workflows",
-                    "Archive Access Analyzer findings once resolved"
-                ]
+                    "Archive Access Analyzer findings once resolved",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Review legitimate cross-account access patterns and archive expected findings",
@@ -581,16 +579,15 @@ resource "aws_sns_topic_policy" "eventbridge_publish" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-15",
-            prerequisites=["IAM Access Analyzer enabled"]
-        )
+            prerequisites=["IAM Access Analyzer enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1586-aws-guardduty",
         "t1586-aws-cloudtrail-anomalous",
         "t1586-gcp-login-anomaly",
-        "t1586-aws-iam-access-analyzer"
+        "t1586-aws-iam-access-analyzer",
     ],
     total_effort_hours=4.5,
-    coverage_improvement="+15% improvement for Resource Development tactic detection"
+    coverage_improvement="+15% improvement for Resource Development tactic detection",
 )

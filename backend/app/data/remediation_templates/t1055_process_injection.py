@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Process Injection",
     tactic_ids=["TA0005", "TA0004"],
     mitre_url="https://attack.mitre.org/techniques/T1055/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries inject arbitrary code into the address space of a separate live process. "
@@ -40,7 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Potentially elevates privileges",
             "Bypasses application control mechanisms",
             "Enables credential theft from process memory",
-            "Difficult to detect without advanced monitoring"
+            "Difficult to detect without advanced monitoring",
         ],
         known_threat_actors=[
             "APT32",
@@ -56,33 +55,33 @@ TEMPLATE = RemediationTemplate(
             "BlackByte",
             "REvil",
             "Ryuk",
-            "Sandworm Team"
+            "Sandworm Team",
         ],
         recent_campaigns=[
             Campaign(
                 name="2015 Ukraine Electric Power Attack",
                 year=2015,
                 description="Sandworm Team loaded BlackEnergy into svchost.exe for command and control operations",
-                reference_url="https://attack.mitre.org/campaigns/C0034/"
+                reference_url="https://attack.mitre.org/campaigns/C0034/",
             ),
             Campaign(
                 name="3CX Supply Chain Attack",
                 year=2023,
                 description="AppleJeus injected C2 modules into Chrome, Firefox, and Edge browser processes",
-                reference_url="https://attack.mitre.org/campaigns/C0026/"
+                reference_url="https://attack.mitre.org/campaigns/C0026/",
             ),
             Campaign(
                 name="ArcaneDoor",
                 year=2024,
                 description="Injected malicious code into AAA and Crash Dump processes on Cisco ASA devices",
-                reference_url="https://attack.mitre.org/campaigns/C0039/"
+                reference_url="https://attack.mitre.org/campaigns/C0039/",
             ),
             Campaign(
                 name="Operation Wocao",
                 year=2019,
                 description="Process injection used for code execution and privilege escalation",
-                reference_url="https://attack.mitre.org/groups/G0116/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0116/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -100,13 +99,12 @@ TEMPLATE = RemediationTemplate(
             "Data exfiltration through legitimate processes",
             "Persistence mechanisms difficult to remove",
             "Lateral movement using stolen credentials",
-            "Ransomware deployment masked as legitimate activity"
+            "Ransomware deployment masked as legitimate activity",
         ],
         typical_attack_phase="privilege_escalation",
         often_precedes=["T1003", "T1078", "T1095", "T1071"],
-        often_follows=["T1190", "T1133", "T1078.004", "T1552.005"]
+        often_follows=["T1190", "T1133", "T1078.004", "T1552.005"],
     ),
-
     detection_strategies=[
         # AWS Strategy 1: GuardDuty Runtime Monitoring
         DetectionStrategy(
@@ -128,9 +126,9 @@ TEMPLATE = RemediationTemplate(
                     "PrivilegeEscalation:Runtime/RuncExploitAttempt",
                     "DefenseEvasion:Runtime/FilelessExecution",
                     "DefenseEvasion:Runtime/ProcessInjection.Proc",
-                    "DefenseEvasion:Runtime/ProcessInjection.Ptrace"
+                    "DefenseEvasion:Runtime/ProcessInjection.Ptrace",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty Runtime Monitoring for process injection detection
 
 Parameters:
@@ -200,8 +198,8 @@ Outputs:
     Value: !Ref GuardDutyDetector
   AlertTopicArn:
     Description: SNS topic for alerts
-    Value: !Ref ProcessInjectionAlertTopic''',
-                terraform_template='''# GuardDuty Runtime Monitoring for process injection detection
+    Value: !Ref ProcessInjectionAlertTopic""",
+                terraform_template="""# GuardDuty Runtime Monitoring for process injection detection
 
 variable "alert_email" {
   description = "Email address for security alerts"
@@ -303,7 +301,7 @@ output "guardduty_detector_id" {
 output "alert_topic_arn" {
   description = "SNS topic for alerts"
   value       = aws_sns_topic.process_injection_alerts.arn
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GuardDuty: Process Injection Detected",
                 alert_description_template=(
@@ -319,7 +317,7 @@ output "alert_topic_arn" {
                     "Analyse network connections from the affected process",
                     "Review CloudTrail for suspicious API calls before injection",
                     "Identify the initial access vector (compromised credentials, exploit, etc.)",
-                    "Search for similar behaviour across other instances"
+                    "Search for similar behaviour across other instances",
                 ],
                 containment_actions=[
                     "Immediately isolate the affected instance/container",
@@ -328,8 +326,8 @@ output "alert_topic_arn" {
                     "Rotate all credentials accessible from the instance",
                     "Review and revoke IAM roles/instance profiles",
                     "Enable advanced threat protection on remaining resources",
-                    "Deploy security patches to prevent re-exploitation"
-                ]
+                    "Deploy security patches to prevent re-exploitation",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist legitimate software that uses code injection (debuggers, monitoring tools). Exclude authorised DevOps processes.",
@@ -338,9 +336,12 @@ output "alert_topic_arn" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",
             estimated_monthly_cost="$4.60 per EC2 instance + $2 per ECS/EKS task (Runtime Monitoring pricing)",
-            prerequisites=["AWS account with GuardDuty access", "EC2/ECS/EKS workloads", "SSM agent for EC2 automated deployment"]
+            prerequisites=[
+                "AWS account with GuardDuty access",
+                "EC2/ECS/EKS workloads",
+                "SSM agent for EC2 automated deployment",
+            ],
         ),
-
         # AWS Strategy 2: CloudWatch Logs Analysis for Suspicious Process Behaviour
         DetectionStrategy(
             strategy_id="t1055-cloudwatch-process-monitoring",
@@ -354,15 +355,15 @@ output "alert_topic_arn" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query=r'''fields @timestamp, @message, host, process_name, syscall
+                query=r"""fields @timestamp, @message, host, process_name, syscall
 | filter @message like /ptrace|process_vm_writev|process_vm_readv|/
    or @message like /VirtualAllocEx|WriteProcessMemory|CreateRemoteThread/
    or @message like /\/proc\/\d+\/mem|\/proc\/\d+\/maps/
    or @message like /PTRACE_POKETEXT|PTRACE_POKEDATA|PTRACE_SETREGS/
 | parse @message /(?<injector_process>\S+).*(?<target_pid>\d+)/
 | sort @timestamp desc
-| limit 100''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| limit 100""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: CloudWatch-based process injection detection via system logs
 
 Parameters:
@@ -427,8 +428,8 @@ Resources:
 Outputs:
   AlarmName:
     Description: CloudWatch alarm name
-    Value: !Ref ProcessInjectionAlarm''',
-                terraform_template='''# CloudWatch-based process injection detection via system logs
+    Value: !Ref ProcessInjectionAlarm""",
+                terraform_template="""# CloudWatch-based process injection detection via system logs
 
 variable "system_log_group" {
   description = "CloudWatch log group for system/audit logs"
@@ -498,7 +499,7 @@ resource "aws_sns_topic_policy" "alerts" {
 output "alarm_name" {
   description = "CloudWatch alarm name"
   value       = aws_cloudwatch_metric_alarm.process_injection.alarm_name
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Process Injection Indicators Detected",
                 alert_description_template=(
@@ -513,7 +514,7 @@ output "alarm_name" {
                     "Examine the command line arguments of both processes",
                     "Review network connections from the target process",
                     "Check for recently modified binaries or libraries",
-                    "Search for persistence mechanisms (cron, systemd, startup scripts)"
+                    "Search for persistence mechanisms (cron, systemd, startup scripts)",
                 ],
                 containment_actions=[
                     "Kill the malicious injector process",
@@ -521,8 +522,8 @@ output "alarm_name" {
                     "Enable kernel security modules (SELinux, AppArmor)",
                     "Restrict ptrace capabilities via sysctl (kernel.yama.ptrace_scope=3)",
                     "Deploy intrusion detection tools (OSSEC, Wazuh)",
-                    "Review and harden instance security groups"
-                ]
+                    "Review and harden instance security groups",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude debuggers (gdb, lldb), monitoring tools (strace, sysdig), and authorised DevOps processes. Requires Linux audit logging (auditd) configured.",
@@ -531,9 +532,12 @@ output "alarm_name" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$10-30 (depends on log volume)",
-            prerequisites=["Linux audit logging (auditd) enabled", "CloudWatch agent configured", "System logs forwarded to CloudWatch"]
+            prerequisites=[
+                "Linux audit logging (auditd) enabled",
+                "CloudWatch agent configured",
+                "System logs forwarded to CloudWatch",
+            ],
         ),
-
         # GCP Strategy: Cloud Logging for Process Injection
         DetectionStrategy(
             strategy_id="t1055-gcp-logging-process-injection",
@@ -548,14 +552,14 @@ output "alarm_name" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance" OR resource.type="k8s_container"
+                gcp_logging_query="""resource.type="gce_instance" OR resource.type="k8s_container"
 (jsonPayload.syscall="ptrace" OR
  jsonPayload.syscall="process_vm_writev" OR
  jsonPayload.syscall="process_vm_readv" OR
  textPayload=~"PTRACE_POKETEXT|PTRACE_POKEDATA|PTRACE_SETREGS" OR
  textPayload=~"/proc/[0-9]+/mem")
-severity >= WARNING''',
-                gcp_terraform_template='''# GCP: Process injection detection via Cloud Logging
+severity >= WARNING""",
+                gcp_terraform_template="""# GCP: Process injection detection via Cloud Logging
 
 variable "project_id" {
   description = "GCP project ID"
@@ -667,7 +671,7 @@ output "log_metric_name" {
 output "alert_policy_id" {
   description = "Alert policy ID"
   value       = google_monitoring_alert_policy.process_injection.id
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GCP: Process Injection Detected",
                 alert_description_template=(
@@ -681,7 +685,7 @@ output "alert_policy_id" {
                     "Check for recently loaded shared libraries (.so files)",
                     "Review VPC Flow Logs for suspicious network activity",
                     "Identify initial access vector (SSH keys, service accounts, vulnerabilities)",
-                    "Search for similar patterns across other instances"
+                    "Search for similar patterns across other instances",
                 ],
                 containment_actions=[
                     "Terminate the compromised instance or pod",
@@ -690,8 +694,8 @@ output "alert_policy_id" {
                     "Enable OS Login and disable direct SSH access",
                     "Deploy Security Command Center Premium for advanced threat detection",
                     "Configure shielded VMs for future instances",
-                    "Review and tighten firewall rules"
-                ]
+                    "Review and tighten firewall rules",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude authorised debuggers, monitoring agents (Cloud Ops Agent), and DevOps tools. Requires audit logging enabled on GCE instances.",
@@ -700,9 +704,12 @@ output "alert_policy_id" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="$5-20 (depends on log ingestion volume)",
-            prerequisites=["GCE/GKE audit logging enabled", "Cloud Logging configured", "OS-level audit daemon (auditd) installed"]
+            prerequisites=[
+                "GCE/GKE audit logging enabled",
+                "Cloud Logging configured",
+                "OS-level audit daemon (auditd) installed",
+            ],
         ),
-
         # AWS Strategy 3: Security Hub Custom Findings
         DetectionStrategy(
             strategy_id="t1055-securityhub-aggregation",
@@ -716,7 +723,7 @@ output "alert_policy_id" {
             aws_service="securityhub",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Security Hub aggregation for process injection findings
 
 Parameters:
@@ -794,8 +801,8 @@ Outputs:
     Value: !Ref SecurityHub
   InsightArn:
     Description: Process injection insight ARN
-    Value: !GetAtt ProcessInjectionInsight.InsightArn''',
-                terraform_template='''# Security Hub aggregation for process injection findings
+    Value: !GetAtt ProcessInjectionInsight.InsightArn""",
+                terraform_template="""# Security Hub aggregation for process injection findings
 
 variable "alert_email" {
   description = "Email address for critical findings"
@@ -895,7 +902,7 @@ output "securityhub_arn" {
 output "insight_arn" {
   description = "Process injection insight ARN"
   value       = aws_securityhub_insight.process_injection.arn
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Security Hub: Process Injection Finding",
                 alert_description_template=(
@@ -909,15 +916,15 @@ output "insight_arn" {
                     "Correlate with GuardDuty, Inspector, and CloudTrail logs",
                     "Identify the detection source (native AWS or third-party EDR)",
                     "Review compliance status and remediation recommendations",
-                    "Check for related findings in the same time window"
+                    "Check for related findings in the same time window",
                 ],
                 containment_actions=[
                     "Follow remediation guidance from Security Hub",
                     "Enable automated response via Security Hub custom actions",
                     "Quarantine affected resources using Systems Manager",
                     "Update security standards and compliance frameworks",
-                    "Deploy compensating controls via AWS Config"
-                ]
+                    "Deploy compensating controls via AWS Config",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Security Hub aggregates findings from multiple sources. Tune individual detection mechanisms (GuardDuty, Inspector) to reduce false positives.",
@@ -926,16 +933,19 @@ output "insight_arn" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$0.0010 per finding + underlying service costs",
-            prerequisites=["Security Hub enabled", "GuardDuty enabled", "Optional: Third-party EDR integration"]
-        )
+            prerequisites=[
+                "Security Hub enabled",
+                "GuardDuty enabled",
+                "Optional: Third-party EDR integration",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1055-guardduty-runtime",
         "t1055-securityhub-aggregation",
         "t1055-cloudwatch-process-monitoring",
-        "t1055-gcp-logging-process-injection"
+        "t1055-gcp-logging-process-injection",
     ],
     total_effort_hours=5.0,
-    coverage_improvement="+35% improvement for Defence Evasion and Privilege Escalation tactics"
+    coverage_improvement="+35% improvement for Defence Evasion and Privilege Escalation tactics",
 )

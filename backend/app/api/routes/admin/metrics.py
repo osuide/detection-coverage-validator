@@ -21,6 +21,7 @@ router = APIRouter(prefix="/metrics", tags=["Admin Metrics"])
 
 class SystemHealthResponse(BaseModel):
     """System health metrics."""
+
     status: str
     api_latency_ms: float
     error_rate_percent: float
@@ -32,6 +33,7 @@ class SystemHealthResponse(BaseModel):
 
 class BusinessMetricsResponse(BaseModel):
     """Business metrics."""
+
     total_organizations: int
     active_organizations: int
     trial_organizations: int
@@ -48,6 +50,7 @@ class BusinessMetricsResponse(BaseModel):
 
 class UsageMetricsResponse(BaseModel):
     """Platform usage metrics."""
+
     scans_24h: int
     scans_7d: int
     scans_30d: int
@@ -62,6 +65,7 @@ class UsageMetricsResponse(BaseModel):
 
 class SecurityMetricsResponse(BaseModel):
     """Security metrics."""
+
     failed_logins_24h: int
     locked_accounts: int
     mfa_enabled_percent: float
@@ -202,6 +206,7 @@ async def get_usage_metrics(
 
     # Techniques mapped
     from app.models.mapping import DetectionMapping
+
     techniques_result = await db.execute(
         select(func.count(func.distinct(DetectionMapping.technique_id)))
     )
@@ -230,6 +235,7 @@ async def get_security_metrics(
 
     # Failed logins (from audit log)
     from app.models.user import AuditLog, AuditLogAction
+
     failed_logins_result = await db.execute(
         select(func.count()).where(
             AuditLog.action == AuditLogAction.USER_LOGIN,
@@ -258,12 +264,15 @@ async def get_security_metrics(
 
     # Suspicious activity (from security incidents)
     from app.models.admin import SecurityIncident, IncidentStatus
+
     suspicious_result = await db.execute(
         select(func.count()).where(
-            SecurityIncident.status.in_([
-                IncidentStatus.OPEN,
-                IncidentStatus.INVESTIGATING,
-            ])
+            SecurityIncident.status.in_(
+                [
+                    IncidentStatus.OPEN,
+                    IncidentStatus.INVESTIGATING,
+                ]
+            )
         )
     )
     suspicious_activity_count = suspicious_result.scalar() or 0

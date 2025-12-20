@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Account Manipulation: Additional Cloud Roles",
     tactic_ids=["TA0003", "TA0004"],
     mitre_url="https://attack.mitre.org/techniques/T1098/003/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries modify IAM roles, add role trust relationships, or assign "
@@ -35,7 +34,7 @@ TEMPLATE = RemediationTemplate(
             "Trust policy changes enable cross-account access",
             "Role assumption is harder to track",
             "Provides flexible persistent access",
-            "Can enable privilege escalation chains"
+            "Can enable privilege escalation chains",
         ],
         known_threat_actors=["APT29", "Scattered Spider", "UNC5537"],
         recent_campaigns=[
@@ -43,14 +42,14 @@ TEMPLATE = RemediationTemplate(
                 name="Cross-Account Trust Abuse",
                 year=2024,
                 description="Attackers modified role trust policies to allow access from external accounts",
-                reference_url="https://www.datadoghq.com/state-of-cloud-security/"
+                reference_url="https://www.datadoghq.com/state-of-cloud-security/",
             ),
             Campaign(
                 name="IAM Privilege Escalation",
                 year=2024,
                 description="Attackers attached admin policies to compromised roles",
-                reference_url="https://unit42.paloaltonetworks.com/2025-cloud-security-alert-trends/"
-            )
+                reference_url="https://unit42.paloaltonetworks.com/2025-cloud-security-alert-trends/",
+            ),
         ],
         prevalence="common",
         trend="stable",
@@ -63,13 +62,12 @@ TEMPLATE = RemediationTemplate(
             "Full account takeover risk",
             "Cross-account compromise",
             "Privilege escalation",
-            "Persistent administrator access"
+            "Persistent administrator access",
         ],
         typical_attack_phase="privilege_escalation",
         often_precedes=["T1530", "T1537", "T1562.008"],
-        often_follows=["T1078.004", "T1098.001"]
+        often_follows=["T1078.004", "T1098.001"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - Role Trust Policy Modification
         DetectionStrategy(
@@ -83,11 +81,9 @@ TEMPLATE = RemediationTemplate(
                 event_pattern={
                     "source": ["aws.iam"],
                     "detail-type": ["AWS API Call via CloudTrail"],
-                    "detail": {
-                        "eventName": ["UpdateAssumeRolePolicy", "CreateRole"]
-                    }
+                    "detail": {"eventName": ["UpdateAssumeRolePolicy", "CreateRole"]},
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect IAM role trust policy modifications
 
 Parameters:
@@ -128,8 +124,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect IAM role trust policy modifications
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect IAM role trust policy modifications
 
 variable "alert_email" {
   type = string
@@ -174,7 +170,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="IAM Role Trust Policy Modified",
                 alert_description_template="Role {roleName} trust policy was modified.",
@@ -182,14 +178,14 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Review the new trust policy",
                     "Check if external accounts were added",
                     "Verify the change was authorised",
-                    "Review who made the change"
+                    "Review who made the change",
                 ],
                 containment_actions=[
                     "Revert to previous trust policy",
                     "Remove unauthorised principals",
                     "Review role permissions",
-                    "Lock down IAM modify permissions"
-                ]
+                    "Lock down IAM modify permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist infrastructure automation",
@@ -198,9 +194,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         # Strategy 2: AWS - Admin Policy Attachment
         DetectionStrategy(
             strategy_id="t1098003-aws-adminpolicy",
@@ -214,10 +209,15 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "source": ["aws.iam"],
                     "detail-type": ["AWS API Call via CloudTrail"],
                     "detail": {
-                        "eventName": ["AttachRolePolicy", "AttachUserPolicy", "PutRolePolicy", "PutUserPolicy"]
-                    }
+                        "eventName": [
+                            "AttachRolePolicy",
+                            "AttachUserPolicy",
+                            "PutRolePolicy",
+                            "PutUserPolicy",
+                        ]
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect admin policy attachments
 
 Parameters:
@@ -260,8 +260,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect admin policy attachments
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect admin policy attachments
 
 variable "alert_email" {
   type = string
@@ -311,7 +311,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="IAM Policy Attached",
                 alert_description_template="Policy attached to {roleName}/{userName}.",
@@ -319,14 +319,14 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Review the policy that was attached",
                     "Check if it grants admin permissions",
                     "Verify the change was authorised",
-                    "Review the target identity"
+                    "Review the target identity",
                 ],
                 containment_actions=[
                     "Detach unauthorised policies",
                     "Review identity permissions",
                     "Audit recent API activity",
-                    "Lock down IAM modify permissions"
-                ]
+                    "Lock down IAM modify permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist deployment automation",
@@ -335,9 +335,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         # Strategy 3: GCP - IAM Role Binding Changes
         DetectionStrategy(
             strategy_id="t1098003-gcp-rolebinding",
@@ -350,7 +349,7 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName=~"SetIamPolicy"
 protoPayload.request.policy.bindings.role=~"(owner|admin|editor)"''',
-                gcp_terraform_template='''# GCP: Detect IAM role binding changes
+                gcp_terraform_template="""# GCP: Detect IAM role binding changes
 
 variable "project_id" {
   type = string
@@ -399,7 +398,7 @@ resource "google_monitoring_alert_policy" "iam_binding" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GCP: Privileged Role Binding Added",
                 alert_description_template="Privileged IAM role binding was added or modified.",
@@ -407,14 +406,14 @@ resource "google_monitoring_alert_policy" "iam_binding" {
                     "Review the IAM policy change",
                     "Identify which principal was granted access",
                     "Verify the change was authorised",
-                    "Check the role permissions"
+                    "Check the role permissions",
                 ],
                 containment_actions=[
                     "Remove unauthorised role bindings",
                     "Review all privileged role assignments",
                     "Enable organisation policy constraints",
-                    "Audit the principal's activity"
-                ]
+                    "Audit the principal's activity",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist infrastructure automation",
@@ -423,9 +422,8 @@ resource "google_monitoring_alert_policy" "iam_binding" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled"],
         ),
-
         # Strategy 4: GCP - Service Account Impersonation
         DetectionStrategy(
             strategy_id="t1098003-gcp-impersonation",
@@ -438,7 +436,7 @@ resource "google_monitoring_alert_policy" "iam_binding" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName="SetIamPolicy"
 protoPayload.request.policy.bindings.role="roles/iam.serviceAccountTokenCreator"''',
-                gcp_terraform_template='''# GCP: Detect service account impersonation
+                gcp_terraform_template="""# GCP: Detect service account impersonation
 
 variable "project_id" {
   type = string
@@ -487,7 +485,7 @@ resource "google_monitoring_alert_policy" "sa_impersonation" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Service Account Impersonation Enabled",
                 alert_description_template="Service account impersonation permissions were granted.",
@@ -495,14 +493,14 @@ resource "google_monitoring_alert_policy" "sa_impersonation" {
                     "Identify who can now impersonate which SA",
                     "Review the service account permissions",
                     "Verify the change was authorised",
-                    "Check for impersonation activity"
+                    "Check for impersonation activity",
                 ],
                 containment_actions=[
                     "Remove impersonation permissions",
                     "Review service account bindings",
                     "Enable organisation policies",
-                    "Audit impersonation activity"
-                ]
+                    "Audit impersonation activity",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised impersonation patterns",
@@ -511,16 +509,15 @@ resource "google_monitoring_alert_policy" "sa_impersonation" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1098003-aws-trustpolicy",
         "t1098003-gcp-rolebinding",
         "t1098003-aws-adminpolicy",
-        "t1098003-gcp-impersonation"
+        "t1098003-gcp-impersonation",
     ],
     total_effort_hours=2.5,
-    coverage_improvement="+22% improvement for Privilege Escalation tactic"
+    coverage_improvement="+22% improvement for Privilege Escalation tactic",
 )

@@ -24,7 +24,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Phishing: Spearphishing Link",
     tactic_ids=["TA0001"],
     mitre_url="https://attack.mitre.org/techniques/T1566/002/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries send spearphishing emails containing malicious links to "
@@ -39,26 +38,35 @@ TEMPLATE = RemediationTemplate(
             "Can steal credentials without malware",
             "OAuth consent phishing bypasses MFA",
             "Domain spoofing evades detection",
-            "Scalable to many targets"
+            "Scalable to many targets",
         ],
         known_threat_actors=[
-            "APT29", "APT32", "APT33", "APT39", "APT42",
-            "Lazarus Group", "FIN4", "FIN7", "FIN8",
-            "Mustang Panda", "Earth Lusca", "MuddyWater"
+            "APT29",
+            "APT32",
+            "APT33",
+            "APT39",
+            "APT42",
+            "Lazarus Group",
+            "FIN4",
+            "FIN7",
+            "FIN8",
+            "Mustang Panda",
+            "Earth Lusca",
+            "MuddyWater",
         ],
         recent_campaigns=[
             Campaign(
                 name="Lazarus Group Operation Dream Job",
                 year=2024,
                 description="Distributed malware via OneDrive links in spearphishing emails",
-                reference_url="https://attack.mitre.org/groups/G0032/"
+                reference_url="https://attack.mitre.org/groups/G0032/",
             ),
             Campaign(
                 name="APT29 Spearphishing",
                 year=2024,
                 description="State-sponsored spearphishing targeting government and defence sectors",
-                reference_url="https://attack.mitre.org/groups/G0016/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0016/",
+            ),
         ],
         prevalence="very_common",
         trend="increasing",
@@ -73,13 +81,12 @@ TEMPLATE = RemediationTemplate(
             "Malware infection",
             "OAuth token compromise",
             "Data exfiltration",
-            "Business email compromise"
+            "Business email compromise",
         ],
         typical_attack_phase="initial_access",
         often_precedes=["T1078", "T1110", "T1539", "T1114"],
-        often_follows=[]
+        often_follows=[],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1566-002-aws-ses",
@@ -89,13 +96,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, mail.source, mail.destination, receipt.action
+                query="""fields @timestamp, mail.source, mail.destination, receipt.action
 | filter receipt.spfVerdict.status = "FAIL" or receipt.dkimVerdict.status = "FAIL" or receipt.dmarcVerdict.status = "FAIL"
 | filter content.bodyPlainText like /http|hxxp|bit\.ly|tinyurl|goo\.gl/
 | stats count(*) as suspicious_emails by mail.source, bin(1h)
 | filter suspicious_emails > 3
-| sort suspicious_emails desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort suspicious_emails desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect spearphishing links via SES logs
 
 Parameters:
@@ -133,8 +140,8 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect spearphishing links via SES logs
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect spearphishing links via SES logs
 
 variable "ses_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -171,7 +178,7 @@ resource "aws_cloudwatch_metric_alarm" "phishing_attempt" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Spearphishing Link Detected",
                 alert_description_template="Emails with suspicious links from {source} failing authentication checks.",
@@ -180,15 +187,15 @@ resource "aws_cloudwatch_metric_alarm" "phishing_attempt" {
                     "Analyse URL patterns and destination domains",
                     "Check if users clicked the links",
                     "Review similar emails to other recipients",
-                    "Identify compromised accounts"
+                    "Identify compromised accounts",
                 ],
                 containment_actions=[
                     "Block sender domain and IP addresses",
                     "Delete phishing emails from all mailboxes",
                     "Reset credentials for users who clicked links",
                     "Block malicious domains at firewall/proxy",
-                    "Notify affected users"
-                ]
+                    "Notify affected users",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Legitimate emails may fail SPF/DKIM; correlate with URL reputation",
@@ -197,9 +204,8 @@ resource "aws_cloudwatch_metric_alarm" "phishing_attempt" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["AWS SES with CloudWatch logging enabled"]
+            prerequisites=["AWS SES with CloudWatch logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1566-002-aws-oauth",
             name="AWS IAM Identity Center OAuth Consent Monitoring",
@@ -208,12 +214,12 @@ resource "aws_cloudwatch_metric_alarm" "phishing_attempt" {
             aws_service="cloudtrail",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, eventName, sourceIPAddress, requestParameters.applicationId
+                query="""fields @timestamp, userIdentity.principalId, eventName, sourceIPAddress, requestParameters.applicationId
 | filter eventName = "CreateApplicationGrant" or eventName = "CreateTokenBinding"
 | stats count(*) as consent_grants by userIdentity.principalId, requestParameters.applicationId, bin(5m)
 | filter consent_grants > 0
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect OAuth consent phishing attempts
 
 Parameters:
@@ -251,8 +257,8 @@ Resources:
       Threshold: 3
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect OAuth consent phishing
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect OAuth consent phishing
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -289,7 +295,7 @@ resource "aws_cloudwatch_metric_alarm" "oauth_phishing" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="OAuth Consent Phishing Detected",
                 alert_description_template="User {principalId} granted consent to application {applicationId}.",
@@ -298,15 +304,15 @@ resource "aws_cloudwatch_metric_alarm" "oauth_phishing" {
                     "Check application permissions granted",
                     "Verify application publisher legitimacy",
                     "Review user's recent email activity",
-                    "Check for similar consent grants organisation-wide"
+                    "Check for similar consent grants organisation-wide",
                 ],
                 containment_actions=[
                     "Revoke malicious application consent",
                     "Block application organisation-wide",
                     "Reset user credentials and session tokens",
                     "Enable conditional access policies",
-                    "Audit application permissions"
-                ]
+                    "Audit application permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Legitimate app installs occur; focus on unknown publishers",
@@ -315,9 +321,11 @@ resource "aws_cloudwatch_metric_alarm" "oauth_phishing" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes - 1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail logging enabled", "IAM Identity Center configured"]
+            prerequisites=[
+                "CloudTrail logging enabled",
+                "IAM Identity Center configured",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1566-002-aws-guardduty",
             name="AWS GuardDuty Credential Phishing Detection",
@@ -326,11 +334,11 @@ resource "aws_cloudwatch_metric_alarm" "oauth_phishing" {
             aws_service="guardduty",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, detail.type, detail.service.action.actionType
+                query="""fields @timestamp, detail.type, detail.service.action.actionType
 | filter detail.type = "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.OutsideAWS"
     or detail.type = "CredentialAccess:IAMUser/AnomalousCloudAccessUsed"
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Alert on GuardDuty credential phishing findings
 
 Parameters:
@@ -358,8 +366,8 @@ Resources:
       State: ENABLED
       Targets:
         - Arn: !Ref AlertTopic
-          Id: PhishingAlertTarget''',
-                terraform_template='''# Alert on GuardDuty credential phishing
+          Id: PhishingAlertTarget""",
+                terraform_template="""# Alert on GuardDuty credential phishing
 
 variable "alert_email" { type = string }
 
@@ -393,7 +401,7 @@ resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.guardduty_phishing.name
   target_id = "PhishingAlertTarget"
   arn       = aws_sns_topic.alerts.arn
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Credential Phishing Detected by GuardDuty",
                 alert_description_template="GuardDuty detected credential compromise: {finding_type}.",
@@ -402,15 +410,15 @@ resource "aws_cloudwatch_event_target" "sns" {
                     "Identify compromised credentials",
                     "Check credential usage timeline",
                     "Review user's recent login activity",
-                    "Analyse access patterns from suspicious IPs"
+                    "Analyse access patterns from suspicious IPs",
                 ],
                 containment_actions=[
                     "Disable compromised IAM credentials immediately",
                     "Invalidate all user sessions",
                     "Block suspicious IP addresses",
                     "Enable MFA if not enabled",
-                    "Rotate all credentials"
-                ]
+                    "Rotate all credentials",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="GuardDuty findings are high-fidelity",
@@ -419,9 +427,8 @@ resource "aws_cloudwatch_event_target" "sns" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$30-100 (GuardDuty pricing)",
-            prerequisites=["AWS GuardDuty enabled"]
+            prerequisites=["AWS GuardDuty enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1566-002-gcp-gmail",
             name="GCP Gmail Phishing Link Detection",
@@ -435,7 +442,7 @@ resource "aws_cloudwatch_event_target" "sns" {
 protoPayload.metadata.event.type="PHISHING"
 OR protoPayload.metadata.event.type="MALWARE"
 OR protoPayload.metadata.event.type="SUSPICIOUS_LINK"''',
-                gcp_terraform_template='''# GCP: Detect phishing links via Gmail logs
+                gcp_terraform_template="""# GCP: Detect phishing links via Gmail logs
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -473,7 +480,7 @@ resource "google_monitoring_alert_policy" "phishing_alerts" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Phishing Link Detected in Gmail",
                 alert_description_template="Gmail detected phishing or malicious links in emails.",
@@ -482,15 +489,15 @@ resource "google_monitoring_alert_policy" "phishing_alerts" {
                     "Identify targeted users",
                     "Check if users interacted with links",
                     "Review sender information",
-                    "Search for similar campaigns"
+                    "Search for similar campaigns",
                 ],
                 containment_actions=[
                     "Remove phishing emails from all inboxes",
                     "Block sender domains",
                     "Reset credentials for affected users",
                     "Update email filtering rules",
-                    "Notify users of phishing attempt"
-                ]
+                    "Notify users of phishing attempt",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Gmail's phishing detection is high-accuracy",
@@ -499,9 +506,8 @@ resource "google_monitoring_alert_policy" "phishing_alerts" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes - 1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Google Workspace with Gmail logging enabled"]
+            prerequisites=["Google Workspace with Gmail logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1566-002-gcp-oauth",
             name="GCP OAuth Consent Phishing Detection",
@@ -514,7 +520,7 @@ resource "google_monitoring_alert_policy" "phishing_alerts" {
                 gcp_logging_query='''protoPayload.serviceName="login.googleapis.com"
 protoPayload.methodName="google.login.LoginService.oAuthApproval"
 protoPayload.metadata.event.type="grant"''',
-                gcp_terraform_template='''# GCP: Detect OAuth consent phishing
+                gcp_terraform_template="""# GCP: Detect OAuth consent phishing
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -559,7 +565,7 @@ resource "google_monitoring_alert_policy" "oauth_phishing" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GCP: OAuth Consent Phishing Detected",
                 alert_description_template="Suspicious OAuth consent grants detected for application {app_name}.",
@@ -568,15 +574,15 @@ resource "google_monitoring_alert_policy" "oauth_phishing" {
                     "Check application permissions and scopes",
                     "Verify application publisher",
                     "Review user's recent email and browsing",
-                    "Check for organisation-wide consent patterns"
+                    "Check for organisation-wide consent patterns",
                 ],
                 containment_actions=[
                     "Revoke application access immediately",
                     "Block application organisation-wide",
                     "Reset user credentials and tokens",
                     "Configure OAuth app allowlist",
-                    "Enable additional consent controls"
-                ]
+                    "Enable additional consent controls",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Legitimate app installs occur; baseline normal behaviour",
@@ -585,17 +591,16 @@ resource "google_monitoring_alert_policy" "oauth_phishing" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes - 1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Google Workspace Admin SDK logging enabled"]
-        )
+            prerequisites=["Google Workspace Admin SDK logging enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1566-002-aws-guardduty",
         "t1566-002-gcp-gmail",
         "t1566-002-aws-oauth",
         "t1566-002-gcp-oauth",
-        "t1566-002-aws-ses"
+        "t1566-002-aws-ses",
     ],
     total_effort_hours=4.5,
-    coverage_improvement="+30% improvement for Initial Access tactic"
+    coverage_improvement="+30% improvement for Initial Access tactic",
 )

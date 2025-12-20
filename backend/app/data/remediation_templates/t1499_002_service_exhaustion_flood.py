@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Endpoint Denial of Service: Service Exhaustion Flood",
     tactic_ids=["TA0040"],
     mitre_url="https://attack.mitre.org/techniques/T1499/002/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries overwhelm network services by exhausting their resources through "
@@ -41,7 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Simple to execute with basic scripting tools",
             "Can trigger excessive cloud auto-scaling costs",
             "Bypasses network-layer DDoS protections",
-            "Effective against poorly configured services"
+            "Effective against poorly configured services",
         ],
         known_threat_actors=[],  # No documented threat actors per MITRE
         recent_campaigns=[],  # No documented campaigns per MITRE
@@ -59,13 +58,12 @@ TEMPLATE = RemediationTemplate(
             "Revenue loss during outages",
             "Excessive cloud costs from auto-scaling",
             "Degraded performance affecting user experience",
-            "Reputational damage from service disruption"
+            "Reputational damage from service disruption",
         ],
         typical_attack_phase="impact",
         often_precedes=[],
-        often_follows=["T1190", "T1078.004", "T1078"]
+        often_follows=["T1190", "T1078.004", "T1078"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1499-002-aws-alb-flood",
@@ -75,12 +73,12 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, client_ip, request_url, target_status_code, request_processing_time
+                query="""fields @timestamp, client_ip, request_url, target_status_code, request_processing_time
 | filter target_status_code like /5[0-9][0-9]/
 | stats count(*) as request_count, avg(request_processing_time) as avg_time by client_ip, bin(1m)
 | filter request_count > 1000
-| sort request_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort request_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect HTTP flood attacks via ALB metrics
 
 Parameters:
@@ -154,8 +152,8 @@ Resources:
           Value: !Ref LoadBalancerName
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching''',
-                terraform_template='''# Detect HTTP flood attacks via ALB metrics
+      TreatMissingData: notBreaching""",
+                terraform_template="""# Detect HTTP flood attacks via ALB metrics
 
 variable "load_balancer_name" { type = string }
 variable "alert_email" { type = string }
@@ -222,7 +220,7 @@ resource "aws_cloudwatch_metric_alarm" "high_response_time" {
   dimensions = {
     LoadBalancer = var.load_balancer_name
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="HTTP Flood Attack Detected",
                 alert_description_template="High volume HTTP requests detected on ALB {LoadBalancerName}.",
@@ -232,7 +230,7 @@ resource "aws_cloudwatch_metric_alarm" "high_response_time" {
                     "Check CloudWatch metrics for request count spikes",
                     "Analyse target group health and response times",
                     "Review application logs for errors or resource exhaustion",
-                    "Check for geographic distribution of requests"
+                    "Check for geographic distribution of requests",
                 ],
                 containment_actions=[
                     "Enable AWS WAF with rate limiting rules",
@@ -240,8 +238,8 @@ resource "aws_cloudwatch_metric_alarm" "high_response_time" {
                     "Configure CloudFront with caching to absorb traffic",
                     "Enable AWS Shield Advanced for DDoS protection",
                     "Implement CAPTCHA challenges for suspicious sources",
-                    "Scale target group capacity if legitimate traffic"
-                ]
+                    "Scale target group capacity if legitimate traffic",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Adjust thresholds based on normal traffic patterns, exclude legitimate high-traffic events like sales or launches",
@@ -250,9 +248,8 @@ resource "aws_cloudwatch_metric_alarm" "high_response_time" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["ALB access logging enabled", "CloudWatch metrics enabled"]
+            prerequisites=["ALB access logging enabled", "CloudWatch metrics enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1499-002-aws-cloudfront-flood",
             name="AWS CloudFront Request Flood Detection",
@@ -261,7 +258,7 @@ resource "aws_cloudwatch_metric_alarm" "high_response_time" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                terraform_template='''# Detect request floods via CloudFront metrics
+                terraform_template="""# Detect request floods via CloudFront metrics
 
 variable "distribution_id" { type = string }
 variable "alert_email" { type = string }
@@ -328,7 +325,7 @@ resource "aws_cloudwatch_metric_alarm" "origin_latency" {
   dimensions = {
     DistributionId = var.distribution_id
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="CloudFront Request Flood",
                 alert_description_template="High request volume or errors on CloudFront distribution {DistributionId}.",
@@ -338,7 +335,7 @@ resource "aws_cloudwatch_metric_alarm" "origin_latency" {
                     "Check cache hit ratio to assess effectiveness",
                     "Analyse user-agent strings for bot patterns",
                     "Review origin server metrics and health",
-                    "Check for sudden traffic spikes or anomalies"
+                    "Check for sudden traffic spikes or anomalies",
                 ],
                 containment_actions=[
                     "Enable AWS WAF on CloudFront distribution",
@@ -346,8 +343,8 @@ resource "aws_cloudwatch_metric_alarm" "origin_latency" {
                     "Implement geographic restrictions if applicable",
                     "Enable AWS Shield Advanced for Layer 7 protection",
                     "Optimise caching to reduce origin load",
-                    "Configure custom error pages to reduce load"
-                ]
+                    "Configure custom error pages to reduce load",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Adjust request thresholds for your traffic baseline, account for legitimate viral events",
@@ -356,9 +353,8 @@ resource "aws_cloudwatch_metric_alarm" "origin_latency" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-45 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudFront distribution with metrics enabled"]
+            prerequisites=["CloudFront distribution with metrics enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1499-002-aws-connection-flood",
             name="AWS Connection Exhaustion Detection",
@@ -367,7 +363,7 @@ resource "aws_cloudwatch_metric_alarm" "origin_latency" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                terraform_template='''# Detect connection exhaustion attacks
+                terraform_template="""# Detect connection exhaustion attacks
 
 variable "target_group_name" { type = string }
 variable "alert_email" { type = string }
@@ -434,7 +430,7 @@ resource "aws_cloudwatch_metric_alarm" "rejected_connections" {
   dimensions = {
     TargetGroup = var.target_group_name
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Connection Exhaustion Attack",
                 alert_description_template="High connection count exhausting target group {TargetGroup}.",
@@ -444,7 +440,7 @@ resource "aws_cloudwatch_metric_alarm" "rejected_connections" {
                     "Analyse ALB access logs for connection patterns",
                     "Identify source IPs with excessive connections",
                     "Review target health and capacity",
-                    "Check application connection pool settings"
+                    "Check application connection pool settings",
                 ],
                 containment_actions=[
                     "Implement connection limits via WAF",
@@ -452,8 +448,8 @@ resource "aws_cloudwatch_metric_alarm" "rejected_connections" {
                     "Block attacking IPs via security groups",
                     "Scale target group to handle connections",
                     "Implement connection rate limiting",
-                    "Enable keep-alive timeout optimisation"
-                ]
+                    "Enable keep-alive timeout optimisation",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Adjust connection thresholds based on application architecture and normal patterns",
@@ -462,9 +458,8 @@ resource "aws_cloudwatch_metric_alarm" "rejected_connections" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["ALB with target group metrics enabled"]
+            prerequisites=["ALB with target group metrics enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1499-002-gcp-http-flood",
             name="GCP HTTP Load Balancer Flood Detection",
@@ -474,10 +469,10 @@ resource "aws_cloudwatch_metric_alarm" "rejected_connections" {
             gcp_service="cloud_monitoring",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="http_load_balancer"
+                gcp_logging_query="""resource.type="http_load_balancer"
 httpRequest.status>=500
-severity>=WARNING''',
-                gcp_terraform_template='''# GCP: Detect HTTP flood attacks via Load Balancer
+severity>=WARNING""",
+                gcp_terraform_template="""# GCP: Detect HTTP flood attacks via Load Balancer
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -572,7 +567,7 @@ resource "google_logging_metric" "http_errors" {
   label_extractors = {
     "status_code" = "EXTRACT(httpRequest.status)"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: HTTP Flood Attack Detected",
                 alert_description_template="High volume HTTP requests or errors on Cloud Load Balancer.",
@@ -582,7 +577,7 @@ resource "google_logging_metric" "http_errors" {
                     "Identify source IPs and geographic distribution",
                     "Analyse backend service health and latency",
                     "Review Cloud Armour logs if enabled",
-                    "Check for bot or automated traffic patterns"
+                    "Check for bot or automated traffic patterns",
                 ],
                 containment_actions=[
                     "Enable Google Cloud Armour with rate limiting",
@@ -590,8 +585,8 @@ resource "google_logging_metric" "http_errors" {
                     "Implement CAPTCHA or challenge mechanisms",
                     "Enable Cloud CDN to absorb traffic",
                     "Configure backend service auto-scaling",
-                    "Implement geographic access restrictions if applicable"
-                ]
+                    "Implement geographic access restrictions if applicable",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Adjust thresholds for your baseline traffic, account for legitimate spikes during events",
@@ -600,9 +595,11 @@ resource "google_logging_metric" "http_errors" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$15-25",
-            prerequisites=["Cloud Load Balancer with logging enabled", "Cloud Monitoring configured"]
+            prerequisites=[
+                "Cloud Load Balancer with logging enabled",
+                "Cloud Monitoring configured",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1499-002-gcp-armor-flood",
             name="GCP Cloud Armour Rate Limit Detection",
@@ -615,7 +612,7 @@ resource "google_logging_metric" "http_errors" {
                 gcp_logging_query='''resource.type="http_load_balancer"
 jsonPayload.enforcedSecurityPolicy.outcome="DENY"
 jsonPayload.enforcedSecurityPolicy.configuredAction="RATE_BASED_BAN"''',
-                gcp_terraform_template='''# GCP: Detect floods via Cloud Armour rate limiting
+                gcp_terraform_template="""# GCP: Detect floods via Cloud Armour rate limiting
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -691,7 +688,7 @@ resource "google_monitoring_alert_policy" "throttle_alert" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Request Flood Rate Limited",
                 alert_description_template="Cloud Armour actively rate limiting flood attack.",
@@ -701,7 +698,7 @@ resource "google_monitoring_alert_policy" "throttle_alert" {
                     "Check for distributed attack patterns",
                     "Analyse geographic source of attacks",
                     "Review rate limit rule effectiveness",
-                    "Check for legitimate traffic being blocked"
+                    "Check for legitimate traffic being blocked",
                 ],
                 containment_actions=[
                     "Adjust Cloud Armour rate limit thresholds",
@@ -709,8 +706,8 @@ resource "google_monitoring_alert_policy" "throttle_alert" {
                     "Add IP blocklists for persistent attackers",
                     "Enable preview mode to test new rules",
                     "Configure custom error pages for rate limited requests",
-                    "Implement CAPTCHA challenges for borderline traffic"
-                ]
+                    "Implement CAPTCHA challenges for borderline traffic",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Cloud Armour rate limiting is generally accurate, review thresholds for legitimate high-volume users",
@@ -719,9 +716,10 @@ resource "google_monitoring_alert_policy" "throttle_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Armour security policy configured with rate limiting"]
+            prerequisites=[
+                "Cloud Armour security policy configured with rate limiting"
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1499-002-gcp-connection-flood",
             name="GCP Connection Exhaustion Detection",
@@ -734,7 +732,7 @@ resource "google_monitoring_alert_policy" "throttle_alert" {
                 gcp_logging_query='''resource.type="http_load_balancer"
 severity>=ERROR
 jsonPayload.statusDetails=~"backend_connection.*"''',
-                gcp_terraform_template='''# GCP: Detect connection exhaustion attacks
+                gcp_terraform_template="""# GCP: Detect connection exhaustion attacks
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -799,7 +797,7 @@ resource "google_monitoring_alert_policy" "backend_requests" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Connection Exhaustion Attack",
                 alert_description_template="Backend service experiencing connection exhaustion.",
@@ -809,7 +807,7 @@ resource "google_monitoring_alert_policy" "backend_requests" {
                     "Analyse request rate to backend services",
                     "Review instance group capacity and scaling",
                     "Check for connection timeout settings",
-                    "Identify source of excessive connections"
+                    "Identify source of excessive connections",
                 ],
                 containment_actions=[
                     "Scale backend instance groups to handle load",
@@ -817,8 +815,8 @@ resource "google_monitoring_alert_policy" "backend_requests" {
                     "Implement Cloud Armour rate limiting",
                     "Adjust load balancer timeout settings",
                     "Enable connection pooling on backends",
-                    "Block attacking sources via firewall rules"
-                ]
+                    "Block attacking sources via firewall rules",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Adjust thresholds based on backend capacity and normal connection patterns",
@@ -827,18 +825,20 @@ resource "google_monitoring_alert_policy" "backend_requests" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Cloud Load Balancer with backend services", "Cloud Logging enabled"]
-        )
+            prerequisites=[
+                "Cloud Load Balancer with backend services",
+                "Cloud Logging enabled",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1499-002-aws-alb-flood",
         "t1499-002-aws-connection-flood",
         "t1499-002-aws-cloudfront-flood",
         "t1499-002-gcp-http-flood",
         "t1499-002-gcp-armor-flood",
-        "t1499-002-gcp-connection-flood"
+        "t1499-002-gcp-connection-flood",
     ],
     total_effort_hours=6.0,
-    coverage_improvement="+15% improvement for Impact tactic (service exhaustion floods)"
+    coverage_improvement="+15% improvement for Impact tactic (service exhaustion floods)",
 )

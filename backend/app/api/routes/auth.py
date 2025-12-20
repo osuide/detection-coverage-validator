@@ -138,9 +138,7 @@ async def login(
     # Check if MFA is required
     if user.mfa_enabled:
         # Generate a short-lived MFA token
-        mfa_token = auth_service.generate_access_token(
-            user.id, expires_minutes=5
-        )
+        mfa_token = auth_service.generate_access_token(user.id, expires_minutes=5)
         return LoginResponse(
             access_token="",
             refresh_token="",
@@ -261,7 +259,9 @@ async def verify_mfa(
     )
 
 
-@router.post("/signup", response_model=SignupResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/signup", response_model=SignupResponse, status_code=status.HTTP_201_CREATED
+)
 async def signup(
     request: Request,
     body: SignupRequest,
@@ -281,13 +281,14 @@ async def signup(
         )
 
     # Generate slug from organization name
-    slug = re.sub(r'[^a-z0-9-]', '-', body.organization_name.lower())
-    slug = re.sub(r'-+', '-', slug).strip('-')
+    slug = re.sub(r"[^a-z0-9-]", "-", body.organization_name.lower())
+    slug = re.sub(r"-+", "-", slug).strip("-")
 
     # Check if slug is available
     if not await auth_service.check_slug_available(slug):
         # Append random suffix
         import secrets
+
         slug = f"{slug}-{secrets.token_hex(3)}"
 
     # Create user
@@ -486,7 +487,9 @@ async def change_password(
     auth_service = AuthService(db)
 
     # Verify current password
-    if not auth_service.verify_password(body.current_password, current_user.password_hash):
+    if not auth_service.verify_password(
+        body.current_password, current_user.password_hash
+    ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Current password is incorrect",
@@ -623,6 +626,7 @@ async def switch_organization(
 
     # Get organization
     from sqlalchemy import select
+
     result = await db.execute(
         select(Organization).where(Organization.id == body.organization_id)
     )
@@ -646,12 +650,14 @@ async def get_my_sessions(
     from app.models.user import UserSession
 
     result = await db.execute(
-        select(UserSession).where(
+        select(UserSession)
+        .where(
             and_(
                 UserSession.user_id == current_user.id,
                 UserSession.is_active.is_(True),
             )
-        ).order_by(UserSession.last_activity_at.desc())
+        )
+        .order_by(UserSession.last_activity_at.desc())
     )
     sessions = result.scalars().all()
 
@@ -705,7 +711,11 @@ async def revoke_all_sessions(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.post("/organizations", response_model=OrganizationResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/organizations",
+    response_model=OrganizationResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 async def create_organization(
     body: OrganizationCreateRequest,
     current_user: User = Depends(get_current_user),

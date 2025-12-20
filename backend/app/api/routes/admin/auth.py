@@ -18,12 +18,14 @@ router = APIRouter(prefix="/auth", tags=["Admin Auth"])
 # Request/Response schemas
 class AdminLoginRequest(BaseModel):
     """Admin login request."""
+
     email: EmailStr
     password: str
 
 
 class AdminLoginResponse(BaseModel):
     """Admin login response."""
+
     requires_mfa: bool
     mfa_token: Optional[str] = None  # Temporary token for MFA flow
     access_token: Optional[str] = None
@@ -32,12 +34,14 @@ class AdminLoginResponse(BaseModel):
 
 class AdminMFARequest(BaseModel):
     """MFA verification request."""
+
     mfa_token: str
     totp_code: str
 
 
 class AdminTokenResponse(BaseModel):
     """Token response."""
+
     access_token: str
     refresh_token: str
     expires_in: int
@@ -46,11 +50,13 @@ class AdminTokenResponse(BaseModel):
 
 class AdminRefreshRequest(BaseModel):
     """Token refresh request."""
+
     refresh_token: str
 
 
 class AdminProfileResponse(BaseModel):
     """Admin profile response."""
+
     id: str
     email: str
     full_name: Optional[str]
@@ -62,12 +68,14 @@ class AdminProfileResponse(BaseModel):
 
 class AdminSetupMFAResponse(BaseModel):
     """MFA setup response."""
+
     provisioning_uri: str
     secret: str  # For manual entry
 
 
 class AdminEnableMFARequest(BaseModel):
     """Enable MFA request."""
+
     totp_code: str
 
 
@@ -100,7 +108,7 @@ async def admin_login(
     if not await auth_service.check_ip_allowed(ip_address):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied: IP not in allowlist"
+            detail="Access denied: IP not in allowlist",
         )
 
     try:
@@ -111,14 +119,12 @@ async def admin_login(
             user_agent=user_agent,
         )
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
 
     if requires_mfa:
         # Generate temporary MFA token
         import secrets
+
         mfa_token = secrets.token_urlsafe(32)
 
         # Store in cache/session (in production, use Redis)
@@ -126,9 +132,10 @@ async def admin_login(
         # TODO: Use Redis to store MFA session
         from app.core.security import create_access_token
         from datetime import timedelta
+
         mfa_token = create_access_token(
             data={"sub": str(admin.id), "type": "mfa_pending"},
-            expires_delta=timedelta(minutes=5)
+            expires_delta=timedelta(minutes=5),
         )
 
         return AdminLoginResponse(
@@ -163,38 +170,35 @@ async def verify_mfa(
 
     # Decode MFA token to get admin ID
     from app.core.security import decode_token
+
     try:
         payload = decode_token(body.mfa_token)
         if payload.get("type") != "mfa_pending":
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid MFA token"
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid MFA token"
             )
         admin_id = UUID(payload["sub"])
     except Exception:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired MFA token"
+            detail="Invalid or expired MFA token",
         )
 
     # Get admin
     from sqlalchemy import select
-    result = await db.execute(
-        select(AdminUser).where(AdminUser.id == admin_id)
-    )
+
+    result = await db.execute(select(AdminUser).where(AdminUser.id == admin_id))
     admin = result.scalar_one_or_none()
 
     if not admin:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid MFA token"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid MFA token"
         )
 
     # Verify TOTP
     if not await auth_service.verify_totp(admin, body.totp_code):
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid TOTP code"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid TOTP code"
         )
 
     # Create session
@@ -236,7 +240,7 @@ async def refresh_token(
     if not access_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired refresh token"
+            detail="Invalid or expired refresh token",
         )
 
     return {
@@ -293,8 +297,7 @@ async def setup_mfa(
     """Setup MFA for admin account."""
     if admin.mfa_enabled:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="MFA is already enabled"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="MFA is already enabled"
         )
 
     auth_service = get_admin_auth_service(db)
@@ -302,7 +305,8 @@ async def setup_mfa(
 
     # Extract secret from URI for manual entry
     import re
-    secret_match = re.search(r'secret=([A-Z2-7]+)', provisioning_uri)
+
+    secret_match = re.search(r"secret=([A-Z2-7]+)", provisioning_uri)
     secret = secret_match.group(1) if secret_match else ""
 
     return AdminSetupMFAResponse(
@@ -322,8 +326,7 @@ async def enable_mfa(
 
     if not await auth_service.enable_mfa(admin, body.totp_code):
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid TOTP code"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid TOTP code"
         )
 
     return {"message": "MFA enabled successfully"}

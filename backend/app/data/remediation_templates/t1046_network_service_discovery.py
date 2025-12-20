@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Network Service Discovery",
     tactic_ids=["TA0007"],  # Discovery
     mitre_url="https://attack.mitre.org/techniques/T1046/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries attempt to enumerate services running on remote hosts to identify "
@@ -37,28 +36,39 @@ TEMPLATE = RemediationTemplate(
             "Maps network topology and service architecture",
             "Locates potential entry points for lateral movement",
             "Discovers misconfigured services and exposed management interfaces",
-            "Enables targeted exploitation based on discovered services"
+            "Enables targeted exploitation based on discovered services",
         ],
-        known_threat_actors=["APT32", "APT39", "APT41", "Lazarus Group", "Volt Typhoon", "TeamTNT", "FIN6", "FIN13", "BlackTech", "Cobalt Group"],
+        known_threat_actors=[
+            "APT32",
+            "APT39",
+            "APT41",
+            "Lazarus Group",
+            "Volt Typhoon",
+            "TeamTNT",
+            "FIN6",
+            "FIN13",
+            "BlackTech",
+            "Cobalt Group",
+        ],
         recent_campaigns=[
             Campaign(
                 name="Operation C0027 - RustScan ESXi Scanning",
                 year=2023,
                 description="Attackers used RustScan to rapidly scan ESXi appliances for vulnerable services, enabling targeted exploitation of virtualisation infrastructure",
-                reference_url="https://attack.mitre.org/campaigns/C0027/"
+                reference_url="https://attack.mitre.org/campaigns/C0027/",
             ),
             Campaign(
                 name="Operation C0018 - SoftPerfect Network Scanner",
                 year=2022,
                 description="Threat actors employed SoftPerfect Network Scanner to enumerate network services and identify targets for ransomware deployment",
-                reference_url="https://attack.mitre.org/campaigns/C0018/"
+                reference_url="https://attack.mitre.org/campaigns/C0018/",
             ),
             Campaign(
                 name="Operation Wocao",
                 year=2019,
                 description="Chinese APT group scanned for open ports using nbtscan and custom tools during targeted attacks on managed service providers",
-                reference_url="https://attack.mitre.org/campaigns/"
-            )
+                reference_url="https://attack.mitre.org/campaigns/",
+            ),
         ],
         prevalence="very_high",
         trend="increasing",
@@ -74,13 +84,12 @@ TEMPLATE = RemediationTemplate(
             "Identification of vulnerable and outdated services",
             "Reconnaissance enabling targeted attacks",
             "Potential discovery of exposed management interfaces",
-            "Privacy concerns from unauthorised network scanning"
+            "Privacy concerns from unauthorised network scanning",
         ],
         typical_attack_phase="reconnaissance",
         often_precedes=["T1190", "T1210", "T1021", "T1570"],
-        often_follows=["T1078.004", "T1110", "T1580"]
+        often_follows=["T1078.004", "T1110", "T1580"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - VPC Flow Logs Port Scanning Detection
         DetectionStrategy(
@@ -91,13 +100,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcaddr, dstaddr, srcport, dstport, protocol, action
+                query="""fields @timestamp, srcaddr, dstaddr, srcport, dstport, protocol, action
 | filter action = "REJECT"
 | stats count() as rejectCount, count_distinct(dstport) as uniquePorts by srcaddr, dstaddr, bin(5m)
 | filter uniquePorts > 20 and rejectCount > 50
 | sort rejectCount desc
-| limit 100''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| limit 100""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect port scanning activity in VPC Flow Logs
 
 Parameters:
@@ -166,8 +175,8 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 1000000
       AlarmActions:
-        - !Ref AlertTopic''',
-                terraform_template='''# AWS: Detect port scanning in VPC Flow Logs
+        - !Ref AlertTopic""",
+                terraform_template="""# AWS: Detect port scanning in VPC Flow Logs
 
 variable "vpc_id" {
   type = string
@@ -261,7 +270,7 @@ resource "aws_cloudwatch_metric_alarm" "port_scan" {
   statistic           = "Sum"
   threshold           = 50
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Port Scanning Activity Detected",
                 alert_description_template="Multiple rejected connection attempts detected from {srcaddr} targeting {dstaddr} across {uniquePorts} different ports. This indicates port scanning reconnaissance.",
@@ -271,7 +280,7 @@ resource "aws_cloudwatch_metric_alarm" "port_scan" {
                     "Review the target ports and protocols scanned",
                     "Examine CloudTrail logs for associated API activity",
                     "Check for successful connections following the scan attempts",
-                    "Review security group rules for the targeted instances"
+                    "Review security group rules for the targeted instances",
                 ],
                 containment_actions=[
                     "Block source IP using network ACLs if external attacker",
@@ -279,8 +288,8 @@ resource "aws_cloudwatch_metric_alarm" "port_scan" {
                     "Review and tighten security group rules",
                     "Enable GuardDuty for automated threat detection",
                     "Implement AWS Network Firewall for advanced filtering",
-                    "Review IAM permissions if scanning from compromised credentials"
-                ]
+                    "Review IAM permissions if scanning from compromised credentials",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised vulnerability scanners and security assessment tools. Adjust thresholds based on environment size.",
@@ -289,9 +298,8 @@ resource "aws_cloudwatch_metric_alarm" "port_scan" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-30",
-            prerequisites=["VPC Flow Logs enabled", "CloudWatch Logs"]
+            prerequisites=["VPC Flow Logs enabled", "CloudWatch Logs"],
         ),
-
         # Strategy 2: AWS - GuardDuty Reconnaissance Findings
         DetectionStrategy(
             strategy_id="t1046-aws-guardduty",
@@ -309,11 +317,11 @@ resource "aws_cloudwatch_metric_alarm" "port_scan" {
                             "Recon:EC2/PortProbeUnprotectedPort",
                             "Recon:EC2/PortProbeEMRUnprotectedPort",
                             "Recon:EC2/Portscan",
-                            "UnauthorizedAccess:EC2/TorIPCaller"
+                            "UnauthorizedAccess:EC2/TorIPCaller",
                         ]
-                    }
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect network scanning using GuardDuty findings
 
 Parameters:
@@ -362,8 +370,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# AWS: GuardDuty reconnaissance detection
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# AWS: GuardDuty reconnaissance detection
 
 variable "alert_email" {
   type = string
@@ -422,7 +430,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GuardDuty: Network Reconnaissance Detected",
                 alert_description_template="GuardDuty detected {type} activity targeting {resource}. Severity: {severity}",
@@ -432,7 +440,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Examine the targeted resources and ports",
                     "Check if any connections succeeded after the scan",
                     "Review CloudTrail for associated API activity",
-                    "Correlate with other security events"
+                    "Correlate with other security events",
                 ],
                 containment_actions=[
                     "Block malicious source IPs using network ACLs",
@@ -440,8 +448,8 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Enable AWS Network Firewall for advanced protection",
                     "Implement AWS WAF for public-facing applications",
                     "Consider enabling GuardDuty Malware Protection",
-                    "Review IAM policies for overly permissive network access"
-                ]
+                    "Review IAM policies for overly permissive network access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="GuardDuty uses threat intelligence and machine learning to minimise false positives. Whitelist known scanners if needed.",
@@ -450,9 +458,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$50-200 depending on data volume",
-            prerequisites=["GuardDuty enabled (30-day free trial available)"]
+            prerequisites=["GuardDuty enabled (30-day free trial available)"],
         ),
-
         # Strategy 3: AWS - Security Group Modification After Scanning
         DetectionStrategy(
             strategy_id="t1046-aws-sg-recon",
@@ -462,13 +469,13 @@ resource "aws_sns_topic_policy" "allow_events" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, sourceIPAddress, eventName, errorCode
+                query="""fields @timestamp, userIdentity.principalId, sourceIPAddress, eventName, errorCode
 | filter eventName in ["DescribeSecurityGroups", "DescribeSecurityGroupRules", "DescribeInstances", "DescribeNetworkInterfaces"]
 | stats count() as apiCallCount by userIdentity.principalId, sourceIPAddress, bin(5m)
 | filter apiCallCount > 50
 | sort apiCallCount desc
-| limit 100''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| limit 100""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect excessive security group enumeration
 
 Parameters:
@@ -513,8 +520,8 @@ Resources:
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
-        - !Ref AlertTopic''',
-                terraform_template='''# AWS: Detect security group enumeration
+        - !Ref AlertTopic""",
+                terraform_template="""# AWS: Detect security group enumeration
 
 variable "cloudtrail_log_group" {
   type    = string
@@ -562,7 +569,7 @@ resource "aws_cloudwatch_metric_alarm" "sg_enumeration" {
   statistic           = "Sum"
   threshold           = 50
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Excessive Security Group Enumeration",
                 alert_description_template="Principal {principalId} made {apiCallCount} security group enumeration API calls from {sourceIPAddress}. This may indicate reconnaissance activity.",
@@ -572,7 +579,7 @@ resource "aws_cloudwatch_metric_alarm" "sg_enumeration" {
                     "Review the source IP address for suspicious activity",
                     "Examine what other API calls the principal made",
                     "Check for successful authentication from unusual locations",
-                    "Review recent IAM credential activity"
+                    "Review recent IAM credential activity",
                 ],
                 containment_actions=[
                     "Rotate credentials if compromise suspected",
@@ -580,8 +587,8 @@ resource "aws_cloudwatch_metric_alarm" "sg_enumeration" {
                     "Implement condition keys requiring MFA for describe operations",
                     "Review and reduce overly broad IAM policies",
                     "Enable CloudTrail Insights for anomaly detection",
-                    "Consider implementing AWS Config rules for compliance"
-                ]
+                    "Consider implementing AWS Config rules for compliance",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised security tools, CI/CD pipelines, and infrastructure management tools",
@@ -590,9 +597,8 @@ resource "aws_cloudwatch_metric_alarm" "sg_enumeration" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled with CloudWatch Logs integration"]
+            prerequisites=["CloudTrail enabled with CloudWatch Logs integration"],
         ),
-
         # Strategy 4: GCP - VPC Flow Logs Port Scanning Detection
         DetectionStrategy(
             strategy_id="t1046-gcp-port-scan",
@@ -603,14 +609,14 @@ resource "aws_cloudwatch_metric_alarm" "sg_enumeration" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_subnetwork"
+                gcp_logging_query="""resource.type="gce_subnetwork"
 logName="projects/PROJECT_ID/logs/compute.googleapis.com%2Fvpc_flows"
 jsonPayload.connection.dest_port>0
 jsonPayload.reporter="DEST"
 | filter jsonPayload.packets_sent < 5
 | stats count() as connectionAttempts, count(distinct(jsonPayload.connection.dest_port)) as uniquePorts by jsonPayload.connection.src_ip, jsonPayload.connection.dest_ip, window(5m)
-| filter uniquePorts > 20 and connectionAttempts > 50''',
-                gcp_terraform_template='''# GCP: Detect port scanning in VPC Flow Logs
+| filter uniquePorts > 20 and connectionAttempts > 50""",
+                gcp_terraform_template="""# GCP: Detect port scanning in VPC Flow Logs
 
 variable "project_id" {
   type = string
@@ -684,7 +690,7 @@ resource "google_monitoring_alert_policy" "port_scan" {
   documentation {
     content = "Port scanning activity detected. Multiple rejected connections from a single source indicate reconnaissance."
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Port Scanning Activity Detected",
                 alert_description_template="Multiple connection attempts detected from {source_ip} targeting {dest_ip} across multiple ports. This indicates network service discovery scanning.",
@@ -694,7 +700,7 @@ resource "google_monitoring_alert_policy" "port_scan" {
                     "Review the target ports and services scanned",
                     "Check Cloud Audit Logs for associated API activity",
                     "Examine if any connections succeeded",
-                    "Review firewall rules for the targeted instances"
+                    "Review firewall rules for the targeted instances",
                 ],
                 containment_actions=[
                     "Block source IP using VPC firewall rules if external",
@@ -702,8 +708,8 @@ resource "google_monitoring_alert_policy" "port_scan" {
                     "Review and restrict firewall ingress rules",
                     "Enable Cloud IDS for intrusion detection",
                     "Implement Cloud Armour for DDoS protection",
-                    "Review service account permissions if scanning from GCP"
-                ]
+                    "Review service account permissions if scanning from GCP",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised vulnerability scanners and adjust thresholds for environment size",
@@ -712,9 +718,8 @@ resource "google_monitoring_alert_policy" "port_scan" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$15-40",
-            prerequisites=["VPC Flow Logs enabled", "Cloud Logging"]
+            prerequisites=["VPC Flow Logs enabled", "Cloud Logging"],
         ),
-
         # Strategy 5: GCP - API Enumeration Detection
         DetectionStrategy(
             strategy_id="t1046-gcp-api-enum",
@@ -725,12 +730,12 @@ resource "google_monitoring_alert_policy" "port_scan" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''protoPayload.serviceName="compute.googleapis.com"
+                gcp_logging_query="""protoPayload.serviceName="compute.googleapis.com"
 (protoPayload.methodName=~"list" OR protoPayload.methodName=~"get")
 (protoPayload.methodName=~"instances" OR protoPayload.methodName=~"firewalls" OR protoPayload.methodName=~"networks")
 | stats count() as apiCalls by protoPayload.authenticationInfo.principalEmail, protoPayload.requestMetadata.callerIp
-| filter apiCalls > 100''',
-                gcp_terraform_template='''# GCP: Detect compute resource enumeration
+| filter apiCalls > 100""",
+                gcp_terraform_template="""# GCP: Detect compute resource enumeration
 
 variable "project_id" {
   type = string
@@ -799,7 +804,7 @@ resource "google_monitoring_alert_policy" "enumeration" {
   documentation {
     content = "Excessive compute resource enumeration detected. This may indicate reconnaissance activity."
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Excessive Compute Resource Enumeration",
                 alert_description_template="Principal {principal} made {apiCalls} enumeration API calls. This may indicate network reconnaissance activity.",
@@ -809,7 +814,7 @@ resource "google_monitoring_alert_policy" "enumeration" {
                     "Review the source IP address for suspicious activity",
                     "Examine what other API calls were made",
                     "Check for recent authentication anomalies",
-                    "Review IAM permissions for the principal"
+                    "Review IAM permissions for the principal",
                 ],
                 containment_actions=[
                     "Rotate service account keys if compromise suspected",
@@ -817,8 +822,8 @@ resource "google_monitoring_alert_policy" "enumeration" {
                     "Implement VPC Service Controls for data perimeter",
                     "Review and reduce overly permissive IAM roles",
                     "Enable Cloud Asset Inventory for visibility",
-                    "Consider implementing Context-Aware Access policies"
-                ]
+                    "Consider implementing Context-Aware Access policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised infrastructure tools, CI/CD pipelines, and monitoring systems",
@@ -827,17 +832,16 @@ resource "google_monitoring_alert_policy" "enumeration" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Audit Logs enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1046-aws-guardduty",
         "t1046-gcp-port-scan",
         "t1046-aws-port-scan",
         "t1046-aws-sg-recon",
-        "t1046-gcp-api-enum"
+        "t1046-gcp-api-enum",
     ],
     total_effort_hours=3.5,
-    coverage_improvement="+25% improvement for Discovery tactic coverage"
+    coverage_improvement="+25% improvement for Discovery tactic coverage",
 )

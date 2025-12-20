@@ -24,7 +24,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Adversary-in-the-Middle: LLMNR/NBT-NS Poisoning and SMB Relay",
     tactic_ids=["TA0006", "TA0009"],  # Credential Access, Collection
     mitre_url="https://attack.mitre.org/techniques/T1557/001/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries spoof authoritative sources for name resolution on local networks "
@@ -42,7 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Enables lateral movement via SMB relay attacks",
             "Difficult to detect without network monitoring",
             "Works against legacy Windows systems and misconfigured networks",
-            "Can be combined with downgrade attacks to force weaker authentication"
+            "Can be combined with downgrade attacks to force weaker authentication",
         ],
         known_threat_actors=["Lazarus Group", "Wizard Spider", "APT28", "FIN6"],
         recent_campaigns=[
@@ -50,20 +49,20 @@ TEMPLATE = RemediationTemplate(
                 name="Lazarus Group Responder Deployment",
                 year=2023,
                 description="Lazarus Group executed Responder tool for lateral movement and credential harvesting in enterprise networks",
-                reference_url="https://attack.mitre.org/groups/G0032/"
+                reference_url="https://attack.mitre.org/groups/G0032/",
             ),
             Campaign(
                 name="Wizard Spider Invoke-Inveigh Operations",
                 year=2022,
                 description="Wizard Spider used Invoke-Inveigh PowerShell cmdlets for LLMNR/NBT-NS poisoning during Ryuk ransomware campaigns",
-                reference_url="https://attack.mitre.org/groups/G0102/"
+                reference_url="https://attack.mitre.org/groups/G0102/",
             ),
             Campaign(
                 name="APT28 Wi-Fi Pineapple and Responder",
                 year=2023,
                 description="APT28 deployed Wi-Fi pineapple devices with Responder for NetBIOS poisoning to capture network credentials",
-                reference_url="https://attack.mitre.org/groups/G0007/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0007/",
+            ),
         ],
         prevalence="high",
         trend="stable",
@@ -81,13 +80,12 @@ TEMPLATE = RemediationTemplate(
             "Lateral movement across Windows infrastructure",
             "Privilege escalation to domain admin accounts",
             "Data exfiltration and ransomware deployment",
-            "Compliance violations from unauthorised access"
+            "Compliance violations from unauthorised access",
         ],
         typical_attack_phase="credential_access",
         often_precedes=["T1021.002", "T1078.002", "T1003.001", "T1550.002"],
-        often_follows=["T1133", "T1078.004", "T1190"]
+        often_follows=["T1133", "T1078.004", "T1190"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - WorkSpaces and EC2 Windows Network Monitoring
         DetectionStrategy(
@@ -98,14 +96,14 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcaddr, dstaddr, srcport, dstport, protocol
+                query="""fields @timestamp, srcaddr, dstaddr, srcport, dstport, protocol
 | filter (dstport = 5355 or dstport = 137) and protocol = 17
 | filter action = "ACCEPT"
 | stats count() as queryCount by srcaddr, dstaddr, dstport
 | filter queryCount > 50
 | sort queryCount desc
-| limit 100''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| limit 100""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect LLMNR and NetBIOS traffic patterns
 
 Parameters:
@@ -186,8 +184,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       AlarmActions:
-        - !Ref AlertTopic''',
-                terraform_template='''# AWS: Detect LLMNR and NetBIOS poisoning attempts
+        - !Ref AlertTopic""",
+                terraform_template="""# AWS: Detect LLMNR and NetBIOS poisoning attempts
 
 variable "vpc_id" {
   type        = string
@@ -278,7 +276,7 @@ resource "aws_cloudwatch_metric_alarm" "high_netbios" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Suspicious LLMNR/NetBIOS Name Resolution Traffic",
                 alert_description_template="High volume of LLMNR (UDP 5355) or NetBIOS (UDP 137) traffic detected from {srcaddr}. Potential name resolution poisoning attack.",
@@ -289,7 +287,7 @@ resource "aws_cloudwatch_metric_alarm" "high_netbios" {
                     "Examine CloudWatch Logs for SMB authentication failures",
                     "Review recent authentication activity for affected accounts",
                     "Check for installation of Responder, Inveigh, or similar tools",
-                    "Analyse network captures for spoofed responses"
+                    "Analyse network captures for spoofed responses",
                 ],
                 containment_actions=[
                     "Isolate suspicious instances via security groups",
@@ -298,8 +296,8 @@ resource "aws_cloudwatch_metric_alarm" "high_netbios" {
                     "Reset credentials for potentially compromised accounts",
                     "Apply network ACLs to block UDP 5355 and 137",
                     "Deploy host-based firewall rules on Windows instances",
-                    "Enable enhanced monitoring and logging"
-                ]
+                    "Enable enhanced monitoring and logging",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal NetBIOS traffic; whitelist authorised Windows file servers",
@@ -308,9 +306,8 @@ resource "aws_cloudwatch_metric_alarm" "high_netbios" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$15-30 (VPC Flow Logs + CloudWatch)",
-            prerequisites=["VPC with Windows workloads", "VPC Flow Logs"]
+            prerequisites=["VPC with Windows workloads", "VPC Flow Logs"],
         ),
-
         # Strategy 2: AWS - SMB Relay Detection via CloudTrail
         DetectionStrategy(
             strategy_id="t1557-001-aws-smb",
@@ -329,11 +326,11 @@ resource "aws_cloudwatch_metric_alarm" "high_netbios" {
                             "UpdateSettings",
                             "ResetUserPassword",
                             "CreateFileSystem",
-                            "UpdateFileSystem"
+                            "UpdateFileSystem",
                         ]
-                    }
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Monitor Directory Service and FSx for SMB-related changes
 
 Parameters:
@@ -379,8 +376,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# AWS: Monitor Directory Service and FSx for SMB security
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# AWS: Monitor Directory Service and FSx for SMB security
 
 variable "alert_email" {
   type = string
@@ -432,7 +429,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="AWS Directory Service or FSx Configuration Changed",
                 alert_description_template="Directory Service or FSx operation {eventName} performed by {userIdentity.principalId}. Review for unauthorised SMB configuration changes.",
@@ -443,7 +440,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Examine CloudTrail for related suspicious activities",
                     "Review SMB signing and encryption settings",
                     "Check for password resets or user modifications",
-                    "Validate Active Directory trust relationships"
+                    "Validate Active Directory trust relationships",
                 ],
                 containment_actions=[
                     "Enable SMB signing on all FSx file systems",
@@ -452,8 +449,8 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Enable CloudWatch Logs for Directory Service",
                     "Implement least-privilege IAM policies",
                     "Enable MFA for privileged operations",
-                    "Audit all Active Directory users and groups"
-                ]
+                    "Audit all Active Directory users and groups",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised administrators and automation",
@@ -462,9 +459,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled", "AWS Managed Microsoft AD or FSx"]
+            prerequisites=["CloudTrail enabled", "AWS Managed Microsoft AD or FSx"],
         ),
-
         # Strategy 3: AWS - WorkSpaces Security Monitoring
         DetectionStrategy(
             strategy_id="t1557-001-aws-workspaces",
@@ -474,13 +470,13 @@ resource "aws_sns_topic_policy" "allow_events" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message
+                query="""fields @timestamp, @message
 | filter eventSource = "workspaces.amazonaws.com"
 | filter eventName in ["AuthenticateUser", "CreateWorkspaces", "ModifyWorkspaceProperties"]
 | stats count() as authCount by userIdentity.principalId, sourceIPAddress
 | filter authCount > 10
-| sort authCount desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort authCount desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Monitor WorkSpaces for suspicious authentication activity
 
 Parameters:
@@ -524,8 +520,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# AWS: Monitor WorkSpaces authentication patterns
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# AWS: Monitor WorkSpaces authentication patterns
 
 variable "alert_email" {
   type = string
@@ -575,7 +571,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Suspicious WorkSpaces Authentication Activity",
                 alert_description_template="Multiple WorkSpaces authentication events from {sourceIPAddress}. Potential credential relay or brute force attempt.",
@@ -586,7 +582,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Review user account activity across AWS services",
                     "Examine WorkSpaces security group configurations",
                     "Validate MFA status for affected users",
-                    "Check for concurrent sessions from different locations"
+                    "Check for concurrent sessions from different locations",
                 ],
                 containment_actions=[
                     "Enforce MFA for all WorkSpaces users",
@@ -595,8 +591,8 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Implement connection access controls",
                     "Review and update WorkSpaces directory settings",
                     "Reset credentials for suspicious accounts",
-                    "Enable enhanced logging and monitoring"
-                ]
+                    "Enable enhanced logging and monitoring",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal user authentication patterns; exclude travelling users",
@@ -605,9 +601,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Amazon WorkSpaces deployed", "CloudTrail enabled"]
+            prerequisites=["Amazon WorkSpaces deployed", "CloudTrail enabled"],
         ),
-
         # Strategy 4: GCP - Windows Instance Network Monitoring
         DetectionStrategy(
             strategy_id="t1557-001-gcp-netbios",
@@ -618,11 +613,11 @@ resource "aws_sns_topic_policy" "allow_events" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_subnetwork"
+                gcp_logging_query="""resource.type="gce_subnetwork"
 logName="projects/[PROJECT_ID]/logs/compute.googleapis.com%2Fvpc_flows"
 jsonPayload.connection.dest_port=5355 OR jsonPayload.connection.dest_port=137
-jsonPayload.connection.protocol=17''',
-                gcp_terraform_template='''# GCP: Detect LLMNR and NetBIOS poisoning attempts
+jsonPayload.connection.protocol=17""",
+                gcp_terraform_template="""# GCP: Detect LLMNR and NetBIOS poisoning attempts
 
 variable "project_id" {
   type = string
@@ -719,7 +714,7 @@ resource "google_monitoring_alert_policy" "netbios_alert" {
     content   = "Suspicious LLMNR (UDP 5355) or NetBIOS (UDP 137) traffic detected. Potential name resolution poisoning attack."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: LLMNR/NetBIOS Name Resolution Poisoning Detected",
                 alert_description_template="High volume of LLMNR or NetBIOS traffic from {srcIp}. Potential credential harvesting attack.",
@@ -730,7 +725,7 @@ resource "google_monitoring_alert_policy" "netbios_alert" {
                     "Examine instance metadata and startup scripts",
                     "Review Cloud Audit Logs for suspicious VM modifications",
                     "Check for installation of Responder or similar tools",
-                    "Analyse Serial Port Output for Windows Event Logs"
+                    "Analyse Serial Port Output for Windows Event Logs",
                 ],
                 containment_actions=[
                     "Isolate suspicious VMs via firewall rules",
@@ -739,8 +734,8 @@ resource "google_monitoring_alert_policy" "netbios_alert" {
                     "Create VPC firewall rules to block UDP 5355 and 137",
                     "Reset credentials for potentially affected accounts",
                     "Deploy Cloud IDS for deep packet inspection",
-                    "Enable Private Google Access to reduce exposure"
-                ]
+                    "Enable Private Google Access to reduce exposure",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline legitimate Windows networking; whitelist file servers",
@@ -749,9 +744,8 @@ resource "google_monitoring_alert_policy" "netbios_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$20-40 (VPC Flow Logs + monitoring)",
-            prerequisites=["VPC Flow Logs enabled", "Windows VMs in GCP"]
+            prerequisites=["VPC Flow Logs enabled", "Windows VMs in GCP"],
         ),
-
         # Strategy 5: GCP - Managed AD Security Monitoring
         DetectionStrategy(
             strategy_id="t1557-001-gcp-managed-ad",
@@ -765,7 +759,7 @@ resource "google_monitoring_alert_policy" "netbios_alert" {
                 gcp_logging_query='''protoPayload.serviceName="managedidentities.googleapis.com"
 protoPayload.methodName=~"(Create|Update|Patch)"
 protoPayload.resourceName=~"domains"''',
-                gcp_terraform_template='''# GCP: Monitor Managed AD for security changes
+                gcp_terraform_template="""# GCP: Monitor Managed AD for security changes
 
 variable "project_id" {
   type = string
@@ -820,7 +814,7 @@ resource "google_monitoring_alert_policy" "ad_modification" {
     content   = "Managed Service for Microsoft AD configuration changed. Review for unauthorised security modifications."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Managed AD Configuration Modified",
                 alert_description_template="Managed AD domain {resourceName} modified via {methodName}. Review for security policy changes.",
@@ -831,7 +825,7 @@ resource "google_monitoring_alert_policy" "ad_modification" {
                     "Review domain controller configurations",
                     "Examine group policy objects for changes",
                     "Validate SMB signing and encryption settings",
-                    "Check for unauthorised user or group additions"
+                    "Check for unauthorised user or group additions",
                 ],
                 containment_actions=[
                     "Enable SMB signing on all domain controllers",
@@ -840,8 +834,8 @@ resource "google_monitoring_alert_policy" "ad_modification" {
                     "Enable audit logging for all AD operations",
                     "Deploy Windows Admin Center for monitoring",
                     "Configure conditional access policies",
-                    "Review and harden domain security policies"
-                ]
+                    "Review and harden domain security policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised AD administrators and automation",
@@ -850,17 +844,19 @@ resource "google_monitoring_alert_policy" "ad_modification" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Managed Service for Microsoft AD", "Cloud Audit Logs enabled"]
-        )
+            prerequisites=[
+                "Managed Service for Microsoft AD",
+                "Cloud Audit Logs enabled",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1557-001-aws-netbios",
         "t1557-001-gcp-netbios",
         "t1557-001-aws-smb",
         "t1557-001-gcp-managed-ad",
-        "t1557-001-aws-workspaces"
+        "t1557-001-aws-workspaces",
     ],
     total_effort_hours=4.5,
-    coverage_improvement="+22% improvement for Credential Access and Collection tactics"
+    coverage_improvement="+22% improvement for Credential Access and Collection tactics",
 )

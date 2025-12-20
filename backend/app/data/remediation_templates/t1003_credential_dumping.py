@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="OS Credential Dumping",
     tactic_ids=["TA0006"],
     mitre_url="https://attack.mitre.org/techniques/T1003/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries attempt to extract credentials from OS memory structures, "
@@ -38,32 +37,42 @@ TEMPLATE = RemediationTemplate(
             "Container and serverless credentials provide access to cloud APIs",
             "Dumped SSH keys can access other instances",
             "Instance metadata credentials can be cached in memory",
-            "Database connection strings in memory contain sensitive credentials"
+            "Database connection strings in memory contain sensitive credentials",
         ],
         known_threat_actors=[
-            "APT28", "APT32", "APT39", "Axiom", "BlackByte", "Ember Bear",
-            "Leviathan", "Mustang Panda", "Poseidon Group", "Sowbug",
-            "Suckfly", "Storm-0501", "Tonto Team"
+            "APT28",
+            "APT32",
+            "APT39",
+            "Axiom",
+            "BlackByte",
+            "Ember Bear",
+            "Leviathan",
+            "Mustang Panda",
+            "Poseidon Group",
+            "Sowbug",
+            "Suckfly",
+            "Storm-0501",
+            "Tonto Team",
         ],
         recent_campaigns=[
             Campaign(
                 name="Storm-0501 Hybrid Cloud Attacks",
                 year=2024,
                 description="Extracted credentials from compromised cloud VMs to move laterally across hybrid environments",
-                reference_url="https://www.microsoft.com/en-us/security/blog/2024/09/26/storm-0501-ransomware-attacks-expanding-to-hybrid-cloud-environments/"
+                reference_url="https://www.microsoft.com/en-us/security/blog/2024/09/26/storm-0501-ransomware-attacks-expanding-to-hybrid-cloud-environments/",
             ),
             Campaign(
                 name="BlackByte Ransomware",
                 year=2023,
                 description="Used credential dumping to escalate privileges and deploy ransomware in cloud infrastructure",
-                reference_url="https://attack.mitre.org/groups/G1043/"
+                reference_url="https://attack.mitre.org/groups/G1043/",
             ),
             Campaign(
                 name="TeamTNT Container Attacks",
                 year=2022,
                 description="Dumped credentials from compromised containers to access cloud resources and cryptomining infrastructure",
-                reference_url="https://attack.mitre.org/groups/G0139/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0139/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -80,13 +89,12 @@ TEMPLATE = RemediationTemplate(
             "Unauthorised access to cloud storage and APIs",
             "Data exfiltration using stolen credentials",
             "Privilege escalation via compromised admin credentials",
-            "Ransomware deployment across multiple systems"
+            "Ransomware deployment across multiple systems",
         ],
         typical_attack_phase="credential_access",
         often_precedes=["T1078", "T1021", "T1210"],
-        often_follows=["T1078.004", "T1190", "T1133"]
+        often_follows=["T1078.004", "T1190", "T1133"],
     ),
-
     detection_strategies=[
         # Strategy 1: EC2/GCE Process Memory Access Detection
         DetectionStrategy(
@@ -106,9 +114,9 @@ TEMPLATE = RemediationTemplate(
                     "PrivilegeEscalation:Runtime/ContainerMountsHostDirectory",
                     "PrivilegeEscalation:Runtime/DockerSocketAccessed",
                     "Execution:Runtime/NewBinaryExecuted",
-                    "CredentialAccess:Runtime/MemoryDumpCreated"
+                    "CredentialAccess:Runtime/MemoryDumpCreated",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty Runtime Monitoring for credential dumping detection
 
 Parameters:
@@ -163,8 +171,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref SecurityAlertTopic''',
-                terraform_template='''# GuardDuty Runtime Monitoring for credential dumping
+            Resource: !Ref SecurityAlertTopic""",
+                terraform_template="""# GuardDuty Runtime Monitoring for credential dumping
 
 variable "alert_email" {
   type        = string
@@ -239,7 +247,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Resource  = aws_sns_topic.credential_dumping_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GuardDuty: Credential Dumping Activity Detected",
                 alert_description_template=(
@@ -253,15 +261,15 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Examine running processes on the instance using SSM Session Manager",
                     "Review instance security group rules and network connections",
                     "Check if any credentials or secrets were accessed from Secrets Manager or Parameter Store",
-                    "Investigate recent SSH or RDP sessions to the instance"
+                    "Investigate recent SSH or RDP sessions to the instance",
                 ],
                 containment_actions=[
                     "Isolate the instance by modifying security group to block all traffic",
                     "Create a forensic snapshot of the instance for investigation",
                     "Rotate all credentials that may have been on the instance",
                     "Revoke the instance IAM role session",
-                    "Terminate the instance if compromise is confirmed"
-                ]
+                    "Terminate the instance if compromise is confirmed",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Exclude known administrative tools; baseline normal debugging activities",
@@ -270,9 +278,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",
             estimated_monthly_cost="$4.60 per instance per month for Runtime Monitoring",
-            prerequisites=["GuardDuty enabled", "SSM Agent on EC2 instances for Runtime Monitoring"]
+            prerequisites=[
+                "GuardDuty enabled",
+                "SSM Agent on EC2 instances for Runtime Monitoring",
+            ],
         ),
-
         # Strategy 2: Suspicious Process Execution via CloudWatch
         DetectionStrategy(
             strategy_id="t1003-suspicious-tools",
@@ -285,11 +295,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message, instanceId, processName, commandLine
+                query="""fields @timestamp, @message, instanceId, processName, commandLine
 | filter @message like /mimikatz|procdump|pwdump|hashdump|gsecdump|lsadump|sekurlsa|SafetyKatz|Out-Minidump/
 | stats count() as executions by instanceId, processName, bin(5m)
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect credential dumping tool execution
 
 Parameters:
@@ -334,8 +344,8 @@ Resources:
     Properties:
       LogGroupName: !Ref CloudWatchLogGroup
       FilterPattern: '[time, instance, process, command="*mimikatz*" || command="*procdump*"]'
-      DestinationArn: !Ref SNSTopicArn''',
-                terraform_template='''# Detect credential dumping tool execution
+      DestinationArn: !Ref SNSTopicArn""",
+                terraform_template="""# Detect credential dumping tool execution
 
 variable "cloudwatch_log_group" {
   type        = string
@@ -383,7 +393,7 @@ resource "aws_cloudwatch_metric_alarm" "credential_dumping" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Credential Dumping Tool Detected",
                 alert_description_template=(
@@ -397,15 +407,15 @@ resource "aws_cloudwatch_metric_alarm" "credential_dumping" {
                     "Review user session that executed the command",
                     "Search for exfiltration of dumped credential files",
                     "Check for lateral movement attempts following the execution",
-                    "Review all file system changes on the instance"
+                    "Review all file system changes on the instance",
                 ],
                 containment_actions=[
                     "Immediately isolate the instance from the network",
                     "Kill the credential dumping process if still running",
                     "Rotate all credentials that may have been accessed",
                     "Search for and delete any credential dump files",
-                    "Force logout all active user sessions on affected systems"
-                ]
+                    "Force logout all active user sessions on affected systems",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised security testing activities with approval workflow",
@@ -414,9 +424,11 @@ resource "aws_cloudwatch_metric_alarm" "credential_dumping" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-15 depending on log volume",
-            prerequisites=["CloudWatch Logs Agent installed on instances", "Process execution logging enabled"]
+            prerequisites=[
+                "CloudWatch Logs Agent installed on instances",
+                "Process execution logging enabled",
+            ],
         ),
-
         # Strategy 3: Container Credential Access
         DetectionStrategy(
             strategy_id="t1003-container-creds",
@@ -429,11 +441,11 @@ resource "aws_cloudwatch_metric_alarm" "credential_dumping" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, kubernetes.pod_name, kubernetes.namespace_name, @message
+                query="""fields @timestamp, kubernetes.pod_name, kubernetes.namespace_name, @message
 | filter @message like /run.secrets|var.run.secrets|AWS_ACCESS_KEY|AWS_SECRET|printenv|env |cat.*credentials|grep.*password/
 | stats count() as secret_access by kubernetes.pod_name, kubernetes.namespace_name, bin(10m)
 | filter secret_access > 5
-| sort @timestamp desc''',
+| sort @timestamp desc""",
                 cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect container credential dumping in EKS
 
@@ -483,7 +495,7 @@ Resources:
         - MetricName: PrivilegedContainerExecution
           MetricNamespace: Security/T1003
           MetricValue: "1"''',
-                terraform_template='''# Detect container credential dumping in EKS
+                terraform_template="""# Detect container credential dumping in EKS
 
 variable "eks_log_group" {
   type        = string
@@ -543,7 +555,7 @@ resource "aws_cloudwatch_log_metric_filter" "privileged_containers" {
     namespace = "Security/T1003"
     value     = "1"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Container Credential Dumping Detected",
                 alert_description_template=(
@@ -556,7 +568,7 @@ resource "aws_cloudwatch_log_metric_filter" "privileged_containers" {
                     "Check pod security context and capabilities",
                     "Examine container network connections",
                     "Review service account permissions attached to the pod",
-                    "Check for other pods from the same deployment"
+                    "Check for other pods from the same deployment",
                 ],
                 containment_actions=[
                     "Delete the suspicious pod immediately",
@@ -564,8 +576,8 @@ resource "aws_cloudwatch_log_metric_filter" "privileged_containers" {
                     "Rotate all Kubernetes secrets in the namespace",
                     "Review and restrict service account permissions",
                     "Implement Pod Security Standards to prevent privileged containers",
-                    "Enable network policies to restrict pod communication"
-                ]
+                    "Enable network policies to restrict pod communication",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal secret access patterns for each application",
@@ -574,9 +586,11 @@ resource "aws_cloudwatch_log_metric_filter" "privileged_containers" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$10-25",
-            prerequisites=["EKS cluster with CloudWatch Container Insights", "Application logging enabled"]
+            prerequisites=[
+                "EKS cluster with CloudWatch Container Insights",
+                "Application logging enabled",
+            ],
         ),
-
         # Strategy 4: GCP Instance Credential Access
         DetectionStrategy(
             strategy_id="t1003-gcp-credentials",
@@ -590,10 +604,10 @@ resource "aws_cloudwatch_log_metric_filter" "privileged_containers" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 (protoPayload.request.commandLine=~"mimikatz|procdump|hashdump|lsadump"
-OR textPayload=~"/var/lib/docker|/run/secrets|gcloud.*credentials")''',
-                gcp_terraform_template='''# GCP: Detect credential dumping on GCE instances
+OR textPayload=~"/var/lib/docker|/run/secrets|gcloud.*credentials")""",
+                gcp_terraform_template="""# GCP: Detect credential dumping on GCE instances
 
 variable "project_id" {
   type        = string
@@ -665,7 +679,7 @@ resource "google_monitoring_alert_policy" "credential_dumping" {
     content   = "Credential dumping activity detected on GCE instance. Investigate immediately."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GCP: Credential Dumping Detected",
                 alert_description_template=(
@@ -678,7 +692,7 @@ resource "google_monitoring_alert_policy" "credential_dumping" {
                     "Review recent API calls made by the instance's service account",
                     "Examine network connections from the instance",
                     "Check for any data exfiltration to external IPs",
-                    "Review VPC Flow Logs for suspicious traffic patterns"
+                    "Review VPC Flow Logs for suspicious traffic patterns",
                 ],
                 containment_actions=[
                     "Stop the GCE instance to prevent further compromise",
@@ -686,8 +700,8 @@ resource "google_monitoring_alert_policy" "credential_dumping" {
                     "Revoke the instance's service account credentials",
                     "Update firewall rules to isolate the instance",
                     "Rotate any secrets the instance had access to",
-                    "Review and remove any unauthorised persistent access mechanisms"
-                ]
+                    "Review and remove any unauthorised persistent access mechanisms",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Exclude authorised penetration testing with documented approval",
@@ -696,9 +710,11 @@ resource "google_monitoring_alert_policy" "credential_dumping" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="$15-30",
-            prerequisites=["Cloud Logging API enabled", "Ops Agent installed on GCE instances"]
+            prerequisites=[
+                "Cloud Logging API enabled",
+                "Ops Agent installed on GCE instances",
+            ],
         ),
-
         # Strategy 5: Secrets Manager Access Patterns
         DetectionStrategy(
             strategy_id="t1003-secrets-access",
@@ -711,14 +727,14 @@ resource "google_monitoring_alert_policy" "credential_dumping" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, eventName, requestParameters.secretId, sourceIPAddress
+                query="""fields @timestamp, userIdentity.principalId, eventName, requestParameters.secretId, sourceIPAddress
 | filter eventSource in ["secretsmanager.amazonaws.com", "ssm.amazonaws.com"]
 | filter eventName in ["GetSecretValue", "GetParameter", "GetParameters", "GetParametersByPath"]
 | stats count() as access_count, count_distinct(coalesce(requestParameters.secretId, requestParameters.name)) as unique_secrets
   by userIdentity.principalId, sourceIPAddress, bin(10m)
 | filter access_count > 10 or unique_secrets > 5
-| sort access_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort access_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect unusual Secrets Manager access patterns
 
 Parameters:
@@ -766,8 +782,8 @@ Resources:
       Threshold: 10
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
-        - !Ref SNSTopicArn''',
-                terraform_template='''# Detect unusual Secrets Manager access patterns
+        - !Ref SNSTopicArn""",
+                terraform_template="""# Detect unusual Secrets Manager access patterns
 
 variable "cloudtrail_log_group" {
   type = string
@@ -825,7 +841,7 @@ resource "aws_cloudwatch_metric_alarm" "bulk_secrets_access" {
   threshold           = 10
   comparison_operator = "GreaterThanThreshold"
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Bulk Secrets Access Detected",
                 alert_description_template=(
@@ -839,7 +855,7 @@ resource "aws_cloudwatch_metric_alarm" "bulk_secrets_access" {
                     "Check which specific secrets were accessed",
                     "Determine if the source IP is expected",
                     "Review what the principal did after accessing secrets",
-                    "Check for signs of lateral movement or data exfiltration"
+                    "Check for signs of lateral movement or data exfiltration",
                 ],
                 containment_actions=[
                     "Rotate all accessed secrets immediately",
@@ -847,8 +863,8 @@ resource "aws_cloudwatch_metric_alarm" "bulk_secrets_access" {
                     "Review and restrict IAM policies granting secrets access",
                     "Enable automatic secret rotation",
                     "Implement resource-based policies on sensitive secrets",
-                    "Enable VPC endpoints for Secrets Manager to restrict network access"
-                ]
+                    "Enable VPC endpoints for Secrets Manager to restrict network access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal access patterns for automation and deployment systems",
@@ -857,17 +873,19 @@ resource "aws_cloudwatch_metric_alarm" "bulk_secrets_access" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled", "Secrets Manager/Parameter Store in use"]
-        )
+            prerequisites=[
+                "CloudTrail enabled",
+                "Secrets Manager/Parameter Store in use",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1003-memory-access",
         "t1003-suspicious-tools",
         "t1003-secrets-access",
         "t1003-container-creds",
-        "t1003-gcp-credentials"
+        "t1003-gcp-credentials",
     ],
     total_effort_hours=7.0,
-    coverage_improvement="+30% improvement for Credential Access tactic"
+    coverage_improvement="+30% improvement for Credential Access tactic",
 )

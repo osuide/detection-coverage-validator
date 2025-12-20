@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Forge Web Credentials",
     tactic_ids=["TA0006"],
     mitre_url="https://attack.mitre.org/techniques/T1606/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries create fraudulent web credentials including session cookies and "
@@ -37,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Tokens appear legitimate to applications",
             "Stolen signing certificates enable persistent access",
             "Forged tokens avoid detection mechanisms",
-            "SAML tokens grant access across multiple services"
+            "SAML tokens grant access across multiple services",
         ],
         known_threat_actors=["APT29"],
         recent_campaigns=[
@@ -45,7 +44,7 @@ TEMPLATE = RemediationTemplate(
                 name="SolarWinds Compromise (C0024)",
                 year=2021,
                 description="APT29 forged cookies using stolen secret keys to bypass MFA on Outlook Web Access accounts and created SAML tokens using compromised AD FS signing certificates",
-                reference_url="https://attack.mitre.org/techniques/T1606/001/"
+                reference_url="https://attack.mitre.org/techniques/T1606/001/",
             )
         ],
         prevalence="uncommon",
@@ -61,13 +60,12 @@ TEMPLATE = RemediationTemplate(
             "Unauthorised access to web applications",
             "Persistent access via forged SAML tokens",
             "Difficult to distinguish from legitimate sessions",
-            "Potential access to federated cloud services"
+            "Potential access to federated cloud services",
         ],
         typical_attack_phase="credential_access",
         often_precedes=["T1078.004", "T1021.007", "T1530"],
-        often_follows=["T1552.001", "T1552.004", "T1606"]
+        often_follows=["T1552.001", "T1552.004", "T1606"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - SAML Token Anomalies
         DetectionStrategy(
@@ -78,12 +76,12 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, sourceIPAddress, userIdentity.principalId, responseElements.assumedRoleUser
+                query="""fields @timestamp, eventName, sourceIPAddress, userIdentity.principalId, responseElements.assumedRoleUser
 | filter eventName = "AssumeRoleWithSAML"
 | stats count(*) as auth_count, count_distinct(sourceIPAddress) as unique_ips by userIdentity.principalId, bin(1h)
 | filter unique_ips > 3 or auth_count > 50
-| sort auth_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort auth_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect forged SAML tokens and anomalous federation
 
 Parameters:
@@ -124,8 +122,8 @@ Resources:
       Threshold: 100
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref SAMLAlertTopic]''',
-                terraform_template='''# Detect forged SAML tokens and anomalous federation
+      AlarmActions: [!Ref SAMLAlertTopic]""",
+                terraform_template="""# Detect forged SAML tokens and anomalous federation
 
 variable "cloudtrail_log_group" {
   type = string
@@ -170,7 +168,7 @@ resource "aws_cloudwatch_metric_alarm" "saml_anomaly" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.saml_alerts.arn]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Suspicious SAML Token Activity Detected",
                 alert_description_template="Unusual SAML federation activity detected from {sourceIPAddress}.",
@@ -179,15 +177,15 @@ resource "aws_cloudwatch_metric_alarm" "saml_anomaly" {
                     "Check source IP addresses for anomalies",
                     "Verify SAML assertion attributes and lifetime",
                     "Review assumed role permissions and accessed resources",
-                    "Check for impossible travel between authentications"
+                    "Check for impossible travel between authentications",
                 ],
                 containment_actions=[
                     "Rotate SAML signing certificates immediately",
                     "Revoke active sessions for affected roles",
                     "Review and restrict SAML provider trust policies",
                     "Enable advanced security logging for federation",
-                    "Audit all SAML-authenticated access"
-                ]
+                    "Audit all SAML-authenticated access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal SAML usage patterns from corporate IdP",
@@ -196,9 +194,8 @@ resource "aws_cloudwatch_metric_alarm" "saml_anomaly" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["CloudTrail logging enabled", "SAML federation configured"]
+            prerequisites=["CloudTrail logging enabled", "SAML federation configured"],
         ),
-
         # Strategy 2: AWS - GetFederationToken Abuse
         DetectionStrategy(
             strategy_id="t1606-aws-federation",
@@ -208,12 +205,12 @@ resource "aws_cloudwatch_metric_alarm" "saml_anomaly" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.arn, sourceIPAddress, errorCode
+                query="""fields @timestamp, eventName, userIdentity.arn, sourceIPAddress, errorCode
 | filter eventName = "GetFederationToken"
 | stats count(*) as attempts, count_distinct(sourceIPAddress) as unique_ips by userIdentity.arn, bin(6h)
 | filter attempts > 10
-| sort attempts desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort attempts desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect GetFederationToken abuse
 
 Parameters:
@@ -254,8 +251,8 @@ Resources:
       Threshold: 20
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref FederationAlertTopic]''',
-                terraform_template='''# Detect GetFederationToken abuse
+      AlarmActions: [!Ref FederationAlertTopic]""",
+                terraform_template="""# Detect GetFederationToken abuse
 
 variable "cloudtrail_log_group" {
   type = string
@@ -300,7 +297,7 @@ resource "aws_cloudwatch_metric_alarm" "federation_abuse" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.federation_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Federation Token Abuse Detected",
                 alert_description_template="Unusual GetFederationToken activity from {userIdentity.arn}.",
@@ -309,15 +306,15 @@ resource "aws_cloudwatch_metric_alarm" "federation_abuse" {
                     "Review federation token parameters and lifetime",
                     "Check source IPs and geolocations",
                     "Review API calls made with federated credentials",
-                    "Verify if legitimate automation or abuse"
+                    "Verify if legitimate automation or abuse",
                 ],
                 containment_actions=[
                     "Restrict sts:GetFederationToken permissions",
                     "Revoke compromised IAM credentials",
                     "Implement SCP to limit federation token usage",
                     "Review and reduce federation token lifetime limits",
-                    "Enable MFA for sensitive IAM operations"
-                ]
+                    "Enable MFA for sensitive IAM operations",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist known automation requiring federation tokens",
@@ -326,9 +323,8 @@ resource "aws_cloudwatch_metric_alarm" "federation_abuse" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-60 minutes",
             estimated_monthly_cost="$3-10",
-            prerequisites=["CloudTrail logging enabled"]
+            prerequisites=["CloudTrail logging enabled"],
         ),
-
         # Strategy 3: AWS - Cookie Session Anomalies
         DetectionStrategy(
             strategy_id="t1606-aws-session",
@@ -338,12 +334,12 @@ resource "aws_cloudwatch_metric_alarm" "federation_abuse" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.principalId, sourceIPAddress, userAgent
+                query="""fields @timestamp, eventName, userIdentity.principalId, sourceIPAddress, userAgent
 | filter eventName = "ConsoleLogin" or eventName = "GetSigninToken"
 | stats count(*) as logins, count_distinct(sourceIPAddress) as unique_ips, count_distinct(userAgent) as unique_agents by userIdentity.principalId, bin(1h)
 | filter unique_ips > 5 or (logins > 20 and unique_agents > 3)
-| sort logins desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort logins desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect forged console session cookies
 
 Parameters:
@@ -384,8 +380,8 @@ Resources:
       Threshold: 30
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref SessionAlertTopic]''',
-                terraform_template='''# Detect forged console session cookies
+      AlarmActions: [!Ref SessionAlertTopic]""",
+                terraform_template="""# Detect forged console session cookies
 
 variable "cloudtrail_log_group" {
   type = string
@@ -430,7 +426,7 @@ resource "aws_cloudwatch_metric_alarm" "session_anomaly" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.session_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Console Session Anomaly Detected",
                 alert_description_template="Unusual console login patterns detected for {userIdentity.principalId}.",
@@ -439,15 +435,15 @@ resource "aws_cloudwatch_metric_alarm" "session_anomaly" {
                     "Check for impossible travel scenarios",
                     "Verify user agent strings for anomalies",
                     "Review MFA status for login events",
-                    "Check for concurrent sessions from different locations"
+                    "Check for concurrent sessions from different locations",
                 ],
                 containment_actions=[
                     "Terminate all active console sessions",
                     "Reset user credentials and require password change",
                     "Enable MFA if not already configured",
                     "Review CloudTrail for unauthorised actions",
-                    "Implement stricter session timeout policies"
-                ]
+                    "Implement stricter session timeout policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Account for VPN users and mobile access patterns",
@@ -456,9 +452,8 @@ resource "aws_cloudwatch_metric_alarm" "session_anomaly" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail logging enabled"]
+            prerequisites=["CloudTrail logging enabled"],
         ),
-
         # Strategy 4: GCP - SAML/OIDC Token Monitoring
         DetectionStrategy(
             strategy_id="t1606-gcp-saml",
@@ -473,7 +468,7 @@ resource "aws_cloudwatch_metric_alarm" "session_anomaly" {
 OR protoPayload.serviceName="iap.googleapis.com"
 OR protoPayload.authenticationInfo.principalEmail=~".*@.*\\.gserviceaccount\\.com"
 protoPayload.requestMetadata.callerIp!~"^(10\\.|172\\.|192\\.168)"''',
-                gcp_terraform_template='''# GCP: Monitor SAML/OIDC token anomalies
+                gcp_terraform_template="""# GCP: Monitor SAML/OIDC token anomalies
 
 variable "project_id" {
   type = string
@@ -524,7 +519,7 @@ resource "google_monitoring_alert_policy" "token_alert" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GCP: Forged Token Activity Detected",
                 alert_description_template="Suspicious SAML/OIDC token activity detected in project.",
@@ -533,15 +528,15 @@ resource "google_monitoring_alert_policy" "token_alert" {
                     "Check IAP authentication logs for anomalies",
                     "Verify token issuer and audience claims",
                     "Review source IP addresses and geolocations",
-                    "Check for unauthorised Workload Identity usage"
+                    "Check for unauthorised Workload Identity usage",
                 ],
                 containment_actions=[
                     "Delete suspicious service account keys",
                     "Rotate OAuth client secrets",
                     "Review and restrict IAP access policies",
                     "Enable VPC Service Controls",
-                    "Audit service account permissions"
-                ]
+                    "Audit service account permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known external CI/CD service IPs",
@@ -550,9 +545,8 @@ resource "google_monitoring_alert_policy" "token_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled"],
         ),
-
         # Strategy 5: GCP - Session Cookie Anomalies
         DetectionStrategy(
             strategy_id="t1606-gcp-session",
@@ -563,10 +557,10 @@ resource "google_monitoring_alert_policy" "token_alert" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''protoPayload.serviceName="login.googleapis.com"
+                gcp_logging_query="""protoPayload.serviceName="login.googleapis.com"
 OR protoPayload.methodName=~"google.login.*"
-severity>=WARNING''',
-                gcp_terraform_template='''# GCP: Monitor console session anomalies
+severity>=WARNING""",
+                gcp_terraform_template="""# GCP: Monitor console session anomalies
 
 variable "project_id" {
   type = string
@@ -616,7 +610,7 @@ resource "google_monitoring_alert_policy" "session_alert" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Console Session Anomaly",
                 alert_description_template="Unusual console session activity detected.",
@@ -625,15 +619,15 @@ resource "google_monitoring_alert_policy" "session_alert" {
                     "Check for concurrent sessions from multiple locations",
                     "Verify 2-Step Verification status",
                     "Review Admin Activity logs for suspicious actions",
-                    "Check for impossible travel scenarios"
+                    "Check for impossible travel scenarios",
                 ],
                 containment_actions=[
                     "Revoke all active user sessions",
                     "Reset user passwords",
                     "Enable 2-Step Verification for all users",
                     "Review and restrict access to sensitive resources",
-                    "Implement context-aware access policies"
-                ]
+                    "Implement context-aware access policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal login patterns and locations",
@@ -642,17 +636,19 @@ resource "google_monitoring_alert_policy" "session_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Audit Logs enabled", "Admin Activity logging enabled"]
-        )
+            prerequisites=[
+                "Cloud Audit Logs enabled",
+                "Admin Activity logging enabled",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1606-aws-saml",
         "t1606-gcp-saml",
         "t1606-aws-federation",
         "t1606-gcp-session",
-        "t1606-aws-session"
+        "t1606-aws-session",
     ],
     total_effort_hours=7.5,
-    coverage_improvement="+15% improvement for Credential Access tactic"
+    coverage_improvement="+15% improvement for Credential Access tactic",
 )

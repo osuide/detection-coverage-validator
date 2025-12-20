@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Data Staged: Remote Data Staging",
     tactic_ids=["TA0009"],
     mitre_url="https://attack.mitre.org/techniques/T1074/002/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries stage data collected from multiple systems in a central "
@@ -38,7 +37,7 @@ TEMPLATE = RemediationTemplate(
             "Aggregates data from multiple sources",
             "Evades detection through reduced network activity",
             "Facilitates bulk exfiltration",
-            "Exploits normal file transfer features"
+            "Exploits normal file transfer features",
         ],
         known_threat_actors=[
             "APT28",
@@ -50,21 +49,21 @@ TEMPLATE = RemediationTemplate(
             "MoustachedBouncer",
             "Sea Turtle",
             "Threat Group-3390",
-            "ToddyCat"
+            "ToddyCat",
         ],
         recent_campaigns=[
             Campaign(
                 name="SolarWinds Compromise",
                 year=2020,
                 description="Staged collected data in remote locations before exfiltration",
-                reference_url="https://attack.mitre.org/campaigns/C0024/"
+                reference_url="https://attack.mitre.org/campaigns/C0024/",
             ),
             Campaign(
                 name="Night Dragon",
                 year=2011,
                 description="Staged data from multiple systems in central locations",
-                reference_url="https://attack.mitre.org/campaigns/C0002/"
-            )
+                reference_url="https://attack.mitre.org/campaigns/C0002/",
+            ),
         ],
         prevalence="common",
         trend="stable",
@@ -78,13 +77,12 @@ TEMPLATE = RemediationTemplate(
             "Data exfiltration preparation",
             "Multiple system compromise indicator",
             "Potential data breach",
-            "Compliance violations"
+            "Compliance violations",
         ],
         typical_attack_phase="collection",
         often_precedes=["T1041", "T1048", "T1567"],
-        often_follows=["T1005", "T1039", "T1025", "T1074.001"]
+        often_follows=["T1005", "T1039", "T1025", "T1074.001"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1074_002-aws-s3-staging",
@@ -94,13 +92,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, sourceIPAddress, requestParameters.bucketName, requestParameters.key
+                query="""fields @timestamp, eventName, sourceIPAddress, requestParameters.bucketName, requestParameters.key
 | filter eventSource = "s3.amazonaws.com"
 | filter eventName in ["PutObject", "CopyObject", "UploadPart"]
 | stats count(*) as uploads, sum(requestParameters.contentLength) as totalBytes by sourceIPAddress, requestParameters.bucketName, bin(1h)
 | filter uploads > 50 or totalBytes > 1073741824
-| sort totalBytes desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort totalBytes desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect S3 remote data staging activity
 
 Parameters:
@@ -138,8 +136,8 @@ Resources:
       Threshold: 100
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect S3 remote data staging activity
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect S3 remote data staging activity
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -176,7 +174,7 @@ resource "aws_cloudwatch_metric_alarm" "s3_staging" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Potential Remote Data Staging Detected",
                 alert_description_template="High volume S3 uploads from {sourceIPAddress} to bucket {bucketName}.",
@@ -185,15 +183,15 @@ resource "aws_cloudwatch_metric_alarm" "s3_staging" {
                     "Check uploaded object sizes and patterns",
                     "Verify bucket ownership and permissions",
                     "Review CloudTrail for related user activity",
-                    "Check for compression or archive files"
+                    "Check for compression or archive files",
                 ],
                 containment_actions=[
                     "Block suspicious source IP addresses",
                     "Review and restrict S3 bucket permissions",
                     "Enable S3 versioning and object lock",
                     "Quarantine suspicious objects",
-                    "Review EC2 instance security"
-                ]
+                    "Review EC2 instance security",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Tune threshold based on normal backup and data transfer patterns",
@@ -202,9 +200,8 @@ resource "aws_cloudwatch_metric_alarm" "s3_staging" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-25",
-            prerequisites=["CloudTrail S3 data events enabled"]
+            prerequisites=["CloudTrail S3 data events enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1074_002-aws-vpc-transfer",
             name="AWS VPC Flow Logs - Inter-Instance Transfer",
@@ -213,13 +210,13 @@ resource "aws_cloudwatch_metric_alarm" "s3_staging" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcaddr, dstaddr, bytes, packets
+                query="""fields @timestamp, srcaddr, dstaddr, bytes, packets
 | filter action = "ACCEPT"
 | filter dstport in [22, 445, 3389, 2049]
 | stats sum(bytes) as totalBytes, count(*) as flows by srcaddr, dstaddr, dstport, bin(1h)
 | filter totalBytes > 10737418240
-| sort totalBytes desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort totalBytes desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect large inter-instance data transfers
 
 Parameters:
@@ -257,8 +254,8 @@ Resources:
       Threshold: 10
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect large inter-instance data transfers
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect large inter-instance data transfers
 
 variable "vpc_flow_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -295,7 +292,7 @@ resource "aws_cloudwatch_metric_alarm" "large_transfers" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Large Inter-Instance Data Transfer Detected",
                 alert_description_template="Significant data transfer from {srcaddr} to {dstaddr} on port {dstport}.",
@@ -304,15 +301,15 @@ resource "aws_cloudwatch_metric_alarm" "large_transfers" {
                     "Review instance roles and permissions",
                     "Check for file transfer tools (scp, rsync, robocopy)",
                     "Analyse transferred data types",
-                    "Review instance activity logs"
+                    "Review instance activity logs",
                 ],
                 containment_actions=[
                     "Isolate suspicious instances",
                     "Review security group rules",
                     "Disable unnecessary file sharing protocols",
                     "Audit instance access",
-                    "Check for data exfiltration"
-                ]
+                    "Check for data exfiltration",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude known backup and database replication traffic",
@@ -321,9 +318,8 @@ resource "aws_cloudwatch_metric_alarm" "large_transfers" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$15-40",
-            prerequisites=["VPC Flow Logs enabled"]
+            prerequisites=["VPC Flow Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1074_002-gcp-gcs-staging",
             name="GCP Cloud Storage Remote Staging Detection",
@@ -336,7 +332,7 @@ resource "aws_cloudwatch_metric_alarm" "large_transfers" {
                 gcp_logging_query='''resource.type="gcs_bucket"
 protoPayload.methodName="storage.objects.create"
 OR protoPayload.methodName="storage.objects.copy"''',
-                gcp_terraform_template='''# GCP: Detect Cloud Storage remote data staging
+                gcp_terraform_template="""# GCP: Detect Cloud Storage remote data staging
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -373,7 +369,7 @@ resource "google_monitoring_alert_policy" "gcs_staging" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Potential Remote Data Staging",
                 alert_description_template="High volume Cloud Storage uploads detected.",
@@ -382,15 +378,15 @@ resource "google_monitoring_alert_policy" "gcs_staging" {
                     "Check uploaded object sizes and patterns",
                     "Verify bucket ownership and IAM permissions",
                     "Review audit logs for related activity",
-                    "Check for archive or compressed files"
+                    "Check for archive or compressed files",
                 ],
                 containment_actions=[
                     "Review and restrict bucket IAM permissions",
                     "Enable object versioning and retention",
                     "Quarantine suspicious objects",
                     "Review Compute Engine instance security",
-                    "Block suspicious service accounts"
-                ]
+                    "Block suspicious service accounts",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Tune threshold based on normal backup patterns",
@@ -399,9 +395,8 @@ resource "google_monitoring_alert_policy" "gcs_staging" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-30",
-            prerequisites=["Cloud Storage audit logs enabled"]
+            prerequisites=["Cloud Storage audit logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1074_002-gcp-vpc-transfer",
             name="GCP VPC Flow Logs - Inter-Instance Transfer",
@@ -411,10 +406,10 @@ resource "google_monitoring_alert_policy" "gcs_staging" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_subnetwork"
+                gcp_logging_query="""resource.type="gce_subnetwork"
 jsonPayload.connection.dest_port:(22 OR 445 OR 2049 OR 3389)
-jsonPayload.bytes_sent>1073741824''',
-                gcp_terraform_template='''# GCP: Detect large inter-instance transfers
+jsonPayload.bytes_sent>1073741824""",
+                gcp_terraform_template="""# GCP: Detect large inter-instance transfers
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -451,7 +446,7 @@ resource "google_monitoring_alert_policy" "large_transfers" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Large Inter-Instance Transfer",
                 alert_description_template="Significant data transfer between Compute Engine instances.",
@@ -460,15 +455,15 @@ resource "google_monitoring_alert_policy" "large_transfers" {
                     "Review instance service accounts and IAM roles",
                     "Check for file transfer tools",
                     "Analyse transferred data types",
-                    "Review instance activity logs"
+                    "Review instance activity logs",
                 ],
                 containment_actions=[
                     "Isolate suspicious instances",
                     "Review firewall rules",
                     "Disable unnecessary protocols",
                     "Audit instance access",
-                    "Check for data exfiltration"
-                ]
+                    "Check for data exfiltration",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude known backup and replication traffic",
@@ -477,16 +472,15 @@ resource "google_monitoring_alert_policy" "large_transfers" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$15-40",
-            prerequisites=["VPC Flow Logs enabled"]
-        )
+            prerequisites=["VPC Flow Logs enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1074_002-aws-s3-staging",
         "t1074_002-gcp-gcs-staging",
         "t1074_002-aws-vpc-transfer",
-        "t1074_002-gcp-vpc-transfer"
+        "t1074_002-gcp-vpc-transfer",
     ],
     total_effort_hours=6.0,
-    coverage_improvement="+18% improvement for Collection tactic"
+    coverage_improvement="+18% improvement for Collection tactic",
 )

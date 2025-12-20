@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Steal Web Session Cookie",
     tactic_ids=["TA0006"],
     mitre_url="https://attack.mitre.org/techniques/T1539/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries steal web session cookies from browsers, memory, or network traffic "
@@ -38,22 +37,29 @@ TEMPLATE = RemediationTemplate(
             "Cookies remain valid for extended periods",
             "No need to compromise actual credentials",
             "Works across cloud services and SaaS applications",
-            "Can be extracted from multiple sources (disk, memory, network)"
+            "Can be extracted from multiple sources (disk, memory, network)",
         ],
-        known_threat_actors=["APT29", "APT42", "Kimsuky", "Scattered Spider", "Star Blizzard", "Sandworm Team"],
+        known_threat_actors=[
+            "APT29",
+            "APT42",
+            "Kimsuky",
+            "Scattered Spider",
+            "Star Blizzard",
+            "Sandworm Team",
+        ],
         recent_campaigns=[
             Campaign(
                 name="SolarWinds Compromise (C0024)",
                 year=2020,
                 description="APT29 copied Chrome profile directories containing session cookies during widespread infrastructure compromise",
-                reference_url="https://attack.mitre.org/campaigns/C0024/"
+                reference_url="https://attack.mitre.org/campaigns/C0024/",
             ),
             Campaign(
                 name="Star Blizzard EvilGinx Phishing",
                 year=2023,
                 description="Star Blizzard used EvilGinx phishing proxy to intercept session cookies and bypass MFA",
-                reference_url="https://attack.mitre.org/groups/G1033/"
-            )
+                reference_url="https://attack.mitre.org/groups/G1033/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -68,13 +74,12 @@ TEMPLATE = RemediationTemplate(
             "Session hijacking bypassing MFA protections",
             "Data exfiltration from SaaS platforms",
             "Account takeover without credential compromise",
-            "Persistent access until cookie expiry or rotation"
+            "Persistent access until cookie expiry or rotation",
         ],
         typical_attack_phase="credential_access",
         often_precedes=["T1550.004", "T1530", "T1537"],
-        often_follows=["T1566", "T1189", "T1204"]
+        often_follows=["T1566", "T1189", "T1204"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - CloudTrail Session Context Changes
         DetectionStrategy(
@@ -85,13 +90,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, sourceIPAddress, userAgent, eventName
+                query="""fields @timestamp, userIdentity.principalId, sourceIPAddress, userAgent, eventName
 | filter userIdentity.type = "AssumedRole" or userIdentity.type = "IAMUser"
 | filter eventName = "ConsoleLogin" or eventName = "GetSigninToken" or eventName = "AssumeRole"
 | stats count(*) as event_count, count_distinct(sourceIPAddress) as ip_count, count_distinct(userAgent) as agent_count by userIdentity.principalId, bin(1h)
 | filter ip_count > 3 or agent_count > 2
-| sort event_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort event_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect session cookie theft via context changes
 
 Parameters:
@@ -133,8 +138,8 @@ Resources:
       Threshold: 10
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# AWS: Detect session cookie theft via context changes
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# AWS: Detect session cookie theft via context changes
 
 variable "cloudtrail_log_group" {
   type = string
@@ -180,7 +185,7 @@ resource "aws_cloudwatch_metric_alarm" "session_theft" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.session_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="AWS Session Cookie Theft Detected",
                 alert_description_template="Session token reuse detected from multiple IP addresses for {principalId}.",
@@ -189,15 +194,15 @@ resource "aws_cloudwatch_metric_alarm" "session_theft" {
                     "Check for impossible travel between IP geolocations",
                     "Verify user agent strings for inconsistencies",
                     "Review actions taken during suspicious sessions",
-                    "Check for concurrent sessions from different locations"
+                    "Check for concurrent sessions from different locations",
                 ],
                 containment_actions=[
                     "Revoke active console sessions for affected users",
                     "Force credential reset and MFA re-registration",
                     "Review and revert unauthorised actions",
                     "Enable session context awareness in IAM policies",
-                    "Implement stricter session duration limits"
-                ]
+                    "Implement stricter session duration limits",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist VPN IP ranges and known user travel patterns",
@@ -206,9 +211,8 @@ resource "aws_cloudwatch_metric_alarm" "session_theft" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["CloudTrail logging console events to CloudWatch"]
+            prerequisites=["CloudTrail logging console events to CloudWatch"],
         ),
-
         # Strategy 2: AWS - Impossible Travel Detection
         DetectionStrategy(
             strategy_id="t1539-aws-impossible-travel",
@@ -218,12 +222,12 @@ resource "aws_cloudwatch_metric_alarm" "session_theft" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, sourceIPAddress, awsRegion, eventName
+                query="""fields @timestamp, userIdentity.principalId, sourceIPAddress, awsRegion, eventName
 | filter eventName in ["ConsoleLogin", "AssumeRole", "GetFederationToken"]
 | sort @timestamp asc
 | stats earliest(@timestamp) as first_event, latest(@timestamp) as last_event, count_distinct(sourceIPAddress) as unique_ips by userIdentity.principalId, bin(30m)
-| filter unique_ips >= 2''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| filter unique_ips >= 2""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect impossible travel patterns indicating cookie theft
 
 Parameters:
@@ -266,8 +270,8 @@ Resources:
       Threshold: 3
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# AWS: Detect impossible travel patterns
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# AWS: Detect impossible travel patterns
 
 variable "cloudtrail_log_group" {
   type = string
@@ -314,7 +318,7 @@ resource "aws_cloudwatch_metric_alarm" "impossible_travel" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.travel_alerts.arn]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Impossible Travel Pattern Detected",
                 alert_description_template="User {principalId} accessed AWS from {unique_ips} different locations within 30 minutes.",
@@ -323,15 +327,15 @@ resource "aws_cloudwatch_metric_alarm" "impossible_travel" {
                     "Calculate travel time between locations",
                     "Review all actions performed from suspicious IPs",
                     "Check for VPN or proxy usage patterns",
-                    "Verify user's actual location via out-of-band contact"
+                    "Verify user's actual location via out-of-band contact",
                 ],
                 containment_actions=[
                     "Immediately revoke all active sessions",
                     "Disable affected IAM user or role",
                     "Review and revert unauthorised changes",
                     "Force password reset and MFA re-enrolment",
-                    "Implement IP allowlisting for sensitive accounts"
-                ]
+                    "Implement IP allowlisting for sensitive accounts",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Account for VPNs, legitimate travel, and federated access patterns",
@@ -340,9 +344,8 @@ resource "aws_cloudwatch_metric_alarm" "impossible_travel" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail logging enabled with geographic data"]
+            prerequisites=["CloudTrail logging enabled with geographic data"],
         ),
-
         # Strategy 3: GCP - Session Cookie Anomaly Detection
         DetectionStrategy(
             strategy_id="t1539-gcp-session-anomaly",
@@ -356,7 +359,7 @@ resource "aws_cloudwatch_metric_alarm" "impossible_travel" {
                 gcp_logging_query='''protoPayload.serviceName="login.googleapis.com"
 protoPayload.methodName="google.login.LoginService.loginSuccess"
 OR protoPayload.methodName="google.login.LoginService.refreshToken"''',
-                gcp_terraform_template='''# GCP: Detect session cookie theft via context changes
+                gcp_terraform_template="""# GCP: Detect session cookie theft via context changes
 
 variable "project_id" {
   type = string
@@ -424,7 +427,7 @@ resource "google_monitoring_alert_policy" "session_theft" {
   alert_strategy {
     auto_close = "86400s"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP Session Cookie Theft Detected",
                 alert_description_template="Suspicious session refresh patterns detected for {user_email}.",
@@ -433,15 +436,15 @@ resource "google_monitoring_alert_policy" "session_theft" {
                     "Check source IPs for geographical inconsistencies",
                     "Verify user agent changes across sessions",
                     "Review OAuth token usage patterns",
-                    "Check for workspace admin changes"
+                    "Check for workspace admin changes",
                 ],
                 containment_actions=[
                     "Revoke user's active sessions via Admin Console",
                     "Force sign-out from all devices",
                     "Reset user password and security keys",
                     "Review recent actions in Cloud Audit Logs",
-                    "Enable context-aware access policies"
-                ]
+                    "Enable context-aware access policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal session refresh patterns per user",
@@ -450,9 +453,8 @@ resource "google_monitoring_alert_policy" "session_theft" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Audit Logs enabled", "Login audit logging enabled"]
+            prerequisites=["Cloud Audit Logs enabled", "Login audit logging enabled"],
         ),
-
         # Strategy 4: GCP - Browser Cookie File Access
         DetectionStrategy(
             strategy_id="t1539-gcp-cookie-file-access",
@@ -463,10 +465,10 @@ resource "google_monitoring_alert_policy" "session_theft" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''protoPayload.serviceName="admin.googleapis.com"
+                gcp_logging_query="""protoPayload.serviceName="admin.googleapis.com"
 protoPayload.methodName=~".*LOGOUT.*|.*SUSPICIOUS_LOGIN.*|.*ACCOUNT_WARNING.*"
-OR (protoPayload.serviceName="login.googleapis.com" AND protoPayload.status.code!=0)''',
-                gcp_terraform_template='''# GCP: Monitor suspicious authentication patterns
+OR (protoPayload.serviceName="login.googleapis.com" AND protoPayload.status.code!=0)""",
+                gcp_terraform_template="""# GCP: Monitor suspicious authentication patterns
 
 variable "project_id" {
   type = string
@@ -535,7 +537,7 @@ resource "google_monitoring_alert_policy" "cookie_theft_warning" {
   alert_strategy {
     auto_close = "86400s"
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Suspicious Authentication Patterns",
                 alert_description_template="Multiple suspicious authentication events detected.",
@@ -544,15 +546,15 @@ resource "google_monitoring_alert_policy" "cookie_theft_warning" {
                     "Check for failed login attempts",
                     "Verify legitimate forced logout events",
                     "Review account warning notifications",
-                    "Check for compromised credential reports"
+                    "Check for compromised credential reports",
                 ],
                 containment_actions=[
                     "Force password reset for affected users",
                     "Enable advanced protection programme",
                     "Review and revoke suspicious OAuth grants",
                     "Enable security key enforcement",
-                    "Implement context-aware access controls"
-                ]
+                    "Implement context-aware access controls",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Correlate with other security signals for higher confidence",
@@ -561,16 +563,15 @@ resource "google_monitoring_alert_policy" "cookie_theft_warning" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-60 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Workspace audit logging enabled"]
-        )
+            prerequisites=["Workspace audit logging enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1539-aws-impossible-travel",
         "t1539-gcp-session-anomaly",
         "t1539-aws-session-context",
-        "t1539-gcp-cookie-file-access"
+        "t1539-gcp-cookie-file-access",
     ],
     total_effort_hours=5.5,
-    coverage_improvement="+15% improvement for Credential Access tactic"
+    coverage_improvement="+15% improvement for Credential Access tactic",
 )

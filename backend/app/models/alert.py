@@ -5,7 +5,15 @@ from datetime import datetime
 from typing import Optional
 import enum
 
-from sqlalchemy import String, DateTime, Enum as SQLEnum, Integer, ForeignKey, Boolean, Float
+from sqlalchemy import (
+    String,
+    DateTime,
+    Enum as SQLEnum,
+    Integer,
+    ForeignKey,
+    Boolean,
+    Float,
+)
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -56,11 +64,11 @@ class AlertConfig(Base):
     # Alert type and conditions
     alert_type: Mapped[AlertType] = mapped_column(
         SQLEnum(AlertType, values_callable=lambda x: [e.value for e in x]),
-        nullable=False
+        nullable=False,
     )
     severity: Mapped[AlertSeverity] = mapped_column(
         SQLEnum(AlertSeverity, values_callable=lambda x: [e.value for e in x]),
-        default=AlertSeverity.WARNING
+        default=AlertSeverity.WARNING,
     )
 
     # Threshold configuration (for coverage_threshold type)
@@ -70,7 +78,9 @@ class AlertConfig(Base):
     )  # 'lt', 'gt', 'eq', 'lte', 'gte'
 
     # Notification channels
-    channels: Mapped[list] = mapped_column(JSONB, default=list)  # List of channel configs
+    channels: Mapped[list] = mapped_column(
+        JSONB, default=list
+    )  # List of channel configs
 
     # Rate limiting
     cooldown_minutes: Mapped[int] = mapped_column(Integer, default=60)
@@ -116,7 +126,7 @@ class AlertHistory(Base):
     # Alert details
     severity: Mapped[AlertSeverity] = mapped_column(
         SQLEnum(AlertSeverity, values_callable=lambda x: [e.value for e in x]),
-        nullable=False
+        nullable=False,
     )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     message: Mapped[str] = mapped_column(String(2000), nullable=False)

@@ -47,6 +47,7 @@ class PlatformSettingsService:
         key_material = settings.secret_key.encode()
         # Use SHA256 to get consistent 32 bytes, then base64 encode for Fernet
         import base64
+
         derived_key = hashlib.sha256(key_material).digest()
         fernet_key = base64.urlsafe_b64encode(derived_key)
         return Fernet(fernet_key)
@@ -106,7 +107,9 @@ class PlatformSettingsService:
     async def get_all_settings(self) -> list[PlatformSetting]:
         """Get all settings."""
         result = await self.db.execute(
-            select(PlatformSetting).order_by(PlatformSetting.category, PlatformSetting.key)
+            select(PlatformSetting).order_by(
+                PlatformSetting.category, PlatformSetting.key
+            )
         )
         return list(result.scalars().all())
 
@@ -284,16 +287,19 @@ class PlatformSettingsService:
     async def get_stripe_secret_key(self) -> Optional[str]:
         """Get Stripe secret key (decrypted)."""
         from app.models.platform_settings import SettingKeys
+
         return await self.get_setting_value(SettingKeys.STRIPE_SECRET_KEY)
 
     async def get_stripe_publishable_key(self) -> Optional[str]:
         """Get Stripe publishable key."""
         from app.models.platform_settings import SettingKeys
+
         return await self.get_setting_value(SettingKeys.STRIPE_PUBLISHABLE_KEY)
 
     async def get_stripe_webhook_secret(self) -> Optional[str]:
         """Get Stripe webhook secret (decrypted)."""
         from app.models.platform_settings import SettingKeys
+
         return await self.get_setting_value(SettingKeys.STRIPE_WEBHOOK_SECRET)
 
     async def is_feature_enabled(self, feature_key: str) -> bool:
@@ -304,6 +310,7 @@ class PlatformSettingsService:
     async def is_maintenance_mode(self) -> bool:
         """Check if platform is in maintenance mode."""
         from app.models.platform_settings import SettingKeys
+
         return await self.is_feature_enabled(SettingKeys.PLATFORM_MAINTENANCE_MODE)
 
 

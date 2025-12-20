@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Unsecured Credentials: Container API",
     tactic_ids=["TA0006"],
     mitre_url="https://attack.mitre.org/techniques/T1552/007/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries exploit container environment APIs to obtain credentials. "
@@ -37,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Kubernetes API exposes cluster secrets",
             "Service account tokens enable privilege escalation",
             "Unsecured APIs accessible without authentication",
-            "Cloud container services expose native APIs"
+            "Cloud container services expose native APIs",
         ],
         known_threat_actors=["Peirates"],
         recent_campaigns=[
@@ -45,7 +44,7 @@ TEMPLATE = RemediationTemplate(
                 name="Peirates Kubernetes Exploitation",
                 year=2021,
                 description="Tool queries Kubernetes API for secrets to extract credentials from cluster environments",
-                reference_url="https://attack.mitre.org/software/S0683/"
+                reference_url="https://attack.mitre.org/software/S0683/",
             )
         ],
         prevalence="uncommon",
@@ -60,13 +59,12 @@ TEMPLATE = RemediationTemplate(
             "Cloud credential theft",
             "Container secret exposure",
             "Privilege escalation risk",
-            "Lateral movement enabler"
+            "Lateral movement enabler",
         ],
         typical_attack_phase="credential_access",
         often_precedes=["T1078.004", "T1068", "T1610"],
-        often_follows=["T1133", "T1190"]
+        often_follows=["T1133", "T1190"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1552-007-aws-eks-secrets",
@@ -76,14 +74,14 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, user.username, objectRef.namespace, objectRef.name, responseStatus.code
+                query="""fields @timestamp, user.username, objectRef.namespace, objectRef.name, responseStatus.code
 | filter objectRef.resource = "secrets"
 | filter verb = "get" or verb = "list"
 | filter userAgent not like /kube-controller|kube-scheduler|kubelet/
 | stats count(*) as secret_access by user.username, bin(1h)
 | filter secret_access > 10
-| sort secret_access desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort secret_access desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect unauthorised Kubernetes secret access
 
 Parameters:
@@ -121,8 +119,8 @@ Resources:
       Threshold: 20
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect unauthorised Kubernetes secret access
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect unauthorised Kubernetes secret access
 
 variable "eks_cluster_name" { type = string }
 variable "alert_email" { type = string }
@@ -159,7 +157,7 @@ resource "aws_cloudwatch_metric_alarm" "secret_access" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Kubernetes Secret Access Detected",
                 alert_description_template="Unusual Kubernetes secret access from {username}.",
@@ -167,14 +165,14 @@ resource "aws_cloudwatch_metric_alarm" "secret_access" {
                     "Review user identity and permissions",
                     "Check which secrets were accessed",
                     "Review pod service account permissions",
-                    "Check for unauthorised API access patterns"
+                    "Check for unauthorised API access patterns",
                 ],
                 containment_actions=[
                     "Revoke compromised service account tokens",
                     "Review and restrict RBAC permissions",
                     "Enable Kubernetes audit logging",
-                    "Rotate exposed secrets"
-                ]
+                    "Rotate exposed secrets",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude legitimate system components via userAgent filtering",
@@ -183,9 +181,8 @@ resource "aws_cloudwatch_metric_alarm" "secret_access" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-25",
-            prerequisites=["EKS cluster with audit logging enabled"]
+            prerequisites=["EKS cluster with audit logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1552-007-aws-docker-api",
             name="AWS Docker API Unauthorised Access Detection",
@@ -194,14 +191,14 @@ resource "aws_cloudwatch_metric_alarm" "secret_access" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, sourceIPAddress, requestParameters, responseElements
+                query="""fields @timestamp, sourceIPAddress, requestParameters, responseElements
 | filter eventName like /Container|Task/
 | filter eventName = "DescribeTaskDefinition" or eventName = "ListTasks" or eventName = "DescribeContainerInstances"
 | filter errorCode not like /.*/
 | stats count(*) as api_calls by sourceIPAddress, userIdentity.principalId, bin(1h)
 | filter api_calls > 50
-| sort api_calls desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort api_calls desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect unauthorised Docker/ECS API access
 
 Parameters:
@@ -239,8 +236,8 @@ Resources:
       Threshold: 100
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect unauthorised Docker/ECS API access
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect unauthorised Docker/ECS API access
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -277,7 +274,7 @@ resource "aws_cloudwatch_metric_alarm" "docker_api" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Docker API Access Detected",
                 alert_description_template="High volume of Docker/ECS API calls from {sourceIPAddress}.",
@@ -285,14 +282,14 @@ resource "aws_cloudwatch_metric_alarm" "docker_api" {
                     "Review API caller identity",
                     "Check accessed task definitions",
                     "Review container logs accessed",
-                    "Check for credential exposure in logs"
+                    "Check for credential exposure in logs",
                 ],
                 containment_actions=[
                     "Restrict API access permissions",
                     "Review IAM policies for over-permissive access",
                     "Enable VPC endpoint policies",
-                    "Rotate exposed credentials"
-                ]
+                    "Rotate exposed credentials",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Adjust threshold for CI/CD and monitoring tools",
@@ -301,9 +298,8 @@ resource "aws_cloudwatch_metric_alarm" "docker_api" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled with ECS data events"]
+            prerequisites=["CloudTrail enabled with ECS data events"],
         ),
-
         DetectionStrategy(
             strategy_id="t1552-007-gcp-gke-secrets",
             name="GCP GKE Kubernetes Secret Access Detection",
@@ -316,7 +312,7 @@ resource "aws_cloudwatch_metric_alarm" "docker_api" {
                 gcp_logging_query='''resource.type="k8s_cluster"
 protoPayload.methodName=~"io.k8s.core.v1.secrets.(get|list)"
 protoPayload.authenticationInfo.principalEmail!~"system:serviceaccount:kube-system:"''',
-                gcp_terraform_template='''# GCP: Detect Kubernetes secret access in GKE
+                gcp_terraform_template="""# GCP: Detect Kubernetes secret access in GKE
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -368,7 +364,7 @@ resource "google_monitoring_alert_policy" "secret_access" {
   alert_strategy {
     auto_close = "86400s"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Kubernetes Secret Access",
                 alert_description_template="Unauthorised Kubernetes secret access detected.",
@@ -376,14 +372,14 @@ resource "google_monitoring_alert_policy" "secret_access" {
                     "Review principal identity",
                     "Check accessed secrets",
                     "Review RBAC permissions",
-                    "Check for compromised service accounts"
+                    "Check for compromised service accounts",
                 ],
                 containment_actions=[
                     "Revoke service account tokens",
                     "Restrict RBAC permissions",
                     "Rotate exposed secrets",
-                    "Enable Binary Authorisation"
-                ]
+                    "Enable Binary Authorisation",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude kube-system service accounts from alerts",
@@ -392,9 +388,8 @@ resource "google_monitoring_alert_policy" "secret_access" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["GKE cluster with audit logging enabled"]
+            prerequisites=["GKE cluster with audit logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1552-007-gcp-docker-registry",
             name="GCP Container Registry Unauthorised Access",
@@ -408,7 +403,7 @@ resource "google_monitoring_alert_policy" "secret_access" {
 protoPayload.resourceName=~".*gcr.io.*"
 protoPayload.methodName="storage.objects.get"
 protoPayload.authenticationInfo.principalEmail!~".*gserviceaccount.com"''',
-                gcp_terraform_template='''# GCP: Detect Container Registry unauthorised access
+                gcp_terraform_template="""# GCP: Detect Container Registry unauthorised access
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -458,7 +453,7 @@ resource "google_monitoring_alert_policy" "registry_access" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Container Registry Access",
                 alert_description_template="Unauthorised Container Registry access detected.",
@@ -466,14 +461,14 @@ resource "google_monitoring_alert_policy" "registry_access" {
                     "Review accessing principal",
                     "Check accessed container images",
                     "Review IAM permissions",
-                    "Check for credential exposure"
+                    "Check for credential exposure",
                 ],
                 containment_actions=[
                     "Restrict registry IAM permissions",
                     "Enable Binary Authorisation",
                     "Review service account keys",
-                    "Rotate exposed credentials"
-                ]
+                    "Rotate exposed credentials",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Exclude service account access patterns",
@@ -482,11 +477,15 @@ resource "google_monitoring_alert_policy" "registry_access" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-15",
-            prerequisites=["GCS audit logging enabled"]
-        )
+            prerequisites=["GCS audit logging enabled"],
+        ),
     ],
-
-    recommended_order=["t1552-007-aws-eks-secrets", "t1552-007-gcp-gke-secrets", "t1552-007-aws-docker-api", "t1552-007-gcp-docker-registry"],
+    recommended_order=[
+        "t1552-007-aws-eks-secrets",
+        "t1552-007-gcp-gke-secrets",
+        "t1552-007-aws-docker-api",
+        "t1552-007-gcp-docker-registry",
+    ],
     total_effort_hours=5.5,
-    coverage_improvement="+25% improvement for Credential Access tactic"
+    coverage_improvement="+25% improvement for Credential Access tactic",
 )

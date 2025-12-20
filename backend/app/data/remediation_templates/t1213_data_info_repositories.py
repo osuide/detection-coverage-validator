@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Data from Information Repositories",
     tactic_ids=["TA0009"],
     mitre_url="https://attack.mitre.org/techniques/T1213/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries leverage information repositories to extract valuable data that aids "
@@ -38,7 +37,7 @@ TEMPLATE = RemediationTemplate(
             "Information repositories often have weak access controls",
             "Single compromised account can access vast amounts of sensitive data",
             "Automated tools can rapidly scrape repository contents",
-            "Data from repositories enables lateral movement and privilege escalation"
+            "Data from repositories enables lateral movement and privilege escalation",
         ],
         known_threat_actors=["APT28 (Fancy Bear)", "APT29 (Cozy Bear)"],
         recent_campaigns=[
@@ -46,14 +45,14 @@ TEMPLATE = RemediationTemplate(
                 name="SolarWinds Compromise",
                 year=2020,
                 description="APT29 accessed internal knowledge repositories during the SolarWinds supply chain attack",
-                reference_url="https://www.microsoft.com/security/blog/2020/12/18/analyzing-solorigate-the-compromised-dll-file-that-started-a-sophisticated-cyberattack-and-how-microsoft-defender-helps-protect/"
+                reference_url="https://www.microsoft.com/security/blog/2020/12/18/analyzing-solorigate-the-compromised-dll-file-that-started-a-sophisticated-cyberattack-and-how-microsoft-defender-helps-protect/",
             ),
             Campaign(
                 name="APT28 Repository Collection",
                 year=2021,
                 description="APT28 systematically collected files from various information repositories across compromised networks",
-                reference_url="https://attack.mitre.org/groups/G0007/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0007/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -70,13 +69,12 @@ TEMPLATE = RemediationTemplate(
             "Customer PII breach from CRM systems and databases",
             "Regulatory violations (GDPR, CCPA, HIPAA, PCI-DSS)",
             "Reputational damage from sensitive data leaks",
-            "Competitive intelligence loss"
+            "Competitive intelligence loss",
         ],
         typical_attack_phase="collection",
         often_precedes=["T1567", "T1041", "T1048"],
-        often_follows=["T1078", "T1110", "T1528"]
+        often_follows=["T1078", "T1110", "T1528"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - Unusual Database Access Patterns
         DetectionStrategy(
@@ -90,15 +88,15 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn as user, eventName,
+                query="""fields @timestamp, userIdentity.arn as user, eventName,
        sourceIPAddress, requestParameters.dBInstanceIdentifier as database
 | filter eventSource = "rds.amazonaws.com"
 | filter eventName in ["DescribeDBInstances", "DescribeDBSnapshots", "CreateDBSnapshot", "DownloadDBLogFilePortion"]
 | stats count(*) as access_count, count_distinct(database) as unique_databases
   by user, sourceIPAddress, bin(1h) as time_window
 | filter access_count >= 20 or unique_databases >= 5
-| sort access_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort access_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect unusual database access for T1213
 
 Parameters:
@@ -139,8 +137,8 @@ Resources:
       Threshold: 20
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect unusual database access for T1213
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect unusual database access for T1213
 
 variable "cloudtrail_log_group" {
   type = string
@@ -185,7 +183,7 @@ resource "aws_cloudwatch_metric_alarm" "db_access" {
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Unusual Database Repository Access Detected",
                 alert_description_template=(
@@ -198,7 +196,7 @@ resource "aws_cloudwatch_metric_alarm" "db_access" {
                     "Check for snapshot creation or log downloads",
                     "Review source IP location and reputation",
                     "Examine database logs for actual data queries",
-                    "Determine if sensitive customer or business data was accessed"
+                    "Determine if sensitive customer or business data was accessed",
                 ],
                 containment_actions=[
                     "Revoke database credentials for compromised principal",
@@ -206,8 +204,8 @@ resource "aws_cloudwatch_metric_alarm" "db_access" {
                     "Review database access permissions",
                     "Enable database activity monitoring (DAM)",
                     "Consider implementing VPC endpoints for database access",
-                    "Rotate database passwords if compromise suspected"
-                ]
+                    "Rotate database passwords if compromise suspected",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist DBAs, monitoring tools, and backup solutions",
@@ -216,9 +214,8 @@ resource "aws_cloudwatch_metric_alarm" "db_access" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["CloudTrail enabled", "CloudTrail logs in CloudWatch"]
+            prerequisites=["CloudTrail enabled", "CloudTrail logs in CloudWatch"],
         ),
-
         # Strategy 2: AWS - Code Repository Access Monitoring
         DetectionStrategy(
             strategy_id="t1213-aws-coderepo",
@@ -231,15 +228,15 @@ resource "aws_cloudwatch_metric_alarm" "db_access" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn as user, eventName,
+                query="""fields @timestamp, userIdentity.arn as user, eventName,
        sourceIPAddress, requestParameters.repositoryName as repo
 | filter eventSource = "codecommit.amazonaws.com"
 | filter eventName in ["GitPull", "GetFile", "GetFolder", "ListRepositories", "BatchGetRepositories"]
 | stats count(*) as git_operations, count_distinct(repo) as unique_repos
   by user, sourceIPAddress, bin(30m) as time_window
 | filter git_operations >= 30 or unique_repos >= 3
-| sort git_operations desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort git_operations desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect bulk code repository access for T1213
 
 Parameters:
@@ -280,8 +277,8 @@ Resources:
       Threshold: 30
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect bulk code repository access for T1213
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect bulk code repository access for T1213
 
 variable "cloudtrail_log_group" {
   type = string
@@ -326,7 +323,7 @@ resource "aws_cloudwatch_metric_alarm" "code_repo" {
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Bulk Code Repository Access Detected",
                 alert_description_template=(
@@ -339,7 +336,7 @@ resource "aws_cloudwatch_metric_alarm" "code_repo" {
                     "Review what files or branches were accessed",
                     "Verify source IP is from expected location",
                     "Check for cloning of entire repositories",
-                    "Look for access to repositories containing secrets or credentials"
+                    "Look for access to repositories containing secrets or credentials",
                 ],
                 containment_actions=[
                     "Revoke repository access for compromised account",
@@ -347,8 +344,8 @@ resource "aws_cloudwatch_metric_alarm" "code_repo" {
                     "Review repository permissions and access policies",
                     "Enable branch protection on sensitive repositories",
                     "Implement IP allowlists for repository access",
-                    "Scan repositories for exposed secrets"
-                ]
+                    "Scan repositories for exposed secrets",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline developer activity; whitelist CI/CD service accounts",
@@ -357,9 +354,8 @@ resource "aws_cloudwatch_metric_alarm" "code_repo" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["CloudTrail enabled", "CodeCommit in use"]
+            prerequisites=["CloudTrail enabled", "CodeCommit in use"],
         ),
-
         # Strategy 3: AWS - SharePoint/WorkDocs Access
         DetectionStrategy(
             strategy_id="t1213-aws-workdocs",
@@ -372,15 +368,15 @@ resource "aws_cloudwatch_metric_alarm" "code_repo" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn as user, eventName,
+                query="""fields @timestamp, userIdentity.arn as user, eventName,
        sourceIPAddress, requestParameters.documentId
 | filter eventSource = "workdocs.amazonaws.com"
 | filter eventName in ["GetDocument", "GetDocumentVersion", "DescribeDocumentVersions", "DescribeFolderContents"]
 | stats count(*) as doc_accesses, count_distinct(requestParameters.documentId) as unique_docs
   by user, sourceIPAddress, bin(1h) as time_window
 | filter doc_accesses >= 50 or unique_docs >= 20
-| sort doc_accesses desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort doc_accesses desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect bulk document repository access for T1213
 
 Parameters:
@@ -421,8 +417,8 @@ Resources:
       Threshold: 50
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect bulk document repository access for T1213
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect bulk document repository access for T1213
 
 variable "cloudtrail_log_group" {
   type = string
@@ -467,7 +463,7 @@ resource "aws_cloudwatch_metric_alarm" "workdocs" {
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Bulk Document Repository Access Detected",
                 alert_description_template=(
@@ -480,15 +476,15 @@ resource "aws_cloudwatch_metric_alarm" "workdocs" {
                     "Check document sensitivity and classification",
                     "Review source IP and user agent",
                     "Determine if documents contain PII or confidential data",
-                    "Check for any document sharing or export activities"
+                    "Check for any document sharing or export activities",
                 ],
                 containment_actions=[
                     "Revoke user's document repository access",
                     "Review and restrict folder permissions",
                     "Enable document download restrictions",
                     "Implement data loss prevention (DLP) policies",
-                    "Consider enabling watermarking for sensitive documents"
-                ]
+                    "Consider enabling watermarking for sensitive documents",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal user behaviour; whitelist search indexers and backup tools",
@@ -497,9 +493,8 @@ resource "aws_cloudwatch_metric_alarm" "workdocs" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["CloudTrail enabled", "WorkDocs or similar service in use"]
+            prerequisites=["CloudTrail enabled", "WorkDocs or similar service in use"],
         ),
-
         # Strategy 4: GCP - Cloud Storage Repository Access
         DetectionStrategy(
             strategy_id="t1213-gcp-gcs",
@@ -516,7 +511,7 @@ resource "aws_cloudwatch_metric_alarm" "workdocs" {
                 gcp_logging_query='''protoPayload.methodName="storage.objects.get"
 protoPayload.serviceName="storage.googleapis.com"
 protoPayload.authenticationInfo.principalEmail!=""''',
-                gcp_terraform_template='''# GCP: Detect bulk storage repository access
+                gcp_terraform_template="""# GCP: Detect bulk storage repository access
 
 variable "project_id" {
   type = string
@@ -574,7 +569,7 @@ resource "google_monitoring_alert_policy" "storage_access" {
   documentation {
     content = "Bulk access to storage repositories detected (T1213)"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Bulk Storage Repository Access Detected",
                 alert_description_template=(
@@ -587,7 +582,7 @@ resource "google_monitoring_alert_policy" "storage_access" {
                     "Check if buckets contain sensitive business documents",
                     "Review download volume and patterns",
                     "Determine if access is from expected location",
-                    "Look for follow-on exfiltration activities"
+                    "Look for follow-on exfiltration activities",
                 ],
                 containment_actions=[
                     "Revoke compromised service account keys",
@@ -595,8 +590,8 @@ resource "google_monitoring_alert_policy" "storage_access" {
                     "Enable uniform bucket-level access",
                     "Implement VPC Service Controls",
                     "Consider enabling Object Lifecycle policies",
-                    "Enable audit logging if not already active"
-                ]
+                    "Enable audit logging if not already active",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate data processing jobs and backup solutions",
@@ -605,9 +600,8 @@ resource "google_monitoring_alert_policy" "storage_access" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Audit Logs enabled for Cloud Storage"]
+            prerequisites=["Cloud Audit Logs enabled for Cloud Storage"],
         ),
-
         # Strategy 5: GCP - BigQuery Data Repository Access
         DetectionStrategy(
             strategy_id="t1213-gcp-bigquery",
@@ -621,11 +615,11 @@ resource "google_monitoring_alert_policy" "storage_access" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''protoPayload.methodName=~"google.cloud.bigquery.v2.JobService.*"
+                gcp_logging_query="""protoPayload.methodName=~"google.cloud.bigquery.v2.JobService.*"
 protoPayload.serviceName="bigquery.googleapis.com"
 (protoPayload.methodName="google.cloud.bigquery.v2.JobService.Query" OR
- protoPayload.methodName="google.cloud.bigquery.v2.JobService.GetQueryResults")''',
-                gcp_terraform_template='''# GCP: Detect unusual BigQuery repository access
+ protoPayload.methodName="google.cloud.bigquery.v2.JobService.GetQueryResults")""",
+                gcp_terraform_template="""# GCP: Detect unusual BigQuery repository access
 
 variable "project_id" {
   type = string
@@ -682,7 +676,7 @@ resource "google_monitoring_alert_policy" "bigquery_access" {
   documentation {
     content = "Unusual BigQuery data repository access detected (T1213)"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Unusual BigQuery Repository Access",
                 alert_description_template=(
@@ -695,7 +689,7 @@ resource "google_monitoring_alert_policy" "bigquery_access" {
                     "Verify if user typically runs this volume of queries",
                     "Examine query results for sensitive data extraction",
                     "Check for data export to external destinations",
-                    "Review principal's authorisation for data access"
+                    "Review principal's authorisation for data access",
                 ],
                 containment_actions=[
                     "Revoke BigQuery access for compromised principal",
@@ -703,8 +697,8 @@ resource "google_monitoring_alert_policy" "bigquery_access" {
                     "Enable column-level security for sensitive data",
                     "Implement VPC Service Controls for BigQuery",
                     "Review and update IAM bindings on datasets",
-                    "Consider implementing query cost controls"
-                ]
+                    "Consider implementing query cost controls",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline analytics workloads; whitelist BI tools and data pipelines",
@@ -713,17 +707,16 @@ resource "google_monitoring_alert_policy" "bigquery_access" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Audit Logs enabled for BigQuery"]
-        )
+            prerequisites=["Cloud Audit Logs enabled for BigQuery"],
+        ),
     ],
-
     recommended_order=[
         "t1213-aws-coderepo",
         "t1213-gcp-bigquery",
         "t1213-aws-dbaccess",
         "t1213-gcp-gcs",
-        "t1213-aws-workdocs"
+        "t1213-aws-workdocs",
     ],
     total_effort_hours=7.5,
-    coverage_improvement="+20% improvement for Collection tactic"
+    coverage_improvement="+20% improvement for Collection tactic",
 )

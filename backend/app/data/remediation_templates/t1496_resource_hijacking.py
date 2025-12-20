@@ -24,7 +24,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Resource Hijacking",
     tactic_ids=["TA0040"],
     mitre_url="https://attack.mitre.org/techniques/T1496/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries leverage compromised systems to complete resource-intensive "
@@ -39,7 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Difficult to detect with traditional tools",
             "Can run for extended periods unnoticed",
             "Cloud environments provide scalable compute",
-            "Low risk compared to data theft"
+            "Low risk compared to data theft",
         ],
         known_threat_actors=[],
         recent_campaigns=[
@@ -47,7 +46,7 @@ TEMPLATE = RemediationTemplate(
                 name="LABRAT Cryptojacking",
                 year=2023,
                 description="Stealthy cryptojacking and proxyjacking campaign targeting GitLab instances",
-                reference_url="https://attack.mitre.org/techniques/T1496/"
+                reference_url="https://attack.mitre.org/techniques/T1496/",
             )
         ],
         prevalence="common",
@@ -63,13 +62,12 @@ TEMPLATE = RemediationTemplate(
             "Degraded system performance",
             "Service availability issues",
             "Potential regulatory scrutiny",
-            "Reputational damage"
+            "Reputational damage",
         ],
         typical_attack_phase="impact",
         often_precedes=[],
-        often_follows=["T1078", "T1078.004", "T1098", "T1525"]
+        often_follows=["T1078", "T1078.004", "T1098", "T1525"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1496-aws-ec2-cpu",
@@ -79,12 +77,12 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, instanceId, CPUUtilization
+                query="""fields @timestamp, instanceId, CPUUtilization
 | filter CPUUtilization > 80
 | stats avg(CPUUtilization) as avgCPU, max(CPUUtilization) as maxCPU by instanceId, bin(1h)
 | filter avgCPU > 80
-| sort avgCPU desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort avgCPU desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect high CPU usage indicating cryptomining
 
 Parameters:
@@ -129,8 +127,8 @@ Resources:
         - MetricName: HighProcessCPU
           MetricNamespace: Security/ResourceHijacking
           MetricValue: "1"
-          DefaultValue: 0''',
-                terraform_template='''# Detect high CPU usage indicating cryptomining
+          DefaultValue: 0""",
+                terraform_template="""# Detect high CPU usage indicating cryptomining
 
 variable "alert_email" {
   description = "Email for security alerts"
@@ -174,7 +172,7 @@ resource "aws_cloudwatch_log_metric_filter" "process_cpu" {
     namespace = "Security/ResourceHijacking"
     value     = "1"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Sustained High CPU Usage Detected",
                 alert_description_template="Instance {instanceId} showing sustained CPU usage above 80% for 30+ minutes.",
@@ -184,7 +182,7 @@ resource "aws_cloudwatch_log_metric_filter" "process_cpu" {
                     "Review CloudTrail for unauthorised instance launches",
                     "Check for suspicious user accounts or credentials",
                     "Analyse startup scripts and cron jobs",
-                    "Review VPC Flow Logs for unusual outbound traffic"
+                    "Review VPC Flow Logs for unusual outbound traffic",
                 ],
                 containment_actions=[
                     "Isolate instance by modifying security groups",
@@ -192,8 +190,8 @@ resource "aws_cloudwatch_log_metric_filter" "process_cpu" {
                     "Terminate suspicious processes",
                     "Rotate credentials and keys",
                     "Review and revoke unauthorised IAM permissions",
-                    "Consider terminating and replacing instance"
-                ]
+                    "Consider terminating and replacing instance",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Tune threshold based on normal workload patterns; exclude known batch processing instances",
@@ -202,9 +200,10 @@ resource "aws_cloudwatch_log_metric_filter" "process_cpu" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-60 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudWatch agent installed for process-level monitoring (optional but recommended)"]
+            prerequisites=[
+                "CloudWatch agent installed for process-level monitoring (optional but recommended)"
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1496-aws-network-mining",
             name="AWS Network Traffic to Mining Pools",
@@ -213,12 +212,12 @@ resource "aws_cloudwatch_log_metric_filter" "process_cpu" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcAddr, dstAddr, dstPort, bytes
+                query="""fields @timestamp, srcAddr, dstAddr, dstPort, bytes
 | filter dstPort in [3333, 4444, 5555, 8333, 9999, 14433, 14444, 45560]
 | stats sum(bytes) as totalBytes by srcAddr, dstAddr, dstPort, bin(1h)
 | filter totalBytes > 1000000
-| sort totalBytes desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort totalBytes desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect network connections to cryptocurrency mining pools
 
 Parameters:
@@ -261,8 +260,8 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect network connections to cryptocurrency mining pools
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect network connections to cryptocurrency mining pools
 
 variable "vpc_flow_log_group" {
   description = "CloudWatch Log Group for VPC Flow Logs"
@@ -310,7 +309,7 @@ resource "aws_cloudwatch_metric_alarm" "mining_detected" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Cryptocurrency Mining Pool Connection Detected",
                 alert_description_template="Instance {srcAddr} connecting to mining pool on port {dstPort}.",
@@ -320,7 +319,7 @@ resource "aws_cloudwatch_metric_alarm" "mining_detected" {
                     "Check CloudTrail for recent modifications",
                     "Review instance launch configuration",
                     "Check for lateral movement from this instance",
-                    "Identify initial access vector"
+                    "Identify initial access vector",
                 ],
                 containment_actions=[
                     "Block mining pool IPs in NACL/security groups",
@@ -328,8 +327,8 @@ resource "aws_cloudwatch_metric_alarm" "mining_detected" {
                     "Terminate mining processes",
                     "Review and rotate all credentials",
                     "Terminate and rebuild instance from clean AMI",
-                    "Enable GuardDuty for ongoing detection"
-                ]
+                    "Enable GuardDuty for ongoing detection",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Mining pool ports are highly specific; false positives are rare",
@@ -338,9 +337,8 @@ resource "aws_cloudwatch_metric_alarm" "mining_detected" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["VPC Flow Logs enabled and sent to CloudWatch"]
+            prerequisites=["VPC Flow Logs enabled and sent to CloudWatch"],
         ),
-
         DetectionStrategy(
             strategy_id="t1496-aws-ecs-cpu",
             name="AWS ECS/Fargate High CPU Detection",
@@ -349,12 +347,12 @@ resource "aws_cloudwatch_metric_alarm" "mining_detected" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, ClusterName, ServiceName, TaskId, CPUUtilization
+                query="""fields @timestamp, ClusterName, ServiceName, TaskId, CPUUtilization
 | filter CPUUtilization > 80
 | stats avg(CPUUtilization) as avgCPU by ClusterName, ServiceName, TaskId, bin(1h)
 | filter avgCPU > 80
-| sort avgCPU desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort avgCPU desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect cryptomining in ECS containers
 
 Parameters:
@@ -415,8 +413,8 @@ Resources:
         - Id: ad1
           Expression: ANOMALY_DETECTION_BAND(m1, 2)
       ThresholdMetricId: ad1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect cryptomining in ECS containers
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect cryptomining in ECS containers
 
 variable "cluster_name" {
   type = string
@@ -484,7 +482,7 @@ resource "aws_cloudwatch_metric_alarm" "cpu_anomaly" {
     id          = "ad1"
     expression  = "ANOMALY_DETECTION_BAND(m1, 2)"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Container High CPU Usage Detected",
                 alert_description_template="ECS service {ServiceName} showing sustained high CPU usage.",
@@ -494,7 +492,7 @@ resource "aws_cloudwatch_metric_alarm" "cpu_anomaly" {
                     "Analyse container logs for mining activity",
                     "Review ECR image scan results",
                     "Check network connections from containers",
-                    "Review IAM roles attached to tasks"
+                    "Review IAM roles attached to tasks",
                 ],
                 containment_actions=[
                     "Stop affected tasks",
@@ -502,8 +500,8 @@ resource "aws_cloudwatch_metric_alarm" "cpu_anomaly" {
                     "Scan container images for malware",
                     "Review and lock down ECR permissions",
                     "Rotate IAM credentials",
-                    "Enable GuardDuty runtime monitoring"
-                ]
+                    "Enable GuardDuty runtime monitoring",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Use anomaly detection to learn normal patterns; exclude legitimate batch processing containers",
@@ -512,9 +510,8 @@ resource "aws_cloudwatch_metric_alarm" "cpu_anomaly" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["ECS Container Insights enabled"]
+            prerequisites=["ECS Container Insights enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1496-gcp-compute-cpu",
             name="GCP Compute Engine High CPU Detection",
@@ -524,10 +521,10 @@ resource "aws_cloudwatch_metric_alarm" "cpu_anomaly" {
             gcp_service="cloud_monitoring",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 metric.type="compute.googleapis.com/instance/cpu/utilization"
-metric.value > 0.8''',
-                gcp_terraform_template='''# GCP: Detect high CPU usage indicating cryptomining
+metric.value > 0.8""",
+                gcp_terraform_template="""# GCP: Detect high CPU usage indicating cryptomining
 
 variable "project_id" {
   description = "GCP Project ID"
@@ -604,7 +601,7 @@ resource "google_logging_metric" "suspicious_processes" {
   label_extractors = {
     "instance_id" = "EXTRACT(resource.labels.instance_id)"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Sustained High CPU Usage Detected",
                 alert_description_template="GCE instance showing sustained CPU above 80% for 30+ minutes.",
@@ -614,7 +611,7 @@ resource "google_logging_metric" "suspicious_processes" {
                     "Review Cloud Audit Logs for unauthorised changes",
                     "Analyse instance metadata and startup scripts",
                     "Check for suspicious service accounts",
-                    "Review firewall rules for unusual access"
+                    "Review firewall rules for unusual access",
                 ],
                 containment_actions=[
                     "Isolate instance with firewall rules",
@@ -622,8 +619,8 @@ resource "google_logging_metric" "suspicious_processes" {
                     "Stop suspicious processes",
                     "Rotate service account keys",
                     "Review and revoke IAM permissions",
-                    "Consider stopping and replacing instance"
-                ]
+                    "Consider stopping and replacing instance",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Adjust threshold based on workload; use instance labels to exclude batch processing VMs",
@@ -632,9 +629,8 @@ resource "google_logging_metric" "suspicious_processes" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-60 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Monitoring enabled"]
+            prerequisites=["Cloud Monitoring enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1496-gcp-vpc-mining",
             name="GCP VPC Flow Logs Mining Pool Detection",
@@ -644,7 +640,7 @@ resource "google_logging_metric" "suspicious_processes" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_subnetwork"
+                gcp_logging_query="""resource.type="gce_subnetwork"
 logName="projects/PROJECT_ID/logs/compute.googleapis.com%2Fvpc_flows"
 (jsonPayload.connection.dest_port="3333" OR
  jsonPayload.connection.dest_port="4444" OR
@@ -653,8 +649,8 @@ logName="projects/PROJECT_ID/logs/compute.googleapis.com%2Fvpc_flows"
  jsonPayload.connection.dest_port="9999" OR
  jsonPayload.connection.dest_port="14433" OR
  jsonPayload.connection.dest_port="14444" OR
- jsonPayload.connection.dest_port="45560")''',
-                gcp_terraform_template='''# GCP: Detect network connections to mining pools
+ jsonPayload.connection.dest_port="45560")""",
+                gcp_terraform_template="""# GCP: Detect network connections to mining pools
 
 variable "project_id" {
   type = string
@@ -734,7 +730,7 @@ resource "google_monitoring_alert_policy" "mining_detected" {
   documentation {
     content = "Network connections to known cryptocurrency mining pools detected. Investigate immediately for potential resource hijacking."
   }
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GCP: Mining Pool Connection Detected",
                 alert_description_template="Instance connecting to cryptocurrency mining pool on suspicious port.",
@@ -744,7 +740,7 @@ resource "google_monitoring_alert_policy" "mining_detected" {
                     "Check Cloud Audit Logs for recent changes",
                     "Review instance creation and modification history",
                     "Check for lateral movement indicators",
-                    "Analyse startup scripts and metadata"
+                    "Analyse startup scripts and metadata",
                 ],
                 containment_actions=[
                     "Create firewall rules to block mining pool IPs/ports",
@@ -752,8 +748,8 @@ resource "google_monitoring_alert_policy" "mining_detected" {
                     "Stop mining processes",
                     "Rotate all service account keys",
                     "Review IAM permissions and revoke unauthorised access",
-                    "Stop and rebuild instance from clean image"
-                ]
+                    "Stop and rebuild instance from clean image",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Mining pool ports are highly specific; legitimate use is rare",
@@ -762,9 +758,8 @@ resource "google_monitoring_alert_policy" "mining_detected" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["VPC Flow Logs enabled"]
+            prerequisites=["VPC Flow Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1496-gcp-gke-cpu",
             name="GCP GKE Container High CPU Detection",
@@ -774,10 +769,10 @@ resource "google_monitoring_alert_policy" "mining_detected" {
             gcp_service="cloud_monitoring",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="k8s_container"
+                gcp_logging_query="""resource.type="k8s_container"
 metric.type="kubernetes.io/container/cpu/core_usage_time"
-metric.value > 0.8''',
-                gcp_terraform_template='''# GCP: Detect cryptomining in GKE containers
+metric.value > 0.8""",
+                gcp_terraform_template="""# GCP: Detect cryptomining in GKE containers
 
 variable "project_id" {
   type = string
@@ -869,7 +864,7 @@ resource "google_logging_metric" "suspicious_container_processes" {
   label_extractors = {
     "pod_name" = "EXTRACT(resource.labels.pod_name)"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: GKE Container High CPU Detected",
                 alert_description_template="GKE container showing sustained high CPU usage.",
@@ -879,7 +874,7 @@ resource "google_logging_metric" "suspicious_container_processes" {
                     "Analyse network connections from pod",
                     "Review container registry for unauthorised images",
                     "Check RBAC permissions for pod service account",
-                    "Review admission controller policies"
+                    "Review admission controller policies",
                 ],
                 containment_actions=[
                     "Delete affected pods",
@@ -887,8 +882,8 @@ resource "google_logging_metric" "suspicious_container_processes" {
                     "Scan container images with Container Analysis",
                     "Block unauthorised registries",
                     "Review and restrict RBAC permissions",
-                    "Enable Binary Authorisation to prevent unauthorised images"
-                ]
+                    "Enable Binary Authorisation to prevent unauthorised images",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude namespaces running legitimate CPU-intensive workloads",
@@ -897,18 +892,17 @@ resource "google_logging_metric" "suspicious_container_processes" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["GKE cluster with Cloud Monitoring enabled"]
-        )
+            prerequisites=["GKE cluster with Cloud Monitoring enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1496-aws-network-mining",
         "t1496-gcp-vpc-mining",
         "t1496-aws-ec2-cpu",
         "t1496-gcp-compute-cpu",
         "t1496-aws-ecs-cpu",
-        "t1496-gcp-gke-cpu"
+        "t1496-gcp-gke-cpu",
     ],
     total_effort_hours=8.5,
-    coverage_improvement="+25% improvement for Impact tactic detection"
+    coverage_improvement="+25% improvement for Impact tactic detection",
 )

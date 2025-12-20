@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Protocol Tunneling",
     tactic_ids=["TA0011"],  # Command and Control
     mitre_url="https://attack.mitre.org/techniques/T1572/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries encapsulate one network protocol within another to conceal malicious "
@@ -39,7 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Adds encryption to hide payload content",
             "Enables access to normally blocked services",
             "Difficult to detect without deep packet inspection",
-            "Common tools (SSH, ngrok, chisel) readily available"
+            "Common tools (SSH, ngrok, chisel) readily available",
         ],
         known_threat_actors=[
             "Sandworm Team (G0034)",
@@ -53,39 +52,39 @@ TEMPLATE = RemediationTemplate(
             "Magic Hound",
             "Fox Kitten",
             "Leviathan",
-            "Mustang Panda"
+            "Mustang Panda",
         ],
         recent_campaigns=[
             Campaign(
                 name="2022 Ukraine Electric Power Attack",
                 year=2022,
                 description="Sandworm Team deployed GOGETTER malware using Yamux protocol over TLS for tunnelled command-and-control communications",
-                reference_url="https://attack.mitre.org/groups/G0034/"
+                reference_url="https://attack.mitre.org/groups/G0034/",
             ),
             Campaign(
                 name="Scattered Spider Teleport Operations",
                 year=2023,
                 description="Scattered Spider utilised Teleport.sh, Chisel, ngrok, and Pinggy for protocol tunnelling to maintain persistent access",
-                reference_url="https://attack.mitre.org/techniques/T1572/"
+                reference_url="https://attack.mitre.org/techniques/T1572/",
             ),
             Campaign(
                 name="FIN7 Plink SSH Tunnelling",
                 year=2023,
                 description="FIN7, FIN6, and FIN13 leveraged Plink utility for SSH tunnelling to bypass network controls and maintain C2 channels",
-                reference_url="https://attack.mitre.org/groups/G0046/"
+                reference_url="https://attack.mitre.org/groups/G0046/",
             ),
             Campaign(
                 name="Salt Typhoon GRE Tunnels",
                 year=2024,
                 description="Salt Typhoon employed Generic Routing Encapsulation (GRE) tunnels for covert communications in telecommunications infrastructure",
-                reference_url="https://attack.mitre.org/groups/G1041/"
+                reference_url="https://attack.mitre.org/groups/G1041/",
             ),
             Campaign(
                 name="Cutting Edge Iodine Campaign",
                 year=2021,
                 description="Threat actors used Iodine to tunnel IPv4 traffic over DNS, bypassing network egress filtering",
-                reference_url="https://attack.mitre.org/techniques/T1572/"
-            )
+                reference_url="https://attack.mitre.org/techniques/T1572/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -103,13 +102,12 @@ TEMPLATE = RemediationTemplate(
             "Data exfiltration via concealed channels",
             "Lateral movement enablement through tunnelled protocols",
             "Compliance violations from undetected C2 traffic",
-            "Increased dwell time and incident response costs"
+            "Increased dwell time and incident response costs",
         ],
         typical_attack_phase="command_and_control",
         often_precedes=["T1041", "T1048", "T1071"],
-        often_follows=["T1078.004", "T1190", "T1133"]
+        often_follows=["T1078.004", "T1190", "T1133"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - SSH Tunnelling Detection
         DetectionStrategy(
@@ -120,13 +118,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, sourceIPAddress, userIdentity.principalId, requestParameters
+                query="""fields @timestamp, sourceIPAddress, userIdentity.principalId, requestParameters
 | filter eventName = "RunInstances" or eventName = "AuthorizeSecurityGroupIngress"
 | filter requestParameters.ipPermissions.items.0.toPort = 22
   or requestParameters.ipPermissions.items.0.fromPort = 22
 | sort @timestamp desc
-| limit 100''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| limit 100""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect SSH tunnelling and port forwarding activity
 
 Parameters:
@@ -172,8 +170,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect AWS SSH tunnelling activity
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect AWS SSH tunnelling activity
 
 variable "alert_email" {
   type = string
@@ -229,7 +227,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="SSH Tunnelling Configuration Detected",
                 alert_description_template="SSH security group rule modified for {groupId}. This may indicate protocol tunnelling setup.",
@@ -239,7 +237,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Check if this is an authorised administrative change",
                     "Examine recent SSH connection patterns in VPC Flow Logs",
                     "Review CloudWatch logs for SSH session establishment",
-                    "Check for tools like plink, ssh, or ngrok on instances"
+                    "Check for tools like plink, ssh, or ngrok on instances",
                 ],
                 containment_actions=[
                     "Remove unauthorised SSH security group rules",
@@ -247,8 +245,8 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Enable MFA for SSH connections",
                     "Review and restrict ec2:AuthorizeSecurityGroup* permissions",
                     "Enable Session Manager as alternative to SSH",
-                    "Implement network segmentation to limit tunnelling impact"
-                ]
+                    "Implement network segmentation to limit tunnelling impact",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised infrastructure teams; exclude bastion host security groups",
@@ -257,9 +255,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         # Strategy 2: AWS - Unusual Encrypted Traffic Patterns
         DetectionStrategy(
             strategy_id="t1572-aws-encrypted-anomaly",
@@ -269,13 +266,13 @@ resource "aws_sns_topic_policy" "allow_events" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcAddr, dstAddr, dstPort, protocol, bytes
+                query="""fields @timestamp, srcAddr, dstAddr, dstPort, protocol, bytes
 | filter dstPort not in [443, 22, 3389, 993, 995, 465, 587]
 | filter bytes > 1000000
 | stats sum(bytes) as total_bytes, count(*) as connections by srcAddr, dstPort, bin(5m)
 | filter connections > 50 or total_bytes > 10485760
-| sort total_bytes desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort total_bytes desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect unusual encrypted traffic patterns indicating tunnelling
 
 Parameters:
@@ -317,8 +314,8 @@ Resources:
       Threshold: 10485760
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect unusual encrypted traffic patterns
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect unusual encrypted traffic patterns
 
 variable "alert_email" { type = string }
 variable "vpc_flow_log_group" { type = string }
@@ -359,7 +356,7 @@ resource "aws_cloudwatch_metric_alarm" "tunnel_alarm" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Unusual Encrypted Traffic Pattern Detected",
                 alert_description_template="High-volume traffic on non-standard port {dstPort} from {srcAddr}: {total_bytes} bytes in {connections} connections.",
@@ -369,7 +366,7 @@ resource "aws_cloudwatch_metric_alarm" "tunnel_alarm" {
                     "Check for tunnelling tools (ngrok, chisel, plink, socat)",
                     "Review processes establishing network connections",
                     "Examine user activity and authentication logs",
-                    "Correlate with other security events"
+                    "Correlate with other security events",
                 ],
                 containment_actions=[
                     "Block traffic to suspicious destination ports",
@@ -377,8 +374,8 @@ resource "aws_cloudwatch_metric_alarm" "tunnel_alarm" {
                     "Terminate suspicious processes",
                     "Review and restrict egress firewall rules",
                     "Enable enhanced monitoring on affected resources",
-                    "Conduct forensic analysis of instance"
-                ]
+                    "Conduct forensic analysis of instance",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known application ports; establish baseline traffic patterns",
@@ -387,9 +384,8 @@ resource "aws_cloudwatch_metric_alarm" "tunnel_alarm" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-20",
-            prerequisites=["VPC Flow Logs enabled", "CloudWatch Logs"]
+            prerequisites=["VPC Flow Logs enabled", "CloudWatch Logs"],
         ),
-
         # Strategy 3: AWS - Systems Manager Session Tunnelling
         DetectionStrategy(
             strategy_id="t1572-aws-ssm-tunnel",
@@ -406,10 +402,10 @@ resource "aws_cloudwatch_metric_alarm" "tunnel_alarm" {
                         "eventName": ["StartSession"],
                         "requestParameters": {
                             "documentName": ["AWS-StartPortForwardingSession"]
-                        }
-                    }
+                        },
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect Systems Manager port forwarding sessions
 
 Parameters:
@@ -451,8 +447,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect Systems Manager port forwarding
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect Systems Manager port forwarding
 
 variable "alert_email" {
   type = string
@@ -501,7 +497,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Systems Manager Port Forwarding Session Started",
                 alert_description_template="Port forwarding session initiated via Systems Manager by {userIdentity.principalId} to {target}.",
@@ -511,7 +507,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Check if this is authorised administrative activity",
                     "Examine session duration and data transferred",
                     "Review recent authentication events for the principal",
-                    "Check for other suspicious Sessions Manager activity"
+                    "Check for other suspicious Sessions Manager activity",
                 ],
                 containment_actions=[
                     "Terminate unauthorised SSM sessions",
@@ -519,8 +515,8 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Implement session logging and monitoring",
                     "Require MFA for sensitive SSM operations",
                     "Apply IAM conditions to restrict port forwarding document usage",
-                    "Enable Session Manager logging to S3/CloudWatch"
-                ]
+                    "Enable Session Manager logging to S3/CloudWatch",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised DevOps and infrastructure teams",
@@ -529,9 +525,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled", "Systems Manager enabled"]
+            prerequisites=["CloudTrail enabled", "Systems Manager enabled"],
         ),
-
         # Strategy 4: GCP - SSH Tunnelling Detection
         DetectionStrategy(
             strategy_id="t1572-gcp-ssh-tunnel",
@@ -546,7 +541,7 @@ resource "aws_sns_topic_policy" "allow_events" {
 OR protoPayload.methodName="v1.compute.firewalls.patch"
 protoPayload.serviceName="compute.googleapis.com"
 protoPayload.request.allowed.ports="22"''',
-                gcp_terraform_template='''# GCP: Detect SSH tunnelling configuration
+                gcp_terraform_template="""# GCP: Detect SSH tunnelling configuration
 
 variable "project_id" {
   type = string
@@ -597,7 +592,7 @@ resource "google_monitoring_alert_policy" "ssh_tunnel" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: SSH Tunnelling Configuration Detected",
                 alert_description_template="SSH firewall rule created or modified. This may indicate protocol tunnelling setup.",
@@ -607,7 +602,7 @@ resource "google_monitoring_alert_policy" "ssh_tunnel" {
                     "Check if this is an authorised infrastructure change",
                     "Examine VPC Flow Logs for SSH connection patterns",
                     "Review Cloud Logging for SSH session activity",
-                    "Check instances for tunnelling tools (plink, chisel, ngrok)"
+                    "Check instances for tunnelling tools (plink, chisel, ngrok)",
                 ],
                 containment_actions=[
                     "Remove unauthorised SSH firewall rules",
@@ -615,8 +610,8 @@ resource "google_monitoring_alert_policy" "ssh_tunnel" {
                     "Enable OS Login for managed SSH access",
                     "Review and restrict compute.firewalls.* permissions",
                     "Implement VPC Service Controls",
-                    "Enable Private Google Access to reduce internet exposure"
-                ]
+                    "Enable Private Google Access to reduce internet exposure",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised infrastructure and DevOps teams",
@@ -625,9 +620,8 @@ resource "google_monitoring_alert_policy" "ssh_tunnel" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled"],
         ),
-
         # Strategy 5: GCP - Unusual Encrypted Traffic Patterns
         DetectionStrategy(
             strategy_id="t1572-gcp-encrypted-anomaly",
@@ -638,11 +632,11 @@ resource "google_monitoring_alert_policy" "ssh_tunnel" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_subnetwork"
+                gcp_logging_query="""resource.type="gce_subnetwork"
 logName="projects/PROJECT_ID/logs/compute.googleapis.com%2Fvpc_flows"
 jsonPayload.connection.dest_port!=(443 OR 22 OR 3389 OR 993 OR 995)
-jsonPayload.bytes_sent>1048576''',
-                gcp_terraform_template='''# GCP: Detect unusual encrypted traffic patterns
+jsonPayload.bytes_sent>1048576""",
+                gcp_terraform_template="""# GCP: Detect unusual encrypted traffic patterns
 
 variable "project_id" {
   type = string
@@ -695,7 +689,7 @@ resource "google_monitoring_alert_policy" "tunnel_traffic" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Unusual Encrypted Traffic Pattern Detected",
                 alert_description_template="High-volume traffic detected on non-standard ports. May indicate protocol tunnelling.",
@@ -705,7 +699,7 @@ resource "google_monitoring_alert_policy" "tunnel_traffic" {
                     "Check for tunnelling tools on source instances",
                     "Review processes establishing network connections",
                     "Examine user authentication and activity logs",
-                    "Correlate with other security events and alerts"
+                    "Correlate with other security events and alerts",
                 ],
                 containment_actions=[
                     "Block traffic to suspicious ports via firewall",
@@ -713,8 +707,8 @@ resource "google_monitoring_alert_policy" "tunnel_traffic" {
                     "Terminate suspicious processes",
                     "Review and restrict egress firewall rules",
                     "Enable enhanced monitoring and logging",
-                    "Conduct forensic analysis if compromise confirmed"
-                ]
+                    "Conduct forensic analysis if compromise confirmed",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known application ports; establish traffic baselines",
@@ -723,9 +717,8 @@ resource "google_monitoring_alert_policy" "tunnel_traffic" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-20",
-            prerequisites=["VPC Flow Logs enabled on subnets", "Cloud Logging"]
+            prerequisites=["VPC Flow Logs enabled on subnets", "Cloud Logging"],
         ),
-
         # Strategy 6: GCP - Cloud VPN Tunnel Monitoring
         DetectionStrategy(
             strategy_id="t1572-gcp-vpn-tunnel",
@@ -739,7 +732,7 @@ resource "google_monitoring_alert_policy" "tunnel_traffic" {
                 gcp_logging_query='''protoPayload.methodName="v1.compute.vpnTunnels.insert"
 OR protoPayload.methodName="v1.compute.vpnGateways.insert"
 protoPayload.serviceName="compute.googleapis.com"''',
-                gcp_terraform_template='''# GCP: Monitor Cloud VPN tunnel creation
+                gcp_terraform_template="""# GCP: Monitor Cloud VPN tunnel creation
 
 variable "project_id" {
   type = string
@@ -789,7 +782,7 @@ resource "google_monitoring_alert_policy" "vpn_tunnel" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Cloud VPN Tunnel Created",
                 alert_description_template="VPN tunnel or gateway created. Verify this is authorised infrastructure.",
@@ -799,7 +792,7 @@ resource "google_monitoring_alert_policy" "vpn_tunnel" {
                     "Check if this is part of authorised network changes",
                     "Examine traffic patterns through the VPN tunnel",
                     "Review organisation's VPN deployment policies",
-                    "Verify business justification for VPN creation"
+                    "Verify business justification for VPN creation",
                 ],
                 containment_actions=[
                     "Delete unauthorised VPN tunnels or gateways",
@@ -807,8 +800,8 @@ resource "google_monitoring_alert_policy" "vpn_tunnel" {
                     "Implement organisation policy constraints for VPN",
                     "Enable VPC Flow Logs on VPN-connected networks",
                     "Require approval workflow for VPN infrastructure",
-                    "Audit all existing VPN configurations"
-                ]
+                    "Audit all existing VPN configurations",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised network engineering teams and change management systems",
@@ -817,18 +810,17 @@ resource "google_monitoring_alert_policy" "vpn_tunnel" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1572-aws-ssh-tunnel",
         "t1572-gcp-ssh-tunnel",
         "t1572-aws-ssm-tunnel",
         "t1572-aws-encrypted-anomaly",
         "t1572-gcp-encrypted-anomaly",
-        "t1572-gcp-vpn-tunnel"
+        "t1572-gcp-vpn-tunnel",
     ],
     total_effort_hours=4.5,
-    coverage_improvement="+18% improvement for Command and Control tactic"
+    coverage_improvement="+18% improvement for Command and Control tactic",
 )

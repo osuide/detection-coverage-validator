@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Wordlist Scanning",
     tactic_ids=["TA0043"],
     mitre_url="https://attack.mitre.org/techniques/T1595/003/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries use wordlist-based iterative probing to discover infrastructure, "
@@ -38,7 +37,7 @@ TEMPLATE = RemediationTemplate(
             "Enumerates cloud storage buckets",
             "Maps DNS subdomains",
             "Low-cost automated discovery",
-            "Reveals organisation structure"
+            "Reveals organisation structure",
         ],
         known_threat_actors=["APT41", "Volatile Cedar"],
         recent_campaigns=[
@@ -46,14 +45,14 @@ TEMPLATE = RemediationTemplate(
                 name="Volatile Cedar Web Discovery",
                 year=2024,
                 description="Deployed DirBuster and GoBuster for web directory and DNS subdomain enumeration",
-                reference_url="https://attack.mitre.org/techniques/T1595/003/"
+                reference_url="https://attack.mitre.org/techniques/T1595/003/",
             ),
             Campaign(
                 name="APT41 Web Server Scanning",
                 year=2024,
                 description="Used various brute-force tools against web servers for reconnaissance",
-                reference_url="https://attack.mitre.org/groups/G0096/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0096/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -67,13 +66,12 @@ TEMPLATE = RemediationTemplate(
             "Reveals sensitive endpoints",
             "Identifies misconfigured cloud storage",
             "Maps organisation infrastructure",
-            "Precursor to exploitation"
+            "Precursor to exploitation",
         ],
         typical_attack_phase="reconnaissance",
         often_precedes=["T1190", "T1530", "T1110"],
-        often_follows=["T1595.001", "T1595.002"]
+        often_follows=["T1595.001", "T1595.002"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1595-003-aws-waf-scanning",
@@ -83,12 +81,12 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, httpRequest.clientIp, httpRequest.uri, httpRequest.httpMethod
+                query="""fields @timestamp, httpRequest.clientIp, httpRequest.uri, httpRequest.httpMethod
 | filter terminatingRuleId like /Rate/
 | stats count(*) as requests, count_distinct(httpRequest.uri) as unique_paths by httpRequest.clientIp, bin(5m)
 | filter unique_paths > 20 or requests > 100
-| sort requests desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort requests desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect wordlist scanning via WAF rate limiting
 
 Parameters:
@@ -127,8 +125,8 @@ Resources:
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect wordlist scanning via WAF rate limiting
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect wordlist scanning via WAF rate limiting
 
 variable "waf_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -165,7 +163,7 @@ resource "aws_cloudwatch_metric_alarm" "scanning_detected" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Wordlist Scanning Detected",
                 alert_description_template="High-volume scanning activity from {clientIp}.",
@@ -174,15 +172,15 @@ resource "aws_cloudwatch_metric_alarm" "scanning_detected" {
                     "Check for common wordlist patterns (admin, backup, test, api)",
                     "Identify if successful discoveries occurred (200 responses)",
                     "Review source IP reputation",
-                    "Check for subsequent exploitation attempts"
+                    "Check for subsequent exploitation attempts",
                 ],
                 containment_actions=[
                     "Block scanning IP at WAF/security group",
                     "Review discovered paths for exposure",
                     "Enable stricter rate limiting",
                     "Remove unnecessary exposed endpoints",
-                    "Check S3 bucket permissions"
-                ]
+                    "Check S3 bucket permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Legitimate crawlers may trigger; whitelist known good IPs",
@@ -191,9 +189,8 @@ resource "aws_cloudwatch_metric_alarm" "scanning_detected" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-25",
-            prerequisites=["AWS WAF with rate-based rules enabled"]
+            prerequisites=["AWS WAF with rate-based rules enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1595-003-aws-cloudtrail-s3",
             name="AWS S3 Bucket Enumeration Detection",
@@ -202,13 +199,13 @@ resource "aws_cloudwatch_metric_alarm" "scanning_detected" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, requestParameters.bucketName, errorCode
+                query="""fields @timestamp, userIdentity.principalId, requestParameters.bucketName, errorCode
 | filter eventName = "HeadBucket" or eventName = "ListBucket" or eventName = "GetBucketLocation"
 | filter errorCode = "NoSuchBucket" or errorCode = "AccessDenied"
 | stats count(*) as attempts by userIdentity.principalId, sourceIPAddress, bin(5m)
 | filter attempts > 10
-| sort attempts desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort attempts desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect S3 bucket enumeration attempts
 
 Parameters:
@@ -247,8 +244,8 @@ Resources:
       Threshold: 20
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect S3 bucket enumeration attempts
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect S3 bucket enumeration attempts
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -285,7 +282,7 @@ resource "aws_cloudwatch_metric_alarm" "bucket_enum_detected" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="S3 Bucket Enumeration Detected",
                 alert_description_template="Multiple bucket enumeration attempts from {sourceIPAddress}.",
@@ -294,15 +291,15 @@ resource "aws_cloudwatch_metric_alarm" "bucket_enum_detected" {
                     "Check if organisation naming conventions exposed",
                     "Identify any successful discoveries",
                     "Review source IP and user agent",
-                    "Check for subsequent access attempts"
+                    "Check for subsequent access attempts",
                 ],
                 containment_actions=[
                     "Review S3 bucket naming conventions",
                     "Ensure bucket policies are restrictive",
                     "Block public bucket access organisation-wide",
                     "Enable S3 Block Public Access",
-                    "Review bucket ACLs and policies"
-                ]
+                    "Review bucket ACLs and policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Failed bucket requests are strong indicators",
@@ -311,9 +308,8 @@ resource "aws_cloudwatch_metric_alarm" "bucket_enum_detected" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail with S3 data events enabled"]
+            prerequisites=["CloudTrail with S3 data events enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1595-003-aws-alb-404",
             name="ALB 404 Pattern Detection",
@@ -322,12 +318,12 @@ resource "aws_cloudwatch_metric_alarm" "bucket_enum_detected" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, client_ip, request_url, elb_status_code, user_agent
+                query="""fields @timestamp, client_ip, request_url, elb_status_code, user_agent
 | filter elb_status_code = 404
 | stats count(*) as not_found_count, count_distinct(request_url) as unique_paths by client_ip, bin(5m)
 | filter not_found_count > 30 and unique_paths > 15
-| sort not_found_count desc''',
-                terraform_template='''# Detect directory brute-forcing via ALB logs
+| sort not_found_count desc""",
+                terraform_template="""# Detect directory brute-forcing via ALB logs
 
 variable "alb_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -364,7 +360,7 @@ resource "aws_cloudwatch_metric_alarm" "scanning_detected" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Directory Scanning Detected",
                 alert_description_template="High volume of 404 errors from {client_ip}.",
@@ -373,15 +369,15 @@ resource "aws_cloudwatch_metric_alarm" "scanning_detected" {
                     "Check for common scanning tools in user agent",
                     "Identify any successful discoveries (200, 301, 302 responses)",
                     "Review legitimate vs scanning traffic ratio",
-                    "Check for follow-up exploitation attempts"
+                    "Check for follow-up exploitation attempts",
                 ],
                 containment_actions=[
                     "Block scanning IP address",
                     "Enable WAF with rate limiting",
                     "Remove or protect discovered paths",
                     "Implement request throttling",
-                    "Review exposed directory structure"
-                ]
+                    "Review exposed directory structure",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Tune thresholds for application traffic patterns",
@@ -390,9 +386,8 @@ resource "aws_cloudwatch_metric_alarm" "scanning_detected" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["ALB access logging enabled"]
+            prerequisites=["ALB access logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1595-003-gcp-lb-scanning",
             name="GCP Load Balancer Scanning Detection",
@@ -402,10 +397,10 @@ resource "aws_cloudwatch_metric_alarm" "scanning_detected" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="http_load_balancer"
+                gcp_logging_query="""resource.type="http_load_balancer"
 httpRequest.status >= 400
-httpRequest.status < 500''',
-                gcp_terraform_template='''# GCP: Detect wordlist scanning via Load Balancer logs
+httpRequest.status < 500""",
+                gcp_terraform_template="""# GCP: Detect wordlist scanning via Load Balancer logs
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -454,7 +449,7 @@ resource "google_monitoring_alert_policy" "scanning_detected" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Wordlist Scanning Detected",
                 alert_description_template="High volume of scanning activity detected on load balancer.",
@@ -463,15 +458,15 @@ resource "google_monitoring_alert_policy" "scanning_detected" {
                     "Check for wordlist patterns",
                     "Identify successful discoveries",
                     "Review source IP addresses",
-                    "Check for subsequent attacks"
+                    "Check for subsequent attacks",
                 ],
                 containment_actions=[
                     "Configure Cloud Armor rate limiting",
                     "Block scanning IP addresses",
                     "Review and restrict exposed endpoints",
                     "Enable Cloud Armor security policies",
-                    "Review GCS bucket permissions"
-                ]
+                    "Review GCS bucket permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Tune threshold for application patterns",
@@ -480,9 +475,8 @@ resource "google_monitoring_alert_policy" "scanning_detected" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Load Balancing with logging enabled"]
+            prerequisites=["Cloud Load Balancing with logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1595-003-gcp-storage-enum",
             name="GCP Storage Bucket Enumeration Detection",
@@ -495,7 +489,7 @@ resource "google_monitoring_alert_policy" "scanning_detected" {
                 gcp_logging_query='''protoPayload.methodName=("storage.buckets.get" OR "storage.buckets.list")
 protoPayload.status.code != 0
 severity="ERROR"''',
-                gcp_terraform_template='''# GCP: Detect GCS bucket enumeration attempts
+                gcp_terraform_template="""# GCP: Detect GCS bucket enumeration attempts
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -536,7 +530,7 @@ resource "google_monitoring_alert_policy" "bucket_enum_detected" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: GCS Bucket Enumeration Detected",
                 alert_description_template="Multiple bucket enumeration attempts detected.",
@@ -545,15 +539,15 @@ resource "google_monitoring_alert_policy" "bucket_enum_detected" {
                     "Check for organisation naming patterns",
                     "Identify successful discoveries",
                     "Review source IP and caller identity",
-                    "Check for subsequent access attempts"
+                    "Check for subsequent access attempts",
                 ],
                 containment_actions=[
                     "Review GCS bucket naming conventions",
                     "Enable uniform bucket-level access",
                     "Remove public access from buckets",
                     "Implement organisation policies",
-                    "Review bucket IAM permissions"
-                ]
+                    "Review bucket IAM permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Failed bucket requests are strong indicators",
@@ -562,17 +556,16 @@ resource "google_monitoring_alert_policy" "bucket_enum_detected" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-15",
-            prerequisites=["Cloud Audit Logs for GCS enabled"]
-        )
+            prerequisites=["Cloud Audit Logs for GCS enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1595-003-aws-s3",
         "t1595-003-gcp-storage-enum",
         "t1595-003-aws-waf-scanning",
         "t1595-003-gcp-lb-scanning",
-        "t1595-003-aws-alb-404"
+        "t1595-003-aws-alb-404",
     ],
     total_effort_hours=5.5,
-    coverage_improvement="+25% improvement for Reconnaissance tactic"
+    coverage_improvement="+25% improvement for Reconnaissance tactic",
 )

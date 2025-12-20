@@ -36,7 +36,9 @@ async def list_schedules(
 
     if cloud_account_id:
         query = query.where(ScanSchedule.cloud_account_id == cloud_account_id)
-        count_query = count_query.where(ScanSchedule.cloud_account_id == cloud_account_id)
+        count_query = count_query.where(
+            ScanSchedule.cloud_account_id == cloud_account_id
+        )
 
     if is_active is not None:
         query = query.where(ScanSchedule.is_active == is_active)

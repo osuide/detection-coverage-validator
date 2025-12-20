@@ -23,11 +23,15 @@ class SDKPattern:
 
     # Mapping quality
     confidence: float = 0.85
-    is_detection: bool = True  # True if this indicates detection, False if it's the attack itself
+    is_detection: bool = (
+        True  # True if this indicates detection, False if it's the attack itself
+    )
 
     # Context
     description: str = ""
-    requires_context: list[str] = field(default_factory=list)  # Other calls that boost confidence
+    requires_context: list[str] = field(
+        default_factory=list
+    )  # Other calls that boost confidence
 
 
 class SDKPatternLibrary:
@@ -136,7 +140,6 @@ class SDKPatternLibrary:
             confidence=0.8,
             is_detection=True,
         ),
-
         # === STS Operations ===
         SDKPattern(
             service="sts",
@@ -166,7 +169,6 @@ class SDKPatternLibrary:
             confidence=0.6,
             is_detection=True,
         ),
-
         # === EC2 Operations ===
         SDKPattern(
             service="ec2",
@@ -252,7 +254,6 @@ class SDKPatternLibrary:
             tactic_name="Defense Evasion",
             confidence=0.6,
         ),
-
         # === S3 Operations ===
         SDKPattern(
             service="s3",
@@ -320,7 +321,6 @@ class SDKPatternLibrary:
             confidence=0.6,
             description="Disabling versioning before deletion",
         ),
-
         # === CloudTrail Operations ===
         SDKPattern(
             service="cloudtrail",
@@ -359,7 +359,6 @@ class SDKPatternLibrary:
             confidence=0.8,
             is_detection=True,
         ),
-
         # === Lambda Operations ===
         SDKPattern(
             service="lambda",
@@ -397,7 +396,6 @@ class SDKPatternLibrary:
             tactic_name="Persistence",
             confidence=0.65,
         ),
-
         # === Secrets Manager / SSM ===
         SDKPattern(
             service="secretsmanager",
@@ -435,7 +433,6 @@ class SDKPatternLibrary:
             tactic_name="Execution",
             confidence=0.8,
         ),
-
         # === Organizations ===
         SDKPattern(
             service="organizations",
@@ -457,7 +454,6 @@ class SDKPatternLibrary:
             confidence=0.8,
             is_detection=True,
         ),
-
         # === KMS ===
         SDKPattern(
             service="kms",
@@ -477,7 +473,6 @@ class SDKPatternLibrary:
             tactic_name="Impact",
             confidence=0.8,
         ),
-
         # === RDS ===
         SDKPattern(
             service="rds",
@@ -507,7 +502,6 @@ class SDKPatternLibrary:
             confidence=0.85,
             description="Sharing RDS snapshots externally",
         ),
-
         # === GuardDuty / Security Hub (Detection indicators) ===
         SDKPattern(
             service="guardduty",

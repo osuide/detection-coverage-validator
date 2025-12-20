@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Process Discovery",
     tactic_ids=["TA0007"],
     mitre_url="https://attack.mitre.org/techniques/T1057/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries enumerate running processes on systems to gather information "
@@ -38,25 +37,32 @@ TEMPLATE = RemediationTemplate(
             "Detects sandbox and analysis environments",
             "Finds high-value applications and services",
             "Maps system privileges and capabilities",
-            "Required before process injection attacks"
+            "Required before process injection attacks",
         ],
         known_threat_actors=[
-            "APT1", "APT28", "APT29", "Lazarus Group", "Kimsuky",
-            "OilRig", "Turla", "FIN7", "Volt Typhoon"
+            "APT1",
+            "APT28",
+            "APT29",
+            "Lazarus Group",
+            "Kimsuky",
+            "OilRig",
+            "Turla",
+            "FIN7",
+            "Volt Typhoon",
         ],
         recent_campaigns=[
             Campaign(
                 name="Volt Typhoon Infrastructure Reconnaissance",
                 year=2024,
                 description="Used tasklist utility to enumerate processes on compromised cloud instances",
-                reference_url="https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-144a"
+                reference_url="https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-144a",
             ),
             Campaign(
                 name="Cloud Container Reconnaissance",
                 year=2024,
                 description="Attackers enumerate processes in Kubernetes pods to identify security controls",
-                reference_url="https://unit42.paloaltonetworks.com/2025-cloud-security-alert-trends/"
-            )
+                reference_url="https://unit42.paloaltonetworks.com/2025-cloud-security-alert-trends/",
+            ),
         ],
         prevalence="common",
         trend="stable",
@@ -72,13 +78,12 @@ TEMPLATE = RemediationTemplate(
             "Reveals security tool mapping by attackers",
             "Precursor to defence evasion attempts",
             "Early warning for process injection attacks",
-            "Container breakout risk indicator"
+            "Container breakout risk indicator",
         ],
         typical_attack_phase="discovery",
         often_precedes=["T1562.001", "T1055", "T1489"],
-        often_follows=["T1078.004", "T1078.001", "T1611"]
+        often_follows=["T1078.004", "T1078.001", "T1611"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - EC2 Process Enumeration via SSM/Session Manager
         DetectionStrategy(
@@ -89,14 +94,14 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn, requestParameters.documentName, requestParameters.parameters
+                query="""fields @timestamp, userIdentity.arn, requestParameters.documentName, requestParameters.parameters
 | filter eventSource = "ssm.amazonaws.com"
 | filter eventName = "SendCommand"
 | filter requestParameters.documentName = "AWS-RunShellScript" or requestParameters.documentName = "AWS-RunPowerShellScript"
 | filter requestParameters.parameters like /tasklist|Get-Process|ps aux|ps -ef|top|htop/
 | stats count(*) as cmd_count by userIdentity.arn, bin(1h)
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect process enumeration via SSM
 
 Parameters:
@@ -137,8 +142,8 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect process enumeration via SSM
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect process enumeration via SSM
 
 variable "cloudtrail_log_group" {
   type = string
@@ -183,7 +188,7 @@ resource "aws_cloudwatch_metric_alarm" "process_enum" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Process Enumeration Detected on EC2",
                 alert_description_template="Process enumeration command executed via SSM by {userIdentity.arn}.",
@@ -192,15 +197,15 @@ resource "aws_cloudwatch_metric_alarm" "process_enum" {
                     "Review the complete command and parameters",
                     "Check if this is authorised administrative activity",
                     "Review recent activity from this identity",
-                    "Look for follow-on defence evasion or privilege escalation"
+                    "Look for follow-on defence evasion or privilege escalation",
                 ],
                 containment_actions=[
                     "Review SSM session logs for suspicious activity",
                     "Check for unauthorised access",
                     "Monitor for process injection or termination",
                     "Isolate instance if compromise suspected",
-                    "Audit security tool status on affected instances"
-                ]
+                    "Audit security tool status on affected instances",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised administrative accounts and monitoring tools",
@@ -209,9 +214,8 @@ resource "aws_cloudwatch_metric_alarm" "process_enum" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail logging to CloudWatch", "SSM logging enabled"]
+            prerequisites=["CloudTrail logging to CloudWatch", "SSM logging enabled"],
         ),
-
         # Strategy 2: AWS - ECS Task Exec Process Enumeration
         DetectionStrategy(
             strategy_id="t1057-aws-ecs",
@@ -221,13 +225,13 @@ resource "aws_cloudwatch_metric_alarm" "process_enum" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn, requestParameters.task, requestParameters.command
+                query="""fields @timestamp, userIdentity.arn, requestParameters.task, requestParameters.command
 | filter eventSource = "ecs.amazonaws.com"
 | filter eventName = "ExecuteCommand"
 | filter requestParameters.command like /ps|top|\/proc/
 | stats count(*) as exec_count by userIdentity.arn, requestParameters.cluster, bin(1h)
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect container process enumeration in ECS
 
 Parameters:
@@ -268,8 +272,8 @@ Resources:
       Threshold: 3
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect container process enumeration in ECS
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect container process enumeration in ECS
 
 variable "cloudtrail_log_group" {
   type = string
@@ -314,7 +318,7 @@ resource "aws_cloudwatch_metric_alarm" "container_enum" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Container Process Enumeration Detected",
                 alert_description_template="Process enumeration in ECS container by {userIdentity.arn}.",
@@ -323,15 +327,15 @@ resource "aws_cloudwatch_metric_alarm" "container_enum" {
                     "Review the complete command executed",
                     "Check container's expected behaviour",
                     "Look for container escape attempts",
-                    "Review task definition for misconfigurations"
+                    "Review task definition for misconfigurations",
                 ],
                 containment_actions=[
                     "Review ECS exec session logs",
                     "Check for privilege escalation attempts",
                     "Monitor for container breakout activity",
                     "Consider stopping compromised task",
-                    "Review container security posture"
-                ]
+                    "Review container security posture",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised debugging sessions",
@@ -340,9 +344,11 @@ resource "aws_cloudwatch_metric_alarm" "container_enum" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$3-5",
-            prerequisites=["CloudTrail logging to CloudWatch", "ECS ExecuteCommand audit logging"]
+            prerequisites=[
+                "CloudTrail logging to CloudWatch",
+                "ECS ExecuteCommand audit logging",
+            ],
         ),
-
         # Strategy 3: GCP - Compute Instance Process Enumeration
         DetectionStrategy(
             strategy_id="t1057-gcp-compute",
@@ -355,7 +361,7 @@ resource "aws_cloudwatch_metric_alarm" "container_enum" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.request.cmdline=~"(ps aux|ps -ef|top|htop|/proc/)"
 OR textPayload=~"(ps aux|ps -ef|top|htop)"''',
-                gcp_terraform_template='''# GCP: Detect process enumeration on Compute instances
+                gcp_terraform_template="""# GCP: Detect process enumeration on Compute instances
 
 variable "project_id" {
   type = string
@@ -404,7 +410,7 @@ resource "google_monitoring_alert_policy" "process_enum" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Process Enumeration Detected",
                 alert_description_template="Process enumeration commands executed on Compute instance.",
@@ -413,15 +419,15 @@ resource "google_monitoring_alert_policy" "process_enum" {
                     "Review OS Login or SSH session logs",
                     "Check if this is authorised administrative activity",
                     "Look for follow-on suspicious activity",
-                    "Review instance's expected workload"
+                    "Review instance's expected workload",
                 ],
                 containment_actions=[
                     "Review instance access logs",
                     "Check for privilege escalation attempts",
                     "Monitor for defence evasion activities",
                     "Consider isolating compromised instance",
-                    "Audit firewall rules and network exposure"
-                ]
+                    "Audit firewall rules and network exposure",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised monitoring tools and administrative users",
@@ -430,9 +436,11 @@ resource "google_monitoring_alert_policy" "process_enum" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="45 minutes",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Cloud Audit Logs enabled", "OS Login or SSH logging configured"]
+            prerequisites=[
+                "Cloud Audit Logs enabled",
+                "OS Login or SSH logging configured",
+            ],
         ),
-
         # Strategy 4: GCP - GKE Container Process Enumeration
         DetectionStrategy(
             strategy_id="t1057-gcp-gke",
@@ -446,7 +454,7 @@ resource "google_monitoring_alert_policy" "process_enum" {
                 gcp_logging_query='''resource.type="k8s_cluster"
 protoPayload.methodName="io.k8s.core.v1.pods.exec"
 protoPayload.request.command=~"(ps|top|/proc/)"''',
-                gcp_terraform_template='''# GCP: Detect GKE container process enumeration
+                gcp_terraform_template="""# GCP: Detect GKE container process enumeration
 
 variable "project_id" {
   type = string
@@ -496,7 +504,7 @@ resource "google_monitoring_alert_policy" "gke_process_enum" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GKE: Container Process Enumeration",
                 alert_description_template="Process enumeration executed in GKE pod via kubectl exec.",
@@ -505,15 +513,15 @@ resource "google_monitoring_alert_policy" "gke_process_enum" {
                     "Review the specific pod and namespace",
                     "Check if this is authorised debugging",
                     "Look for container escape attempts",
-                    "Review pod security context and permissions"
+                    "Review pod security context and permissions",
                 ],
                 containment_actions=[
                     "Review Kubernetes audit logs",
                     "Check for privilege escalation in pod",
                     "Monitor for container breakout activity",
                     "Consider restricting exec permissions",
-                    "Audit RBAC policies"
-                ]
+                    "Audit RBAC policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised DevOps users and debugging sessions",
@@ -522,16 +530,15 @@ resource "google_monitoring_alert_policy" "gke_process_enum" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="45 minutes",
             estimated_monthly_cost="$10-15",
-            prerequisites=["GKE Audit Logs enabled", "Cloud Logging configured"]
-        )
+            prerequisites=["GKE Audit Logs enabled", "Cloud Logging configured"],
+        ),
     ],
-
     recommended_order=[
         "t1057-aws-ssm",
         "t1057-aws-ecs",
         "t1057-gcp-compute",
-        "t1057-gcp-gke"
+        "t1057-gcp-gke",
     ],
     total_effort_hours=2.5,
-    coverage_improvement="+12% improvement for Discovery tactic"
+    coverage_improvement="+12% improvement for Discovery tactic",
 )

@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Valid Accounts: Default Accounts",
     tactic_ids=["TA0001", "TA0003", "TA0004", "TA0005"],
     mitre_url="https://attack.mitre.org/techniques/T1078/001/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries exploit pre-configured default accounts built into operating systems, "
@@ -37,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Many organisations fail to change default passwords after deployment",
             "Default accounts often have elevated privileges",
             "Legitimate account usage bypasses many security controls",
-            "No malware deployment required, reducing detection surface"
+            "No malware deployment required, reducing detection surface",
         ],
         known_threat_actors=["Ember Bear", "FIN13", "Magic Hound", "UNC3886"],
         recent_campaigns=[
@@ -45,26 +44,26 @@ TEMPLATE = RemediationTemplate(
                 name="Ember Bear IP Camera Exploitation",
                 year=2022,
                 description="Ember Bear exploited default credentials on internet-facing IP cameras to gain initial access",
-                reference_url="https://attack.mitre.org/groups/G1003/"
+                reference_url="https://attack.mitre.org/groups/G1003/",
             ),
             Campaign(
                 name="FIN13 Default Credential Abuse",
                 year=2023,
                 description="FIN13 leveraged default credentials for myWebMethods and QLogic interfaces during targeted intrusions",
-                reference_url="https://attack.mitre.org/groups/G1016/"
+                reference_url="https://attack.mitre.org/groups/G1016/",
             ),
             Campaign(
                 name="Magic Hound Exchange Server Compromise",
                 year=2021,
                 description="Magic Hound activated DefaultAccount to gain RDP access to Exchange servers",
-                reference_url="https://attack.mitre.org/groups/G0059/"
+                reference_url="https://attack.mitre.org/groups/G0059/",
             ),
             Campaign(
                 name="UNC3886 vCenter Exploitation",
                 year=2023,
                 description="UNC3886 harvested default vCenter Server service account credentials for persistent access",
-                reference_url="https://attack.mitre.org/groups/G1040/"
-            )
+                reference_url="https://attack.mitre.org/groups/G1040/",
+            ),
         ],
         prevalence="common",
         trend="stable",
@@ -80,13 +79,12 @@ TEMPLATE = RemediationTemplate(
             "Data exfiltration without triggering user behaviour analytics",
             "Persistence through legitimate system accounts",
             "Lateral movement using privileged credentials",
-            "Compliance violations for inadequate access management"
+            "Compliance violations for inadequate access management",
         ],
         typical_attack_phase="initial_access",
         often_precedes=["T1098", "T1136", "T1087", "T1069"],
-        often_follows=["T1595", "T1592", "T1589"]
+        often_follows=["T1595", "T1592", "T1589"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS Root Account Monitoring
         DetectionStrategy(
@@ -101,12 +99,12 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, sourceIPAddress, userAgent, errorCode
+                query="""fields @timestamp, eventName, sourceIPAddress, userAgent, errorCode
 | filter userIdentity.type = "Root" and userIdentity.invokedBy != "AWS Internal"
 | filter eventName != "ConsoleLogin" or responseElements.ConsoleLogin != "Failure"
 | stats count(*) as activity_count by eventName, sourceIPAddress, bin(5m)
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Alert on AWS root account usage for T1078.001
 
 Parameters:
@@ -153,8 +151,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
         - !Ref RootAccountAlertTopic
-      TreatMissingData: notBreaching''',
-                terraform_template='''# AWS Root Account Activity Detection
+      TreatMissingData: notBreaching""",
+                terraform_template="""# AWS Root Account Activity Detection
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -204,7 +202,7 @@ resource "aws_cloudwatch_metric_alarm" "root_usage" {
   comparison_operator = "GreaterThanThreshold"
   alarm_actions       = [aws_sns_topic.root_alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="AWS Root Account Activity Detected",
                 alert_description_template=(
@@ -217,15 +215,15 @@ resource "aws_cloudwatch_metric_alarm" "root_usage" {
                     "Determine if root account usage was scheduled/approved",
                     "Check source IP against known corporate IPs and geolocation",
                     "Review IAM credential report for root account access keys",
-                    "Verify no root access keys exist (they should be deleted)"
+                    "Verify no root access keys exist (they should be deleted)",
                 ],
                 containment_actions=[
                     "Immediately rotate root account password if unauthorised",
                     "Delete any root account access keys if they exist",
                     "Enable MFA on root account if not already enabled",
                     "Review and revoke any changes made during root session",
-                    "Enable CloudTrail in all regions if not already enabled"
-                ]
+                    "Enable CloudTrail in all regions if not already enabled",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Suppress alerts during approved maintenance windows; document all legitimate root usage",
@@ -234,9 +232,11 @@ resource "aws_cloudwatch_metric_alarm" "root_usage" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled and logging to CloudWatch Logs", "Root account MFA enabled"]
+            prerequisites=[
+                "CloudTrail enabled and logging to CloudWatch Logs",
+                "Root account MFA enabled",
+            ],
         ),
-
         # Strategy 2: Default Service Account Activity (AWS)
         DetectionStrategy(
             strategy_id="t1078001-aws-default-service",
@@ -249,14 +249,14 @@ resource "aws_cloudwatch_metric_alarm" "root_usage" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn, eventName, sourceIPAddress, userAgent
+                query="""fields @timestamp, userIdentity.arn, eventName, sourceIPAddress, userAgent
 | filter userIdentity.type = "AssumedRole"
 | filter userIdentity.principalId like /AWSServiceRole/
 | filter eventName in ["CreateUser", "CreateAccessKey", "AttachUserPolicy", "AttachRolePolicy",
     "PutUserPolicy", "PutRolePolicy", "CreateRole", "DeleteLogStream", "DeleteLogGroup"]
 | stats count(*) as suspicious_actions by userIdentity.arn, eventName, bin(1h)
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect suspicious default service account activity
 
 Parameters:
@@ -299,8 +299,8 @@ Resources:
       Threshold: 0
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
-        - !Ref ServiceAccountAlertTopic''',
-                terraform_template='''# Detect suspicious default service account activity
+        - !Ref ServiceAccountAlertTopic""",
+                terraform_template="""# Detect suspicious default service account activity
 
 variable "cloudtrail_log_group" {
   type = string
@@ -346,7 +346,7 @@ resource "aws_cloudwatch_metric_alarm" "service_account" {
   threshold           = 0
   comparison_operator = "GreaterThanThreshold"
   alarm_actions       = [aws_sns_topic.service_account_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Suspicious Default Service Account Activity",
                 alert_description_template=(
@@ -358,14 +358,14 @@ resource "aws_cloudwatch_metric_alarm" "service_account" {
                     "Review all recent activity from this service account",
                     "Verify if the actions align with the service's normal operations",
                     "Check for any recent permission changes to the service role",
-                    "Investigate any resources created or modified by the service account"
+                    "Investigate any resources created or modified by the service account",
                 ],
                 containment_actions=[
                     "Review and restrict service role permissions to minimum required",
                     "Revoke any suspicious permissions or policies added",
                     "Check for and remove any backdoor accounts created",
-                    "Review service role trust relationships for compromise"
-                ]
+                    "Review service role trust relationships for compromise",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal service account behaviour; whitelist known automation workflows",
@@ -374,9 +374,11 @@ resource "aws_cloudwatch_metric_alarm" "service_account" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled", "Understanding of service account baselines"]
+            prerequisites=[
+                "CloudTrail enabled",
+                "Understanding of service account baselines",
+            ],
         ),
-
         # Strategy 3: GCP Default Service Account Monitoring
         DetectionStrategy(
             strategy_id="t1078001-gcp-default-service",
@@ -401,7 +403,7 @@ AND (
     OR protoPayload.methodName="v1.compute.instances.delete"
 )
 severity >= "WARNING"''',
-                gcp_terraform_template='''# GCP: Detect default service account abuse
+                gcp_terraform_template="""# GCP: Detect default service account abuse
 
 variable "project_id" {
   type        = string
@@ -468,7 +470,7 @@ resource "google_monitoring_alert_policy" "default_sa_activity" {
       period = "300s"
     }
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP Default Service Account Suspicious Activity",
                 alert_description_template=(
@@ -480,15 +482,15 @@ resource "google_monitoring_alert_policy" "default_sa_activity" {
                     "Review all recent API calls made by this service account",
                     "Check if default service account has been granted additional IAM roles",
                     "Investigate the workload running on the instance/application",
-                    "Verify if this is a legitimate application or a compromised resource"
+                    "Verify if this is a legitimate application or a compromised resource",
                 ],
                 containment_actions=[
                     "Stop the instance or disable the application if unauthorised",
                     "Create a custom service account with minimal permissions",
                     "Migrate workload to use custom service account",
                     "Disable default service account if possible",
-                    "Review and revoke any excessive IAM bindings on default accounts"
-                ]
+                    "Review and revoke any excessive IAM bindings on default accounts",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning=(
@@ -500,9 +502,11 @@ resource "google_monitoring_alert_policy" "default_sa_activity" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Logging enabled", "Audit logs enabled for IAM and Compute Engine"]
+            prerequisites=[
+                "Cloud Logging enabled",
+                "Audit logs enabled for IAM and Compute Engine",
+            ],
         ),
-
         # Strategy 4: SSH Root Login Detection
         DetectionStrategy(
             strategy_id="t1078001-ssh-root",
@@ -515,12 +519,12 @@ resource "google_monitoring_alert_policy" "default_sa_activity" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message
+                query="""fields @timestamp, @message
 | filter @message like /Accepted.*for root/
 | parse @message /Accepted (?<auth_method>\\w+) for (?<user>\\w+) from (?<source_ip>[\\d.]+)/
 | stats count(*) as login_count by source_ip, bin(5m)
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect SSH root logins on EC2 instances
 
 Parameters:
@@ -564,8 +568,8 @@ Resources:
       Threshold: 0
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
-        - !Ref RootSSHAlertTopic''',
-                terraform_template='''# Detect SSH root logins on EC2 instances
+        - !Ref RootSSHAlertTopic""",
+                terraform_template="""# Detect SSH root logins on EC2 instances
 
 variable "system_log_group" {
   type        = string
@@ -612,7 +616,7 @@ resource "aws_cloudwatch_metric_alarm" "root_ssh" {
   threshold           = 0
   comparison_operator = "GreaterThanThreshold"
   alarm_actions       = [aws_sns_topic.root_ssh_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Root SSH Login Detected",
                 alert_description_template=(
@@ -625,7 +629,7 @@ resource "aws_cloudwatch_metric_alarm" "root_ssh" {
                     "Review all commands executed during the root session",
                     "Verify SSH key used matches authorised keys",
                     "Check /root/.ssh/authorized_keys for unauthorised entries",
-                    "Review security group rules for SSH access restrictions"
+                    "Review security group rules for SSH access restrictions",
                 ],
                 containment_actions=[
                     "Disable root SSH login by setting 'PermitRootLogin no' in sshd_config",
@@ -633,8 +637,8 @@ resource "aws_cloudwatch_metric_alarm" "root_ssh" {
                     "Terminate active SSH sessions for root user",
                     "Rotate all SSH keys on the instance",
                     "Review and restrict security group rules for SSH access",
-                    "Enable AWS Systems Manager Session Manager as SSH alternative"
-                ]
+                    "Enable AWS Systems Manager Session Manager as SSH alternative",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist approved maintenance IPs; suppress during planned maintenance windows",
@@ -645,10 +649,9 @@ resource "aws_cloudwatch_metric_alarm" "root_ssh" {
             estimated_monthly_cost="$5-15 depending on instance count",
             prerequisites=[
                 "CloudWatch Logs agent installed on instances",
-                "System authentication logs (/var/log/auth.log or /var/log/secure) shipped to CloudWatch"
-            ]
+                "System authentication logs (/var/log/auth.log or /var/log/secure) shipped to CloudWatch",
+            ],
         ),
-
         # Strategy 5: Config Rule - Root Account MFA
         DetectionStrategy(
             strategy_id="t1078001-root-mfa",
@@ -662,7 +665,7 @@ resource "aws_cloudwatch_metric_alarm" "root_ssh" {
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
                 config_rule_identifier="ROOT_ACCOUNT_MFA_ENABLED",
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: AWS Config rule to verify root account MFA
 
 Parameters:
@@ -708,8 +711,8 @@ Resources:
     Properties:
       Subscription:
         - Protocol: email
-          Endpoint: !Ref AlertEmail''',
-                terraform_template='''# AWS Config rule to verify root account MFA
+          Endpoint: !Ref AlertEmail""",
+                terraform_template="""# AWS Config rule to verify root account MFA
 
 variable "alert_email" {
   type = string
@@ -768,7 +771,7 @@ resource "aws_sns_topic_subscription" "email" {
   topic_arn = aws_sns_topic.compliance_alerts.arn
   protocol  = "email"
   endpoint  = var.alert_email
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Root Account MFA Not Enabled",
                 alert_description_template=(
@@ -779,15 +782,15 @@ resource "aws_sns_topic_subscription" "email" {
                     "Verify current MFA status in IAM security credentials",
                     "Check if MFA was recently disabled or removed",
                     "Review CloudTrail for any DeactivateMFADevice events",
-                    "Verify no unauthorised access to root account has occurred"
+                    "Verify no unauthorised access to root account has occurred",
                 ],
                 containment_actions=[
                     "Immediately enable MFA on root account using virtual or hardware MFA",
                     "Store MFA device backup codes in secure offline location",
                     "Document MFA device serial number and type",
                     "Verify root account password was not changed",
-                    "Review all root account activity in CloudTrail"
-                ]
+                    "Review all root account activity in CloudTrail",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="None needed - this should always be compliant",
@@ -796,17 +799,16 @@ resource "aws_sns_topic_subscription" "email" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-3 for Config rule evaluation",
-            prerequisites=["AWS Config enabled in account"]
-        )
+            prerequisites=["AWS Config enabled in account"],
+        ),
     ],
-
     recommended_order=[
         "t1078001-aws-root",
         "t1078001-root-mfa",
         "t1078001-aws-default-service",
         "t1078001-gcp-default-service",
-        "t1078001-ssh-root"
+        "t1078001-ssh-root",
     ],
     total_effort_hours=7.0,
-    coverage_improvement="+30% improvement for Initial Access and Privilege Escalation tactics"
+    coverage_improvement="+30% improvement for Initial Access and Privilege Escalation tactics",
 )

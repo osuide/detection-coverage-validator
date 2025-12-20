@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Compromise Host Software Binary",
     tactic_ids=["TA0003", "TA0005"],
     mitre_url="https://attack.mitre.org/techniques/T1554/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries modify host software binaries to establish persistent access by "
@@ -38,7 +37,7 @@ TEMPLATE = RemediationTemplate(
             "Executes with privileges of legitimate binary",
             "Difficult to detect without file integrity monitoring",
             "Bypasses application-layer security controls",
-            "Maintains access even if initial compromise method is closed"
+            "Maintains access even if initial compromise method is closed",
         ],
         known_threat_actors=["UNC3886", "APT5", "Sandworm Team", "Ebury operators"],
         recent_campaigns=[
@@ -46,20 +45,20 @@ TEMPLATE = RemediationTemplate(
                 name="UNC3886 VPN Appliance Backdoors",
                 year=2023,
                 description="UNC3886 replaced /usr/bin/tac_plus daemon with credential-logging variant and trojanised Fortinet firmware binaries",
-                reference_url="https://attack.mitre.org/groups/G1043/"
+                reference_url="https://attack.mitre.org/groups/G1043/",
             ),
             Campaign(
                 name="APT5 Pulse Secure Compromise",
                 year=2021,
                 description="APT5 modified legitimate Pulse Secure VPN binaries including DSUpgrade.pm to maintain persistent access",
-                reference_url="https://attack.mitre.org/groups/G0004/"
+                reference_url="https://attack.mitre.org/groups/G0004/",
             ),
             Campaign(
                 name="Sandworm Ukraine Power Grid",
                 year=2016,
                 description="Sandworm Team deployed trojanised Windows Notepad during the Ukraine power grid attack for persistence",
-                reference_url="https://attack.mitre.org/groups/G0034/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0034/",
+            ),
         ],
         prevalence="rare",
         trend="stable",
@@ -75,13 +74,12 @@ TEMPLATE = RemediationTemplate(
             "Credential theft from compromised binaries",
             "Complete system compromise",
             "Difficult and time-consuming remediation",
-            "Potential supply chain impact"
+            "Potential supply chain impact",
         ],
         typical_attack_phase="persistence",
         often_precedes=["T1078", "T1552.001", "T1041"],
-        often_follows=["T1068", "T1190", "T1078.004"]
+        often_follows=["T1068", "T1190", "T1078.004"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - EC2 binary integrity monitoring via EventBridge
         DetectionStrategy(
@@ -92,13 +90,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message
+                query="""fields @timestamp, @message
 | filter @message like /file_integrity/
 | filter @message like /usr.bin|[/]bin|usr.local.bin|opt.aws/
 | filter @message like /MODIFIED|CHANGED|REPLACED/
 | stats count(*) as modifications by bin(5m)
-| filter modifications > 0''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| filter modifications > 0""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Monitor system binary modifications for backdoor detection
 
 Parameters:
@@ -163,8 +161,8 @@ Resources:
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Monitor system binary modifications for backdoor detection
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Monitor system binary modifications for backdoor detection
 
 variable "alert_email" {
   type        = string
@@ -228,7 +226,7 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
       Resource  = aws_sns_topic.binary_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="System Binary Modified - Potential Backdoor",
                 alert_description_template="Critical system binary modified on EC2 instance. File: {file_path}. Timestamp: {timestamp}.",
@@ -237,15 +235,15 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
                     "Check if modification occurred during authorised maintenance window",
                     "Compare binary hash against known-good version",
                     "Review CloudTrail for associated EC2/Systems Manager activity",
-                    "Check for other indicators of compromise on the instance"
+                    "Check for other indicators of compromise on the instance",
                 ],
                 containment_actions=[
                     "Isolate affected instance immediately",
                     "Capture memory dump and disk snapshot for forensics",
                     "Restore binary from known-good backup or AMI",
                     "Review all running processes for suspicious activity",
-                    "Rotate credentials that may have been compromised"
-                ]
+                    "Rotate credentials that may have been compromised",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Exclude authorised package management and system update times; baseline normal update patterns",
@@ -254,9 +252,11 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$10-20 depending on instance count",
-            prerequisites=["File integrity monitoring agent (OSSEC/Wazuh/AIDE) installed on EC2 instances", "Agent configured to send events to CloudWatch Logs"]
+            prerequisites=[
+                "File integrity monitoring agent (OSSEC/Wazuh/AIDE) installed on EC2 instances",
+                "Agent configured to send events to CloudWatch Logs",
+            ],
         ),
-
         # Strategy 2: AWS - Unsigned binary execution detection
         DetectionStrategy(
             strategy_id="t1554-aws-unsigned",
@@ -266,12 +266,12 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, process_name, process_path, signature_status
+                query="""fields @timestamp, process_name, process_path, signature_status
 | filter signature_status in ["unsigned", "invalid", "unknown"]
 | filter process_path like /usr.bin|[/]bin|usr.local.bin/
 | stats count(*) by process_name, signature_status, bin(1h)
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Alert on unsigned binary execution in critical directories
 
 Parameters:
@@ -327,8 +327,8 @@ Resources:
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Alert on unsigned binary execution in critical directories
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Alert on unsigned binary execution in critical directories
 
 variable "cloudwatch_log_group" {
   type        = string
@@ -387,7 +387,7 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Unsigned Binary Execution Detected",
                 alert_description_template="Unsigned or invalidly-signed binary executed from system directory. Binary: {process_name}. Path: {process_path}.",
@@ -396,15 +396,15 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
                     "Check file creation/modification time",
                     "Verify if binary should be signed",
                     "Compare hash against known malware databases",
-                    "Review recent file system changes on the host"
+                    "Review recent file system changes on the host",
                 ],
                 containment_actions=[
                     "Quarantine the unsigned binary",
                     "Kill process if still running",
                     "Isolate affected instance",
                     "Restore from known-good snapshot",
-                    "Implement code signing verification policy"
-                ]
+                    "Implement code signing verification policy",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline legitimate unsigned binaries; exclude development/testing systems; whitelist known unsigned utilities",
@@ -413,9 +413,11 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
             implementation_effort=EffortLevel.HIGH,
             implementation_time="3-4 hours",
             estimated_monthly_cost="$15-30",
-            prerequisites=["Process monitoring agent with signature validation", "CloudWatch Logs integration"]
+            prerequisites=[
+                "Process monitoring agent with signature validation",
+                "CloudWatch Logs integration",
+            ],
         ),
-
         # Strategy 3: GCP - VM binary integrity monitoring
         DetectionStrategy(
             strategy_id="t1554-gcp-fim",
@@ -426,11 +428,11 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 jsonPayload.event_type="file_modified"
 jsonPayload.file_path=~"/usr/bin/.*|/bin/.*|/usr/local/bin/.*"
-severity>=WARNING''',
-                gcp_terraform_template='''# GCP: Monitor system binary modifications
+severity>=WARNING""",
+                gcp_terraform_template="""# GCP: Monitor system binary modifications
 
 variable "project_id" {
   type        = string
@@ -508,7 +510,7 @@ resource "google_monitoring_alert_policy" "binary_alert" {
     content   = "System binary modified on GCE instance. Investigate immediately for potential backdoor."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GCP: System Binary Modified",
                 alert_description_template="Critical system binary modified on GCE instance {instance_id}. Path: {file_path}.",
@@ -517,15 +519,15 @@ resource "google_monitoring_alert_policy" "binary_alert" {
                     "Check Cloud Audit Logs for SSH/OS Login activity",
                     "Review Cloud Logging for related system events",
                     "Verify against authorised maintenance schedules",
-                    "Check instance metadata for unauthorised changes"
+                    "Check instance metadata for unauthorised changes",
                 ],
                 containment_actions=[
                     "Stop affected GCE instance",
                     "Create disk snapshot for forensics",
                     "Restore from known-good image or snapshot",
                     "Review VPC firewall rules and IAM permissions",
-                    "Scan other instances in the same project"
-                ]
+                    "Scan other instances in the same project",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Exclude authorised package management times; whitelist OS patch management tools",
@@ -534,9 +536,11 @@ resource "google_monitoring_alert_policy" "binary_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$10-25",
-            prerequisites=["Ops Agent or third-party FIM solution deployed on GCE instances", "Cloud Logging API enabled"]
+            prerequisites=[
+                "Ops Agent or third-party FIM solution deployed on GCE instances",
+                "Cloud Logging API enabled",
+            ],
         ),
-
         # Strategy 4: GCP - Detect binary changes via Cloud Asset Inventory
         DetectionStrategy(
             strategy_id="t1554-gcp-asset-inventory",
@@ -547,10 +551,10 @@ resource "google_monitoring_alert_policy" "binary_alert" {
             gcp_service="cloud_asset",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''protoPayload.methodName="ExportAssets"
+                gcp_logging_query="""protoPayload.methodName="ExportAssets"
 protoPayload.request.outputConfig.gcsDestination.uri=~".*binary-inventory.*"
-severity>=NOTICE''',
-                gcp_terraform_template='''# GCP: Track binary hash changes via Cloud Asset Inventory
+severity>=NOTICE""",
+                gcp_terraform_template="""# GCP: Track binary hash changes via Cloud Asset Inventory
 
 variable "project_id" {
   type = string
@@ -618,7 +622,7 @@ resource "google_storage_bucket_iam_member" "inventory_writer" {
   bucket = var.inventory_bucket
   role   = "roles/storage.objectCreator"
   member = "serviceAccount:${google_service_account.inventory.email}"
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Binary Inventory Export Completed",
                 alert_description_template="Binary inventory exported. Review for hash changes indicating potential backdoors.",
@@ -627,15 +631,15 @@ resource "google_storage_bucket_iam_member" "inventory_writer" {
                     "Identify binaries with changed hashes",
                     "Verify changes against authorised update schedules",
                     "Investigate instances with unexpected binary modifications",
-                    "Review Cloud Audit Logs for the affected instances"
+                    "Review Cloud Audit Logs for the affected instances",
                 ],
                 containment_actions=[
                     "Isolate instances with modified binaries",
                     "Restore binaries from known-good golden images",
                     "Update baseline inventory after authorised changes",
                     "Implement Binary Authorization for containers",
-                    "Enable OS Config for centralised patch management"
-                ]
+                    "Enable OS Config for centralised patch management",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal update patterns; exclude test/development instances; track authorised patch schedules",
@@ -644,16 +648,19 @@ resource "google_storage_bucket_iam_member" "inventory_writer" {
             implementation_effort=EffortLevel.HIGH,
             implementation_time="4-5 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["Cloud Asset API enabled", "GCS bucket for inventory storage", "Custom comparison script or tool"]
-        )
+            prerequisites=[
+                "Cloud Asset API enabled",
+                "GCS bucket for inventory storage",
+                "Custom comparison script or tool",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1554-aws-fim",
         "t1554-gcp-fim",
         "t1554-aws-unsigned",
-        "t1554-gcp-asset-inventory"
+        "t1554-gcp-asset-inventory",
     ],
     total_effort_hours=12.0,
-    coverage_improvement="+18% improvement for Persistence and Defence Evasion tactics"
+    coverage_improvement="+18% improvement for Persistence and Defence Evasion tactics",
 )

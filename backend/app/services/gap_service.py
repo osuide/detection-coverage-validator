@@ -124,10 +124,14 @@ class GapService:
         if priority:
             stmt = stmt.where(CoverageGap.priority == priority)
 
-        stmt = stmt.order_by(
-            CoverageGap.priority,
-            CoverageGap.first_identified_at.desc(),
-        ).limit(limit).offset(offset)
+        stmt = (
+            stmt.order_by(
+                CoverageGap.priority,
+                CoverageGap.first_identified_at.desc(),
+            )
+            .limit(limit)
+            .offset(offset)
+        )
 
         result = self.db.execute(stmt)
         return result.scalars().all()
@@ -139,9 +143,7 @@ class GapService:
         limit: int = 100,
     ) -> list[CoverageGap]:
         """Get all gaps for an organization."""
-        stmt = select(CoverageGap).where(
-            CoverageGap.organization_id == organization_id
-        )
+        stmt = select(CoverageGap).where(CoverageGap.organization_id == organization_id)
 
         if status:
             stmt = stmt.where(CoverageGap.status == status)
@@ -326,9 +328,11 @@ class GapService:
         gap_id: uuid.UUID,
     ) -> list[GapHistory]:
         """Get status change history for a gap."""
-        stmt = select(GapHistory).where(
-            GapHistory.gap_id == gap_id
-        ).order_by(GapHistory.changed_at.desc())
+        stmt = (
+            select(GapHistory)
+            .where(GapHistory.gap_id == gap_id)
+            .order_by(GapHistory.changed_at.desc())
+        )
 
         result = self.db.execute(stmt)
         return result.scalars().all()

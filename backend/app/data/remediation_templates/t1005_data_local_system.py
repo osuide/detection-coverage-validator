@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Data from Local System",
     tactic_ids=["TA0009"],
     mitre_url="https://attack.mitre.org/techniques/T1005/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries may search local system sources—including file systems, configuration files, "
@@ -39,7 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Application logs may contain authentication tokens or API keys",
             "Instance metadata can provide cloud credentials and configuration details",
             "Database dumps and backups stored locally contain valuable information",
-            "SSH keys and certificates enable lateral movement"
+            "SSH keys and certificates enable lateral movement",
         ],
         known_threat_actors=[
             "APT1",
@@ -59,27 +58,27 @@ TEMPLATE = RemediationTemplate(
             "Gamaredon Group",
             "Magic Hound",
             "Dragonfly",
-            "Patchwork"
+            "Patchwork",
         ],
         recent_campaigns=[
             Campaign(
                 name="Volt Typhoon Infrastructure Espionage",
                 year=2023,
                 description="Extracted logs, configuration files, and credentials from compromised systems using native tools",
-                reference_url="https://www.microsoft.com/en-us/security/blog/2023/05/24/volt-typhoon-targets-us-critical-infrastructure-with-living-off-the-land-techniques/"
+                reference_url="https://www.microsoft.com/en-us/security/blog/2023/05/24/volt-typhoon-targets-us-critical-infrastructure-with-living-off-the-land-techniques/",
             ),
             Campaign(
                 name="Dark Caracal Mobile and Desktop Surveillance",
                 year=2023,
                 description="Collected complete Pictures folder contents and systematically harvested documents from Windows systems",
-                reference_url="https://www.eff.org/deeplinks/2018/01/dark-caracal-good-news-and-bad-news"
+                reference_url="https://www.eff.org/deeplinks/2018/01/dark-caracal-good-news-and-bad-news",
             ),
             Campaign(
                 name="APT28 Document Collection",
                 year=2022,
                 description="Used Forfiles utility to stage documents with specific extensions before exfiltration",
-                reference_url="https://www.microsoft.com/security/blog/threat-intelligence/"
-            )
+                reference_url="https://www.microsoft.com/security/blog/threat-intelligence/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -97,13 +96,12 @@ TEMPLATE = RemediationTemplate(
             "Regulatory compliance violations (GDPR, HIPAA, PCI DSS)",
             "Data breach notification requirements",
             "Ransomware extortion leverage",
-            "Loss of customer trust and competitive advantage"
+            "Loss of customer trust and competitive advantage",
         ],
         typical_attack_phase="collection",
         often_precedes=["T1074", "T1560", "T1567", "T1048"],
-        often_follows=["T1083", "T1082", "T1057", "T1552.001"]
+        often_follows=["T1083", "T1082", "T1057", "T1552.001"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - Unusual File Access Patterns via SSM
         DetectionStrategy(
@@ -118,7 +116,7 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn as user, requestParameters.documentName,
+                query="""fields @timestamp, userIdentity.arn as user, requestParameters.documentName,
        requestParameters.parameters as params, responseElements.command.commandId
 | filter eventSource = "ssm.amazonaws.com"
 | filter eventName in ["SendCommand", "StartSession"]
@@ -126,8 +124,8 @@ TEMPLATE = RemediationTemplate(
 | filter requestParameters.parameters like /find|grep|locate|tar|zip|7z|rar|gzip/
   or requestParameters.parameters like /Get-ChildItem.*-Recurse|Select-String|Compress-Archive/
 | stats count(*) as command_count by user, bin(1h) as hour_window
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect data collection via SSM commands for T1005
 
 Parameters:
@@ -186,8 +184,8 @@ Resources:
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect data collection via SSM commands for T1005
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect data collection via SSM commands for T1005
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -249,7 +247,7 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
       Resource  = aws_sns_topic.data_collection_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Suspicious Data Collection Activity Detected",
                 alert_description_template=(
@@ -264,7 +262,7 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
                     "Check CloudWatch Logs for command output and results",
                     "Review subsequent file transfer or exfiltration attempts",
                     "Examine S3 access logs for potential data staging",
-                    "Check for unusual network connections from affected instances"
+                    "Check for unusual network connections from affected instances",
                 ],
                 containment_actions=[
                     "Revoke SSM access for the suspicious user/role",
@@ -272,8 +270,8 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
                     "Terminate active SSM sessions",
                     "Create forensic snapshots of affected instances",
                     "Review and restrict SSM permissions organisation-wide",
-                    "Enable enhanced SSM session logging"
-                ]
+                    "Enable enhanced SSM session logging",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline legitimate administrative activities; exclude known automation roles and scheduled maintenance tasks",
@@ -282,9 +280,12 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-20",
-            prerequisites=["CloudTrail enabled", "CloudWatch Logs configured", "SSM Session Manager logging enabled"]
+            prerequisites=[
+                "CloudTrail enabled",
+                "CloudWatch Logs configured",
+                "SSM Session Manager logging enabled",
+            ],
         ),
-
         # Strategy 2: AWS - Sensitive File Access Monitoring
         DetectionStrategy(
             strategy_id="t1005-aws-sensitive-files",
@@ -298,12 +299,12 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, instance_id, user, file_path, process_name
+                query="""fields @timestamp, instance_id, user, file_path, process_name
 | filter file_path like /\\.aws\\/credentials|\\.ssh\\/|id_rsa|\\.env|application\\.properties|database\\.yml|web\\.config/
 | stats count(*) as access_count by instance_id, user, file_path, bin(5m) as time_window
 | filter access_count >= 3
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Monitor access to sensitive configuration files for T1005
 
 Parameters:
@@ -362,8 +363,8 @@ Resources:
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Monitor access to sensitive configuration files for T1005
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Monitor access to sensitive configuration files for T1005
 
 variable "log_group_name" {
   type        = string
@@ -425,7 +426,7 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
       Resource  = aws_sns_topic.sensitive_file_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Sensitive File Access Detected",
                 alert_description_template=(
@@ -440,7 +441,7 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
                     "Examine process tree to identify accessing application",
                     "Review CloudTrail for subsequent API calls using potentially stolen credentials",
                     "Check for file copying or exfiltration attempts",
-                    "Verify instance security posture and patch status"
+                    "Verify instance security posture and patch status",
                 ],
                 containment_actions=[
                     "Rotate all credentials that may have been accessed",
@@ -448,8 +449,8 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
                     "Review and revoke API keys and access tokens",
                     "Enable file integrity monitoring on sensitive paths",
                     "Implement stronger file permissions and encryption",
-                    "Isolate the instance for forensic investigation"
-                ]
+                    "Isolate the instance for forensic investigation",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Configure allowlists for known application processes; exclude legitimate backup and configuration management tools",
@@ -458,9 +459,12 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$15-30",
-            prerequisites=["CloudWatch Logs agent installed on instances", "OS-level file access auditing enabled", "Centralised logging configured"]
+            prerequisites=[
+                "CloudWatch Logs agent installed on instances",
+                "OS-level file access auditing enabled",
+                "Centralised logging configured",
+            ],
         ),
-
         # Strategy 3: GCP - Data Collection via Cloud Shell
         DetectionStrategy(
             strategy_id="t1005-gcp-cloud-shell",
@@ -474,12 +478,12 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="cloud_shell_instance"
+                gcp_logging_query="""resource.type="cloud_shell_instance"
 protoPayload.methodName="google.cloudshell.v1.CloudShellService.ExecuteCommand"
 (protoPayload.request.command=~"find|grep|locate|tar|gzip|zip|7z"
 OR protoPayload.request.command=~"gsutil|gcloud|bq query"
-OR protoPayload.request.command=~"cat.*credentials|cat.*config|cat.*key")''',
-                gcp_terraform_template='''# GCP: Detect data collection in Cloud Shell sessions
+OR protoPayload.request.command=~"cat.*credentials|cat.*config|cat.*key")""",
+                gcp_terraform_template="""# GCP: Detect data collection in Cloud Shell sessions
 
 variable "project_id" {
   type = string
@@ -544,7 +548,7 @@ resource "google_monitoring_alert_policy" "shell_collection_alert" {
   documentation {
     content = "Suspicious data collection commands detected in Cloud Shell. Investigate the user's activity and verify authorisation."
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Data Collection Commands in Cloud Shell",
                 alert_description_template=(
@@ -558,7 +562,7 @@ resource "google_monitoring_alert_policy" "shell_collection_alert" {
                     "Review subsequent API calls and resource access",
                     "Examine whether collected data was exfiltrated",
                     "Check Cloud Storage access logs for staging activities",
-                    "Verify if credentials were accessed or exported"
+                    "Verify if credentials were accessed or exported",
                 ],
                 containment_actions=[
                     "Disable the user's Cloud Shell access",
@@ -566,8 +570,8 @@ resource "google_monitoring_alert_policy" "shell_collection_alert" {
                     "Review and restrict IAM permissions",
                     "Enable VPC Service Controls to prevent data exfiltration",
                     "Rotate any exposed credentials or API keys",
-                    "Block external data transfers if ongoing"
-                ]
+                    "Block external data transfers if ongoing",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Exclude known administrative users and scheduled automation tasks; baseline normal Cloud Shell usage patterns",
@@ -576,9 +580,8 @@ resource "google_monitoring_alert_policy" "shell_collection_alert" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-15",
-            prerequisites=["Cloud Audit Logs enabled for Cloud Shell"]
+            prerequisites=["Cloud Audit Logs enabled for Cloud Shell"],
         ),
-
         # Strategy 4: GCP - VM Instance File Access Monitoring
         DetectionStrategy(
             strategy_id="t1005-gcp-vm-file-access",
@@ -596,7 +599,7 @@ resource "google_monitoring_alert_policy" "shell_collection_alert" {
 (jsonPayload.command=~"find.*-type f|grep -r|locate"
 OR jsonPayload.file_path=~"/home/.*/.ssh/|/root/.ssh/|/etc/.*credentials|application.*properties|database.*yml")
 severity>="WARNING"''',
-                gcp_terraform_template='''# GCP: Monitor Compute instance file access patterns
+                gcp_terraform_template="""# GCP: Monitor Compute instance file access patterns
 
 variable "project_id" {
   type = string
@@ -672,7 +675,7 @@ resource "google_monitoring_alert_policy" "file_access_alert" {
   documentation {
     content = "Multiple accesses to sensitive files detected on Compute instance. Investigate for potential credential theft or data collection."
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Sensitive File Access on Compute Instance",
                 alert_description_template=(
@@ -686,7 +689,7 @@ resource "google_monitoring_alert_policy" "file_access_alert" {
                     "Examine network connections from the instance",
                     "Review Cloud Logging for command history",
                     "Verify instance image source and integrity",
-                    "Check for lateral movement to other instances"
+                    "Check for lateral movement to other instances",
                 ],
                 containment_actions=[
                     "Isolate the instance using firewall rules",
@@ -695,8 +698,8 @@ resource "google_monitoring_alert_policy" "file_access_alert" {
                     "Review and restrict instance service account permissions",
                     "Enable OS Login for better access control",
                     "Implement file integrity monitoring",
-                    "Consider instance rebuild from trusted image"
-                ]
+                    "Consider instance rebuild from trusted image",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal administrative activities; exclude configuration management and monitoring tools; adjust threshold based on instance role",
@@ -705,16 +708,19 @@ resource "google_monitoring_alert_policy" "file_access_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$15-25",
-            prerequisites=["Cloud Logging agent installed on instances", "OS-level audit logging enabled", "Structured logging configured"]
-        )
+            prerequisites=[
+                "Cloud Logging agent installed on instances",
+                "OS-level audit logging enabled",
+                "Structured logging configured",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1005-aws-ssm-commands",
         "t1005-gcp-cloud-shell",
         "t1005-aws-sensitive-files",
-        "t1005-gcp-vm-file-access"
+        "t1005-gcp-vm-file-access",
     ],
     total_effort_hours=6.5,
-    coverage_improvement="+32% improvement for Collection tactic"
+    coverage_improvement="+32% improvement for Collection tactic",
 )

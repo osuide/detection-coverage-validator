@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Valid Accounts",
     tactic_ids=["TA0001", "TA0003", "TA0004", "TA0005"],
     mitre_url="https://attack.mitre.org/techniques/T1078/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries obtain and abuse legitimate credentials to gain access to systems and networks. "
@@ -38,7 +37,7 @@ TEMPLATE = RemediationTemplate(
             "No malware signatures to detect",
             "Access persists until password rotation or credential revocation",
             "Can enable privilege escalation with high-permission accounts",
-            "Inactive accounts provide covert access channels"
+            "Inactive accounts provide covert access channels",
         ],
         known_threat_actors=[
             "APT28 (Fancy Bear)",
@@ -57,33 +56,33 @@ TEMPLATE = RemediationTemplate(
             "Dragonfly",
             "LAPSUS$",
             "Volt Typhoon",
-            "Scattered Spider"
+            "Scattered Spider",
         ],
         recent_campaigns=[
             Campaign(
                 name="SolarWinds/SUNBURST",
                 year=2020,
                 description="APT29 used compromised credentials to access victim cloud environments and establish persistence",
-                reference_url="https://www.mandiant.com/resources/sunburst-additional-technical-details"
+                reference_url="https://www.mandiant.com/resources/sunburst-additional-technical-details",
             ),
             Campaign(
                 name="LAPSUS$ Attacks",
                 year=2022,
                 description="Purchased credentials from initial access brokers to compromise Microsoft, Nvidia, Samsung, and other major organisations",
-                reference_url="https://www.microsoft.com/security/blog/2022/03/22/dev-0537-criminal-actor-targeting-organizations-for-data-exfiltration/"
+                reference_url="https://www.microsoft.com/security/blog/2022/03/22/dev-0537-criminal-actor-targeting-organizations-for-data-exfiltration/",
             ),
             Campaign(
                 name="Scattered Spider MGM Attack",
                 year=2023,
                 description="Social engineering and SIM swapping to obtain valid credentials for ransomware deployment at MGM Resorts",
-                reference_url="https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-320a"
+                reference_url="https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-320a",
             ),
             Campaign(
                 name="Volt Typhoon Infrastructure Targeting",
                 year=2023,
                 description="Long-term compromise of critical infrastructure using valid credentials for living-off-the-land persistence",
-                reference_url="https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-144a"
-            )
+                reference_url="https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-144a",
+            ),
         ],
         prevalence="very_common",
         trend="increasing",
@@ -102,13 +101,12 @@ TEMPLATE = RemediationTemplate(
             "Ransomware and destructive attacks",
             "Regulatory compliance violations (GDPR, HIPAA, PCI-DSS)",
             "Reputational damage from data breaches",
-            "Long-term persistent access for espionage"
+            "Long-term persistent access for espionage",
         ],
         typical_attack_phase="initial_access",
         often_precedes=["T1087", "T1069", "T1530", "T1098", "T1136"],
-        often_follows=["T1566", "T1110", "T1552", "T1528"]
+        often_follows=["T1566", "T1110", "T1552", "T1528"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS GuardDuty
         DetectionStrategy(
@@ -129,9 +127,9 @@ TEMPLATE = RemediationTemplate(
                     "UnauthorizedAccess:IAMUser/MaliciousIPCaller.Custom",
                     "InitialAccess:IAMUser/AnomalousBehavior",
                     "CredentialAccess:IAMUser/AnomalousBehavior",
-                    "Persistence:IAMUser/AnomalousBehavior"
+                    "Persistence:IAMUser/AnomalousBehavior",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty + email alerts for credential abuse (T1078)
 
 Parameters:
@@ -185,8 +183,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# AWS GuardDuty + email alerts for credential abuse (T1078)
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# AWS GuardDuty + email alerts for credential abuse (T1078)
 
 variable "alert_email" {
   type        = string
@@ -247,7 +245,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Resource  = aws_sns_topic.credential_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GuardDuty: Suspicious Credential Activity",
                 alert_description_template=(
@@ -262,7 +260,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Check geolocation of source IP for impossible travel indicators",
                     "Contact the user to confirm if activity was legitimate",
                     "Review IAM permissions to assess potential blast radius",
-                    "Check for new access keys or credential creation by this principal"
+                    "Check for new access keys or credential creation by this principal",
                 ],
                 containment_actions=[
                     "Disable the IAM user's console access and access keys immediately",
@@ -270,8 +268,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                     "Enable MFA if not already enabled",
                     "Review and revoke any active sessions using AWS STS",
                     "Reset the user's password with MFA verification",
-                    "Review and revert any unauthorised IAM changes"
-                ]
+                    "Review and revert any unauthorised IAM changes",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Add trusted IPs to GuardDuty IP allow lists; suppress findings for known CI/CD systems and VPN endpoints",
@@ -280,9 +278,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$4-10 per million events analysed",
-            prerequisites=["AWS account with appropriate IAM permissions", "CloudTrail enabled"]
+            prerequisites=[
+                "AWS account with appropriate IAM permissions",
+                "CloudTrail enabled",
+            ],
         ),
-
         # Strategy 2: AWS Impossible Travel
         DetectionStrategy(
             strategy_id="t1078-aws-impossible-travel",
@@ -295,7 +295,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn as user, sourceIPAddress, eventName,
+                query="""fields @timestamp, userIdentity.arn as user, sourceIPAddress, eventName,
        userAgent, awsRegion
 | filter eventName = "ConsoleLogin" and responseElements.ConsoleLogin = "Success"
 | stats earliest(@timestamp) as first_login,
@@ -305,8 +305,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
         values(sourceIPAddress) as ip_addresses
   by user, bin(1h) as hour_window
 | filter unique_ips > 1
-| sort last_login desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort last_login desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Impossible travel detection for T1078
 
 Parameters:
@@ -345,8 +345,8 @@ Resources:
       ComparisonOperator: GreaterThanOrEqualToThreshold
       AlarmActions:
         - !Ref SNSTopicArn
-      TreatMissingData: notBreaching''',
-                terraform_template='''# AWS Impossible travel detection for T1078
+      TreatMissingData: notBreaching""",
+                terraform_template="""# AWS Impossible travel detection for T1078
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -385,7 +385,7 @@ resource "aws_cloudwatch_metric_alarm" "impossible_travel" {
   threshold           = 2
   alarm_actions       = [var.sns_topic_arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Impossible Travel: Multiple Login Locations",
                 alert_description_template=(
@@ -399,15 +399,15 @@ resource "aws_cloudwatch_metric_alarm" "impossible_travel" {
                     "Review all API calls made from each IP address during the session",
                     "Check user agent strings for consistency",
                     "Contact the user via out-of-band communication to verify login locations",
-                    "Review recent password changes or MFA modifications"
+                    "Review recent password changes or MFA modifications",
                 ],
                 containment_actions=[
                     "Force logout all active sessions for the user immediately",
                     "Temporarily disable console access",
                     "Invalidate all access keys",
                     "Require password reset with MFA verification",
-                    "Review and revert any changes made during suspicious sessions"
-                ]
+                    "Review and revert any changes made during suspicious sessions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known VPN exit nodes, corporate proxies, and cloud shell IPs; adjust time window based on organisation",
@@ -416,9 +416,11 @@ resource "aws_cloudwatch_metric_alarm" "impossible_travel" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$5-20 depending on log volume",
-            prerequisites=["CloudTrail enabled", "CloudTrail logs sent to CloudWatch Logs"]
+            prerequisites=[
+                "CloudTrail enabled",
+                "CloudTrail logs sent to CloudWatch Logs",
+            ],
         ),
-
         # Strategy 3: AWS Off-Hours Access
         DetectionStrategy(
             strategy_id="t1078-aws-off-hours",
@@ -436,12 +438,10 @@ resource "aws_cloudwatch_metric_alarm" "impossible_travel" {
                     "detail-type": ["AWS Console Sign In via CloudTrail"],
                     "detail": {
                         "eventName": ["ConsoleLogin"],
-                        "responseElements": {
-                            "ConsoleLogin": ["Success"]
-                        }
-                    }
+                        "responseElements": {"ConsoleLogin": ["Success"]},
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Off-hours console access detection for T1078
 
 Parameters:
@@ -521,8 +521,8 @@ Resources:
             Statement:
               - Effect: Allow
                 Action: sns:Publish
-                Resource: !Ref SNSTopicArn''',
-                terraform_template='''# AWS Off-hours access detection for T1078
+                Resource: !Ref SNSTopicArn""",
+                terraform_template="""# AWS Off-hours access detection for T1078
 
 variable "sns_topic_arn" {
   type        = string
@@ -551,7 +551,7 @@ resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.off_hours_login.name
   target_id = "SNSAlert"
   arn       = var.sns_topic_arn
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Off-Hours Console Login",
                 alert_description_template=(
@@ -565,14 +565,14 @@ resource "aws_cloudwatch_event_target" "sns" {
                     "Review all actions taken during the session",
                     "Compare with user's historical login patterns",
                     "Check for sensitive API calls during the off-hours session",
-                    "Verify MFA was used for authentication"
+                    "Verify MFA was used for authentication",
                 ],
                 containment_actions=[
                     "Contact the user immediately via out-of-band communication (phone, corporate messaging)",
                     "If unverified, disable the user's access and invalidate sessions",
                     "Review and revert any changes made during the session",
-                    "Implement time-based access controls via IAM policies"
-                ]
+                    "Implement time-based access controls via IAM policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Create exceptions for on-call personnel, users in different timezones, and during incident response; adjust business hours definition",
@@ -581,9 +581,8 @@ resource "aws_cloudwatch_event_target" "sns" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled", "EventBridge configured"]
+            prerequisites=["CloudTrail enabled", "EventBridge configured"],
         ),
-
         # Strategy 4: AWS First-Time API Caller
         DetectionStrategy(
             strategy_id="t1078-aws-first-time-api",
@@ -596,7 +595,7 @@ resource "aws_cloudwatch_event_target" "sns" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn as user, eventSource, eventName,
+                query="""fields @timestamp, userIdentity.arn as user, eventSource, eventName,
        sourceIPAddress, userAgent
 | filter eventSource in ["iam.amazonaws.com", "kms.amazonaws.com",
     "secretsmanager.amazonaws.com", "ec2.amazonaws.com", "s3.amazonaws.com"]
@@ -609,8 +608,8 @@ resource "aws_cloudwatch_event_target" "sns" {
         count_distinct(sourceIPAddress) as unique_ips
   by user, eventName
 | filter call_count = 1 and first_seen > ago(24h)
-| sort first_seen desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort first_seen desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: First-time sensitive API detection for T1078
 
 Parameters:
@@ -649,8 +648,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       AlarmActions:
-        - !Ref SNSTopicArn''',
-                terraform_template='''# AWS First-time sensitive API detection for T1078
+        - !Ref SNSTopicArn""",
+                terraform_template="""# AWS First-time sensitive API detection for T1078
 
 variable "cloudtrail_log_group" {
   type = string
@@ -691,7 +690,7 @@ resource "aws_cloudwatch_metric_alarm" "sensitive_api" {
   statistic           = "Sum"
   threshold           = 1
   alarm_actions       = [var.sns_topic_arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="First-Time Sensitive API Call",
                 alert_description_template=(
@@ -704,14 +703,14 @@ resource "aws_cloudwatch_metric_alarm" "sensitive_api" {
                     "Review the context of the API call (parameters, resources affected, success/failure)",
                     "Look for other unusual activity from this user in the same timeframe",
                     "Check if the source IP is known and expected for this user",
-                    "Review the user's historical API usage patterns"
+                    "Review the user's historical API usage patterns",
                 ],
                 containment_actions=[
                     "Review and potentially revoke any resources created or accessed",
                     "Audit permissions granted or keys created during the session",
                     "Implement least-privilege IAM policies",
-                    "Enable MFA for sensitive API operations via IAM policy conditions"
-                ]
+                    "Enable MFA for sensitive API operations via IAM policy conditions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Build a baseline of normal API usage per user over 30-90 days; whitelist expected first-time activities",
@@ -720,9 +719,12 @@ resource "aws_cloudwatch_metric_alarm" "sensitive_api" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$10-30",
-            prerequisites=["CloudTrail enabled", "Baseline period for comparison", "CloudTrail logs in CloudWatch"]
+            prerequisites=[
+                "CloudTrail enabled",
+                "Baseline period for comparison",
+                "CloudTrail logs in CloudWatch",
+            ],
         ),
-
         # Strategy 5: GCP Anomalous Login Detection
         DetectionStrategy(
             strategy_id="t1078-gcp-login",
@@ -739,7 +741,7 @@ resource "aws_cloudwatch_metric_alarm" "sensitive_api" {
                 gcp_logging_query='''protoPayload.methodName="google.login.LoginService.loginSuccess"
 OR protoPayload.methodName="google.login.LoginService.loginFailure"
 OR protoPayload.methodName="google.login.LoginService.logout"''',
-                gcp_terraform_template='''# GCP: Anomalous login detection for T1078
+                gcp_terraform_template="""# GCP: Anomalous login detection for T1078
 
 variable "project_id" {
   type        = string
@@ -810,7 +812,7 @@ resource "google_monitoring_alert_policy" "login_anomaly" {
   alert_strategy {
     auto_close = "86400s"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Suspicious Login Activity",
                 alert_description_template=(
@@ -823,7 +825,7 @@ resource "google_monitoring_alert_policy" "login_anomaly" {
                     "Verify if user recognises the login attempts",
                     "Review all API activity following successful logins",
                     "Check for MFA bypass attempts",
-                    "Review admin activity logs for privilege escalation"
+                    "Review admin activity logs for privilege escalation",
                 ],
                 containment_actions=[
                     "Suspend the user account if compromise is confirmed",
@@ -831,8 +833,8 @@ resource "google_monitoring_alert_policy" "login_anomaly" {
                     "Reset user password with out-of-band verification",
                     "Enable mandatory 2FA for the account",
                     "Review and revoke any service account keys created",
-                    "Audit recent IAM policy changes"
-                ]
+                    "Audit recent IAM policy changes",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known VPN endpoints, adjust thresholds based on organisation size, exclude service accounts",
@@ -841,9 +843,8 @@ resource "google_monitoring_alert_policy" "login_anomaly" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Audit Logs enabled", "Login audit logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled", "Login audit logs enabled"],
         ),
-
         # Strategy 6: GCP Service Account Key Usage
         DetectionStrategy(
             strategy_id="t1078-gcp-sa-key",
@@ -857,11 +858,11 @@ resource "google_monitoring_alert_policy" "login_anomaly" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''protoPayload.methodName=~"google.iam.admin.v1.CreateServiceAccountKey"
+                gcp_logging_query="""protoPayload.methodName=~"google.iam.admin.v1.CreateServiceAccountKey"
 OR protoPayload.methodName=~"google.iam.admin.v1.DeleteServiceAccountKey"
 OR (protoPayload.authenticationInfo.principalEmail=~"gserviceaccount.com$"
-    AND protoPayload.@type="type.googleapis.com/google.cloud.audit.AuditLog")''',
-                gcp_terraform_template='''# GCP: Service account key monitoring for T1078
+    AND protoPayload.@type="type.googleapis.com/google.cloud.audit.AuditLog")""",
+                gcp_terraform_template="""# GCP: Service account key monitoring for T1078
 
 variable "project_id" {
   type        = string
@@ -939,7 +940,7 @@ resource "google_monitoring_alert_policy" "sa_key_alert" {
     content   = "Service account key operation detected. Review for unauthorised access."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Service Account Key Operation",
                 alert_description_template=(
@@ -952,7 +953,7 @@ resource "google_monitoring_alert_policy" "sa_key_alert" {
                     "Check the principal who performed the operation",
                     "Review all API calls made using service account keys",
                     "Audit service account permissions and usage patterns",
-                    "Check for exfiltration of key material"
+                    "Check for exfiltration of key material",
                 ],
                 containment_actions=[
                     "Delete unauthorised service account keys immediately",
@@ -960,8 +961,8 @@ resource "google_monitoring_alert_policy" "sa_key_alert" {
                     "Review and restrict service account key creation permissions",
                     "Enable key rotation policies",
                     "Implement workload identity federation to eliminate keys",
-                    "Audit all resources accessed by the service account"
-                ]
+                    "Audit all resources accessed by the service account",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Integrate with change management; whitelist automated deployment systems; alert on user-created keys only",
@@ -970,9 +971,8 @@ resource "google_monitoring_alert_policy" "sa_key_alert" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled", "Admin Activity logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled", "Admin Activity logs enabled"],
         ),
-
         # Strategy 7: GCP Impossible Travel
         DetectionStrategy(
             strategy_id="t1078-gcp-impossible-travel",
@@ -989,7 +989,7 @@ resource "google_monitoring_alert_policy" "sa_key_alert" {
                 gcp_logging_query='''protoPayload.@type="type.googleapis.com/google.cloud.audit.AuditLog"
 protoPayload.authenticationInfo.principalEmail!=""
 NOT protoPayload.authenticationInfo.principalEmail=~"gserviceaccount.com$"''',
-                gcp_terraform_template='''# GCP: Impossible travel detection for T1078
+                gcp_terraform_template="""# GCP: Impossible travel detection for T1078
 # Note: Full implementation requires Security Command Centre or custom analysis
 
 variable "project_id" {
@@ -1048,7 +1048,7 @@ resource "google_bigquery_dataset" "security_logs" {
 #     RANGE BETWEEN INTERVAL 1 HOUR PRECEDING AND CURRENT ROW
 #   ) as unique_ips_1h
 # FROM `project.security_logs.cloudaudit_googleapis_com_activity_*`
-# WHERE unique_ips_1h > 1''',
+# WHERE unique_ips_1h > 1""",
                 alert_severity="high",
                 alert_title="GCP: Impossible Travel Detected",
                 alert_description_template=(
@@ -1061,7 +1061,7 @@ resource "google_bigquery_dataset" "security_logs" {
                     "Check if IPs are VPN endpoints or cloud shell instances",
                     "Review all API activity from each location",
                     "Contact the user to verify access from all locations",
-                    "Check for MFA usage on all sessions"
+                    "Check for MFA usage on all sessions",
                 ],
                 containment_actions=[
                     "Suspend the user account immediately",
@@ -1069,8 +1069,8 @@ resource "google_bigquery_dataset" "security_logs" {
                     "Reset password with out-of-band verification",
                     "Enable context-aware access policies",
                     "Review and revert unauthorised changes",
-                    "Enable Security Command Centre for advanced detection"
-                ]
+                    "Enable Security Command Centre for advanced detection",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist Cloud Shell IPs, VPN endpoints, and legitimate cloud infrastructure; adjust time thresholds",
@@ -1079,10 +1079,13 @@ resource "google_bigquery_dataset" "security_logs" {
             implementation_effort=EffortLevel.HIGH,
             implementation_time="3-4 hours",
             estimated_monthly_cost="$20-50 (includes BigQuery storage and queries)",
-            prerequisites=["Cloud Audit Logs enabled", "BigQuery for log analysis", "Optional: Security Command Centre"]
-        )
+            prerequisites=[
+                "Cloud Audit Logs enabled",
+                "BigQuery for log analysis",
+                "Optional: Security Command Centre",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1078-aws-guardduty",
         "t1078-gcp-login",
@@ -1090,8 +1093,8 @@ resource "google_bigquery_dataset" "security_logs" {
         "t1078-aws-impossible-travel",
         "t1078-aws-first-time-api",
         "t1078-aws-off-hours",
-        "t1078-gcp-impossible-travel"
+        "t1078-gcp-impossible-travel",
     ],
     total_effort_hours=12.0,
-    coverage_improvement="+30% improvement for Initial Access and Persistence tactics"
+    coverage_improvement="+30% improvement for Initial Access and Persistence tactics",
 )

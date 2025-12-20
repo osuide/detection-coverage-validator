@@ -28,12 +28,15 @@ class CloudAccount(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     organization_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=True, index=True
+        UUID(as_uuid=True),
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     provider: Mapped[CloudProvider] = mapped_column(
         SQLEnum(CloudProvider, values_callable=lambda x: [e.value for e in x]),
-        nullable=False
+        nullable=False,
     )
     account_id: Mapped[str] = mapped_column(
         String(64), nullable=False, unique=True, index=True

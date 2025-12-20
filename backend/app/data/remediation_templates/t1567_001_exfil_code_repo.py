@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Exfiltration Over Web Service: Exfiltration to Code Repository",
     tactic_ids=["TA0010"],
     mitre_url="https://attack.mitre.org/techniques/T1567/001/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries exfiltrate data to code repositories such as GitHub, GitLab, "
@@ -37,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Repository services rarely blocked in development environments",
             "Large file support via Git LFS",
             "API access simplifies automated exfiltration",
-            "Public repositories provide easy adversary access"
+            "Public repositories provide easy adversary access",
         ],
         known_threat_actors=["Empire", "APT29", "Scattered Spider"],
         recent_campaigns=[
@@ -45,14 +44,14 @@ TEMPLATE = RemediationTemplate(
                 name="Empire GitHub Exfiltration",
                 year=2024,
                 description="Empire malware framework documented capability to use GitHub for data exfiltration",
-                reference_url="https://attack.mitre.org/software/S0363/"
+                reference_url="https://attack.mitre.org/software/S0363/",
             ),
             Campaign(
                 name="GitHub API Abuse",
                 year=2024,
                 description="Increased abuse of GitHub/GitLab APIs for exfiltration following sensitive file access",
-                reference_url="https://attack.mitre.org/techniques/T1567/001/"
-            )
+                reference_url="https://attack.mitre.org/techniques/T1567/001/",
+            ),
         ],
         prevalence="moderate",
         trend="increasing",
@@ -69,13 +68,12 @@ TEMPLATE = RemediationTemplate(
             "Sensitive data exfiltration (credentials, PII, financial data)",
             "Regulatory compliance violations (GDPR, HIPAA)",
             "Reputational damage from data breaches",
-            "Potential supply chain compromise"
+            "Potential supply chain compromise",
         ],
         typical_attack_phase="exfiltration",
         often_precedes=[],
-        often_follows=["T1552.001", "T1530", "T1005", "T1074"]
+        often_follows=["T1552.001", "T1530", "T1005", "T1074"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - Git Push Detection
         DetectionStrategy(
@@ -86,11 +84,11 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, requestParameters, sourceIPAddress
+                query="""fields @timestamp, userIdentity.principalId, requestParameters, sourceIPAddress
 | filter eventName in ["RunCommand", "StartSession"]
 | filter requestParameters.commands[0] =~ /git\s+push|curl.*github|curl.*gitlab|curl.*bitbucket/
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect git operations and repository API calls
 
 Parameters:
@@ -143,8 +141,8 @@ Resources:
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect git operations and repository API calls
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect git operations and repository API calls
 
 variable "cloudtrail_log_group" {
   type = string
@@ -189,7 +187,7 @@ resource "aws_cloudwatch_metric_alarm" "git_push" {
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Git Repository Exfiltration Detected",
                 alert_description_template="Git push or repository API activity detected from {principalId} at {sourceIPAddress}.",
@@ -198,15 +196,15 @@ resource "aws_cloudwatch_metric_alarm" "git_push" {
                     "Review CloudTrail logs for preceding file access events",
                     "Check repository URL and verify if it's an authorised corporate repository",
                     "Examine the size and nature of data being pushed",
-                    "Review user's recent activities and access patterns"
+                    "Review user's recent activities and access patterns",
                 ],
                 containment_actions=[
                     "Revoke the user's credentials immediately",
                     "Block network access to external repository services",
                     "Isolate the affected instance",
                     "Contact repository service to remove potentially exfiltrated data",
-                    "Review and restrict SSM/Session Manager permissions"
-                ]
+                    "Review and restrict SSM/Session Manager permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known developer instances and CI/CD pipelines; exclude corporate repository domains",
@@ -215,9 +213,8 @@ resource "aws_cloudwatch_metric_alarm" "git_push" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail logging", "SSM Session Manager logging enabled"]
+            prerequisites=["CloudTrail logging", "SSM Session Manager logging enabled"],
         ),
-
         # Strategy 2: AWS - HTTPS POST to Repository APIs
         DetectionStrategy(
             strategy_id="t1567-001-aws-https",
@@ -227,13 +224,13 @@ resource "aws_cloudwatch_metric_alarm" "git_push" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcAddr, dstAddr, bytes
+                query="""fields @timestamp, srcAddr, dstAddr, bytes
 | filter dstAddr =~ /api\.github\.com|gitlab\.com|bitbucket\.org/
 | filter action = "ACCEPT"
 | stats sum(bytes) as total_bytes, count(*) as requests by srcAddr, bin(5m)
 | filter total_bytes > 1048576 or requests > 10
-| sort total_bytes desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort total_bytes desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Monitor HTTPS traffic to code repository APIs
 
 Parameters:
@@ -274,8 +271,8 @@ Resources:
       Threshold: 10
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Monitor HTTPS traffic to code repository APIs
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Monitor HTTPS traffic to code repository APIs
 
 variable "vpc_flow_log_group" {
   type = string
@@ -320,7 +317,7 @@ resource "aws_cloudwatch_metric_alarm" "repository_api" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Code Repository API Activity Detected",
                 alert_description_template="High volume HTTPS traffic to repository APIs from {srcAddr}: {requests} requests, {total_bytes} bytes.",
@@ -329,15 +326,15 @@ resource "aws_cloudwatch_metric_alarm" "repository_api" {
                     "Review VPC Flow Logs for data volume and timing patterns",
                     "Check for correlation with sensitive file access",
                     "Examine instance processes and running applications",
-                    "Verify if instance should have legitimate repository access"
+                    "Verify if instance should have legitimate repository access",
                 ],
                 containment_actions=[
                     "Isolate the source instance",
                     "Block repository API domains at security group/NACL level",
                     "Terminate suspicious processes",
                     "Review and rotate any exposed credentials",
-                    "Implement web proxy for repository access control"
-                ]
+                    "Implement web proxy for repository access control",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist CI/CD servers and developer workstations; adjust byte threshold for environment",
@@ -346,9 +343,8 @@ resource "aws_cloudwatch_metric_alarm" "repository_api" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-20",
-            prerequisites=["VPC Flow Logs enabled", "DNS resolution logging"]
+            prerequisites=["VPC Flow Logs enabled", "DNS resolution logging"],
         ),
-
         # Strategy 3: AWS - File Archive Before Repository Upload
         DetectionStrategy(
             strategy_id="t1567-001-aws-archive",
@@ -358,11 +354,11 @@ resource "aws_cloudwatch_metric_alarm" "repository_api" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, requestParameters.commands
+                query="""fields @timestamp, userIdentity.principalId, requestParameters.commands
 | filter eventName = "SendCommand"
 | filter requestParameters.commands[0] =~ /tar|gzip|zip|7z/
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect file archiving before repository uploads
 
 Parameters:
@@ -409,8 +405,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect file archiving before repository uploads
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect file archiving before repository uploads
 
 variable "alert_email" {
   type = string
@@ -455,7 +451,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="File Archiving Activity Detected",
                 alert_description_template="File archiving command executed by {principalId}: {commands}",
@@ -464,14 +460,14 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Check for subsequent repository API calls",
                     "Identify files being archived (sensitive data?)",
                     "Verify if this is part of legitimate backup operations",
-                    "Check timing (outside business hours is suspicious)"
+                    "Check timing (outside business hours is suspicious)",
                 ],
                 containment_actions=[
                     "Monitor for follow-up exfiltration attempts",
                     "Review and delete any created archives",
                     "Restrict SSM command execution permissions",
-                    "Enable file integrity monitoring on sensitive directories"
-                ]
+                    "Enable file integrity monitoring on sensitive directories",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist scheduled backup jobs; correlate with repository uploads to reduce noise",
@@ -480,9 +476,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail logging", "SSM enabled"]
+            prerequisites=["CloudTrail logging", "SSM enabled"],
         ),
-
         # Strategy 4: GCP - Repository API Detection
         DetectionStrategy(
             strategy_id="t1567-001-gcp-api",
@@ -493,10 +488,10 @@ resource "aws_sns_topic_policy" "allow_events" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 jsonPayload.connection.dest_ip=~"api\.github\.com|gitlab\.com|bitbucket\.org"
-jsonPayload.bytes_sent > 1048576''',
-                gcp_terraform_template='''# GCP: Detect repository API uploads
+jsonPayload.bytes_sent > 1048576""",
+                gcp_terraform_template="""# GCP: Detect repository API uploads
 
 variable "project_id" {
   type = string
@@ -546,7 +541,7 @@ resource "google_monitoring_alert_policy" "repo_upload" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Code Repository Upload Detected",
                 alert_description_template="Large data upload to repository API detected from GCP instance.",
@@ -555,15 +550,15 @@ resource "google_monitoring_alert_policy" "repo_upload" {
                     "Review VPC Flow Logs for connection details",
                     "Check for sensitive file access preceding the upload",
                     "Verify if instance should have repository access",
-                    "Examine instance metadata and service accounts"
+                    "Examine instance metadata and service accounts",
                 ],
                 containment_actions=[
                     "Isolate the instance via VPC firewall rules",
                     "Stop the instance if necessary",
                     "Revoke service account credentials",
                     "Block repository API domains in Cloud Armor/firewall",
-                    "Review and rotate any exposed secrets"
-                ]
+                    "Review and rotate any exposed secrets",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist Cloud Build workers and development instances; adjust byte threshold",
@@ -572,9 +567,8 @@ resource "google_monitoring_alert_policy" "repo_upload" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["VPC Flow Logs enabled", "Cloud Logging enabled"]
+            prerequisites=["VPC Flow Logs enabled", "Cloud Logging enabled"],
         ),
-
         # Strategy 5: GCP - Git Command Detection
         DetectionStrategy(
             strategy_id="t1567-001-gcp-git",
@@ -588,7 +582,7 @@ resource "google_monitoring_alert_policy" "repo_upload" {
                 gcp_logging_query='''resource.type="gce_instance"
 protoPayload.methodName="RunCommand"
 protoPayload.request.command=~"git\s+push|curl.*github|curl.*gitlab|curl.*bitbucket"''',
-                gcp_terraform_template='''# GCP: Detect git command execution
+                gcp_terraform_template="""# GCP: Detect git command execution
 
 variable "project_id" {
   type = string
@@ -638,7 +632,7 @@ resource "google_monitoring_alert_policy" "git_push" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Git Repository Command Detected",
                 alert_description_template="Git push or repository API command executed on GCP instance.",
@@ -647,15 +641,15 @@ resource "google_monitoring_alert_policy" "git_push" {
                     "Review command details and target repository",
                     "Check for sensitive file access before git push",
                     "Verify if repository is corporate-owned",
-                    "Examine user's role and authorised activities"
+                    "Examine user's role and authorised activities",
                 ],
                 containment_actions=[
                     "Disable the service account or user credentials",
                     "Isolate the instance",
                     "Review and remove any pushed sensitive data",
                     "Restrict OS Login and SSH access",
-                    "Implement application-level controls for git operations"
-                ]
+                    "Implement application-level controls for git operations",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist Cloud Build and CI/CD instances; exclude corporate repository domains",
@@ -664,17 +658,16 @@ resource "google_monitoring_alert_policy" "git_push" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Cloud Logging enabled", "OS Login or SSH logging enabled"]
-        )
+            prerequisites=["Cloud Logging enabled", "OS Login or SSH logging enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1567-001-aws-git",
         "t1567-001-aws-https",
         "t1567-001-gcp-api",
         "t1567-001-gcp-git",
-        "t1567-001-aws-archive"
+        "t1567-001-aws-archive",
     ],
     total_effort_hours=6.0,
-    coverage_improvement="+18% improvement for Exfiltration tactic"
+    coverage_improvement="+18% improvement for Exfiltration tactic",
 )

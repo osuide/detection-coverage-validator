@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Peripheral Device Discovery",
     tactic_ids=["TA0007"],
     mitre_url="https://attack.mitre.org/techniques/T1120/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries enumerate attached peripheral devices and components connected "
@@ -40,7 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Finds network-connected printers and cameras",
             "Locates smart card readers for credential theft",
             "Maps Bluetooth devices for covert channels",
-            "Assesses hardware for exploitation opportunities"
+            "Assesses hardware for exploitation opportunities",
         ],
         known_threat_actors=[
             "APT28",
@@ -52,27 +51,27 @@ TEMPLATE = RemediationTemplate(
             "Equation Group",
             "TEMP.Veles",
             "Threat Group-3390",
-            "Frankenstein"
+            "Frankenstein",
         ],
         recent_campaigns=[
             Campaign(
                 name="Operation CuckooBees",
                 year=2023,
                 description="APT groups used command-line reconnaissance including peripheral device enumeration to identify removable media for data exfiltration",
-                reference_url="https://attack.mitre.org/techniques/T1120/"
+                reference_url="https://attack.mitre.org/techniques/T1120/",
             ),
             Campaign(
                 name="Ransomware Peripheral Targeting",
                 year=2024,
                 description="LockBit and other ransomware variants enumerate external storage devices and network printers before encryption campaigns",
-                reference_url="https://attack.mitre.org/techniques/T1120/"
+                reference_url="https://attack.mitre.org/techniques/T1120/",
             ),
             Campaign(
                 name="USB Mass Storage Monitoring",
                 year=2023,
                 description="APT28 deployed modules triggering notifications whenever USB mass storage devices were inserted into compromised systems",
-                reference_url="https://attack.mitre.org/techniques/T1120/"
-            )
+                reference_url="https://attack.mitre.org/techniques/T1120/",
+            ),
         ],
         prevalence="common",
         trend="stable",
@@ -88,13 +87,12 @@ TEMPLATE = RemediationTemplate(
             "Indicates preparation for lateral movement",
             "Risk of malware propagation via USB devices",
             "Potential compromise of network peripherals",
-            "Early warning of ransomware reconnaissance"
+            "Early warning of ransomware reconnaissance",
         ],
         typical_attack_phase="discovery",
         often_precedes=["T1091", "T1052", "T1025", "T1074"],
-        often_follows=["T1082", "T1083", "T1057"]
+        often_follows=["T1082", "T1083", "T1057"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - EC2 EBS Volume and Device Enumeration
         DetectionStrategy(
@@ -105,13 +103,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn, eventName, requestParameters.instanceId
+                query="""fields @timestamp, userIdentity.arn, eventName, requestParameters.instanceId
 | filter eventSource = "ec2.amazonaws.com"
 | filter eventName in ["DescribeVolumes", "DescribeVolumeAttribute", "DescribeInstanceAttribute", "DescribeSnapshots"]
 | stats count(*) as enumeration_count by userIdentity.arn, sourceIPAddress, bin(1h)
 | filter enumeration_count > 25
-| sort enumeration_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort enumeration_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect peripheral device discovery via EBS enumeration
 
 Parameters:
@@ -152,8 +150,8 @@ Resources:
       Threshold: 40
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect peripheral device discovery via EBS enumeration
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect peripheral device discovery via EBS enumeration
 
 variable "cloudtrail_log_group" {
   type = string
@@ -198,7 +196,7 @@ resource "aws_cloudwatch_metric_alarm" "peripheral_device" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Peripheral Device Discovery Detected",
                 alert_description_template="Excessive EBS volume and device enumeration from {userIdentity.arn}.",
@@ -208,7 +206,7 @@ resource "aws_cloudwatch_metric_alarm" "peripheral_device" {
                     "Review what storage devices were enumerated",
                     "Look for subsequent snapshot creation or data access",
                     "Check for correlation with data exfiltration attempts",
-                    "Review instance metadata access patterns"
+                    "Review instance metadata access patterns",
                 ],
                 containment_actions=[
                     "Review principal's EC2 and EBS permissions",
@@ -216,8 +214,8 @@ resource "aws_cloudwatch_metric_alarm" "peripheral_device" {
                     "Check for unauthorised data access",
                     "Enable EBS encryption if not already enabled",
                     "Review volume attachment history",
-                    "Consider restricting DescribeVolumes permissions"
-                ]
+                    "Consider restricting DescribeVolumes permissions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist backup solutions, monitoring tools, and infrastructure automation (e.g., Terraform, CloudFormation drift detection)",
@@ -226,9 +224,8 @@ resource "aws_cloudwatch_metric_alarm" "peripheral_device" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail logging to CloudWatch"]
+            prerequisites=["CloudTrail logging to CloudWatch"],
         ),
-
         # Strategy 2: AWS - FSx and Storage Gateway Discovery
         DetectionStrategy(
             strategy_id="t1120-aws-storage",
@@ -238,13 +235,13 @@ resource "aws_cloudwatch_metric_alarm" "peripheral_device" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.arn, requestParameters
+                query="""fields @timestamp, eventName, userIdentity.arn, requestParameters
 | filter eventSource in ["fsx.amazonaws.com", "storagegateway.amazonaws.com", "elasticfilesystem.amazonaws.com"]
 | filter eventName in ["DescribeFileSystems", "DescribeVolumes", "DescribeGateways", "ListGateways", "DescribeTapeArchives", "DescribeFileSystemAssociations"]
 | stats count(*) as query_count by userIdentity.arn, eventSource, bin(1h)
 | filter query_count > 15
-| sort query_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort query_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect peripheral storage device discovery
 
 Parameters:
@@ -285,8 +282,8 @@ Resources:
       Threshold: 25
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect peripheral storage device discovery
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect peripheral storage device discovery
 
 variable "cloudtrail_log_group" {
   type = string
@@ -331,7 +328,7 @@ resource "aws_cloudwatch_metric_alarm" "storage_device" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Storage Device Discovery Detected",
                 alert_description_template="Excessive file system and storage gateway enumeration from {userIdentity.arn}.",
@@ -341,7 +338,7 @@ resource "aws_cloudwatch_metric_alarm" "storage_device" {
                     "Review what file systems were discovered",
                     "Check for subsequent data access or exfiltration",
                     "Look for correlation with network activity",
-                    "Review Storage Gateway and FSx access logs"
+                    "Review Storage Gateway and FSx access logs",
                 ],
                 containment_actions=[
                     "Review principal's FSx and Storage Gateway permissions",
@@ -349,8 +346,8 @@ resource "aws_cloudwatch_metric_alarm" "storage_device" {
                     "Check for data exfiltration attempts",
                     "Review file system access patterns",
                     "Consider network segmentation for storage services",
-                    "Enable VPC Flow Logs for storage traffic analysis"
-                ]
+                    "Enable VPC Flow Logs for storage traffic analysis",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist backup software, monitoring tools, and file management solutions",
@@ -359,9 +356,8 @@ resource "aws_cloudwatch_metric_alarm" "storage_device" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail logging to CloudWatch"]
+            prerequisites=["CloudTrail logging to CloudWatch"],
         ),
-
         # Strategy 3: GCP - Persistent Disk and Storage Enumeration
         DetectionStrategy(
             strategy_id="t1120-gcp-disk",
@@ -373,7 +369,7 @@ resource "aws_cloudwatch_metric_alarm" "storage_device" {
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName=~"(compute.disks.list|compute.disks.get|compute.instances.getSerialPortOutput|compute.disks.aggregatedList|compute.diskTypes.list)"''',
-                gcp_terraform_template='''# GCP: Detect peripheral device discovery
+                gcp_terraform_template="""# GCP: Detect peripheral device discovery
 
 variable "project_id" {
   type = string
@@ -421,7 +417,7 @@ resource "google_monitoring_alert_policy" "peripheral_device" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Peripheral Device Discovery",
                 alert_description_template="Excessive persistent disk enumeration detected.",
@@ -431,7 +427,7 @@ resource "google_monitoring_alert_policy" "peripheral_device" {
                     "Review what storage devices were enumerated",
                     "Look for snapshot creation or disk attachment activity",
                     "Check for correlation with data access patterns",
-                    "Review serial port output access (potential data exfiltration)"
+                    "Review serial port output access (potential data exfiltration)",
                 ],
                 containment_actions=[
                     "Review principal's Compute Engine permissions",
@@ -439,8 +435,8 @@ resource "google_monitoring_alert_policy" "peripheral_device" {
                     "Check for unauthorised disk attachments",
                     "Enable disk encryption if not already active",
                     "Review VPC Service Controls for storage resources",
-                    "Consider IAM Conditions to restrict disk access"
-                ]
+                    "Consider IAM Conditions to restrict disk access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist backup solutions, monitoring tools, and infrastructure automation (e.g., Terraform state refresh)",
@@ -449,9 +445,8 @@ resource "google_monitoring_alert_policy" "peripheral_device" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled"],
         ),
-
         # Strategy 4: GCP - Filestore and Storage Device Discovery
         DetectionStrategy(
             strategy_id="t1120-gcp-filestore",
@@ -464,7 +459,7 @@ resource "google_monitoring_alert_policy" "peripheral_device" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.serviceName=~"(file.googleapis.com|storage.googleapis.com)"
 protoPayload.methodName=~"(google.cloud.filestore.*.ListInstances|google.cloud.filestore.*.GetInstance|storage.buckets.list|storage.objects.list)"''',
-                gcp_terraform_template='''# GCP: Detect filestore and storage discovery
+                gcp_terraform_template="""# GCP: Detect filestore and storage discovery
 
 variable "project_id" {
   type = string
@@ -513,7 +508,7 @@ resource "google_monitoring_alert_policy" "storage_discovery" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Storage Device Discovery Detected",
                 alert_description_template="Bulk enumeration of Filestore instances and Cloud Storage detected.",
@@ -523,7 +518,7 @@ resource "google_monitoring_alert_policy" "storage_discovery" {
                     "Review what storage devices were discovered",
                     "Check for subsequent data access or downloads",
                     "Look for correlation with network egress activity",
-                    "Review Cloud Storage access logs"
+                    "Review Cloud Storage access logs",
                 ],
                 containment_actions=[
                     "Review principal's Filestore and Storage permissions",
@@ -531,8 +526,8 @@ resource "google_monitoring_alert_policy" "storage_discovery" {
                     "Check for unauthorised bucket access",
                     "Enable VPC Service Controls for storage APIs",
                     "Review bucket and Filestore ACLs",
-                    "Consider implementing data loss prevention policies"
-                ]
+                    "Consider implementing data loss prevention policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist backup software, data analytics tools, and monitoring solutions",
@@ -541,16 +536,18 @@ resource "google_monitoring_alert_policy" "storage_discovery" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Cloud Audit Logs enabled", "Data Access logs enabled for Cloud Storage"]
-        )
+            prerequisites=[
+                "Cloud Audit Logs enabled",
+                "Data Access logs enabled for Cloud Storage",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1120-aws-ebs",
         "t1120-aws-storage",
         "t1120-gcp-disk",
-        "t1120-gcp-filestore"
+        "t1120-gcp-filestore",
     ],
     total_effort_hours=4.0,
-    coverage_improvement="+7% improvement for Discovery tactic"
+    coverage_improvement="+7% improvement for Discovery tactic",
 )

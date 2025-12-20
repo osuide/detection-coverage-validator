@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Server Software Component",
     tactic_ids=["TA0003"],
     mitre_url="https://attack.mitre.org/techniques/T1505/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries abuse legitimate server extensibility features to establish "
@@ -38,32 +37,40 @@ TEMPLATE = RemediationTemplate(
             "Survives application restarts",
             "Provides command execution capabilities",
             "Often bypasses traditional security tools",
-            "Difficult to detect without file integrity monitoring"
+            "Difficult to detect without file integrity monitoring",
         ],
         known_threat_actors=[
-            "APT28", "APT29", "APT40", "APT41", "Silk Typhoon",
-            "Emissary Panda", "Stately Taurus", "Threat Group-3390",
-            "Winnti", "Earth Simnavaz", "BackdoorDiplomacy"
+            "APT28",
+            "APT29",
+            "APT40",
+            "APT41",
+            "Silk Typhoon",
+            "Emissary Panda",
+            "Stately Taurus",
+            "Threat Group-3390",
+            "Winnti",
+            "Earth Simnavaz",
+            "BackdoorDiplomacy",
         ],
         recent_campaigns=[
             Campaign(
                 name="APT41 US State Government Compromises",
                 year=2022,
                 description="APT41 used China Chopper web shell to compromise six US state government networks",
-                reference_url="https://www.fortiguard.com/threat-signal-report/4449"
+                reference_url="https://www.fortiguard.com/threat-signal-report/4449",
             ),
             Campaign(
                 name="Silk Typhoon IT Supply Chain",
                 year=2025,
                 description="Chinese threat actor deployed web shells targeting IT supply chain organizations",
-                reference_url="https://attack.mitre.org/techniques/T1505/003/"
+                reference_url="https://attack.mitre.org/techniques/T1505/003/",
             ),
             Campaign(
                 name="APT40 Belt and Road Initiative Targeting",
                 year=2024,
                 description="APT40 deployed server components targeting engineering and defence organizations",
-                reference_url="https://attack.mitre.org/groups/G0065/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0065/",
+            ),
         ],
         prevalence="common",
         trend="stable",
@@ -77,13 +84,12 @@ TEMPLATE = RemediationTemplate(
             "Persistent backdoor access",
             "Data exfiltration risk",
             "Lateral movement enabler",
-            "Compliance violations"
+            "Compliance violations",
         ],
         typical_attack_phase="persistence",
         often_precedes=["T1078.004", "T1530", "T1552.005"],
-        often_follows=["T1190", "T1078.004"]
+        often_follows=["T1190", "T1078.004"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1505-aws-ec2-file-integrity",
@@ -93,14 +99,14 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, fileName, changeType, user
+                query="""fields @timestamp, fileName, changeType, user
 | filter changeType = "MODIFIED" or changeType = "CREATED"
 | filter fileName like /\\.php$|\\.aspx$|\\.jsp$|\\.cgi$|web\\.config|httpd\\.conf/
 | filter fileName like /var\/www|inetpub|apache|nginx/
 | stats count(*) as changes by fileName, user, bin(1h)
 | filter changes > 0
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect unauthorised web server file modifications
 
 Parameters:
@@ -139,8 +145,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect unauthorised web server file modifications
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect unauthorised web server file modifications
 
 variable "log_group_name" { type = string }
 variable "alert_email" { type = string }
@@ -177,7 +183,7 @@ resource "aws_cloudwatch_metric_alarm" "web_file_changes" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Unauthorised Web Server File Modification",
                 alert_description_template="Unauthorised modification detected on web server: {fileName}",
@@ -187,7 +193,7 @@ resource "aws_cloudwatch_metric_alarm" "web_file_changes" {
                     "Check file creation/modification timestamps",
                     "Search for known web shell patterns (e.g., China Chopper, WSO)",
                     "Review web server access logs for suspicious requests",
-                    "Check for other modified files in web directories"
+                    "Check for other modified files in web directories",
                 ],
                 containment_actions=[
                     "Isolate affected EC2 instances",
@@ -195,8 +201,8 @@ resource "aws_cloudwatch_metric_alarm" "web_file_changes" {
                     "Restore from known-good backups",
                     "Review IAM permissions and SSH keys",
                     "Enable AWS Systems Manager for compliance scanning",
-                    "Implement file integrity monitoring (e.g., AIDE, Tripwire)"
-                ]
+                    "Implement file integrity monitoring (e.g., AIDE, Tripwire)",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude authorised deployment processes and maintenance windows",
@@ -205,9 +211,10 @@ resource "aws_cloudwatch_metric_alarm" "web_file_changes" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["File integrity monitoring agent (e.g., osquery, AIDE) with CloudWatch Logs integration"]
+            prerequisites=[
+                "File integrity monitoring agent (e.g., osquery, AIDE) with CloudWatch Logs integration"
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1505-aws-alb-webshell",
             name="AWS ALB Web Shell Pattern Detection",
@@ -216,13 +223,13 @@ resource "aws_cloudwatch_metric_alarm" "web_file_changes" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, client_ip, request_url, user_agent, elb_status_code
+                query="""fields @timestamp, client_ip, request_url, user_agent, elb_status_code
 | filter request_url like /cmd=|exec|eval\(|system\(|passthru|shell_exec|base64_decode/
 | filter elb_status_code = 200
 | stats count(*) as requests by client_ip, request_url, bin(5m)
 | filter requests > 0
-| sort @timestamp desc''',
-                terraform_template='''# Detect web shell activity via ALB logs
+| sort @timestamp desc""",
+                terraform_template="""# Detect web shell activity via ALB logs
 
 variable "alb_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -259,7 +266,7 @@ resource "aws_cloudwatch_metric_alarm" "webshell_activity" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Potential Web Shell Activity Detected",
                 alert_description_template="Suspicious web shell patterns from {client_ip}",
@@ -269,15 +276,15 @@ resource "aws_cloudwatch_metric_alarm" "webshell_activity" {
                     "Review source IP reputation",
                     "Check for successful command execution (200 status codes)",
                     "Review web server process list for suspicious activity",
-                    "Search for lateral movement attempts"
+                    "Search for lateral movement attempts",
                 ],
                 containment_actions=[
                     "Block source IP at WAF/security group",
                     "Remove identified web shells",
                     "Rotate credentials accessed by compromised server",
                     "Enable AWS WAF with managed rule groups",
-                    "Review and patch web application vulnerabilities"
-                ]
+                    "Review and patch web application vulnerabilities",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Pattern-based detection is generally reliable for web shell signatures",
@@ -286,9 +293,8 @@ resource "aws_cloudwatch_metric_alarm" "webshell_activity" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["ALB with access logging enabled to CloudWatch Logs"]
+            prerequisites=["ALB with access logging enabled to CloudWatch Logs"],
         ),
-
         DetectionStrategy(
             strategy_id="t1505-aws-lambda-persistence",
             name="AWS Lambda Function Modification Detection",
@@ -301,10 +307,14 @@ resource "aws_cloudwatch_metric_alarm" "webshell_activity" {
                     "source": ["aws.lambda"],
                     "detail-type": ["AWS API Call via CloudTrail"],
                     "detail": {
-                        "eventName": ["UpdateFunctionCode20150331v2", "UpdateFunctionConfiguration20150331v2", "CreateFunction20150331"]
-                    }
+                        "eventName": [
+                            "UpdateFunctionCode20150331v2",
+                            "UpdateFunctionConfiguration20150331v2",
+                            "CreateFunction20150331",
+                        ]
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect Lambda function modifications
 
 Parameters:
@@ -341,8 +351,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect Lambda function modifications
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect Lambda function modifications
 
 variable "alert_email" { type = string }
 
@@ -383,7 +393,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Lambda Function Modified",
                 alert_description_template="Lambda function {functionName} modified by {userIdentity.principalId}",
@@ -393,15 +403,15 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Compare function code versions",
                     "Check for suspicious code (e.g., backdoors, data exfiltration)",
                     "Review function's IAM role permissions",
-                    "Check function invocation logs for unusual activity"
+                    "Check function invocation logs for unusual activity",
                 ],
                 containment_actions=[
                     "Revert to previous function version",
                     "Delete unauthorised functions",
                     "Review and restrict Lambda:UpdateFunctionCode permissions",
                     "Enable Lambda code signing",
-                    "Implement CI/CD controls for function deployments"
-                ]
+                    "Implement CI/CD controls for function deployments",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist CI/CD pipeline roles and scheduled deployments",
@@ -410,9 +420,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled with Lambda data events"]
+            prerequisites=["CloudTrail enabled with Lambda data events"],
         ),
-
         DetectionStrategy(
             strategy_id="t1505-gcp-compute-metadata",
             name="GCP Compute Instance Metadata Modification",
@@ -426,7 +435,7 @@ resource "aws_sns_topic_policy" "allow_events" {
 protoPayload.methodName="v1.compute.instances.setMetadata"
 OR protoPayload.methodName="beta.compute.instances.setMetadata"
 OR protoPayload.methodName="v1.compute.instances.addAccessConfig"''',
-                gcp_terraform_template='''# GCP: Detect instance metadata modifications
+                gcp_terraform_template="""# GCP: Detect instance metadata modifications
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -464,7 +473,7 @@ resource "google_monitoring_alert_policy" "metadata_modification" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Instance Metadata Modified",
                 alert_description_template="Instance metadata modified for {resource.labels.instance_id}",
@@ -473,15 +482,15 @@ resource "google_monitoring_alert_policy" "metadata_modification" {
                     "Check what metadata was changed (startup scripts, SSH keys)",
                     "Review who made the change",
                     "Check for suspicious startup scripts or custom metadata",
-                    "Review instance for signs of compromise"
+                    "Review instance for signs of compromise",
                 ],
                 containment_actions=[
                     "Revert unauthorised metadata changes",
                     "Remove suspicious startup scripts",
                     "Review and restrict compute.instances.setMetadata permissions",
                     "Enable OS Config for compliance monitoring",
-                    "Implement change management for instance modifications"
-                ]
+                    "Implement change management for instance modifications",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude authorised service accounts and maintenance windows",
@@ -490,9 +499,8 @@ resource "google_monitoring_alert_policy" "metadata_modification" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled for Compute Engine"]
+            prerequisites=["Cloud Audit Logs enabled for Compute Engine"],
         ),
-
         DetectionStrategy(
             strategy_id="t1505-gcp-app-engine-deploy",
             name="GCP App Engine Deployment Detection",
@@ -505,7 +513,7 @@ resource "google_monitoring_alert_policy" "metadata_modification" {
                 gcp_logging_query='''resource.type="gae_app"
 protoPayload.methodName="google.appengine.v1.Versions.CreateVersion"
 OR protoPayload.methodName="google.appengine.v1.Services.UpdateService"''',
-                gcp_terraform_template='''# GCP: Detect App Engine deployments
+                gcp_terraform_template="""# GCP: Detect App Engine deployments
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -542,7 +550,7 @@ resource "google_monitoring_alert_policy" "app_engine_deploy" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: App Engine Deployment Detected",
                 alert_description_template="App Engine deployment by {protoPayload.authenticationInfo.principalEmail}",
@@ -551,15 +559,15 @@ resource "google_monitoring_alert_policy" "app_engine_deploy" {
                     "Review deployed code for malicious content",
                     "Check deploying identity",
                     "Review application version history",
-                    "Check for suspicious endpoints or handlers"
+                    "Check for suspicious endpoints or handlers",
                 ],
                 containment_actions=[
                     "Delete unauthorised versions",
                     "Revert to previous known-good version",
                     "Review and restrict App Engine deployment permissions",
                     "Implement CI/CD controls with code review",
-                    "Enable Binary Authorization for App Engine"
-                ]
+                    "Enable Binary Authorization for App Engine",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist CI/CD service accounts and scheduled deployments",
@@ -568,17 +576,16 @@ resource "google_monitoring_alert_policy" "app_engine_deploy" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled for App Engine"]
-        )
+            prerequisites=["Cloud Audit Logs enabled for App Engine"],
+        ),
     ],
-
     recommended_order=[
         "t1505-aws-alb-webshell",
         "t1505-aws-ec2-file-integrity",
         "t1505-aws-lambda-persistence",
         "t1505-gcp-compute-metadata",
-        "t1505-gcp-app-engine-deploy"
+        "t1505-gcp-app-engine-deploy",
     ],
     total_effort_hours=6.0,
-    coverage_improvement="+18% improvement for Persistence tactic"
+    coverage_improvement="+18% improvement for Persistence tactic",
 )

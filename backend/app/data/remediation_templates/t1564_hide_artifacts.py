@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Hide Artifacts",
     tactic_ids=["TA0005"],
     mitre_url="https://attack.mitre.org/techniques/T1564/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries attempt to hide artefacts tied to their activities to evade detection. "
@@ -37,28 +36,34 @@ TEMPLATE = RemediationTemplate(
             "Bypasses standard security monitoring focused on common patterns",
             "Creates isolated environments for command and control",
             "Reduces likelihood of investigation during incident response",
-            "Enables long-term persistence by avoiding cleanup efforts"
+            "Enables long-term persistence by avoiding cleanup efforts",
         ],
-        known_threat_actors=["Bundlore", "DarkTortilla", "OSX/Shlayer", "Tarrask", "WarzoneRAT"],
+        known_threat_actors=[
+            "Bundlore",
+            "DarkTortilla",
+            "OSX/Shlayer",
+            "Tarrask",
+            "WarzoneRAT",
+        ],
         recent_campaigns=[
             Campaign(
                 name="Cloud Resource Hiding",
                 year=2024,
                 description="Multiple threat actors observed creating resources in unusual regions and using misleading tags to hide cryptomining operations",
-                reference_url="https://www.cadosecurity.com/blog/how-threat-actors-are-using-aws-to-hide-malicious-infrastructure"
+                reference_url="https://www.cadosecurity.com/blog/how-threat-actors-are-using-aws-to-hide-malicious-infrastructure",
             ),
             Campaign(
                 name="Serverless Backdoors",
                 year=2024,
                 description="Attackers deploying Lambda functions and Cloud Run services with obscure names and minimal logging to maintain persistence",
-                reference_url="https://www.datadog.com/state-of-serverless/"
+                reference_url="https://www.datadog.com/state-of-serverless/",
             ),
             Campaign(
                 name="Container Hiding Techniques",
                 year=2023,
                 description="Threat actors creating privileged containers and using process hiding to evade detection in Kubernetes environments",
-                reference_url="https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-278a"
-            )
+                reference_url="https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-278a",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -74,13 +79,12 @@ TEMPLATE = RemediationTemplate(
             "Increased costs from hidden resource consumption (cryptomining, etc.)",
             "Difficulty in incident response and forensic investigation",
             "Compliance violations due to unmonitored resources",
-            "Potential for hidden backdoors enabling future breaches"
+            "Potential for hidden backdoors enabling future breaches",
         ],
         typical_attack_phase="defence_evasion",
         often_precedes=["T1496", "T1567", "T1537"],
-        often_follows=["T1078.004", "T1098", "T1136.003"]
+        often_follows=["T1078.004", "T1098", "T1136.003"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - Unusual Region Activity
         DetectionStrategy(
@@ -96,9 +100,9 @@ TEMPLATE = RemediationTemplate(
             implementation=DetectionImplementation(
                 guardduty_finding_types=[
                     "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.OutsideAWS",
-                    "Persistence:IAMUser/ResourceCreation.OutsideNormalRegions"
+                    "Persistence:IAMUser/ResourceCreation.OutsideNormalRegions",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect resource creation in unusual regions
 
 Parameters:
@@ -153,8 +157,8 @@ Resources:
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect resource creation in unusual regions
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect resource creation in unusual regions
 
 variable "alert_email" {
   type = string
@@ -206,7 +210,7 @@ resource "aws_cloudwatch_metric_alarm" "unusual_region" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Resource Created in Unusual Region",
                 alert_description_template=(
@@ -218,15 +222,15 @@ resource "aws_cloudwatch_metric_alarm" "unusual_region" {
                     "Verify if the region is legitimately used by your organisation",
                     "Review all resources created in the unusual region",
                     "Check for similar activity across other unusual regions",
-                    "Examine the resource configuration for malicious indicators"
+                    "Examine the resource configuration for malicious indicators",
                 ],
                 containment_actions=[
                     "Terminate or delete resources in unusual regions if unauthorised",
                     "Disable or quarantine the IAM principal if compromised",
                     "Implement Service Control Policies to restrict region usage",
                     "Review and update IAM policies to enforce region restrictions",
-                    "Enable GuardDuty in all regions for comprehensive monitoring"
-                ]
+                    "Enable GuardDuty in all regions for comprehensive monitoring",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Customise unusual region list based on organisation's legitimate multi-region usage",
@@ -235,9 +239,8 @@ resource "aws_cloudwatch_metric_alarm" "unusual_region" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled", "CloudTrail logs in CloudWatch"]
+            prerequisites=["CloudTrail enabled", "CloudTrail logs in CloudWatch"],
         ),
-
         # Strategy 2: AWS - Hidden Lambda Functions
         DetectionStrategy(
             strategy_id="t1564-aws-hidden-lambda",
@@ -250,13 +253,13 @@ resource "aws_cloudwatch_metric_alarm" "unusual_region" {
             aws_service="config",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, requestParameters.functionName, userIdentity.arn
+                query="""fields @timestamp, eventName, requestParameters.functionName, userIdentity.arn
 | filter eventSource = "lambda.amazonaws.com"
 | filter eventName = "CreateFunction20150331" or eventName = "UpdateFunctionConfiguration20150331v2"
 | filter requestParameters.loggingConfig.logGroup = "" or ispresent(requestParameters.loggingConfig) = 0
 | sort @timestamp desc
-| limit 100''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| limit 100""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect Lambda functions with minimal logging
 
 Parameters:
@@ -310,8 +313,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect Lambda functions with minimal logging
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect Lambda functions with minimal logging
 
 variable "alert_email" {
   type = string
@@ -401,7 +404,7 @@ resource "aws_iam_role" "config" {
 resource "aws_iam_role_policy_attachment" "config" {
   role       = aws_iam_role.config.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/ConfigRole"
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Lambda Function Without Proper Logging Detected",
                 alert_description_template=(
@@ -413,15 +416,15 @@ resource "aws_iam_role_policy_attachment" "config" {
                     "Check when the function was created and by whom",
                     "Examine the function's execution history and triggers",
                     "Look for unusual environment variables or IAM roles",
-                    "Search for similar functions with minimal logging"
+                    "Search for similar functions with minimal logging",
                 ],
                 containment_actions=[
                     "Enable CloudWatch Logs for the function",
                     "Review and restrict the function's IAM permissions",
                     "Delete the function if unauthorised or malicious",
                     "Implement Lambda function naming standards",
-                    "Use Lambda Insights for enhanced monitoring"
-                ]
+                    "Use Lambda Insights for enhanced monitoring",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Create exceptions for test/development functions with documented purpose",
@@ -430,9 +433,8 @@ resource "aws_iam_role_policy_attachment" "config" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$15-25",
-            prerequisites=["AWS Config enabled", "Config recorder running"]
+            prerequisites=["AWS Config enabled", "Config recorder running"],
         ),
-
         # Strategy 3: GCP - Hidden Compute Instances
         DetectionStrategy(
             strategy_id="t1564-gcp-hidden-instances",
@@ -446,10 +448,10 @@ resource "aws_iam_role_policy_attachment" "config" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''protoPayload.methodName="v1.compute.instances.insert"
+                gcp_logging_query="""protoPayload.methodName="v1.compute.instances.insert"
 (protoPayload.request.metadata.items.key="enable-oslogin" AND protoPayload.request.metadata.items.value="false")
-OR (protoPayload.request.disks.initializeParams.sourceImage=~".*minimal.*")''',
-                gcp_terraform_template='''# GCP: Detect hidden compute instances
+OR (protoPayload.request.disks.initializeParams.sourceImage=~".*minimal.*")""",
+                gcp_terraform_template="""# GCP: Detect hidden compute instances
 
 variable "project_id" {
   type = string
@@ -509,7 +511,7 @@ resource "google_monitoring_alert_policy" "hidden_instances" {
   documentation {
     content = "Compute instance created with suspicious configuration that may indicate hiding attempt. Review instance configuration and creator."
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Hidden Compute Instance Detected",
                 alert_description_template=(
@@ -521,15 +523,15 @@ resource "google_monitoring_alert_policy" "hidden_instances" {
                     "Check who created the instance and their recent activity",
                     "Examine the instance's network configuration and firewall rules",
                     "Look for unusual processes or software on the instance",
-                    "Search for similar instances across projects"
+                    "Search for similar instances across projects",
                 ],
                 containment_actions=[
                     "Stop the instance if unauthorised",
                     "Enable OS Login and Cloud Logging on the instance",
                     "Review and restrict the creator's IAM permissions",
                     "Delete the instance if confirmed malicious",
-                    "Implement organisation policies requiring logging"
-                ]
+                    "Implement organisation policies requiring logging",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline legitimate minimal image usage and OS Login disabled for specific workloads",
@@ -538,9 +540,8 @@ resource "google_monitoring_alert_policy" "hidden_instances" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled"],
         ),
-
         # Strategy 4: GCP - Cloud Run Hidden Services
         DetectionStrategy(
             strategy_id="t1564-gcp-hidden-cloudrun",
@@ -556,7 +557,7 @@ resource "google_monitoring_alert_policy" "hidden_instances" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName=~"google.cloud.run.*.services.create"
 protoPayload.serviceName="run.googleapis.com"''',
-                gcp_terraform_template='''# GCP: Monitor Cloud Run service creation for hiding attempts
+                gcp_terraform_template="""# GCP: Monitor Cloud Run service creation for hiding attempts
 
 variable "project_id" {
   type = string
@@ -613,7 +614,7 @@ resource "google_monitoring_alert_policy" "cloudrun_alert" {
   documentation {
     content = "Cloud Run service created. Review service configuration, logging settings, and access controls to ensure it's authorised and properly monitored."
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Cloud Run Service Created",
                 alert_description_template=(
@@ -625,15 +626,15 @@ resource "google_monitoring_alert_policy" "cloudrun_alert" {
                     "Check if logging and monitoring are properly enabled",
                     "Examine the service's IAM bindings and access controls",
                     "Verify the container image source and registry",
-                    "Look for unusual environment variables or secrets"
+                    "Look for unusual environment variables or secrets",
                 ],
                 containment_actions=[
                     "Delete the service if unauthorised",
                     "Enable Cloud Logging for the service",
                     "Restrict ingress to authorised sources only",
                     "Review and lock down the service account permissions",
-                    "Implement Cloud Run deployment approval workflows"
-                ]
+                    "Implement Cloud Run deployment approval workflows",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Integrate with change management system; alert only on deployments outside approved windows",
@@ -642,9 +643,8 @@ resource "google_monitoring_alert_policy" "cloudrun_alert" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled"],
         ),
-
         # Strategy 5: AWS - Resource Tagging Anomalies
         DetectionStrategy(
             strategy_id="t1564-aws-tag-anomalies",
@@ -657,7 +657,7 @@ resource "google_monitoring_alert_policy" "cloudrun_alert" {
             aws_service="config",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect resources with missing or suspicious tags
 
 Parameters:
@@ -715,8 +715,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect resources with missing or suspicious tags
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect resources with missing or suspicious tags
 
 variable "alert_email" {
   type = string
@@ -813,7 +813,7 @@ resource "aws_iam_role" "config" {
 resource "aws_iam_role_policy_attachment" "config" {
   role       = aws_iam_role.config.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/ConfigRole"
-}''',
+}""",
                 alert_severity="low",
                 alert_title="Resource Created Without Required Tags",
                 alert_description_template=(
@@ -825,15 +825,15 @@ resource "aws_iam_role_policy_attachment" "config" {
                     "Review who created the resource and when",
                     "Check if the resource creator has a pattern of skipping tags",
                     "Examine the resource type and configuration",
-                    "Look for other untagged resources from the same creator"
+                    "Look for other untagged resources from the same creator",
                 ],
                 containment_actions=[
                     "Apply required tags to the resource or delete if unauthorised",
                     "Educate users on tagging requirements",
                     "Implement Service Control Policies to enforce tagging",
                     "Use Tag Policies for organisation-wide enforcement",
-                    "Enable automated tagging for new resources"
-                ]
+                    "Enable automated tagging for new resources",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Allow grace period for newly created resources; integrate with provisioning tools",
@@ -842,17 +842,16 @@ resource "aws_iam_role_policy_attachment" "config" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$15-25",
-            prerequisites=["AWS Config enabled", "Tagging standards defined"]
-        )
+            prerequisites=["AWS Config enabled", "Tagging standards defined"],
+        ),
     ],
-
     recommended_order=[
         "t1564-aws-unusual-region",
         "t1564-gcp-hidden-instances",
         "t1564-aws-hidden-lambda",
         "t1564-gcp-hidden-cloudrun",
-        "t1564-aws-tag-anomalies"
+        "t1564-aws-tag-anomalies",
     ],
     total_effort_hours=6.75,
-    coverage_improvement="+30% improvement for Defence Evasion tactic"
+    coverage_improvement="+30% improvement for Defence Evasion tactic",
 )

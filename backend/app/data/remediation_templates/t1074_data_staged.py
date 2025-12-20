@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Data Staged",
     tactic_ids=["TA0009"],
     mitre_url="https://attack.mitre.org/techniques/T1074/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries may stage collected data in a central location or directory prior to exfiltration. "
@@ -37,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Enables compression to reduce exfiltration time and bandwidth",
             "Allows preparation of data without immediate exfiltration risk",
             "Facilitates organised theft of large data volumes",
-            "Can blend staging activities with normal user behaviour"
+            "Can blend staging activities with normal user behaviour",
         ],
         known_threat_actors=[
             "INC Ransom",
@@ -45,27 +44,27 @@ TEMPLATE = RemediationTemplate(
             "Volt Typhoon",
             "Wizard Spider",
             "Turla",
-            "Siamesekitten"
+            "Siamesekitten",
         ],
         recent_campaigns=[
             Campaign(
                 name="Volt Typhoon Espionage",
                 year=2023,
                 description="Staged sensitive data in temporary directories on compromised systems before exfiltration",
-                reference_url="https://www.microsoft.com/en-us/security/blog/2023/05/24/volt-typhoon-targets-us-critical-infrastructure-with-living-off-the-land-techniques/"
+                reference_url="https://www.microsoft.com/en-us/security/blog/2023/05/24/volt-typhoon-targets-us-critical-infrastructure-with-living-off-the-land-techniques/",
             ),
             Campaign(
                 name="Scattered Spider MGM Attack",
                 year=2023,
                 description="Staged data from cloud environments into centralised locations before exfiltration and extortion",
-                reference_url="https://www.microsoft.com/en-us/security/blog/2023/10/25/octo-tempest-crosses-boundaries-to-facilitate-extortion-encryption-and-destruction/"
+                reference_url="https://www.microsoft.com/en-us/security/blog/2023/10/25/octo-tempest-crosses-boundaries-to-facilitate-extortion-encryption-and-destruction/",
             ),
             Campaign(
                 name="Turla QUIETCANARY",
                 year=2024,
                 description="Used staging techniques to consolidate data from ESXi environments into password-protected archives",
-                reference_url="https://www.mandiant.com/resources/blog/turla-galaxy-opportunity"
-            )
+                reference_url="https://www.mandiant.com/resources/blog/turla-galaxy-opportunity",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -81,13 +80,12 @@ TEMPLATE = RemediationTemplate(
             "Indicator of advanced persistent threat activity",
             "Potential intellectual property theft",
             "Regulatory compliance violations if data is exfiltrated",
-            "Operational disruption from investigation and remediation"
+            "Operational disruption from investigation and remediation",
         ],
         typical_attack_phase="collection",
         often_precedes=["T1567", "T1537", "T1048"],
-        often_follows=["T1005", "T1074.001", "T1074.002", "T1039"]
+        often_follows=["T1005", "T1074.001", "T1074.002", "T1039"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - Large File Operations to Temporary Locations
         DetectionStrategy(
@@ -101,14 +99,14 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn as user, eventName, requestParameters.instanceId as instance,
+                query="""fields @timestamp, userIdentity.arn as user, eventName, requestParameters.instanceId as instance,
        sourceIPAddress
 | filter eventSource = "ec2.amazonaws.com"
 | filter eventName in ["RunInstances", "StartInstances", "CreateVolume", "AttachVolume"]
 | stats count(*) as activity_count by user, instance, bin(1h) as hour_window
 | filter activity_count >= 5
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect data staging activities in EC2 instances
 
 Parameters:
@@ -167,8 +165,8 @@ Resources:
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect data staging activities in EC2 instances
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect data staging activities in EC2 instances
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -230,7 +228,7 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
       Resource  = aws_sns_topic.staging_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Potential Data Staging Activity Detected",
                 alert_description_template=(
@@ -244,15 +242,15 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
                     "Examine recent EBS volume attachments and snapshots",
                     "Verify the user/role performing these operations",
                     "Review network connections from the instance",
-                    "Check S3 access logs for potential exfiltration destinations"
+                    "Check S3 access logs for potential exfiltration destinations",
                 ],
                 containment_actions=[
                     "Isolate the instance by modifying security groups",
                     "Create forensic snapshot before termination",
                     "Revoke IAM credentials for the user/role",
                     "Block outbound network connections",
-                    "Review and rotate any credentials on the instance"
-                ]
+                    "Review and rotate any credentials on the instance",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal volume operations; exclude backup and DR automation roles",
@@ -261,9 +259,8 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-25",
-            prerequisites=["CloudTrail enabled", "CloudWatch Logs configured"]
+            prerequisites=["CloudTrail enabled", "CloudWatch Logs configured"],
         ),
-
         # Strategy 2: AWS - S3 Staging Bucket Activity
         DetectionStrategy(
             strategy_id="t1074-aws-s3-staging",
@@ -276,15 +273,15 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn as user, requestParameters.bucketName as bucket,
+                query="""fields @timestamp, userIdentity.arn as user, requestParameters.bucketName as bucket,
        eventName, bytesTransferredIn
 | filter eventSource = "s3.amazonaws.com"
 | filter eventName in ["PutObject", "UploadPart", "CompleteMultipartUpload"]
 | stats count(*) as upload_count, sum(bytesTransferredIn) as total_bytes
   by user, bucket, bin(1h) as hour_window
 | filter upload_count >= 50 or total_bytes >= 1073741824
-| sort total_bytes desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort total_bytes desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect S3 data staging activity
 
 Parameters:
@@ -341,8 +338,8 @@ Resources:
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect S3 data staging activity
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect S3 data staging activity
 
 variable "cloudtrail_log_group" {
   type = string
@@ -402,7 +399,7 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
       Resource  = aws_sns_topic.s3_staging_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="High Volume S3 Upload Activity",
                 alert_description_template=(
@@ -415,15 +412,15 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
                     "Check if the bucket has public access enabled",
                     "Verify the user's normal upload patterns",
                     "Review recent bucket lifecycle policies",
-                    "Check for any bucket replication rules"
+                    "Check for any bucket replication rules",
                 ],
                 containment_actions=[
                     "Enable S3 Block Public Access if not configured",
                     "Review and restrict bucket policies",
                     "Revoke user credentials if unauthorised",
                     "Enable S3 Object Lock on sensitive buckets",
-                    "Delete staged data if confirmed malicious"
-                ]
+                    "Delete staged data if confirmed malicious",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal upload patterns; exclude data pipeline and backup roles",
@@ -432,9 +429,11 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$15-30",
-            prerequisites=["CloudTrail S3 data events enabled", "CloudWatch Logs configured"]
+            prerequisites=[
+                "CloudTrail S3 data events enabled",
+                "CloudWatch Logs configured",
+            ],
         ),
-
         # Strategy 3: GCP - Storage Bucket Staging Detection
         DetectionStrategy(
             strategy_id="t1074-gcp-storage-staging",
@@ -452,7 +451,7 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
 protoPayload.methodName="storage.objects.create"
 OR protoPayload.methodName="storage.objects.compose"
 OR protoPayload.methodName="storage.multipartUploads.create"''',
-                gcp_terraform_template='''# GCP: Detect Cloud Storage data staging
+                gcp_terraform_template="""# GCP: Detect Cloud Storage data staging
 
 variable "project_id" {
   type = string
@@ -511,7 +510,7 @@ resource "google_monitoring_alert_policy" "staging_alert" {
       period = "3600s"
     }
   }
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: High Volume Storage Upload Activity",
                 alert_description_template=(
@@ -524,15 +523,15 @@ resource "google_monitoring_alert_policy" "staging_alert" {
                     "Check bucket IAM policies for external access",
                     "Verify if bucket has public access configured",
                     "Review recent bucket lifecycle policies",
-                    "Check for cross-project bucket access"
+                    "Check for cross-project bucket access",
                 ],
                 containment_actions=[
                     "Remove public access from buckets",
                     "Review and restrict bucket IAM bindings",
                     "Enable VPC Service Controls",
                     "Revoke service account credentials if compromised",
-                    "Delete staged data if confirmed malicious"
-                ]
+                    "Delete staged data if confirmed malicious",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal upload patterns; exclude data pipeline service accounts",
@@ -541,9 +540,8 @@ resource "google_monitoring_alert_policy" "staging_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$15-25",
-            prerequisites=["Cloud Audit Logs enabled for Cloud Storage"]
+            prerequisites=["Cloud Audit Logs enabled for Cloud Storage"],
         ),
-
         # Strategy 4: GCP - Compute Instance Volume Activity
         DetectionStrategy(
             strategy_id="t1074-gcp-compute-staging",
@@ -560,7 +558,7 @@ resource "google_monitoring_alert_policy" "staging_alert" {
                 gcp_logging_query='''resource.type="gce_disk" OR resource.type="gce_instance"
 protoPayload.methodName=~"compute.disks.(create|attach|createSnapshot)"
 OR protoPayload.methodName=~"compute.instances.(attachDisk|start)"''',
-                gcp_terraform_template='''# GCP: Detect compute instance disk staging
+                gcp_terraform_template="""# GCP: Detect compute instance disk staging
 
 variable "project_id" {
   type = string
@@ -620,7 +618,7 @@ resource "google_monitoring_alert_policy" "disk_staging_alert" {
       period = "3600s"
     }
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Unusual Compute Disk Activity",
                 alert_description_template=(
@@ -633,15 +631,15 @@ resource "google_monitoring_alert_policy" "disk_staging_alert" {
                     "Check the principal creating/attaching disks",
                     "Examine instance network connections",
                     "Review Cloud Logging for file operations",
-                    "Check for unusual snapshot sharing"
+                    "Check for unusual snapshot sharing",
                 ],
                 containment_actions=[
                     "Isolate the instance using firewall rules",
                     "Create forensic disk snapshot",
                     "Revoke service account credentials",
                     "Review and restrict compute IAM permissions",
-                    "Delete suspicious disks after investigation"
-                ]
+                    "Delete suspicious disks after investigation",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal disk operations; exclude infrastructure automation accounts",
@@ -650,16 +648,15 @@ resource "google_monitoring_alert_policy" "disk_staging_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Audit Logs enabled for Compute Engine"]
-        )
+            prerequisites=["Cloud Audit Logs enabled for Compute Engine"],
+        ),
     ],
-
     recommended_order=[
         "t1074-aws-s3-staging",
         "t1074-gcp-storage-staging",
         "t1074-aws-staging-files",
-        "t1074-gcp-compute-staging"
+        "t1074-gcp-compute-staging",
     ],
     total_effort_hours=6.0,
-    coverage_improvement="+28% improvement for Collection tactic"
+    coverage_improvement="+28% improvement for Collection tactic",
 )

@@ -24,7 +24,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Impair Defenses: Disable or Modify Cloud Firewall",
     tactic_ids=["TA0005"],
     mitre_url="https://attack.mitre.org/techniques/T1562/007/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries disable or modify cloud firewalls to bypass access controls and "
@@ -40,7 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Permit data exfiltration channels",
             "Remove mining/resource abuse limitations",
             "Facilitate brute force and DoS attacks",
-            "Open access for persistent backdoors"
+            "Open access for persistent backdoors",
         ],
         known_threat_actors=["Pacu"],
         recent_campaigns=[
@@ -48,7 +47,7 @@ TEMPLATE = RemediationTemplate(
                 name="Pacu Framework Usage",
                 year=2024,
                 description="Pacu security testing tool can allowlist IP addresses in AWS GuardDuty and modify security group configurations",
-                reference_url="https://attack.mitre.org/software/S1091/"
+                reference_url="https://attack.mitre.org/software/S1091/",
             )
         ],
         prevalence="uncommon",
@@ -64,13 +63,12 @@ TEMPLATE = RemediationTemplate(
             "Unauthorised network access enabler",
             "Data exfiltration risk",
             "Compliance violations",
-            "Lateral movement facilitation"
+            "Lateral movement facilitation",
         ],
         typical_attack_phase="defense_evasion",
         often_precedes=["T1071", "T1090", "T1048", "T1021"],
-        often_follows=["T1078.004", "T1098"]
+        often_follows=["T1078.004", "T1098"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1562-007-aws-sg-modify",
@@ -80,12 +78,12 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudtrail",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, eventName, requestParameters.groupId, requestParameters.ipPermissions
+                query="""fields @timestamp, userIdentity.principalId, eventName, requestParameters.groupId, requestParameters.ipPermissions
 | filter eventName in ["AuthorizeSecurityGroupIngress", "AuthorizeSecurityGroupEgress", "RevokeSecurityGroupIngress", "RevokeSecurityGroupEgress", "CreateSecurityGroup", "DeleteSecurityGroup"]
 | filter requestParameters.ipPermissions.items.0.ipRanges.items.0.cidrIp = "0.0.0.0/0" or requestParameters.ipPermissions.items.0.ipv6Ranges.items.0.cidrIpv6 = "::/0"
 | stats count(*) as modifications by userIdentity.principalId, eventName, bin(5m)
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect unauthorised security group modifications
 
 Parameters:
@@ -131,8 +129,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect unauthorised security group modifications
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect unauthorised security group modifications
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -182,7 +180,7 @@ resource "aws_cloudwatch_metric_alarm" "sg_modification_alert" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
   alarm_actions       = [aws_sns_topic.sg_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Unauthorised Security Group Modification Detected",
                 alert_description_template="Security group modification by {principalId}: {eventName} on {groupId}.",
@@ -192,7 +190,7 @@ resource "aws_cloudwatch_metric_alarm" "sg_modification_alert" {
                     "Check for associated privileged role activity or credential compromise",
                     "Review CloudTrail logs for the timeframe before and after the modification",
                     "Identify affected resources using the modified security group",
-                    "Check GuardDuty for related findings or allowlist modifications"
+                    "Check GuardDuty for related findings or allowlist modifications",
                 ],
                 containment_actions=[
                     "Revert unauthorised security group changes immediately",
@@ -200,8 +198,8 @@ resource "aws_cloudwatch_metric_alarm" "sg_modification_alert" {
                     "Enable MFA for security group modification actions",
                     "Isolate affected resources if compromise is suspected",
                     "Review all security groups for overly permissive rules",
-                    "Enable AWS Config rules to prevent 0.0.0.0/0 ingress"
-                ]
+                    "Enable AWS Config rules to prevent 0.0.0.0/0 ingress",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Filter for authorised security principals or exclude known maintenance windows",
@@ -210,9 +208,8 @@ resource "aws_cloudwatch_metric_alarm" "sg_modification_alert" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-60 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled with CloudWatch Logs integration"]
+            prerequisites=["CloudTrail enabled with CloudWatch Logs integration"],
         ),
-
         DetectionStrategy(
             strategy_id="t1562-007-aws-nacl-modify",
             name="AWS Network ACL Modification Detection",
@@ -221,11 +218,11 @@ resource "aws_cloudwatch_metric_alarm" "sg_modification_alert" {
             aws_service="cloudtrail",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, eventName, requestParameters.networkAclId
+                query="""fields @timestamp, userIdentity.principalId, eventName, requestParameters.networkAclId
 | filter eventName in ["CreateNetworkAcl", "CreateNetworkAclEntry", "DeleteNetworkAcl", "DeleteNetworkAclEntry", "ReplaceNetworkAclEntry", "ReplaceNetworkAclAssociation"]
 | stats count(*) as modifications by userIdentity.principalId, eventName, bin(5m)
-| sort @timestamp desc''',
-                terraform_template='''# Detect unauthorised Network ACL modifications
+| sort @timestamp desc""",
+                terraform_template="""# Detect unauthorised Network ACL modifications
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -275,7 +272,7 @@ resource "aws_cloudwatch_metric_alarm" "nacl_modification_alert" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
   alarm_actions       = [aws_sns_topic.nacl_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Unauthorised Network ACL Modification Detected",
                 alert_description_template="Network ACL modification by {principalId}: {eventName}.",
@@ -285,7 +282,7 @@ resource "aws_cloudwatch_metric_alarm" "nacl_modification_alert" {
                     "Check for associated VPC changes or subnet associations",
                     "Review related CloudTrail events for pattern analysis",
                     "Identify affected subnets and resources",
-                    "Check for subsequent lateral movement or data exfiltration"
+                    "Check for subsequent lateral movement or data exfiltration",
                 ],
                 containment_actions=[
                     "Revert unauthorised Network ACL changes",
@@ -293,8 +290,8 @@ resource "aws_cloudwatch_metric_alarm" "nacl_modification_alert" {
                     "Audit all Network ACLs for overly permissive rules",
                     "Enable MFA for infrastructure modification actions",
                     "Implement AWS Config rules for NACL compliance",
-                    "Review VPC flow logs for suspicious traffic patterns"
-                ]
+                    "Review VPC flow logs for suspicious traffic patterns",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Network ACL changes are infrequent; authorise legitimate administrative accounts",
@@ -303,9 +300,8 @@ resource "aws_cloudwatch_metric_alarm" "nacl_modification_alert" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-60 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled with CloudWatch Logs integration"]
+            prerequisites=["CloudTrail enabled with CloudWatch Logs integration"],
         ),
-
         DetectionStrategy(
             strategy_id="t1562-007-gcp-firewall-modify",
             name="GCP Firewall Rule Modification Detection",
@@ -315,10 +311,10 @@ resource "aws_cloudwatch_metric_alarm" "nacl_modification_alert" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_firewall_rule"
+                gcp_logging_query="""resource.type="gce_firewall_rule"
 protoPayload.methodName=~"^.*firewalls\.(insert|delete|patch|update)$"
-(protoPayload.request.sourceRanges="0.0.0.0/0" OR protoPayload.request.sourceRanges="::/0")''',
-                gcp_terraform_template='''# GCP: Detect unauthorised firewall rule modifications
+(protoPayload.request.sourceRanges="0.0.0.0/0" OR protoPayload.request.sourceRanges="::/0")""",
+                gcp_terraform_template="""# GCP: Detect unauthorised firewall rule modifications
 
 variable "project_id" {
   type        = string
@@ -388,7 +384,7 @@ resource "google_monitoring_alert_policy" "firewall_modification_alert" {
   alert_strategy {
     auto_close = "1800s"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Unauthorised Firewall Rule Modification",
                 alert_description_template="Firewall rule modification detected in GCP project.",
@@ -398,7 +394,7 @@ resource "google_monitoring_alert_policy" "firewall_modification_alert" {
                     "Check for associated IAM policy changes or privilege escalation",
                     "Review Cloud Audit Logs for the timeframe surrounding the modification",
                     "Identify affected VPC networks and resources",
-                    "Check Security Command Centre for related findings"
+                    "Check Security Command Centre for related findings",
                 ],
                 containment_actions=[
                     "Revert unauthorised firewall rule changes immediately",
@@ -406,8 +402,8 @@ resource "google_monitoring_alert_policy" "firewall_modification_alert" {
                     "Enable organisation policy constraints for firewall rules",
                     "Implement VPC Service Controls for network perimeter protection",
                     "Audit all firewall rules for overly permissive configurations",
-                    "Review VPC flow logs for suspicious traffic patterns"
-                ]
+                    "Review VPC flow logs for suspicious traffic patterns",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude authorised service accounts and infrastructure-as-code deployments",
@@ -416,9 +412,8 @@ resource "google_monitoring_alert_policy" "firewall_modification_alert" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-60 minutes",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Cloud Audit Logs enabled for compute.googleapis.com"]
+            prerequisites=["Cloud Audit Logs enabled for compute.googleapis.com"],
         ),
-
         DetectionStrategy(
             strategy_id="t1562-007-aws-guardduty-suppress",
             name="AWS GuardDuty Suppression Detection",
@@ -427,12 +422,12 @@ resource "google_monitoring_alert_policy" "firewall_modification_alert" {
             aws_service="cloudtrail",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, eventName, requestParameters
+                query="""fields @timestamp, userIdentity.principalId, eventName, requestParameters
 | filter eventSource = "guardduty.amazonaws.com"
 | filter eventName in ["CreateFilter", "UpdateFilter", "CreateIPSet", "UpdateIPSet", "CreateThreatIntelSet", "UpdateThreatIntelSet", "StopMonitoringMembers", "DisassociateMembers"]
 | stats count(*) as suppressions by userIdentity.principalId, eventName, bin(5m)
-| sort @timestamp desc''',
-                terraform_template='''# Detect GuardDuty suppression and allowlisting attempts
+| sort @timestamp desc""",
+                terraform_template="""# Detect GuardDuty suppression and allowlisting attempts
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -482,7 +477,7 @@ resource "aws_cloudwatch_metric_alarm" "guardduty_suppression_alert" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
   alarm_actions       = [aws_sns_topic.guardduty_alerts.arn]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GuardDuty Suppression or Allowlisting Detected",
                 alert_description_template="GuardDuty suppression activity by {principalId}: {eventName}.",
@@ -492,7 +487,7 @@ resource "aws_cloudwatch_metric_alarm" "guardduty_suppression_alert" {
                     "Check for patterns indicating Pacu framework usage or automated tooling",
                     "Review CloudTrail for associated credential compromise or privilege escalation",
                     "Identify suppressed findings that may indicate ongoing attacks",
-                    "Check for concurrent security group or firewall modifications"
+                    "Check for concurrent security group or firewall modifications",
                 ],
                 containment_actions=[
                     "Revert GuardDuty suppressions and allowlists immediately",
@@ -500,8 +495,8 @@ resource "aws_cloudwatch_metric_alarm" "guardduty_suppression_alert" {
                     "Restrict IAM permissions for GuardDuty configuration changes",
                     "Enable MFA for GuardDuty modification actions",
                     "Review all GuardDuty filters and trusted IP lists",
-                    "Investigate the principal for credential compromise"
-                ]
+                    "Investigate the principal for credential compromise",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="GuardDuty modifications are rare; authorise only security team principals",
@@ -510,11 +505,18 @@ resource "aws_cloudwatch_metric_alarm" "guardduty_suppression_alert" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-60 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled with CloudWatch Logs integration", "GuardDuty enabled"]
-        )
+            prerequisites=[
+                "CloudTrail enabled with CloudWatch Logs integration",
+                "GuardDuty enabled",
+            ],
+        ),
     ],
-
-    recommended_order=["t1562-007-aws-sg-modify", "t1562-007-gcp-firewall-modify", "t1562-007-aws-guardduty-suppress", "t1562-007-aws-nacl-modify"],
+    recommended_order=[
+        "t1562-007-aws-sg-modify",
+        "t1562-007-gcp-firewall-modify",
+        "t1562-007-aws-guardduty-suppress",
+        "t1562-007-aws-nacl-modify",
+    ],
     total_effort_hours=3.0,
-    coverage_improvement="+25% improvement for Defense Evasion tactic"
+    coverage_improvement="+25% improvement for Defense Evasion tactic",
 )

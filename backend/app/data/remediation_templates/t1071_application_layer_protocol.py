@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Application Layer Protocol",
     tactic_ids=["TA0011"],  # Command and Control
     mitre_url="https://attack.mitre.org/techniques/T1071/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries exploit OSI application layer protocols to evade detection by blending "
@@ -38,7 +37,7 @@ TEMPLATE = RemediationTemplate(
             "SSL/TLS encryption conceals command content",
             "Cloud APIs provide trusted communication channels",
             "Difficult to distinguish from normal application behaviour",
-            "Protocol tunnelling enables multi-stage attacks"
+            "Protocol tunnelling enables multi-stage attacks",
         ],
         known_threat_actors=[
             "Magic Hound",
@@ -48,33 +47,33 @@ TEMPLATE = RemediationTemplate(
             "Rocke",
             "Siloscape",
             "Raspberry Robin",
-            "INC Ransom"
+            "INC Ransom",
         ],
         recent_campaigns=[
             Campaign(
                 name="TeamTNT IRC Botnet Operations",
                 year=2024,
                 description="TeamTNT deployed IRC-based botnets for C2 communications in cloud container environments, blending with legitimate container orchestration traffic",
-                reference_url="https://attack.mitre.org/groups/G0139/"
+                reference_url="https://attack.mitre.org/groups/G0139/",
             ),
             Campaign(
                 name="Raspberry Robin TOR Network",
                 year=2024,
                 description="Raspberry Robin malware used TOR network protocols to establish covert C2 channels, making detection challenging through protocol obfuscation",
-                reference_url="https://attack.mitre.org/software/S1130/"
+                reference_url="https://attack.mitre.org/software/S1130/",
             ),
             Campaign(
                 name="Magic Hound IRC C2",
                 year=2023,
                 description="Magic Hound APT group utilised IRC protocols for command and control communications in targeted attacks",
-                reference_url="https://attack.mitre.org/groups/G0059/"
+                reference_url="https://attack.mitre.org/groups/G0059/",
             ),
             Campaign(
                 name="Siloscape IRC Server",
                 year=2021,
                 description="Siloscape deployed IRC servers within compromised Kubernetes clusters for C2, leveraging container networking",
-                reference_url="https://attack.mitre.org/software/S0623/"
-            )
+                reference_url="https://attack.mitre.org/software/S0623/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -90,13 +89,12 @@ TEMPLATE = RemediationTemplate(
             "Data exfiltration through trusted protocols",
             "Compliance violations from undetected malicious traffic",
             "Prolonged attacker persistence and dwell time",
-            "Potential for lateral movement and privilege escalation"
+            "Potential for lateral movement and privilege escalation",
         ],
         typical_attack_phase="command_and_control",
         often_precedes=["T1041", "T1567", "T1048"],  # Exfiltration techniques
-        often_follows=["T1078.004", "T1190", "T1566"]  # Initial Access techniques
+        often_follows=["T1078.004", "T1190", "T1566"],  # Initial Access techniques
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - Unusual DNS Query Patterns
         DetectionStrategy(
@@ -107,14 +105,14 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query=r'''fields @timestamp, query_name, query_type, srcaddr
+                query=r"""fields @timestamp, query_name, query_type, srcaddr
 | filter query_type = "TXT" or query_type = "NULL" or query_type = "ANY"
 | filter query_name like /[a-f0-9]{32,}/ or query_name like /[A-Za-z0-9+\/=]{40,}/
 | stats count() as query_count by srcaddr, query_name, query_type
 | filter query_count > 10
 | sort query_count desc
-| limit 100''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| limit 100""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect unusual DNS query patterns for C2 detection
 
 Parameters:
@@ -162,8 +160,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect unusual DNS query patterns for C2
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect unusual DNS query patterns for C2
 
 variable "alert_email" {
   type        = string
@@ -222,7 +220,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.dns_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Suspicious DNS Query Pattern Detected",
                 alert_description_template="Unusual DNS queries detected from {srcaddr}. Query pattern may indicate DNS tunnelling or C2 activity.",
@@ -232,7 +230,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Check for Base64 or hexadecimal encoded query strings",
                     "Analyse query length and entropy for data exfiltration patterns",
                     "Review instance processes and network connections",
-                    "Correlate with other suspicious activities from the source"
+                    "Correlate with other suspicious activities from the source",
                 ],
                 containment_actions=[
                     "Isolate the source instance from the network",
@@ -240,8 +238,8 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Review and restrict instance IAM permissions",
                     "Enable enhanced DNS query logging",
                     "Implement DNS sinkholing for known C2 domains",
-                    "Review security group rules for unnecessary egress"
-                ]
+                    "Review security group rules for unnecessary egress",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate use of TXT records for SPF/DKIM/DMARC and monitoring tools. Establish baseline for normal DNS patterns.",
@@ -250,9 +248,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled", "Route 53 Query Logging enabled"]
+            prerequisites=["CloudTrail enabled", "Route 53 Query Logging enabled"],
         ),
-
         # Strategy 2: AWS - Unusual HTTP/HTTPS Patterns
         DetectionStrategy(
             strategy_id="t1071-aws-http-anomaly",
@@ -262,14 +259,14 @@ resource "aws_sns_topic_policy" "allow_events" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcAddr, dstAddr, dstPort, protocol, bytes
+                query="""fields @timestamp, srcAddr, dstAddr, dstPort, protocol, bytes
 | filter dstPort in [80, 443, 8080, 8443]
 | filter protocol = 6
 | stats count() as connection_count, sum(bytes) as total_bytes by srcAddr, dstAddr, bin(5m)
 | filter connection_count > 50 and total_bytes < 10000
 | sort connection_count desc
-| limit 100''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| limit 100""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect HTTP/HTTPS beaconing patterns indicative of C2
 
 Parameters:
@@ -337,8 +334,8 @@ Resources:
         - MetricName: PotentialBeaconing
           MetricNamespace: Security/C2Detection
           MetricValue: '1'
-          DefaultValue: 0''',
-                terraform_template='''# Detect HTTP/HTTPS beaconing patterns
+          DefaultValue: 0""",
+                terraform_template="""# Detect HTTP/HTTPS beaconing patterns
 
 variable "vpc_id" {
   type        = string
@@ -396,7 +393,7 @@ resource "aws_flow_log" "main" {
   log_destination = aws_cloudwatch_log_group.flow_logs.arn
   traffic_type    = "ALL"
   vpc_id          = var.vpc_id
-}''',
+}""",
                 alert_severity="high",
                 alert_title="HTTP/HTTPS Beaconing Pattern Detected",
                 alert_description_template="Beaconing behaviour detected from {srcAddr} to {dstAddr}. Regular small connections may indicate C2 activity.",
@@ -406,7 +403,7 @@ resource "aws_flow_log" "main" {
                     "Analyse application logs for the source instance",
                     "Check destination IP reputation and ownership",
                     "Review HTTP headers and user agents if available",
-                    "Examine instance for malware or backdoors"
+                    "Examine instance for malware or backdoors",
                 ],
                 containment_actions=[
                     "Block suspicious destination IPs via security groups",
@@ -414,8 +411,8 @@ resource "aws_flow_log" "main" {
                     "Review and restrict outbound internet access",
                     "Enable AWS WAF for application-layer protection",
                     "Deploy endpoint detection and response (EDR) tools",
-                    "Review IAM roles and instance profiles"
-                ]
+                    "Review IAM roles and instance profiles",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Establish baselines for normal application behaviour. Whitelist legitimate monitoring and health check traffic.",
@@ -424,9 +421,8 @@ resource "aws_flow_log" "main" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-30",
-            prerequisites=["VPC Flow Logs enabled", "CloudWatch Logs"]
+            prerequisites=["VPC Flow Logs enabled", "CloudWatch Logs"],
         ),
-
         # Strategy 3: AWS - GuardDuty C2 Detection
         DetectionStrategy(
             strategy_id="t1071-aws-guardduty",
@@ -442,9 +438,9 @@ resource "aws_flow_log" "main" {
                     "Trojan:EC2/DNSDataExfiltration",
                     "Trojan:EC2/BlackholeTraffic",
                     "Trojan:EC2/DropPoint",
-                    "CryptoCurrency:EC2/BitcoinTool.B!DNS"
+                    "CryptoCurrency:EC2/BitcoinTool.B!DNS",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Configure GuardDuty alerts for C2 detection
 
 Parameters:
@@ -497,8 +493,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Configure GuardDuty for C2 detection
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Configure GuardDuty for C2 detection
 
 variable "alert_email" {
   type        = string
@@ -558,7 +554,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.guardduty_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GuardDuty C2 Activity Detected",
                 alert_description_template="GuardDuty detected {type} on instance {resource.instanceDetails.instanceId}. This indicates potential command and control activity.",
@@ -568,7 +564,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Check instance network connections and processes",
                     "Review CloudTrail logs for suspicious API activity",
                     "Analyse VPC Flow Logs for the timeframe",
-                    "Check for lateral movement from affected instances"
+                    "Check for lateral movement from affected instances",
                 ],
                 containment_actions=[
                     "Isolate affected instances immediately",
@@ -576,8 +572,8 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Revoke instance IAM role credentials",
                     "Block malicious IPs via security groups and NACLs",
                     "Review and rotate any exposed credentials",
-                    "Deploy replacement instances from clean images"
-                ]
+                    "Deploy replacement instances from clean images",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Review and suppress findings for known security tools and monitoring systems. Update threat intelligence feed regularly.",
@@ -586,9 +582,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$30-100 depending on data volume",
-            prerequisites=["GuardDuty enabled", "VPC Flow Logs", "DNS Logs"]
+            prerequisites=["GuardDuty enabled", "VPC Flow Logs", "DNS Logs"],
         ),
-
         # Strategy 4: GCP - Cloud Logging C2 Pattern Detection
         DetectionStrategy(
             strategy_id="t1071-gcp-http-anomaly",
@@ -599,13 +594,13 @@ resource "aws_sns_topic_policy" "allow_events" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_subnetwork"
+                gcp_logging_query="""resource.type="gce_subnetwork"
 logName="projects/PROJECT_ID/logs/compute.googleapis.com%2Fvpc_flows"
 jsonPayload.connection.dest_port:(443 OR 80 OR 8080 OR 8443)
 jsonPayload.connection.protocol=6
 jsonPayload.bytes_sent<10000
-jsonPayload.packets>50''',
-                gcp_terraform_template='''# GCP: Detect C2 beaconing patterns in VPC Flow Logs
+jsonPayload.packets>50""",
+                gcp_terraform_template="""# GCP: Detect C2 beaconing patterns in VPC Flow Logs
 
 variable "project_id" {
   type        = string
@@ -668,7 +663,7 @@ resource "google_monitoring_alert_policy" "c2_detection" {
   alert_strategy {
     auto_close = "86400s"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: C2 Beaconing Pattern Detected",
                 alert_description_template="Beaconing behaviour detected in VPC Flow Logs. Small, frequent connections may indicate command and control activity.",
@@ -678,7 +673,7 @@ resource "google_monitoring_alert_policy" "c2_detection" {
                     "Check destination IP reputation using threat intelligence",
                     "Analyse Cloud Logging for application-level logs",
                     "Review VM metadata and startup scripts",
-                    "Check for unauthorised changes to the instance"
+                    "Check for unauthorised changes to the instance",
                 ],
                 containment_actions=[
                     "Isolate affected VM instances using firewall rules",
@@ -686,8 +681,8 @@ resource "google_monitoring_alert_policy" "c2_detection" {
                     "Revoke service account credentials",
                     "Block malicious IPs via Cloud Armor or VPC firewall",
                     "Enable VPC Service Controls to prevent data exfiltration",
-                    "Review IAM permissions for affected resources"
-                ]
+                    "Review IAM permissions for affected resources",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Establish baselines for legitimate application traffic patterns. Whitelist known monitoring and health check services.",
@@ -696,9 +691,8 @@ resource "google_monitoring_alert_policy" "c2_detection" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-30",
-            prerequisites=["VPC Flow Logs enabled", "Cloud Logging"]
+            prerequisites=["VPC Flow Logs enabled", "Cloud Logging"],
         ),
-
         # Strategy 5: GCP - Security Command Centre Threat Detection
         DetectionStrategy(
             strategy_id="t1071-gcp-scc",
@@ -714,9 +708,9 @@ resource "google_monitoring_alert_policy" "c2_detection" {
                     "Malware: Bad Domain",
                     "Malware: Bad IP",
                     "Persistence: IAM Anomalous Grant",
-                    "Initial Access: Suspicious Login"
+                    "Initial Access: Suspicious Login",
                 ],
-                gcp_terraform_template='''# GCP: Configure Security Command Centre for C2 detection
+                gcp_terraform_template="""# GCP: Configure Security Command Centre for C2 detection
 
 variable "organization_id" {
   type        = string
@@ -758,7 +752,7 @@ resource "google_pubsub_subscription" "scc_findings" {
 
 # Note: SCC notification configs require organization-level API access
 # Configure via: gcloud scc notifications create
-# Or use google_scc_notification_config resource with appropriate permissions''',
+# Or use google_scc_notification_config resource with appropriate permissions""",
                 alert_severity="critical",
                 alert_title="GCP: Malicious C2 Activity Detected by SCC",
                 alert_description_template="Security Command Centre detected {category} on {resourceName}. This indicates potential command and control activity.",
@@ -768,7 +762,7 @@ resource "google_pubsub_subscription" "scc_findings" {
                     "Check Cloud Audit Logs for suspicious API calls",
                     "Review VPC Flow Logs for network connections",
                     "Analyse VM instance metadata and configurations",
-                    "Check for lateral movement across projects"
+                    "Check for lateral movement across projects",
                 ],
                 containment_actions=[
                     "Isolate affected resources immediately",
@@ -776,8 +770,8 @@ resource "google_pubsub_subscription" "scc_findings" {
                     "Revoke compromised service account keys",
                     "Enable VPC Service Controls perimeter",
                     "Review and rotate any exposed credentials",
-                    "Apply organisation policy constraints"
-                ]
+                    "Apply organisation policy constraints",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Review findings for legitimate security tools and development environments. Configure SCC muting rules for known benign activities.",
@@ -786,9 +780,11 @@ resource "google_pubsub_subscription" "scc_findings" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$50-150 depending on assets",
-            prerequisites=["Security Command Centre enabled", "Event Threat Detection enabled"]
+            prerequisites=[
+                "Security Command Centre enabled",
+                "Event Threat Detection enabled",
+            ],
         ),
-
         # Strategy 6: AWS - Unusual Protocol Usage Detection
         DetectionStrategy(
             strategy_id="t1071-aws-protocol-anomaly",
@@ -798,14 +794,14 @@ resource "google_pubsub_subscription" "scc_findings" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcAddr, dstAddr, dstPort, protocol
+                query="""fields @timestamp, srcAddr, dstAddr, dstPort, protocol
 | filter dstPort not in [80, 443, 22, 3389, 53]
 | filter protocol in [6, 17]
 | stats count() as connection_count by srcAddr, dstAddr, dstPort, protocol
 | filter connection_count > 20
 | sort connection_count desc
-| limit 100''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| limit 100""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect unusual protocol and port usage for C2 detection
 
 Parameters:
@@ -851,8 +847,8 @@ Resources:
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
-        - !Ref AlertTopic''',
-                terraform_template='''# Detect unusual protocol and port usage
+        - !Ref AlertTopic""",
+                terraform_template="""# Detect unusual protocol and port usage
 
 variable "vpc_flow_log_group" {
   type        = string
@@ -902,7 +898,7 @@ resource "aws_cloudwatch_metric_alarm" "protocol_anomaly" {
   threshold           = 50
   alarm_description   = "Alert on unusual protocol or port usage"
   alarm_actions       = [aws_sns_topic.protocol_alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Unusual Network Protocol or Port Detected",
                 alert_description_template="Unusual protocol usage detected from {srcAddr} to {dstAddr}:{dstPort}. May indicate protocol tunnelling or C2.",
@@ -912,7 +908,7 @@ resource "aws_cloudwatch_metric_alarm" "protocol_anomaly" {
                     "Check if this is a legitimate application requirement",
                     "Review instance security groups and network ACLs",
                     "Analyse process list and network connections on source",
-                    "Check for protocol tunnelling tools or proxies"
+                    "Check for protocol tunnelling tools or proxies",
                 ],
                 containment_actions=[
                     "Review and restrict security group egress rules",
@@ -920,8 +916,8 @@ resource "aws_cloudwatch_metric_alarm" "protocol_anomaly" {
                     "Enable VPC Flow Logs for enhanced visibility",
                     "Implement application-aware firewall rules",
                     "Deploy intrusion detection systems (IDS)",
-                    "Review and update network segmentation"
-                ]
+                    "Review and update network segmentation",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Identify and whitelist all legitimate applications using non-standard ports. Document and baseline expected protocol usage.",
@@ -930,18 +926,17 @@ resource "aws_cloudwatch_metric_alarm" "protocol_anomaly" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-15",
-            prerequisites=["VPC Flow Logs enabled", "CloudWatch Logs"]
-        )
+            prerequisites=["VPC Flow Logs enabled", "CloudWatch Logs"],
+        ),
     ],
-
     recommended_order=[
         "t1071-aws-guardduty",
         "t1071-gcp-scc",
         "t1071-aws-dns-anomaly",
         "t1071-aws-http-anomaly",
         "t1071-gcp-http-anomaly",
-        "t1071-aws-protocol-anomaly"
+        "t1071-aws-protocol-anomaly",
     ],
     total_effort_hours=6.0,
-    coverage_improvement="+25% improvement for Command and Control tactic detection"
+    coverage_improvement="+25% improvement for Command and Control tactic detection",
 )

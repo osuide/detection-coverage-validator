@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Internal Spearphishing",
     tactic_ids=["TA0008"],
     mitre_url="https://attack.mitre.org/techniques/T1534/",
-
     threat_context=ThreatContext(
         description=(
             "After gaining initial access, adversaries leverage compromised legitimate "
@@ -41,34 +40,34 @@ TEMPLATE = RemediationTemplate(
             "Evades traditional phishing detection",
             "Enables rapid lateral movement",
             "Can access restricted internal resources",
-            "Often combined with account impersonation"
+            "Often combined with account impersonation",
         ],
         known_threat_actors=[
             "Gamaredon Group (G0047)",
             "HEXANE (G1001)",
             "Kimsuky (G0094)",
             "Leviathan (G0065)",
-            "Lazarus Group (G0032)"
+            "Lazarus Group (G0032)",
         ],
         recent_campaigns=[
             Campaign(
                 name="Gamaredon Outlook VBA Modules",
                 year=2021,
                 description="Deployed Outlook VBA modules to send internal phishing emails with malicious attachments to expand compromise",
-                reference_url="https://attack.mitre.org/groups/G0047/"
+                reference_url="https://attack.mitre.org/groups/G0047/",
             ),
             Campaign(
                 name="HEXANE Executive Targeting",
                 year=2022,
                 description="Conducted internal spearphishing targeting executives, HR personnel, and IT staff after initial compromise",
-                reference_url="https://attack.mitre.org/groups/G1001/"
+                reference_url="https://attack.mitre.org/groups/G1001/",
             ),
             Campaign(
                 name="Lazarus Operation Dream Job",
                 year=2023,
                 description="Executed internal spearphishing campaigns within compromised environments as part of Operation Dream Job",
-                reference_url="https://attack.mitre.org/groups/G0032/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0032/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -85,13 +84,12 @@ TEMPLATE = RemediationTemplate(
             "Expanded organisational access",
             "Data exfiltration and theft",
             "Deployment of additional malware",
-            "Business disruption and trust erosion"
+            "Business disruption and trust erosion",
         ],
         typical_attack_phase="lateral_movement",
         often_precedes=["T1078.004", "T1114.003", "T1098", "T1136"],
-        often_follows=["T1566", "T1078", "T1110", "T1528"]
+        often_follows=["T1566", "T1078", "T1110", "T1528"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1534-aws-ses-internal",
@@ -104,13 +102,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.arn, requestParameters.destination, requestParameters.source
+                query="""fields @timestamp, eventName, userIdentity.arn, requestParameters.destination, requestParameters.source
 | filter eventSource = "ses.amazonaws.com" OR eventSource = "workmail.amazonaws.com"
 | filter eventName in ["SendEmail", "SendRawEmail"]
 | stats count(*) as email_count by userIdentity.arn, bin(5m)
 | filter email_count > 10
-| sort email_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort email_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: AWS SES/WorkMail internal spearphishing detection
 
 Parameters:
@@ -157,8 +155,8 @@ Resources:
       Threshold: 20
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
-        - !Ref InternalPhishingAlertTopic''',
-                terraform_template='''# AWS SES/WorkMail internal spearphishing detection
+        - !Ref InternalPhishingAlertTopic""",
+                terraform_template="""# AWS SES/WorkMail internal spearphishing detection
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -208,7 +206,7 @@ resource "aws_cloudwatch_metric_alarm" "unusual_email_volume" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.internal_phishing_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="AWS: Unusual Internal Email Sending Pattern Detected",
                 alert_description_template=(
@@ -223,7 +221,7 @@ resource "aws_cloudwatch_metric_alarm" "unusual_email_volume" {
                     "Verify if user reported account issues",
                     "Review email subject lines and attachment types",
                     "Check for suspicious login locations or devices",
-                    "Look for related security events (failed MFA, password resets)"
+                    "Look for related security events (failed MFA, password resets)",
                 ],
                 containment_actions=[
                     "Immediately disable the compromised account",
@@ -232,8 +230,8 @@ resource "aws_cloudwatch_metric_alarm" "unusual_email_volume" {
                     "Notify recipients of potential phishing attempt",
                     "Review and remove any email forwarding rules",
                     "Scan the account for malicious mailbox rules",
-                    "Enable enhanced monitoring for the affected account"
-                ]
+                    "Enable enhanced monitoring for the affected account",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Adjust threshold based on legitimate bulk email patterns; whitelist automated systems",
@@ -242,9 +240,11 @@ resource "aws_cloudwatch_metric_alarm" "unusual_email_volume" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled for SES/WorkMail", "CloudWatch Logs configured"]
+            prerequisites=[
+                "CloudTrail enabled for SES/WorkMail",
+                "CloudWatch Logs configured",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1534-aws-workmail-attachment",
             name="AWS WorkMail Suspicious Attachment Detection",
@@ -256,12 +256,12 @@ resource "aws_cloudwatch_metric_alarm" "unusual_email_volume" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.arn, requestParameters
+                query="""fields @timestamp, eventName, userIdentity.arn, requestParameters
 | filter eventSource = "workmail.amazonaws.com"
 | filter eventName = "SendRawEmail"
 | filter requestParameters.rawMessage.data like /[.](exe|scr|vbs|js|jar|bat|cmd|ps1|zip|rar)/
-| sort @timestamp desc''',
-                terraform_template='''# Detect suspicious attachments in internal emails
+| sort @timestamp desc""",
+                terraform_template="""# Detect suspicious attachments in internal emails
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -303,7 +303,7 @@ resource "aws_cloudwatch_metric_alarm" "suspicious_attachments" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.attachment_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="WorkMail: Suspicious Attachment in Internal Email",
                 alert_description_template=(
@@ -316,7 +316,7 @@ resource "aws_cloudwatch_metric_alarm" "suspicious_attachments" {
                     "Review sender account for compromise indicators",
                     "Check if recipients opened the attachment",
                     "Scan recipient systems if attachment was executed",
-                    "Review sender's recent email activity"
+                    "Review sender's recent email activity",
                 ],
                 containment_actions=[
                     "Delete the email from all recipient mailboxes",
@@ -324,8 +324,8 @@ resource "aws_cloudwatch_metric_alarm" "suspicious_attachments" {
                     "Disable sender account pending investigation",
                     "Reset sender credentials",
                     "Isolate systems that executed the attachment",
-                    "Deploy EDR scans to affected endpoints"
-                ]
+                    "Deploy EDR scans to affected endpoints",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Legitimate file transfers are rare via email; investigate all occurrences",
@@ -334,9 +334,8 @@ resource "aws_cloudwatch_metric_alarm" "suspicious_attachments" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled for WorkMail"]
+            prerequisites=["CloudTrail enabled for WorkMail"],
         ),
-
         DetectionStrategy(
             strategy_id="t1534-gcp-workspace-internal",
             name="Google Workspace Internal Email Anomaly Detection",
@@ -349,15 +348,15 @@ resource "aws_cloudwatch_metric_alarm" "suspicious_attachments" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''protoPayload.serviceName="gmail.googleapis.com"
+                gcp_logging_query="""protoPayload.serviceName="gmail.googleapis.com"
 AND protoPayload.methodName="gmail.send"
 AND protoPayload.authenticationInfo.principalEmail=~"@yourdomain.com$"
 AND (
   jsonPayload.message.suspicious=true
   OR jsonPayload.message.phishingVerdict!="NOT_PHISHING"
   OR jsonPayload.message.spamVerdict!="NOT_SPAM"
-)''',
-                gcp_terraform_template='''# GCP: Workspace internal spearphishing detection
+)""",
+                gcp_terraform_template="""# GCP: Workspace internal spearphishing detection
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -416,7 +415,7 @@ resource "google_monitoring_alert_policy" "internal_phishing_alert" {
   alert_strategy {
     auto_close = "604800s"  # 7 days
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP Workspace: Internal Spearphishing Detected",
                 alert_description_template=(
@@ -430,7 +429,7 @@ resource "google_monitoring_alert_policy" "internal_phishing_alert" {
                     "Verify if sender's account shows other compromise indicators",
                     "Review recipient list for targeted individuals",
                     "Check for recently created email filters or forwarding rules",
-                    "Look for unusual delegation or sharing permissions"
+                    "Look for unusual delegation or sharing permissions",
                 ],
                 containment_actions=[
                     "Suspend the compromised sender account immediately",
@@ -439,8 +438,8 @@ resource "google_monitoring_alert_policy" "internal_phishing_alert" {
                     "Remove malicious email filters and forwarding rules",
                     "Notify recipients to ignore the suspicious email",
                     "Enable 2FA for affected account if not already enabled",
-                    "Review organisation-wide email security policies"
-                ]
+                    "Review organisation-wide email security policies",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Google's built-in phishing detection is highly accurate",
@@ -449,9 +448,8 @@ resource "google_monitoring_alert_policy" "internal_phishing_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Google Workspace Enterprise", "Audit logging enabled"]
+            prerequisites=["Google Workspace Enterprise", "Audit logging enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1534-gcp-workspace-teams",
             name="Google Chat/Teams Internal Message Monitoring",
@@ -464,13 +462,13 @@ resource "google_monitoring_alert_policy" "internal_phishing_alert" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''protoPayload.serviceName="chat.googleapis.com"
+                gcp_logging_query="""protoPayload.serviceName="chat.googleapis.com"
 AND protoPayload.methodName="google.chat.v1.ChatService.CreateMessage"
 AND (
   protoPayload.request.message.text=~"http[s]?://"
   OR protoPayload.request.message.cards!=""
-)''',
-                gcp_terraform_template='''# GCP: Google Chat internal phishing detection
+)""",
+                gcp_terraform_template="""# GCP: Google Chat internal phishing detection
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -532,7 +530,7 @@ resource "google_monitoring_alert_policy" "chat_phishing_alert" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP Workspace: Suspicious Links in Google Chat",
                 alert_description_template=(
@@ -545,7 +543,7 @@ resource "google_monitoring_alert_policy" "chat_phishing_alert" {
                     "Check if links lead to credential harvesting sites",
                     "Review sender's recent Chat activity patterns",
                     "Check for abnormal login activity for sender",
-                    "Identify all recipients who may have clicked links"
+                    "Identify all recipients who may have clicked links",
                 ],
                 containment_actions=[
                     "Suspend sender account if compromised",
@@ -553,8 +551,8 @@ resource "google_monitoring_alert_policy" "chat_phishing_alert" {
                     "Block malicious URLs at organisation firewall",
                     "Reset sender credentials and revoke sessions",
                     "Notify recipients of the phishing attempt",
-                    "Enable enhanced security for affected users"
-                ]
+                    "Enable enhanced security for affected users",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Legitimate links are common in Chat; focus on volume and patterns",
@@ -563,9 +561,11 @@ resource "google_monitoring_alert_policy" "chat_phishing_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Google Workspace with Chat enabled", "Audit logging configured"]
+            prerequisites=[
+                "Google Workspace with Chat enabled",
+                "Audit logging configured",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1534-gcp-safe-browsing-internal",
             name="GCP Web Risk API for Internal Link Validation",
@@ -582,7 +582,7 @@ resource "google_monitoring_alert_policy" "chat_phishing_alert" {
 protoPayload.methodName="webrisk.uris.search"
 jsonPayload.threat_types=~"SOCIAL_ENGINEERING|MALWARE"
 jsonPayload.source="internal"''',
-                gcp_terraform_template='''# GCP: Web Risk API for internal link validation
+                gcp_terraform_template="""# GCP: Web Risk API for internal link validation
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -634,7 +634,7 @@ resource "google_monitoring_alert_policy" "malicious_url_alert" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Malicious URL Detected in Internal Communications",
                 alert_description_template=(
@@ -647,7 +647,7 @@ resource "google_monitoring_alert_policy" "malicious_url_alert" {
                     "Check if any users clicked the link",
                     "Review sender account for compromise indicators",
                     "Analyse the threat type (phishing, malware, etc.)",
-                    "Search for similar URLs or domains"
+                    "Search for similar URLs or domains",
                 ],
                 containment_actions=[
                     "Block the malicious URL at organisation firewall",
@@ -655,8 +655,8 @@ resource "google_monitoring_alert_policy" "malicious_url_alert" {
                     "Suspend sender account if compromised",
                     "Notify all recipients of the threat",
                     "Scan systems of users who clicked the link",
-                    "Update security awareness training"
-                ]
+                    "Update security awareness training",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Google Web Risk has high accuracy for known threats",
@@ -665,17 +665,19 @@ resource "google_monitoring_alert_policy" "malicious_url_alert" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$5-15",
-            prerequisites=["Web Risk API enabled", "Cloud Functions configured for URL scanning"]
-        )
+            prerequisites=[
+                "Web Risk API enabled",
+                "Cloud Functions configured for URL scanning",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1534-gcp-workspace-internal",
         "t1534-aws-ses-internal",
         "t1534-gcp-safe-browsing-internal",
         "t1534-aws-workmail-attachment",
-        "t1534-gcp-workspace-teams"
+        "t1534-gcp-workspace-teams",
     ],
     total_effort_hours=7.5,
-    coverage_improvement="+25% improvement for Lateral Movement tactic"
+    coverage_improvement="+25% improvement for Lateral Movement tactic",
 )

@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Modify Authentication Process: Conditional Access Policies",
     tactic_ids=["TA0003", "TA0006"],  # Persistence, Credential Access
     mitre_url="https://attack.mitre.org/techniques/T1556/009/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries disable or modify conditional access policies to maintain "
@@ -39,7 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Enables access from unauthorised locations",
             "Difficult to detect without policy auditing",
             "Allows access from previously blocked regions",
-            "Maintains persistence after initial compromise"
+            "Maintains persistence after initial compromise",
         ],
         known_threat_actors=["Scattered Spider", "Storm-0501"],
         recent_campaigns=[
@@ -47,14 +46,14 @@ TEMPLATE = RemediationTemplate(
                 name="Scattered Spider Azure AD Manipulation",
                 year=2024,
                 description="Added trusted locations to Azure AD conditional access policies to maintain unauthorised access",
-                reference_url="https://attack.mitre.org/groups/G1015/"
+                reference_url="https://attack.mitre.org/groups/G1015/",
             ),
             Campaign(
                 name="Storm-0501 Hybrid Environment Compromise",
                 year=2024,
                 description="Registered their own MFA method and leveraged hybrid-joined server to circumvent conditional access policies",
-                reference_url="https://attack.mitre.org/groups/G1053/"
-            )
+                reference_url="https://attack.mitre.org/groups/G1053/",
+            ),
         ],
         prevalence="moderate",
         trend="increasing",
@@ -68,13 +67,12 @@ TEMPLATE = RemediationTemplate(
             "Persistent unauthorised access",
             "Bypass of MFA and security controls",
             "Regulatory compliance violations",
-            "Long-term data exfiltration risk"
+            "Long-term data exfiltration risk",
         ],
         typical_attack_phase="persistence",
         often_precedes=["T1098", "T1098.001", "T1098.003"],
-        often_follows=["T1078.004", "T1110", "T1621"]
+        often_follows=["T1078.004", "T1110", "T1621"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1556.009-aws-iam-policy",
@@ -84,12 +82,12 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, requestParameters.policyArn, eventName
+                query="""fields @timestamp, userIdentity.principalId, requestParameters.policyArn, eventName
 | filter eventName in ["PutUserPolicy", "PutGroupPolicy", "PutRolePolicy", "CreatePolicy", "CreatePolicyVersion"]
 | filter requestParameters.policyDocument like /Condition|IpAddress|MultiFactorAuthPresent|aws:RequestedRegion/
 | stats count(*) as modifications by userIdentity.principalId, eventName, bin(1h)
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect IAM policy condition modifications that may weaken access controls
 
 Parameters:
@@ -135,8 +133,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       AlarmActions: [!Ref AlertTopic]
-      TreatMissingData: notBreaching''',
-                terraform_template='''# Detect IAM policy condition modifications in AWS
+      TreatMissingData: notBreaching""",
+                terraform_template="""# Detect IAM policy condition modifications in AWS
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -185,7 +183,7 @@ resource "aws_cloudwatch_metric_alarm" "iam_policy_modifications" {
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="IAM Policy Condition Modification Detected",
                 alert_description_template="IAM policy condition modified by {principalId} - review for weakened access controls.",
@@ -195,7 +193,7 @@ resource "aws_cloudwatch_metric_alarm" "iam_policy_modifications" {
                     "Verify the identity making the changes",
                     "Check for unusual source IP or region",
                     "Review other recent IAM changes by the same principal",
-                    "Validate if changes align with approved change requests"
+                    "Validate if changes align with approved change requests",
                 ],
                 containment_actions=[
                     "Revert unauthorised policy changes immediately",
@@ -203,8 +201,8 @@ resource "aws_cloudwatch_metric_alarm" "iam_policy_modifications" {
                     "Enable MFA if not already enforced",
                     "Review and restrict IAM policy modification permissions",
                     "Implement SCPs to prevent condition removal",
-                    "Review all recent authentication attempts"
-                ]
+                    "Review all recent authentication attempts",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Legitimate policy updates occur during security hardening and operational changes",
@@ -213,9 +211,8 @@ resource "aws_cloudwatch_metric_alarm" "iam_policy_modifications" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-60 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled with log delivery to CloudWatch"]
+            prerequisites=["CloudTrail enabled with log delivery to CloudWatch"],
         ),
-
         DetectionStrategy(
             strategy_id="t1556.009-aws-scp-bypass",
             name="AWS Service Control Policy Modifications",
@@ -229,9 +226,9 @@ resource "aws_cloudwatch_metric_alarm" "iam_policy_modifications" {
                     "detail-type": ["AWS API Call via CloudTrail"],
                     "detail": {
                         "eventName": ["UpdatePolicy", "DetachPolicy", "DeletePolicy"]
-                    }
+                    },
                 },
-                terraform_template='''# Detect AWS Organisations SCP modifications
+                terraform_template="""# Detect AWS Organisations SCP modifications
 
 variable "alert_email" {
   type        = string
@@ -287,7 +284,7 @@ resource "aws_sns_topic_policy" "default" {
       }
     ]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Service Control Policy Modification Detected",
                 alert_description_template="SCP modified or detached - potential weakening of organisation-wide security controls.",
@@ -297,7 +294,7 @@ resource "aws_sns_topic_policy" "default" {
                     "Verify the identity and source of the change",
                     "Check for other suspicious Organisations API calls",
                     "Review affected accounts and OUs",
-                    "Validate against approved change management"
+                    "Validate against approved change management",
                 ],
                 containment_actions=[
                     "Immediately revert unauthorised SCP changes",
@@ -305,8 +302,8 @@ resource "aws_sns_topic_policy" "default" {
                     "Rotate credentials for the management account",
                     "Review and restrict Organisations permissions",
                     "Enable MFA for management account access",
-                    "Implement approval workflows for SCP changes"
-                ]
+                    "Implement approval workflows for SCP changes",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="SCP changes are infrequent and should be well-documented",
@@ -315,9 +312,11 @@ resource "aws_sns_topic_policy" "default" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["AWS Organisations enabled", "CloudTrail in management account"]
+            prerequisites=[
+                "AWS Organisations enabled",
+                "CloudTrail in management account",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1556.009-gcp-iam-conditions",
             name="GCP IAM Policy Condition Modifications",
@@ -329,7 +328,7 @@ resource "aws_sns_topic_policy" "default" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName=~"SetIamPolicy|UpdateIamPolicy"
 protoPayload.request.policy.bindings.condition!=""''',
-                gcp_terraform_template='''# GCP: Detect IAM policy condition modifications
+                gcp_terraform_template="""# GCP: Detect IAM policy condition modifications
 
 variable "project_id" {
   type        = string
@@ -403,7 +402,7 @@ resource "google_monitoring_alert_policy" "iam_condition_alerts" {
   }
 
   project = var.project_id
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP IAM Condition Modification Detected",
                 alert_description_template="IAM policy condition modified in GCP - review for weakened access controls.",
@@ -413,7 +412,7 @@ resource "google_monitoring_alert_policy" "iam_condition_alerts" {
                     "Verify the principal making the changes",
                     "Check for IP address or device trust condition removals",
                     "Review other IAM changes by the same principal",
-                    "Validate against approved change requests"
+                    "Validate against approved change requests",
                 ],
                 containment_actions=[
                     "Revert unauthorised IAM policy changes",
@@ -421,8 +420,8 @@ resource "google_monitoring_alert_policy" "iam_condition_alerts" {
                     "Review and restrict IAM admin roles",
                     "Implement organisation policies for IAM constraints",
                     "Enable context-aware access policies",
-                    "Review recent authentication logs"
-                ]
+                    "Review recent authentication logs",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="IAM policy updates occur during legitimate security configuration changes",
@@ -431,9 +430,11 @@ resource "google_monitoring_alert_policy" "iam_condition_alerts" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-60 minutes",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Cloud Logging enabled", "Admin Activity audit logs enabled"]
+            prerequisites=[
+                "Cloud Logging enabled",
+                "Admin Activity audit logs enabled",
+            ],
         ),
-
         DetectionStrategy(
             strategy_id="t1556.009-gcp-context-aware",
             name="GCP Context-Aware Access Policy Changes",
@@ -445,7 +446,7 @@ resource "google_monitoring_alert_policy" "iam_condition_alerts" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''resource.type="access_policy"
 protoPayload.methodName=~"CreateAccessLevel|UpdateAccessLevel|DeleteAccessLevel|CreateServicePerimeter|UpdateServicePerimeter"''',
-                gcp_terraform_template='''# GCP: Detect Context-Aware Access policy modifications
+                gcp_terraform_template="""# GCP: Detect Context-Aware Access policy modifications
 
 variable "project_id" {
   type        = string
@@ -525,7 +526,7 @@ resource "google_monitoring_alert_policy" "caa_modifications" {
   }
 
   project = var.project_id
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GCP Context-Aware Access Policy Modified",
                 alert_description_template="Context-Aware Access policy or service perimeter modified - potential security control bypass.",
@@ -535,7 +536,7 @@ resource "google_monitoring_alert_policy" "caa_modifications" {
                     "Verify the principal making the modifications",
                     "Review affected resources within service perimeters",
                     "Check for deletion of access levels",
-                    "Validate against approved security changes"
+                    "Validate against approved security changes",
                 ],
                 containment_actions=[
                     "Immediately revert unauthorised CAA changes",
@@ -543,8 +544,8 @@ resource "google_monitoring_alert_policy" "caa_modifications" {
                     "Rotate credentials for Access Context Manager admins",
                     "Review and restrict Access Context Manager permissions",
                     "Re-enforce strict IP and device policies",
-                    "Audit all resources within affected perimeters"
-                ]
+                    "Audit all resources within affected perimeters",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="CAA policy changes are infrequent and typically well-documented",
@@ -553,16 +554,18 @@ resource "google_monitoring_alert_policy" "caa_modifications" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30-45 minutes",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Context-Aware Access configured", "Admin Activity audit logs enabled"]
-        )
+            prerequisites=[
+                "Context-Aware Access configured",
+                "Admin Activity audit logs enabled",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1556.009-aws-scp-bypass",
         "t1556.009-gcp-context-aware",
         "t1556.009-aws-iam-policy",
-        "t1556.009-gcp-iam-conditions"
+        "t1556.009-gcp-iam-conditions",
     ],
     total_effort_hours=2.5,
-    coverage_improvement="+25% improvement for Persistence and Credential Access tactics"
+    coverage_improvement="+25% improvement for Persistence and Credential Access tactics",
 )

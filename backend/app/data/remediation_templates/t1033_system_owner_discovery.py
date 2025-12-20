@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="System Owner/User Discovery",
     tactic_ids=["TA0007"],  # Discovery
     mitre_url="https://attack.mitre.org/techniques/T1033/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries identify the primary user, currently logged in user, or set of users "
@@ -39,28 +38,38 @@ TEMPLATE = RemediationTemplate(
             "Identifies administrative users for targeted attacks",
             "Reveals usage patterns and active sessions",
             "Assesses system value based on user activity",
-            "Required for planning privilege escalation paths"
+            "Required for planning privilege escalation paths",
         ],
-        known_threat_actors=["APT32", "APT37", "APT41", "FIN7", "FIN8", "Lazarus Group", "OilRig", "Wizard Spider", "Volt Typhoon"],
+        known_threat_actors=[
+            "APT32",
+            "APT37",
+            "APT41",
+            "FIN7",
+            "FIN8",
+            "Lazarus Group",
+            "OilRig",
+            "Wizard Spider",
+            "Volt Typhoon",
+        ],
         recent_campaigns=[
             Campaign(
                 name="Volt Typhoon Cloud Discovery",
                 year=2024,
                 description="Chinese state-sponsored group used PowerShell event log queries and cloud API calls to enumerate active users and sessions",
-                reference_url="https://attack.mitre.org/groups/G1017/"
+                reference_url="https://attack.mitre.org/groups/G1017/",
             ),
             Campaign(
                 name="APT41 User Reconnaissance",
                 year=2024,
                 description="APT41 systematically enumerated system users to identify administrative accounts for credential harvesting",
-                reference_url="https://attack.mitre.org/groups/G0096/"
+                reference_url="https://attack.mitre.org/groups/G0096/",
             ),
             Campaign(
                 name="Operation Wocao",
                 year=2019,
                 description="Extensive user discovery operations to map high-value targets in telecommunications and managed service providers",
-                reference_url="https://attack.mitre.org/campaigns/C0014/"
-            )
+                reference_url="https://attack.mitre.org/campaigns/C0014/",
+            ),
         ],
         prevalence="common",
         trend="stable",
@@ -75,13 +84,12 @@ TEMPLATE = RemediationTemplate(
             "Indicates active reconnaissance in environment",
             "Precursor to targeted credential attacks",
             "Mapping of administrative accounts",
-            "Early warning opportunity for defence"
+            "Early warning opportunity for defence",
         ],
         typical_attack_phase="discovery",
         often_precedes=["T1078.004", "T1087.004", "T1069.003", "T1110"],
-        often_follows=["T1078.004", "T1190", "T1133"]
+        often_follows=["T1078.004", "T1190", "T1133"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - IAM User Activity Enumeration
         DetectionStrategy(
@@ -92,12 +100,12 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn, eventName, sourceIPAddress
+                query="""fields @timestamp, userIdentity.arn, eventName, sourceIPAddress
 | filter eventSource = "sts.amazonaws.com" and eventName = "GetCallerIdentity"
 | stats count(*) as call_count by userIdentity.arn, sourceIPAddress, bin(5m)
 | filter call_count > 20
-| sort call_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort call_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect IAM user activity enumeration
 
 Parameters:
@@ -140,8 +148,8 @@ Resources:
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect IAM user activity enumeration
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect IAM user activity enumeration
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -188,7 +196,7 @@ resource "aws_cloudwatch_metric_alarm" "user_enum" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="AWS: User Identity Enumeration Detected",
                 alert_description_template="High-frequency GetCallerIdentity calls from {userIdentity.arn} may indicate user discovery activity.",
@@ -197,15 +205,15 @@ resource "aws_cloudwatch_metric_alarm" "user_enum" {
                     "Check if this matches normal application behaviour",
                     "Review the source IP address and geographic location",
                     "Examine what other API calls were made by this principal",
-                    "Check for follow-on reconnaissance or privilege escalation"
+                    "Check for follow-on reconnaissance or privilege escalation",
                 ],
                 containment_actions=[
                     "Review the principal's permissions and recent activity",
                     "Check for unauthorised access or compromised credentials",
                     "Monitor for privilege escalation attempts",
                     "Consider rate limiting or IAM Conditions",
-                    "Enable MFA if not already configured"
-                ]
+                    "Enable MFA if not already configured",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist automated tools and health check systems that legitimately call GetCallerIdentity",
@@ -214,9 +222,8 @@ resource "aws_cloudwatch_metric_alarm" "user_enum" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail logging to CloudWatch Logs"]
+            prerequisites=["CloudTrail logging to CloudWatch Logs"],
         ),
-
         # Strategy 2: AWS - EC2 Instance User Discovery
         DetectionStrategy(
             strategy_id="t1033-aws-instance-user",
@@ -226,13 +233,13 @@ resource "aws_cloudwatch_metric_alarm" "user_enum" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn, eventName, requestParameters.instancesSet.items
+                query="""fields @timestamp, userIdentity.arn, eventName, requestParameters.instancesSet.items
 | filter eventSource = "ec2.amazonaws.com"
 | filter eventName in ["DescribeInstances", "DescribeInstanceAttribute", "GetConsoleOutput"]
 | stats count(*) as query_count by userIdentity.arn, bin(10m)
 | filter query_count > 30
-| sort query_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort query_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect EC2 instance user discovery
 
 Parameters:
@@ -273,8 +280,8 @@ Resources:
       Threshold: 40
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect EC2 instance user discovery
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect EC2 instance user discovery
 
 variable "cloudtrail_log_group" {
   type = string
@@ -319,7 +326,7 @@ resource "aws_cloudwatch_metric_alarm" "instance_enum" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="AWS: EC2 Instance User Discovery",
                 alert_description_template="High volume of EC2 instance queries from {userIdentity.arn}. May indicate reconnaissance.",
@@ -328,15 +335,15 @@ resource "aws_cloudwatch_metric_alarm" "instance_enum" {
                     "Check if this is normal monitoring or DevOps activity",
                     "Review what instance metadata was accessed",
                     "Look for GetConsoleOutput calls (reveals user data)",
-                    "Check for follow-on lateral movement or access attempts"
+                    "Check for follow-on lateral movement or access attempts",
                 ],
                 containment_actions=[
                     "Review the principal's permissions",
                     "Monitor for unauthorised instance access",
                     "Check instance metadata service access logs",
                     "Consider restricting EC2 describe permissions",
-                    "Enable Session Manager logging"
-                ]
+                    "Enable Session Manager logging",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist monitoring tools, CSPM platforms, and automated DevOps systems",
@@ -345,9 +352,8 @@ resource "aws_cloudwatch_metric_alarm" "instance_enum" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled", "CloudWatch Logs"]
+            prerequisites=["CloudTrail enabled", "CloudWatch Logs"],
         ),
-
         # Strategy 3: GCP - User Activity Discovery
         DetectionStrategy(
             strategy_id="t1033-gcp-user-activity",
@@ -360,7 +366,7 @@ resource "aws_cloudwatch_metric_alarm" "instance_enum" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.serviceName="cloudresourcemanager.googleapis.com"
 protoPayload.methodName=~"(getIamPolicy|testIamPermissions|getAncestry)"''',
-                gcp_terraform_template='''# GCP: Detect user activity discovery
+                gcp_terraform_template="""# GCP: Detect user activity discovery
 
 variable "project_id" {
   type        = string
@@ -413,7 +419,7 @@ resource "google_monitoring_alert_policy" "user_discovery" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: User Activity Discovery Detected",
                 alert_description_template="High volume of user activity queries detected. May indicate reconnaissance.",
@@ -422,15 +428,15 @@ resource "google_monitoring_alert_policy" "user_discovery" {
                     "Check if this is authorised security scanning",
                     "Review what resources were queried",
                     "Look for patterns indicating automated enumeration",
-                    "Check for follow-on privilege escalation attempts"
+                    "Check for follow-on privilege escalation attempts",
                 ],
                 containment_actions=[
                     "Review the principal's IAM permissions",
                     "Monitor for unauthorised access attempts",
                     "Consider IAM Conditions to restrict access",
                     "Enable detailed audit logging",
-                    "Review service account usage patterns"
-                ]
+                    "Review service account usage patterns",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist security tools, CSPM platforms, and authorised monitoring services",
@@ -439,9 +445,8 @@ resource "google_monitoring_alert_policy" "user_discovery" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled"],
         ),
-
         # Strategy 4: GCP - Compute Instance User Discovery
         DetectionStrategy(
             strategy_id="t1033-gcp-instance-user",
@@ -454,7 +459,7 @@ resource "google_monitoring_alert_policy" "user_discovery" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.serviceName="compute.googleapis.com"
 protoPayload.methodName=~"(instances.list|instances.get|instances.getSerialPortOutput)"''',
-                gcp_terraform_template='''# GCP: Detect compute instance user discovery
+                gcp_terraform_template="""# GCP: Detect compute instance user discovery
 
 variable "project_id" {
   type = string
@@ -505,7 +510,7 @@ resource "google_monitoring_alert_policy" "instance_discovery" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Compute Instance Discovery",
                 alert_description_template="High volume of compute instance queries. May indicate user discovery reconnaissance.",
@@ -514,15 +519,15 @@ resource "google_monitoring_alert_policy" "instance_discovery" {
                     "Check if this is normal DevOps or monitoring activity",
                     "Review what instance metadata was accessed",
                     "Look for getSerialPortOutput calls (reveals boot logs)",
-                    "Check for follow-on SSH or RDP access attempts"
+                    "Check for follow-on SSH or RDP access attempts",
                 ],
                 containment_actions=[
                     "Review the principal's compute permissions",
                     "Monitor for unauthorised instance access",
                     "Consider restricting compute.instances.* permissions",
                     "Enable OS Login for instance access control",
-                    "Review firewall rules for SSH/RDP access"
-                ]
+                    "Review firewall rules for SSH/RDP access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist monitoring tools, infrastructure management platforms, and DevOps automation",
@@ -531,16 +536,15 @@ resource "google_monitoring_alert_policy" "instance_discovery" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Cloud Audit Logs enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1033-aws-user-enum",
         "t1033-gcp-user-activity",
         "t1033-aws-instance-user",
-        "t1033-gcp-instance-user"
+        "t1033-gcp-instance-user",
     ],
     total_effort_hours=4.0,
-    coverage_improvement="+12% improvement for Discovery tactic"
+    coverage_improvement="+12% improvement for Discovery tactic",
 )

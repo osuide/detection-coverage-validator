@@ -23,7 +23,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Multi-Factor Authentication Interception",
     tactic_ids=["TA0006"],
     mitre_url="https://attack.mitre.org/techniques/T1111/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries intercept MFA mechanisms including smart cards, hardware tokens, "
@@ -38,7 +37,7 @@ TEMPLATE = RemediationTemplate(
             "Keyloggers can capture both passwords and token values",
             "SIM swapping enables SMS interception",
             "Hardware tokens vulnerable to proximity attacks",
-            "Users assume MFA provides complete security"
+            "Users assume MFA provides complete security",
         ],
         known_threat_actors=["APT42", "Chimera", "Kimsuky", "LAPSUS$", "Leviathan"],
         recent_campaigns=[
@@ -46,32 +45,32 @@ TEMPLATE = RemediationTemplate(
                 name="APT42 SMS Interception",
                 year=2024,
                 description="Intercepted SMS-based one-time passwords using fake websites capturing MFA tokens",
-                reference_url="https://attack.mitre.org/groups/G1042/"
+                reference_url="https://attack.mitre.org/groups/G1042/",
             ),
             Campaign(
                 name="Chimera Phone Number Registration",
                 year=2023,
                 description="Registered alternate phone numbers for compromised users to intercept SMS 2FA codes",
-                reference_url="https://attack.mitre.org/groups/G0114/"
+                reference_url="https://attack.mitre.org/groups/G0114/",
             ),
             Campaign(
                 name="Kimsuky Custom Interception Tools",
                 year=2024,
                 description="Deployed proprietary tools to intercept two-factor authentication one-time passwords",
-                reference_url="https://attack.mitre.org/groups/G0094/"
+                reference_url="https://attack.mitre.org/groups/G0094/",
             ),
             Campaign(
                 name="LAPSUS$ Session Token Replay",
                 year=2022,
                 description="Replayed stolen session tokens attempting to trigger user approval for MFA prompts",
-                reference_url="https://attack.mitre.org/groups/G1004/"
+                reference_url="https://attack.mitre.org/groups/G1004/",
             ),
             Campaign(
                 name="Leviathan MFA Token Collection",
                 year=2023,
                 description="Abused appliance access to collect MFA token values during authentication",
-                reference_url="https://attack.mitre.org/groups/G0065/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0065/",
+            ),
         ],
         prevalence="moderate",
         trend="increasing",
@@ -86,13 +85,12 @@ TEMPLATE = RemediationTemplate(
             "Unauthorised access to protected accounts and resources",
             "Potential compliance violations (PCI DSS, SOC 2)",
             "Loss of trust in security controls",
-            "Account takeover and data exfiltration"
+            "Account takeover and data exfiltration",
         ],
         typical_attack_phase="credential_access",
         often_precedes=["T1078.004", "T1530", "T1537"],
-        often_follows=["T1110", "T1566", "T1528"]
+        often_follows=["T1110", "T1566", "T1528"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - SMS MFA Authentication from Unusual Locations
         DetectionStrategy(
@@ -103,14 +101,14 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.userName, sourceIPAddress, awsRegion, errorCode
+                query="""fields @timestamp, eventName, userIdentity.userName, sourceIPAddress, awsRegion, errorCode
 | filter eventSource = "signin.amazonaws.com"
 | filter eventName = "ConsoleLogin"
 | filter additionalEventData.MFAUsed = "Yes"
 | filter errorCode = "Success"
 | stats count(*) as login_attempts by userIdentity.userName, sourceIPAddress, awsRegion, bin(5m)
-| filter login_attempts > 1''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| filter login_attempts > 1""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect potential MFA interception via anomalous authentication patterns
 
 Parameters:
@@ -163,8 +161,8 @@ Resources:
 Outputs:
   AlertTopicArn:
     Description: SNS Topic ARN for MFA alerts
-    Value: !Ref AlertTopic''',
-                terraform_template='''# Detect potential MFA interception via anomalous authentication patterns
+    Value: !Ref AlertTopic""",
+                terraform_template="""# Detect potential MFA interception via anomalous authentication patterns
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -220,7 +218,7 @@ resource "aws_cloudwatch_metric_alarm" "mfa_interception" {
 output "alert_topic_arn" {
   description = "SNS Topic ARN for MFA alerts"
   value       = aws_sns_topic.mfa_interception_alerts.arn
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Potential MFA Interception Detected",
                 alert_description_template=(
@@ -233,7 +231,7 @@ output "alert_topic_arn" {
                     "Verify if user's mobile number has been changed recently",
                     "Review CloudTrail for account modification events",
                     "Check for SIM swap indicators or phone number changes",
-                    "Analyse authentication patterns and timing"
+                    "Analyse authentication patterns and timing",
                 ],
                 containment_actions=[
                     "Contact user via out-of-band communication immediately",
@@ -241,8 +239,8 @@ output "alert_topic_arn" {
                     "Force re-authentication with phishing-resistant MFA",
                     "Lock account until user confirms legitimate access",
                     "Review and revoke active sessions",
-                    "Migrate to hardware security keys or authenticator apps"
-                ]
+                    "Migrate to hardware security keys or authenticator apps",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Tune threshold based on normal user travel patterns and VPN usage",
@@ -251,9 +249,8 @@ output "alert_topic_arn" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled", "Console login events logged"]
+            prerequisites=["CloudTrail enabled", "Console login events logged"],
         ),
-
         # Strategy 2: AWS - Detect Cognito SMS MFA Code Replay
         DetectionStrategy(
             strategy_id="t1111-aws-cognito-sms",
@@ -263,14 +260,14 @@ output "alert_topic_arn" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.userName, sourceIPAddress, requestParameters.challengeName
+                query="""fields @timestamp, eventName, userIdentity.userName, sourceIPAddress, requestParameters.challengeName
 | filter eventSource = "cognito-idp.amazonaws.com"
 | filter eventName in ["RespondToAuthChallenge", "AdminRespondToAuthChallenge"]
 | filter requestParameters.challengeName = "SMS_MFA"
 | stats count(*) as attempts by userIdentity.userName, sourceIPAddress, bin(2m)
 | filter attempts > 2
-| sort attempts desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort attempts desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect SMS MFA code replay attempts in Cognito
 
 Parameters:
@@ -314,8 +311,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       AlarmActions:
-        - !Ref AlertTopic''',
-                terraform_template='''# Detect SMS MFA code replay attempts in Cognito
+        - !Ref AlertTopic""",
+                terraform_template="""# Detect SMS MFA code replay attempts in Cognito
 
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -358,7 +355,7 @@ resource "aws_cloudwatch_metric_alarm" "sms_replay" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.cognito_sms_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Cognito SMS MFA Code Replay Detected",
                 alert_description_template=(
@@ -371,7 +368,7 @@ resource "aws_cloudwatch_metric_alarm" "sms_replay" {
                     "Review recent phone number changes in user profile",
                     "Verify if user reports receiving unexpected SMS codes",
                     "Check authentication success/failure patterns",
-                    "Review IP addresses of authentication attempts"
+                    "Review IP addresses of authentication attempts",
                 ],
                 containment_actions=[
                     "Temporarily disable affected user account",
@@ -379,8 +376,8 @@ resource "aws_cloudwatch_metric_alarm" "sms_replay" {
                     "Migrate user to TOTP-based MFA (authenticator app)",
                     "Verify user's phone number via out-of-band method",
                     "Enable rate limiting on MFA attempts",
-                    "Invalidate all existing sessions"
-                ]
+                    "Invalidate all existing sessions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Users may legitimately retry MFA codes; adjust threshold for user behaviour",
@@ -389,9 +386,11 @@ resource "aws_cloudwatch_metric_alarm" "sms_replay" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail logging Cognito events", "SMS MFA enabled in Cognito"]
+            prerequisites=[
+                "CloudTrail logging Cognito events",
+                "SMS MFA enabled in Cognito",
+            ],
         ),
-
         # Strategy 3: AWS - Phone Number Change Detection
         DetectionStrategy(
             strategy_id="t1111-aws-phone-change",
@@ -409,11 +408,11 @@ resource "aws_cloudwatch_metric_alarm" "sms_replay" {
                             "SetUserMFAPreference",
                             "AdminSetUserMFAPreference",
                             "UpdateUserAttributes",
-                            "AdminUpdateUserAttributes"
+                            "AdminUpdateUserAttributes",
                         ]
-                    }
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect user phone number changes that may facilitate MFA interception
 
 Parameters:
@@ -459,8 +458,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect user phone number changes that may facilitate MFA interception
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect user phone number changes that may facilitate MFA interception
 
 variable "alert_email" { type = string }
 
@@ -510,7 +509,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.phone_change_alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="User Phone Number Modified",
                 alert_description_template=(
@@ -523,7 +522,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Check source IP and location of the change",
                     "Review recent authentication history",
                     "Check for other account attribute changes",
-                    "Investigate potential SIM swap with mobile carrier"
+                    "Investigate potential SIM swap with mobile carrier",
                 ],
                 containment_actions=[
                     "Immediately lock the affected account",
@@ -531,8 +530,8 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Disable SMS-based MFA temporarily",
                     "Force password reset via email verification",
                     "Enable alternative MFA method (TOTP, hardware key)",
-                    "Revoke all active sessions"
-                ]
+                    "Revoke all active sessions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Legitimate phone changes occur during onboarding or phone upgrades",
@@ -541,9 +540,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled", "Cognito user pools configured"]
+            prerequisites=["CloudTrail enabled", "Cognito user pools configured"],
         ),
-
         # Strategy 4: GCP - SMS MFA Interception Detection
         DetectionStrategy(
             strategy_id="t1111-gcp-sms-intercept",
@@ -557,7 +555,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                 gcp_logging_query='''protoPayload.serviceName="login.googleapis.com"
 protoPayload.methodName=~"google.login.LoginService.2sv"
 severity="WARNING"''',
-                gcp_terraform_template='''# GCP: Detect SMS MFA interception attempts
+                gcp_terraform_template="""# GCP: Detect SMS MFA interception attempts
 
 variable "project_id" {
   type = string
@@ -611,7 +609,7 @@ resource "google_monitoring_alert_policy" "sms_interception" {
   documentation {
     content = "Multiple SMS-based 2-Step Verification attempts detected. Potential MFA code interception."
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: SMS MFA Interception Suspected",
                 alert_description_template=(
@@ -624,7 +622,7 @@ resource "google_monitoring_alert_policy" "sms_interception" {
                     "Verify if user reports unusual SMS messages",
                     "Check for recent phone number changes",
                     "Review account recovery activity",
-                    "Check for SIM swap indicators"
+                    "Check for SIM swap indicators",
                 ],
                 containment_actions=[
                     "Suspend user account immediately",
@@ -632,8 +630,8 @@ resource "google_monitoring_alert_policy" "sms_interception" {
                     "Disable SMS-based 2SV for affected user",
                     "Require security key or authenticator app re-enrolment",
                     "Force password reset",
-                    "Revoke all active sessions and tokens"
-                ]
+                    "Revoke all active sessions and tokens",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Adjust threshold based on normal retry patterns in your organisation",
@@ -642,9 +640,12 @@ resource "google_monitoring_alert_policy" "sms_interception" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Google Workspace", "Admin audit logs enabled", "Login audit logs enabled"]
+            prerequisites=[
+                "Google Workspace",
+                "Admin audit logs enabled",
+                "Login audit logs enabled",
+            ],
         ),
-
         # Strategy 5: GCP - Phone Number Change Detection
         DetectionStrategy(
             strategy_id="t1111-gcp-phone-change",
@@ -655,10 +656,10 @@ resource "google_monitoring_alert_policy" "sms_interception" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''protoPayload.serviceName="admin.googleapis.com"
+                gcp_logging_query="""protoPayload.serviceName="admin.googleapis.com"
 protoPayload.methodName="google.admin.AdminService.changeUser"
-protoPayload.request.user.phone=*''',
-                gcp_terraform_template='''# GCP: Detect phone number changes for MFA interception
+protoPayload.request.user.phone=*""",
+                gcp_terraform_template="""# GCP: Detect phone number changes for MFA interception
 
 variable "project_id" {
   type = string
@@ -712,7 +713,7 @@ resource "google_monitoring_alert_policy" "phone_change" {
   documentation {
     content = "User phone number changed. Verify legitimacy to prevent SMS MFA interception."
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: User Phone Number Modified",
                 alert_description_template=(
@@ -725,7 +726,7 @@ resource "google_monitoring_alert_policy" "phone_change" {
                     "Check who made the modification",
                     "Review authentication logs for suspicious activity",
                     "Check for other account modifications",
-                    "Investigate potential SIM swap"
+                    "Investigate potential SIM swap",
                 ],
                 containment_actions=[
                     "Revert phone number if unauthorised",
@@ -733,8 +734,8 @@ resource "google_monitoring_alert_policy" "phone_change" {
                     "Disable SMS-based 2SV",
                     "Require security key enrolment",
                     "Force password reset",
-                    "Enable advanced protection programme"
-                ]
+                    "Enable advanced protection programme",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Phone changes are infrequent; all changes warrant review",
@@ -743,17 +744,16 @@ resource "google_monitoring_alert_policy" "phone_change" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Google Workspace", "Admin audit logs enabled"]
-        )
+            prerequisites=["Google Workspace", "Admin audit logs enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1111-aws-phone-change",
         "t1111-gcp-phone-change",
         "t1111-aws-sms-anomaly",
         "t1111-aws-cognito-sms",
-        "t1111-gcp-sms-intercept"
+        "t1111-gcp-sms-intercept",
     ],
     total_effort_hours=4.0,
-    coverage_improvement="+12% improvement for Credential Access tactic"
+    coverage_improvement="+12% improvement for Credential Access tactic",
 )

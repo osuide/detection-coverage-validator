@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Account Manipulation: SSH Authorized Keys",
     tactic_ids=["TA0003", "TA0006"],
     mitre_url="https://attack.mitre.org/techniques/T1098/004/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries modify SSH authorized_keys files to maintain persistence on compromised hosts. "
@@ -38,30 +37,28 @@ TEMPLATE = RemediationTemplate(
             "Appears as legitimate SSH authentication",
             "Cloud metadata APIs can inject keys without host access",
             "Common in containerised environments and bastion hosts",
-            "Often overlooked in incident response procedures"
+            "Often overlooked in incident response procedures",
         ],
-        known_threat_actors=[
-            "Earth Lusca", "Salt Typhoon", "TeamTNT"
-        ],
+        known_threat_actors=["Earth Lusca", "Salt Typhoon", "TeamTNT"],
         recent_campaigns=[
             Campaign(
                 name="Earth Lusca SSH Backdoor Campaign",
                 year=2024,
                 description="Dropped SSH authorised keys in /root/.ssh to maintain persistent access to compromised servers",
-                reference_url="https://attack.mitre.org/groups/G1006/"
+                reference_url="https://attack.mitre.org/groups/G1006/",
             ),
             Campaign(
                 name="Salt Typhoon Network Device Compromise",
                 year=2024,
                 description="Added SSH authorised_keys under root or other users on compromised network devices and systems",
-                reference_url="https://attack.mitre.org/groups/G1041/"
+                reference_url="https://attack.mitre.org/groups/G1041/",
             ),
             Campaign(
                 name="TeamTNT Container Cryptomining",
                 year=2023,
                 description="Added RSA keys in authorised_keys files to maintain access to compromised container hosts and cloud instances",
-                reference_url="https://attack.mitre.org/groups/G0139/"
-            )
+                reference_url="https://attack.mitre.org/groups/G0139/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -78,13 +75,12 @@ TEMPLATE = RemediationTemplate(
             "Lateral movement to other SSH-accessible systems",
             "Data exfiltration via established SSH tunnels",
             "Privilege escalation through root SSH access",
-            "Compliance violations for unauthorised access"
+            "Compliance violations for unauthorised access",
         ],
         typical_attack_phase="persistence",
         often_precedes=["T1021.004", "T1041", "T1005"],
-        often_follows=["T1078.004", "T1190", "T1133", "T1210"]
+        often_follows=["T1078.004", "T1190", "T1133", "T1210"],
     ),
-
     detection_strategies=[
         # Strategy 1: File Integrity Monitoring for authorized_keys
         DetectionStrategy(
@@ -98,12 +94,12 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message, instanceId, filePath, changeType, userName
+                query="""fields @timestamp, @message, instanceId, filePath, changeType, userName
 | filter @message like /authorized_keys/
 | filter changeType in ["created", "modified", "written"]
 | stats count() as modifications by instanceId, filePath, userName, bin(5m)
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Monitor SSH authorized_keys file modifications
 
 Parameters:
@@ -162,8 +158,8 @@ Resources:
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AuthorizedKeysAlertTopic''',
-                terraform_template='''# Monitor SSH authorized_keys file modifications
+            Resource: !Ref AuthorizedKeysAlertTopic""",
+                terraform_template="""# Monitor SSH authorized_keys file modifications
 
 variable "cloudwatch_log_group" {
   type        = string
@@ -213,7 +209,7 @@ resource "aws_cloudwatch_metric_alarm" "authorized_keys" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   alarm_actions       = [aws_sns_topic.authorized_keys_alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="SSH Authorized Keys File Modified",
                 alert_description_template=(
@@ -228,7 +224,7 @@ resource "aws_cloudwatch_metric_alarm" "authorized_keys" {
                     "Review recent SSH authentication logs for successful logins using the new key",
                     "Check CloudTrail for API calls that may have modified instance metadata",
                     "Investigate the process and parent process that modified the file",
-                    "Review other instances for similar unauthorized_keys modifications"
+                    "Review other instances for similar unauthorized_keys modifications",
                 ],
                 containment_actions=[
                     "Remove unauthorized SSH public keys from authorized_keys files",
@@ -237,8 +233,8 @@ resource "aws_cloudwatch_metric_alarm" "authorized_keys" {
                     "Isolate the affected instance by modifying security groups",
                     "Rotate credentials and SSH keys for legitimate users",
                     "Enable SSH key-based authentication logging",
-                    "Implement file integrity monitoring if not already enabled"
-                ]
+                    "Implement file integrity monitoring if not already enabled",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Exclude authorised configuration management tools (Ansible, Chef, Puppet) with documented approval",
@@ -247,9 +243,12 @@ resource "aws_cloudwatch_metric_alarm" "authorized_keys" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5-2 hours",
             estimated_monthly_cost="$5-15 depending on instance count",
-            prerequisites=["CloudWatch Logs Agent installed", "File integrity monitoring configured", "Process execution logging enabled"]
+            prerequisites=[
+                "CloudWatch Logs Agent installed",
+                "File integrity monitoring configured",
+                "Process execution logging enabled",
+            ],
         ),
-
         # Strategy 2: EC2 Instance Metadata SSH Key Injection
         DetectionStrategy(
             strategy_id="t1098004-metadata-injection",
@@ -262,13 +261,13 @@ resource "aws_cloudwatch_metric_alarm" "authorized_keys" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.principalId, eventName, requestParameters.instanceId, requestParameters.attribute
+                query="""fields @timestamp, userIdentity.principalId, eventName, requestParameters.instanceId, requestParameters.attribute
 | filter eventSource = "ec2.amazonaws.com"
 | filter eventName in ["ModifyInstanceAttribute", "ImportKeyPair", "CreateKeyPair"]
 | filter requestParameters.attribute = "userData" or eventName like /KeyPair/
 | stats count() as api_calls by userIdentity.principalId, eventName, requestParameters.instanceId, bin(10m)
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect SSH key injection via EC2 metadata
 
 Parameters:
@@ -316,8 +315,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       AlarmActions:
-        - !Ref SNSTopicArn''',
-                terraform_template='''# Detect SSH key injection via EC2 metadata
+        - !Ref SNSTopicArn""",
+                terraform_template="""# Detect SSH key injection via EC2 metadata
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -377,7 +376,7 @@ resource "aws_cloudwatch_metric_alarm" "metadata_injection" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="SSH Key Injection via EC2 Metadata Detected",
                 alert_description_template=(
@@ -391,7 +390,7 @@ resource "aws_cloudwatch_metric_alarm" "metadata_injection" {
                     "Review the userData content for SSH key additions",
                     "Examine recent SSH authentication logs on the affected instance",
                     "Check for other instances modified by the same principal",
-                    "Review IAM permissions of the principal for EC2 modification capabilities"
+                    "Review IAM permissions of the principal for EC2 modification capabilities",
                 ],
                 containment_actions=[
                     "Revert the instance metadata or userData to previous state",
@@ -400,8 +399,8 @@ resource "aws_cloudwatch_metric_alarm" "metadata_injection" {
                     "Review and remove unauthorized SSH keys from the instance",
                     "Implement SCPs to restrict ModifyInstanceAttribute actions",
                     "Enable instance metadata service v2 (IMDSv2) to prevent SSRF abuse",
-                    "Review CloudTrail logs for similar modifications across the environment"
-                ]
+                    "Review CloudTrail logs for similar modifications across the environment",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised automation tools and infrastructure-as-code deployments",
@@ -410,9 +409,8 @@ resource "aws_cloudwatch_metric_alarm" "metadata_injection" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes - 1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled", "CloudTrail logs sent to CloudWatch"]
+            prerequisites=["CloudTrail enabled", "CloudTrail logs sent to CloudWatch"],
         ),
-
         # Strategy 3: Suspicious Process Execution for SSH Key Modification
         DetectionStrategy(
             strategy_id="t1098004-process-monitoring",
@@ -425,13 +423,13 @@ resource "aws_cloudwatch_metric_alarm" "metadata_injection" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message, processName, commandLine, userName, instanceId
+                query="""fields @timestamp, @message, processName, commandLine, userName, instanceId
 | filter @message like /authorized_keys/
 | filter processName in ["bash", "sh", "echo", "tee", "vim", "vi", "nano", "sed", "cat"]
 | filter commandLine like />>|>|[|]/
 | stats count() as executions by processName, userName, instanceId, bin(5m)
-| sort @timestamp desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect suspicious process execution modifying SSH keys
 
 Parameters:
@@ -479,8 +477,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       AlarmActions:
-        - !Ref SNSTopicArn''',
-                terraform_template='''# Detect suspicious process execution modifying SSH keys
+        - !Ref SNSTopicArn""",
+                terraform_template="""# Detect suspicious process execution modifying SSH keys
 
 variable "cloudwatch_log_group" {
   type        = string
@@ -540,7 +538,7 @@ resource "aws_cloudwatch_metric_alarm" "ssh_key_modification" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Suspicious SSH Key Modification Process Detected",
                 alert_description_template=(
@@ -554,7 +552,7 @@ resource "aws_cloudwatch_metric_alarm" "ssh_key_modification" {
                     "Review the contents of the modified authorized_keys file",
                     "Check SSH authentication logs for logins using the newly added key",
                     "Investigate if the user account itself is compromised",
-                    "Review recent commands executed by the same user"
+                    "Review recent commands executed by the same user",
                 ],
                 containment_actions=[
                     "Remove unauthorized SSH keys from authorized_keys files",
@@ -563,8 +561,8 @@ resource "aws_cloudwatch_metric_alarm" "ssh_key_modification" {
                     "Review other files modified by the same user or process",
                     "Implement command logging and auditing for all users",
                     "Restrict shell access to authorised users only",
-                    "Enable sudo logging to track privilege escalation attempts"
-                ]
+                    "Enable sudo logging to track privilege escalation attempts",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal SSH key management by authorised administrators and automation",
@@ -573,9 +571,12 @@ resource "aws_cloudwatch_metric_alarm" "ssh_key_modification" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["CloudWatch Logs Agent", "Process execution logging", "Command-line argument capture enabled"]
+            prerequisites=[
+                "CloudWatch Logs Agent",
+                "Process execution logging",
+                "Command-line argument capture enabled",
+            ],
         ),
-
         # Strategy 4: GCP Compute Instance SSH Key Monitoring
         DetectionStrategy(
             strategy_id="t1098004-gcp-metadata",
@@ -593,7 +594,7 @@ resource "aws_cloudwatch_metric_alarm" "ssh_key_modification" {
 protoPayload.methodName="v1.compute.instances.setMetadata"
 OR protoPayload.methodName="v1.compute.projects.setCommonInstanceMetadata"
 protoPayload.request.metadata.items.key="ssh-keys"''',
-                gcp_terraform_template='''# GCP: Detect SSH key addition via instance metadata
+                gcp_terraform_template="""# GCP: Detect SSH key addition via instance metadata
 
 variable "project_id" {
   type        = string
@@ -673,7 +674,7 @@ resource "google_monitoring_alert_policy" "ssh_key_modification" {
     content   = "SSH key was added to GCE instance metadata. This may indicate an attempt to establish persistent access. Investigate immediately."
     mime_type = "text/markdown"
   }
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: SSH Key Added to Instance Metadata",
                 alert_description_template=(
@@ -688,7 +689,7 @@ resource "google_monitoring_alert_policy" "ssh_key_modification" {
                     "Review the SSH key fingerprint and compare with known authorised keys",
                     "Examine recent SSH authentication logs on the instance",
                     "Check for other instances modified by the same principal",
-                    "Review the principal's recent API activity across the project"
+                    "Review the principal's recent API activity across the project",
                 ],
                 containment_actions=[
                     "Remove the unauthorised SSH key from instance metadata",
@@ -697,8 +698,8 @@ resource "google_monitoring_alert_policy" "ssh_key_modification" {
                     "Create a snapshot of the instance for forensic analysis",
                     "Review and restrict IAM permissions for compute.instances.setMetadata",
                     "Enable OS Login to centrally manage SSH access",
-                    "Implement organisation policy constraints to restrict metadata modifications"
-                ]
+                    "Implement organisation policy constraints to restrict metadata modifications",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised infrastructure-as-code tools and deployment pipelines",
@@ -707,9 +708,11 @@ resource "google_monitoring_alert_policy" "ssh_key_modification" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-1.5 hours",
             estimated_monthly_cost="$10-25",
-            prerequisites=["Cloud Logging API enabled", "Admin Activity audit logs enabled"]
+            prerequisites=[
+                "Cloud Logging API enabled",
+                "Admin Activity audit logs enabled",
+            ],
         ),
-
         # Strategy 5: SSH Authentication Success After Key Addition
         DetectionStrategy(
             strategy_id="t1098004-auth-correlation",
@@ -722,14 +725,14 @@ resource "google_monitoring_alert_policy" "ssh_key_modification" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, @message, eventType, instanceId, userName, sourceIP
+                query="""fields @timestamp, @message, eventType, instanceId, userName, sourceIP
 | filter @message like /authorized_keys/ or @message like /Accepted publickey/
 | sort @timestamp asc
 | stats earliest(@timestamp) as first_event, latest(@timestamp) as last_event,
   count(*) as events by instanceId, userName
 | filter events >= 2 and (last_event - first_event) < 3600000
-| sort first_event desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort first_event desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Correlate SSH key addition with authentication events
 
 Parameters:
@@ -779,8 +782,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       AlarmActions:
-        - !Ref SNSTopicArn''',
-                terraform_template='''# Correlate SSH key addition with authentication events
+        - !Ref SNSTopicArn""",
+                terraform_template="""# Correlate SSH key addition with authentication events
 
 variable "cloudwatch_log_group" {
   type        = string
@@ -841,7 +844,7 @@ resource "aws_cloudwatch_metric_alarm" "correlated_access" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="SSH Key Added and Immediately Used for Authentication",
                 alert_description_template=(
@@ -857,7 +860,7 @@ resource "aws_cloudwatch_metric_alarm" "correlated_access" {
                     "Examine all commands executed during the SSH session",
                     "Check for file downloads or uploads during the session",
                     "Review network connections established from the instance during the session",
-                    "Investigate if lateral movement occurred to other instances"
+                    "Investigate if lateral movement occurred to other instances",
                 ],
                 containment_actions=[
                     "Immediately terminate the active SSH session",
@@ -867,8 +870,8 @@ resource "aws_cloudwatch_metric_alarm" "correlated_access" {
                     "Review and rotate all credentials accessible from the instance",
                     "Search for and remove any additional persistence mechanisms",
                     "Conduct full forensic analysis to determine breach scope",
-                    "Review logs for data exfiltration or lateral movement attempts"
-                ]
+                    "Review logs for data exfiltration or lateral movement attempts",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Exclude authorised system provisioning and user onboarding workflows",
@@ -877,17 +880,21 @@ resource "aws_cloudwatch_metric_alarm" "correlated_access" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-2.5 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["CloudWatch Logs Agent", "SSH authentication logging", "File integrity monitoring", "Log aggregation from both sources"]
-        )
+            prerequisites=[
+                "CloudWatch Logs Agent",
+                "SSH authentication logging",
+                "File integrity monitoring",
+                "Log aggregation from both sources",
+            ],
+        ),
     ],
-
     recommended_order=[
         "t1098004-metadata-injection",
         "t1098004-file-integrity",
         "t1098004-gcp-metadata",
         "t1098004-auth-correlation",
-        "t1098004-process-monitoring"
+        "t1098004-process-monitoring",
     ],
     total_effort_hours=8.5,
-    coverage_improvement="+25% improvement for Persistence tactic"
+    coverage_improvement="+25% improvement for Persistence tactic",
 )

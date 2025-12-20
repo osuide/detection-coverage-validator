@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Modify Cloud Compute Infrastructure: Delete Cloud Instance",
     tactic_ids=["TA0005"],
     mitre_url="https://attack.mitre.org/techniques/T1578/003/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries delete cloud instances to eliminate forensic evidence and "
@@ -36,7 +35,7 @@ TEMPLATE = RemediationTemplate(
             "Removes valuable investigation artefacts",
             "Covers tracks after malicious activity",
             "Can trigger organisation incident response",
-            "Enables temporary attack infrastructure"
+            "Enables temporary attack infrastructure",
         ],
         known_threat_actors=["LAPSUS$", "Storm-0501"],
         recent_campaigns=[
@@ -44,14 +43,14 @@ TEMPLATE = RemediationTemplate(
                 name="LAPSUS$ Resource Deletion",
                 year=2022,
                 description="Deleted target's systems and resources in the cloud to trigger incident response",
-                reference_url="https://attack.mitre.org/groups/G1004/"
+                reference_url="https://attack.mitre.org/groups/G1004/",
             ),
             Campaign(
                 name="Storm-0501 Mass Deletion",
                 year=2024,
                 description="Conducted mass deletion of cloud data stores and resources from Azure subscriptions",
-                reference_url="https://attack.mitre.org/groups/G1053/"
-            )
+                reference_url="https://attack.mitre.org/groups/G1053/",
+            ),
         ],
         prevalence="moderate",
         trend="stable",
@@ -66,13 +65,12 @@ TEMPLATE = RemediationTemplate(
             "Impaired incident investigation",
             "Operational disruption",
             "Potential data loss",
-            "Compliance audit challenges"
+            "Compliance audit challenges",
         ],
         typical_attack_phase="defence_evasion",
         often_precedes=["T1485", "T1490"],
-        often_follows=["T1578.002", "T1496.001", "T1530"]
+        often_follows=["T1578.002", "T1496.001", "T1530"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - EC2 Instance Termination
         DetectionStrategy(
@@ -86,11 +84,9 @@ TEMPLATE = RemediationTemplate(
                 event_pattern={
                     "source": ["aws.ec2"],
                     "detail-type": ["AWS API Call via CloudTrail"],
-                    "detail": {
-                        "eventName": ["TerminateInstances"]
-                    }
+                    "detail": {"eventName": ["TerminateInstances"]},
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect EC2 instance termination
 
 Parameters:
@@ -130,8 +126,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect EC2 instance termination
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect EC2 instance termination
 
 variable "alert_email" {
   type = string
@@ -177,7 +173,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="high",
                 alert_title="EC2 Instance Terminated",
                 alert_description_template="EC2 instance {instanceId} terminated by {userIdentity.arn}.",
@@ -187,7 +183,7 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Review if instance was recently created (temporary attack infrastructure)",
                     "Check if snapshots exist for forensic recovery",
                     "Correlate with other suspicious activities",
-                    "Review CloudTrail logs for the instance before termination"
+                    "Review CloudTrail logs for the instance before termination",
                 ],
                 containment_actions=[
                     "Review termination permissions and restrict if needed",
@@ -195,8 +191,8 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Recover from snapshots if available",
                     "Investigate user account for compromise",
                     "Enable EC2 instance termination notifications",
-                    "Implement Service Control Policies to prevent mass deletions"
-                ]
+                    "Implement Service Control Policies to prevent mass deletions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist auto-scaling and deployment automation accounts",
@@ -205,9 +201,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         # Strategy 2: AWS - Suspicious Instance Deletion Pattern
         DetectionStrategy(
             strategy_id="t1578003-aws-suspicious-delete",
@@ -217,13 +212,13 @@ resource "aws_sns_topic_policy" "allow_events" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn, requestParameters.instancesSet.items.0.instanceId as instanceId
+                query="""fields @timestamp, userIdentity.arn, requestParameters.instancesSet.items.0.instanceId as instanceId
 | filter eventSource = "ec2.amazonaws.com"
 | filter eventName = "TerminateInstances"
 | sort @timestamp desc
 | stats count(*) as deletions by userIdentity.arn, bin(5m)
-| filter deletions > 3''',
-                terraform_template='''# Detect suspicious instance deletion patterns (mass deletions)
+| filter deletions > 3""",
+                terraform_template="""# Detect suspicious instance deletion patterns (mass deletions)
 
 variable "cloudtrail_log_group" {
   type = string
@@ -269,7 +264,7 @@ resource "aws_cloudwatch_metric_alarm" "mass_deletion" {
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="Mass Instance Deletion Detected",
                 alert_description_template="Multiple instances deleted by {userIdentity.arn} in short timeframe.",
@@ -279,15 +274,15 @@ resource "aws_cloudwatch_metric_alarm" "mass_deletion" {
                     "Review CloudTrail for authentication anomalies",
                     "Check for new/infrequently used accounts",
                     "Review geographic origin of deletions",
-                    "Correlate with snapshot creation events"
+                    "Correlate with snapshot creation events",
                 ],
                 containment_actions=[
                     "Suspend compromised user account",
                     "Enable termination protection on remaining instances",
                     "Recover critical instances from snapshots",
                     "Review and restrict termination permissions",
-                    "Enable MFA for high-privilege operations"
-                ]
+                    "Enable MFA for high-privilege operations",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Adjust threshold based on normal decommissioning patterns",
@@ -296,9 +291,8 @@ resource "aws_cloudwatch_metric_alarm" "mass_deletion" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail logging to CloudWatch"]
+            prerequisites=["CloudTrail logging to CloudWatch"],
         ),
-
         # Strategy 3: AWS - RDS Instance Deletion
         DetectionStrategy(
             strategy_id="t1578003-aws-rds-delete",
@@ -311,11 +305,9 @@ resource "aws_cloudwatch_metric_alarm" "mass_deletion" {
                 event_pattern={
                     "source": ["aws.rds"],
                     "detail-type": ["AWS API Call via CloudTrail"],
-                    "detail": {
-                        "eventName": ["DeleteDBInstance", "DeleteDBCluster"]
-                    }
+                    "detail": {"eventName": ["DeleteDBInstance", "DeleteDBCluster"]},
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect RDS instance deletion
 
 Parameters:
@@ -355,8 +347,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# Detect RDS instance deletion
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# Detect RDS instance deletion
 
 variable "alert_email" {
   type = string
@@ -402,7 +394,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="RDS Instance Deleted",
                 alert_description_template="RDS database {dBInstanceIdentifier} deleted by {userIdentity.arn}.",
@@ -411,15 +403,15 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Check who deleted the database",
                     "Review if final snapshot was created",
                     "Check for recent suspicious activity",
-                    "Review data sensitivity and compliance requirements"
+                    "Review data sensitivity and compliance requirements",
                 ],
                 containment_actions=[
                     "Restore from snapshot if unauthorised",
                     "Review RDS deletion permissions",
                     "Enable deletion protection on databases",
                     "Investigate user account for compromise",
-                    "Require final snapshots for deletions"
-                ]
+                    "Require final snapshots for deletions",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist approved database decommissioning processes",
@@ -428,9 +420,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled"]
+            prerequisites=["CloudTrail enabled"],
         ),
-
         # Strategy 4: GCP - GCE Instance Deletion
         DetectionStrategy(
             strategy_id="t1578003-gcp-gce-delete",
@@ -442,7 +433,7 @@ resource "aws_sns_topic_policy" "allow_events" {
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName="compute.instances.delete"''',
-                gcp_terraform_template='''# GCP: Detect GCE instance deletion
+                gcp_terraform_template="""# GCP: Detect GCE instance deletion
 
 variable "project_id" {
   type = string
@@ -488,7 +479,7 @@ resource "google_monitoring_alert_policy" "gce_delete" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: GCE Instance Deleted",
                 alert_description_template="GCE instance was deleted.",
@@ -497,15 +488,15 @@ resource "google_monitoring_alert_policy" "gce_delete" {
                     "Check who deleted the instance",
                     "Review if instance was recently created",
                     "Check for available snapshots or backups",
-                    "Correlate with other suspicious activities"
+                    "Correlate with other suspicious activities",
                 ],
                 containment_actions=[
                     "Review compute deletion permissions",
                     "Restore from snapshot if needed",
                     "Investigate user account for compromise",
                     "Set organisation policy constraints",
-                    "Enable deletion lien on critical instances"
-                ]
+                    "Enable deletion lien on critical instances",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist auto-scaling and deployment automation",
@@ -514,9 +505,8 @@ resource "google_monitoring_alert_policy" "gce_delete" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
+            prerequisites=["Cloud Audit Logs enabled"],
         ),
-
         # Strategy 5: GCP - Mass Resource Deletion
         DetectionStrategy(
             strategy_id="t1578003-gcp-mass-delete",
@@ -528,7 +518,7 @@ resource "google_monitoring_alert_policy" "gce_delete" {
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName=~"(compute.instances.delete|compute.disks.delete|compute.snapshots.delete|storage.buckets.delete)"''',
-                gcp_terraform_template='''# GCP: Detect mass resource deletion
+                gcp_terraform_template="""# GCP: Detect mass resource deletion
 
 variable "project_id" {
   type = string
@@ -580,7 +570,7 @@ resource "google_monitoring_alert_policy" "mass_delete" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GCP: Mass Resource Deletion Detected",
                 alert_description_template="Multiple GCP resources deleted in short timeframe.",
@@ -589,15 +579,15 @@ resource "google_monitoring_alert_policy" "mass_delete" {
                     "Check if user account is compromised",
                     "Review authentication logs for anomalies",
                     "Check for available backups and snapshots",
-                    "Correlate with other suspicious activities"
+                    "Correlate with other suspicious activities",
                 ],
                 containment_actions=[
                     "Suspend compromised user account",
                     "Restore critical resources from backups",
                     "Review and restrict deletion permissions",
                     "Enable organisation policies to prevent mass deletions",
-                    "Implement deletion lien on critical resources"
-                ]
+                    "Implement deletion lien on critical resources",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Adjust threshold based on normal operations",
@@ -606,17 +596,16 @@ resource "google_monitoring_alert_policy" "mass_delete" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["Cloud Audit Logs enabled"]
-        )
+            prerequisites=["Cloud Audit Logs enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1578003-aws-ec2-delete",
         "t1578003-aws-suspicious-delete",
         "t1578003-aws-rds-delete",
         "t1578003-gcp-gce-delete",
-        "t1578003-gcp-mass-delete"
+        "t1578003-gcp-mass-delete",
     ],
     total_effort_hours=3.5,
-    coverage_improvement="+20% improvement for Defence Evasion tactic"
+    coverage_improvement="+20% improvement for Defence Evasion tactic",
 )

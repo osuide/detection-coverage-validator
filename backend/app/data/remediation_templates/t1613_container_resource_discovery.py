@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Container and Resource Discovery",
     tactic_ids=["TA0007"],
     mitre_url="https://attack.mitre.org/techniques/T1613/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries attempt to discover containers, images, deployments, pods, nodes, "
@@ -37,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Discovers container images for exploitation",
             "Maps network topology between pods",
             "Finds exposed dashboards and APIs",
-            "Required for targeted container attacks"
+            "Required for targeted container attacks",
         ],
         known_threat_actors=["TeamTNT", "Hildegard", "Kinsing"],
         recent_campaigns=[
@@ -45,14 +44,14 @@ TEMPLATE = RemediationTemplate(
                 name="Hildegard Container Discovery",
                 year=2024,
                 description="TeamTNT-associated malware using masscan to search for kubelets and enumerate running containers via Docker/Kubernetes APIs",
-                reference_url="https://attack.mitre.org/techniques/T1613/"
+                reference_url="https://attack.mitre.org/techniques/T1613/",
             ),
             Campaign(
                 name="Container Enumeration Campaigns",
                 year=2024,
                 description="Cloud-focused threat actors systematically enumerating container resources via kubectl and docker ps commands",
-                reference_url="https://unit42.paloaltonetworks.com/2025-cloud-security-alert-trends/"
-            )
+                reference_url="https://unit42.paloaltonetworks.com/2025-cloud-security-alert-trends/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -67,13 +66,12 @@ TEMPLATE = RemediationTemplate(
             "Identifies vulnerable workloads",
             "Enables targeted container attacks",
             "Early warning for container breaches",
-            "May indicate cryptomining preparation"
+            "May indicate cryptomining preparation",
         ],
         typical_attack_phase="discovery",
         often_precedes=["T1525", "T1496.001", "T1190", "T1610"],
-        often_follows=["T1078.004", "T1190", "T1552.005"]
+        often_follows=["T1078.004", "T1190", "T1552.005"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - ECS/EKS API Enumeration
         DetectionStrategy(
@@ -84,13 +82,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, eventName, userIdentity.arn, requestParameters
+                query="""fields @timestamp, eventName, userIdentity.arn, requestParameters
 | filter eventSource in ["ecs.amazonaws.com", "eks.amazonaws.com"]
 | filter eventName in ["ListClusters", "DescribeClusters", "ListTasks", "DescribeTasks", "ListContainerInstances", "DescribeContainerInstances", "ListServices", "DescribeServices", "ListPods", "DescribeNodegroup"]
 | stats count(*) as discovery_count by userIdentity.arn, bin(1h)
 | filter discovery_count > 30
-| sort discovery_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort discovery_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect container and resource discovery
 
 Parameters:
@@ -131,8 +129,8 @@ Resources:
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect container and resource discovery
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect container and resource discovery
 
 variable "cloudtrail_log_group" {
   type = string
@@ -177,7 +175,7 @@ resource "aws_cloudwatch_metric_alarm" "container_discovery" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Container Resource Discovery Detected",
                 alert_description_template="High volume of container/cluster discovery calls from {userIdentity.arn}.",
@@ -187,7 +185,7 @@ resource "aws_cloudwatch_metric_alarm" "container_discovery" {
                     "Review what resources were discovered",
                     "Look for follow-on container access or deployment activity",
                     "Check for Docker/Kubernetes API access logs",
-                    "Verify source IP addresses"
+                    "Verify source IP addresses",
                 ],
                 containment_actions=[
                     "Review user's ECS/EKS permissions",
@@ -195,8 +193,8 @@ resource "aws_cloudwatch_metric_alarm" "container_discovery" {
                     "Consider restricting list/describe permissions",
                     "Enable EKS audit logging if not enabled",
                     "Review container security posture",
-                    "Audit recent container activity"
-                ]
+                    "Audit recent container activity",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist container monitoring tools, CSPM scanners, and orchestration platforms",
@@ -205,9 +203,8 @@ resource "aws_cloudwatch_metric_alarm" "container_discovery" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail logging to CloudWatch", "ECS/EKS in use"]
+            prerequisites=["CloudTrail logging to CloudWatch", "ECS/EKS in use"],
         ),
-
         # Strategy 2: AWS - Kubernetes API Server Audit Logs
         DetectionStrategy(
             strategy_id="t1613-aws-k8s-audit",
@@ -217,13 +214,13 @@ resource "aws_cloudwatch_metric_alarm" "container_discovery" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, user.username, verb, objectRef.resource, objectRef.name, sourceIPs
+                query="""fields @timestamp, user.username, verb, objectRef.resource, objectRef.name, sourceIPs
 | filter verb in ["list", "get"]
 | filter objectRef.resource in ["pods", "nodes", "deployments", "services", "containers", "namespaces", "secrets"]
 | stats count(*) as discovery_count by user.username, bin(30m)
 | filter discovery_count > 50
-| sort discovery_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort discovery_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect Kubernetes resource discovery
 
 Parameters:
@@ -265,8 +262,8 @@ Resources:
       Threshold: 100
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect Kubernetes resource discovery
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect Kubernetes resource discovery
 
 variable "eks_audit_log_group" {
   type        = string
@@ -312,7 +309,7 @@ resource "aws_cloudwatch_metric_alarm" "k8s_discovery" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Kubernetes Resource Discovery Detected",
                 alert_description_template="High volume of kubectl get/list commands from {user.username}.",
@@ -322,7 +319,7 @@ resource "aws_cloudwatch_metric_alarm" "k8s_discovery" {
                     "Review what resources were queried",
                     "Check for subsequent exec or deployment commands",
                     "Verify source IP addresses",
-                    "Review RBAC permissions"
+                    "Review RBAC permissions",
                 ],
                 containment_actions=[
                     "Review service account permissions",
@@ -330,8 +327,8 @@ resource "aws_cloudwatch_metric_alarm" "k8s_discovery" {
                     "Enable pod security policies",
                     "Restrict discovery permissions with RBAC",
                     "Review recent pod deployments",
-                    "Check for suspicious containers"
-                ]
+                    "Check for suspicious containers",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist monitoring service accounts, operators, and controllers",
@@ -340,9 +337,8 @@ resource "aws_cloudwatch_metric_alarm" "k8s_discovery" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="$10-15",
-            prerequisites=["EKS cluster with audit logging enabled"]
+            prerequisites=["EKS cluster with audit logging enabled"],
         ),
-
         # Strategy 3: GCP - GKE Enumeration Detection
         DetectionStrategy(
             strategy_id="t1613-gcp-gke",
@@ -354,7 +350,7 @@ resource "aws_cloudwatch_metric_alarm" "k8s_discovery" {
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName=~"(container.clusters.list|container.clusters.get|io.k8s.core.v1.pods.list|io.k8s.core.v1.nodes.list|io.k8s.apps.v1.deployments.list|io.k8s.core.v1.services.list|io.k8s.core.v1.namespaces.list)"''',
-                gcp_terraform_template='''# GCP: Detect container resource discovery
+                gcp_terraform_template="""# GCP: Detect container resource discovery
 
 variable "project_id" {
   type = string
@@ -402,7 +398,7 @@ resource "google_monitoring_alert_policy" "container_discovery" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Container Resource Discovery",
                 alert_description_template="High volume of container/cluster discovery calls detected.",
@@ -412,7 +408,7 @@ resource "google_monitoring_alert_policy" "container_discovery" {
                     "Review what resources were discovered",
                     "Look for follow-on container access",
                     "Check GKE audit logs for kubectl activity",
-                    "Verify source IP addresses"
+                    "Verify source IP addresses",
                 ],
                 containment_actions=[
                     "Review IAM and RBAC permissions",
@@ -420,8 +416,8 @@ resource "google_monitoring_alert_policy" "container_discovery" {
                     "Enable Binary Authorisation",
                     "Restrict discovery permissions",
                     "Review recent container activity",
-                    "Audit service account usage"
-                ]
+                    "Audit service account usage",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist monitoring service accounts, GKE operators, and CSPM tools",
@@ -430,9 +426,8 @@ resource "google_monitoring_alert_policy" "container_discovery" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-15",
-            prerequisites=["Cloud Audit Logs enabled", "GKE in use"]
+            prerequisites=["Cloud Audit Logs enabled", "GKE in use"],
         ),
-
         # Strategy 4: GCP - Kubernetes Audit Logs
         DetectionStrategy(
             strategy_id="t1613-gcp-k8s-audit",
@@ -446,7 +441,7 @@ resource "google_monitoring_alert_policy" "container_discovery" {
                 gcp_logging_query='''resource.type="k8s_cluster"
 protoPayload.request.verb=~"(list|get)"
 protoPayload.resourceName=~"(pods|nodes|deployments|services|namespaces|secrets|containers)"''',
-                gcp_terraform_template='''# GCP: Detect Kubernetes resource discovery
+                gcp_terraform_template="""# GCP: Detect Kubernetes resource discovery
 
 variable "project_id" {
   type = string
@@ -496,7 +491,7 @@ resource "google_monitoring_alert_policy" "k8s_discovery" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Kubernetes Resource Discovery",
                 alert_description_template="High volume kubectl get/list commands detected.",
@@ -506,7 +501,7 @@ resource "google_monitoring_alert_policy" "k8s_discovery" {
                     "Review what resources were queried",
                     "Check for subsequent exec or deployment commands",
                     "Verify source IP and authentication method",
-                    "Review RBAC bindings"
+                    "Review RBAC bindings",
                 ],
                 containment_actions=[
                     "Review service account RBAC permissions",
@@ -514,8 +509,8 @@ resource "google_monitoring_alert_policy" "k8s_discovery" {
                     "Enable GKE security features",
                     "Restrict discovery with RBAC",
                     "Review recent pod deployments",
-                    "Enable Binary Authorisation"
-                ]
+                    "Enable Binary Authorisation",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist monitoring service accounts and GKE controllers",
@@ -524,16 +519,15 @@ resource "google_monitoring_alert_policy" "k8s_discovery" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-15",
-            prerequisites=["GKE cluster with audit logging enabled"]
-        )
+            prerequisites=["GKE cluster with audit logging enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1613-aws-container",
         "t1613-aws-k8s-audit",
         "t1613-gcp-gke",
-        "t1613-gcp-k8s-audit"
+        "t1613-gcp-k8s-audit",
     ],
     total_effort_hours=4.5,
-    coverage_improvement="+12% improvement for Discovery tactic"
+    coverage_improvement="+12% improvement for Discovery tactic",
 )

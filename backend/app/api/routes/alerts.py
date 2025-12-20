@@ -114,9 +114,7 @@ async def get_alert(
     db: AsyncSession = Depends(get_db),
 ):
     """Get a specific alert configuration."""
-    result = await db.execute(
-        select(AlertConfig).where(AlertConfig.id == alert_id)
-    )
+    result = await db.execute(select(AlertConfig).where(AlertConfig.id == alert_id))
     alert = result.scalar_one_or_none()
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
@@ -130,9 +128,7 @@ async def update_alert(
     db: AsyncSession = Depends(get_db),
 ):
     """Update an alert configuration."""
-    result = await db.execute(
-        select(AlertConfig).where(AlertConfig.id == alert_id)
-    )
+    result = await db.execute(select(AlertConfig).where(AlertConfig.id == alert_id))
     alert = result.scalar_one_or_none()
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
@@ -140,7 +136,10 @@ async def update_alert(
     # Update fields
     update_data = alert_in.model_dump(exclude_unset=True)
     if "channels" in update_data:
-        update_data["channels"] = [c.model_dump() if hasattr(c, 'model_dump') else c for c in update_data["channels"]]
+        update_data["channels"] = [
+            c.model_dump() if hasattr(c, "model_dump") else c
+            for c in update_data["channels"]
+        ]
 
     for field, value in update_data.items():
         setattr(alert, field, value)
@@ -157,9 +156,7 @@ async def delete_alert(
     db: AsyncSession = Depends(get_db),
 ):
     """Delete an alert configuration."""
-    result = await db.execute(
-        select(AlertConfig).where(AlertConfig.id == alert_id)
-    )
+    result = await db.execute(select(AlertConfig).where(AlertConfig.id == alert_id))
     alert = result.scalar_one_or_none()
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
@@ -174,9 +171,7 @@ async def activate_alert(
     db: AsyncSession = Depends(get_db),
 ):
     """Activate an alert."""
-    result = await db.execute(
-        select(AlertConfig).where(AlertConfig.id == alert_id)
-    )
+    result = await db.execute(select(AlertConfig).where(AlertConfig.id == alert_id))
     alert = result.scalar_one_or_none()
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
@@ -194,9 +189,7 @@ async def deactivate_alert(
     db: AsyncSession = Depends(get_db),
 ):
     """Deactivate an alert."""
-    result = await db.execute(
-        select(AlertConfig).where(AlertConfig.id == alert_id)
-    )
+    result = await db.execute(select(AlertConfig).where(AlertConfig.id == alert_id))
     alert = result.scalar_one_or_none()
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
@@ -215,9 +208,7 @@ async def test_alert(
     db: AsyncSession = Depends(get_db),
 ):
     """Test an alert by sending a test notification."""
-    result = await db.execute(
-        select(AlertConfig).where(AlertConfig.id == alert_id)
-    )
+    result = await db.execute(select(AlertConfig).where(AlertConfig.id == alert_id))
     alert = result.scalar_one_or_none()
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
@@ -267,6 +258,7 @@ async def test_alert(
 
 # Alert History endpoints
 
+
 @router.get("/history/", response_model=AlertHistoryListResponse)
 async def list_alert_history(
     cloud_account_id: Optional[UUID] = None,
@@ -283,7 +275,9 @@ async def list_alert_history(
 
     if cloud_account_id:
         query = query.where(AlertHistory.cloud_account_id == cloud_account_id)
-        count_query = count_query.where(AlertHistory.cloud_account_id == cloud_account_id)
+        count_query = count_query.where(
+            AlertHistory.cloud_account_id == cloud_account_id
+        )
 
     if alert_config_id:
         query = query.where(AlertHistory.alert_config_id == alert_config_id)
@@ -320,9 +314,7 @@ async def resolve_alert(
     db: AsyncSession = Depends(get_db),
 ):
     """Mark an alert as resolved."""
-    result = await db.execute(
-        select(AlertHistory).where(AlertHistory.id == history_id)
-    )
+    result = await db.execute(select(AlertHistory).where(AlertHistory.id == history_id))
     history = result.scalar_one_or_none()
     if not history:
         raise HTTPException(status_code=404, detail="Alert history not found")

@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Resource Hijacking: Bandwidth Hijacking",
     tactic_ids=["TA0040"],
     mitre_url="https://attack.mitre.org/techniques/T1496/002/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries exploit compromised systems' network bandwidth for "
@@ -38,7 +37,7 @@ TEMPLATE = RemediationTemplate(
             "Victim pays bandwidth and egress costs",
             "Distributed network conceals attacker identity",
             "Enables large-scale DDoS campaigns",
-            "Facilitates internet-wide reconnaissance"
+            "Facilitates internet-wide reconnaissance",
         ],
         known_threat_actors=[],
         recent_campaigns=[],
@@ -54,13 +53,12 @@ TEMPLATE = RemediationTemplate(
             "Significant data transfer cost increases",
             "Legal/reputational risk from illegal activity",
             "Degraded network performance",
-            "Indicates broader infrastructure compromise"
+            "Indicates broader infrastructure compromise",
         ],
         typical_attack_phase="impact",
         often_precedes=[],
-        often_follows=["T1078.004", "T1190", "T1133"]
+        often_follows=["T1078.004", "T1190", "T1133"],
     ),
-
     detection_strategies=[
         DetectionStrategy(
             strategy_id="t1496002-aws-vpc-flow",
@@ -70,12 +68,12 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcaddr, dstaddr, dstport, bytes, packets, action
+                query="""fields @timestamp, srcaddr, dstaddr, dstport, bytes, packets, action
 | filter action = "ACCEPT"
 | stats sum(bytes) as total_bytes, sum(packets) as total_packets by srcaddr, bin(5m)
 | filter total_bytes > 1000000000  # >1GB in 5 minutes
-| sort total_bytes desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort total_bytes desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect bandwidth hijacking via VPC Flow Logs
 
 Parameters:
@@ -113,8 +111,8 @@ Resources:
       Threshold: 5000000000  # 5GB in 5 minutes
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]''',
-                terraform_template='''# Detect bandwidth hijacking via VPC Flow Logs
+      AlarmActions: [!Ref AlertTopic]""",
+                terraform_template="""# Detect bandwidth hijacking via VPC Flow Logs
 
 variable "vpc_flow_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -151,7 +149,7 @@ resource "aws_cloudwatch_metric_alarm" "bandwidth_hijacking" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.alerts.arn]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Potential Bandwidth Hijacking Detected",
                 alert_description_template="Instance {srcaddr} transferred {total_bytes} bytes in 5 minutes.",
@@ -159,14 +157,14 @@ resource "aws_cloudwatch_metric_alarm" "bandwidth_hijacking" {
                     "Review VPC Flow Logs for destination addresses",
                     "Check for connections to known proxy services or Tor endpoints",
                     "Identify processes generating high network traffic",
-                    "Review network connections for scanning patterns (masscan, curl, wget)"
+                    "Review network connections for scanning patterns (masscan, curl, wget)",
                 ],
                 containment_actions=[
                     "Block suspicious outbound traffic via security groups",
                     "Isolate affected instances",
                     "Terminate malicious processes",
-                    "Review and rotate compromised credentials"
-                ]
+                    "Review and rotate compromised credentials",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate high-bandwidth workloads (backups, data transfers)",
@@ -175,9 +173,8 @@ resource "aws_cloudwatch_metric_alarm" "bandwidth_hijacking" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-30",
-            prerequisites=["VPC Flow Logs enabled"]
+            prerequisites=["VPC Flow Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1496002-aws-guardduty-backdoor",
             name="GuardDuty Backdoor/Trojan Detection",
@@ -190,9 +187,9 @@ resource "aws_cloudwatch_metric_alarm" "bandwidth_hijacking" {
                     "Backdoor:EC2/C&CActivity.B!DNS",
                     "Trojan:EC2/BlackholeTraffic",
                     "UnauthorizedAccess:EC2/TorRelay",
-                    "Backdoor:EC2/DenialOfService.Tcp"
+                    "Backdoor:EC2/DenialOfService.Tcp",
                 ],
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty backdoor detection for bandwidth hijacking
 
 Parameters:
@@ -236,8 +233,8 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic''',
-                terraform_template='''# GuardDuty backdoor detection for bandwidth hijacking
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# GuardDuty backdoor detection for bandwidth hijacking
 
 variable "alert_email" { type = string }
 
@@ -285,7 +282,7 @@ resource "aws_sns_topic_policy" "allow_events" {
       Resource  = aws_sns_topic.alerts.arn
     }]
   })
-}''',
+}""",
                 alert_severity="critical",
                 alert_title="GuardDuty: Backdoor/Trojan Detected",
                 alert_description_template="Backdoor or trojan activity detected on {resource}, potentially used for bandwidth hijacking.",
@@ -293,14 +290,14 @@ resource "aws_sns_topic_policy" "allow_events" {
                     "Review GuardDuty finding details",
                     "Check for Tor relay or proxy service connections",
                     "Identify malware processes on affected instances",
-                    "Review network traffic patterns for DDoS or scanning activity"
+                    "Review network traffic patterns for DDoS or scanning activity",
                 ],
                 containment_actions=[
                     "Isolate affected instances immediately",
                     "Terminate malicious processes",
                     "Block C&C server communications",
-                    "Review and remediate initial access vector"
-                ]
+                    "Review and remediate initial access vector",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="GuardDuty has low false positive rate for backdoors",
@@ -309,9 +306,8 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$4/million events",
-            prerequisites=["GuardDuty enabled"]
+            prerequisites=["GuardDuty enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1496002-aws-suspicious-connections",
             name="AWS Suspicious Long-Lived Connections Detection",
@@ -320,13 +316,13 @@ resource "aws_sns_topic_policy" "allow_events" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcaddr, dstaddr, dstport, start, end
+                query="""fields @timestamp, srcaddr, dstaddr, dstport, start, end
 | filter action = "ACCEPT"
 | filter (end - start) > 3600  # Connections >1 hour
 | stats count(*) as connection_count by srcaddr, dstaddr, dstport
 | filter connection_count > 10
-| sort connection_count desc''',
-                terraform_template='''# Detect suspicious long-lived connections
+| sort connection_count desc""",
+                terraform_template="""# Detect suspicious long-lived connections
 
 variable "vpc_flow_log_group" { type = string }
 variable "alert_email" { type = string }
@@ -355,7 +351,7 @@ resource "aws_cloudwatch_query_definition" "long_connections" {
     | filter connection_count > 10
     | sort connection_count desc
   EOT
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Suspicious Long-Lived Connections Detected",
                 alert_description_template="Instance {srcaddr} has {connection_count} long-lived connections to {dstaddr}.",
@@ -363,14 +359,14 @@ resource "aws_cloudwatch_query_definition" "long_connections" {
                     "Identify unsigned applications maintaining connections",
                     "Check for connections to known proxy services",
                     "Review process list for curl, wget, or custom tools",
-                    "Analyse traffic patterns for proxy or botnet activity"
+                    "Analyse traffic patterns for proxy or botnet activity",
                 ],
                 containment_actions=[
                     "Block suspicious destination addresses",
                     "Terminate malicious processes",
                     "Review instance for malware",
-                    "Check for compromised credentials"
-                ]
+                    "Check for compromised credentials",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate persistent connections (monitoring, streaming)",
@@ -379,9 +375,8 @@ resource "aws_cloudwatch_query_definition" "long_connections" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$5-15",
-            prerequisites=["VPC Flow Logs enabled"]
+            prerequisites=["VPC Flow Logs enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1496002-gcp-network-traffic",
             name="GCP High Network Traffic Detection",
@@ -391,10 +386,10 @@ resource "aws_cloudwatch_query_definition" "long_connections" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
+                gcp_logging_query="""resource.type="gce_instance"
 metric.type="compute.googleapis.com/instance/network/sent_bytes_count"
-metric.value > 5000000000''',
-                gcp_terraform_template='''# GCP: Detect bandwidth hijacking via network egress
+metric.value > 5000000000""",
+                gcp_terraform_template="""# GCP: Detect bandwidth hijacking via network egress
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -451,7 +446,7 @@ resource "google_monitoring_alert_policy" "suspicious_connections" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Bandwidth Hijacking Detected",
                 alert_description_template="VM instance generating excessive network egress traffic.",
@@ -459,14 +454,14 @@ resource "google_monitoring_alert_policy" "suspicious_connections" {
                     "Review VPC Flow Logs for destination addresses",
                     "Check for Tor relay or proxy service connections",
                     "Identify processes generating high traffic",
-                    "Review Cloud Audit Logs for suspicious activity"
+                    "Review Cloud Audit Logs for suspicious activity",
                 ],
                 containment_actions=[
                     "Apply restrictive firewall rules",
                     "Stop affected VM instances",
                     "Terminate malicious processes",
-                    "Review and rotate compromised credentials"
-                ]
+                    "Review and rotate compromised credentials",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate high-bandwidth workloads",
@@ -475,9 +470,8 @@ resource "google_monitoring_alert_policy" "suspicious_connections" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$15-25",
-            prerequisites=["VPC Flow Logs enabled", "Cloud Monitoring enabled"]
+            prerequisites=["VPC Flow Logs enabled", "Cloud Monitoring enabled"],
         ),
-
         DetectionStrategy(
             strategy_id="t1496002-container-egress",
             name="Container Excessive Egress Detection",
@@ -486,13 +480,13 @@ resource "google_monitoring_alert_policy" "suspicious_connections" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''# For ECS/EKS - monitor network metrics
+                query="""# For ECS/EKS - monitor network metrics
 fields @timestamp, kubernetes.pod_name, kubernetes.namespace_name
 | filter @message like /NetworkTx/
 | stats sum(value) as total_egress by kubernetes.pod_name, bin(5m)
 | filter total_egress > 1000000000
-| sort total_egress desc''',
-                terraform_template='''# Detect excessive container egress traffic
+| sort total_egress desc""",
+                terraform_template="""# Detect excessive container egress traffic
 
 variable "alert_email" { type = string }
 
@@ -520,8 +514,8 @@ resource "aws_cloudwatch_metric_alarm" "ecs_high_egress" {
 }
 
 # For EKS - use Container Insights
-# Enable Container Insights on your EKS cluster first''',
-                gcp_terraform_template='''# GCP: Detect excessive container egress
+# Enable Container Insights on your EKS cluster first""",
+                gcp_terraform_template="""# GCP: Detect excessive container egress
 
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
@@ -550,7 +544,7 @@ resource "google_monitoring_alert_policy" "container_egress" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Container Bandwidth Hijacking Detected",
                 alert_description_template="Container {pod_name} generated {total_egress} bytes egress traffic.",
@@ -558,14 +552,14 @@ resource "google_monitoring_alert_policy" "container_egress" {
                     "Identify container image and running processes",
                     "Review container logs for suspicious activity",
                     "Check network connections to external services",
-                    "Scan container image for malware or backdoors"
+                    "Scan container image for malware or backdoors",
                 ],
                 containment_actions=[
                     "Stop and remove affected containers",
                     "Block container image from registry",
                     "Apply network policies to restrict egress",
-                    "Review container deployment pipeline"
-                ]
+                    "Review container deployment pipeline",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist containers with legitimate high bandwidth requirements",
@@ -574,11 +568,16 @@ resource "google_monitoring_alert_policy" "container_egress" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Container Insights (AWS) or GKE Monitoring (GCP)"]
-        )
+            prerequisites=["Container Insights (AWS) or GKE Monitoring (GCP)"],
+        ),
     ],
-
-    recommended_order=["t1496002-aws-guardduty-backdoor", "t1496002-aws-vpc-flow", "t1496002-gcp-network-traffic", "t1496002-aws-suspicious-connections", "t1496002-container-egress"],
+    recommended_order=[
+        "t1496002-aws-guardduty-backdoor",
+        "t1496002-aws-vpc-flow",
+        "t1496002-gcp-network-traffic",
+        "t1496002-aws-suspicious-connections",
+        "t1496002-container-egress",
+    ],
     total_effort_hours=6.0,
-    coverage_improvement="+25% improvement for Impact tactic"
+    coverage_improvement="+25% improvement for Impact tactic",
 )

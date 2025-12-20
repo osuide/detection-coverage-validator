@@ -43,12 +43,16 @@ class ValidationResult:
     @property
     def has_critical_issues(self) -> bool:
         """Check if there are any critical issues."""
-        return any(issue.severity == ValidationSeverity.CRITICAL for issue in self.issues)
+        return any(
+            issue.severity == ValidationSeverity.CRITICAL for issue in self.issues
+        )
 
     @property
     def has_warnings(self) -> bool:
         """Check if there are any warnings."""
-        return any(issue.severity == ValidationSeverity.WARNING for issue in self.issues)
+        return any(
+            issue.severity == ValidationSeverity.WARNING for issue in self.issues
+        )
 
     def add_issue(
         self,
@@ -58,12 +62,14 @@ class ValidationResult:
         details: Optional[dict[str, Any]] = None,
     ):
         """Add a validation issue."""
-        self.issues.append(ValidationIssue(
-            message=message,
-            severity=severity,
-            code=code,
-            details=details,
-        ))
+        self.issues.append(
+            ValidationIssue(
+                message=message,
+                severity=severity,
+                code=code,
+                details=details,
+            )
+        )
 
 
 class BaseValidator(ABC):

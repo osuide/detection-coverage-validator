@@ -22,7 +22,6 @@ TEMPLATE = RemediationTemplate(
     technique_name="Scheduled Transfer",
     tactic_ids=["TA0010"],  # Exfiltration
     mitre_url="https://attack.mitre.org/techniques/T1029/",
-
     threat_context=ThreatContext(
         description=(
             "Adversaries schedule data exfiltration during specific times or intervals to blend "
@@ -41,28 +40,33 @@ TEMPLATE = RemediationTemplate(
             "Enables continuous data theft without manual intervention",
             "Mimics normal business operations and backup schedules",
             "Exploits reduced monitoring during specific time windows",
-            "Maintains persistent access for ongoing data collection"
+            "Maintains persistent access for ongoing data collection",
         ],
-        known_threat_actors=["Higaisa", "ComRAT operators", "Turla", "LightNeuron operators"],
+        known_threat_actors=[
+            "Higaisa",
+            "ComRAT operators",
+            "Turla",
+            "LightNeuron operators",
+        ],
         recent_campaigns=[
             Campaign(
                 name="Higaisa Scheduled Beaconing",
                 year=2020,
                 description="Higaisa group configured malware to send victim identifiers to C2 every 10 minutes at scheduled intervals",
-                reference_url="https://attack.mitre.org/groups/G0126/"
+                reference_url="https://attack.mitre.org/groups/G0126/",
             ),
             Campaign(
                 name="ComRAT Business Hours Exfiltration",
                 year=2020,
                 description="ComRAT malware programmed to operate only during business hours (9-5, Monday-Friday) to evade detection",
-                reference_url="https://attack.mitre.org/software/S0126/"
+                reference_url="https://attack.mitre.org/software/S0126/",
             ),
             Campaign(
                 name="LightNeuron Time-Based Operations",
                 year=2019,
                 description="LightNeuron backdoor configured for nighttime or business-hours exfiltration based on operator preference",
-                reference_url="https://attack.mitre.org/software/S0395/"
-            )
+                reference_url="https://attack.mitre.org/software/S0395/",
+            ),
         ],
         prevalence="common",
         trend="increasing",
@@ -81,13 +85,12 @@ TEMPLATE = RemediationTemplate(
             "Extended breach periods leading to significant data loss",
             "Compliance violations from ongoing unauthorised data access",
             "Increased cloud egress costs from recurring transfers",
-            "Reputational damage from sophisticated attack exposure"
+            "Reputational damage from sophisticated attack exposure",
         ],
         typical_attack_phase="exfiltration",
         often_precedes=[],
-        often_follows=["T1074", "T1560", "T1020", "T1048"]
+        often_follows=["T1074", "T1560", "T1020", "T1048"],
     ),
-
     detection_strategies=[
         # Strategy 1: AWS - Recurring Network Transfer Pattern Detection
         DetectionStrategy(
@@ -98,13 +101,13 @@ TEMPLATE = RemediationTemplate(
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, srcAddr, dstAddr, bytes, packets
+                query="""fields @timestamp, srcAddr, dstAddr, bytes, packets
 | filter action = "ACCEPT" and bytes > 1048576
 | stats sum(bytes) as total_bytes, count(*) as transfer_count by srcAddr, dstAddr, bin(1h)
 | stats count(*) as recurring_patterns, avg(total_bytes) as avg_bytes by srcAddr, dstAddr
 | filter recurring_patterns >= 3
-| sort recurring_patterns desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort recurring_patterns desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect recurring scheduled data transfers indicating exfiltration
 
 Parameters:
@@ -157,8 +160,8 @@ Resources:
 Outputs:
   AlertTopicArn:
     Value: !Ref AlertTopic
-    Description: SNS Topic ARN for scheduled transfer alerts''',
-                terraform_template='''# Detect recurring scheduled data transfers
+    Description: SNS Topic ARN for scheduled transfer alerts""",
+                terraform_template="""# Detect recurring scheduled data transfers
 
 variable "alert_email" {
   type        = string
@@ -215,7 +218,7 @@ resource "aws_cloudwatch_metric_alarm" "recurring_transfer" {
 output "alert_topic_arn" {
   value       = aws_sns_topic.scheduled_transfer_alerts.arn
   description = "SNS Topic ARN for scheduled transfer alerts"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Recurring Scheduled Transfer Pattern Detected",
                 alert_description_template="Recurring data transfers detected from {srcAddr} to {dstAddr}: {recurring_patterns} occurrences with average {avg_bytes} bytes per hour.",
@@ -226,7 +229,7 @@ output "alert_topic_arn" {
                     "Check for correlation with scheduled tasks or cron jobs",
                     "Analyse transferred data volume consistency",
                     "Review CloudTrail for associated API activities",
-                    "Verify against known backup schedules and ETL jobs"
+                    "Verify against known backup schedules and ETL jobs",
                 ],
                 containment_actions=[
                     "Isolate source instance from network",
@@ -235,8 +238,8 @@ output "alert_topic_arn" {
                     "Block destination IP addresses at security group level",
                     "Review and restrict VPC egress rules",
                     "Enable enhanced VPC Flow Log monitoring",
-                    "Implement network segmentation to limit data access"
-                ]
+                    "Implement network segmentation to limit data access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known backup schedules, ETL pipelines, and data synchronisation jobs. Adjust byte thresholds based on legitimate transfer volumes.",
@@ -245,9 +248,8 @@ output "alert_topic_arn" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",
             estimated_monthly_cost="$8-15",
-            prerequisites=["VPC Flow Logs enabled", "CloudWatch Logs Insights"]
+            prerequisites=["VPC Flow Logs enabled", "CloudWatch Logs Insights"],
         ),
-
         # Strategy 2: AWS - Scheduled Task and EventBridge Rule Monitoring
         DetectionStrategy(
             strategy_id="t1029-aws-scheduled-task",
@@ -267,11 +269,11 @@ output "alert_topic_arn" {
                             "CreateFunction20150331",
                             "UpdateFunctionCode20150331v2",
                             "RegisterTaskDefinition",
-                            "CreateScheduledTask"
+                            "CreateScheduledTask",
                         ]
-                    }
+                    },
                 },
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Monitor scheduled task creation for potential exfiltration automation
 
 Parameters:
@@ -326,8 +328,8 @@ Resources:
 Outputs:
   RuleArn:
     Value: !GetAtt ScheduledTaskRule.Arn
-    Description: EventBridge Rule ARN''',
-                terraform_template='''# Monitor scheduled task creation for exfiltration
+    Description: EventBridge Rule ARN""",
+                terraform_template="""# Monitor scheduled task creation for exfiltration
 
 variable "alert_email" {
   type        = string
@@ -390,7 +392,7 @@ resource "aws_sns_topic_policy" "allow_events" {
 output "rule_arn" {
   value       = aws_cloudwatch_event_rule.scheduled_task.arn
   description = "EventBridge Rule ARN"
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="Scheduled Task or Rule Created",
                 alert_description_template="Scheduled task created: {eventName} by {userIdentity.arn}. Rule: {requestParameters.name}, Schedule: {requestParameters.scheduleExpression}",
@@ -401,7 +403,7 @@ output "rule_arn" {
                     "Check IAM permissions of the target execution role",
                     "Review code or configuration for external network calls",
                     "Verify business justification for the automation",
-                    "Check for similar patterns across the environment"
+                    "Check for similar patterns across the environment",
                 ],
                 containment_actions=[
                     "Disable suspicious EventBridge rules immediately",
@@ -410,8 +412,8 @@ output "rule_arn" {
                     "Implement approval workflows for scheduled tasks",
                     "Enable code signing for Lambda functions",
                     "Review all existing scheduled rules and tasks",
-                    "Configure VPC endpoints to restrict external access"
-                ]
+                    "Configure VPC endpoints to restrict external access",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist authorised CI/CD pipelines, infrastructure automation tools, and known operational schedules. Focus on rules with unusual timing patterns or external targets.",
@@ -420,9 +422,8 @@ output "rule_arn" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled with management events"]
+            prerequisites=["CloudTrail enabled with management events"],
         ),
-
         # Strategy 3: AWS - Time-Based S3 Upload Pattern Detection
         DetectionStrategy(
             strategy_id="t1029-aws-s3-timing",
@@ -432,12 +433,12 @@ output "rule_arn" {
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query='''fields @timestamp, userIdentity.arn, requestParameters.bucketName, requestParameters.key, hour(@timestamp) as upload_hour
+                query="""fields @timestamp, userIdentity.arn, requestParameters.bucketName, requestParameters.key, hour(@timestamp) as upload_hour
 | filter eventName in ["PutObject", "CopyObject", "CompleteMultipartUpload"]
 | stats count(*) as upload_count, sum(requestParameters.contentLength) as total_bytes by userIdentity.arn, requestParameters.bucketName, upload_hour
 | filter upload_count > 20
-| sort upload_hour, upload_count desc''',
-                cloudformation_template='''AWSTemplateFormatVersion: '2010-09-09'
+| sort upload_hour, upload_count desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect time-based S3 upload patterns for scheduled exfiltration
 
 Parameters:
@@ -489,8 +490,8 @@ Resources:
 
 Outputs:
   AlertTopicArn:
-    Value: !Ref AlertTopic''',
-                terraform_template='''# Detect time-based S3 upload patterns
+    Value: !Ref AlertTopic""",
+                terraform_template="""# Detect time-based S3 upload patterns
 
 variable "alert_email" {
   type        = string
@@ -551,7 +552,7 @@ resource "aws_sns_topic_policy" "allow_events" {
 output "alert_topic_arn" {
   value       = aws_sns_topic.s3_timing_alerts.arn
   description = "SNS Topic ARN for S3 timing alerts"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="Time-Based S3 Upload Pattern Detected",
                 alert_description_template="Scheduled S3 uploads detected from {userIdentity.arn} to bucket {bucketName} during hour {upload_hour}: {upload_count} uploads, {total_bytes} bytes",
@@ -562,7 +563,7 @@ output "alert_topic_arn" {
                     "Check bucket ownership, location, and access policies",
                     "Examine whether uploads correlate with scheduled jobs",
                     "Review IAM role session duration and assume role patterns",
-                    "Check for encryption and data classification of uploaded objects"
+                    "Check for encryption and data classification of uploaded objects",
                 ],
                 containment_actions=[
                     "Revoke credentials for suspicious identities",
@@ -571,8 +572,8 @@ output "alert_topic_arn" {
                     "Enable S3 Object Lock to prevent unauthorised deletion",
                     "Review and restrict s3:PutObject permissions",
                     "Enable S3 Access Logging and Object-level logging",
-                    "Configure S3 event notifications for real-time monitoring"
-                ]
+                    "Configure S3 event notifications for real-time monitoring",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known backup schedules, application logging, and data pipeline jobs. Analyse historical patterns to establish normal upload timing.",
@@ -581,9 +582,11 @@ output "alert_topic_arn" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",
             estimated_monthly_cost="$8-12",
-            prerequisites=["CloudTrail enabled with S3 data events", "S3 bucket logging"]
+            prerequisites=[
+                "CloudTrail enabled with S3 data events",
+                "S3 bucket logging",
+            ],
         ),
-
         # Strategy 4: GCP - Recurring Cloud Storage Transfer Detection
         DetectionStrategy(
             strategy_id="t1029-gcp-recurring-transfer",
@@ -594,14 +597,14 @@ output "alert_topic_arn" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gcs_bucket"
+                gcp_logging_query="""resource.type="gcs_bucket"
 protoPayload.methodName="storage.objects.create"
 protoPayload.serviceName="storage.googleapis.com"
 | extract timestamp, hour from @timestamp
 | stats count() as upload_count, sum(protoPayload.response.size) as total_bytes
   by protoPayload.authenticationInfo.principalEmail, resource.labels.bucket_name, hour
-| upload_count > 10''',
-                gcp_terraform_template='''# GCP: Detect recurring scheduled Cloud Storage transfers
+| upload_count > 10""",
+                gcp_terraform_template="""# GCP: Detect recurring scheduled Cloud Storage transfers
 
 variable "project_id" {
   type        = string
@@ -688,7 +691,7 @@ resource "google_monitoring_alert_policy" "recurring_upload_alert" {
 output "alert_policy_name" {
   value       = google_monitoring_alert_policy.recurring_upload_alert.name
   description = "Alert policy name for recurring transfers"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Recurring Scheduled Transfer Pattern Detected",
                 alert_description_template="Recurring uploads detected to bucket {bucket_name} by {principal_email}: {upload_count} uploads during hour {hour}",
@@ -699,7 +702,7 @@ output "alert_policy_name" {
                     "Check bucket location, storage class, and access controls",
                     "Verify against known scheduled workflows or backup jobs",
                     "Review Cloud Audit Logs for correlated activities",
-                    "Examine service account key creation and usage patterns"
+                    "Examine service account key creation and usage patterns",
                 ],
                 containment_actions=[
                     "Revoke compromised service account keys immediately",
@@ -708,8 +711,8 @@ output "alert_policy_name" {
                     "Enable uniform bucket-level access",
                     "Review and restrict storage.objects.create permissions",
                     "Configure VPC Service Controls to limit data egress",
-                    "Enable Object Versioning for forensic recovery"
-                ]
+                    "Enable Object Versioning for forensic recovery",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known backup systems, data pipelines, and application logging patterns. Adjust thresholds based on legitimate upload frequencies.",
@@ -718,9 +721,11 @@ output "alert_policy_name" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-18",
-            prerequisites=["Cloud Audit Logs enabled", "Cloud Storage data access logs"]
+            prerequisites=[
+                "Cloud Audit Logs enabled",
+                "Cloud Storage data access logs",
+            ],
         ),
-
         # Strategy 5: GCP - Cloud Scheduler and Function Monitoring
         DetectionStrategy(
             strategy_id="t1029-gcp-scheduler",
@@ -731,14 +736,14 @@ output "alert_policy_name" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type=("cloud_scheduler_job" OR "cloud_function")
+                gcp_logging_query="""resource.type=("cloud_scheduler_job" OR "cloud_function")
 (protoPayload.methodName="google.cloud.scheduler.v1.CloudScheduler.CreateJob" OR
  protoPayload.methodName="google.cloud.scheduler.v1.CloudScheduler.UpdateJob" OR
  protoPayload.methodName="google.cloud.functions.v1.CloudFunctionsService.CreateFunction" OR
  protoPayload.methodName="google.cloud.functions.v1.CloudFunctionsService.UpdateFunction")
 (protoPayload.serviceName="cloudscheduler.googleapis.com" OR
- protoPayload.serviceName="cloudfunctions.googleapis.com")''',
-                gcp_terraform_template='''# GCP: Monitor Cloud Scheduler and Function creation
+ protoPayload.serviceName="cloudfunctions.googleapis.com")""",
+                gcp_terraform_template="""# GCP: Monitor Cloud Scheduler and Function creation
 
 variable "project_id" {
   type        = string
@@ -827,7 +832,7 @@ resource "google_monitoring_alert_policy" "scheduled_task_alert" {
 output "alert_policy_name" {
   value       = google_monitoring_alert_policy.scheduled_task_alert.name
   description = "Alert policy name"
-}''',
+}""",
                 alert_severity="medium",
                 alert_title="GCP: Cloud Scheduler Job or Function Modified",
                 alert_description_template="Scheduled task modified: {method_name} by {principal_email}. Resource: {resource_name}",
@@ -838,7 +843,7 @@ output "alert_policy_name" {
                     "Check service account permissions and IAM bindings",
                     "Review function source code for external network calls",
                     "Verify business justification for the automation",
-                    "Check for similar patterns across projects"
+                    "Check for similar patterns across projects",
                 ],
                 containment_actions=[
                     "Pause or delete suspicious Cloud Scheduler jobs",
@@ -847,8 +852,8 @@ output "alert_policy_name" {
                     "Implement organisation policy constraints on automation",
                     "Review all existing scheduled jobs and functions",
                     "Configure VPC Service Controls to restrict egress",
-                    "Enable function source code repository tracking"
-                ]
+                    "Enable function source code repository tracking",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist authorised CI/CD systems, infrastructure automation, and known operational schedules. Focus on functions with unusual timing or external targets.",
@@ -857,9 +862,10 @@ output "alert_policy_name" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
             estimated_monthly_cost="$10-18",
-            prerequisites=["Cloud Audit Logs enabled for Cloud Scheduler and Cloud Functions"]
+            prerequisites=[
+                "Cloud Audit Logs enabled for Cloud Scheduler and Cloud Functions"
+            ],
         ),
-
         # Strategy 6: GCP - VPC Flow Log Time-Based Pattern Detection
         DetectionStrategy(
             strategy_id="t1029-gcp-vpc-timing",
@@ -870,14 +876,14 @@ output "alert_policy_name" {
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_subnetwork"
+                gcp_logging_query="""resource.type="gce_subnetwork"
 logName:"vpc_flows"
 jsonPayload.bytes_sent > 1048576
 | extract hour from timestamp
 | stats count() as transfer_count, sum(jsonPayload.bytes_sent) as total_bytes
   by jsonPayload.connection.src_ip, jsonPayload.connection.dest_ip, hour
-| transfer_count > 5''',
-                gcp_terraform_template='''# GCP: Detect time-based network transfer patterns
+| transfer_count > 5""",
+                gcp_terraform_template="""# GCP: Detect time-based network transfer patterns
 
 variable "project_id" {
   type        = string
@@ -965,7 +971,7 @@ resource "google_monitoring_alert_policy" "timed_transfer_alert" {
 output "alert_policy_name" {
   value       = google_monitoring_alert_policy.timed_transfer_alert.name
   description = "Alert policy name for timed transfers"
-}''',
+}""",
                 alert_severity="high",
                 alert_title="GCP: Time-Based Network Transfer Pattern Detected",
                 alert_description_template="Recurring network transfers detected from {src_ip} to {dest_ip}: {transfer_count} transfers during hour {hour}",
@@ -976,7 +982,7 @@ output "alert_policy_name" {
                     "Check for correlation with scheduled jobs or cron tasks",
                     "Examine firewall rules and network policies",
                     "Verify against known backup schedules and data pipelines",
-                    "Review Cloud Audit Logs for related API activities"
+                    "Review Cloud Audit Logs for related API activities",
                 ],
                 containment_actions=[
                     "Isolate source instance from network",
@@ -985,8 +991,8 @@ output "alert_policy_name" {
                     "Review and restrict egress firewall rules",
                     "Implement VPC Service Controls for perimeter security",
                     "Enable Private Google Access to restrict external egress",
-                    "Configure Cloud NAT logs for enhanced visibility"
-                ]
+                    "Configure Cloud NAT logs for enhanced visibility",
+                ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known backup destinations, CDN endpoints, and data synchronisation targets. Adjust byte thresholds based on normal traffic patterns.",
@@ -995,18 +1001,17 @@ output "alert_policy_name" {
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
             estimated_monthly_cost="$12-20",
-            prerequisites=["VPC Flow Logs enabled on subnets", "Cloud Logging enabled"]
-        )
+            prerequisites=["VPC Flow Logs enabled on subnets", "Cloud Logging enabled"],
+        ),
     ],
-
     recommended_order=[
         "t1029-aws-recurring-transfer",
         "t1029-gcp-recurring-transfer",
         "t1029-aws-scheduled-task",
         "t1029-gcp-scheduler",
         "t1029-aws-s3-timing",
-        "t1029-gcp-vpc-timing"
+        "t1029-gcp-vpc-timing",
     ],
     total_effort_hours=6.0,
-    coverage_improvement="+22% improvement for Exfiltration tactic detection"
+    coverage_improvement="+22% improvement for Exfiltration tactic detection",
 )
