@@ -165,11 +165,9 @@ module "backend" {
   cognito_issuer       = var.enable_cognito ? module.cognito[0].issuer : ""
   frontend_url         = var.domain_name != "" ? (var.subdomain != "" ? "https://${var.subdomain}.${var.domain_name}" : "https://${var.domain_name}") : "http://localhost:3001"
 
-  # OAuth provider client IDs (for backend to know which providers are enabled)
-  google_client_id     = var.google_client_id
-  github_client_id     = var.github_client_id
-  github_client_secret = var.github_client_secret
-  microsoft_client_id  = var.microsoft_client_id
+  # Google OAuth (only SSO provider via Cognito)
+  # Note: GitHub auth is handled by backend directly, Microsoft SSO removed
+  google_client_id = var.google_client_id
 
   # WAF IP restriction
   allowed_ips = var.waf_allowed_ips
@@ -222,21 +220,11 @@ module "cognito" {
     var.subdomain != "" ? "https://${var.subdomain}.${var.domain_name}" : "https://${var.domain_name}"
   ] : ["http://localhost:3001"]
 
-  # Google OAuth
+  # Google OAuth (only SSO provider via Cognito)
+  # Note: GitHub auth is handled by backend, Microsoft SSO removed
   enable_google_idp    = var.google_client_id != ""
   google_client_id     = var.google_client_id
   google_client_secret = var.google_client_secret
-
-  # GitHub OAuth
-  enable_github_idp    = var.github_client_id != ""
-  github_client_id     = var.github_client_id
-  github_client_secret = var.github_client_secret
-
-  # Microsoft/Azure AD OAuth
-  enable_microsoft_idp    = var.microsoft_client_id != ""
-  microsoft_client_id     = var.microsoft_client_id
-  microsoft_client_secret = var.microsoft_client_secret
-  microsoft_tenant_id     = var.microsoft_tenant_id
 }
 
 # SES Email Service

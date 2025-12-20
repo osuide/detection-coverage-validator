@@ -35,50 +35,5 @@ variable "google_client_secret" {
   sensitive   = true
 }
 
-# GitHub Identity Provider
-variable "enable_github_idp" {
-  description = "Enable GitHub as identity provider"
-  type        = bool
-  default     = false
-}
-
-variable "github_client_id" {
-  description = "GitHub OAuth App client ID"
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "github_client_secret" {
-  description = "GitHub OAuth App client secret"
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-# Microsoft/Azure AD Identity Provider
-variable "enable_microsoft_idp" {
-  description = "Enable Microsoft/Azure AD as identity provider"
-  type        = bool
-  default     = false
-}
-
-variable "microsoft_client_id" {
-  description = "Microsoft/Azure AD OAuth client ID"
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "microsoft_client_secret" {
-  description = "Microsoft/Azure AD OAuth client secret"
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "microsoft_tenant_id" {
-  description = "Microsoft/Azure AD tenant ID (use 'common' for multi-tenant)"
-  type        = string
-  default     = "common"
-}
+# Note: GitHub authentication is handled by the backend directly (not via Cognito)
+# Microsoft SSO has been removed from the product

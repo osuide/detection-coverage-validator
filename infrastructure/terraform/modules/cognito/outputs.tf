@@ -41,11 +41,10 @@ output "cognito_domain_url" {
 
 output "enabled_providers" {
   description = "List of enabled identity providers"
+  # Note: GitHub auth is handled by backend directly, Microsoft SSO removed
   value = concat(
     ["COGNITO"],
-    var.enable_google_idp ? ["Google"] : [],
-    var.enable_github_idp ? ["GitHub"] : [],
-    var.enable_microsoft_idp ? ["Microsoft"] : []
+    var.enable_google_idp ? ["Google"] : []
   )
 }
 

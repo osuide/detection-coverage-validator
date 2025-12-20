@@ -117,17 +117,14 @@ resource "aws_cognito_user_pool_client" "web" {
   logout_urls   = var.logout_urls
 
   # Supported identity providers
+  # Note: GitHub authentication is handled by the backend, not Cognito
   supported_identity_providers = concat(
     ["COGNITO"],
-    var.enable_google_idp ? ["Google"] : [],
-    var.enable_github_idp ? ["GitHub"] : [],
-    var.enable_microsoft_idp ? ["Microsoft"] : []
+    var.enable_google_idp ? ["Google"] : []
   )
 
   depends_on = [
     aws_cognito_identity_provider.google,
-    aws_cognito_identity_provider.github,
-    aws_cognito_identity_provider.microsoft,
   ]
 
   # Token validity
@@ -202,78 +199,8 @@ resource "aws_cognito_identity_provider" "google" {
   }
 }
 
-# GitHub Identity Provider (optional) - Uses OIDC
-# depends_on ensures sequential operations to prevent Cognito concurrent modification errors
-resource "aws_cognito_identity_provider" "github" {
-  count = var.enable_github_idp ? 1 : 0
-
-  user_pool_id  = aws_cognito_user_pool.main.id
-  provider_name = "GitHub"
-  provider_type = "OIDC"
-
-  provider_details = {
-    client_id                 = var.github_client_id
-    client_secret             = var.github_client_secret
-    authorize_scopes          = "openid read:user user:email"
-    attributes_request_method = "GET"
-    oidc_issuer               = "https://github.com"
-    authorize_url             = "https://github.com/login/oauth/authorize"
-    token_url                 = "https://github.com/login/oauth/access_token"
-    attributes_url            = "https://api.github.com/user"
-    jwks_uri                  = "https://token.actions.githubusercontent.com/.well-known/jwks"
-  }
-
-  attribute_mapping = {
-    email    = "email"
-    name     = "name"
-    username = "sub"
-    picture  = "avatar_url"
-  }
-
-  # Prevent concurrent modifications to Cognito user pool
-  lifecycle {
-    create_before_destroy = true
-  }
-
-  # Chain dependencies to force sequential processing
-  depends_on = [aws_cognito_identity_provider.google]
-}
-
-# Microsoft/Azure AD Identity Provider (optional) - Uses OIDC
-# depends_on ensures sequential operations to prevent Cognito concurrent modification errors
-resource "aws_cognito_identity_provider" "microsoft" {
-  count = var.enable_microsoft_idp ? 1 : 0
-
-  user_pool_id  = aws_cognito_user_pool.main.id
-  provider_name = "Microsoft"
-  provider_type = "OIDC"
-
-  provider_details = {
-    client_id                 = var.microsoft_client_id
-    client_secret             = var.microsoft_client_secret
-    authorize_scopes          = "openid email profile"
-    attributes_request_method = "GET"
-    oidc_issuer               = "https://login.microsoftonline.com/${var.microsoft_tenant_id}/v2.0"
-    authorize_url             = "https://login.microsoftonline.com/${var.microsoft_tenant_id}/oauth2/v2.0/authorize"
-    token_url                 = "https://login.microsoftonline.com/${var.microsoft_tenant_id}/oauth2/v2.0/token"
-    attributes_url            = "https://graph.microsoft.com/oidc/userinfo"
-    jwks_uri                  = "https://login.microsoftonline.com/${var.microsoft_tenant_id}/discovery/v2.0/keys"
-  }
-
-  attribute_mapping = {
-    email    = "email"
-    name     = "name"
-    username = "sub"
-  }
-
-  # Prevent concurrent modifications to Cognito user pool
-  lifecycle {
-    create_before_destroy = true
-  }
-
-  # Chain dependencies to force sequential processing
-  depends_on = [aws_cognito_identity_provider.github]
-}
+# Note: GitHub authentication is handled by the backend directly (not via Cognito)
+# Microsoft SSO has been removed from the product
 
 # Resource Server (for API scopes)
 resource "aws_cognito_resource_server" "api" {

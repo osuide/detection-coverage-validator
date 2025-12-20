@@ -106,41 +106,8 @@ variable "google_client_secret" {
   default     = ""
 }
 
-# GitHub OAuth
-variable "github_client_id" {
-  description = "GitHub OAuth App Client ID"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "github_client_secret" {
-  description = "GitHub OAuth App Client Secret"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-# Microsoft/Azure AD OAuth
-variable "microsoft_client_id" {
-  description = "Microsoft/Azure AD OAuth Client ID"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "microsoft_client_secret" {
-  description = "Microsoft/Azure AD OAuth Client Secret"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "microsoft_tenant_id" {
-  description = "Microsoft/Azure AD Tenant ID (use 'common' for multi-tenant apps)"
-  type        = string
-  default     = "common"
-}
+# Note: GitHub authentication is handled by the backend directly (not via Cognito)
+# Microsoft SSO has been removed from the product
 
 # ============================================================================
 # Email (SES) Configuration

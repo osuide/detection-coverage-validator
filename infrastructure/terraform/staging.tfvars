@@ -39,14 +39,12 @@ enable_cognito = true
 # github_client_id     = ""  # Set via TF_VAR_github_client_id
 # github_client_secret = ""  # Set via TF_VAR_github_client_secret
 
-# Microsoft/Azure AD OAuth (set via environment variables)
-# microsoft_client_id     = ""  # Set via TF_VAR_microsoft_client_id
-# microsoft_client_secret = ""  # Set via TF_VAR_microsoft_client_secret
-microsoft_tenant_id = "common" # "common" allows any Azure AD tenant (multi-tenant)
+# Note: GitHub authentication is handled by the backend directly (not via Cognito)
+# Microsoft SSO has been removed from the product
 
 # ============================================================================
 # WAF IP Restriction
 # ============================================================================
 # Restrict staging access to specific IPs only (CIDR notation)
-# Remove or set to [] to allow all traffic
-waf_allowed_ips = ["81.174.169.212/32"]
+# Set to [] to allow all traffic (authentication handles access control)
+waf_allowed_ips = []
