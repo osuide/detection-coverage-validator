@@ -101,7 +101,14 @@ def upgrade() -> None:
             ),
             sa.Column(
                 "drift_severity",
-                sa.Enum("none", "info", "warning", "critical", name="driftseverity"),
+                postgresql.ENUM(
+                    "none",
+                    "info",
+                    "warning",
+                    "critical",
+                    name="driftseverity",
+                    create_type=False,
+                ),
                 nullable=False,
                 server_default="none",
             ),
@@ -143,7 +150,14 @@ def upgrade() -> None:
             sa.Column("alert_type", sa.String(64), nullable=False),
             sa.Column(
                 "severity",
-                sa.Enum("none", "info", "warning", "critical", name="driftseverity"),
+                postgresql.ENUM(
+                    "none",
+                    "info",
+                    "warning",
+                    "critical",
+                    name="driftseverity",
+                    create_type=False,
+                ),
                 nullable=False,
             ),
             sa.Column("title", sa.String(255), nullable=False),
@@ -195,7 +209,7 @@ def upgrade() -> None:
             sa.Column("description", sa.Text(), nullable=True),
             sa.Column(
                 "format",
-                sa.Enum(
+                postgresql.ENUM(
                     "sigma",
                     "yara",
                     "snort",
@@ -206,18 +220,20 @@ def upgrade() -> None:
                     "cloudwatch",
                     "custom",
                     name="customdetectionformat",
+                    create_type=False,
                 ),
                 nullable=False,
             ),
             sa.Column(
                 "status",
-                sa.Enum(
+                postgresql.ENUM(
                     "pending",
                     "processing",
                     "mapped",
                     "failed",
                     "needs_review",
                     name="customdetectionstatus",
+                    create_type=False,
                 ),
                 nullable=False,
                 server_default="pending",
@@ -270,7 +286,7 @@ def upgrade() -> None:
             sa.Column("filename", sa.String(255), nullable=False),
             sa.Column(
                 "format",
-                sa.Enum(
+                postgresql.ENUM(
                     "sigma",
                     "yara",
                     "snort",
@@ -281,6 +297,7 @@ def upgrade() -> None:
                     "cloudwatch",
                     "custom",
                     name="customdetectionformat",
+                    create_type=False,
                 ),
                 nullable=False,
             ),
@@ -294,13 +311,14 @@ def upgrade() -> None:
             sa.Column("failed_rules", sa.Integer(), nullable=False, server_default="0"),
             sa.Column(
                 "status",
-                sa.Enum(
+                postgresql.ENUM(
                     "pending",
                     "processing",
                     "mapped",
                     "failed",
                     "needs_review",
                     name="customdetectionstatus",
+                    create_type=False,
                 ),
                 nullable=False,
                 server_default="pending",
