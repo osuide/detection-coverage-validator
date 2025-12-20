@@ -1,5 +1,7 @@
 """Database connection and session management."""
 
+from contextlib import asynccontextmanager
+
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
 
@@ -38,3 +40,15 @@ async def get_db() -> AsyncSession:
             raise
         finally:
             await session.close()
+
+
+@asynccontextmanager
+async def get_db_session():
+    """Context manager for database sessions outside of FastAPI dependency injection."""
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise

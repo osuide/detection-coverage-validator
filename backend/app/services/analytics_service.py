@@ -5,7 +5,7 @@ based on coverage data.
 """
 
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Optional, TypedDict
 from uuid import UUID
 
 from sqlalchemy import select, func
@@ -16,6 +16,37 @@ from app.models.coverage import CoverageSnapshot
 from app.models.detection import Detection, DetectionType, DetectionStatus
 from app.models.mapping import DetectionMapping
 from app.models.mitre import Technique, Tactic
+
+
+class TrendDataPoint(TypedDict):
+    """Trend data point structure."""
+
+    date: str
+    coverage_percent: float
+    covered_techniques: int
+    total_techniques: int
+    average_confidence: float
+
+
+class DetectionTypeEffectiveness(TypedDict):
+    """Detection effectiveness by type."""
+
+    detection_type: str
+    total_detections: int
+    active_detections: int
+    techniques_covered: int
+    effectiveness_rate: float
+
+
+class TacticBreakdown(TypedDict):
+    """Tactic breakdown structure."""
+
+    tactic_id: str
+    tactic_name: str
+    total_techniques: int
+    covered_techniques: int
+    coverage_percent: float
+    priority_score: int
 
 
 class AnalyticsService:
@@ -72,16 +103,16 @@ class AnalyticsService:
         snapshots = snapshots_result.scalars().all()
 
         # Build trend data
-        trend_data = []
+        trend_data: list[TrendDataPoint] = []
         for snapshot in snapshots:
             trend_data.append(
-                {
-                    "date": snapshot.created_at.isoformat(),
-                    "coverage_percent": snapshot.coverage_percent,
-                    "covered_techniques": snapshot.covered_techniques,
-                    "total_techniques": snapshot.total_techniques,
-                    "average_confidence": snapshot.average_confidence or 0,
-                }
+                TrendDataPoint(
+                    date=snapshot.created_at.isoformat(),
+                    coverage_percent=float(snapshot.coverage_percent),
+                    covered_techniques=int(snapshot.covered_techniques),
+                    total_techniques=int(snapshot.total_techniques),
+                    average_confidence=float(snapshot.average_confidence or 0),
+                )
             )
 
         # Calculate statistics
@@ -272,7 +303,7 @@ class AnalyticsService:
             return {"by_type": [], "summary": {}}
 
         # Get detections grouped by type
-        by_type = []
+        by_type: list[DetectionTypeEffectiveness] = []
         for detection_type in DetectionType:
             count_result = await self.db.execute(
                 select(func.count(Detection.id)).where(
@@ -280,7 +311,7 @@ class AnalyticsService:
                     Detection.detection_type == detection_type,
                 )
             )
-            total = count_result.scalar() or 0
+            total = int(count_result.scalar() or 0)
 
             active_result = await self.db.execute(
                 select(func.count(Detection.id)).where(
@@ -289,7 +320,7 @@ class AnalyticsService:
                     Detection.status == DetectionStatus.ACTIVE,
                 )
             )
-            active = active_result.scalar() or 0
+            active = int(active_result.scalar() or 0)
 
             # Count techniques covered by this type
             techniques_result = await self.db.execute(
@@ -301,19 +332,19 @@ class AnalyticsService:
                     Detection.detection_type == detection_type,
                 )
             )
-            techniques_covered = techniques_result.scalar() or 0
+            techniques_covered = int(techniques_result.scalar() or 0)
 
             if total > 0:
                 by_type.append(
-                    {
-                        "detection_type": detection_type.value,
-                        "total_detections": total,
-                        "active_detections": active,
-                        "techniques_covered": techniques_covered,
-                        "effectiveness_rate": (
-                            round((active / total) * 100, 2) if total > 0 else 0
+                    DetectionTypeEffectiveness(
+                        detection_type=detection_type.value,
+                        total_detections=total,
+                        active_detections=active,
+                        techniques_covered=techniques_covered,
+                        effectiveness_rate=(
+                            round((active / total) * 100, 2) if total > 0 else 0.0
                         ),
-                    }
+                    )
                 )
 
         # Calculate summary
@@ -460,7 +491,7 @@ class AnalyticsService:
         tactics_result = await self.db.execute(select(Tactic))
         tactics = tactics_result.scalars().all()
 
-        breakdown = []
+        breakdown: list[TacticBreakdown] = []
         for tactic in tactics:
             # Total techniques in tactic
             total_result = await self.db.execute(
@@ -469,7 +500,7 @@ class AnalyticsService:
                     Technique.is_deprecated == False,  # noqa
                 )
             )
-            total = total_result.scalar() or 0
+            total = int(total_result.scalar() or 0)
 
             # Covered techniques
             if account_ids:
@@ -483,21 +514,21 @@ class AnalyticsService:
                         Technique.tactic_id == tactic.id,
                     )
                 )
-                covered = covered_result.scalar() or 0
+                covered = int(covered_result.scalar() or 0)
             else:
                 covered = 0
 
-            percent = (covered / total * 100) if total > 0 else 0
+            percent = (covered / total * 100) if total > 0 else 0.0
 
             breakdown.append(
-                {
-                    "tactic_id": tactic.tactic_id,
-                    "tactic_name": tactic.name,
-                    "total_techniques": total,
-                    "covered_techniques": covered,
-                    "coverage_percent": round(percent, 2),
-                    "priority_score": self._get_tactic_priority_score(tactic.tactic_id),
-                }
+                TacticBreakdown(
+                    tactic_id=tactic.tactic_id,
+                    tactic_name=tactic.name,
+                    total_techniques=total,
+                    covered_techniques=covered,
+                    coverage_percent=round(percent, 2),
+                    priority_score=self._get_tactic_priority_score(tactic.tactic_id),
+                )
             )
 
         # Sort by priority score
