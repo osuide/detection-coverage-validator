@@ -52,7 +52,7 @@ export default function Reports() {
   const { data: accounts, isLoading: accountsLoading } = useQuery<CloudAccount[]>({
     queryKey: ['cloud-accounts'],
     queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}/api/v1/cloud-accounts`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/accounts`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       })
       if (!response.ok) throw new Error('Failed to fetch accounts')
