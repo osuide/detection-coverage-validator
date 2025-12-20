@@ -59,7 +59,7 @@ jobs:
       - name: Run type checking
         working-directory: ./backend
         run: |
-          mypy app/ --ignore-missing-imports
+          mypy app/ --config-file=mypy.ini
 
       - name: Run tests
         working-directory: ./backend
