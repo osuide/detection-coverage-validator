@@ -427,8 +427,133 @@ def require_account_access(account_id_param: str = "cloud_account_id") -> Callab
     return dependency
 
 
+def require_feature(feature: str) -> Callable:
+    """
+    Dependency that requires a specific subscription feature to be enabled.
+
+    Example: require_feature("org_features")
+
+    Returns 403 if the organisation's subscription doesn't have the feature.
+    """
+    from app.models.billing import Subscription
+
+    async def dependency(
+        auth: AuthContext = Depends(get_auth_context),
+        db: AsyncSession = Depends(get_db),
+    ) -> AuthContext:
+        if not auth.organization:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Organisation context required",
+            )
+
+        # Get subscription for the organisation
+        result = await db.execute(
+            select(Subscription).where(
+                Subscription.organization_id == auth.organization.id
+            )
+        )
+        subscription = result.scalar_one_or_none()
+
+        if not subscription:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No subscription found. Please subscribe to access this feature.",
+            )
+
+        # Check subscription status - must be active to access features
+        from app.models.billing import SubscriptionStatus
+
+        if subscription.status != SubscriptionStatus.ACTIVE:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Your subscription is not active. Please update your payment method.",
+            )
+
+        if not subscription.has_feature(feature):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Your subscription tier does not include this feature. Please upgrade to Pro or Enterprise.",
+            )
+
+        return auth
+
+    return dependency
+
+
+def require_org_features() -> Callable:
+    """
+    Dependency that requires organisation features to be enabled.
+
+    Pro and Enterprise tiers have organisation features.
+    Returns 403 if on Free or Individual tier.
+
+    Usage:
+        @router.get("/cloud-organizations")
+        async def list_orgs(auth: AuthContext = Depends(require_org_features())):
+            ...
+    """
+    return require_feature("org_features")
+
+
+def require_tier(*tiers) -> Callable:
+    """
+    Dependency that requires a specific subscription tier.
+
+    Example: require_tier(AccountTier.PRO, AccountTier.ENTERPRISE)
+
+    Returns 403 if the organisation's subscription is not in the allowed tiers.
+    """
+    from app.models.billing import Subscription
+
+    async def dependency(
+        auth: AuthContext = Depends(get_auth_context),
+        db: AsyncSession = Depends(get_db),
+    ) -> AuthContext:
+        if not auth.organization:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Organisation context required",
+            )
+
+        # Get subscription for the organisation
+        result = await db.execute(
+            select(Subscription).where(
+                Subscription.organization_id == auth.organization.id
+            )
+        )
+        subscription = result.scalar_one_or_none()
+
+        if not subscription:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No subscription found. Please subscribe to access this feature.",
+            )
+
+        # Check subscription status - must be active
+        from app.models.billing import SubscriptionStatus
+
+        if subscription.status != SubscriptionStatus.ACTIVE:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Your subscription is not active. Please update your payment method.",
+            )
+
+        if subscription.tier not in tiers:
+            tier_names = ", ".join(t.value.title() for t in tiers)
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"This feature requires {tier_names} tier. Please upgrade your subscription.",
+            )
+
+        return auth
+
+    return dependency
+
+
 # Commonly used dependencies
 RequireAuth = Depends(require_auth())
 RequireAdmin = Depends(require_role(UserRole.OWNER, UserRole.ADMIN))
 RequireOwner = Depends(require_role(UserRole.OWNER))
 RequireMember = Depends(require_role(UserRole.OWNER, UserRole.ADMIN, UserRole.MEMBER))
+RequireOrgFeatures = Depends(require_org_features())

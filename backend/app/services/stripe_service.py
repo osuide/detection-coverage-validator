@@ -246,10 +246,12 @@ class StripeService:
         # Update subscription
         subscription.stripe_customer_id = customer_id
         subscription.stripe_subscription_id = subscription_id
-        subscription.tier = AccountTier.SUBSCRIBER
+        subscription.tier = (
+            AccountTier.SUBSCRIBER
+        )  # Legacy tier for existing checkout flow
         subscription.status = SubscriptionStatus.ACTIVE
         subscription.additional_accounts = additional_accounts
-        subscription.included_accounts = 3  # Base plan includes 3
+        subscription.apply_tier_defaults()  # Apply tier limits including org_features_enabled
 
         # Fetch subscription details from Stripe
         try:
@@ -343,10 +345,11 @@ class StripeService:
             )
             return
 
-        # Downgrade to free tier
-        subscription.tier = AccountTier.FREE_SCAN
+        # Downgrade to free tier (use new FREE tier, not legacy FREE_SCAN)
+        subscription.tier = AccountTier.FREE
         subscription.status = SubscriptionStatus.CANCELED
         subscription.canceled_at = datetime.now(timezone.utc)
+        subscription.apply_tier_defaults()  # Apply FREE tier limits
 
         await db.commit()
         logger.info("subscription_canceled", subscription_id=str(subscription.id))
@@ -431,23 +434,40 @@ class StripeService:
         subscription = result.scalar_one_or_none()
 
         if not subscription:
-            # Return default free tier info
+            # Return default free tier info (use new FREE tier, not legacy FREE_SCAN)
+            from app.models.billing import TIER_LIMITS
+
+            free_limits = TIER_LIMITS[AccountTier.FREE]
             return {
-                "tier": AccountTier.FREE_SCAN.value,
+                "tier": AccountTier.FREE.value,
+                "tier_display_name": "Free",
                 "status": SubscriptionStatus.ACTIVE.value,
                 "free_scan_used": False,
+                "free_scan_at": None,
                 "free_scan_expires_at": None,
                 "can_scan": True,
                 "included_accounts": 1,
                 "additional_accounts": 0,
                 "total_accounts_allowed": 1,
+                # New tier-based limits
+                "max_accounts": free_limits.get("max_accounts"),
+                "max_team_members": free_limits.get("max_team_members"),
+                "org_features_enabled": False,
+                "history_retention_days": free_limits.get("results_retention_days"),
+                # Billing period
+                "current_period_start": None,
                 "current_period_end": None,
                 "cancel_at_period_end": False,
+                "has_stripe": False,
+                # Legacy tier info
+                "is_legacy_tier": False,
+                "recommended_migration_tier": None,
             }
 
         return {
             "id": str(subscription.id),
             "tier": subscription.tier.value,
+            "tier_display_name": subscription.get_display_tier(),
             "status": subscription.status.value,
             "free_scan_used": subscription.free_scan_used,
             "free_scan_at": (
@@ -464,6 +484,12 @@ class StripeService:
             "included_accounts": subscription.included_accounts,
             "additional_accounts": subscription.additional_accounts,
             "total_accounts_allowed": subscription.total_accounts_allowed,
+            # New tier-based limits
+            "max_accounts": subscription.max_accounts,
+            "max_team_members": subscription.max_team_members,
+            "org_features_enabled": subscription.org_features_enabled,
+            "history_retention_days": subscription.history_retention_days,
+            # Billing period
             "current_period_start": (
                 subscription.current_period_start.isoformat()
                 if subscription.current_period_start
@@ -476,6 +502,13 @@ class StripeService:
             ),
             "cancel_at_period_end": subscription.cancel_at_period_end,
             "has_stripe": bool(subscription.stripe_subscription_id),
+            # Legacy tier info
+            "is_legacy_tier": subscription.is_legacy_tier,
+            "recommended_migration_tier": (
+                subscription.migration_tier.value
+                if subscription.migration_tier
+                else None
+            ),
         }
 
     @staticmethod
