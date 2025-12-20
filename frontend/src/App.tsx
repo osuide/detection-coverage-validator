@@ -39,6 +39,7 @@ import AdminFingerprints from './pages/admin/AdminFingerprints'
 import AdminAuditLogs from './pages/admin/AdminAuditLogs'
 import AdminBilling from './pages/admin/AdminBilling'
 import AdminAdmins from './pages/admin/AdminAdmins'
+import AdminAuthProvider from './components/AdminAuthProvider'
 
 function App() {
   return (
@@ -54,16 +55,22 @@ function App() {
         <Route path="/docs" element={<DocsIndex />} />
         <Route path="/docs/:slug" element={<DocsPage />} />
 
-        {/* Admin Portal routes (separate auth) */}
-        <Route path="/admin/login" element={<AdminLogin />} />
-        <Route path="/admin/dashboard" element={<AdminDashboard />} />
-        <Route path="/admin/settings" element={<AdminSettings />} />
-        <Route path="/admin/organizations" element={<AdminOrganizations />} />
-        <Route path="/admin/users" element={<AdminUsers />} />
-        <Route path="/admin/fingerprints" element={<AdminFingerprints />} />
-        <Route path="/admin/audit-logs" element={<AdminAuditLogs />} />
-        <Route path="/admin/billing" element={<AdminBilling />} />
-        <Route path="/admin/admins" element={<AdminAdmins />} />
+        {/* Admin Portal routes (separate auth with session restoration) */}
+        <Route path="/admin/*" element={
+          <AdminAuthProvider>
+            <Routes>
+              <Route path="login" element={<AdminLogin />} />
+              <Route path="dashboard" element={<AdminDashboard />} />
+              <Route path="settings" element={<AdminSettings />} />
+              <Route path="organizations" element={<AdminOrganizations />} />
+              <Route path="users" element={<AdminUsers />} />
+              <Route path="fingerprints" element={<AdminFingerprints />} />
+              <Route path="audit-logs" element={<AdminAuditLogs />} />
+              <Route path="billing" element={<AdminBilling />} />
+              <Route path="admins" element={<AdminAdmins />} />
+            </Routes>
+          </AdminAuthProvider>
+        } />
 
         {/* Protected routes */}
         <Route

@@ -15,8 +15,7 @@ import {
   Shield,
   Activity,
 } from 'lucide-react';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+import { useAdminAuthStore, adminApi } from '../../stores/adminAuthStore';
 
 interface AuditLog {
   id: string;
@@ -54,6 +53,7 @@ const ACTION_COLORS: Record<string, string> = {
 
 export default function AdminAuditLogs() {
   const navigate = useNavigate();
+  const { isAuthenticated, isInitialised } = useAdminAuthStore();
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -63,10 +63,16 @@ export default function AdminAuditLogs() {
   const [actionFilter, setActionFilter] = useState('');
   const [adminFilter, setAdminFilter] = useState('');
 
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (isInitialised && !isAuthenticated) {
+      navigate('/admin/login');
+    }
+  }, [isAuthenticated, isInitialised, navigate]);
+
   const fetchLogs = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('admin_token');
       const params = new URLSearchParams({
         page: page.toString(),
         per_page: '50',
@@ -74,18 +80,8 @@ export default function AdminAuditLogs() {
       if (actionFilter) params.append('action', actionFilter);
       if (adminFilter) params.append('admin_email', adminFilter);
 
-      const response = await fetch(`${API_BASE_URL}/api/v1/admin/audit-logs?${params}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.status === 401) {
-        navigate('/admin/login');
-        return;
-      }
-
-      if (!response.ok) throw new Error('Failed to fetch audit logs');
-
-      const data: AuditLogsResponse = await response.json();
+      const response = await adminApi.get(`/audit-logs?${params}`);
+      const data: AuditLogsResponse = response.data;
       setLogs(data.logs);
       setTotal(data.total);
       setTotalPages(Math.ceil(data.total / data.per_page));
@@ -97,8 +93,10 @@ export default function AdminAuditLogs() {
   };
 
   useEffect(() => {
-    fetchLogs();
-  }, [page, actionFilter]);
+    if (isAuthenticated) {
+      fetchLogs();
+    }
+  }, [page, actionFilter, isAuthenticated]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {

@@ -14,8 +14,7 @@ import {
   Check,
   AlertCircle,
 } from 'lucide-react';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+import { useAdminAuthStore, adminApi } from '../../stores/adminAuthStore';
 
 interface FingerprintData {
   id: string;
@@ -67,6 +66,7 @@ interface Stats {
 
 export default function AdminFingerprints() {
   const navigate = useNavigate();
+  const { isAuthenticated, isInitialised } = useAdminAuthStore();
   const [fingerprints, setFingerprints] = useState<FingerprintData[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -83,16 +83,17 @@ export default function AdminFingerprints() {
   const [flagReason, setFlagReason] = useState('');
   const [adminNotes, setAdminNotes] = useState('');
 
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (isInitialised && !isAuthenticated) {
+      navigate('/admin/login');
+    }
+  }, [isAuthenticated, isInitialised, navigate]);
+
   const fetchStats = async () => {
     try {
-      const token = localStorage.getItem('admin_token');
-      const response = await fetch(`${API_BASE_URL}/api/v1/admin/fingerprints/stats`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setStats(data);
-      }
+      const response = await adminApi.get('/fingerprints/stats');
+      setStats(response.data);
     } catch (err) {
       console.error('Failed to fetch stats:', err);
     }
@@ -101,7 +102,6 @@ export default function AdminFingerprints() {
   const fetchFingerprints = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('admin_token');
       const params = new URLSearchParams({
         page: page.toString(),
         per_page: '20',
@@ -110,18 +110,8 @@ export default function AdminFingerprints() {
         sort_by: 'abuse_score',
       });
 
-      const response = await fetch(`${API_BASE_URL}/api/v1/admin/fingerprints?${params}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.status === 401) {
-        navigate('/admin/login');
-        return;
-      }
-
-      if (!response.ok) throw new Error('Failed to fetch fingerprints');
-
-      const data: FingerprintsResponse = await response.json();
+      const response = await adminApi.get(`/fingerprints?${params}`);
+      const data: FingerprintsResponse = response.data;
       setFingerprints(data.fingerprints);
       setTotal(data.total);
       setTotalPages(Math.ceil(data.total / data.per_page));
@@ -135,15 +125,8 @@ export default function AdminFingerprints() {
   const fetchFingerprintDetail = async (id: string) => {
     setDetailLoading(true);
     try {
-      const token = localStorage.getItem('admin_token');
-      const response = await fetch(`${API_BASE_URL}/api/v1/admin/fingerprints/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (!response.ok) throw new Error('Failed to fetch fingerprint details');
-
-      const data: FingerprintDetail = await response.json();
-      setSelectedFingerprint(data);
+      const response = await adminApi.get(`/fingerprints/${id}`);
+      setSelectedFingerprint(response.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load details');
     } finally {
@@ -156,27 +139,17 @@ export default function AdminFingerprints() {
     setActionLoading(flagModal.id);
 
     try {
-      const token = localStorage.getItem('admin_token');
       const endpoint =
         flagModal.action === 'flag'
-          ? `${API_BASE_URL}/api/v1/admin/fingerprints/${flagModal.id}/flag`
-          : `${API_BASE_URL}/api/v1/admin/fingerprints/${flagModal.id}/unflag`;
+          ? `/fingerprints/${flagModal.id}/flag`
+          : `/fingerprints/${flagModal.id}/unflag`;
 
       const body =
         flagModal.action === 'flag'
           ? { reason: flagReason, admin_notes: adminNotes || null }
           : { admin_notes: adminNotes || null };
 
-      const response = await fetch(endpoint, {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      });
-
-      if (!response.ok) throw new Error('Failed to update fingerprint');
+      await adminApi.patch(endpoint, body);
 
       // Refresh data
       fetchFingerprints();
@@ -192,73 +165,89 @@ export default function AdminFingerprints() {
   };
 
   useEffect(() => {
-    fetchStats();
-  }, []);
+    if (isAuthenticated) {
+      fetchStats();
+    }
+  }, [isAuthenticated]);
 
   useEffect(() => {
-    fetchFingerprints();
-  }, [page, minAbuseScore, flaggedOnly]);
+    if (isAuthenticated) {
+      fetchFingerprints();
+    }
+  }, [page, minAbuseScore, flaggedOnly, isAuthenticated]);
 
   const getAbuseScoreBadge = (score: number) => {
-    if (score >= 80) return 'bg-red-100 text-red-800';
-    if (score >= 50) return 'bg-orange-100 text-orange-800';
-    if (score >= 20) return 'bg-yellow-100 text-yellow-800';
-    return 'bg-green-100 text-green-800';
+    if (score >= 80) return 'bg-red-900/50 text-red-400';
+    if (score >= 50) return 'bg-orange-900/50 text-orange-400';
+    if (score >= 20) return 'bg-yellow-900/50 text-yellow-400';
+    return 'bg-green-900/50 text-green-400';
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center">
-            <Fingerprint className="w-7 h-7 mr-3 text-purple-600" />
-            Device Fingerprints & Abuse Detection
-          </h1>
-          <p className="text-gray-600 mt-1">
-            Monitor device fingerprints to detect and prevent abuse
-          </p>
+    <div className="min-h-screen bg-gray-900">
+      {/* Header */}
+      <header className="bg-gray-800 border-b border-gray-700">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-orange-600 rounded-lg">
+                <Fingerprint className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-white">Device Fingerprints & Abuse Detection</h1>
+                <p className="text-sm text-gray-400">Monitor device fingerprints to detect and prevent abuse</p>
+              </div>
+            </div>
+            <button
+              onClick={() => navigate('/admin/dashboard')}
+              className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
+            >
+              Back to Dashboard
+            </button>
+          </div>
         </div>
+      </header>
 
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats Grid */}
         {stats && (
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-6">
-            <div className="bg-white rounded-lg shadow p-4">
-              <p className="text-sm text-gray-500">Total</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.total_fingerprints}</p>
+            <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+              <p className="text-sm text-gray-400">Total</p>
+              <p className="text-2xl font-bold text-white">{stats.total_fingerprints}</p>
             </div>
-            <div className="bg-white rounded-lg shadow p-4">
-              <p className="text-sm text-gray-500">Flagged</p>
-              <p className="text-2xl font-bold text-red-600">{stats.flagged_count}</p>
+            <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+              <p className="text-sm text-gray-400">Flagged</p>
+              <p className="text-2xl font-bold text-red-400">{stats.flagged_count}</p>
             </div>
-            <div className="bg-white rounded-lg shadow p-4">
-              <p className="text-sm text-gray-500">High Risk</p>
-              <p className="text-2xl font-bold text-orange-600">{stats.high_risk_count}</p>
+            <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+              <p className="text-sm text-gray-400">High Risk</p>
+              <p className="text-2xl font-bold text-orange-400">{stats.high_risk_count}</p>
             </div>
-            <div className="bg-white rounded-lg shadow p-4">
-              <p className="text-sm text-gray-500">Multi-User</p>
-              <p className="text-2xl font-bold text-yellow-600">{stats.multi_user_count}</p>
+            <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+              <p className="text-sm text-gray-400">Multi-User</p>
+              <p className="text-2xl font-bold text-yellow-400">{stats.multi_user_count}</p>
             </div>
-            <div className="bg-white rounded-lg shadow p-4">
-              <p className="text-sm text-gray-500">Multi-Org</p>
-              <p className="text-2xl font-bold text-purple-600">{stats.multi_org_count}</p>
+            <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+              <p className="text-sm text-gray-400">Multi-Org</p>
+              <p className="text-2xl font-bold text-purple-400">{stats.multi_org_count}</p>
             </div>
-            <div className="bg-white rounded-lg shadow p-4">
-              <p className="text-sm text-gray-500">Today</p>
-              <p className="text-2xl font-bold text-blue-600">{stats.registrations_today}</p>
+            <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+              <p className="text-sm text-gray-400">Today</p>
+              <p className="text-2xl font-bold text-blue-400">{stats.registrations_today}</p>
             </div>
-            <div className="bg-white rounded-lg shadow p-4">
-              <p className="text-sm text-gray-500">This Week</p>
-              <p className="text-2xl font-bold text-cyan-600">{stats.registrations_this_week}</p>
+            <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+              <p className="text-sm text-gray-400">This Week</p>
+              <p className="text-2xl font-bold text-cyan-400">{stats.registrations_this_week}</p>
             </div>
           </div>
         )}
 
         {/* Filters */}
-        <div className="bg-white rounded-lg shadow p-4 mb-6">
+        <div className="bg-gray-800 rounded-lg border border-gray-700 p-4 mb-6">
           <div className="flex flex-wrap items-center gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-300 mb-1">
                 Min Abuse Score
               </label>
               <select
@@ -267,7 +256,7 @@ export default function AdminFingerprints() {
                   setMinAbuseScore(Number(e.target.value));
                   setPage(1);
                 }}
-                className="border border-gray-300 rounded-lg px-3 py-2"
+                className="bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               >
                 <option value={0}>All</option>
                 <option value={20}>20+</option>
@@ -284,9 +273,9 @@ export default function AdminFingerprints() {
                   setFlaggedOnly(e.target.checked);
                   setPage(1);
                 }}
-                className="h-4 w-4 text-purple-600 rounded border-gray-300"
+                className="h-4 w-4 text-orange-600 bg-gray-700 border-gray-600 rounded focus:ring-orange-500"
               />
-              <label htmlFor="flaggedOnly" className="ml-2 text-sm text-gray-700">
+              <label htmlFor="flaggedOnly" className="ml-2 text-sm text-gray-300">
                 Flagged Only
               </label>
             </div>
@@ -295,67 +284,67 @@ export default function AdminFingerprints() {
 
         {/* Error */}
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center">
-            <AlertCircle className="w-5 h-5 text-red-600 mr-2" />
-            <span className="text-red-700">{error}</span>
-            <button onClick={() => setError('')} className="ml-auto text-red-600">
+          <div className="mb-6 p-4 bg-red-900/50 border border-red-700 rounded-lg flex items-center gap-2 text-red-200">
+            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+            <span>{error}</span>
+            <button onClick={() => setError('')} className="ml-auto text-red-400 hover:text-red-300">
               <X className="w-4 h-4" />
             </button>
           </div>
         )}
 
         {/* Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
           {loading ? (
             <div className="p-8 text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto"></div>
             </div>
           ) : fingerprints.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">No fingerprints found</div>
+            <div className="p-8 text-center text-gray-400">No fingerprints found</div>
           ) : (
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-gray-700">
+              <thead className="bg-gray-800/50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">
                     Fingerprint
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">
                     Abuse Score
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">
                     Users
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">
                     Orgs
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">
                     First Seen
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">
                     Last Seen
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="divide-y divide-gray-700">
                 {fingerprints.map((fp) => (
-                  <tr key={fp.id} className={fp.is_flagged ? 'bg-red-50' : ''}>
+                  <tr key={fp.id} className={fp.is_flagged ? 'bg-red-900/20' : 'hover:bg-gray-700/50'}>
                     <td className="px-4 py-4">
                       <div className="flex items-center">
-                        <code className="text-sm font-mono text-gray-900">
+                        <code className="text-sm font-mono text-gray-200">
                           {fp.fingerprint_hash}
                         </code>
                         {fp.is_flagged && (
-                          <span className="ml-2 px-2 py-0.5 text-xs bg-red-100 text-red-800 rounded-full flex items-center">
+                          <span className="ml-2 px-2 py-0.5 text-xs bg-red-900/50 text-red-400 rounded-full flex items-center">
                             <Flag className="w-3 h-3 mr-1" />
                             Flagged
                           </span>
                         )}
                       </div>
                       {fp.flag_reason && (
-                        <p className="text-xs text-red-600 mt-1">{fp.flag_reason}</p>
+                        <p className="text-xs text-red-400 mt-1">{fp.flag_reason}</p>
                       )}
                     </td>
                     <td className="px-4 py-4">
@@ -366,28 +355,28 @@ export default function AdminFingerprints() {
                       </span>
                     </td>
                     <td className="px-4 py-4">
-                      <span className="flex items-center text-sm text-gray-900">
-                        <Users className="w-4 h-4 mr-1 text-gray-400" />
+                      <span className="flex items-center text-sm text-gray-300">
+                        <Users className="w-4 h-4 mr-1 text-gray-500" />
                         {fp.associated_user_count}
                       </span>
                     </td>
                     <td className="px-4 py-4">
-                      <span className="flex items-center text-sm text-gray-900">
-                        <Building2 className="w-4 h-4 mr-1 text-gray-400" />
+                      <span className="flex items-center text-sm text-gray-300">
+                        <Building2 className="w-4 h-4 mr-1 text-gray-500" />
                         {fp.associated_org_count}
                       </span>
                     </td>
-                    <td className="px-4 py-4 text-sm text-gray-500">
+                    <td className="px-4 py-4 text-sm text-gray-400">
                       {new Date(fp.first_seen_at).toLocaleDateString()}
                     </td>
-                    <td className="px-4 py-4 text-sm text-gray-500">
+                    <td className="px-4 py-4 text-sm text-gray-400">
                       {new Date(fp.last_seen_at).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex items-center space-x-2">
                         <button
                           onClick={() => fetchFingerprintDetail(fp.id)}
-                          className="p-1 text-gray-600 hover:bg-gray-100 rounded"
+                          className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors"
                           title="View Details"
                         >
                           <Eye className="w-4 h-4" />
@@ -395,7 +384,7 @@ export default function AdminFingerprints() {
                         {fp.is_flagged ? (
                           <button
                             onClick={() => setFlagModal({ id: fp.id, action: 'unflag' })}
-                            className="p-1 text-green-600 hover:bg-green-50 rounded"
+                            className="p-1.5 text-green-400 hover:text-green-300 hover:bg-green-900/30 rounded transition-colors"
                             title="Unflag"
                           >
                             <Check className="w-4 h-4" />
@@ -403,7 +392,7 @@ export default function AdminFingerprints() {
                         ) : (
                           <button
                             onClick={() => setFlagModal({ id: fp.id, action: 'flag' })}
-                            className="p-1 text-red-600 hover:bg-red-50 rounded"
+                            className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-900/30 rounded transition-colors"
                             title="Flag as Abusive"
                           >
                             <Flag className="w-4 h-4" />
@@ -419,22 +408,22 @@ export default function AdminFingerprints() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
-              <p className="text-sm text-gray-700">
+            <div className="px-4 py-3 border-t border-gray-700 flex items-center justify-between">
+              <p className="text-sm text-gray-400">
                 Showing page {page} of {totalPages} ({total} total)
               </p>
               <div className="flex space-x-2">
                 <button
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
-                  className="px-3 py-1 border rounded-lg disabled:opacity-50"
+                  className="px-3 py-1 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page === totalPages}
-                  className="px-3 py-1 border rounded-lg disabled:opacity-50"
+                  className="px-3 py-1 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>
@@ -445,13 +434,13 @@ export default function AdminFingerprints() {
 
         {/* Detail Modal */}
         {selectedFingerprint && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full mx-4 max-h-[80vh] overflow-y-auto">
-              <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-900">Fingerprint Details</h3>
+          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+            <div className="bg-gray-800 rounded-lg border border-gray-700 max-w-3xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+              <div className="p-6 border-b border-gray-700 flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-white">Fingerprint Details</h3>
                 <button
                   onClick={() => setSelectedFingerprint(null)}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-gray-400 hover:text-white transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -459,39 +448,39 @@ export default function AdminFingerprints() {
               <div className="p-6">
                 {detailLoading ? (
                   <div className="text-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto"></div>
                   </div>
                 ) : (
                   <>
                     {/* Summary */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                       <div>
-                        <p className="text-sm text-gray-500">Abuse Score</p>
+                        <p className="text-sm text-gray-400">Abuse Score</p>
                         <p
                           className={`text-xl font-bold ${
-                            selectedFingerprint.abuse_score >= 50 ? 'text-red-600' : 'text-gray-900'
+                            selectedFingerprint.abuse_score >= 50 ? 'text-red-400' : 'text-white'
                           }`}
                         >
                           {selectedFingerprint.abuse_score}
                         </p>
                       </div>
                       <div>
-                        <p className="text-sm text-gray-500">Users</p>
-                        <p className="text-xl font-bold text-gray-900">
+                        <p className="text-sm text-gray-400">Users</p>
+                        <p className="text-xl font-bold text-white">
                           {selectedFingerprint.associated_user_count}
                         </p>
                       </div>
                       <div>
-                        <p className="text-sm text-gray-500">Organisations</p>
-                        <p className="text-xl font-bold text-gray-900">
+                        <p className="text-sm text-gray-400">Organisations</p>
+                        <p className="text-xl font-bold text-white">
                           {selectedFingerprint.associated_org_count}
                         </p>
                       </div>
                       <div>
-                        <p className="text-sm text-gray-500">Status</p>
+                        <p className="text-sm text-gray-400">Status</p>
                         <p
                           className={`text-xl font-bold ${
-                            selectedFingerprint.is_flagged ? 'text-red-600' : 'text-green-600'
+                            selectedFingerprint.is_flagged ? 'text-red-400' : 'text-green-400'
                           }`}
                         >
                           {selectedFingerprint.is_flagged ? 'Flagged' : 'Normal'}
@@ -500,41 +489,41 @@ export default function AdminFingerprints() {
                     </div>
 
                     {selectedFingerprint.flag_reason && (
-                      <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                        <p className="text-sm font-medium text-red-800">Flag Reason:</p>
-                        <p className="text-sm text-red-700">{selectedFingerprint.flag_reason}</p>
+                      <div className="mb-4 p-3 bg-red-900/30 border border-red-700 rounded-lg">
+                        <p className="text-sm font-medium text-red-400">Flag Reason:</p>
+                        <p className="text-sm text-red-300">{selectedFingerprint.flag_reason}</p>
                       </div>
                     )}
 
                     {selectedFingerprint.admin_notes && (
-                      <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                        <p className="text-sm font-medium text-gray-800">Admin Notes:</p>
-                        <p className="text-sm text-gray-700">{selectedFingerprint.admin_notes}</p>
+                      <div className="mb-4 p-3 bg-gray-700/50 border border-gray-600 rounded-lg">
+                        <p className="text-sm font-medium text-gray-300">Admin Notes:</p>
+                        <p className="text-sm text-gray-400">{selectedFingerprint.admin_notes}</p>
                       </div>
                     )}
 
                     {/* Associations */}
-                    <h4 className="text-md font-semibold text-gray-900 mb-3">
+                    <h4 className="text-md font-semibold text-white mb-3">
                       Associated Accounts ({selectedFingerprint.associations.length})
                     </h4>
                     <div className="space-y-3">
                       {selectedFingerprint.associations.map((assoc) => (
                         <div
                           key={assoc.id}
-                          className="p-3 bg-gray-50 rounded-lg border border-gray-200"
+                          className="p-3 bg-gray-700/50 rounded-lg border border-gray-600"
                         >
                           <div className="flex items-start justify-between">
                             <div>
-                              <p className="font-medium text-gray-900">{assoc.user_email}</p>
-                              <p className="text-sm text-gray-600">{assoc.user_name}</p>
+                              <p className="font-medium text-white">{assoc.user_email}</p>
+                              <p className="text-sm text-gray-400">{assoc.user_name}</p>
                             </div>
                             <div className="text-right">
-                              <p className="text-sm text-gray-500">
+                              <p className="text-sm text-gray-400">
                                 Seen {assoc.seen_count} time{assoc.seen_count !== 1 ? 's' : ''}
                               </p>
                             </div>
                           </div>
-                          <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-500">
+                          <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-400">
                             {assoc.organization_name && (
                               <span className="flex items-center">
                                 <Building2 className="w-3 h-3 mr-1" />
@@ -568,49 +557,49 @@ export default function AdminFingerprints() {
 
         {/* Flag/Unflag Modal */}
         {flagModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-              <div className="p-6 border-b border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-900">
+          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+            <div className="bg-gray-800 rounded-lg border border-gray-700 max-w-md w-full mx-4">
+              <div className="p-6 border-b border-gray-700">
+                <h3 className="text-lg font-semibold text-white">
                   {flagModal.action === 'flag' ? 'Flag Fingerprint' : 'Unflag Fingerprint'}
                 </h3>
               </div>
               <div className="p-6 space-y-4">
                 {flagModal.action === 'flag' && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Reason <span className="text-red-500">*</span>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      Reason <span className="text-red-400">*</span>
                     </label>
                     <input
                       type="text"
                       value={flagReason}
                       onChange={(e) => setFlagReason(e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                      className="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                       placeholder="e.g., Multiple account abuse"
                     />
                   </div>
                 )}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
                     Admin Notes (optional)
                   </label>
                   <textarea
                     value={adminNotes}
                     onChange={(e) => setAdminNotes(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                    className="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                     rows={3}
                     placeholder="Internal notes..."
                   />
                 </div>
               </div>
-              <div className="p-6 border-t border-gray-200 flex justify-end space-x-3">
+              <div className="p-6 border-t border-gray-700 flex justify-end space-x-3">
                 <button
                   onClick={() => {
                     setFlagModal(null);
                     setFlagReason('');
                     setAdminNotes('');
                   }}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                  className="px-4 py-2 border border-gray-600 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors"
                 >
                   Cancel
                 </button>
@@ -624,7 +613,7 @@ export default function AdminFingerprints() {
                     flagModal.action === 'flag'
                       ? 'bg-red-600 hover:bg-red-700'
                       : 'bg-green-600 hover:bg-green-700'
-                  } disabled:opacity-50`}
+                  } disabled:opacity-50 disabled:cursor-not-allowed transition-colors`}
                 >
                   {actionLoading === flagModal.id
                     ? 'Processing...'
@@ -636,7 +625,7 @@ export default function AdminFingerprints() {
             </div>
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }

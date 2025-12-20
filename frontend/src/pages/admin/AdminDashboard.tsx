@@ -5,8 +5,7 @@ import {
   AlertTriangle, Settings, LogOut, TrendingUp,
   Server, Database, Clock, ChevronRight, FileText, UserCog, Fingerprint
 } from 'lucide-react';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+import { useAdminAuthStore, adminAuthActions, adminApi } from '../../stores/adminAuthStore';
 
 interface SystemHealth {
   status: string;
@@ -48,55 +47,39 @@ interface SecurityMetrics {
   suspicious_activity_count: number;
 }
 
-interface AdminProfile {
-  id: string;
-  email: string;
-  full_name: string | null;
-  role: string;
-  mfa_enabled: boolean;
-  permissions: string[];
-}
-
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const [profile, setProfile] = useState<AdminProfile | null>(null);
+  const { admin, isAuthenticated, isInitialised } = useAdminAuthStore();
   const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null);
   const [businessMetrics, setBusinessMetrics] = useState<BusinessMetrics | null>(null);
   const [usageMetrics, setUsageMetrics] = useState<UsageMetrics | null>(null);
   const [securityMetrics, setSecurityMetrics] = useState<SecurityMetrics | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const adminToken = localStorage.getItem('admin_token');
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (isInitialised && !isAuthenticated) {
+      navigate('/admin/login');
+    }
+  }, [isAuthenticated, isInitialised, navigate]);
 
   useEffect(() => {
-    if (!adminToken) {
-      navigate('/admin/login');
-      return;
-    }
+    if (!isAuthenticated) return;
 
     const fetchData = async () => {
       try {
-        const headers = { Authorization: `Bearer ${adminToken}` };
-
-        const [profileRes, systemRes, businessRes, usageRes, securityRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/api/v1/admin/auth/me`, { headers }),
-          fetch(`${API_BASE_URL}/api/v1/admin/metrics/system`, { headers }),
-          fetch(`${API_BASE_URL}/api/v1/admin/metrics/business`, { headers }),
-          fetch(`${API_BASE_URL}/api/v1/admin/metrics/usage`, { headers }),
-          fetch(`${API_BASE_URL}/api/v1/admin/metrics/security`, { headers }),
+        // Use adminApi which has automatic token refresh
+        const [systemRes, businessRes, usageRes, securityRes] = await Promise.all([
+          adminApi.get('/metrics/system').catch(() => null),
+          adminApi.get('/metrics/business').catch(() => null),
+          adminApi.get('/metrics/usage').catch(() => null),
+          adminApi.get('/metrics/security').catch(() => null),
         ]);
 
-        if (!profileRes.ok) {
-          localStorage.removeItem('admin_token');
-          navigate('/admin/login');
-          return;
-        }
-
-        setProfile(await profileRes.json());
-        if (systemRes.ok) setSystemHealth(await systemRes.json());
-        if (businessRes.ok) setBusinessMetrics(await businessRes.json());
-        if (usageRes.ok) setUsageMetrics(await usageRes.json());
-        if (securityRes.ok) setSecurityMetrics(await securityRes.json());
+        if (systemRes?.data) setSystemHealth(systemRes.data);
+        if (businessRes?.data) setBusinessMetrics(businessRes.data);
+        if (usageRes?.data) setUsageMetrics(usageRes.data);
+        if (securityRes?.data) setSecurityMetrics(securityRes.data);
       } catch (error) {
         console.error('Failed to fetch admin data:', error);
       } finally {
@@ -105,19 +88,11 @@ export default function AdminDashboard() {
     };
 
     fetchData();
-  }, [adminToken, navigate]);
+  }, [isAuthenticated]);
 
   const handleLogout = async () => {
-    try {
-      await fetch(`${API_BASE_URL}/api/v1/admin/auth/logout`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${adminToken}` },
-      });
-    } finally {
-      localStorage.removeItem('admin_token');
-      localStorage.removeItem('admin_refresh_token');
-      navigate('/admin/login');
-    }
+    await adminAuthActions.logout();
+    navigate('/admin/login');
   };
 
   const formatCurrency = (cents: number) => {
@@ -127,7 +102,7 @@ export default function AdminDashboard() {
     }).format(cents / 100);
   };
 
-  if (loading) {
+  if (!isInitialised || loading) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div>
@@ -150,7 +125,7 @@ export default function AdminDashboard() {
 
             <div className="flex items-center gap-4">
               <span className="text-sm text-gray-400">
-                {profile?.email} ({profile?.role.replace('_', ' ')})
+                {admin?.email} ({admin?.role.replace('_', ' ')})
               </span>
               <button
                 onClick={handleLogout}
@@ -197,7 +172,7 @@ export default function AdminDashboard() {
             className="p-4 bg-gray-800 rounded-xl border border-gray-700 hover:border-gray-600 transition-colors group"
           >
             <Building2 className="w-6 h-6 text-blue-400 mb-2" />
-            <h3 className="text-white font-medium">Organizations</h3>
+            <h3 className="text-white font-medium">Organisations</h3>
             <p className="text-sm text-gray-400">Manage customers</p>
           </Link>
 
@@ -276,7 +251,7 @@ export default function AdminDashboard() {
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-white">{businessMetrics.total_organizations}</p>
-                  <p className="text-sm text-gray-400">Total Organizations</p>
+                  <p className="text-sm text-gray-400">Total Organisations</p>
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-white">{businessMetrics.active_users_7d}</p>

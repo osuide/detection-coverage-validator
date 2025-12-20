@@ -1,19 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Lock, Mail, AlertCircle, Key } from 'lucide-react';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-
-interface AdminLoginResponse {
-  requires_mfa: boolean;
-  mfa_token?: string;
-  access_token?: string;
-  refresh_token?: string;
-  detail?: string;
-}
+import { useAdminAuthStore, adminAuthActions } from '../../stores/adminAuthStore';
 
 export default function AdminLogin() {
   const navigate = useNavigate();
+  const { isAuthenticated, isInitialised } = useAdminAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [mfaCode, setMfaCode] = useState('');
@@ -21,33 +13,31 @@ export default function AdminLogin() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isInitialised && isAuthenticated) {
+      navigate('/admin/dashboard');
+    }
+  }, [isAuthenticated, isInitialised, navigate]);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/admin/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
+      const result = await adminAuthActions.login(email, password);
 
-      const data: AdminLoginResponse = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.detail || 'Login failed');
-      }
-
-      if (data.requires_mfa) {
-        setMfaToken(data.mfa_token || null);
-      } else if (data.access_token) {
-        localStorage.setItem('admin_token', data.access_token);
-        localStorage.setItem('admin_refresh_token', data.refresh_token || '');
+      if (result.requiresMfa) {
+        setMfaToken(result.mfaToken || null);
+      } else {
         navigate('/admin/dashboard');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      const message = err instanceof Error ? err.message : 'Login failed';
+      // Extract error detail from axios error if available
+      const axiosError = err as { response?: { data?: { detail?: string } } };
+      setError(axiosError.response?.data?.detail || message);
     } finally {
       setLoading(false);
     }
@@ -59,23 +49,15 @@ export default function AdminLogin() {
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/admin/auth/mfa/verify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mfa_token: mfaToken, totp_code: mfaCode }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.detail || 'MFA verification failed');
+      if (!mfaToken) {
+        throw new Error('MFA token missing');
       }
-
-      localStorage.setItem('admin_token', data.access_token);
-      localStorage.setItem('admin_refresh_token', data.refresh_token);
+      await adminAuthActions.verifyMfa(mfaToken, mfaCode);
       navigate('/admin/dashboard');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'MFA verification failed');
+      const message = err instanceof Error ? err.message : 'MFA verification failed';
+      const axiosError = err as { response?: { data?: { detail?: string } } };
+      setError(axiosError.response?.data?.detail || message);
     } finally {
       setLoading(false);
     }
