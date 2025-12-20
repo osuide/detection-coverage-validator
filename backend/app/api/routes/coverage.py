@@ -681,6 +681,9 @@ async def get_drift_history(
     db: AsyncSession = Depends(get_db),
 ):
     """Get coverage drift history for trend analysis."""
+    if not auth.organization_id:
+        raise HTTPException(status_code=401, detail="Organisation context required")
+
     service = DriftDetectionService(db)
     history = await service.get_coverage_history(
         cloud_account_id, auth.organization_id, days
@@ -732,6 +735,9 @@ async def get_drift_alerts(
     db: AsyncSession = Depends(get_db),
 ):
     """Get coverage drift alerts for the organization."""
+    if not auth.organization_id:
+        raise HTTPException(status_code=401, detail="Organisation context required")
+
     service = DriftDetectionService(db)
     alerts = await service.get_drift_alerts(
         auth.organization_id, cloud_account_id, acknowledged, days
@@ -750,6 +756,9 @@ async def acknowledge_drift_alert(
     db: AsyncSession = Depends(get_db),
 ):
     """Acknowledge a coverage drift alert."""
+    if not auth.organization_id or not auth.user_id:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
     service = DriftDetectionService(db)
     success = await service.acknowledge_alert(
         alert_id, auth.organization_id, auth.user_id
@@ -768,6 +777,9 @@ async def get_drift_summary(
     db: AsyncSession = Depends(get_db),
 ):
     """Get drift summary statistics for the organization."""
+    if not auth.organization_id:
+        raise HTTPException(status_code=401, detail="Organisation context required")
+
     service = DriftDetectionService(db)
     summary = await service.get_drift_summary(auth.organization_id, cloud_account_id)
 

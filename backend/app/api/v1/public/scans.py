@@ -115,17 +115,17 @@ async def create_scan(
     from app.services.scan_limit_service import ScanLimitService
 
     limit_service = ScanLimitService(db)
-    can_scan, status = await limit_service.check_scan_limit(ctx.organization_id)
+    can_perform_scan, reason, next_available = await limit_service.can_scan(
+        ctx.organization_id
+    )
 
-    if not can_scan:
+    if not can_perform_scan:
         raise HTTPException(
             status_code=429,
             detail={
                 "error": "scan_limit_reached",
-                "message": f"Weekly scan limit reached ({status.scans_used}/{status.scans_allowed})",
-                "resets_at": (
-                    status.week_resets_at.isoformat() if status.week_resets_at else None
-                ),
+                "message": reason or "Weekly scan limit reached",
+                "resets_at": next_available.isoformat() if next_available else None,
             },
         )
 
@@ -141,8 +141,8 @@ async def create_scan(
     )
     db.add(scan)
 
-    # Increment scan count
-    await limit_service.increment_scan_count(ctx.organization_id)
+    # Record scan for limit tracking
+    await limit_service.record_scan(ctx.organization_id)
 
     await db.commit()
     await db.refresh(scan)
