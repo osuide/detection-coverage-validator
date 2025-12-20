@@ -34,6 +34,7 @@ from app.api.routes import (
     cloud_organizations,
     analytics,
     custom_detections,
+    compliance,
 )
 from app.api.routes.admin import router as admin_router
 from app.api.v1.public import router as public_api_router
@@ -415,6 +416,11 @@ app.include_router(
     custom_detections.router,
     prefix="/api/v1/custom-detections",
     tags=["Custom Detections"],
+)
+app.include_router(
+    compliance.router,
+    prefix="/api/v1",
+    tags=["Compliance"],
 )
 
 # Admin Portal routes (separate from user routes)

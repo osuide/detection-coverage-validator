@@ -1,0 +1,427 @@
+{
+  "framework": {
+    "framework_id": "nist-800-53-r5",
+    "name": "NIST 800-53 Rev 5",
+    "version": "Rev 5",
+    "description": "Security and Privacy Controls for Information Systems and Organisations. NIST Special Publication 800-53 provides a catalogue of security and privacy controls for all US federal information systems.",
+    "source_url": "https://ctid.mitre.org/projects/nist-800-53-control-mappings/"
+  },
+  "controls": [
+    {
+      "control_id": "AC-2",
+      "control_family": "Access Control",
+      "name": "Account Management",
+      "description": "Manage system accounts, group memberships, privileges, credentials, and access authorisations.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1078", "mapping_type": "mitigates"},
+        {"technique_id": "T1078.001", "mapping_type": "mitigates"},
+        {"technique_id": "T1078.004", "mapping_type": "mitigates"},
+        {"technique_id": "T1136", "mapping_type": "mitigates"},
+        {"technique_id": "T1136.003", "mapping_type": "mitigates"},
+        {"technique_id": "T1098", "mapping_type": "mitigates"},
+        {"technique_id": "T1098.001", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "AC-3",
+      "control_family": "Access Control",
+      "name": "Access Enforcement",
+      "description": "Enforce approved authorisations for logical access to information and system resources.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1078", "mapping_type": "mitigates"},
+        {"technique_id": "T1078.004", "mapping_type": "mitigates"},
+        {"technique_id": "T1530", "mapping_type": "mitigates"},
+        {"technique_id": "T1537", "mapping_type": "mitigates"},
+        {"technique_id": "T1580", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "AC-4",
+      "control_family": "Access Control",
+      "name": "Information Flow Enforcement",
+      "description": "Enforce approved authorisations for controlling the flow of information within the system and between systems.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1048", "mapping_type": "mitigates"},
+        {"technique_id": "T1041", "mapping_type": "mitigates"},
+        {"technique_id": "T1567", "mapping_type": "mitigates"},
+        {"technique_id": "T1071", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "AC-5",
+      "control_family": "Access Control",
+      "name": "Separation of Duties",
+      "description": "Separate duties of individuals to reduce risk of malevolent activity.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1078", "mapping_type": "mitigates"},
+        {"technique_id": "T1098", "mapping_type": "mitigates"},
+        {"technique_id": "T1548", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "AC-6",
+      "control_family": "Access Control",
+      "name": "Least Privilege",
+      "description": "Employ the principle of least privilege, allowing only authorised accesses for users necessary to accomplish assigned tasks.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1078", "mapping_type": "mitigates"},
+        {"technique_id": "T1078.004", "mapping_type": "mitigates"},
+        {"technique_id": "T1098", "mapping_type": "mitigates"},
+        {"technique_id": "T1548", "mapping_type": "mitigates"},
+        {"technique_id": "T1530", "mapping_type": "mitigates"},
+        {"technique_id": "T1580", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "AC-7",
+      "control_family": "Access Control",
+      "name": "Unsuccessful Logon Attempts",
+      "description": "Enforce a limit of consecutive invalid logon attempts by a user and take action when the maximum is exceeded.",
+      "priority": "P2",
+      "technique_mappings": [
+        {"technique_id": "T1110", "mapping_type": "mitigates"},
+        {"technique_id": "T1110.001", "mapping_type": "mitigates"},
+        {"technique_id": "T1110.003", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "AC-17",
+      "control_family": "Access Control",
+      "name": "Remote Access",
+      "description": "Establish usage restrictions and implementation guidance for each type of remote access allowed.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1133", "mapping_type": "mitigates"},
+        {"technique_id": "T1021", "mapping_type": "mitigates"},
+        {"technique_id": "T1021.004", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "AU-2",
+      "control_family": "Audit and Accountability",
+      "name": "Event Logging",
+      "description": "Identify the types of events that the system is capable of logging in support of the audit function.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1562", "mapping_type": "mitigates"},
+        {"technique_id": "T1562.008", "mapping_type": "mitigates"},
+        {"technique_id": "T1070", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "AU-3",
+      "control_family": "Audit and Accountability",
+      "name": "Content of Audit Records",
+      "description": "Ensure that audit records contain information that establishes what occurred, when, where, the source, and the outcome.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1562", "mapping_type": "mitigates"},
+        {"technique_id": "T1070", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "AU-6",
+      "control_family": "Audit and Accountability",
+      "name": "Audit Record Review, Analysis, and Reporting",
+      "description": "Review and analyse system audit records for indications of inappropriate or unusual activity.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1078", "mapping_type": "mitigates"},
+        {"technique_id": "T1110", "mapping_type": "mitigates"},
+        {"technique_id": "T1562", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "AU-9",
+      "control_family": "Audit and Accountability",
+      "name": "Protection of Audit Information",
+      "description": "Protect audit information and audit logging tools from unauthorised access, modification, and deletion.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1562.008", "mapping_type": "mitigates"},
+        {"technique_id": "T1070", "mapping_type": "mitigates"},
+        {"technique_id": "T1070.002", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "AU-12",
+      "control_family": "Audit and Accountability",
+      "name": "Audit Record Generation",
+      "description": "Provide audit record generation capability for the event types the system is capable of auditing.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1562", "mapping_type": "mitigates"},
+        {"technique_id": "T1562.008", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "CM-2",
+      "control_family": "Configuration Management",
+      "name": "Baseline Configuration",
+      "description": "Develop, document, and maintain a current baseline configuration of the system.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1578", "mapping_type": "mitigates"},
+        {"technique_id": "T1578.002", "mapping_type": "mitigates"},
+        {"technique_id": "T1578.003", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "CM-3",
+      "control_family": "Configuration Management",
+      "name": "Configuration Change Control",
+      "description": "Determine and document the types of changes to the system that are configuration-controlled.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1578", "mapping_type": "mitigates"},
+        {"technique_id": "T1525", "mapping_type": "mitigates"},
+        {"technique_id": "T1496", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "CM-6",
+      "control_family": "Configuration Management",
+      "name": "Configuration Settings",
+      "description": "Establish and document configuration settings for components within the system.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1578", "mapping_type": "mitigates"},
+        {"technique_id": "T1562", "mapping_type": "mitigates"},
+        {"technique_id": "T1098", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "CM-7",
+      "control_family": "Configuration Management",
+      "name": "Least Functionality",
+      "description": "Configure the system to provide only essential capabilities and prohibit or restrict use of non-essential functions.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1190", "mapping_type": "mitigates"},
+        {"technique_id": "T1133", "mapping_type": "mitigates"},
+        {"technique_id": "T1578", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "IA-2",
+      "control_family": "Identification and Authentication",
+      "name": "Identification and Authentication (Organisational Users)",
+      "description": "Uniquely identify and authenticate organisational users and associate that unique identification with processes acting on behalf of those users.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1078", "mapping_type": "mitigates"},
+        {"technique_id": "T1078.001", "mapping_type": "mitigates"},
+        {"technique_id": "T1078.004", "mapping_type": "mitigates"},
+        {"technique_id": "T1110", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "IA-4",
+      "control_family": "Identification and Authentication",
+      "name": "Identifier Management",
+      "description": "Manage system identifiers for users and devices by receiving authorisation and assigning unique identifiers.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1078", "mapping_type": "mitigates"},
+        {"technique_id": "T1136", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "IA-5",
+      "control_family": "Identification and Authentication",
+      "name": "Authenticator Management",
+      "description": "Manage system authenticators by verifying the identity of the individual receiving the authenticator.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1110", "mapping_type": "mitigates"},
+        {"technique_id": "T1078", "mapping_type": "mitigates"},
+        {"technique_id": "T1552", "mapping_type": "mitigates"},
+        {"technique_id": "T1528", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "IA-8",
+      "control_family": "Identification and Authentication",
+      "name": "Identification and Authentication (Non-Organisational Users)",
+      "description": "Uniquely identify and authenticate non-organisational users or processes acting on behalf of non-organisational users.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1078", "mapping_type": "mitigates"},
+        {"technique_id": "T1078.004", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "IR-4",
+      "control_family": "Incident Response",
+      "name": "Incident Handling",
+      "description": "Implement an incident handling capability that includes preparation, detection, analysis, containment, eradication, and recovery.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1078", "mapping_type": "mitigates"},
+        {"technique_id": "T1562", "mapping_type": "mitigates"},
+        {"technique_id": "T1530", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "IR-5",
+      "control_family": "Incident Response",
+      "name": "Incident Monitoring",
+      "description": "Track and document system security and privacy incidents.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1078", "mapping_type": "mitigates"},
+        {"technique_id": "T1110", "mapping_type": "mitigates"},
+        {"technique_id": "T1562", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "SC-4",
+      "control_family": "System and Communications Protection",
+      "name": "Information in Shared System Resources",
+      "description": "Prevent unauthorised and unintended information transfer via shared system resources.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1530", "mapping_type": "mitigates"},
+        {"technique_id": "T1552", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "SC-7",
+      "control_family": "System and Communications Protection",
+      "name": "Boundary Protection",
+      "description": "Monitor and control communications at the external managed interfaces to the system and at key internal managed interfaces.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1048", "mapping_type": "mitigates"},
+        {"technique_id": "T1041", "mapping_type": "mitigates"},
+        {"technique_id": "T1071", "mapping_type": "mitigates"},
+        {"technique_id": "T1190", "mapping_type": "mitigates"},
+        {"technique_id": "T1133", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "SC-8",
+      "control_family": "System and Communications Protection",
+      "name": "Transmission Confidentiality and Integrity",
+      "description": "Protect the confidentiality and integrity of transmitted information.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1557", "mapping_type": "mitigates"},
+        {"technique_id": "T1040", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "SC-12",
+      "control_family": "System and Communications Protection",
+      "name": "Cryptographic Key Establishment and Management",
+      "description": "Establish and manage cryptographic keys when cryptography is employed within the system.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1552", "mapping_type": "mitigates"},
+        {"technique_id": "T1552.004", "mapping_type": "mitigates"},
+        {"technique_id": "T1528", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "SC-23",
+      "control_family": "System and Communications Protection",
+      "name": "Session Authenticity",
+      "description": "Protect the authenticity of communications sessions.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1557", "mapping_type": "mitigates"},
+        {"technique_id": "T1550", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "SI-3",
+      "control_family": "System and Information Integrity",
+      "name": "Malicious Code Protection",
+      "description": "Implement malicious code protection mechanisms at system entry and exit points to detect and eradicate malicious code.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1204", "mapping_type": "mitigates"},
+        {"technique_id": "T1566", "mapping_type": "mitigates"},
+        {"technique_id": "T1059", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "SI-4",
+      "control_family": "System and Information Integrity",
+      "name": "System Monitoring",
+      "description": "Monitor the system to detect attacks, indicators of potential attacks, and unauthorised connections.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1078", "mapping_type": "mitigates"},
+        {"technique_id": "T1110", "mapping_type": "mitigates"},
+        {"technique_id": "T1562", "mapping_type": "mitigates"},
+        {"technique_id": "T1530", "mapping_type": "mitigates"},
+        {"technique_id": "T1537", "mapping_type": "mitigates"},
+        {"technique_id": "T1190", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "SI-5",
+      "control_family": "System and Information Integrity",
+      "name": "Security Alerts, Advisories, and Directives",
+      "description": "Receive system security alerts, advisories, and directives from external organisations on an ongoing basis.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1190", "mapping_type": "mitigates"},
+        {"technique_id": "T1068", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "SI-7",
+      "control_family": "System and Information Integrity",
+      "name": "Software, Firmware, and Information Integrity",
+      "description": "Employ integrity verification tools to detect unauthorised changes to software, firmware, and information.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1525", "mapping_type": "mitigates"},
+        {"technique_id": "T1195", "mapping_type": "mitigates"},
+        {"technique_id": "T1072", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "SI-10",
+      "control_family": "System and Information Integrity",
+      "name": "Information Input Validation",
+      "description": "Check the validity of information inputs.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1190", "mapping_type": "mitigates"},
+        {"technique_id": "T1059", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "RA-5",
+      "control_family": "Risk Assessment",
+      "name": "Vulnerability Monitoring and Scanning",
+      "description": "Monitor and scan for vulnerabilities in the system and hosted applications.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1190", "mapping_type": "mitigates"},
+        {"technique_id": "T1068", "mapping_type": "mitigates"},
+        {"technique_id": "T1210", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "CA-7",
+      "control_family": "Security Assessment and Authorisation",
+      "name": "Continuous Monitoring",
+      "description": "Develop a system-level continuous monitoring strategy and implement continuous monitoring.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1078", "mapping_type": "mitigates"},
+        {"technique_id": "T1562", "mapping_type": "mitigates"},
+        {"technique_id": "T1190", "mapping_type": "mitigates"}
+      ]
+    }
+  ]
+}

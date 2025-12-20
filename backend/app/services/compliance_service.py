@@ -1,0 +1,379 @@
+"""Compliance coverage service.
+
+Manages compliance framework coverage calculations and storage.
+"""
+
+from typing import Optional
+from uuid import UUID
+
+import structlog
+from sqlalchemy import select, func
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from app.models.compliance import (
+    ComplianceFramework,
+    ComplianceControl,
+    ControlTechniqueMapping,
+    ComplianceCoverageSnapshot,
+)
+from app.models.coverage import CoverageSnapshot
+from app.models.mitre import Technique
+from app.analyzers.compliance_calculator import (
+    ComplianceCoverageCalculator,
+)
+
+logger = structlog.get_logger()
+
+
+class ComplianceService:
+    """Service for compliance coverage operations."""
+
+    def __init__(self, db: AsyncSession):
+        self.db = db
+        self.logger = logger.bind(service="ComplianceService")
+
+    async def get_frameworks(
+        self, active_only: bool = True
+    ) -> list[ComplianceFramework]:
+        """Get all compliance frameworks.
+
+        Args:
+            active_only: If True, only return active frameworks
+
+        Returns:
+            List of ComplianceFramework objects
+        """
+        query = select(ComplianceFramework)
+        if active_only:
+            query = query.where(ComplianceFramework.is_active.is_(True))
+        query = query.order_by(ComplianceFramework.name)
+
+        result = await self.db.execute(query)
+        return list(result.scalars().all())
+
+    async def get_framework(self, framework_id: str) -> Optional[ComplianceFramework]:
+        """Get a framework by its framework_id.
+
+        Args:
+            framework_id: The framework identifier (e.g., "nist-800-53-r5")
+
+        Returns:
+            The framework or None if not found
+        """
+        result = await self.db.execute(
+            select(ComplianceFramework).where(
+                ComplianceFramework.framework_id == framework_id
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def get_framework_controls(
+        self, framework_id: str
+    ) -> list[ComplianceControl]:
+        """Get all controls for a framework.
+
+        Args:
+            framework_id: The framework identifier
+
+        Returns:
+            List of ComplianceControl objects
+        """
+        # Get framework UUID first
+        framework = await self.get_framework(framework_id)
+        if not framework:
+            return []
+
+        result = await self.db.execute(
+            select(ComplianceControl)
+            .where(ComplianceControl.framework_id == framework.id)
+            .options(selectinload(ComplianceControl.technique_mappings))
+            .order_by(ComplianceControl.display_order)
+        )
+        return list(result.scalars().all())
+
+    async def get_control_techniques(
+        self, control_id: UUID
+    ) -> list[ControlTechniqueMapping]:
+        """Get technique mappings for a control.
+
+        Args:
+            control_id: The control UUID
+
+        Returns:
+            List of ControlTechniqueMapping objects
+        """
+        result = await self.db.execute(
+            select(ControlTechniqueMapping)
+            .where(ControlTechniqueMapping.control_id == control_id)
+            .options(selectinload(ControlTechniqueMapping.technique))
+        )
+        return list(result.scalars().all())
+
+    async def calculate_compliance_coverage(
+        self,
+        cloud_account_id: UUID,
+        coverage_snapshot_id: UUID,
+    ) -> list[ComplianceCoverageSnapshot]:
+        """Calculate and store compliance coverage for all frameworks.
+
+        Called after MITRE coverage is calculated.
+
+        Args:
+            cloud_account_id: The cloud account UUID
+            coverage_snapshot_id: The MITRE coverage snapshot UUID
+
+        Returns:
+            List of created ComplianceCoverageSnapshot objects
+        """
+        self.logger.info(
+            "calculating_compliance_coverage",
+            account_id=str(cloud_account_id),
+            coverage_snapshot_id=str(coverage_snapshot_id),
+        )
+
+        # Get the MITRE coverage snapshot to extract technique coverage
+        coverage_snapshot = await self.db.get(CoverageSnapshot, coverage_snapshot_id)
+        if not coverage_snapshot:
+            self.logger.error(
+                "coverage_snapshot_not_found",
+                coverage_snapshot_id=str(coverage_snapshot_id),
+            )
+            return []
+
+        # Build technique coverage dict from the tactic_coverage data
+        # We need to get the actual technique details from the coverage snapshot
+        technique_coverage = await self._extract_technique_coverage(
+            cloud_account_id, coverage_snapshot
+        )
+
+        # Get all active frameworks
+        frameworks = await self.get_frameworks(active_only=True)
+        if not frameworks:
+            self.logger.info("no_active_frameworks")
+            return []
+
+        # Calculate coverage for each framework
+        calculator = ComplianceCoverageCalculator(self.db)
+        snapshots = []
+
+        for framework in frameworks:
+            try:
+                result = await calculator.calculate(framework.id, technique_coverage)
+
+                # Build family coverage dict for storage
+                family_coverage = {
+                    name: {
+                        "family": info.family,
+                        "total": info.total,
+                        "covered": info.covered,
+                        "partial": info.partial,
+                        "uncovered": info.uncovered,
+                        "percent": info.percent,
+                    }
+                    for name, info in result.family_coverage.items()
+                }
+
+                # Build top gaps list for storage
+                top_gaps = [
+                    {
+                        "control_id": gap.control_id,
+                        "control_name": gap.control_name,
+                        "control_family": gap.control_family,
+                        "priority": gap.priority,
+                        "coverage_percent": gap.coverage_percent,
+                        "missing_techniques": gap.missing_techniques,
+                    }
+                    for gap in result.top_gaps
+                ]
+
+                # Create snapshot
+                snapshot = ComplianceCoverageSnapshot(
+                    cloud_account_id=cloud_account_id,
+                    framework_id=framework.id,
+                    coverage_snapshot_id=coverage_snapshot_id,
+                    total_controls=result.total_controls,
+                    covered_controls=result.covered_controls,
+                    partial_controls=result.partial_controls,
+                    uncovered_controls=result.uncovered_controls,
+                    coverage_percent=result.coverage_percent,
+                    family_coverage=family_coverage,
+                    top_gaps=top_gaps,
+                )
+                self.db.add(snapshot)
+                snapshots.append(snapshot)
+
+                self.logger.info(
+                    "compliance_snapshot_created",
+                    framework_id=framework.framework_id,
+                    coverage_percent=result.coverage_percent,
+                )
+
+            except Exception as e:
+                self.logger.error(
+                    "compliance_calculation_failed",
+                    framework_id=framework.framework_id,
+                    error=str(e),
+                )
+                continue
+
+        await self.db.flush()
+
+        self.logger.info(
+            "compliance_coverage_complete",
+            account_id=str(cloud_account_id),
+            frameworks_processed=len(snapshots),
+        )
+
+        return snapshots
+
+    async def _extract_technique_coverage(
+        self,
+        cloud_account_id: UUID,
+        coverage_snapshot: CoverageSnapshot,
+    ) -> dict[str, str]:
+        """Extract technique coverage status from MITRE coverage data.
+
+        Returns a dict mapping technique_id (e.g., "T1078") to status
+        ("covered", "partial", "uncovered").
+        """
+        # Get all techniques
+        result = await self.db.execute(select(Technique))
+        techniques = result.scalars().all()
+
+        # Build coverage dict - start with all uncovered
+        technique_coverage: dict[str, str] = {
+            t.technique_id: "uncovered" for t in techniques
+        }
+
+        # The coverage snapshot has top_gaps which tells us uncovered/partial
+        # But we also need to look at the detection mappings
+        # For now, we'll use a heuristic based on the gaps
+
+        # Get technique IDs from gaps (these are uncovered or partial)
+        uncovered_or_partial = set()
+        for gap in coverage_snapshot.top_gaps or []:
+            tech_id = gap.get("technique_id")
+            if tech_id:
+                uncovered_or_partial.add(tech_id)
+
+        # For each tactic, we know covered/partial/uncovered counts
+        # But we need the actual technique IDs
+
+        # We can approximate: if total_covered > 0, mark some techniques as covered
+        # This is imperfect - in production we'd query the actual detection mappings
+
+        # Get techniques with detections (these are covered or partial)
+        from app.models.mapping import DetectionMapping
+        from app.models.detection import Detection, DetectionStatus
+
+        # Query active detections with mappings
+        mappings_result = await self.db.execute(
+            select(
+                DetectionMapping.technique_id,
+                func.max(DetectionMapping.confidence).label("max_confidence"),
+            )
+            .join(Detection, Detection.id == DetectionMapping.detection_id)
+            .where(
+                Detection.cloud_account_id == cloud_account_id,
+                Detection.status == DetectionStatus.ACTIVE,
+            )
+            .group_by(DetectionMapping.technique_id)
+        )
+
+        # Build UUID to technique_id map
+        technique_uuid_to_id = {t.id: t.technique_id for t in techniques}
+
+        for row in mappings_result.fetchall():
+            technique_uuid = row[0]
+            max_confidence = row[1]
+
+            tech_id = technique_uuid_to_id.get(technique_uuid)
+            if not tech_id:
+                continue
+
+            # Determine status based on confidence
+            if max_confidence >= 0.6:
+                technique_coverage[tech_id] = "covered"
+            elif max_confidence >= 0.4:
+                technique_coverage[tech_id] = "partial"
+            # else stays uncovered
+
+        return technique_coverage
+
+    async def get_compliance_summary(self, cloud_account_id: UUID) -> list[dict]:
+        """Get compliance coverage summary for all frameworks.
+
+        Args:
+            cloud_account_id: The cloud account UUID
+
+        Returns:
+            List of coverage summaries per framework
+        """
+        # Get latest snapshot for each framework
+        subquery = (
+            select(
+                ComplianceCoverageSnapshot.framework_id,
+                func.max(ComplianceCoverageSnapshot.created_at).label("latest"),
+            )
+            .where(ComplianceCoverageSnapshot.cloud_account_id == cloud_account_id)
+            .group_by(ComplianceCoverageSnapshot.framework_id)
+            .subquery()
+        )
+
+        result = await self.db.execute(
+            select(ComplianceCoverageSnapshot)
+            .join(
+                subquery,
+                (ComplianceCoverageSnapshot.framework_id == subquery.c.framework_id)
+                & (ComplianceCoverageSnapshot.created_at == subquery.c.latest),
+            )
+            .options(selectinload(ComplianceCoverageSnapshot.framework))
+        )
+
+        snapshots = result.scalars().all()
+
+        summaries = []
+        for snapshot in snapshots:
+            summaries.append(
+                {
+                    "framework_id": snapshot.framework.framework_id,
+                    "framework_name": snapshot.framework.name,
+                    "coverage_percent": snapshot.coverage_percent,
+                    "covered_controls": snapshot.covered_controls,
+                    "total_controls": snapshot.total_controls,
+                }
+            )
+
+        return summaries
+
+    async def get_framework_coverage(
+        self,
+        cloud_account_id: UUID,
+        framework_id: str,
+    ) -> Optional[ComplianceCoverageSnapshot]:
+        """Get latest compliance coverage for a specific framework.
+
+        Args:
+            cloud_account_id: The cloud account UUID
+            framework_id: The framework identifier (e.g., "nist-800-53-r5")
+
+        Returns:
+            The latest ComplianceCoverageSnapshot or None
+        """
+        framework = await self.get_framework(framework_id)
+        if not framework:
+            return None
+
+        result = await self.db.execute(
+            select(ComplianceCoverageSnapshot)
+            .where(
+                ComplianceCoverageSnapshot.cloud_account_id == cloud_account_id,
+                ComplianceCoverageSnapshot.framework_id == framework.id,
+            )
+            .options(selectinload(ComplianceCoverageSnapshot.framework))
+            .order_by(ComplianceCoverageSnapshot.created_at.desc())
+            .limit(1)
+        )
+
+        return result.scalar_one_or_none()

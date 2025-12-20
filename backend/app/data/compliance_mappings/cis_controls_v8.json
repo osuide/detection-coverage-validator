@@ -1,0 +1,248 @@
+{
+  "framework": {
+    "framework_id": "cis-controls-v8",
+    "name": "CIS Controls v8",
+    "version": "v8",
+    "description": "CIS Critical Security Controls are a prioritised set of actions that collectively form a defence-in-depth set of best practices that mitigate the most common attacks against systems and networks. Version 8 was released in 2021.",
+    "source_url": "https://www.cisecurity.org/insights/white-papers/cis-controls-v8-master-mapping-to-mitre-enterprise-attck-v82"
+  },
+  "controls": [
+    {
+      "control_id": "1",
+      "control_family": "Inventory and Control of Enterprise Assets",
+      "name": "Inventory and Control of Enterprise Assets",
+      "description": "Actively manage all enterprise assets connected to the infrastructure physically, virtually, remotely, and those within cloud environments.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1580", "mapping_type": "mitigates"},
+        {"technique_id": "T1526", "mapping_type": "mitigates"},
+        {"technique_id": "T1087", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "2",
+      "control_family": "Inventory and Control of Software Assets",
+      "name": "Inventory and Control of Software Assets",
+      "description": "Actively manage all software on the network so that only authorised software is installed and can execute.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1204", "mapping_type": "mitigates"},
+        {"technique_id": "T1059", "mapping_type": "mitigates"},
+        {"technique_id": "T1195", "mapping_type": "mitigates"},
+        {"technique_id": "T1072", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "3",
+      "control_family": "Data Protection",
+      "name": "Data Protection",
+      "description": "Develop processes and technical controls to identify, classify, securely handle, retain, and dispose of data.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1530", "mapping_type": "mitigates"},
+        {"technique_id": "T1537", "mapping_type": "mitigates"},
+        {"technique_id": "T1552", "mapping_type": "mitigates"},
+        {"technique_id": "T1048", "mapping_type": "mitigates"},
+        {"technique_id": "T1567", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "4",
+      "control_family": "Secure Configuration of Enterprise Assets and Software",
+      "name": "Secure Configuration of Enterprise Assets and Software",
+      "description": "Establish and maintain the secure configuration of enterprise assets and software.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1078", "mapping_type": "mitigates"},
+        {"technique_id": "T1578", "mapping_type": "mitigates"},
+        {"technique_id": "T1190", "mapping_type": "mitigates"},
+        {"technique_id": "T1133", "mapping_type": "mitigates"},
+        {"technique_id": "T1525", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "5",
+      "control_family": "Account Management",
+      "name": "Account Management",
+      "description": "Use processes and tools to assign and manage authorisation to credentials for user accounts.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1078", "mapping_type": "mitigates"},
+        {"technique_id": "T1078.001", "mapping_type": "mitigates"},
+        {"technique_id": "T1078.004", "mapping_type": "mitigates"},
+        {"technique_id": "T1136", "mapping_type": "mitigates"},
+        {"technique_id": "T1136.003", "mapping_type": "mitigates"},
+        {"technique_id": "T1098", "mapping_type": "mitigates"},
+        {"technique_id": "T1098.001", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "6",
+      "control_family": "Access Control Management",
+      "name": "Access Control Management",
+      "description": "Use processes and tools to create, assign, manage, and revoke access credentials and privileges for user, administrator, and service accounts.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1078", "mapping_type": "mitigates"},
+        {"technique_id": "T1078.004", "mapping_type": "mitigates"},
+        {"technique_id": "T1098", "mapping_type": "mitigates"},
+        {"technique_id": "T1548", "mapping_type": "mitigates"},
+        {"technique_id": "T1530", "mapping_type": "mitigates"},
+        {"technique_id": "T1580", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "7",
+      "control_family": "Continuous Vulnerability Management",
+      "name": "Continuous Vulnerability Management",
+      "description": "Develop a plan to continuously assess and track vulnerabilities on all enterprise assets.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1190", "mapping_type": "mitigates"},
+        {"technique_id": "T1068", "mapping_type": "mitigates"},
+        {"technique_id": "T1210", "mapping_type": "mitigates"},
+        {"technique_id": "T1203", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "8",
+      "control_family": "Audit Log Management",
+      "name": "Audit Log Management",
+      "description": "Collect, alert, review, and retain audit logs of events that could help detect, understand, or recover from an attack.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1562", "mapping_type": "mitigates"},
+        {"technique_id": "T1562.008", "mapping_type": "mitigates"},
+        {"technique_id": "T1070", "mapping_type": "mitigates"},
+        {"technique_id": "T1070.002", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "9",
+      "control_family": "Email and Web Browser Protections",
+      "name": "Email and Web Browser Protections",
+      "description": "Improve protections and detections of threats from email and web vectors.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1566", "mapping_type": "mitigates"},
+        {"technique_id": "T1566.001", "mapping_type": "mitigates"},
+        {"technique_id": "T1566.002", "mapping_type": "mitigates"},
+        {"technique_id": "T1204", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "10",
+      "control_family": "Malware Defences",
+      "name": "Malware Defences",
+      "description": "Prevent or control the installation, spread, and execution of malicious applications, code, or scripts.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1204", "mapping_type": "mitigates"},
+        {"technique_id": "T1059", "mapping_type": "mitigates"},
+        {"technique_id": "T1566", "mapping_type": "mitigates"},
+        {"technique_id": "T1195", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "11",
+      "control_family": "Data Recovery",
+      "name": "Data Recovery",
+      "description": "Establish and maintain data recovery practices sufficient to restore in-scope enterprise assets to a pre-incident and trusted state.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1485", "mapping_type": "mitigates"},
+        {"technique_id": "T1486", "mapping_type": "mitigates"},
+        {"technique_id": "T1490", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "12",
+      "control_family": "Network Infrastructure Management",
+      "name": "Network Infrastructure Management",
+      "description": "Establish and maintain the secure configuration of network devices.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1557", "mapping_type": "mitigates"},
+        {"technique_id": "T1040", "mapping_type": "mitigates"},
+        {"technique_id": "T1071", "mapping_type": "mitigates"},
+        {"technique_id": "T1048", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "13",
+      "control_family": "Network Monitoring and Defence",
+      "name": "Network Monitoring and Defence",
+      "description": "Operate processes and tooling to establish and maintain comprehensive network monitoring and defence against security threats.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1048", "mapping_type": "mitigates"},
+        {"technique_id": "T1041", "mapping_type": "mitigates"},
+        {"technique_id": "T1071", "mapping_type": "mitigates"},
+        {"technique_id": "T1190", "mapping_type": "mitigates"},
+        {"technique_id": "T1133", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "14",
+      "control_family": "Security Awareness and Skills Training",
+      "name": "Security Awareness and Skills Training",
+      "description": "Establish and maintain a security awareness programme to influence behaviour among the workforce.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1566", "mapping_type": "mitigates"},
+        {"technique_id": "T1204", "mapping_type": "mitigates"},
+        {"technique_id": "T1078", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "15",
+      "control_family": "Service Provider Management",
+      "name": "Service Provider Management",
+      "description": "Develop a process to evaluate service providers who hold sensitive data or are responsible for an enterprise's critical IT platforms.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1199", "mapping_type": "mitigates"},
+        {"technique_id": "T1195", "mapping_type": "mitigates"},
+        {"technique_id": "T1078", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "16",
+      "control_family": "Application Software Security",
+      "name": "Application Software Security",
+      "description": "Manage the security life cycle of in-house developed, hosted, or acquired software to prevent, detect, and remediate security weaknesses.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1190", "mapping_type": "mitigates"},
+        {"technique_id": "T1059", "mapping_type": "mitigates"},
+        {"technique_id": "T1203", "mapping_type": "mitigates"},
+        {"technique_id": "T1525", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "17",
+      "control_family": "Incident Response Management",
+      "name": "Incident Response Management",
+      "description": "Establish a programme to develop and maintain an incident response capability.",
+      "priority": "P1",
+      "technique_mappings": [
+        {"technique_id": "T1078", "mapping_type": "mitigates"},
+        {"technique_id": "T1562", "mapping_type": "mitigates"},
+        {"technique_id": "T1530", "mapping_type": "mitigates"},
+        {"technique_id": "T1485", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "18",
+      "control_family": "Penetration Testing",
+      "name": "Penetration Testing",
+      "description": "Test the effectiveness and resiliency of enterprise assets through identifying and exploiting weaknesses in controls.",
+      "priority": "P2",
+      "technique_mappings": [
+        {"technique_id": "T1190", "mapping_type": "mitigates"},
+        {"technique_id": "T1078", "mapping_type": "mitigates"},
+        {"technique_id": "T1068", "mapping_type": "mitigates"}
+      ]
+    }
+  ]
+}

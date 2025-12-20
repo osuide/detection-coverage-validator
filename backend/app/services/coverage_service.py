@@ -154,6 +154,23 @@ class CoverageService:
             snapshot_id=str(snapshot.id),
         )
 
+        # Calculate compliance coverage for all active frameworks
+        try:
+            from app.services.compliance_service import ComplianceService
+
+            compliance_service = ComplianceService(self.db)
+            await compliance_service.calculate_compliance_coverage(
+                cloud_account_id,
+                snapshot.id,
+            )
+        except Exception as e:
+            # Don't fail the main coverage calculation if compliance fails
+            self.logger.warning(
+                "compliance_calculation_failed",
+                account_id=str(cloud_account_id),
+                error=str(e),
+            )
+
         return snapshot
 
     async def calculate_org_coverage(

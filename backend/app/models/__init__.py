@@ -51,6 +51,12 @@ from app.models.user import (
     MembershipStatus,
     AuditLogAction,
 )
+from app.models.compliance import (
+    ComplianceFramework,
+    ComplianceControl,
+    ControlTechniqueMapping,
+    ComplianceCoverageSnapshot,
+)
 
 __all__ = [
     # Cloud accounts
@@ -110,4 +116,9 @@ __all__ = [
     "UserRole",
     "MembershipStatus",
     "AuditLogAction",
+    # Compliance
+    "ComplianceFramework",
+    "ComplianceControl",
+    "ControlTechniqueMapping",
+    "ComplianceCoverageSnapshot",
 ]

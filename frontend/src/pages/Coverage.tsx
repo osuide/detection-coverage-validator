@@ -1,15 +1,18 @@
 import { useQuery } from '@tanstack/react-query'
-import { BarChart3, RefreshCw, Grid3X3, List } from 'lucide-react'
+import { BarChart3, RefreshCw, Grid3X3, List, Shield, Target } from 'lucide-react'
 import { useState } from 'react'
 import { accountsApi, coverageApi } from '../services/api'
 import TacticHeatmap from '../components/TacticHeatmap'
 import CoverageGauge from '../components/CoverageGauge'
 import MitreHeatmap from '../components/MitreHeatmap'
+import { ComplianceCoverageContent } from '../components/compliance'
 
 type ViewMode = 'heatmap' | 'tactics'
+type CoverageTab = 'mitre' | 'compliance'
 
 export default function Coverage() {
   const [viewMode, setViewMode] = useState<ViewMode>('heatmap')
+  const [activeTab, setActiveTab] = useState<CoverageTab>('mitre')
 
   const { data: accounts } = useQuery({
     queryKey: ['accounts'],
@@ -52,6 +55,40 @@ export default function Coverage() {
 
   return (
     <div>
+      {/* Tab Navigation */}
+      <div className="border-b border-gray-200 mb-6">
+        <nav className="flex gap-4">
+          <button
+            onClick={() => setActiveTab('mitre')}
+            className={`flex items-center px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'mitre'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <Target className="w-4 h-4 mr-2" />
+            MITRE ATT&CK
+          </button>
+          <button
+            onClick={() => setActiveTab('compliance')}
+            className={`flex items-center px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'compliance'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <Shield className="w-4 h-4 mr-2" />
+            Compliance
+          </button>
+        </nav>
+      </div>
+
+      {activeTab === 'compliance' && firstAccount ? (
+        <div className="bg-gray-900 -mx-6 -mb-6 px-6 py-6 rounded-b-lg min-h-[600px]">
+          <ComplianceCoverageContent accountId={firstAccount.id} />
+        </div>
+      ) : (
+        <>
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">MITRE ATT&CK Coverage</h1>
@@ -178,6 +215,8 @@ export default function Coverage() {
           </div>
         </div>
       </div>
+        </>
+      )}
     </div>
   )
 }
