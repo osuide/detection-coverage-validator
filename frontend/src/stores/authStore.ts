@@ -18,22 +18,23 @@ export interface User {
   id: string
   email: string
   full_name: string
-  avatar_url: string | null
-  timezone: string
-  email_verified: boolean
+  avatar_url?: string | null
+  timezone?: string
+  email_verified?: boolean
   mfa_enabled: boolean
-  created_at: string
+  created_at?: string
   role?: 'owner' | 'admin' | 'member' | 'viewer'
+  identity_provider?: string
 }
 
 export interface Organization {
   id: string
   name: string
   slug: string
-  logo_url: string | null
+  logo_url?: string | null
   plan: string
-  require_mfa: boolean
-  created_at: string
+  require_mfa?: boolean
+  created_at?: string
 }
 
 interface AuthState {
