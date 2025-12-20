@@ -19,7 +19,8 @@ import {
   Calendar,
   Download,
   ArrowRight,
-  X
+  X,
+  Menu
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import A13ELogo from '../components/A13ELogo'
@@ -27,6 +28,7 @@ import A13ELogo from '../components/A13ELogo'
 export default function Landing() {
   const { isAuthenticated } = useAuth()
   const [scrollY, setScrollY] = useState(0)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     const handleScroll = () => setScrollY(window.scrollY)
@@ -41,6 +43,7 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <A13ELogo size="sm" showTagline={false} />
+            {/* Desktop Navigation */}
             <div className="hidden md:flex items-center space-x-8">
               <a href="#features" className="text-gray-300 hover:text-white transition-colors">Features</a>
               <a href="#pricing" className="text-gray-300 hover:text-white transition-colors">Pricing</a>
@@ -62,7 +65,80 @@ export default function Landing() {
                 </>
               )}
             </div>
+
+            {/* Mobile Menu Button */}
+            <button
+              className="md:hidden p-2 text-gray-300 hover:text-white transition-colors"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </button>
           </div>
+
+          {/* Mobile Menu */}
+          {mobileMenuOpen && (
+            <div className="md:hidden border-t border-slate-800 bg-slate-950/95 backdrop-blur-lg">
+              <div className="px-4 py-4 space-y-3">
+                <a
+                  href="#features"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block text-gray-300 hover:text-white transition-colors py-2"
+                >
+                  Features
+                </a>
+                <a
+                  href="#pricing"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block text-gray-300 hover:text-white transition-colors py-2"
+                >
+                  Pricing
+                </a>
+                <a
+                  href="#demo"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block text-gray-300 hover:text-white transition-colors py-2"
+                >
+                  Demo
+                </a>
+                <Link
+                  to="/docs"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block text-gray-300 hover:text-white transition-colors py-2"
+                >
+                  Docs
+                </Link>
+                <div className="pt-3 border-t border-slate-800 space-y-3">
+                  {isAuthenticated ? (
+                    <Link
+                      to="/dashboard"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block w-full text-center bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-5 py-3 rounded-lg font-medium"
+                    >
+                      Go to Dashboard
+                    </Link>
+                  ) : (
+                    <>
+                      <Link
+                        to="/login"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="block text-gray-300 hover:text-white transition-colors py-2"
+                      >
+                        Sign In
+                      </Link>
+                      <Link
+                        to="/signup"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="block w-full text-center bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-5 py-3 rounded-lg font-medium"
+                      >
+                        Start Free Scan
+                      </Link>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </nav>
 
