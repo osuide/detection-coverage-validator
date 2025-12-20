@@ -13,6 +13,7 @@ from app.core.database import get_db
 from app.core.security import AuthContext, require_role
 from app.models.user import UserRole, AuditLog, AuditLogAction
 from app.services.stripe_service import stripe_service
+from app.services.scan_limit_service import ScanLimitService
 
 logger = structlog.get_logger()
 router = APIRouter()
@@ -161,6 +162,16 @@ class PricingCalculatorResponse(BaseModel):
     is_custom_pricing: bool = False
 
 
+class ScanStatusResponse(BaseModel):
+    """Scan usage status response."""
+
+    scans_used_this_week: int
+    scans_allowed_this_week: Optional[int]  # None = unlimited
+    next_scan_available_at: Optional[str]  # ISO datetime if blocked
+    is_limited: bool  # True if tier has weekly limits
+    total_scans: int
+
+
 # Endpoints
 @router.get("/subscription", response_model=SubscriptionResponse)
 async def get_subscription(
@@ -172,6 +183,23 @@ async def get_subscription(
     """Get current subscription info."""
     info = await stripe_service.get_subscription_info(db, auth.organization_id)
     return SubscriptionResponse(**info)
+
+
+@router.get("/scan-status", response_model=ScanStatusResponse)
+async def get_scan_status(
+    auth: AuthContext = Depends(
+        require_role(UserRole.MEMBER, UserRole.VIEWER, UserRole.ADMIN, UserRole.OWNER)
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get scan usage status for the current organisation.
+
+    Returns weekly scan usage and limits for FREE tier users.
+    Paid tiers have unlimited scans (is_limited=False).
+    """
+    scan_limit_service = ScanLimitService(db)
+    status_data = await scan_limit_service.get_scan_status(auth.organization_id)
+    return ScanStatusResponse(**status_data)
 
 
 @router.get("/pricing", response_model=PricingResponse)

@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { getFingerprint } from '../utils/fingerprint'
 
 // Use environment variable for API base URL (production uses full URL, dev uses proxy)
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
@@ -89,7 +90,18 @@ export interface Session {
 // Auth API functions
 export const authApi = {
   login: async (email: string, password: string): Promise<LoginResponse> => {
-    const response = await api.post<LoginResponse>('/login', { email, password })
+    // Get device fingerprint for abuse prevention
+    const fingerprint = await getFingerprint()
+
+    const response = await api.post<LoginResponse>(
+      '/login',
+      { email, password },
+      {
+        headers: {
+          'X-Device-Fingerprint': fingerprint,
+        },
+      }
+    )
     return response.data
   },
 
@@ -104,13 +116,24 @@ export const authApi = {
     fullName: string,
     organizationName: string
   ): Promise<SignupResponse> => {
-    const response = await api.post<SignupResponse>('/signup', {
-      email,
-      password,
-      full_name: fullName,
-      organization_name: organizationName,
-      terms_accepted: true,
-    })
+    // Get device fingerprint for abuse prevention
+    const fingerprint = await getFingerprint()
+
+    const response = await api.post<SignupResponse>(
+      '/signup',
+      {
+        email,
+        password,
+        full_name: fullName,
+        organization_name: organizationName,
+        terms_accepted: true,
+      },
+      {
+        headers: {
+          'X-Device-Fingerprint': fingerprint,
+        },
+      }
+    )
     return response.data
   },
 

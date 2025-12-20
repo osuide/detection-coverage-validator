@@ -329,6 +329,20 @@ export const recommendationsApi = {
     api.get<StrategyDetail>(`/recommendations/techniques/${techniqueId}/strategies/${strategyId}`).then(r => r.data),
 }
 
+// Scan status (for free tier limits)
+export interface ScanStatus {
+  can_scan: boolean
+  scans_used: number
+  scans_allowed: number
+  unlimited: boolean
+  next_available_at: string | null
+  week_resets_at: string | null
+}
+
+export const scanStatusApi = {
+  get: () => api.get<ScanStatus>('/billing/scan-status').then(r => r.data),
+}
+
 export const credentialsApi = {
   getSetupInstructions: (accountId: string) =>
     api.get<SetupInstructions>(`/credentials/setup/${accountId}`).then(r => r.data),

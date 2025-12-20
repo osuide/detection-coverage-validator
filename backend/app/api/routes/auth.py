@@ -40,6 +40,7 @@ from app.schemas.auth import (
     SessionResponse,
 )
 from app.services.auth_service import AuthService
+from app.services.fingerprint_service import FingerprintService
 from app.services.hibp_service import check_password_breached
 
 logger = structlog.get_logger()
@@ -465,8 +466,32 @@ async def signup(
 ):
     """Register a new user and create their organization."""
     auth_service = AuthService(db)
+    fingerprint_service = FingerprintService(db)
     ip_address = get_client_ip(request)
     user_agent = request.headers.get("User-Agent")
+
+    # Extract device fingerprint from header (optional)
+    fingerprint_hash = request.headers.get("X-Device-Fingerprint")
+
+    # Check registration rate limit from this device
+    if fingerprint_hash:
+        allowed, reason = await fingerprint_service.check_registration_allowed(
+            fingerprint_hash=fingerprint_hash,
+            ip_address=ip_address,
+        )
+        if not allowed:
+            logger.warning(
+                "signup_blocked_fingerprint",
+                fingerprint_hash=(
+                    fingerprint_hash[:16] + "..." if fingerprint_hash else None
+                ),
+                ip_address=ip_address,
+                reason=reason,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=reason or "Too many registrations from this device",
+            )
 
     # Check if email already exists
     existing_user = await auth_service.get_user_by_email(body.email)
@@ -526,6 +551,23 @@ async def signup(
     # Set httpOnly cookies for secure session management
     csrf_token = generate_csrf_token()
     set_auth_cookies(response, refresh_token, csrf_token)
+
+    # Record device fingerprint association (non-blocking)
+    if fingerprint_hash:
+        try:
+            await fingerprint_service.record_fingerprint(
+                fingerprint_hash=fingerprint_hash,
+                user_id=user.id,
+                organization_id=org.id,
+                ip_address=ip_address,
+            )
+        except Exception as e:
+            # Don't fail signup if fingerprint recording fails
+            logger.error(
+                "fingerprint_record_failed",
+                user_id=str(user.id),
+                error=str(e),
+            )
 
     return SignupResponse(
         user=user_response,

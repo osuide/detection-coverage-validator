@@ -3,7 +3,7 @@
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -13,6 +13,7 @@ from app.models.scan import Scan, ScanStatus
 from app.models.cloud_account import CloudAccount
 from app.schemas.scan import ScanCreate, ScanResponse, ScanListResponse
 from app.services.scan_service import ScanService
+from app.services.scan_limit_service import ScanLimitService
 
 router = APIRouter()
 
@@ -72,6 +73,24 @@ async def create_scan(
     db: AsyncSession = Depends(get_db),
 ):
     """Create and start a new scan job."""
+    # Check scan limits for FREE tier
+    scan_limit_service = ScanLimitService(db)
+    can_scan, reason, next_available = await scan_limit_service.can_scan(
+        auth.organization_id
+    )
+
+    if not can_scan:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail={
+                "message": reason or "Weekly scan limit reached",
+                "next_available_at": (
+                    next_available.isoformat() if next_available else None
+                ),
+                "upgrade_url": "/settings/billing",
+            },
+        )
+
     # Verify cloud account exists and belongs to user's organization
     result = await db.execute(
         select(CloudAccount).where(
@@ -101,6 +120,9 @@ async def create_scan(
     db.add(scan)
     await db.flush()
     await db.refresh(scan)
+
+    # Record the scan for limit tracking
+    await scan_limit_service.record_scan(auth.organization_id)
 
     # Start scan in background
     scan_service = ScanService(db)

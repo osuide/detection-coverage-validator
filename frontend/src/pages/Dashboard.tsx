@@ -9,7 +9,8 @@ import {
   Zap,
   Lock
 } from 'lucide-react'
-import { accountsApi, coverageApi, scansApi, detectionsApi } from '../services/api'
+import { accountsApi, coverageApi, scansApi, detectionsApi, scanStatusApi } from '../services/api'
+import { Link } from 'react-router-dom'
 import CoverageGauge from '../components/CoverageGauge'
 import TacticHeatmap from '../components/TacticHeatmap'
 
@@ -70,6 +71,11 @@ export default function Dashboard() {
     queryKey: ['detections', firstAccount?.id],
     queryFn: () => detectionsApi.list({ cloud_account_id: firstAccount?.id, limit: 500 }),
     enabled: !!firstAccount,
+  })
+
+  const { data: scanStatus } = useQuery({
+    queryKey: ['scanStatus'],
+    queryFn: () => scanStatusApi.get(),
   })
 
   // Calculate detection source counts
@@ -166,6 +172,57 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Scan Limit Status - Only show for limited tiers */}
+      {scanStatus && !scanStatus.unlimited && (
+        <div className="card mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Scan Usage</h3>
+              <p className="text-sm text-gray-500">
+                {scanStatus.scans_used} of {scanStatus.scans_allowed} scans used this week
+              </p>
+            </div>
+            <div className="flex items-center space-x-4">
+              {scanStatus.can_scan ? (
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                  <CheckCircle className="w-4 h-4 mr-1" />
+                  Scan Available
+                </span>
+              ) : (
+                <div className="text-right">
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
+                    <Clock className="w-4 h-4 mr-1" />
+                    Limit Reached
+                  </span>
+                  {scanStatus.week_resets_at && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Resets {new Date(scanStatus.week_resets_at).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+              )}
+              <Link
+                to="/settings/billing"
+                className="text-sm text-blue-600 hover:text-blue-700"
+              >
+                Upgrade for unlimited scans →
+              </Link>
+            </div>
+          </div>
+          {/* Progress bar */}
+          <div className="mt-4">
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div
+                className={`h-2 rounded-full ${scanStatus.can_scan ? 'bg-green-500' : 'bg-yellow-500'}`}
+                style={{
+                  width: `${Math.min((scanStatus.scans_used / scanStatus.scans_allowed) * 100, 100)}%`,
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Coverage and Heatmap */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">

@@ -134,6 +134,15 @@ export interface PortalResponse {
   portal_url: string
 }
 
+export interface ScanStatus {
+  can_scan: boolean
+  scans_used: number
+  scans_allowed: number
+  unlimited: boolean
+  next_available_at: string | null
+  week_resets_at: string | null
+}
+
 // API functions
 export const billingApi = {
   // Get subscription info
@@ -190,6 +199,14 @@ export const billingApi = {
     const response = await api.get<Invoice[]>('/invoices', {
       headers: { Authorization: `Bearer ${token}` },
       params: { limit },
+    })
+    return response.data
+  },
+
+  // Get scan status (limits and usage)
+  getScanStatus: async (token: string): Promise<ScanStatus> => {
+    const response = await api.get<ScanStatus>('/scan-status', {
+      headers: { Authorization: `Bearer ${token}` },
     })
     return response.data
   },
