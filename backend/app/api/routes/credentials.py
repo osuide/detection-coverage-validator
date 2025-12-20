@@ -4,6 +4,7 @@ Provides secure credential management for connecting AWS and GCP accounts.
 """
 
 import json
+from pathlib import Path as _Path
 from typing import Optional
 from uuid import UUID
 
@@ -508,52 +509,71 @@ async def delete_credential(
 # === Template Endpoints ===
 
 
+# === Template Helpers ===
+
+# Resolve template directory once at module load (absolute path for security)
+_TEMPLATE_DIR = (_Path(__file__).parent.parent.parent / "templates").resolve()
+
+
+def _read_template(relative_path: str) -> str:
+    """Safely read a template file with path traversal protection.
+
+    Args:
+        relative_path: Path relative to the templates directory
+
+    Returns:
+        Template file contents
+
+    Raises:
+        HTTPException 404: If template not found
+        HTTPException 403: If path traversal attempt detected
+    """
+    # Resolve the full path
+    template_path = (_TEMPLATE_DIR / relative_path).resolve()
+
+    # Security: Ensure the resolved path is within the template directory
+    if not str(template_path).startswith(str(_TEMPLATE_DIR)):
+        logger.warning(
+            "path_traversal_attempt",
+            requested_path=relative_path,
+            resolved_path=str(template_path),
+        )
+        raise HTTPException(
+            status_code=403,
+            detail="Invalid template path",
+        )
+
+    if not template_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail=f"Template not found: {relative_path}",
+        )
+
+    return template_path.read_text()
+
+
 @router.get("/templates/aws/cloudformation", response_class=PlainTextResponse)
 async def get_aws_cloudformation_template():
     """Download AWS CloudFormation template."""
-    import os
-
-    template_path = os.path.join(
-        os.path.dirname(__file__), "../../templates/aws_cloudformation.yaml"
-    )
-    with open(template_path, "r") as f:
-        return f.read()
+    return _read_template("aws_cloudformation.yaml")
 
 
 @router.get("/templates/aws/terraform", response_class=PlainTextResponse)
 async def get_aws_terraform_template():
     """Download AWS Terraform module."""
-    import os
-
-    template_path = os.path.join(
-        os.path.dirname(__file__), "../../templates/terraform/aws/main.tf"
-    )
-    with open(template_path, "r") as f:
-        return f.read()
+    return _read_template("terraform/aws/main.tf")
 
 
 @router.get("/templates/gcp/terraform", response_class=PlainTextResponse)
 async def get_gcp_terraform_template():
     """Download GCP Terraform module."""
-    import os
-
-    template_path = os.path.join(
-        os.path.dirname(__file__), "../../templates/terraform/gcp/main.tf"
-    )
-    with open(template_path, "r") as f:
-        return f.read()
+    return _read_template("terraform/gcp/main.tf")
 
 
 @router.get("/templates/gcp/setup-script", response_class=PlainTextResponse)
 async def get_gcp_setup_script():
     """Download GCP setup shell script."""
-    import os
-
-    template_path = os.path.join(
-        os.path.dirname(__file__), "../../templates/gcp_setup.sh"
-    )
-    with open(template_path, "r") as f:
-        return f.read()
+    return _read_template("gcp_setup.sh")
 
 
 # === Helper Functions ===

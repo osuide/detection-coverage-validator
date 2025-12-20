@@ -118,9 +118,8 @@ stripe_price_ids = {
   additional_account = "price_LIVE_ADDITIONAL_REPLACE_ME"
 }
 
-# OAuth/SSO
-enable_cognito      = true
-microsoft_tenant_id = "common"
+# OAuth/SSO (Google and GitHub only)
+enable_cognito = true
 
 # Email
 enable_ses = true
@@ -270,12 +269,6 @@ aws secretsmanager create-secret \
 2. Edit application
 3. Update Authorization callback URL:
    - `https://api.a13e.io/api/v1/auth/github/callback`
-
-**Task 4.3: (Optional) Microsoft OAuth**
-
-If enabling Microsoft SSO:
-1. Complete Microsoft Partner Network publisher verification
-2. Add redirect URI in Azure AD app registration
 
 ---
 

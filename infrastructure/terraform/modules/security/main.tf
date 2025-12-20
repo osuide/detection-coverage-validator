@@ -87,6 +87,11 @@ exports.handler = async (event) => {
   const headers = response.headers;
 
   // Build Content Security Policy
+  // SECURITY NOTE: 'unsafe-inline' is required for:
+  // - script-src: Stripe.js requires inline event handlers for PCI compliance
+  // - style-src: Tailwind CSS and React inline styles
+  // TODO: Migrate to nonce-based CSP when Stripe Elements supports it
+  // See: https://stripe.com/docs/security/guide#content-security-policy
   const csp = [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' https://js.stripe.com",

@@ -29,7 +29,53 @@ class Settings(BaseSettings):
     aws_secret_access_key: Optional[str] = None
 
     # Security & Auth
+    # CRITICAL: Must be set to a cryptographically random value in production
+    # Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"
     secret_key: str = "change-me-in-production"
+
+    # Session binding: Optionally validate IP and User-Agent on session refresh
+    # Set to True for higher security (may cause issues for mobile users on changing networks)
+    session_bind_ip: bool = False
+    session_bind_user_agent: bool = False
+
+    # HaveIBeenPwned password checking
+    # When enabled, passwords are checked against the HIBP database during signup/password change
+    # Uses k-anonymity API - only first 5 chars of hash sent, privacy-preserving
+    hibp_password_check_enabled: bool = True
+    hibp_min_breach_count: int = 1  # Minimum breach count to reject password
+
+    def model_post_init(self, __context) -> None:
+        """Validate critical security settings after initialization."""
+        # Validate SECRET_KEY is not the default in non-development environments
+        if self.environment != "development":
+            if self.secret_key == "change-me-in-production":
+                raise ValueError(
+                    "CRITICAL: SECRET_KEY must be set to a strong random value in non-development environments. "
+                    'Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"'
+                )
+            if len(self.secret_key) < 32:
+                raise ValueError(
+                    "CRITICAL: SECRET_KEY must be at least 32 characters long for security."
+                )
+
+        # Validate CREDENTIAL_ENCRYPTION_KEY if set
+        if self.credential_encryption_key:
+            try:
+                from cryptography.fernet import Fernet
+
+                Fernet(self.credential_encryption_key.encode())
+            except Exception as e:
+                raise ValueError(
+                    f"CRITICAL: CREDENTIAL_ENCRYPTION_KEY is invalid: {e}. "
+                    'Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"'
+                )
+        elif self.environment != "development":
+            import logging
+
+            logging.warning(
+                "CREDENTIAL_ENCRYPTION_KEY not set - cloud credential storage will be disabled"
+            )
+
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
     password_reset_expire_hours: int = 24

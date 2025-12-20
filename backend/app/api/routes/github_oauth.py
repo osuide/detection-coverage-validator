@@ -1,6 +1,7 @@
 """GitHub OAuth routes for direct authentication."""
 
 import secrets
+import time
 from datetime import datetime, timezone
 from uuid import uuid4
 
@@ -31,6 +32,46 @@ from app.api.routes.cognito import get_client_ip
 logger = structlog.get_logger()
 settings = get_settings()
 router = APIRouter(prefix="/github", tags=["GitHub OAuth"])
+
+
+# === OAuth State Store ===
+# In-memory state store for CSRF protection
+# NOTE: For production with multiple instances, use Redis instead
+
+
+class OAuthStateStore:
+    """In-memory OAuth state store with expiration."""
+
+    def __init__(self, expiry_seconds: int = 300):
+        self._states: dict[str, float] = {}  # state -> expiry_timestamp
+        self._expiry_seconds = expiry_seconds
+        self._last_cleanup = time.time()
+
+    def _cleanup(self):
+        """Remove expired states."""
+        now = time.time()
+        if now - self._last_cleanup < 60:  # Cleanup every minute
+            return
+        self._last_cleanup = now
+        self._states = {s: exp for s, exp in self._states.items() if exp > now}
+
+    def create_state(self) -> str:
+        """Generate and store a new state token."""
+        self._cleanup()
+        state = secrets.token_urlsafe(32)
+        self._states[state] = time.time() + self._expiry_seconds
+        return state
+
+    def validate_and_consume(self, state: str) -> bool:
+        """Validate state and remove it (one-time use)."""
+        self._cleanup()
+        expiry = self._states.pop(state, None)
+        if expiry is None:
+            return False
+        return expiry > time.time()
+
+
+_oauth_state_store = OAuthStateStore()
 
 
 class GitHubAuthorizeResponse(BaseModel):
@@ -77,7 +118,8 @@ async def get_authorization_url(redirect_uri: str) -> GitHubAuthorizeResponse:
             detail="GitHub OAuth is not configured",
         )
 
-    state = github_oauth_service.generate_state()
+    # Generate and store state for CSRF protection
+    state = _oauth_state_store.create_state()
     authorization_url = github_oauth_service.build_authorization_url(
         redirect_uri=redirect_uri,
         state=state,
@@ -100,6 +142,18 @@ async def exchange_github_token(
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="GitHub OAuth is not configured",
+        )
+
+    # Validate OAuth state for CSRF protection
+    if not body.state or not _oauth_state_store.validate_and_consume(body.state):
+        logger.warning(
+            "oauth_state_invalid",
+            ip=get_client_ip(request),
+            provided_state=body.state[:10] + "..." if body.state else None,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired OAuth state. Please restart the authentication flow.",
         )
 
     # Exchange code for GitHub access token
@@ -133,15 +187,31 @@ async def exchange_github_token(
     github_login = user_info.get("login")
     name = user_info.get("name") or github_login
 
-    # Get user's email (may require separate API call if not public)
-    email = user_info.get("email")
+    # Get user's primary verified email from GitHub
+    # SECURITY: Always use get_primary_email which only returns verified emails
+    # The user_info.email field may contain unverified emails
+    email = await github_oauth_service.get_primary_email(github_access_token)
+
+    # Fallback to user_info email only if it matches a verified email
     if not email:
-        email = await github_oauth_service.get_primary_email(github_access_token)
+        user_info_email = user_info.get("email")
+        if user_info_email:
+            # Verify this email is actually verified on GitHub
+            emails_list = await github_oauth_service.get_user_emails(
+                github_access_token
+            )
+            if emails_list:
+                for email_entry in emails_list:
+                    if email_entry.get("email") == user_info_email and email_entry.get(
+                        "verified"
+                    ):
+                        email = user_info_email
+                        break
 
     if not email:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Could not retrieve email from GitHub. Please ensure your email is verified on GitHub.",
+            detail="Could not retrieve a verified email from GitHub. Please ensure your email is verified on GitHub.",
         )
 
     logger.info(

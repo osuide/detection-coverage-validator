@@ -57,6 +57,15 @@ class RefreshResponse(BaseModel):
     expires_in: int
 
 
+class CookieRefreshResponse(BaseModel):
+    """Token refresh response for cookie-based auth (no refresh token in body)."""
+
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
+    csrf_token: str  # New CSRF token for double-submit pattern
+
+
 class SignupRequest(BaseModel):
     """Signup request."""
 

@@ -1,11 +1,14 @@
 """Authentication API endpoints."""
 
 import re
+import secrets
+import time
+from collections import defaultdict
 from typing import Optional
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,6 +22,7 @@ from app.schemas.auth import (
     MFAVerifyRequest,
     RefreshRequest,
     RefreshResponse,
+    CookieRefreshResponse,
     SignupRequest,
     SignupResponse,
     ForgotPasswordRequest,
@@ -36,11 +40,176 @@ from app.schemas.auth import (
     SessionResponse,
 )
 from app.services.auth_service import AuthService
+from app.services.hibp_service import check_password_breached
 
 logger = structlog.get_logger()
 settings = get_settings()
 router = APIRouter()
 security = HTTPBearer(auto_error=False)
+
+
+# === Rate Limiting ===
+# Simple in-memory rate limiter for authentication endpoints
+# For production with multiple instances, use Redis-backed rate limiting
+
+
+class RateLimiter:
+    """Simple in-memory rate limiter for authentication endpoints."""
+
+    def __init__(self):
+        # Format: {ip: [(timestamp, endpoint), ...]}
+        self._requests: dict[str, list[tuple[float, str]]] = defaultdict(list)
+        self._cleanup_interval = 60  # seconds
+        self._last_cleanup = time.time()
+
+    def _cleanup_old_requests(self, max_age: int = 300):
+        """Remove requests older than max_age seconds."""
+        now = time.time()
+        if now - self._last_cleanup < self._cleanup_interval:
+            return
+        self._last_cleanup = now
+        cutoff = now - max_age
+        for ip in list(self._requests.keys()):
+            self._requests[ip] = [
+                (ts, ep) for ts, ep in self._requests[ip] if ts > cutoff
+            ]
+            if not self._requests[ip]:
+                del self._requests[ip]
+
+    def is_rate_limited(
+        self, ip: str, endpoint: str, max_requests: int, window_seconds: int
+    ) -> bool:
+        """Check if IP is rate limited for the given endpoint."""
+        self._cleanup_old_requests()
+        now = time.time()
+        cutoff = now - window_seconds
+
+        # Count recent requests for this endpoint
+        recent_count = sum(
+            1 for ts, ep in self._requests[ip] if ts > cutoff and ep == endpoint
+        )
+
+        if recent_count >= max_requests:
+            return True
+
+        # Record this request
+        self._requests[ip].append((now, endpoint))
+        return False
+
+
+# Global rate limiter instance
+_rate_limiter = RateLimiter()
+
+
+def rate_limit_login(request: Request):
+    """Rate limit dependency for login endpoint: 10 requests per minute per IP."""
+    from app.core.security import get_client_ip
+
+    ip = get_client_ip(request) or "unknown"
+    if _rate_limiter.is_rate_limited(ip, "login", max_requests=10, window_seconds=60):
+        logger.warning("rate_limit_exceeded", ip=ip, endpoint="login")
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many login attempts. Please try again later.",
+            headers={"Retry-After": "60"},
+        )
+
+
+def rate_limit_signup(request: Request):
+    """Rate limit dependency for signup endpoint: 5 requests per minute per IP."""
+    from app.core.security import get_client_ip
+
+    ip = get_client_ip(request) or "unknown"
+    if _rate_limiter.is_rate_limited(ip, "signup", max_requests=5, window_seconds=60):
+        logger.warning("rate_limit_exceeded", ip=ip, endpoint="signup")
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many signup attempts. Please try again later.",
+            headers={"Retry-After": "60"},
+        )
+
+
+def rate_limit_password_reset(request: Request):
+    """Rate limit dependency for password reset: 3 requests per minute per IP."""
+    from app.core.security import get_client_ip
+
+    ip = get_client_ip(request) or "unknown"
+    if _rate_limiter.is_rate_limited(
+        ip, "password_reset", max_requests=3, window_seconds=60
+    ):
+        logger.warning("rate_limit_exceeded", ip=ip, endpoint="password_reset")
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many password reset attempts. Please try again later.",
+            headers={"Retry-After": "60"},
+        )
+
+
+# === Secure Cookie Configuration ===
+# httpOnly cookies for refresh tokens - immune to XSS
+
+REFRESH_TOKEN_COOKIE_NAME = "dcv_refresh_token"
+CSRF_TOKEN_COOKIE_NAME = "dcv_csrf_token"
+
+
+def set_auth_cookies(
+    response: Response,
+    refresh_token: str,
+    csrf_token: str,
+    remember_me: bool = False,
+) -> None:
+    """Set secure httpOnly cookies for authentication.
+
+    Args:
+        response: FastAPI response object
+        refresh_token: The refresh token to store
+        csrf_token: CSRF token for double-submit protection
+        remember_me: If True, use longer expiry (30 days vs 7 days)
+    """
+    max_age = (
+        30 * 24 * 60 * 60
+        if remember_me
+        else settings.refresh_token_expire_days * 24 * 60 * 60
+    )
+
+    # Refresh token - httpOnly (not accessible to JS)
+    response.set_cookie(
+        key=REFRESH_TOKEN_COOKIE_NAME,
+        value=refresh_token,
+        max_age=max_age,
+        httponly=True,  # Critical: prevents XSS from stealing token
+        secure=settings.environment != "development",  # HTTPS only in production
+        samesite="lax",  # Protects against CSRF for most cases
+        path="/api/v1/auth",  # Only sent to auth endpoints
+    )
+
+    # CSRF token - NOT httpOnly (JS needs to read and send in header)
+    response.set_cookie(
+        key=CSRF_TOKEN_COOKIE_NAME,
+        value=csrf_token,
+        max_age=max_age,
+        httponly=False,  # JS must read this
+        secure=settings.environment != "development",
+        samesite="lax",
+        path="/",
+    )
+
+
+def clear_auth_cookies(response: Response) -> None:
+    """Clear authentication cookies on logout."""
+    response.delete_cookie(
+        key=REFRESH_TOKEN_COOKIE_NAME,
+        path="/api/v1/auth",
+    )
+    response.delete_cookie(
+        key=CSRF_TOKEN_COOKIE_NAME,
+        path="/",
+    )
+
+
+def generate_csrf_token() -> str:
+    """Generate a CSRF token for double-submit cookie pattern."""
+    return secrets.token_urlsafe(32)
 
 
 def get_client_ip(request: Request) -> Optional[str]:
@@ -106,9 +275,12 @@ async def get_current_user_optional(
         return None
 
 
-@router.post("/login", response_model=LoginResponse)
+@router.post(
+    "/login", response_model=LoginResponse, dependencies=[Depends(rate_limit_login)]
+)
 async def login(
     request: Request,
+    response: Response,
     body: LoginRequest,
     db: AsyncSession = Depends(get_db),
 ):
@@ -171,9 +343,13 @@ async def login(
     user_response = UserResponse.model_validate(user)
     user_response.role = user_role
 
+    # Set httpOnly cookies for secure session management
+    csrf_token = generate_csrf_token()
+    set_auth_cookies(response, refresh_token, csrf_token, remember_me=body.remember_me)
+
     return LoginResponse(
         access_token=access_token,
-        refresh_token=refresh_token,
+        refresh_token=refresh_token,  # Still in body for backwards compatibility
         expires_in=settings.access_token_expire_minutes * 60,
         user=user_response,
         organization=OrganizationResponse.model_validate(org) if org else None,
@@ -184,6 +360,7 @@ async def login(
 @router.post("/login/mfa", response_model=LoginResponse)
 async def verify_mfa(
     request: Request,
+    response: Response,
     body: MFAVerifyRequest,
     db: AsyncSession = Depends(get_db),
 ):
@@ -216,10 +393,21 @@ async def verify_mfa(
             detail="MFA not configured",
         )
 
-    # Check if it's a backup code
-    if user.mfa_backup_codes and body.code in user.mfa_backup_codes:
-        # Remove used backup code
-        user.mfa_backup_codes.remove(body.code)
+    # Check if it's a backup code (now hashed)
+    if user.mfa_backup_codes:
+        is_valid_backup, backup_index = auth_service.verify_backup_code(
+            body.code, user.mfa_backup_codes
+        )
+        if is_valid_backup:
+            # Remove used backup code
+            user.mfa_backup_codes = [
+                c for i, c in enumerate(user.mfa_backup_codes) if i != backup_index
+            ]
+        elif not auth_service.verify_mfa_code(user.mfa_secret, body.code):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid MFA code",
+            )
     elif not auth_service.verify_mfa_code(user.mfa_secret, body.code):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -249,6 +437,10 @@ async def verify_mfa(
     user_response = UserResponse.model_validate(user)
     user_response.role = user_role
 
+    # Set httpOnly cookies for secure session management
+    csrf_token = generate_csrf_token()
+    set_auth_cookies(response, refresh_token, csrf_token)
+
     return LoginResponse(
         access_token=access_token,
         refresh_token=refresh_token,
@@ -260,10 +452,14 @@ async def verify_mfa(
 
 
 @router.post(
-    "/signup", response_model=SignupResponse, status_code=status.HTTP_201_CREATED
+    "/signup",
+    response_model=SignupResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(rate_limit_signup)],
 )
 async def signup(
     request: Request,
+    response: Response,
     body: SignupRequest,
     db: AsyncSession = Depends(get_db),
 ):
@@ -280,16 +476,25 @@ async def signup(
             detail="Email already registered",
         )
 
+    # Check if password has been exposed in data breaches (HIBP)
+    if settings.hibp_password_check_enabled:
+        breach_message = await check_password_breached(body.password)
+        if breach_message:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=breach_message,
+            )
+
     # Generate slug from organization name
     slug = re.sub(r"[^a-z0-9-]", "-", body.organization_name.lower())
     slug = re.sub(r"-+", "-", slug).strip("-")
 
     # Check if slug is available
     if not await auth_service.check_slug_available(slug):
-        # Append random suffix
+        # Append random suffix (8 bytes = 16 hex chars for security)
         import secrets
 
-        slug = f"{slug}-{secrets.token_hex(3)}"
+        slug = f"{slug}-{secrets.token_hex(8)}"
 
     # Create user
     user = await auth_service.create_user(
@@ -317,6 +522,10 @@ async def signup(
     # User who signed up is always the owner
     user_response = UserResponse.model_validate(user)
     user_response.role = "owner"
+
+    # Set httpOnly cookies for secure session management
+    csrf_token = generate_csrf_token()
+    set_auth_cookies(response, refresh_token, csrf_token)
 
     return SignupResponse(
         user=user_response,
@@ -355,6 +564,98 @@ async def refresh_token(
     )
 
 
+@router.post("/refresh-session", response_model=CookieRefreshResponse)
+async def refresh_session_cookie(
+    request: Request,
+    response: Response,
+    dcv_refresh_token: Optional[str] = Cookie(None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Refresh access token using httpOnly cookie.
+
+    This is the secure version that reads the refresh token from an httpOnly
+    cookie instead of the request body. Use this for browser-based clients.
+
+    The refresh token is automatically rotated and a new cookie is set.
+    """
+    if not dcv_refresh_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="No refresh token cookie found. Please log in again.",
+        )
+
+    # Validate CSRF token (double-submit cookie pattern)
+    csrf_header = request.headers.get("X-CSRF-Token")
+    csrf_cookie = request.cookies.get(CSRF_TOKEN_COOKIE_NAME)
+
+    if not csrf_header or not csrf_cookie or csrf_header != csrf_cookie:
+        logger.warning(
+            "csrf_validation_failed",
+            ip=get_client_ip(request),
+            has_header=bool(csrf_header),
+            has_cookie=bool(csrf_cookie),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="CSRF token validation failed",
+        )
+
+    auth_service = AuthService(db)
+    ip_address = get_client_ip(request)
+
+    access_token, new_refresh_token = await auth_service.refresh_session(
+        refresh_token=dcv_refresh_token,
+        ip_address=ip_address,
+    )
+
+    if not access_token:
+        # Clear invalid cookies
+        clear_auth_cookies(response)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session expired. Please log in again.",
+        )
+
+    # Generate new CSRF token and set cookies
+    new_csrf_token = generate_csrf_token()
+    set_auth_cookies(response, new_refresh_token, new_csrf_token)
+
+    return CookieRefreshResponse(
+        access_token=access_token,
+        expires_in=settings.access_token_expire_minutes * 60,
+        csrf_token=new_csrf_token,
+    )
+
+
+@router.post("/logout-session", status_code=status.HTTP_204_NO_CONTENT)
+async def logout_session_cookie(
+    request: Request,
+    response: Response,
+    dcv_refresh_token: Optional[str] = Cookie(None),
+    current_user: Optional[User] = Depends(get_current_user_optional),
+    db: AsyncSession = Depends(get_db),
+):
+    """Logout using httpOnly cookie-based session.
+
+    Clears the httpOnly cookie and invalidates the session.
+    """
+    if dcv_refresh_token:
+        auth_service = AuthService(db)
+        ip_address = get_client_ip(request)
+        user_agent = request.headers.get("User-Agent")
+
+        await auth_service.logout(
+            refresh_token=dcv_refresh_token,
+            user_id=current_user.id if current_user else None,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+
+    # Always clear cookies
+    clear_auth_cookies(response)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(
     request: Request,
@@ -377,8 +678,13 @@ async def logout(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.post("/forgot-password", status_code=status.HTTP_204_NO_CONTENT)
+@router.post(
+    "/forgot-password",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(rate_limit_password_reset)],
+)
 async def forgot_password(
+    request: Request,
     body: ForgotPasswordRequest,
     db: AsyncSession = Depends(get_db),
 ):
@@ -414,6 +720,15 @@ async def reset_password(
     db: AsyncSession = Depends(get_db),
 ):
     """Reset password using reset token."""
+    # Check if password has been exposed in data breaches (HIBP)
+    if settings.hibp_password_check_enabled:
+        breach_message = await check_password_breached(body.password)
+        if breach_message:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=breach_message,
+            )
+
     auth_service = AuthService(db)
     ip_address = get_client_ip(request)
 
@@ -495,6 +810,15 @@ async def change_password(
             detail="Current password is incorrect",
         )
 
+    # Check if new password has been exposed in data breaches (HIBP)
+    if settings.hibp_password_check_enabled:
+        breach_message = await check_password_breached(body.new_password)
+        if breach_message:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=breach_message,
+            )
+
     # Update password
     current_user.password_hash = auth_service.hash_password(body.new_password)
 
@@ -555,14 +879,14 @@ async def verify_mfa_setup(
             detail="Invalid MFA code",
         )
 
-    # Generate backup codes
-    backup_codes = auth_service.generate_backup_codes()
+    # Generate backup codes (display codes for user, hashed codes for storage)
+    display_codes, hashed_codes = auth_service.generate_backup_codes()
 
-    # Enable MFA
+    # Enable MFA - store hashed codes, return display codes to user ONCE
     current_user.mfa_enabled = True
-    current_user.mfa_backup_codes = backup_codes
+    current_user.mfa_backup_codes = hashed_codes
 
-    return MFABackupCodesResponse(backup_codes=backup_codes)
+    return MFABackupCodesResponse(backup_codes=display_codes)
 
 
 @router.delete("/me/mfa", status_code=status.HTTP_204_NO_CONTENT)

@@ -113,10 +113,27 @@ class AuthContext:
 
 
 def get_client_ip(request: Request) -> Optional[str]:
-    """Get client IP address from request."""
+    """Get client IP address from request.
+
+    Security: Uses CloudFront-Viewer-Address if available (most reliable),
+    otherwise falls back to X-Forwarded-For first IP (when behind trusted proxy).
+    """
+    # CloudFront-Viewer-Address is most reliable when behind CloudFront
+    cf_viewer = request.headers.get("CloudFront-Viewer-Address")
+    if cf_viewer:
+        # Format is IP:port, extract just the IP
+        return cf_viewer.split(":")[0].strip()
+
+    # X-Forwarded-For: client, proxy1, proxy2, ...
+    # When behind AWS ALB/CloudFront, the first IP is the original client
     forwarded = request.headers.get("X-Forwarded-For")
     if forwarded:
-        return forwarded.split(",")[0].strip()
+        # Get first IP (original client when behind trusted proxy)
+        first_ip = forwarded.split(",")[0].strip()
+        # Basic validation - ensure it looks like an IP
+        if first_ip and ("." in first_ip or ":" in first_ip):
+            return first_ip
+
     return request.client.host if request.client else None
 
 

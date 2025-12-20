@@ -1,6 +1,7 @@
 """Cognito SSO authentication routes."""
 
 import secrets
+import time
 from datetime import datetime, timezone
 from typing import Optional
 from uuid import uuid4
@@ -31,6 +32,44 @@ from app.api.routes.auth import get_current_user, get_client_ip
 logger = structlog.get_logger()
 router = APIRouter()
 settings = get_settings()
+
+
+# === OAuth State Store ===
+# In-memory state store for CSRF protection
+# NOTE: For production with multiple instances, use Redis instead
+
+
+class CognitoOAuthStateStore:
+    """In-memory OAuth state store with expiration for Cognito flows."""
+
+    def __init__(self, expiry_seconds: int = 300):
+        self._states: dict[str, float] = {}  # state -> expiry_timestamp
+        self._expiry_seconds = expiry_seconds
+        self._last_cleanup = time.time()
+
+    def _cleanup(self):
+        """Remove expired states."""
+        now = time.time()
+        if now - self._last_cleanup < 60:
+            return
+        self._last_cleanup = now
+        self._states = {s: exp for s, exp in self._states.items() if exp > now}
+
+    def store_state(self, state: str):
+        """Store a state token."""
+        self._cleanup()
+        self._states[state] = time.time() + self._expiry_seconds
+
+    def validate_and_consume(self, state: str) -> bool:
+        """Validate state and remove it (one-time use)."""
+        self._cleanup()
+        expiry = self._states.pop(state, None)
+        if expiry is None:
+            return False
+        return expiry > time.time()
+
+
+_cognito_state_store = CognitoOAuthStateStore()
 
 
 class CognitoConfigResponse(BaseModel):
@@ -124,8 +163,9 @@ async def initiate_sso(
             detail=f"Invalid provider. Must be one of: {list(provider_mapping.keys())}",
         )
 
-    # Generate state for CSRF protection
+    # Generate state for CSRF protection and store it
     state = secrets.token_urlsafe(32)
+    _cognito_state_store.store_state(state)
 
     # Generate PKCE code verifier and challenge
     code_verifier, code_challenge = generate_pkce()
@@ -158,6 +198,18 @@ async def exchange_cognito_token(
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="SSO is not configured",
+        )
+
+    # Validate OAuth state for CSRF protection
+    if body.state and not _cognito_state_store.validate_and_consume(body.state):
+        logger.warning(
+            "cognito_oauth_state_invalid",
+            ip=get_client_ip(request),
+            provided_state=body.state[:10] + "..." if body.state else None,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired OAuth state. Please restart the authentication flow.",
         )
 
     # Exchange code for Cognito tokens with PKCE

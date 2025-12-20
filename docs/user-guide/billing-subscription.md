@@ -51,7 +51,7 @@ For large organisations (100+ accounts) with compliance and advanced support nee
 
 **Everything in Subscriber, plus**:
 - Unlimited cloud accounts
-- SSO integration (SAML, Okta, Azure AD)
+- SSO integration (SAML, Okta)
 - Compliance mapping (SOC 2, ISO 27001, PCI-DSS, NIST)
 - Custom integrations (SIEM, ticketing, Slack)
 - Dedicated customer success manager

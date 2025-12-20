@@ -37,10 +37,15 @@ class AuthService:
         self.logger = logger.bind(service="AuthService")
 
     # Password hashing
+    # BCrypt rounds: 12 provides good security (~250ms on modern hardware).
+    # Consider increasing to 13 (500ms) if auth latency allows.
+    # Make this configurable via settings if needed for tuning.
+    BCRYPT_ROUNDS = 12
+
     @staticmethod
     def hash_password(password: str) -> str:
         """Hash a password using bcrypt."""
-        salt = bcrypt.gensalt(rounds=12)
+        salt = bcrypt.gensalt(rounds=AuthService.BCRYPT_ROUNDS)
         return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
 
     @staticmethod
@@ -51,7 +56,14 @@ class AuthService:
     # Token generation
     @staticmethod
     def hash_token(token: str) -> str:
-        """Hash a token for storage."""
+        """Hash a token for storage.
+
+        Security Note: Uses SHA-256 (fast hash) which is acceptable for API keys
+        and refresh tokens because they are generated with secrets.token_urlsafe(48),
+        providing ~288 bits of entropy. This makes brute force attacks computationally
+        infeasible even with fast hashing. Slow hashes like bcrypt are reserved for
+        user passwords which have lower entropy.
+        """
         return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
     @staticmethod
@@ -112,13 +124,35 @@ class AuthService:
         return totp.verify(code, valid_window=1)
 
     @staticmethod
-    def generate_backup_codes(count: int = 10) -> list[str]:
-        """Generate MFA backup codes."""
-        codes = []
+    def generate_backup_codes(count: int = 10) -> tuple[list[str], list[str]]:
+        """Generate MFA backup codes.
+
+        Returns:
+            Tuple of (display_codes, hashed_codes).
+            display_codes: Show to user ONCE for saving.
+            hashed_codes: Store in database (bcrypt hashed).
+        """
+        display_codes = []
+        hashed_codes = []
         for _ in range(count):
             code = f"{secrets.token_hex(2)}-{secrets.token_hex(2)}"
-            codes.append(code)
-        return codes
+            display_codes.append(code)
+            # Hash backup codes like passwords for security
+            hashed_codes.append(AuthService.hash_password(code))
+        return display_codes, hashed_codes
+
+    @staticmethod
+    def verify_backup_code(code: str, hashed_codes: list[str]) -> tuple[bool, int]:
+        """Verify a backup code against hashed codes.
+
+        Returns:
+            Tuple of (is_valid, index). Index is the position of the matched code,
+            or -1 if not found.
+        """
+        for i, hashed in enumerate(hashed_codes):
+            if AuthService.verify_password(code, hashed):
+                return True, i
+        return False, -1
 
     # User operations
     async def get_user_by_email(self, email: str) -> Optional[User]:

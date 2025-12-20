@@ -57,30 +57,64 @@ resource "aws_iam_role_policy_attachment" "lambda_vpc" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
 
+variable "secrets_arns" {
+  type        = list(string)
+  default     = []
+  description = "List of Secrets Manager ARNs the Lambda can access"
+}
+
+variable "sqs_queue_arns" {
+  type        = list(string)
+  default     = []
+  description = "List of SQS queue ARNs the Lambda can access"
+}
+
 resource "aws_iam_role_policy" "lambda_custom" {
   name = "dcv-${var.environment}-lambda-policy"
   role = aws_iam_role.lambda.id
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "secretsmanager:GetSecretValue"
-        ]
-        Resource = "*"
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "sqs:SendMessage",
-          "sqs:ReceiveMessage",
-          "sqs:DeleteMessage"
-        ]
-        Resource = "*"
-      }
-    ]
+    Statement = concat(
+      # Secrets Manager - only access specific secrets
+      length(var.secrets_arns) > 0 ? [
+        {
+          Sid    = "SecretsManagerAccess"
+          Effect = "Allow"
+          Action = [
+            "secretsmanager:GetSecretValue"
+          ]
+          Resource = var.secrets_arns
+        }
+      ] : [],
+      # SQS - only access specific queues
+      length(var.sqs_queue_arns) > 0 ? [
+        {
+          Sid    = "SQSAccess"
+          Effect = "Allow"
+          Action = [
+            "sqs:SendMessage",
+            "sqs:ReceiveMessage",
+            "sqs:DeleteMessage",
+            "sqs:GetQueueAttributes"
+          ]
+          Resource = var.sqs_queue_arns
+        }
+      ] : [],
+      # CloudWatch Logs (required for Lambda execution)
+      [
+        {
+          Sid    = "CloudWatchLogs"
+          Effect = "Allow"
+          Action = [
+            "logs:CreateLogGroup",
+            "logs:CreateLogStream",
+            "logs:PutLogEvents"
+          ]
+          Resource = "arn:aws:logs:*:*:log-group:/aws/lambda/dcv-${var.environment}-*"
+        }
+      ]
+    )
   })
 }
 

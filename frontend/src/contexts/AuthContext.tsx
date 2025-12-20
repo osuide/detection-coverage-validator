@@ -1,17 +1,50 @@
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
-import { authApi, User, Organization, LoginResponse, SignupResponse } from '../services/authApi'
+/**
+ * AuthContext - React Context wrapper for Zustand auth store
+ *
+ * This provides backwards compatibility with components using the useAuth() hook
+ * while internally using the secure Zustand store with httpOnly cookies.
+ *
+ * SECURITY IMPROVEMENTS:
+ * - Refresh tokens stored in httpOnly cookies (XSS-proof)
+ * - Access tokens stored in memory only (Zustand)
+ * - CSRF protection via double-submit cookie pattern
+ * - No localStorage usage for tokens
+ */
 
-interface AuthState {
+import { createContext, useContext, useEffect, useCallback, ReactNode } from 'react'
+import { useAuthStore, authActions, User, Organization } from '../stores/authStore'
+import { authApi } from '../services/authApi'
+
+// Types for backwards compatibility
+interface LoginResponse {
+  access_token: string
+  refresh_token: string
+  token_type: string
+  expires_in: number
+  user: User
+  organization: Organization | null
+  requires_mfa: boolean
+  mfa_token: string | null
+}
+
+interface SignupResponse {
+  user: User
+  organization: Organization
+  access_token: string
+  refresh_token: string
+  token_type: string
+  expires_in: number
+}
+
+interface AuthContextType {
   user: User | null
   organization: Organization | null
   isAuthenticated: boolean
   isLoading: boolean
   accessToken: string | null
-}
-
-interface AuthContextType extends AuthState {
-  token: string | null  // Alias for accessToken for convenience
+  token: string | null  // Alias for accessToken
   login: (email: string, password: string) => Promise<LoginResponse>
+  loginWithMfa: (mfaToken: string, code: string) => Promise<void>
   signup: (email: string, password: string, fullName: string, organizationName: string) => Promise<SignupResponse>
   logout: () => Promise<void>
   switchOrganization: (orgId: string) => Promise<void>
@@ -20,190 +53,162 @@ interface AuthContextType extends AuthState {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-const TOKEN_KEY = 'dcv_access_token'
-const REFRESH_TOKEN_KEY = 'dcv_refresh_token'
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<AuthState>({
-    user: null,
-    organization: null,
-    isAuthenticated: false,
-    isLoading: true,
-    accessToken: null,
-  })
+  // Use Zustand store
+  const {
+    accessToken,
+    user,
+    organization,
+    isAuthenticated,
+    isLoading,
+    isInitialised,
+    setLoading,
+    updateOrganization,
+    setAccessToken,
+  } = useAuthStore()
 
-  // Initialize auth state from stored tokens
+  // Initialise auth on mount - restore session from httpOnly cookie
   useEffect(() => {
-    const initAuth = async () => {
-      const accessToken = localStorage.getItem(TOKEN_KEY)
-      const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY)
-
-      if (accessToken) {
-        try {
-          // Try to get current user info
-          const user = await authApi.getMe(accessToken)
-          const organizations = await authApi.getMyOrganizations(accessToken)
-
-          setState({
-            user,
-            organization: organizations[0] || null,
-            isAuthenticated: true,
-            isLoading: false,
-            accessToken,
-          })
-        } catch (error) {
-          // Token expired, try to refresh
-          if (refreshToken) {
-            try {
-              const response = await authApi.refresh(refreshToken)
-              localStorage.setItem(TOKEN_KEY, response.access_token)
-              localStorage.setItem(REFRESH_TOKEN_KEY, response.refresh_token)
-
-              const user = await authApi.getMe(response.access_token)
-              const organizations = await authApi.getMyOrganizations(response.access_token)
-
-              setState({
-                user,
-                organization: organizations[0] || null,
-                isAuthenticated: true,
-                isLoading: false,
-                accessToken: response.access_token,
-              })
-            } catch {
-              // Refresh failed, clear tokens
-              localStorage.removeItem(TOKEN_KEY)
-              localStorage.removeItem(REFRESH_TOKEN_KEY)
-              setState({
-                user: null,
-                organization: null,
-                isAuthenticated: false,
-                isLoading: false,
-                accessToken: null,
-              })
-            }
-          } else {
-            setState({
-              user: null,
-              organization: null,
-              isAuthenticated: false,
-              isLoading: false,
-              accessToken: null,
-            })
-          }
-        }
-      } else {
-        setState(prev => ({ ...prev, isLoading: false }))
-      }
+    if (!isInitialised) {
+      authActions.restoreSession()
     }
+  }, [isInitialised])
 
-    initAuth()
-  }, [])
-
+  // Login handler - uses secure cookie-based auth
   const login = useCallback(async (email: string, password: string): Promise<LoginResponse> => {
-    const response = await authApi.login(email, password)
+    setLoading(true)
 
-    if (response.requires_mfa) {
-      // Return response for MFA handling
-      return response
+    try {
+      const result = await authActions.login(email, password)
+
+      if (result.requiresMfa) {
+        setLoading(false)
+        // Return MFA required response (compatible with old interface)
+        return {
+          access_token: '',
+          refresh_token: '',
+          token_type: 'bearer',
+          expires_in: 0,
+          user: {} as User,
+          organization: null,
+          requires_mfa: true,
+          mfa_token: result.mfaToken || null,
+        }
+      }
+
+      // Get the updated state after login
+      const state = useAuthStore.getState()
+
+      return {
+        access_token: state.accessToken || '',
+        refresh_token: '', // Not exposed in secure mode
+        token_type: 'bearer',
+        expires_in: 1800, // 30 minutes
+        user: state.user!,
+        organization: state.organization,
+        requires_mfa: false,
+        mfa_token: null,
+      }
+    } catch (error) {
+      setLoading(false)
+      throw error
     }
+  }, [setLoading])
 
-    // Store tokens
-    localStorage.setItem(TOKEN_KEY, response.access_token)
-    localStorage.setItem(REFRESH_TOKEN_KEY, response.refresh_token)
+  // MFA verification
+  const loginWithMfa = useCallback(async (mfaToken: string, code: string): Promise<void> => {
+    setLoading(true)
+    try {
+      await authActions.verifyMfa(mfaToken, code)
+    } finally {
+      setLoading(false)
+    }
+  }, [setLoading])
 
-    setState({
-      user: response.user,
-      organization: response.organization || null,
-      isAuthenticated: true,
-      isLoading: false,
-      accessToken: response.access_token,
-    })
-
-    return response
-  }, [])
-
+  // Signup handler
   const signup = useCallback(async (
     email: string,
     password: string,
     fullName: string,
     organizationName: string
   ): Promise<SignupResponse> => {
-    const response = await authApi.signup(email, password, fullName, organizationName)
+    setLoading(true)
 
-    // Store tokens
-    localStorage.setItem(TOKEN_KEY, response.access_token)
-    localStorage.setItem(REFRESH_TOKEN_KEY, response.refresh_token)
+    try {
+      await authActions.signup(email, password, fullName, organizationName)
 
-    setState({
-      user: response.user,
-      organization: response.organization,
-      isAuthenticated: true,
-      isLoading: false,
-      accessToken: response.access_token,
-    })
+      const state = useAuthStore.getState()
 
-    return response
-  }, [])
-
-  const logout = useCallback(async () => {
-    const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY)
-
-    if (refreshToken) {
-      try {
-        await authApi.logout(refreshToken)
-      } catch {
-        // Ignore logout errors
+      return {
+        user: state.user!,
+        organization: state.organization!,
+        access_token: state.accessToken || '',
+        refresh_token: '', // Not exposed in secure mode
+        token_type: 'bearer',
+        expires_in: 1800,
       }
+    } catch (error) {
+      setLoading(false)
+      throw error
     }
+  }, [setLoading])
 
-    localStorage.removeItem(TOKEN_KEY)
-    localStorage.removeItem(REFRESH_TOKEN_KEY)
-
-    setState({
-      user: null,
-      organization: null,
-      isAuthenticated: false,
-      isLoading: false,
-      accessToken: null,
-    })
+  // Logout handler
+  const logout = useCallback(async () => {
+    await authActions.logout()
   }, [])
 
+  // Switch organization
   const switchOrganization = useCallback(async (orgId: string) => {
-    if (!state.accessToken) return
+    if (!accessToken) return
 
-    const response = await authApi.switchOrganization(state.accessToken, orgId)
+    const response = await authApi.switchOrganization(accessToken, orgId)
 
-    // Update access token with new org context
-    localStorage.setItem(TOKEN_KEY, response.access_token)
+    // Update state with new org and token
+    setAccessToken(response.access_token)
+    updateOrganization(response.organization)
+  }, [accessToken, setAccessToken, updateOrganization])
 
-    setState(prev => ({
-      ...prev,
-      organization: response.organization,
-      accessToken: response.access_token,
-    }))
-  }, [state.accessToken])
-
+  // Refresh token
   const refreshToken = useCallback(async () => {
-    const storedRefreshToken = localStorage.getItem(REFRESH_TOKEN_KEY)
-    if (!storedRefreshToken) return
-
-    const response = await authApi.refresh(storedRefreshToken)
-
-    localStorage.setItem(TOKEN_KEY, response.access_token)
-    localStorage.setItem(REFRESH_TOKEN_KEY, response.refresh_token)
-
-    setState(prev => ({
-      ...prev,
-      accessToken: response.access_token,
-    }))
+    await authActions.refreshToken()
   }, [])
+
+  // Show loading state until initialised
+  if (!isInitialised) {
+    return (
+      <AuthContext.Provider
+        value={{
+          user: null,
+          organization: null,
+          isAuthenticated: false,
+          isLoading: true,
+          accessToken: null,
+          token: null,
+          login,
+          loginWithMfa,
+          signup,
+          logout,
+          switchOrganization,
+          refreshToken,
+        }}
+      >
+        {children}
+      </AuthContext.Provider>
+    )
+  }
 
   return (
     <AuthContext.Provider
       value={{
-        ...state,
-        token: state.accessToken,  // Alias for convenience
+        user,
+        organization,
+        isAuthenticated,
+        isLoading,
+        accessToken,
+        token: accessToken, // Alias for convenience
         login,
+        loginWithMfa,
         signup,
         logout,
         switchOrganization,
@@ -222,3 +227,6 @@ export function useAuth() {
   }
   return context
 }
+
+// Re-export types for convenience
+export type { User, Organization }

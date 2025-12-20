@@ -1,10 +1,12 @@
 """Main FastAPI application."""
 
 import os
+import time
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 import structlog
 
 from app.core.config import get_settings
@@ -32,6 +34,61 @@ from app.api.routes import (
 )
 from app.api.routes.admin import router as admin_router
 from app.services.scheduler_service import scheduler_service
+
+
+# === Security: Request Logging Middleware ===
+# Excludes sensitive endpoints from body logging
+
+
+class SecureLoggingMiddleware(BaseHTTPMiddleware):
+    """Middleware that logs requests while protecting sensitive data."""
+
+    # Endpoints where request/response bodies should NOT be logged
+    SENSITIVE_PATHS = {
+        "/api/v1/auth/login",
+        "/api/v1/auth/signup",
+        "/api/v1/auth/login/mfa",
+        "/api/v1/auth/reset-password",
+        "/api/v1/auth/change-password",
+        "/api/v1/credentials/gcp",  # Contains service account keys
+        "/api/v1/credentials/aws",  # Contains role ARNs
+    }
+
+    async def dispatch(self, request: Request, call_next):
+        start_time = time.time()
+        logger = structlog.get_logger()
+
+        # Determine if this is a sensitive endpoint
+        is_sensitive = any(
+            request.url.path.startswith(path) for path in self.SENSITIVE_PATHS
+        )
+
+        # Log request (without body for sensitive endpoints)
+        log_data = {
+            "method": request.method,
+            "path": request.url.path,
+            "client_ip": request.headers.get(
+                "X-Forwarded-For", request.client.host if request.client else "unknown"
+            ),
+        }
+
+        if is_sensitive:
+            log_data["body"] = "[REDACTED - sensitive endpoint]"
+
+        response = await call_next(request)
+
+        # Log response
+        duration_ms = (time.time() - start_time) * 1000
+        log_data["status_code"] = response.status_code
+        log_data["duration_ms"] = round(duration_ms, 2)
+
+        if response.status_code >= 400:
+            logger.warning("http_request", **log_data)
+        else:
+            logger.info("http_request", **log_data)
+
+        return response
+
 
 settings = get_settings()
 logger = structlog.get_logger()
@@ -234,9 +291,22 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    # Explicitly list allowed methods and headers for security
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allow_headers=[
+        "Content-Type",
+        "Authorization",
+        "X-Request-ID",
+        "X-Correlation-ID",
+        "Accept",
+        "Accept-Language",
+        "Cache-Control",
+    ],
+    expose_headers=["X-Total-Count", "X-Page-Count", "X-Request-ID"],
 )
+
+# Add secure logging middleware (excludes sensitive endpoint bodies from logs)
+app.add_middleware(SecureLoggingMiddleware)
 
 # Include routers
 app.include_router(health.router, tags=["Health"])
