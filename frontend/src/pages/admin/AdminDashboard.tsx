@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
   Shield, Users, Building2, CreditCard, Activity,
   AlertTriangle, Settings, LogOut, TrendingUp,
-  Server, Database, Clock, ChevronRight, FileText, UserCog
+  Server, Database, Clock, ChevronRight, FileText, UserCog, Fingerprint
 } from 'lucide-react';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
@@ -244,6 +244,15 @@ export default function AdminDashboard() {
             <UserCog className="w-6 h-6 text-red-400 mb-2" />
             <h3 className="text-white font-medium">Admins</h3>
             <p className="text-sm text-gray-400">Manage admin users</p>
+          </Link>
+
+          <Link
+            to="/admin/fingerprints"
+            className="p-4 bg-gray-800 rounded-xl border border-gray-700 hover:border-gray-600 transition-colors group"
+          >
+            <Fingerprint className="w-6 h-6 text-orange-400 mb-2" />
+            <h3 className="text-white font-medium">Abuse Detection</h3>
+            <p className="text-sm text-gray-400">Device fingerprints</p>
           </Link>
         </div>
 
