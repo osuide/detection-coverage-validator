@@ -316,6 +316,28 @@ def seed_admin_user():
         logger.warning("admin_seed_failed", error=str(e))
 
 
+async def seed_compliance_data():
+    """Seed compliance framework data if not present."""
+    from app.core.database import async_session_maker
+    from app.data.compliance_mappings.loader import ComplianceMappingLoader
+
+    try:
+        async with async_session_maker() as db:
+            loader = ComplianceMappingLoader(db)
+            result = await loader.load_all()
+            if result.get("frameworks_loaded", 0) > 0:
+                logger.info(
+                    "compliance_data_seeded",
+                    frameworks=result.get("frameworks_loaded"),
+                    controls=result.get("controls_loaded"),
+                    mappings=result.get("mappings_loaded"),
+                )
+            else:
+                logger.debug("compliance_data_already_present")
+    except Exception as e:
+        logger.warning("compliance_seed_failed", error=str(e))
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events."""
@@ -330,6 +352,9 @@ async def lifespan(app: FastAPI):
 
     # Seed admin user for staging/production
     seed_admin_user()
+
+    # Seed compliance framework data if not present
+    await seed_compliance_data()
 
     try:
         await scheduler_service.start()

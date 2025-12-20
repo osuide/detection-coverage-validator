@@ -8,8 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
-from app.api.routes.auth import get_current_user
-from app.models.user import User
+from app.core.security import AuthContext, require_role
+from app.models.user import UserRole
 from app.models.cloud_account import CloudAccount
 from app.models.compliance import (
     ComplianceFramework,
@@ -33,7 +33,9 @@ router = APIRouter(prefix="/compliance", tags=["compliance"])
 @router.get("/frameworks", response_model=list[ComplianceFrameworkResponse])
 async def list_frameworks(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    auth: AuthContext = Depends(
+        require_role(UserRole.MEMBER, UserRole.VIEWER, UserRole.ADMIN, UserRole.OWNER)
+    ),
 ) -> list[ComplianceFrameworkResponse]:
     """List all active compliance frameworks."""
     # Get frameworks with control counts
@@ -72,7 +74,9 @@ async def list_frameworks(
 async def get_framework(
     framework_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    auth: AuthContext = Depends(
+        require_role(UserRole.MEMBER, UserRole.VIEWER, UserRole.ADMIN, UserRole.OWNER)
+    ),
 ) -> ComplianceFrameworkResponse:
     """Get a specific compliance framework."""
     result = await db.execute(
@@ -111,7 +115,9 @@ async def get_framework(
 async def list_controls(
     framework_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    auth: AuthContext = Depends(
+        require_role(UserRole.MEMBER, UserRole.VIEWER, UserRole.ADMIN, UserRole.OWNER)
+    ),
 ) -> list[ControlResponse]:
     """List all controls in a framework."""
     # Get framework first
@@ -165,7 +171,9 @@ async def list_controls(
 async def get_control_techniques(
     control_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    auth: AuthContext = Depends(
+        require_role(UserRole.MEMBER, UserRole.VIEWER, UserRole.ADMIN, UserRole.OWNER)
+    ),
 ) -> list[TechniqueMappingResponse]:
     """Get MITRE techniques mapped to a control."""
     result = await db.execute(
@@ -193,12 +201,14 @@ async def get_control_techniques(
 async def get_compliance_summary(
     cloud_account_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    auth: AuthContext = Depends(
+        require_role(UserRole.MEMBER, UserRole.VIEWER, UserRole.ADMIN, UserRole.OWNER)
+    ),
 ) -> list[ComplianceCoverageSummary]:
     """Get compliance coverage summary for all frameworks."""
     # Verify access to account
     account = await db.get(CloudAccount, cloud_account_id)
-    if not account or account.organization_id != current_user.organization_id:
+    if not account or account.organization_id != auth.organization_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Account not found",
@@ -218,12 +228,14 @@ async def get_framework_coverage(
     cloud_account_id: UUID,
     framework_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    auth: AuthContext = Depends(
+        require_role(UserRole.MEMBER, UserRole.VIEWER, UserRole.ADMIN, UserRole.OWNER)
+    ),
 ) -> ComplianceCoverageResponse:
     """Get detailed compliance coverage for a specific framework."""
     # Verify access to account
     account = await db.get(CloudAccount, cloud_account_id)
-    if not account or account.organization_id != current_user.organization_id:
+    if not account or account.organization_id != auth.organization_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Account not found",
