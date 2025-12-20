@@ -8,6 +8,7 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.models.billing import Subscription, TIER_LIMITS
 from app.models.fingerprint import OrganisationScanTracking
 
@@ -56,6 +57,15 @@ class ScanLimitService:
         Returns:
             (can_scan, reason_if_blocked, next_available_at)
         """
+        # Check if scan limits are disabled (for staging/testing)
+        settings = get_settings()
+        if settings.disable_scan_limits:
+            logger.debug(
+                "scan_limits_disabled",
+                organization_id=str(organization_id),
+            )
+            return True, None, None
+
         subscription = await self._get_subscription(organization_id)
 
         if not subscription:

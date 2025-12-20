@@ -129,6 +129,9 @@ class Settings(BaseSettings):
     # Scanning
     scan_timeout_seconds: int = 900  # 15 minutes
     max_concurrent_scans: int = 5
+    disable_scan_limits: bool = (
+        False  # Set to True in staging/dev to bypass scan limits
+    )
 
     # MITRE ATT&CK
     mitre_attack_version: str = "14.1"

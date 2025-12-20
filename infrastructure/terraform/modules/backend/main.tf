@@ -480,6 +480,7 @@ resource "aws_ecs_task_definition" "backend" {
       { name = "REDIS_URL", value = var.redis_url },
       { name = "ENVIRONMENT", value = var.environment },
       { name = "DEBUG", value = var.environment == "prod" ? "false" : "true" },
+      { name = "DISABLE_SCAN_LIMITS", value = var.environment == "prod" ? "false" : "true" },
       { name = "A13E_DEV_MODE", value = "false" },
       { name = "SECRET_KEY", value = var.jwt_secret_key },
       { name = "STRIPE_SECRET_KEY", value = var.stripe_secret_key },
