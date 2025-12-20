@@ -48,8 +48,14 @@ class HIBPService:
 
         Note: SHA-1 is used here only because HIBP requires it for their
         k-anonymity API. The actual password storage uses bcrypt.
+        We use usedforsecurity=False because this is not for cryptographic
+        security but for API compatibility with HaveIBeenPwned.
         """
-        return hashlib.sha1(password.encode("utf-8")).hexdigest().upper()
+        return (
+            hashlib.sha1(password.encode("utf-8"), usedforsecurity=False)
+            .hexdigest()
+            .upper()
+        )
 
     async def check_password(self, password: str) -> Tuple[bool, int]:
         """Check if a password has been exposed in data breaches.

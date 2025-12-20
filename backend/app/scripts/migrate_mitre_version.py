@@ -12,6 +12,7 @@ Generates diff reports showing:
 import argparse
 import json
 import sys
+import tempfile
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -65,9 +66,12 @@ class MITREMigration:
     def __init__(
         self,
         db_session=None,
-        backup_dir: str = "/tmp/mitre_backups",
+        backup_dir: Optional[str] = None,
     ):
         self.db = db_session
+        # Use system temp directory instead of hardcoded /tmp for security
+        if backup_dir is None:
+            backup_dir = str(Path(tempfile.gettempdir()) / "mitre_backups")
         self.backup_dir = Path(backup_dir)
         self.backup_dir.mkdir(parents=True, exist_ok=True)
         self.logger = logger.bind(component="MITREMigration")

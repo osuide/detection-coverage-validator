@@ -317,11 +317,21 @@ class LambdaCodeParser:
     ) -> list[SDKCall]:
         """Download function code and parse for SDK calls."""
         import urllib.request
+        from urllib.parse import urlparse
 
         sdk_calls = []
 
-        # Download the deployment package
-        with urllib.request.urlopen(code_location, timeout=30) as response:
+        # Security: Validate URL scheme to prevent file:// or other dangerous schemes
+        parsed_url = urlparse(code_location)
+        if parsed_url.scheme not in ("https", "http"):
+            raise ValueError(
+                f"Invalid URL scheme: {parsed_url.scheme}. Only https/http allowed."
+            )
+
+        # Download the deployment package (nosec B310 - scheme validated above)
+        with urllib.request.urlopen(
+            code_location, timeout=30
+        ) as response:  # nosec B310
             code_bytes = response.read()
 
         # Extract and analyze files from zip

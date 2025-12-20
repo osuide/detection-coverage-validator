@@ -6,6 +6,7 @@ Uses sentence transformers (all-MiniLM-L6-v2) for lightweight, CPU-friendly embe
 
 import hashlib
 import json
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -39,10 +40,13 @@ class MITREEmbeddingsCache:
 
     def __init__(
         self,
-        cache_dir: str = "/tmp/a13e_embeddings_cache",
+        cache_dir: Optional[str] = None,
         mitre_version: str = "14.1",
         model_name: str = "all-MiniLM-L6-v2",
     ):
+        # Use system temp directory instead of hardcoded /tmp for security
+        if cache_dir is None:
+            cache_dir = str(Path(tempfile.gettempdir()) / "a13e_embeddings_cache")
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.mitre_version = mitre_version

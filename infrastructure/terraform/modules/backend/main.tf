@@ -481,7 +481,7 @@ resource "aws_ecs_task_definition" "backend" {
       { name = "ENVIRONMENT", value = var.environment },
       { name = "DEBUG", value = var.environment == "prod" ? "false" : "true" },
       { name = "A13E_DEV_MODE", value = "false" },
-      { name = "JWT_SECRET_KEY", value = var.jwt_secret_key },
+      { name = "SECRET_KEY", value = var.jwt_secret_key },
       { name = "STRIPE_SECRET_KEY", value = var.stripe_secret_key },
       { name = "STRIPE_WEBHOOK_SECRET", value = var.stripe_webhook_secret },
       { name = "STRIPE_PRICE_ID_SUBSCRIBER", value = var.stripe_price_ids.subscriber },
