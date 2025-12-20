@@ -5,7 +5,16 @@ from datetime import datetime
 from typing import Optional
 import enum
 
-from sqlalchemy import String, DateTime, Enum as SQLEnum, Text, ForeignKey, Float
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    Enum as SQLEnum,
+    Float,
+    ForeignKey,
+    String,
+    Text,
+)
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -50,17 +59,67 @@ class HealthStatus(str, enum.Enum):
     UNKNOWN = "unknown"
 
 
+class DetectionScope(str, enum.Enum):
+    """Scope of a detection - account-level or organisation-level."""
+
+    ACCOUNT = "account"  # Detection applies to a specific account
+    ORGANIZATION = (
+        "organization"  # Detection applies at org level (e.g., org CloudTrail)
+    )
+
+
 class Detection(Base):
     """Represents a discovered security detection."""
 
     __tablename__ = "detections"
+    __table_args__ = (
+        # Ensure scope consistency: account-level detections must have cloud_account_id,
+        # org-level detections must have cloud_organization_id
+        CheckConstraint(
+            """
+            (detection_scope = 'account' AND cloud_account_id IS NOT NULL) OR
+            (detection_scope = 'organization' AND cloud_organization_id IS NOT NULL)
+            """,
+            name="ck_detection_scope_consistency",
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
-    cloud_account_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("cloud_accounts.id"), nullable=False
+
+    # Account-level detection link (nullable for org-level detections)
+    cloud_account_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("cloud_accounts.id"),
+        nullable=True,
+        index=True,
     )
+
+    # Organisation-level detection link (for org CloudTrail, Config Aggregator, etc.)
+    cloud_organization_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("cloud_organizations.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+
+    # Detection scope
+    detection_scope: Mapped[DetectionScope] = mapped_column(
+        SQLEnum(DetectionScope, values_callable=lambda x: [e.value for e in x]),
+        default=DetectionScope.ACCOUNT,
+        nullable=False,
+        index=True,
+    )
+
+    # For org-level detections: which accounts does it apply to?
+    applies_to_all_accounts: Mapped[bool] = mapped_column(
+        Boolean, default=True, nullable=False
+    )
+    applies_to_account_ids: Mapped[Optional[list]] = mapped_column(
+        JSONB, nullable=True
+    )  # List of account IDs if not all
+
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     detection_type: Mapped[DetectionType] = mapped_column(
         SQLEnum(DetectionType, values_callable=lambda x: [e.value for e in x]),
@@ -107,7 +166,16 @@ class Detection(Base):
     is_managed: Mapped[bool] = mapped_column(default=False)  # GuardDuty, SCC, etc.
 
     # Relationships
-    cloud_account = relationship("CloudAccount", back_populates="detections")
+    cloud_account = relationship(
+        "CloudAccount",
+        back_populates="detections",
+        foreign_keys=[cloud_account_id],
+    )
+    cloud_organization = relationship(
+        "CloudOrganization",
+        back_populates="org_detections",
+        foreign_keys=[cloud_organization_id],
+    )
     mappings = relationship(
         "DetectionMapping", back_populates="detection", cascade="all, delete-orphan"
     )

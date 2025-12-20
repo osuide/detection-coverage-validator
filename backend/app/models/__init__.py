@@ -1,7 +1,19 @@
 """Database models."""
 
 from app.models.cloud_account import CloudAccount, CloudProvider
-from app.models.detection import Detection, DetectionType, DetectionStatus
+from app.models.cloud_organization import (
+    CloudOrganization,
+    CloudOrganizationMember,
+    CloudOrganizationStatus,
+    CloudOrganizationMemberStatus,
+)
+from app.models.detection import (
+    Detection,
+    DetectionType,
+    DetectionStatus,
+    DetectionScope,
+    HealthStatus,
+)
 from app.models.mitre import Tactic, Technique
 from app.models.mapping import DetectionMapping
 from app.models.scan import Scan, ScanStatus
@@ -43,10 +55,17 @@ __all__ = [
     # Cloud accounts
     "CloudAccount",
     "CloudProvider",
+    # Cloud organisations
+    "CloudOrganization",
+    "CloudOrganizationMember",
+    "CloudOrganizationStatus",
+    "CloudOrganizationMemberStatus",
     # Detections
     "Detection",
     "DetectionType",
     "DetectionStatus",
+    "DetectionScope",
+    "HealthStatus",
     # MITRE
     "Tactic",
     "Technique",

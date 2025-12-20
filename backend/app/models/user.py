@@ -196,6 +196,11 @@ class Organization(Base):
         cascade="all, delete-orphan",
     )
     cloud_accounts = relationship("CloudAccount", back_populates="organization")
+    cloud_organizations = relationship(
+        "CloudOrganization",
+        back_populates="organization",
+        cascade="all, delete-orphan",
+    )
     api_keys = relationship(
         "APIKey", back_populates="organization", cascade="all, delete-orphan"
     )

@@ -33,6 +33,15 @@ class CloudAccount(Base):
         nullable=True,
         index=True,
     )
+
+    # Link to cloud organisation (AWS Org or GCP Org) if discovered via org connection
+    cloud_organization_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("cloud_organizations.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     provider: Mapped[CloudProvider] = mapped_column(
         SQLEnum(CloudProvider, values_callable=lambda x: [e.value for e in x]),
@@ -57,7 +66,17 @@ class CloudAccount(Base):
 
     # Relationships
     organization = relationship("Organization", back_populates="cloud_accounts")
-    detections = relationship("Detection", back_populates="cloud_account")
+    cloud_organization = relationship(
+        "CloudOrganization", back_populates="cloud_accounts"
+    )
+    org_membership = relationship(
+        "CloudOrganizationMember", back_populates="cloud_account", uselist=False
+    )
+    detections = relationship(
+        "Detection",
+        back_populates="cloud_account",
+        foreign_keys="Detection.cloud_account_id",
+    )
     scans = relationship("Scan", back_populates="cloud_account")
     schedules = relationship("ScanSchedule", back_populates="cloud_account")
     alerts = relationship("AlertConfig", back_populates="cloud_account")
