@@ -131,11 +131,34 @@ class CloudOrganizationMemberSummary(BaseModel):
 
 
 class DiscoverOrganizationRequest(BaseModel):
-    """Request to discover accounts in a cloud organisation."""
+    """Request to discover accounts in a cloud organisation.
+
+    For AWS: Provide credentials_arn (IAM role ARN)
+    For GCP: Provide gcp_org_id and gcp_service_account_email
+    """
 
     provider: CloudProvider
-    credentials_arn: str = Field(
-        ..., min_length=1, description="ARN of the role or credentials to use"
+
+    # AWS-specific fields
+    credentials_arn: Optional[str] = Field(
+        None,
+        min_length=1,
+        description="ARN of the IAM role to assume (AWS)",
+    )
+
+    # GCP-specific fields
+    gcp_org_id: Optional[str] = Field(
+        None,
+        min_length=1,
+        description="GCP organisation ID (numeric)",
+    )
+    gcp_service_account_email: Optional[str] = Field(
+        None,
+        description="GCP service account email for impersonation",
+    )
+    gcp_project_id: Optional[str] = Field(
+        None,
+        description="GCP project ID linked to the service account",
     )
 
 
