@@ -292,35 +292,30 @@ Reference the 10 open questions from the formal model. Track resolution here:
 - [x] Option A: UI/UX Improvements - MITRE heatmap, detection modals, filtering
 - [x] Option B: Expanded Detection Sources - GuardDuty, Config Rules, Security Hub scanners
 - [x] Option C: Enhanced Mapping Intelligence - 168 techniques (full IaaS matrix), vendor mappings
-- [ ] Option D: Operational Features - Scheduled scans, alerts, reports (NEXT)
+- [x] Option D: Operational Features - Scheduled scans, alerts, reports
 
-**Out of Scope (Future):**
-- GCP support (phase 2)
-- NLP/ML mapping (phase 2)
-- Detection health validation (phase 2)
-- Multi-account organizations (phase 2)
-- IaC generation (phase 3)
-- API for integrations (phase 3)
+**Out of Scope (Backlog):**
+- NLP/ML mapping (backlog - pattern-based approach sufficient for now)
 
-### Phase 2: Enhanced Coverage (8-12 weeks)
+### Phase 2: Enhanced Coverage (8-12 weeks) - COMPLETED 2025-12-20
 **Goal:** Multi-cloud and advanced mapping
 
 **In Scope:**
-- [ ] GCP service parsing
-- [ ] NLP-based mapping
-- [ ] Detection health validation
-- [ ] Multi-account support
-- [ ] Historical drift detection
+- [x] GCP service parsing - 8 scanners (Cloud Logging, Eventarc, Chronicle, SCC, etc.)
+- [x] Detection health validation - health_calculator.py, health routes
+- [x] Multi-account support - Org scanners, AWS Organizations, GCP org hierarchy
+- [x] Historical drift detection - drift_detection_service.py
+- [ ] NLP-based mapping - BACKLOG (pattern-based approach working well)
 
-### Phase 3: Production Ready (8-12 weeks)
+### Phase 3: Production Ready (8-12 weeks) - COMPLETED 2025-12-20
 **Goal:** Enterprise features
 
 **In Scope:**
-- [ ] IaC template generation
-- [ ] Public API
-- [ ] Advanced analytics
-- [ ] Custom detection upload
-- [ ] Compliance mapping
+- [x] IaC template generation - 264 remediation templates with CloudFormation/Terraform
+- [x] Public API - app/api/v1/public/ (auth, coverage, detections, scans)
+- [x] Advanced analytics - analytics_service.py, analytics routes
+- [x] Custom detection upload - custom_detection_service.py, routes
+- [x] Compliance mapping - NIST 800-53 Rev 5, CIS Controls v8
 
 ---
 
@@ -434,7 +429,7 @@ The design is complete when:
 
 ---
 
-## Current Status (Updated 2024-12-18)
+## Current Status (Updated 2025-12-20)
 
 ### Implementation Progress
 | Phase | Status | Notes |
@@ -444,52 +439,82 @@ The design is complete when:
 | Option B: Detection Sources | ✅ Complete | GuardDuty, Config, SecurityHub |
 | Option C: Mapping Intelligence | ✅ Complete | 168 techniques, vendor mappings |
 | Option D: Operational Features | ✅ Complete | Scheduled scans, alerts, reports |
+| Phase 2: Enhanced Coverage | ✅ Complete | GCP, multi-account, drift detection, health validation |
+| Phase 3: Production Ready | ✅ Complete | 264 IaC templates, public API, analytics, custom detections, compliance |
 
 ### Key Metrics
 - **MITRE Techniques:** 168 (complete IaaS Cloud Matrix)
-- **Detection Sources:** 5 (CloudWatch, EventBridge, GuardDuty, Config, SecurityHub)
+- **AWS Detection Sources:** 5 (CloudWatch, EventBridge, GuardDuty, Config, SecurityHub)
+- **GCP Detection Sources:** 8 (Cloud Logging, Eventarc, Chronicle, SCC, Log Sinks, Policy, SCC Findings)
 - **Tactics Covered:** 14 (all Enterprise tactics)
+- **Remediation Templates:** 264 (with CloudFormation + Terraform)
+- **Compliance Frameworks:** 2 (NIST 800-53 Rev 5, CIS Controls v8)
 - **Default Region:** eu-west-2 (London)
 
-### Option D Implementation Details (Completed 2024-12-18)
+### Phase 2 Implementation Details (Completed 2025-12-20)
 
-**D.1: Scheduled Scans** ✅
-- APScheduler-based cron scheduling (hourly/daily/weekly/monthly/custom)
-- Schedule configuration stored per cloud account
-- API endpoints: `/api/v1/schedules`
-- Model: `ScanSchedule` with frequency, timezone, cooldown support
-- Auto-loads schedules on startup, calculates next_run_at
+**GCP Service Parsing** ✅
+- 8 GCP scanners implemented
+- Cloud Logging, Eventarc, Chronicle, Security Command Center
+- Organisation-level scanners for Log Sinks, Policies, SCC
+- GCP credential service and org discovery
 
-**D.2: Alerts & Notifications** ✅
-- Alert types: coverage_threshold, gap_detected, scan_completed, scan_failed
-- Notification channels: webhook, Slack, email (SMTP pending)
-- Cooldown support to prevent alert spam
-- Alert history tracking with resolution status
-- API endpoints: `/api/v1/alerts`, `/api/v1/alerts/history`
-- Auto-triggers on scan completion
+**Detection Health Validation** ✅
+- health_calculator.py for detection health scoring
+- Health routes for API access
+- Validation of detection syntax and semantics
 
-**D.3: Reports** ✅
-- CSV exports: coverage, gaps, detections
-- PDF reports with ReportLab: executive summary, gap analysis, detection details
-- API endpoints: `/api/v1/reports/{type}/csv`, `/api/v1/reports/executive/pdf`
+**Multi-Account Support** ✅
+- AWS Organizations integration
+- GCP organisation hierarchy support
+- Org-level scanners for cross-account visibility
 
-### Next Steps: Phase 2 - Enhanced Coverage
-Ready to proceed with:
-- GCP service parsing
-- NLP-based mapping
-- Detection health validation
-- Multi-account support
-- Historical drift detection
+**Historical Drift Detection** ✅
+- drift_detection_service.py
+- Track coverage changes over time
+- Alert on coverage regressions
 
-## Next Steps
+### Phase 3 Implementation Details (Completed 2025-12-20)
 
-**To begin the design process:**
+**IaC Template Generation** ✅
+- 264 remediation templates
+- CloudFormation + Terraform for AWS
+- Terraform for GCP
+- Technique-specific detection strategies
 
-1. Review the formal problem model thoroughly
-2. Start with the Data Model Agent (01-DATA-MODEL-AGENT.md)
-3. Work through each agent sequentially
-4. Update this document with decisions and resolutions
-5. Maintain consistency across all design artifacts
+**Public API** ✅
+- `/api/v1/public/` endpoints
+- Auth, coverage, detections, scans
+- API key authentication
+
+**Advanced Analytics** ✅
+- analytics_service.py
+- Analytics routes for dashboards
+- Trend analysis and reporting
+
+**Custom Detection Upload** ✅
+- custom_detection_service.py
+- Custom detection routes
+- User-defined detection rules
+
+**Compliance Mapping** ✅
+- NIST 800-53 Rev 5 framework
+- CIS Controls v8 framework
+- Control-to-technique mappings
+- Compliance coverage calculation
+
+### Backlog
+- NLP-based mapping (pattern-based approach working well, deferred)
+
+## Project Complete
+
+All planned features have been implemented. The Detection Coverage Validator is production-ready with:
+- Full AWS and GCP support
+- 168 MITRE ATT&CK techniques
+- 264 remediation templates
+- 2 compliance frameworks
+- Public API for integrations
+- Multi-account/organisation support
 
 **For Claude Code usage:**
 
