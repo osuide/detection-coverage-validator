@@ -165,11 +165,13 @@ class PricingCalculatorResponse(BaseModel):
 class ScanStatusResponse(BaseModel):
     """Scan usage status response."""
 
-    scans_used_this_week: int
-    scans_allowed_this_week: Optional[int]  # None = unlimited
-    next_scan_available_at: Optional[str]  # ISO datetime if blocked
-    is_limited: bool  # True if tier has weekly limits
-    total_scans: int
+    can_scan: bool  # True if user can start a scan now
+    scans_used: int  # Scans used this week
+    scans_allowed: Optional[int]  # Weekly limit, None = unlimited
+    unlimited: bool  # True if no weekly limits
+    next_available_at: Optional[str]  # ISO datetime when next scan available
+    week_resets_at: Optional[str]  # ISO datetime when week resets
+    total_scans: int  # Lifetime total scans
 
 
 # Endpoints

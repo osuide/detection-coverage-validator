@@ -145,10 +145,12 @@ class ScanLimitService:
 
         Returns:
             {
-                "scans_used_this_week": int,
-                "scans_allowed_this_week": int | None,
-                "next_scan_available_at": str | None,
-                "is_limited": bool,
+                "can_scan": bool,
+                "scans_used": int,
+                "scans_allowed": int | None,
+                "unlimited": bool,
+                "next_available_at": str | None,
+                "week_resets_at": str | None,
                 "total_scans": int,
             }
         """
@@ -157,10 +159,12 @@ class ScanLimitService:
         if settings.disable_scan_limits:
             tracking = await self._get_or_create_tracking(organization_id)
             return {
-                "scans_used_this_week": tracking.weekly_scan_count,
-                "scans_allowed_this_week": None,  # Unlimited
-                "next_scan_available_at": None,
-                "is_limited": False,
+                "can_scan": True,
+                "scans_used": tracking.weekly_scan_count,
+                "scans_allowed": None,  # Unlimited
+                "unlimited": True,
+                "next_available_at": None,
+                "week_resets_at": None,
                 "total_scans": tracking.total_scans,
             }
 
@@ -168,10 +172,12 @@ class ScanLimitService:
 
         if not subscription:
             return {
-                "scans_used_this_week": 0,
-                "scans_allowed_this_week": 0,
-                "next_scan_available_at": None,
-                "is_limited": True,
+                "can_scan": False,
+                "scans_used": 0,
+                "scans_allowed": 0,
+                "unlimited": False,
+                "next_available_at": None,
+                "week_resets_at": None,
                 "total_scans": 0,
             }
 
@@ -180,8 +186,8 @@ class ScanLimitService:
         weekly_limit = tier_limits.get("weekly_scans_allowed")
         reset_interval = tier_limits.get("scan_reset_interval_days", 7)
 
-        # None means unlimited
-        is_limited = weekly_limit is not None and weekly_limit >= 0
+        # None or negative means unlimited
+        unlimited = weekly_limit is None or weekly_limit < 0
 
         # Get tracking record
         tracking = await self._get_or_create_tracking(organization_id)
@@ -191,18 +197,26 @@ class ScanLimitService:
         if tracking.is_week_expired(reset_interval):
             scans_used = 0
 
-        # Calculate next available if limit reached
+        # Calculate next available and week reset
         next_available = None
-        if is_limited and weekly_limit is not None and scans_used >= weekly_limit:
-            next_available = tracking.get_next_scan_available_at(reset_interval)
+        week_resets_at = None
+        can_scan = True
+
+        if not unlimited and weekly_limit is not None:
+            if scans_used >= weekly_limit:
+                can_scan = False
+                next_available = tracking.get_next_scan_available_at(reset_interval)
+            week_resets_at = tracking.get_next_scan_available_at(reset_interval)
 
         return {
-            "scans_used_this_week": scans_used,
-            "scans_allowed_this_week": weekly_limit,
-            "next_scan_available_at": (
+            "can_scan": can_scan,
+            "scans_used": scans_used,
+            "scans_allowed": weekly_limit,
+            "unlimited": unlimited,
+            "next_available_at": (
                 next_available.isoformat() if next_available else None
             ),
-            "is_limited": is_limited,
+            "week_resets_at": (week_resets_at.isoformat() if week_resets_at else None),
             "total_scans": tracking.total_scans,
         }
 
