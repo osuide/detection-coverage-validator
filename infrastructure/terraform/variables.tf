@@ -106,8 +106,22 @@ variable "google_client_secret" {
   default     = ""
 }
 
-# Note: GitHub authentication is handled by the backend directly (not via Cognito)
-# Microsoft SSO has been removed from the product
+# GitHub OAuth (handled by backend directly, not Cognito)
+variable "github_client_id" {
+  description = "GitHub OAuth App Client ID"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "github_client_secret" {
+  description = "GitHub OAuth App Client Secret"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+# Note: Microsoft SSO has been removed from the product
 
 # ============================================================================
 # Email (SES) Configuration

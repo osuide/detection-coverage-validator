@@ -165,9 +165,12 @@ module "backend" {
   cognito_issuer       = var.enable_cognito ? module.cognito[0].issuer : ""
   frontend_url         = var.domain_name != "" ? (var.subdomain != "" ? "https://${var.subdomain}.${var.domain_name}" : "https://${var.domain_name}") : "http://localhost:3001"
 
-  # Google OAuth (only SSO provider via Cognito)
-  # Note: GitHub auth is handled by backend directly, Microsoft SSO removed
+  # Google OAuth (via Cognito)
   google_client_id = var.google_client_id
+
+  # GitHub OAuth (handled by backend directly, not Cognito)
+  github_client_id     = var.github_client_id
+  github_client_secret = var.github_client_secret
 
   # WAF IP restriction
   allowed_ips = var.waf_allowed_ips

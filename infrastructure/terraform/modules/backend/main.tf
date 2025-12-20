@@ -123,8 +123,22 @@ variable "google_client_id" {
   sensitive   = true
 }
 
-# Note: GitHub authentication is handled by the backend's own config (not passed from Terraform)
-# Microsoft SSO has been removed from the product
+# GitHub OAuth (handled by backend directly, not Cognito)
+variable "github_client_id" {
+  type        = string
+  description = "GitHub OAuth Client ID"
+  default     = ""
+  sensitive   = true
+}
+
+variable "github_client_secret" {
+  type        = string
+  description = "GitHub OAuth Client Secret"
+  default     = ""
+  sensitive   = true
+}
+
+# Note: Microsoft SSO has been removed from the product
 
 variable "allowed_ips" {
   type        = list(string)
@@ -483,9 +497,11 @@ resource "aws_ecs_task_definition" "backend" {
         { name = "COGNITO_DOMAIN", value = var.cognito_domain },
         { name = "COGNITO_ISSUER", value = var.cognito_issuer }
       ] : [],
-      # Google OAuth (only SSO provider via Cognito)
-      # Note: GitHub auth is configured via backend's own settings, Microsoft SSO removed
+      # Google OAuth (via Cognito)
       var.google_client_id != "" ? [{ name = "GOOGLE_CLIENT_ID", value = var.google_client_id }] : [],
+      # GitHub OAuth (handled by backend directly, not Cognito)
+      var.github_client_id != "" ? [{ name = "GITHUB_CLIENT_ID", value = var.github_client_id }] : [],
+      var.github_client_secret != "" ? [{ name = "GITHUB_CLIENT_SECRET", value = var.github_client_secret }] : [],
       # SES Email configuration
       [
         { name = "SES_ENABLED", value = "true" },
