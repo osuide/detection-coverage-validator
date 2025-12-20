@@ -17,7 +17,6 @@ import {
   Eye,
   Search,
   Calendar,
-  Download,
   ArrowRight,
   X,
   Menu
@@ -519,193 +518,213 @@ export default function Landing() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
             {/* Free Tier */}
-            <div className="relative bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 rounded-2xl p-8">
+            <div className="relative bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 rounded-2xl p-6">
               <div className="mb-6">
-                <h3 className="text-2xl font-bold text-white mb-2">Free Scan</h3>
+                <h3 className="text-xl font-bold text-white mb-2">Free</h3>
                 <div className="flex items-baseline">
-                  <span className="text-5xl font-bold text-white">$0</span>
+                  <span className="text-4xl font-bold text-white">$0</span>
                   <span className="text-gray-400 ml-2">forever</span>
                 </div>
               </div>
 
-              <ul className="space-y-4 mb-8">
-                <li className="flex items-start space-x-3">
-                  <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+              <ul className="space-y-3 mb-8 text-sm">
+                <li className="flex items-start space-x-2">
+                  <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
                   <span className="text-gray-300">1 cloud account (AWS or GCP)</span>
                 </li>
-                <li className="flex items-start space-x-3">
-                  <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                  <span className="text-gray-300">1 scan</span>
+                <li className="flex items-start space-x-2">
+                  <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                  <span className="text-gray-300">Unlimited scans</span>
                 </li>
-                <li className="flex items-start space-x-3">
-                  <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                  <span className="text-gray-300">7-day data retention</span>
+                <li className="flex items-start space-x-2">
+                  <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                  <span className="text-gray-300">30-day data retention</span>
                 </li>
-                <li className="flex items-start space-x-3">
-                  <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+                <li className="flex items-start space-x-2">
+                  <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
                   <span className="text-gray-300">Coverage heatmap</span>
                 </li>
-                <li className="flex items-start space-x-3">
-                  <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+                <li className="flex items-start space-x-2">
+                  <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
                   <span className="text-gray-300">Gap analysis list</span>
                 </li>
-                <li className="flex items-start space-x-3">
-                  <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                  <span className="text-gray-300">PDF export</span>
+                <li className="flex items-start space-x-2">
+                  <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                  <span className="text-gray-300">PDF export (watermarked)</span>
+                </li>
+                <li className="flex items-start space-x-2">
+                  <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                  <span className="text-gray-300">Remediation templates</span>
                 </li>
               </ul>
 
               <Link
                 to="/signup"
-                className="block w-full text-center border border-blue-600 text-blue-400 px-6 py-3 rounded-xl font-semibold hover:bg-blue-600/10 transition-all"
+                className="block w-full text-center border border-blue-600 text-blue-400 px-4 py-2.5 rounded-xl font-semibold hover:bg-blue-600/10 transition-all text-sm"
               >
-                Start Free Scan
+                Start Free
               </Link>
             </div>
 
-            {/* Subscriber Tier */}
-            <div className="relative bg-gradient-to-br from-blue-600 to-cyan-600 rounded-2xl p-8 shadow-2xl shadow-blue-500/50">
-              <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-4 py-1 rounded-full text-sm font-semibold">
+            {/* Individual Tier */}
+            <div className="relative bg-gradient-to-br from-blue-600 to-cyan-600 rounded-2xl p-6 shadow-2xl shadow-blue-500/30">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-3 py-0.5 rounded-full text-xs font-semibold">
                 Most Popular
               </div>
 
               <div className="mb-6">
-                <h3 className="text-2xl font-bold text-white mb-2">Subscriber</h3>
+                <h3 className="text-xl font-bold text-white mb-2">Individual</h3>
                 <div className="flex items-baseline">
-                  <span className="text-5xl font-bold text-white">$29</span>
+                  <span className="text-4xl font-bold text-white">$29</span>
                   <span className="text-blue-100 ml-2">/month</span>
                 </div>
               </div>
 
-              <ul className="space-y-4 mb-8">
-                <li className="flex items-start space-x-3">
-                  <CheckCircle className="h-5 w-5 text-white mt-0.5 flex-shrink-0" />
-                  <span className="text-white">3 cloud accounts (AWS + GCP)</span>
+              <ul className="space-y-3 mb-8 text-sm">
+                <li className="flex items-start space-x-2">
+                  <CheckCircle className="h-4 w-4 text-white mt-0.5 flex-shrink-0" />
+                  <span className="text-white">Up to 6 accounts (AWS + GCP)</span>
                 </li>
-                <li className="flex items-start space-x-3">
-                  <CheckCircle className="h-5 w-5 text-white mt-0.5 flex-shrink-0" />
+                <li className="flex items-start space-x-2">
+                  <CheckCircle className="h-4 w-4 text-white mt-0.5 flex-shrink-0" />
+                  <span className="text-white">90-day data retention</span>
+                </li>
+                <li className="flex items-start space-x-2">
+                  <CheckCircle className="h-4 w-4 text-white mt-0.5 flex-shrink-0" />
                   <span className="text-white">Unlimited scans</span>
                 </li>
-                <li className="flex items-start space-x-3">
-                  <CheckCircle className="h-5 w-5 text-white mt-0.5 flex-shrink-0" />
-                  <span className="text-white">Organization discovery</span>
-                </li>
-                <li className="flex items-start space-x-3">
-                  <CheckCircle className="h-5 w-5 text-white mt-0.5 flex-shrink-0" />
-                  <span className="text-white">Historical trends & analytics</span>
-                </li>
-                <li className="flex items-start space-x-3">
-                  <CheckCircle className="h-5 w-5 text-white mt-0.5 flex-shrink-0" />
+                <li className="flex items-start space-x-2">
+                  <CheckCircle className="h-4 w-4 text-white mt-0.5 flex-shrink-0" />
                   <span className="text-white">Scheduled scans & alerts</span>
                 </li>
-                <li className="flex items-start space-x-3">
-                  <CheckCircle className="h-5 w-5 text-white mt-0.5 flex-shrink-0" />
+                <li className="flex items-start space-x-2">
+                  <CheckCircle className="h-4 w-4 text-white mt-0.5 flex-shrink-0" />
+                  <span className="text-white">Historical trends & analytics</span>
+                </li>
+                <li className="flex items-start space-x-2">
+                  <CheckCircle className="h-4 w-4 text-white mt-0.5 flex-shrink-0" />
                   <span className="text-white">API access</span>
                 </li>
-                <li className="flex items-start space-x-3">
-                  <Download className="h-5 w-5 text-white mt-0.5 flex-shrink-0" />
-                  <span className="text-white">+$9/mo per extra account</span>
+                <li className="flex items-start space-x-2">
+                  <CheckCircle className="h-4 w-4 text-white mt-0.5 flex-shrink-0" />
+                  <span className="text-white">Code analysis</span>
                 </li>
               </ul>
 
               <Link
                 to="/signup"
-                className="block w-full text-center bg-white text-blue-600 px-6 py-3 rounded-xl font-semibold hover:bg-blue-50 transition-all shadow-lg"
+                className="block w-full text-center bg-white text-blue-600 px-4 py-2.5 rounded-xl font-semibold hover:bg-blue-50 transition-all shadow-lg text-sm"
+              >
+                Get Started
+              </Link>
+            </div>
+
+            {/* Pro Tier */}
+            <div className="relative bg-gradient-to-br from-slate-900 to-slate-950 border border-cyan-500/50 rounded-2xl p-6">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white px-3 py-0.5 rounded-full text-xs font-semibold">
+                For Organisations
+              </div>
+
+              <div className="mb-6">
+                <h3 className="text-xl font-bold text-white mb-2">Pro</h3>
+                <div className="flex items-baseline">
+                  <span className="text-4xl font-bold text-white">$250</span>
+                  <span className="text-gray-400 ml-2">/month</span>
+                </div>
+              </div>
+
+              <ul className="space-y-3 mb-8 text-sm">
+                <li className="flex items-start space-x-2">
+                  <CheckCircle className="h-4 w-4 text-cyan-400 mt-0.5 flex-shrink-0" />
+                  <span className="text-gray-300">Up to 500 accounts</span>
+                </li>
+                <li className="flex items-start space-x-2">
+                  <CheckCircle className="h-4 w-4 text-cyan-400 mt-0.5 flex-shrink-0" />
+                  <span className="text-gray-300">1-year data retention</span>
+                </li>
+                <li className="flex items-start space-x-2">
+                  <CheckCircle className="h-4 w-4 text-cyan-400 mt-0.5 flex-shrink-0" />
+                  <span className="text-gray-300">All Individual features</span>
+                </li>
+                <li className="flex items-start space-x-2">
+                  <CheckCircle className="h-4 w-4 text-cyan-400 mt-0.5 flex-shrink-0" />
+                  <span className="text-gray-300">AWS/GCP Organisation connection</span>
+                </li>
+                <li className="flex items-start space-x-2">
+                  <CheckCircle className="h-4 w-4 text-cyan-400 mt-0.5 flex-shrink-0" />
+                  <span className="text-gray-300">Auto-discovery of accounts</span>
+                </li>
+                <li className="flex items-start space-x-2">
+                  <CheckCircle className="h-4 w-4 text-cyan-400 mt-0.5 flex-shrink-0" />
+                  <span className="text-gray-300">Unified coverage dashboard</span>
+                </li>
+                <li className="flex items-start space-x-2">
+                  <CheckCircle className="h-4 w-4 text-cyan-400 mt-0.5 flex-shrink-0" />
+                  <span className="text-gray-300">Delegated scanning</span>
+                </li>
+              </ul>
+
+              <Link
+                to="/signup"
+                className="block w-full text-center border border-cyan-500 text-cyan-400 px-4 py-2.5 rounded-xl font-semibold hover:bg-cyan-600/10 transition-all text-sm"
               >
                 Get Started
               </Link>
             </div>
 
             {/* Enterprise Tier */}
-            <div className="relative bg-gradient-to-br from-slate-900 to-slate-950 border border-purple-500/50 rounded-2xl p-8">
-              <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-1 rounded-full text-sm font-semibold">
-                For Large Orgs
+            <div className="relative bg-gradient-to-br from-slate-900 to-slate-950 border border-purple-500/50 rounded-2xl p-6">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-3 py-0.5 rounded-full text-xs font-semibold">
+                Unlimited
               </div>
 
               <div className="mb-6">
-                <h3 className="text-2xl font-bold text-white mb-2">Enterprise</h3>
+                <h3 className="text-xl font-bold text-white mb-2">Enterprise</h3>
                 <div className="flex items-baseline">
-                  <span className="text-5xl font-bold text-white">$499</span>
-                  <span className="text-gray-400 ml-2">/month</span>
+                  <span className="text-4xl font-bold text-white">Custom</span>
                 </div>
-                <p className="text-gray-400 text-sm mt-1">+ volume pricing for accounts</p>
+                <p className="text-gray-400 text-sm mt-1">Contact sales</p>
               </div>
 
-              <ul className="space-y-4 mb-8">
-                <li className="flex items-start space-x-3">
-                  <CheckCircle className="h-5 w-5 text-purple-400 mt-0.5 flex-shrink-0" />
-                  <span className="text-gray-300">10 accounts included</span>
+              <ul className="space-y-3 mb-8 text-sm">
+                <li className="flex items-start space-x-2">
+                  <CheckCircle className="h-4 w-4 text-purple-400 mt-0.5 flex-shrink-0" />
+                  <span className="text-gray-300">Unlimited accounts</span>
                 </li>
-                <li className="flex items-start space-x-3">
-                  <CheckCircle className="h-5 w-5 text-purple-400 mt-0.5 flex-shrink-0" />
-                  <span className="text-gray-300">Unlimited org-wide scanning</span>
+                <li className="flex items-start space-x-2">
+                  <CheckCircle className="h-4 w-4 text-purple-400 mt-0.5 flex-shrink-0" />
+                  <span className="text-gray-300">Unlimited data retention</span>
                 </li>
-                <li className="flex items-start space-x-3">
-                  <CheckCircle className="h-5 w-5 text-purple-400 mt-0.5 flex-shrink-0" />
+                <li className="flex items-start space-x-2">
+                  <CheckCircle className="h-4 w-4 text-purple-400 mt-0.5 flex-shrink-0" />
+                  <span className="text-gray-300">All Pro features</span>
+                </li>
+                <li className="flex items-start space-x-2">
+                  <CheckCircle className="h-4 w-4 text-purple-400 mt-0.5 flex-shrink-0" />
                   <span className="text-gray-300">SSO / SAML integration</span>
                 </li>
-                <li className="flex items-start space-x-3">
-                  <CheckCircle className="h-5 w-5 text-purple-400 mt-0.5 flex-shrink-0" />
+                <li className="flex items-start space-x-2">
+                  <CheckCircle className="h-4 w-4 text-purple-400 mt-0.5 flex-shrink-0" />
                   <span className="text-gray-300">Dedicated support & SLA</span>
                 </li>
-                <li className="flex items-start space-x-3">
-                  <CheckCircle className="h-5 w-5 text-purple-400 mt-0.5 flex-shrink-0" />
+                <li className="flex items-start space-x-2">
+                  <CheckCircle className="h-4 w-4 text-purple-400 mt-0.5 flex-shrink-0" />
                   <span className="text-gray-300">Custom integrations</span>
                 </li>
-                <li className="flex items-start space-x-3">
-                  <TrendingUp className="h-5 w-5 text-purple-400 mt-0.5 flex-shrink-0" />
-                  <span className="text-gray-300">Volume pricing from $2/acct</span>
+                <li className="flex items-start space-x-2">
+                  <CheckCircle className="h-4 w-4 text-purple-400 mt-0.5 flex-shrink-0" />
+                  <span className="text-gray-300">Unlimited team members</span>
                 </li>
               </ul>
 
               <Link
                 to="/signup"
-                className="block w-full text-center border border-purple-500 text-purple-400 px-6 py-3 rounded-xl font-semibold hover:bg-purple-600/10 transition-all"
+                className="block w-full text-center border border-purple-500 text-purple-400 px-4 py-2.5 rounded-xl font-semibold hover:bg-purple-600/10 transition-all text-sm"
               >
                 Contact Sales
               </Link>
-            </div>
-          </div>
-
-          {/* Volume Pricing Table */}
-          <div className="mt-16 max-w-3xl mx-auto">
-            <h3 className="text-2xl font-bold text-white text-center mb-8">Enterprise Volume Pricing</h3>
-            <div className="bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 rounded-2xl p-6">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-slate-700">
-                    <th className="text-left text-gray-400 py-3 font-medium">Accounts</th>
-                    <th className="text-right text-gray-400 py-3 font-medium">Price per Account</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800">
-                  <tr>
-                    <td className="text-white py-3">1-10</td>
-                    <td className="text-green-400 text-right py-3">Included in base</td>
-                  </tr>
-                  <tr>
-                    <td className="text-white py-3">11-50</td>
-                    <td className="text-white text-right py-3">$8/month</td>
-                  </tr>
-                  <tr>
-                    <td className="text-white py-3">51-200</td>
-                    <td className="text-white text-right py-3">$5/month</td>
-                  </tr>
-                  <tr>
-                    <td className="text-white py-3">201-1,000</td>
-                    <td className="text-white text-right py-3">$3/month</td>
-                  </tr>
-                  <tr>
-                    <td className="text-white py-3">1,000+</td>
-                    <td className="text-cyan-400 text-right py-3">$2/month</td>
-                  </tr>
-                </tbody>
-              </table>
-              <p className="text-gray-500 text-sm mt-4 text-center">
-                Example: 2,000 accounts = $499 + (40×$8) + (150×$5) + (800×$3) + (1000×$2) = $5,969/month
-              </p>
             </div>
           </div>
         </div>

@@ -1,17 +1,21 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { billingApi, Subscription, Pricing, Invoice } from '../services/billingApi'
+import {
+  billingApi,
+  Subscription,
+  Invoice,
+  isFreeTier as checkIsFreeTier,
+  getTierDisplayName,
+} from '../services/billingApi'
 
 export default function Billing() {
   const { token, user } = useAuth()
   const [subscription, setSubscription] = useState<Subscription | null>(null)
-  const [pricing, setPricing] = useState<Pricing | null>(null)
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [checkoutLoading, setCheckoutLoading] = useState(false)
   const [portalLoading, setPortalLoading] = useState(false)
-  const [additionalAccounts, setAdditionalAccounts] = useState(0)
 
   useEffect(() => {
     if (token) {
@@ -25,13 +29,11 @@ export default function Billing() {
     setError(null)
 
     try {
-      const [subData, pricingData, invoicesData] = await Promise.all([
+      const [subData, invoicesData] = await Promise.all([
         billingApi.getSubscription(token),
-        billingApi.getPricing(token),
         billingApi.getInvoices(token),
       ])
       setSubscription(subData)
-      setPricing(pricingData)
       setInvoices(invoicesData)
     } catch (err) {
       console.error('Failed to load billing data:', err)
@@ -51,7 +53,7 @@ export default function Billing() {
         token,
         `${window.location.origin}/settings/billing?success=true`,
         `${window.location.origin}/settings/billing?canceled=true`,
-        additionalAccounts
+        0  // No additional accounts in new simplified pricing
       )
       window.location.href = result.checkout_url
     } catch (err: any) {
@@ -104,10 +106,18 @@ export default function Billing() {
 
   const getTierBadgeColor = (tier: string) => {
     switch (tier) {
-      case 'subscriber':
+      case 'individual':
         return 'bg-blue-100 text-blue-800'
+      case 'pro':
+        return 'bg-cyan-100 text-cyan-800'
       case 'enterprise':
         return 'bg-purple-100 text-purple-800'
+      case 'free':
+      case 'free_scan':
+        return 'bg-gray-100 text-gray-800'
+      // Legacy tier
+      case 'subscriber':
+        return 'bg-blue-100 text-blue-800'
       default:
         return 'bg-gray-100 text-gray-800'
     }
@@ -147,7 +157,7 @@ export default function Billing() {
     )
   }
 
-  const isFreeTier = subscription?.tier === 'free_scan'
+  const isFreeTier = subscription ? checkIsFreeTier(subscription.tier) : false
   const isOwner = user?.role === 'owner'
 
   return (
@@ -172,11 +182,11 @@ export default function Billing() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <div className="flex items-center gap-3">
-              <span className="text-2xl font-bold text-gray-900 capitalize">
-                {subscription?.tier.replace('_', ' ')}
+              <span className="text-2xl font-bold text-gray-900">
+                {subscription ? getTierDisplayName(subscription.tier) : 'Free'}
               </span>
               <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTierBadgeColor(subscription?.tier || '')}`}>
-                {subscription?.tier.replace('_', ' ').toUpperCase()}
+                {subscription ? getTierDisplayName(subscription.tier).toUpperCase() : 'FREE'}
               </span>
               <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(subscription?.status || '')}`}>
                 {subscription?.status.toUpperCase()}
@@ -225,7 +235,12 @@ export default function Billing() {
           <div>
             <p className="text-sm text-gray-500">Data Retention</p>
             <p className="text-lg font-medium text-gray-900">
-              {isFreeTier ? '7 days' : 'Unlimited'}
+              {subscription?.tier === 'free' ? '30 days' :
+               subscription?.tier === 'free_scan' ? '7 days' :
+               subscription?.tier === 'individual' ? '90 days' :
+               subscription?.tier === 'pro' ? '1 year' :
+               subscription?.tier === 'enterprise' ? 'Unlimited' :
+               'Unlimited'}
             </p>
           </div>
         </div>
@@ -242,43 +257,29 @@ export default function Billing() {
       </div>
 
       {/* Upgrade Section (for free tier users) */}
-      {isFreeTier && isOwner && pricing && (
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 shadow rounded-lg p-6 text-white">
-          <h2 className="text-lg font-medium mb-2">Upgrade to Subscriber</h2>
+      {isFreeTier && isOwner && (
+        <div className="bg-gradient-to-r from-blue-600 to-cyan-600 shadow rounded-lg p-6 text-white">
+          <h2 className="text-lg font-medium mb-2">Upgrade to Individual</h2>
           <p className="text-blue-100 mb-6">
-            Get unlimited scans, historical trends, scheduled scans, alerts, and API access.
+            Get up to 6 accounts, 90-day data retention, scheduled scans, alerts, and API access.
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <p className="text-3xl font-bold">${pricing.subscriber_monthly_dollars}/mo</p>
-              <p className="text-blue-100 text-sm">Includes {pricing.subscriber_tier_accounts} cloud accounts</p>
-
-              <div className="mt-4">
-                <label className="block text-sm font-medium text-blue-100 mb-1">
-                  Additional accounts (+${pricing.additional_account_subscriber_dollars}/mo each)
-                </label>
-                <select
-                  value={additionalAccounts}
-                  onChange={(e) => setAdditionalAccounts(Number(e.target.value))}
-                  className="w-32 px-3 py-2 border border-blue-400 bg-blue-500 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-white"
-                >
-                  {[0, 1, 2, 3, 4, 5, 10, 15, 20].map((n) => (
-                    <option key={n} value={n}>
-                      +{n}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <p className="mt-4 text-lg font-medium">
-                Total: ${(pricing.subscriber_monthly_dollars + additionalAccounts * pricing.additional_account_subscriber_dollars).toFixed(2)}/mo
-              </p>
+              <p className="text-3xl font-bold">$29/mo</p>
+              <p className="text-blue-100 text-sm">Up to 6 cloud accounts included</p>
+              <p className="text-blue-100 text-xs mt-2">No per-account fees - simple flat pricing</p>
             </div>
 
             <div>
-              <h3 className="font-medium mb-3">What's included:</h3>
+              <h3 className="font-medium mb-3">What&apos;s included:</h3>
               <ul className="space-y-2 text-sm text-blue-100">
+                <li className="flex items-center gap-2">
+                  <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  Up to 6 cloud accounts (AWS + GCP)
+                </li>
                 <li className="flex items-center gap-2">
                   <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -289,7 +290,7 @@ export default function Billing() {
                   <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
-                  {pricing.subscriber_tier_accounts} cloud accounts (+ additional)
+                  90-day data retention
                 </li>
                 <li className="flex items-center gap-2">
                   <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
@@ -301,25 +302,13 @@ export default function Billing() {
                   <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
-                  Scheduled scans
+                  Scheduled scans & alerts
                 </li>
                 <li className="flex items-center gap-2">
                   <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
-                  Coverage change alerts
-                </li>
-                <li className="flex items-center gap-2">
-                  <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                  API access
-                </li>
-                <li className="flex items-center gap-2">
-                  <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                  Unlimited data retention
+                  API access & code analysis
                 </li>
               </ul>
             </div>
@@ -330,7 +319,7 @@ export default function Billing() {
             disabled={checkoutLoading}
             className="mt-6 w-full md:w-auto px-6 py-3 bg-white text-blue-600 font-medium rounded-md hover:bg-blue-50 disabled:opacity-50"
           >
-            {checkoutLoading ? 'Redirecting to checkout...' : 'Subscribe Now'}
+            {checkoutLoading ? 'Redirecting to checkout...' : 'Upgrade to Individual'}
           </button>
         </div>
       )}
@@ -427,55 +416,51 @@ export default function Billing() {
               <thead>
                 <tr>
                   <th className="text-left text-sm font-medium text-gray-500 pb-4">Feature</th>
-                  <th className="text-center text-sm font-medium text-gray-500 pb-4">Free Scan</th>
-                  <th className="text-center text-sm font-medium text-gray-500 pb-4">Subscriber</th>
+                  <th className="text-center text-sm font-medium text-gray-500 pb-4">Free</th>
+                  <th className="text-center text-sm font-medium text-blue-600 pb-4">Individual</th>
+                  <th className="text-center text-sm font-medium text-cyan-600 pb-4">Pro</th>
+                  <th className="text-center text-sm font-medium text-purple-600 pb-4">Enterprise</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {[
-                  { feature: 'Coverage Heatmap', free: true, paid: true },
-                  { feature: 'Gap Analysis List', free: true, paid: true },
-                  { feature: 'PDF Report Export', free: true, paid: true },
-                  { feature: 'Cloud Accounts', free: '1', paid: '3+' },
-                  { feature: 'Scans', free: '1', paid: 'Unlimited' },
-                  { feature: 'Data Retention', free: '7 days', paid: 'Forever' },
-                  { feature: 'Historical Trends', free: false, paid: true },
-                  { feature: 'Scheduled Scans', free: false, paid: true },
-                  { feature: 'Coverage Alerts', free: false, paid: true },
-                  { feature: 'API Access', free: false, paid: true },
+                  { feature: 'Cloud Accounts', free: '1', individual: '6', pro: '500', enterprise: 'Unlimited' },
+                  { feature: 'Data Retention', free: '30 days', individual: '90 days', pro: '1 year', enterprise: 'Unlimited' },
+                  { feature: 'Coverage Heatmap', free: true, individual: true, pro: true, enterprise: true },
+                  { feature: 'Gap Analysis', free: true, individual: true, pro: true, enterprise: true },
+                  { feature: 'PDF Reports', free: 'Watermarked', individual: true, pro: true, enterprise: true },
+                  { feature: 'Remediation Templates', free: true, individual: true, pro: true, enterprise: true },
+                  { feature: 'Historical Trends', free: false, individual: true, pro: true, enterprise: true },
+                  { feature: 'Scheduled Scans', free: false, individual: true, pro: true, enterprise: true },
+                  { feature: 'Coverage Alerts', free: false, individual: true, pro: true, enterprise: true },
+                  { feature: 'API Access', free: false, individual: true, pro: true, enterprise: true },
+                  { feature: 'Code Analysis', free: false, individual: true, pro: true, enterprise: true },
+                  { feature: 'Organisation Features', free: false, individual: false, pro: true, enterprise: true },
+                  { feature: 'SSO / SAML', free: false, individual: false, pro: false, enterprise: true },
+                  { feature: 'Dedicated Support', free: false, individual: false, pro: false, enterprise: true },
                 ].map((row, idx) => (
                   <tr key={idx}>
                     <td className="py-3 text-sm text-gray-900">{row.feature}</td>
-                    <td className="py-3 text-center">
-                      {typeof row.free === 'boolean' ? (
-                        row.free ? (
-                          <svg className="h-5 w-5 text-green-500 mx-auto" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                        ) : (
-                          <svg className="h-5 w-5 text-gray-300 mx-auto" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                          </svg>
-                        )
-                      ) : (
-                        <span className="text-sm text-gray-600">{row.free}</span>
-                      )}
-                    </td>
-                    <td className="py-3 text-center">
-                      {typeof row.paid === 'boolean' ? (
-                        row.paid ? (
-                          <svg className="h-5 w-5 text-green-500 mx-auto" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                        ) : (
-                          <svg className="h-5 w-5 text-gray-300 mx-auto" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                          </svg>
-                        )
-                      ) : (
-                        <span className="text-sm text-gray-900 font-medium">{row.paid}</span>
-                      )}
-                    </td>
+                    {['free', 'individual', 'pro', 'enterprise'].map((tier) => {
+                      const value = row[tier as keyof typeof row]
+                      return (
+                        <td key={tier} className="py-3 text-center">
+                          {typeof value === 'boolean' ? (
+                            value ? (
+                              <svg className="h-5 w-5 text-green-500 mx-auto" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            ) : (
+                              <svg className="h-5 w-5 text-gray-300 mx-auto" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                              </svg>
+                            )
+                          ) : (
+                            <span className={`text-sm ${tier === 'free' ? 'text-gray-600' : 'text-gray-900 font-medium'}`}>{value}</span>
+                          )}
+                        </td>
+                      )
+                    })}
                   </tr>
                 ))}
               </tbody>

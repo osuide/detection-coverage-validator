@@ -11,9 +11,17 @@ const api = axios.create({
 })
 
 // Types
+
+// New simplified tiers (2024-12)
+export type AccountTier = 'free' | 'individual' | 'pro' | 'enterprise'
+// Legacy tiers (deprecated, kept for backward compatibility)
+export type LegacyTier = 'free_scan' | 'subscriber'
+// Combined tier type
+export type SubscriptionTier = AccountTier | LegacyTier
+
 export interface Subscription {
   id?: string
-  tier: 'free_scan' | 'subscriber' | 'enterprise'
+  tier: SubscriptionTier
   status: 'active' | 'past_due' | 'canceled' | 'unpaid'
   free_scan_used: boolean
   free_scan_at?: string
@@ -26,9 +34,15 @@ export interface Subscription {
   current_period_end?: string
   cancel_at_period_end: boolean
   has_stripe: boolean
+  // New tier-based fields
+  max_accounts?: number | null
+  max_team_members?: number | null
+  org_features_enabled?: boolean
+  history_retention_days?: number | null
 }
 
 export interface Pricing {
+  // Legacy fields (kept for backward compatibility)
   subscriber_monthly_cents: number
   subscriber_monthly_dollars: number
   enterprise_monthly_cents: number
@@ -46,6 +60,54 @@ export interface Pricing {
     price_per_account_dollars: number
     label: string
   }>
+  // New tier information (optional for backward compatibility)
+  tiers?: TierInfo[]
+}
+
+// New tier pricing information
+export interface TierInfo {
+  tier: AccountTier
+  display_name: string
+  price_monthly_cents: number | null
+  price_monthly_dollars: number | null
+  max_accounts: number | null
+  max_team_members: number | null
+  history_retention_days: number | null
+  org_features: boolean
+  is_custom_pricing: boolean
+  key_features: string[]
+}
+
+// Helper functions for tier checking
+export const isFreeTier = (tier: SubscriptionTier): boolean => {
+  return tier === 'free' || tier === 'free_scan'
+}
+
+export const isLegacyTier = (tier: SubscriptionTier): boolean => {
+  return tier === 'free_scan' || tier === 'subscriber'
+}
+
+export const hasOrgFeatures = (tier: SubscriptionTier): boolean => {
+  return tier === 'pro' || tier === 'enterprise'
+}
+
+export const getTierDisplayName = (tier: SubscriptionTier): string => {
+  switch (tier) {
+    case 'free':
+      return 'Free'
+    case 'individual':
+      return 'Individual'
+    case 'pro':
+      return 'Pro'
+    case 'enterprise':
+      return 'Enterprise'
+    case 'free_scan':
+      return 'Free (Legacy)'
+    case 'subscriber':
+      return 'Subscriber (Legacy)'
+    default:
+      return 'Unknown'
+  }
 }
 
 export interface Invoice {
