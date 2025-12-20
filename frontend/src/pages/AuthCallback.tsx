@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Shield, AlertCircle, Loader2 } from 'lucide-react'
-import { useAuth } from '../contexts/AuthContext'
+import { useAuthStore } from '../stores/authStore'
 import { cognitoApi } from '../services/cognitoApi'
 import { githubApi } from '../services/githubApi'
 
 export default function AuthCallback() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
-  const { login } = useAuth()
+  const setAuth = useAuthStore((state) => state.setAuth)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -48,30 +48,31 @@ export default function AuthCallback() {
 
       try {
         const redirectUri = `${window.location.origin}/auth/callback`
+        let response
 
         if (storedProvider === 'github') {
           // Direct GitHub OAuth
-          const response = await githubApi.exchangeToken(code, redirectUri, state || '')
-
-          // Store tokens using the same keys as AuthContext
-          localStorage.setItem('dcv_access_token', response.access_token)
-          localStorage.setItem('dcv_refresh_token', response.refresh_token)
+          response = await githubApi.exchangeToken(code, redirectUri, state || '')
         } else {
-          // Cognito OAuth (Google, Microsoft)
+          // Cognito OAuth (Google)
           if (!storedCodeVerifier) {
             setError('Missing PKCE code verifier. Please try again.')
             return
           }
 
-          const response = await cognitoApi.exchangeToken(code, redirectUri, storedCodeVerifier, state || undefined)
-
-          // Store tokens using the same keys as AuthContext
-          localStorage.setItem('dcv_access_token', response.access_token)
-          localStorage.setItem('dcv_refresh_token', response.refresh_token)
+          response = await cognitoApi.exchangeToken(code, redirectUri, storedCodeVerifier, state || undefined)
         }
 
-        // Navigate to dashboard and force reload to pick up new auth state
-        window.location.href = '/dashboard'
+        // Update Zustand store with auth data (cookies are set by backend)
+        setAuth({
+          accessToken: response.access_token,
+          csrfToken: response.csrf_token,
+          user: response.user,
+          organization: response.organization,
+        })
+
+        // Navigate to dashboard (no reload needed - Zustand is in memory)
+        navigate('/dashboard', { replace: true })
       } catch (err: any) {
         console.error('Token exchange failed:', err)
         setError(err.response?.data?.detail || 'Authentication failed. Please try again.')
@@ -79,7 +80,7 @@ export default function AuthCallback() {
     }
 
     handleCallback()
-  }, [searchParams, navigate, login])
+  }, [searchParams, navigate, setAuth])
 
   if (error) {
     return (

@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,7 +28,11 @@ from app.models.user import (
 from app.models.billing import Subscription, AccountTier
 from app.services.github_oauth_service import github_oauth_service
 from app.services.auth_service import AuthService
-from app.api.routes.cognito import get_client_ip
+from app.api.routes.auth import (
+    get_client_ip,
+    set_auth_cookies,
+    generate_csrf_token,
+)
 
 logger = structlog.get_logger()
 settings = get_settings()
@@ -351,11 +356,16 @@ async def exchange_github_token(
         user_agent=user_agent,
     )
 
-    return GitHubTokenResponse(
-        access_token=access_token,
-        refresh_token=refresh_token,
-        expires_in=settings.access_token_expire_minutes * 60,
-        user={
+    # Generate CSRF token for double-submit cookie pattern
+    csrf_token = generate_csrf_token()
+
+    # Create response with tokens
+    response_data = {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "csrf_token": csrf_token,
+        "expires_in": settings.access_token_expire_minutes * 60,
+        "user": {
             "id": str(user.id),
             "email": user.email,
             "full_name": user.full_name,
@@ -363,4 +373,17 @@ async def exchange_github_token(
             "mfa_enabled": user.mfa_enabled,
             "identity_provider": user.identity_provider,
         },
-    )
+        "organization": {
+            "id": str(organization.id),
+            "name": organization.name,
+            "slug": organization.slug,
+            "plan": organization.plan,
+        },
+    }
+
+    response = JSONResponse(content=response_data)
+
+    # Set httpOnly cookies for secure token storage
+    set_auth_cookies(response, refresh_token, csrf_token)
+
+    return response
