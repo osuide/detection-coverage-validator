@@ -536,7 +536,7 @@ export default function Landing() {
                 </li>
                 <li className="flex items-start space-x-2">
                   <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                  <span className="text-gray-300">Unlimited scans</span>
+                  <span className="text-gray-300">1 scan per week</span>
                 </li>
                 <li className="flex items-start space-x-2">
                   <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />

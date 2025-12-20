@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Cloud, Plus, Trash2, Play, RefreshCw, Link, CheckCircle2, AlertTriangle, Settings } from 'lucide-react'
-import { accountsApi, scansApi, credentialsApi, CloudAccount } from '../services/api'
+import { Cloud, Plus, Trash2, Play, RefreshCw, Link, CheckCircle2, AlertTriangle, Settings, Clock } from 'lucide-react'
+import { Link as RouterLink } from 'react-router-dom'
+import { accountsApi, scansApi, credentialsApi, CloudAccount, scanStatusApi, ScanStatus } from '../services/api'
 import CredentialWizard from '../components/CredentialWizard'
 
 export default function Accounts() {
@@ -18,6 +19,12 @@ export default function Accounts() {
   const { data: accounts, isLoading } = useQuery({
     queryKey: ['accounts'],
     queryFn: accountsApi.list,
+  })
+
+  // Check scan limits
+  const { data: scanStatus } = useQuery({
+    queryKey: ['scanStatus'],
+    queryFn: scanStatusApi.get,
   })
 
   const createMutation = useMutation({
@@ -147,6 +154,31 @@ export default function Accounts() {
         </div>
       ) : (
         <div className="space-y-4">
+          {/* Scan limit warning banner */}
+          {scanStatus && !scanStatus.unlimited && !scanStatus.can_scan && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-center justify-between">
+              <div className="flex items-center">
+                <Clock className="h-5 w-5 text-yellow-600 mr-3" />
+                <div>
+                  <p className="text-sm font-medium text-yellow-800">
+                    Weekly scan limit reached ({scanStatus.scans_used}/{scanStatus.scans_allowed})
+                  </p>
+                  {scanStatus.week_resets_at && (
+                    <p className="text-xs text-yellow-600">
+                      Resets on {new Date(scanStatus.week_resets_at).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <RouterLink
+                to="/settings/billing"
+                className="text-sm font-medium text-blue-600 hover:text-blue-700"
+              >
+                Upgrade for unlimited scans →
+              </RouterLink>
+            </div>
+          )}
+
           {accounts.map((account) => (
             <AccountCard
               key={account.id}
@@ -156,6 +188,7 @@ export default function Accounts() {
               onDelete={() => deleteMutation.mutate(account.id)}
               isScanPending={scanMutation.isPending}
               isDeletePending={deleteMutation.isPending}
+              scanStatus={scanStatus}
             />
           ))}
         </div>
@@ -186,6 +219,7 @@ function AccountCard({
   onDelete,
   isScanPending,
   isDeletePending,
+  scanStatus,
 }: {
   account: CloudAccount
   onConnect: () => void
@@ -193,7 +227,10 @@ function AccountCard({
   onDelete: () => void
   isScanPending: boolean
   isDeletePending: boolean
+  scanStatus?: ScanStatus
 }) {
+  // Check if scan is blocked due to limits
+  const scanLimitReached = scanStatus && !scanStatus.unlimited && !scanStatus.can_scan
   // Fetch credential status for this account
   const { data: credential, isLoading: credentialLoading } = useQuery({
     queryKey: ['credentials', account.id],
@@ -298,16 +335,22 @@ function AccountCard({
             </button>
           )}
 
-          {/* Scan Button - only enabled if connected */}
+          {/* Scan Button - only enabled if connected and within limits */}
           <button
             onClick={onScan}
-            disabled={isScanPending || !credential || credential.status !== 'valid'}
+            disabled={isScanPending || !credential || credential.status !== 'valid' || scanLimitReached}
             className={`p-2 rounded-lg ${
-              credential?.status === 'valid'
+              credential?.status === 'valid' && !scanLimitReached
                 ? 'text-blue-600 hover:bg-blue-50'
                 : 'text-gray-400 cursor-not-allowed'
             }`}
-            title={credential?.status === 'valid' ? 'Run Scan' : 'Connect account first'}
+            title={
+              scanLimitReached
+                ? 'Weekly scan limit reached - upgrade for unlimited'
+                : credential?.status === 'valid'
+                ? 'Run Scan'
+                : 'Connect account first'
+            }
           >
             {isScanPending ? (
               <RefreshCw className="h-5 w-5 animate-spin" />
