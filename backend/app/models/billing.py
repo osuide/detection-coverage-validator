@@ -58,7 +58,8 @@ TIER_LIMITS = {
         "included_accounts": 1,
         "max_accounts": 1,
         "max_team_members": 1,
-        "scans_allowed": -1,  # Unlimited scans
+        "weekly_scans_allowed": 1,  # 1 scan per week (was unlimited)
+        "scan_reset_interval_days": 7,  # Rolling 7-day window
         "results_retention_days": 30,
         "org_discovery": False,
         "features": {
@@ -80,7 +81,8 @@ TIER_LIMITS = {
         "included_accounts": 6,
         "max_accounts": 6,
         "max_team_members": 3,
-        "scans_allowed": -1,  # Unlimited
+        "weekly_scans_allowed": None,  # Unlimited
+        "scan_reset_interval_days": 7,
         "results_retention_days": 90,
         "org_discovery": False,  # No org features at Individual tier
         "features": {
@@ -103,7 +105,8 @@ TIER_LIMITS = {
         "included_accounts": 500,
         "max_accounts": 500,
         "max_team_members": 10,
-        "scans_allowed": -1,  # Unlimited
+        "weekly_scans_allowed": None,  # Unlimited
+        "scan_reset_interval_days": 7,
         "results_retention_days": 365,  # 1 year
         "org_discovery": True,
         "features": {
@@ -129,7 +132,8 @@ TIER_LIMITS = {
         "included_accounts": None,  # Unlimited
         "max_accounts": None,  # Unlimited (500+)
         "max_team_members": None,  # Unlimited
-        "scans_allowed": None,  # Unlimited
+        "weekly_scans_allowed": None,  # Unlimited
+        "scan_reset_interval_days": 7,
         "results_retention_days": None,  # Unlimited
         "org_discovery": True,
         "features": {
