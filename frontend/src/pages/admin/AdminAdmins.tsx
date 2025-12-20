@@ -15,8 +15,7 @@ import {
   Trash2,
   Edit,
 } from 'lucide-react';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+import { useAdminAuthStore, adminApi } from '../../stores/adminAuthStore';
 
 interface AdminUser {
   id: string;
@@ -50,12 +49,12 @@ const ROLE_LABELS: Record<string, string> = {
 
 export default function AdminAdmins() {
   const navigate = useNavigate();
+  const { isAuthenticated, isInitialised, admin } = useAdminAuthStore();
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [actionMenu, setActionMenu] = useState<string | null>(null);
-  const [currentUserRole, setCurrentUserRole] = useState<string>('');
 
   // Create form state
   const [newAdmin, setNewAdmin] = useState({
@@ -69,42 +68,35 @@ export default function AdminAdmins() {
   const [selectedAdmin, setSelectedAdmin] = useState<AdminUser | null>(null);
   const [newPassword, setNewPassword] = useState('');
 
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (isInitialised && !isAuthenticated) {
+      navigate('/admin/login');
+    }
+  }, [isAuthenticated, isInitialised, navigate]);
+
   const fetchAdmins = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('admin_token');
-      const response = await fetch(`${API_BASE_URL}/api/v1/admin/admins`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.status === 401) {
-        navigate('/admin/login');
-        return;
-      }
-
-      if (response.status === 403) {
-        setError('You do not have permission to view admin users');
-        return;
-      }
-
-      if (!response.ok) throw new Error('Failed to fetch admin users');
-
-      const data = await response.json();
-      setAdmins(data.admins);
-
-      // Get current user role from token
-      const tokenPayload = JSON.parse(atob(token!.split('.')[1]));
-      setCurrentUserRole(tokenPayload.role);
+      const response = await adminApi.get('/admins');
+      setAdmins(response.data.admins);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load admin users');
+      const axiosError = err as { response?: { status?: number } };
+      if (axiosError.response?.status === 403) {
+        setError('You do not have permission to view admin users');
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to load admin users');
+      }
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchAdmins();
-  }, []);
+    if (isAuthenticated) {
+      fetchAdmins();
+    }
+  }, [isAuthenticated]);
 
   const createAdmin = async () => {
     if (!newAdmin.email || !newAdmin.full_name || !newAdmin.password) {
@@ -119,26 +111,13 @@ export default function AdminAdmins() {
 
     setCreating(true);
     try {
-      const token = localStorage.getItem('admin_token');
-      const response = await fetch(`${API_BASE_URL}/api/v1/admin/admins`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(newAdmin),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.detail || 'Failed to create admin');
-      }
-
+      await adminApi.post('/admins', newAdmin);
       setShowCreateModal(false);
       setNewAdmin({ email: '', full_name: '', password: '', role: 'readonly_admin' });
       fetchAdmins();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create admin');
+      const axiosError = err as { response?: { data?: { detail?: string } } };
+      setError(axiosError.response?.data?.detail || 'Failed to create admin');
     } finally {
       setCreating(false);
     }
@@ -146,18 +125,7 @@ export default function AdminAdmins() {
 
   const toggleAdminStatus = async (adminId: string, currentStatus: boolean) => {
     try {
-      const token = localStorage.getItem('admin_token');
-      const response = await fetch(`${API_BASE_URL}/api/v1/admin/admins/${adminId}/status`, {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ is_active: !currentStatus }),
-      });
-
-      if (!response.ok) throw new Error('Failed to update admin status');
-
+      await adminApi.put(`/admins/${adminId}/status`, { is_active: !currentStatus });
       setAdmins(admins.map(a =>
         a.id === adminId ? { ...a, is_active: !currentStatus } : a
       ));
@@ -176,21 +144,7 @@ export default function AdminAdmins() {
     }
 
     try {
-      const token = localStorage.getItem('admin_token');
-      const response = await fetch(`${API_BASE_URL}/api/v1/admin/admins/${selectedAdmin.id}/password`, {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ password: newPassword }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.detail || 'Failed to change password');
-      }
-
+      await adminApi.put(`/admins/${selectedAdmin.id}/password`, { password: newPassword });
       setShowPasswordModal(false);
       setSelectedAdmin(null);
       setNewPassword('');
@@ -198,12 +152,13 @@ export default function AdminAdmins() {
       // Show success message
       alert('Password changed successfully');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to change password');
+      const axiosError = err as { response?: { data?: { detail?: string } } };
+      setError(axiosError.response?.data?.detail || 'Failed to change password');
     }
   };
 
-  const openPasswordModal = (admin: AdminUser) => {
-    setSelectedAdmin(admin);
+  const openPasswordModal = (adminUser: AdminUser) => {
+    setSelectedAdmin(adminUser);
     setNewPassword('');
     setShowPasswordModal(true);
     setActionMenu(null);
@@ -220,7 +175,7 @@ export default function AdminAdmins() {
     });
   };
 
-  const canManageAdmins = currentUserRole === 'super_admin';
+  const canManageAdmins = admin?.role === 'super_admin';
 
   return (
     <div className="min-h-screen bg-gray-900">
@@ -318,18 +273,18 @@ export default function AdminAdmins() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-700">
-                {admins.map((admin) => (
-                  <tr key={admin.id} className="hover:bg-gray-700/50">
+                {admins.map((adminUser) => (
+                  <tr key={adminUser.id} className="hover:bg-gray-700/50">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-red-900/50 rounded-full flex items-center justify-center">
                           <Shield className="w-5 h-5 text-red-400" />
                         </div>
                         <div>
-                          <div className="text-white font-medium">{admin.full_name}</div>
+                          <div className="text-white font-medium">{adminUser.full_name}</div>
                           <div className="text-sm text-gray-400 flex items-center gap-1">
                             <Mail className="w-3 h-3" />
-                            {admin.email}
+                            {adminUser.email}
                           </div>
                         </div>
                       </div>
@@ -337,21 +292,21 @@ export default function AdminAdmins() {
                     <td className="px-6 py-4">
                       <span
                         className={`inline-flex items-center px-2 py-1 rounded border text-xs font-medium ${
-                          ROLE_COLORS[admin.role] || ROLE_COLORS.readonly_admin
+                          ROLE_COLORS[adminUser.role] || ROLE_COLORS.readonly_admin
                         }`}
                       >
-                        {ROLE_LABELS[admin.role] || admin.role}
+                        {ROLE_LABELS[adminUser.role] || adminUser.role}
                       </span>
                     </td>
                     <td className="px-6 py-4">
                       <span
                         className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                          admin.is_active
+                          adminUser.is_active
                             ? 'bg-green-900/50 text-green-400'
                             : 'bg-red-900/50 text-red-400'
                         }`}
                       >
-                        {admin.is_active ? (
+                        {adminUser.is_active ? (
                           <>
                             <CheckCircle className="w-3 h-3" />
                             Active
@@ -365,7 +320,7 @@ export default function AdminAdmins() {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      {admin.mfa_enabled ? (
+                      {adminUser.mfa_enabled ? (
                         <span className="inline-flex items-center gap-1 text-green-400 text-sm">
                           <Key className="w-4 h-4" />
                           Enabled
@@ -380,14 +335,14 @@ export default function AdminAdmins() {
                     <td className="px-6 py-4 text-sm text-gray-400">
                       <div className="flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
-                        {formatDate(admin.last_login_at)}
+                        {formatDate(adminUser.last_login_at)}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-400">
-                      <div>{formatDate(admin.created_at)}</div>
-                      {admin.created_by_email && (
+                      <div>{formatDate(adminUser.created_at)}</div>
+                      {adminUser.created_by_email && (
                         <div className="text-xs text-gray-500">
-                          by {admin.created_by_email}
+                          by {adminUser.created_by_email}
                         </div>
                       )}
                     </td>
@@ -395,26 +350,26 @@ export default function AdminAdmins() {
                       <td className="px-6 py-4 text-right">
                         <div className="relative inline-block">
                           <button
-                            onClick={() => setActionMenu(actionMenu === admin.id ? null : admin.id)}
+                            onClick={() => setActionMenu(actionMenu === adminUser.id ? null : adminUser.id)}
                             className="p-2 text-gray-400 hover:text-white rounded-lg hover:bg-gray-700"
                           >
                             <MoreVertical className="w-5 h-5" />
                           </button>
 
-                          {actionMenu === admin.id && (
+                          {actionMenu === adminUser.id && (
                             <div className="absolute right-0 mt-2 z-50 w-48 bg-gray-700 rounded-lg shadow-xl border border-gray-600 py-1">
                               <button
-                                onClick={() => openPasswordModal(admin)}
+                                onClick={() => openPasswordModal(adminUser)}
                                 className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-gray-600 flex items-center gap-2"
                               >
                                 <Key className="w-4 h-4" />
                                 Change Password
                               </button>
                               <button
-                                onClick={() => toggleAdminStatus(admin.id, admin.is_active)}
+                                onClick={() => toggleAdminStatus(adminUser.id, adminUser.is_active)}
                                 className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-gray-600 flex items-center gap-2"
                               >
-                                {admin.is_active ? (
+                                {adminUser.is_active ? (
                                   <>
                                     <Lock className="w-4 h-4" />
                                     Disable

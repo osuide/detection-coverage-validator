@@ -5,8 +5,7 @@ import {
   Users, Cloud, Scan, AlertTriangle,
   Ban, CheckCircle, ExternalLink
 } from 'lucide-react';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+import { useAdminAuthStore, adminApi } from '../../stores/adminAuthStore';
 
 interface Organization {
   id: string;
@@ -49,6 +48,7 @@ interface OrgDetail {
 
 export default function AdminOrganizations() {
   const navigate = useNavigate();
+  const { isAuthenticated, isInitialised } = useAdminAuthStore();
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [selectedOrg, setSelectedOrg] = useState<OrgDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -59,16 +59,20 @@ export default function AdminOrganizations() {
   const [total, setTotal] = useState(0);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  const adminToken = localStorage.getItem('admin_token');
   const pageSize = 20;
 
+  // Redirect if not authenticated
   useEffect(() => {
-    if (!adminToken) {
+    if (isInitialised && !isAuthenticated) {
       navigate('/admin/login');
-      return;
     }
-    fetchOrganizations();
-  }, [adminToken, navigate, page, search, tierFilter, statusFilter]);
+  }, [isAuthenticated, isInitialised, navigate]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchOrganizations();
+    }
+  }, [isAuthenticated, page, search, tierFilter, statusFilter]);
 
   const fetchOrganizations = async () => {
     try {
@@ -80,15 +84,9 @@ export default function AdminOrganizations() {
       if (tierFilter) params.set('tier', tierFilter);
       if (statusFilter) params.set('is_active', statusFilter);
 
-      const response = await fetch(`${API_BASE_URL}/api/v1/admin/organizations?${params}`, {
-        headers: { Authorization: `Bearer ${adminToken}` },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setOrganizations(data.items);
-        setTotal(data.total);
-      }
+      const response = await adminApi.get(`/organizations?${params}`);
+      setOrganizations(response.data.items);
+      setTotal(response.data.total);
     } catch (error) {
       console.error('Failed to fetch organizations:', error);
     } finally {
@@ -98,14 +96,8 @@ export default function AdminOrganizations() {
 
   const fetchOrgDetails = async (orgId: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/admin/organizations/${orgId}`, {
-        headers: { Authorization: `Bearer ${adminToken}` },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setSelectedOrg(data);
-      }
+      const response = await adminApi.get(`/organizations/${orgId}`);
+      setSelectedOrg(response.data);
     } catch (error) {
       console.error('Failed to fetch org details:', error);
     }
@@ -114,20 +106,10 @@ export default function AdminOrganizations() {
   const suspendOrg = async (orgId: string, reason: string) => {
     setActionLoading(orgId);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/admin/organizations/${orgId}/suspend`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${adminToken}`,
-        },
-        body: JSON.stringify({ reason }),
-      });
-
-      if (response.ok) {
-        fetchOrganizations();
-        if (selectedOrg?.id === orgId) {
-          fetchOrgDetails(orgId);
-        }
+      await adminApi.post(`/organizations/${orgId}/suspend`, { reason });
+      fetchOrganizations();
+      if (selectedOrg?.id === orgId) {
+        fetchOrgDetails(orgId);
       }
     } finally {
       setActionLoading(null);
@@ -137,16 +119,10 @@ export default function AdminOrganizations() {
   const unsuspendOrg = async (orgId: string) => {
     setActionLoading(orgId);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/admin/organizations/${orgId}/unsuspend`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${adminToken}` },
-      });
-
-      if (response.ok) {
-        fetchOrganizations();
-        if (selectedOrg?.id === orgId) {
-          fetchOrgDetails(orgId);
-        }
+      await adminApi.post(`/organizations/${orgId}/unsuspend`);
+      fetchOrganizations();
+      if (selectedOrg?.id === orgId) {
+        fetchOrgDetails(orgId);
       }
     } finally {
       setActionLoading(null);
@@ -185,7 +161,7 @@ export default function AdminOrganizations() {
                 <div className="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center">
                   <Shield className="w-5 h-5 text-white" />
                 </div>
-                <span className="text-white font-semibold">Organizations</span>
+                <span className="text-white font-semibold">Organisations</span>
               </div>
             </div>
           </div>
@@ -204,7 +180,7 @@ export default function AdminOrganizations() {
                   type="text"
                   value={search}
                   onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                  placeholder="Search organizations..."
+                  placeholder="Search organisations..."
                   className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
                 />
               </div>
@@ -234,7 +210,7 @@ export default function AdminOrganizations() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-700">
-                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-400">Organization</th>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-400">Organisation</th>
                     <th className="text-left px-4 py-3 text-sm font-medium text-gray-400">Tier</th>
                     <th className="text-left px-4 py-3 text-sm font-medium text-gray-400">Users</th>
                     <th className="text-left px-4 py-3 text-sm font-medium text-gray-400">Status</th>
@@ -301,7 +277,7 @@ export default function AdminOrganizations() {
 
               {organizations.length === 0 && (
                 <div className="text-center py-8 text-gray-400">
-                  No organizations found
+                  No organisations found
                 </div>
               )}
             </div>

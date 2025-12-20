@@ -5,8 +5,7 @@ import {
   Save, AlertCircle, Check, ChevronLeft, RefreshCw,
   Lock, Globe, ToggleLeft, ToggleRight
 } from 'lucide-react';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+import { useAdminAuthStore, adminApi } from '../../stores/adminAuthStore';
 
 interface Setting {
   key: string;
@@ -26,6 +25,7 @@ interface StripeConfig {
 
 export default function AdminSettings() {
   const navigate = useNavigate();
+  const { isAuthenticated, isInitialised } = useAdminAuthStore();
   const [settings, setSettings] = useState<Setting[]>([]);
   const [stripeConfig, setStripeConfig] = useState<StripeConfig | null>(null);
   const [loading, setLoading] = useState(true);
@@ -44,36 +44,35 @@ export default function AdminSettings() {
     webhook_secret: false,
   });
 
-  const adminToken = localStorage.getItem('admin_token');
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (isInitialised && !isAuthenticated) {
+      navigate('/admin/login');
+    }
+  }, [isAuthenticated, isInitialised, navigate]);
 
   useEffect(() => {
-    if (!adminToken) {
-      navigate('/admin/login');
-      return;
+    if (isAuthenticated) {
+      fetchSettings();
     }
-    fetchSettings();
-  }, [adminToken, navigate]);
+  }, [isAuthenticated]);
 
   const fetchSettings = async () => {
     try {
-      const headers = { Authorization: `Bearer ${adminToken}` };
-
       const [settingsRes, stripeRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/api/v1/admin/settings`, { headers }),
-        fetch(`${API_BASE_URL}/api/v1/admin/settings/billing/stripe`, { headers }),
+        adminApi.get('/settings').catch(() => null),
+        adminApi.get('/settings/billing/stripe').catch(() => null),
       ]);
 
-      if (settingsRes.ok) {
-        const data = await settingsRes.json();
-        setSettings(data.items);
+      if (settingsRes?.data) {
+        setSettings(settingsRes.data.items);
       }
 
-      if (stripeRes.ok) {
-        const stripeData = await stripeRes.json();
-        setStripeConfig(stripeData);
+      if (stripeRes?.data) {
+        setStripeConfig(stripeRes.data);
         setStripeForm(prev => ({
           ...prev,
-          publishable_key: stripeData.publishable_key || '',
+          publishable_key: stripeRes.data.publishable_key || '',
         }));
       }
     } catch (error) {
@@ -88,24 +87,12 @@ export default function AdminSettings() {
     setMessage(null);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/admin/settings/billing/stripe`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${adminToken}`,
-        },
-        body: JSON.stringify({
-          publishable_key: stripeForm.publishable_key || null,
-          secret_key: stripeForm.secret_key || null,
-          webhook_secret: stripeForm.webhook_secret || null,
-          reason: 'Updated via Admin Portal',
-        }),
+      await adminApi.put('/settings/billing/stripe', {
+        publishable_key: stripeForm.publishable_key || null,
+        secret_key: stripeForm.secret_key || null,
+        webhook_secret: stripeForm.webhook_secret || null,
+        reason: 'Updated via Admin Portal',
       });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Failed to save');
-      }
 
       setMessage({ type: 'success', text: 'Stripe configuration saved successfully' });
       // Clear secret fields after save
@@ -125,20 +112,7 @@ export default function AdminSettings() {
 
   const updateSetting = async (key: string, value: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/admin/settings/${key}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${adminToken}`,
-        },
-        body: JSON.stringify({ value, reason: 'Updated via Admin Portal' }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Failed to update');
-      }
-
+      await adminApi.put(`/settings/${key}`, { value, reason: 'Updated via Admin Portal' });
       setMessage({ type: 'success', text: `Setting "${key}" updated` });
       fetchSettings();
     } catch (error) {
@@ -205,7 +179,7 @@ export default function AdminSettings() {
           ].map(tab => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id as typeof activeTab)}
               className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors ${
                 activeTab === tab.id
                   ? 'border-red-500 text-white'

@@ -15,8 +15,7 @@ import {
   UserX,
   UserCheck,
 } from 'lucide-react';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+import { useAdminAuthStore, adminApi } from '../../stores/adminAuthStore';
 
 interface User {
   id: string;
@@ -42,6 +41,7 @@ interface UsersResponse {
 
 export default function AdminUsers() {
   const navigate = useNavigate();
+  const { isAuthenticated, isInitialised } = useAdminAuthStore();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -51,10 +51,16 @@ export default function AdminUsers() {
   const [total, setTotal] = useState(0);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (isInitialised && !isAuthenticated) {
+      navigate('/admin/login');
+    }
+  }, [isAuthenticated, isInitialised, navigate]);
+
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('admin_token');
       const params = new URLSearchParams({
         page: page.toString(),
         per_page: '20',
@@ -63,18 +69,8 @@ export default function AdminUsers() {
         params.append('search', searchQuery);
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/v1/admin/users?${params}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.status === 401) {
-        navigate('/admin/login');
-        return;
-      }
-
-      if (!response.ok) throw new Error('Failed to fetch users');
-
-      const data: UsersResponse = await response.json();
+      const response = await adminApi.get(`/users?${params}`);
+      const data: UsersResponse = response.data;
       setUsers(data.users);
       setTotal(data.total);
       setTotalPages(Math.ceil(data.total / data.per_page));
@@ -86,8 +82,10 @@ export default function AdminUsers() {
   };
 
   useEffect(() => {
-    fetchUsers();
-  }, [page]);
+    if (isAuthenticated) {
+      fetchUsers();
+    }
+  }, [page, isAuthenticated]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,18 +96,7 @@ export default function AdminUsers() {
   const toggleUserStatus = async (userId: string, currentStatus: boolean) => {
     setActionLoading(userId);
     try {
-      const token = localStorage.getItem('admin_token');
-      const response = await fetch(`${API_BASE_URL}/api/v1/admin/users/${userId}/status`, {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ is_active: !currentStatus }),
-      });
-
-      if (!response.ok) throw new Error('Failed to update user status');
-
+      await adminApi.put(`/users/${userId}/status`, { is_active: !currentStatus });
       setUsers(users.map(u =>
         u.id === userId ? { ...u, is_active: !currentStatus } : u
       ));
@@ -215,7 +202,7 @@ export default function AdminUsers() {
                     Status
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                    Organizations
+                    Organisations
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                     Last Login

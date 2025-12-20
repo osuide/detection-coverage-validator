@@ -13,8 +13,7 @@ import {
   ExternalLink,
   RefreshCw,
 } from 'lucide-react';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+import { useAdminAuthStore, adminApi } from '../../stores/adminAuthStore';
 
 interface BillingStats {
   total_revenue: number;
@@ -38,38 +37,33 @@ interface Subscription {
 
 export default function AdminBilling() {
   const navigate = useNavigate();
+  const { isAuthenticated, isInitialised } = useAdminAuthStore();
   const [stats, setStats] = useState<BillingStats | null>(null);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (isInitialised && !isAuthenticated) {
+      navigate('/admin/login');
+    }
+  }, [isAuthenticated, isInitialised, navigate]);
+
   const fetchBillingData = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('admin_token');
-
       const [statsRes, subsRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/api/v1/admin/billing/stats`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${API_BASE_URL}/api/v1/admin/billing/subscriptions?limit=20`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
+        adminApi.get('/billing/stats').catch(() => null),
+        adminApi.get('/billing/subscriptions?limit=20').catch(() => null),
       ]);
 
-      if (statsRes.status === 401 || subsRes.status === 401) {
-        navigate('/admin/login');
-        return;
+      if (statsRes?.data) {
+        setStats(statsRes.data);
       }
 
-      if (statsRes.ok) {
-        const statsData = await statsRes.json();
-        setStats(statsData);
-      }
-
-      if (subsRes.ok) {
-        const subsData = await subsRes.json();
-        setSubscriptions(subsData.subscriptions || []);
+      if (subsRes?.data) {
+        setSubscriptions(subsRes.data.subscriptions || []);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load billing data');
@@ -79,8 +73,10 @@ export default function AdminBilling() {
   };
 
   useEffect(() => {
-    fetchBillingData();
-  }, []);
+    if (isAuthenticated) {
+      fetchBillingData();
+    }
+  }, [isAuthenticated]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -326,7 +322,7 @@ export default function AdminBilling() {
               <thead className="bg-gray-900/50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                    Organization
+                    Organisation
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                     Plan
