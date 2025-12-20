@@ -152,6 +152,18 @@ class ScanLimitService:
                 "total_scans": int,
             }
         """
+        # Check if scan limits are disabled (for staging/testing)
+        settings = get_settings()
+        if settings.disable_scan_limits:
+            tracking = await self._get_or_create_tracking(organization_id)
+            return {
+                "scans_used_this_week": tracking.weekly_scan_count,
+                "scans_allowed_this_week": None,  # Unlimited
+                "next_scan_available_at": None,
+                "is_limited": False,
+                "total_scans": tracking.total_scans,
+            }
+
         subscription = await self._get_subscription(organization_id)
 
         if not subscription:
