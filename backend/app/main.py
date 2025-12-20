@@ -32,6 +32,7 @@ from app.api.routes import (
     github_oauth,
     recommendations,
     cloud_organizations,
+    analytics,
 )
 from app.api.routes.admin import router as admin_router
 from app.api.v1.public import router as public_api_router
@@ -408,6 +409,7 @@ app.include_router(
     prefix="/api/v1/cloud-organizations",
     tags=["Cloud Organisations"],
 )
+app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["Analytics"])
 
 # Admin Portal routes (separate from user routes)
 app.include_router(admin_router, prefix="/api/v1/admin")
