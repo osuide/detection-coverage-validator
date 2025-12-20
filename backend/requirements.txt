@@ -61,7 +61,7 @@ weasyprint==60.2
 pytest==7.4.4
 pytest-asyncio==0.23.3
 pytest-cov==4.1.0
-moto[all]==4.2.13
+moto[all]==5.1.18
 httpx==0.26.0
 factory-boy==3.3.0
 
