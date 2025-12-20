@@ -18,6 +18,7 @@ import {
   Lock,
   CreditCard,
   Shield,
+  FileBarChart,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { useAuth } from '../contexts/AuthContext'
@@ -34,6 +35,7 @@ const navigation = [
   { name: 'Detections', href: '/detections', icon: Shield },
   { name: 'Coverage', href: '/coverage', icon: BarChart3 },
   { name: 'Gaps', href: '/gaps', icon: AlertTriangle },
+  { name: 'Reports', href: '/reports', icon: FileBarChart },
 ]
 
 const settingsNavigation = [

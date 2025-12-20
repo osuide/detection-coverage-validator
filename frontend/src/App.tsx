@@ -7,6 +7,7 @@ import Accounts from './pages/Accounts'
 import Detections from './pages/Detections'
 import Coverage from './pages/Coverage'
 import Gaps from './pages/Gaps'
+import Reports from './pages/Reports'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
 import TeamManagement from './pages/TeamManagement'
@@ -78,6 +79,7 @@ function App() {
                   <Route path="/detections" element={<Detections />} />
                   <Route path="/coverage" element={<Coverage />} />
                   <Route path="/gaps" element={<Gaps />} />
+                  <Route path="/reports" element={<Reports />} />
                   <Route path="/settings" element={<Navigate to="/settings/profile" replace />} />
                   <Route path="/settings/team" element={<TeamManagement />} />
                   <Route path="/settings/api-keys" element={<APIKeys />} />

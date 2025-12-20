@@ -19,6 +19,7 @@ from reportlab.platypus import (
     TableStyle,
     PageBreak,
 )
+from reportlab.pdfgen import canvas
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -69,6 +70,7 @@ class ReportService:
         include_executive_summary: bool = True,
         include_gap_analysis: bool = True,
         include_detection_details: bool = False,
+        add_watermark: bool = False,
     ) -> bytes:
         """Generate a PDF report.
 
@@ -77,6 +79,7 @@ class ReportService:
             include_executive_summary: Include executive summary section
             include_gap_analysis: Include gap analysis section
             include_detection_details: Include detailed detection list
+            add_watermark: Add "FREE TIER" watermark to each page (for free tier users)
 
         Returns:
             PDF bytes
@@ -155,8 +158,39 @@ class ReportService:
                 )
             )
 
-        # Build PDF
-        doc.build(story)
+        # Build PDF with optional watermark
+        if add_watermark:
+
+            def add_watermark_to_page(canvas_obj: canvas.Canvas, doc_obj) -> None:
+                """Draw watermark on each page."""
+                canvas_obj.saveState()
+                # Draw diagonal "FREE TIER" watermark
+                canvas_obj.setFont("Helvetica-Bold", 60)
+                canvas_obj.setFillColor(colors.Color(0.9, 0.9, 0.9, alpha=0.5))
+                canvas_obj.translate(letter[0] / 2, letter[1] / 2)
+                canvas_obj.rotate(45)
+                canvas_obj.drawCentredString(0, 0, "FREE TIER")
+                canvas_obj.restoreState()
+
+                # Add small footer notice
+                canvas_obj.saveState()
+                canvas_obj.setFont("Helvetica", 8)
+                canvas_obj.setFillColor(colors.gray)
+                canvas_obj.drawString(
+                    0.75 * inch,
+                    0.5 * inch,
+                    "Free tier report - Upgrade to remove watermark: a13e.io/upgrade",
+                )
+                canvas_obj.restoreState()
+
+            doc.build(
+                story,
+                onFirstPage=add_watermark_to_page,
+                onLaterPages=add_watermark_to_page,
+            )
+        else:
+            doc.build(story)
+
         buffer.seek(0)
         return buffer.read()
 

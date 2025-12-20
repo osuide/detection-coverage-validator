@@ -11,9 +11,21 @@ import io
 from app.core.database import get_db
 from app.core.security import AuthContext, get_auth_context
 from app.models.cloud_account import CloudAccount
+from app.models.billing import Subscription, AccountTier
 from app.services.report_service import ReportService
 
 router = APIRouter()
+
+
+async def _is_free_tier(db: AsyncSession, organization_id: UUID) -> bool:
+    """Check if organisation is on a free tier (requires watermark)."""
+    result = await db.execute(
+        select(Subscription).where(Subscription.organization_id == organization_id)
+    )
+    subscription = result.scalar_one_or_none()
+    if not subscription:
+        return True  # No subscription = free tier
+    return subscription.tier in (AccountTier.FREE, AccountTier.FREE_SCAN)
 
 
 @router.get("/coverage/csv")
@@ -112,7 +124,11 @@ async def download_executive_pdf(
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
-    """Download executive summary PDF report."""
+    """Download executive summary PDF report.
+
+    Note: Free tier reports include a watermark. Upgrade to a paid plan for
+    unwatermarked reports.
+    """
     result = await db.execute(
         select(CloudAccount).where(
             CloudAccount.id == cloud_account_id,
@@ -123,6 +139,9 @@ async def download_executive_pdf(
     if not account:
         raise HTTPException(status_code=404, detail="Cloud account not found")
 
+    # Check if free tier (requires watermark)
+    add_watermark = await _is_free_tier(db, auth.organization_id)
+
     try:
         service = ReportService(db)
         pdf_content = await service.generate_pdf_report(
@@ -130,6 +149,7 @@ async def download_executive_pdf(
             include_executive_summary=True,
             include_gap_analysis=include_gaps,
             include_detection_details=include_detections,
+            add_watermark=add_watermark,
         )
 
         return StreamingResponse(
@@ -149,7 +169,11 @@ async def download_full_pdf(
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
-    """Download full coverage PDF report with all sections."""
+    """Download full coverage PDF report with all sections.
+
+    Note: Free tier reports include a watermark. Upgrade to a paid plan for
+    unwatermarked reports.
+    """
     result = await db.execute(
         select(CloudAccount).where(
             CloudAccount.id == cloud_account_id,
@@ -160,6 +184,9 @@ async def download_full_pdf(
     if not account:
         raise HTTPException(status_code=404, detail="Cloud account not found")
 
+    # Check if free tier (requires watermark)
+    add_watermark = await _is_free_tier(db, auth.organization_id)
+
     try:
         service = ReportService(db)
         pdf_content = await service.generate_pdf_report(
@@ -167,6 +194,7 @@ async def download_full_pdf(
             include_executive_summary=True,
             include_gap_analysis=True,
             include_detection_details=True,
+            add_watermark=add_watermark,
         )
 
         return StreamingResponse(
