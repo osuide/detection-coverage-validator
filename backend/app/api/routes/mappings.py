@@ -9,6 +9,8 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
+from app.core.security import AuthContext, get_auth_context
+from app.models.cloud_account import CloudAccount
 from app.models.mapping import DetectionMapping, MappingSource
 from app.models.mitre import Technique, Tactic
 from app.schemas.mapping import (
@@ -29,12 +31,22 @@ async def list_mappings(
     source: Optional[MappingSource] = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
+    auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
     """List detection mappings with optional filters."""
-    query = select(DetectionMapping).options(
-        selectinload(DetectionMapping.detection),
-        selectinload(DetectionMapping.technique).selectinload(Technique.tactic),
+    from app.models.detection import Detection
+
+    # Filter by organization through detection->cloud_account
+    query = (
+        select(DetectionMapping)
+        .join(Detection, DetectionMapping.detection_id == Detection.id)
+        .join(CloudAccount, Detection.cloud_account_id == CloudAccount.id)
+        .options(
+            selectinload(DetectionMapping.detection),
+            selectinload(DetectionMapping.technique).selectinload(Technique.tactic),
+        )
+        .where(CloudAccount.organization_id == auth.organization_id)
     )
 
     if detection_id:
@@ -46,8 +58,13 @@ async def list_mappings(
     if source:
         query = query.where(DetectionMapping.mapping_source == source)
 
-    # Get total count
-    count_query = select(func.count(DetectionMapping.id))
+    # Get total count (also filtered by organization)
+    count_query = (
+        select(func.count(DetectionMapping.id))
+        .join(Detection, DetectionMapping.detection_id == Detection.id)
+        .join(CloudAccount, Detection.cloud_account_id == CloudAccount.id)
+        .where(CloudAccount.organization_id == auth.organization_id)
+    )
     if detection_id:
         count_query = count_query.where(DetectionMapping.detection_id == detection_id)
     if min_confidence is not None:
@@ -164,11 +181,21 @@ async def list_tactics(
 @router.delete("/{mapping_id}", status_code=204)
 async def delete_mapping(
     mapping_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
     """Delete a detection mapping."""
+    from app.models.detection import Detection
+
+    # Verify mapping exists and belongs to user's organization
     result = await db.execute(
-        select(DetectionMapping).where(DetectionMapping.id == mapping_id)
+        select(DetectionMapping)
+        .join(Detection, DetectionMapping.detection_id == Detection.id)
+        .join(CloudAccount, Detection.cloud_account_id == CloudAccount.id)
+        .where(
+            DetectionMapping.id == mapping_id,
+            CloudAccount.organization_id == auth.organization_id,
+        )
     )
     mapping = result.scalar_one_or_none()
     if not mapping:
@@ -180,6 +207,7 @@ async def delete_mapping(
 @router.post("/remap-all")
 async def remap_all_detections(
     cloud_account_id: Optional[UUID] = None,
+    auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
     """Re-map all detections to MITRE techniques.
@@ -192,9 +220,17 @@ async def remap_all_detections(
 
     mapper = PatternMapper()
 
-    # Get detections
-    query = select(Detection).where(Detection.status == DetectionStatus.ACTIVE)
+    # Get detections (filtered by organization)
+    query = (
+        select(Detection)
+        .join(CloudAccount, Detection.cloud_account_id == CloudAccount.id)
+        .where(
+            Detection.status == DetectionStatus.ACTIVE,
+            CloudAccount.organization_id == auth.organization_id,
+        )
+    )
     if cloud_account_id:
+        # Also verify the specific account belongs to user's organization
         query = query.where(Detection.cloud_account_id == cloud_account_id)
 
     result = await db.execute(query)

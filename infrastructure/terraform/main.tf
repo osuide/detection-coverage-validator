@@ -133,6 +133,7 @@ module "security" {
   environment     = var.environment
   api_domain      = var.subdomain != "" ? "api.${var.subdomain}.${var.domain_name}" : "api.${var.domain_name}"
   frontend_domain = var.subdomain != "" ? "${var.subdomain}.${var.domain_name}" : var.domain_name
+  allowed_ips     = var.waf_allowed_ips
 }
 
 # Backend (ECS Fargate + ALB)
@@ -169,6 +170,9 @@ module "backend" {
   github_client_id     = var.github_client_id
   github_client_secret = var.github_client_secret
   microsoft_client_id  = var.microsoft_client_id
+
+  # WAF IP restriction
+  allowed_ips = var.waf_allowed_ips
 }
 
 # Frontend (S3 + CloudFront)

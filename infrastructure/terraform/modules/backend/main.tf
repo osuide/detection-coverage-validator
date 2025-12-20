@@ -144,6 +144,12 @@ variable "microsoft_client_id" {
   sensitive   = true
 }
 
+variable "allowed_ips" {
+  type        = list(string)
+  description = "List of IP addresses (CIDR notation) allowed to access the API. Empty list allows all traffic."
+  default     = []
+}
+
 data "aws_region" "current" {}
 
 # ECS Cluster
@@ -565,6 +571,177 @@ resource "aws_ecs_service" "backend" {
   }
 
   depends_on = [aws_lb_listener.http]
+}
+
+# ============================================================================
+# WAF Web ACL for API Protection
+# ============================================================================
+
+# IP Set for allowed addresses (only created when IPs are specified)
+resource "aws_wafv2_ip_set" "api_allowed_ips" {
+  count              = length(var.allowed_ips) > 0 ? 1 : 0
+  name               = "a13e-${var.environment}-api-allowed-ips"
+  description        = "IP addresses allowed to access ${var.environment} API"
+  scope              = "REGIONAL"
+  ip_address_version = "IPV4"
+  addresses          = var.allowed_ips
+
+  tags = {
+    Name        = "a13e-${var.environment}-api-allowed-ips"
+    Environment = var.environment
+  }
+}
+
+# Regional WAF for ALB
+resource "aws_wafv2_web_acl" "api" {
+  name        = "a13e-${var.environment}-api-waf"
+  description = "WAF ACL for A13E ${var.environment} API"
+  scope       = "REGIONAL"
+
+  # Default action: block if IP restriction is enabled, allow otherwise
+  default_action {
+    dynamic "block" {
+      for_each = length(var.allowed_ips) > 0 ? [1] : []
+      content {}
+    }
+    dynamic "allow" {
+      for_each = length(var.allowed_ips) == 0 ? [1] : []
+      content {}
+    }
+  }
+
+  # Rule 0: Allow traffic from allowlisted IPs (highest priority, only when IPs specified)
+  dynamic "rule" {
+    for_each = length(var.allowed_ips) > 0 ? [1] : []
+    content {
+      name     = "AllowListedIPs"
+      priority = 0
+
+      action {
+        allow {}
+      }
+
+      statement {
+        ip_set_reference_statement {
+          arn = aws_wafv2_ip_set.api_allowed_ips[0].arn
+        }
+      }
+
+      visibility_config {
+        cloudwatch_metrics_enabled = true
+        metric_name                = "a13e-${var.environment}-api-allowed-ips"
+        sampled_requests_enabled   = true
+      }
+    }
+  }
+
+  # Rule 1: AWS Managed Core Rule Set (CRS) - OWASP Top 10
+  rule {
+    name     = "AWSManagedRulesCommonRuleSet"
+    priority = 1
+
+    override_action {
+      none {}
+    }
+
+    statement {
+      managed_rule_group_statement {
+        name        = "AWSManagedRulesCommonRuleSet"
+        vendor_name = "AWS"
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "a13e-${var.environment}-api-crs"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  # Rule 2: Known Bad Inputs
+  rule {
+    name     = "AWSManagedRulesKnownBadInputsRuleSet"
+    priority = 2
+
+    override_action {
+      none {}
+    }
+
+    statement {
+      managed_rule_group_statement {
+        name        = "AWSManagedRulesKnownBadInputsRuleSet"
+        vendor_name = "AWS"
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "a13e-${var.environment}-api-known-bad-inputs"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  # Rule 3: SQL Injection Protection
+  rule {
+    name     = "AWSManagedRulesSQLiRuleSet"
+    priority = 3
+
+    override_action {
+      none {}
+    }
+
+    statement {
+      managed_rule_group_statement {
+        name        = "AWSManagedRulesSQLiRuleSet"
+        vendor_name = "AWS"
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "a13e-${var.environment}-api-sqli"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  # Rule 4: Rate Limiting - 2000 requests per 5 minutes per IP
+  rule {
+    name     = "RateLimitRule"
+    priority = 4
+
+    action {
+      block {}
+    }
+
+    statement {
+      rate_based_statement {
+        limit              = 2000
+        aggregate_key_type = "IP"
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "a13e-${var.environment}-api-rate-limit"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  visibility_config {
+    cloudwatch_metrics_enabled = true
+    metric_name                = "a13e-${var.environment}-api-waf"
+    sampled_requests_enabled   = true
+  }
+
+  tags = {
+    Name = "a13e-${var.environment}-api-waf"
+  }
+}
+
+# Associate WAF with ALB
+resource "aws_wafv2_web_acl_association" "api" {
+  resource_arn = aws_lb.main.arn
+  web_acl_arn  = aws_wafv2_web_acl.api.arn
 }
 
 # Outputs

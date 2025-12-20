@@ -9,6 +9,8 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
+from app.core.security import AuthContext, get_auth_context
+from app.models.cloud_account import CloudAccount
 from app.models.detection import Detection, DetectionType, DetectionStatus
 from app.models.mapping import DetectionMapping
 from app.models.mitre import Technique
@@ -26,10 +28,17 @@ async def list_detections(
     search: Optional[str] = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=500),
+    auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
     """List detections with optional filters."""
-    query = select(Detection).options(selectinload(Detection.mappings))
+    # Filter detections by organization through cloud_account
+    query = (
+        select(Detection)
+        .join(CloudAccount, Detection.cloud_account_id == CloudAccount.id)
+        .options(selectinload(Detection.mappings))
+        .where(CloudAccount.organization_id == auth.organization_id)
+    )
 
     if cloud_account_id:
         query = query.where(Detection.cloud_account_id == cloud_account_id)
@@ -43,7 +52,11 @@ async def list_detections(
         query = query.where(Detection.name.ilike(f"%{search}%"))
 
     # Get total count
-    count_query = select(func.count(Detection.id))
+    count_query = (
+        select(func.count(Detection.id))
+        .join(CloudAccount, Detection.cloud_account_id == CloudAccount.id)
+        .where(CloudAccount.organization_id == auth.organization_id)
+    )
     if cloud_account_id:
         count_query = count_query.where(Detection.cloud_account_id == cloud_account_id)
     if detection_type:
@@ -101,13 +114,18 @@ async def list_detections(
 @router.get("/{detection_id}", response_model=DetectionResponse)
 async def get_detection(
     detection_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
     """Get a specific detection."""
     result = await db.execute(
         select(Detection)
+        .join(CloudAccount, Detection.cloud_account_id == CloudAccount.id)
         .options(selectinload(Detection.mappings))
-        .where(Detection.id == detection_id)
+        .where(
+            Detection.id == detection_id,
+            CloudAccount.organization_id == auth.organization_id,
+        )
     )
     detection = result.scalar_one_or_none()
     if not detection:
@@ -138,11 +156,19 @@ async def get_detection(
 @router.get("/{detection_id}/mappings")
 async def get_detection_mappings(
     detection_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
     """Get technique mappings for a detection."""
-    # Verify detection exists
-    result = await db.execute(select(Detection).where(Detection.id == detection_id))
+    # Verify detection exists and belongs to user's organization
+    result = await db.execute(
+        select(Detection)
+        .join(CloudAccount, Detection.cloud_account_id == CloudAccount.id)
+        .where(
+            Detection.id == detection_id,
+            CloudAccount.organization_id == auth.organization_id,
+        )
+    )
     detection = result.scalar_one_or_none()
     if not detection:
         raise HTTPException(status_code=404, detail="Detection not found")
@@ -180,10 +206,18 @@ async def get_detection_mappings(
 @router.delete("/{detection_id}", status_code=204)
 async def delete_detection(
     detection_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
     """Delete a detection."""
-    result = await db.execute(select(Detection).where(Detection.id == detection_id))
+    result = await db.execute(
+        select(Detection)
+        .join(CloudAccount, Detection.cloud_account_id == CloudAccount.id)
+        .where(
+            Detection.id == detection_id,
+            CloudAccount.organization_id == auth.organization_id,
+        )
+    )
     detection = result.scalar_one_or_none()
     if not detection:
         raise HTTPException(status_code=404, detail="Detection not found")

@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.database import get_db
+from app.core.security import AuthContext, get_auth_context
 from app.models.alert import AlertConfig, AlertHistory, AlertSeverity
 from app.models.cloud_account import CloudAccount
 from app.schemas.alert import (
@@ -32,11 +33,16 @@ async def list_alerts(
     is_active: Optional[bool] = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
+    auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
     """List alert configurations."""
-    query = select(AlertConfig)
-    count_query = select(AlertConfig)
+    query = select(AlertConfig).where(
+        AlertConfig.organization_id == auth.organization_id
+    )
+    count_query = select(AlertConfig).where(
+        AlertConfig.organization_id == auth.organization_id
+    )
 
     if cloud_account_id:
         query = query.where(
@@ -76,13 +82,17 @@ async def list_alerts(
 @router.post("", response_model=AlertConfigResponse, status_code=201)
 async def create_alert(
     alert_in: AlertConfigCreate,
+    auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new alert configuration."""
-    # Verify cloud account exists if specified
+    # Verify cloud account exists and belongs to user's organization if specified
     if alert_in.cloud_account_id:
         result = await db.execute(
-            select(CloudAccount).where(CloudAccount.id == alert_in.cloud_account_id)
+            select(CloudAccount).where(
+                CloudAccount.id == alert_in.cloud_account_id,
+                CloudAccount.organization_id == auth.organization_id,
+            )
         )
         account = result.scalar_one_or_none()
         if not account:
@@ -90,6 +100,7 @@ async def create_alert(
 
     # Create alert config
     alert = AlertConfig(
+        organization_id=auth.organization_id,
         cloud_account_id=alert_in.cloud_account_id,
         name=alert_in.name,
         description=alert_in.description,
@@ -111,10 +122,16 @@ async def create_alert(
 @router.get("/{alert_id}", response_model=AlertConfigResponse)
 async def get_alert(
     alert_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
     """Get a specific alert configuration."""
-    result = await db.execute(select(AlertConfig).where(AlertConfig.id == alert_id))
+    result = await db.execute(
+        select(AlertConfig).where(
+            AlertConfig.id == alert_id,
+            AlertConfig.organization_id == auth.organization_id,
+        )
+    )
     alert = result.scalar_one_or_none()
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
@@ -125,10 +142,16 @@ async def get_alert(
 async def update_alert(
     alert_id: UUID,
     alert_in: AlertConfigUpdate,
+    auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
     """Update an alert configuration."""
-    result = await db.execute(select(AlertConfig).where(AlertConfig.id == alert_id))
+    result = await db.execute(
+        select(AlertConfig).where(
+            AlertConfig.id == alert_id,
+            AlertConfig.organization_id == auth.organization_id,
+        )
+    )
     alert = result.scalar_one_or_none()
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
@@ -153,10 +176,16 @@ async def update_alert(
 @router.delete("/{alert_id}", status_code=204)
 async def delete_alert(
     alert_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
     """Delete an alert configuration."""
-    result = await db.execute(select(AlertConfig).where(AlertConfig.id == alert_id))
+    result = await db.execute(
+        select(AlertConfig).where(
+            AlertConfig.id == alert_id,
+            AlertConfig.organization_id == auth.organization_id,
+        )
+    )
     alert = result.scalar_one_or_none()
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
@@ -168,10 +197,16 @@ async def delete_alert(
 @router.post("/{alert_id}/activate", response_model=AlertConfigResponse)
 async def activate_alert(
     alert_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
     """Activate an alert."""
-    result = await db.execute(select(AlertConfig).where(AlertConfig.id == alert_id))
+    result = await db.execute(
+        select(AlertConfig).where(
+            AlertConfig.id == alert_id,
+            AlertConfig.organization_id == auth.organization_id,
+        )
+    )
     alert = result.scalar_one_or_none()
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
@@ -186,10 +221,16 @@ async def activate_alert(
 @router.post("/{alert_id}/deactivate", response_model=AlertConfigResponse)
 async def deactivate_alert(
     alert_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
     """Deactivate an alert."""
-    result = await db.execute(select(AlertConfig).where(AlertConfig.id == alert_id))
+    result = await db.execute(
+        select(AlertConfig).where(
+            AlertConfig.id == alert_id,
+            AlertConfig.organization_id == auth.organization_id,
+        )
+    )
     alert = result.scalar_one_or_none()
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
@@ -205,10 +246,16 @@ async def deactivate_alert(
 async def test_alert(
     alert_id: UUID,
     request: TestAlertRequest,
+    auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
     """Test an alert by sending a test notification."""
-    result = await db.execute(select(AlertConfig).where(AlertConfig.id == alert_id))
+    result = await db.execute(
+        select(AlertConfig).where(
+            AlertConfig.id == alert_id,
+            AlertConfig.organization_id == auth.organization_id,
+        )
+    )
     alert = result.scalar_one_or_none()
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
@@ -267,11 +314,16 @@ async def list_alert_history(
     is_resolved: Optional[bool] = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
+    auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
     """List alert history."""
-    query = select(AlertHistory)
-    count_query = select(AlertHistory)
+    query = select(AlertHistory).where(
+        AlertHistory.organization_id == auth.organization_id
+    )
+    count_query = select(AlertHistory).where(
+        AlertHistory.organization_id == auth.organization_id
+    )
 
     if cloud_account_id:
         query = query.where(AlertHistory.cloud_account_id == cloud_account_id)
@@ -311,10 +363,16 @@ async def list_alert_history(
 @router.post("/history/{history_id}/resolve", response_model=AlertHistoryResponse)
 async def resolve_alert(
     history_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
     """Mark an alert as resolved."""
-    result = await db.execute(select(AlertHistory).where(AlertHistory.id == history_id))
+    result = await db.execute(
+        select(AlertHistory).where(
+            AlertHistory.id == history_id,
+            AlertHistory.organization_id == auth.organization_id,
+        )
+    )
     history = result.scalar_one_or_none()
     if not history:
         raise HTTPException(status_code=404, detail="Alert history not found")

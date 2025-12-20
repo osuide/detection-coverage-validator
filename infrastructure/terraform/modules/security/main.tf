@@ -28,6 +28,12 @@ variable "frontend_domain" {
   description = "Frontend domain for CSP"
 }
 
+variable "allowed_ips" {
+  type        = list(string)
+  description = "List of IP addresses (CIDR notation) allowed to access the site. Empty list allows all traffic."
+  default     = []
+}
+
 # ============================================================================
 # Lambda@Edge for Security Headers
 # ============================================================================
@@ -182,6 +188,26 @@ resource "aws_lambda_function" "security_headers" {
 }
 
 # ============================================================================
+# WAF IP Allowlist (for restricting access to specific IPs)
+# ============================================================================
+
+# IP Set for allowed addresses (only created when IPs are specified)
+resource "aws_wafv2_ip_set" "allowed_ips" {
+  count              = length(var.allowed_ips) > 0 ? 1 : 0
+  provider           = aws.us_east_1
+  name               = "a13e-${var.environment}-allowed-ips"
+  description        = "IP addresses allowed to access ${var.environment}"
+  scope              = "CLOUDFRONT"
+  ip_address_version = "IPV4"
+  addresses          = var.allowed_ips
+
+  tags = {
+    Name        = "a13e-${var.environment}-allowed-ips"
+    Environment = var.environment
+  }
+}
+
+# ============================================================================
 # WAF Web ACL - OWASP Top 10 Protection
 # ============================================================================
 
@@ -191,8 +217,41 @@ resource "aws_wafv2_web_acl" "frontend" {
   description = "WAF ACL for A13E ${var.environment} frontend - OWASP protection"
   scope       = "CLOUDFRONT"
 
+  # Default action: block if IP restriction is enabled, allow otherwise
   default_action {
-    allow {}
+    dynamic "block" {
+      for_each = length(var.allowed_ips) > 0 ? [1] : []
+      content {}
+    }
+    dynamic "allow" {
+      for_each = length(var.allowed_ips) == 0 ? [1] : []
+      content {}
+    }
+  }
+
+  # Rule 0: Allow traffic from allowlisted IPs (highest priority, only when IPs specified)
+  dynamic "rule" {
+    for_each = length(var.allowed_ips) > 0 ? [1] : []
+    content {
+      name     = "AllowListedIPs"
+      priority = 0
+
+      action {
+        allow {}
+      }
+
+      statement {
+        ip_set_reference_statement {
+          arn = aws_wafv2_ip_set.allowed_ips[0].arn
+        }
+      }
+
+      visibility_config {
+        cloudwatch_metrics_enabled = true
+        metric_name                = "a13e-${var.environment}-allowed-ips"
+        sampled_requests_enabled   = true
+      }
+    }
   }
 
   # Rule 1: AWS Managed Core Rule Set (CRS) - OWASP Top 10

@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.database import get_db
+from app.core.security import AuthContext, get_auth_context
 from app.models.cloud_account import CloudAccount
 from app.models.coverage import CoverageSnapshot
 from app.services.remediation_service import (
@@ -129,7 +130,9 @@ class ImplementationPlanResponse(BaseModel):
 
 
 @router.get("/techniques", response_model=List[TechniqueInfo])
-async def list_available_techniques():
+async def list_available_techniques(
+    auth: AuthContext = Depends(get_auth_context),
+):
     """
     List all MITRE ATT&CK techniques that have remediation templates.
 
@@ -140,7 +143,10 @@ async def list_available_techniques():
 
 
 @router.get("/techniques/{technique_id}", response_model=TechniqueRemediationResponse)
-async def get_technique_remediation(technique_id: str):
+async def get_technique_remediation(
+    technique_id: str,
+    auth: AuthContext = Depends(get_auth_context),
+):
     """
     Get complete remediation guidance for a MITRE ATT&CK technique.
 
@@ -195,7 +201,11 @@ async def get_technique_remediation(technique_id: str):
     "/techniques/{technique_id}/strategies/{strategy_id}",
     response_model=StrategyDetailResponse,
 )
-async def get_strategy_details(technique_id: str, strategy_id: str):
+async def get_strategy_details(
+    technique_id: str,
+    strategy_id: str,
+    auth: AuthContext = Depends(get_auth_context),
+):
     """
     Get detailed implementation guidance for a specific detection strategy.
 
@@ -237,7 +247,10 @@ async def get_strategy_details(technique_id: str, strategy_id: str):
 
 
 @router.get("/by-tactic/{tactic_id}", response_model=List[TechniqueInfo])
-async def get_techniques_by_tactic(tactic_id: str):
+async def get_techniques_by_tactic(
+    tactic_id: str,
+    auth: AuthContext = Depends(get_auth_context),
+):
     """
     Get all techniques with remediation templates for a specific MITRE tactic.
     """
@@ -250,6 +263,7 @@ async def get_quick_wins(
     cloud_account_id: UUID,
     max_hours: float = Query(2.0, description="Maximum implementation time in hours"),
     limit: int = Query(10, ge=1, le=50),
+    auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -257,9 +271,12 @@ async def get_quick_wins(
 
     These are low-effort, high-value detections that can be implemented quickly.
     """
-    # Verify account exists
+    # Verify account exists and belongs to user's organization
     account_result = await db.execute(
-        select(CloudAccount).where(CloudAccount.id == cloud_account_id)
+        select(CloudAccount).where(
+            CloudAccount.id == cloud_account_id,
+            CloudAccount.organization_id == auth.organization_id,
+        )
     )
     if not account_result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="Cloud account not found")
@@ -294,6 +311,7 @@ async def get_implementation_plan(
     budget_hours: Optional[float] = Query(
         None, description="Optional time budget constraint"
     ),
+    auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -301,9 +319,12 @@ async def get_implementation_plan(
 
     Phases are organised by severity with estimated effort for each.
     """
-    # Verify account exists
+    # Verify account exists and belongs to user's organization
     account_result = await db.execute(
-        select(CloudAccount).where(CloudAccount.id == cloud_account_id)
+        select(CloudAccount).where(
+            CloudAccount.id == cloud_account_id,
+            CloudAccount.organization_id == auth.organization_id,
+        )
     )
     if not account_result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="Cloud account not found")

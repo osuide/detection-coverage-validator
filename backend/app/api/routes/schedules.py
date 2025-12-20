@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.database import get_db
+from app.core.security import AuthContext, get_auth_context
 from app.models.schedule import ScanSchedule
 from app.models.cloud_account import CloudAccount
 from app.schemas.schedule import (
@@ -28,11 +29,21 @@ async def list_schedules(
     is_active: Optional[bool] = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
+    auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
     """List scan schedules."""
-    query = select(ScanSchedule)
-    count_query = select(ScanSchedule)
+    # Filter by organization through cloud_account
+    query = (
+        select(ScanSchedule)
+        .join(CloudAccount, ScanSchedule.cloud_account_id == CloudAccount.id)
+        .where(CloudAccount.organization_id == auth.organization_id)
+    )
+    count_query = (
+        select(ScanSchedule)
+        .join(CloudAccount, ScanSchedule.cloud_account_id == CloudAccount.id)
+        .where(CloudAccount.organization_id == auth.organization_id)
+    )
 
     if cloud_account_id:
         query = query.where(ScanSchedule.cloud_account_id == cloud_account_id)
@@ -64,12 +75,16 @@ async def list_schedules(
 @router.post("", response_model=ScheduleResponse, status_code=201)
 async def create_schedule(
     schedule_in: ScheduleCreate,
+    auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new scan schedule."""
-    # Verify cloud account exists
+    # Verify cloud account exists and belongs to user's organization
     result = await db.execute(
-        select(CloudAccount).where(CloudAccount.id == schedule_in.cloud_account_id)
+        select(CloudAccount).where(
+            CloudAccount.id == schedule_in.cloud_account_id,
+            CloudAccount.organization_id == auth.organization_id,
+        )
     )
     account = result.scalar_one_or_none()
     if not account:
@@ -105,11 +120,17 @@ async def create_schedule(
 @router.get("/{schedule_id}", response_model=ScheduleResponse)
 async def get_schedule(
     schedule_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
     """Get a specific schedule."""
     result = await db.execute(
-        select(ScanSchedule).where(ScanSchedule.id == schedule_id)
+        select(ScanSchedule)
+        .join(CloudAccount, ScanSchedule.cloud_account_id == CloudAccount.id)
+        .where(
+            ScanSchedule.id == schedule_id,
+            CloudAccount.organization_id == auth.organization_id,
+        )
     )
     schedule = result.scalar_one_or_none()
     if not schedule:
@@ -120,11 +141,17 @@ async def get_schedule(
 @router.get("/{schedule_id}/status", response_model=ScheduleStatusResponse)
 async def get_schedule_status(
     schedule_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
     """Get schedule status including job information."""
     result = await db.execute(
-        select(ScanSchedule).where(ScanSchedule.id == schedule_id)
+        select(ScanSchedule)
+        .join(CloudAccount, ScanSchedule.cloud_account_id == CloudAccount.id)
+        .where(
+            ScanSchedule.id == schedule_id,
+            CloudAccount.organization_id == auth.organization_id,
+        )
     )
     schedule = result.scalar_one_or_none()
     if not schedule:
@@ -142,11 +169,17 @@ async def get_schedule_status(
 async def update_schedule(
     schedule_id: UUID,
     schedule_in: ScheduleUpdate,
+    auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
     """Update a schedule."""
     result = await db.execute(
-        select(ScanSchedule).where(ScanSchedule.id == schedule_id)
+        select(ScanSchedule)
+        .join(CloudAccount, ScanSchedule.cloud_account_id == CloudAccount.id)
+        .where(
+            ScanSchedule.id == schedule_id,
+            CloudAccount.organization_id == auth.organization_id,
+        )
     )
     schedule = result.scalar_one_or_none()
     if not schedule:
@@ -170,11 +203,17 @@ async def update_schedule(
 @router.delete("/{schedule_id}", status_code=204)
 async def delete_schedule(
     schedule_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
     """Delete a schedule."""
     result = await db.execute(
-        select(ScanSchedule).where(ScanSchedule.id == schedule_id)
+        select(ScanSchedule)
+        .join(CloudAccount, ScanSchedule.cloud_account_id == CloudAccount.id)
+        .where(
+            ScanSchedule.id == schedule_id,
+            CloudAccount.organization_id == auth.organization_id,
+        )
     )
     schedule = result.scalar_one_or_none()
     if not schedule:
@@ -191,11 +230,17 @@ async def delete_schedule(
 @router.post("/{schedule_id}/activate", response_model=ScheduleResponse)
 async def activate_schedule(
     schedule_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
     """Activate a schedule."""
     result = await db.execute(
-        select(ScanSchedule).where(ScanSchedule.id == schedule_id)
+        select(ScanSchedule)
+        .join(CloudAccount, ScanSchedule.cloud_account_id == CloudAccount.id)
+        .where(
+            ScanSchedule.id == schedule_id,
+            CloudAccount.organization_id == auth.organization_id,
+        )
     )
     schedule = result.scalar_one_or_none()
     if not schedule:
@@ -215,11 +260,17 @@ async def activate_schedule(
 @router.post("/{schedule_id}/deactivate", response_model=ScheduleResponse)
 async def deactivate_schedule(
     schedule_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
     """Deactivate a schedule."""
     result = await db.execute(
-        select(ScanSchedule).where(ScanSchedule.id == schedule_id)
+        select(ScanSchedule)
+        .join(CloudAccount, ScanSchedule.cloud_account_id == CloudAccount.id)
+        .where(
+            ScanSchedule.id == schedule_id,
+            CloudAccount.organization_id == auth.organization_id,
+        )
     )
     schedule = result.scalar_one_or_none()
     if not schedule:
@@ -240,11 +291,17 @@ async def deactivate_schedule(
 @router.post("/{schedule_id}/run-now", response_model=ScheduleResponse)
 async def run_schedule_now(
     schedule_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
     """Trigger an immediate run of a schedule."""
     result = await db.execute(
-        select(ScanSchedule).where(ScanSchedule.id == schedule_id)
+        select(ScanSchedule)
+        .join(CloudAccount, ScanSchedule.cloud_account_id == CloudAccount.id)
+        .where(
+            ScanSchedule.id == schedule_id,
+            CloudAccount.organization_id == auth.organization_id,
+        )
     )
     schedule = result.scalar_one_or_none()
     if not schedule:

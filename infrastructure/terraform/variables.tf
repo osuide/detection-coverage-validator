@@ -151,3 +151,13 @@ variable "enable_ses" {
   type        = bool
   default     = false
 }
+
+# ============================================================================
+# WAF IP Restriction (for limiting access during development/maintenance)
+# ============================================================================
+
+variable "waf_allowed_ips" {
+  description = "List of IP addresses (CIDR notation) allowed to access the site. Empty list allows all traffic."
+  type        = list(string)
+  default     = []
+}

@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.database import get_db
+from app.core.security import AuthContext, get_auth_context
 from app.models.scan import Scan, ScanStatus
 from app.models.cloud_account import CloudAccount
 from app.schemas.scan import ScanCreate, ScanResponse, ScanListResponse
@@ -22,17 +23,27 @@ async def list_scans(
     status: Optional[ScanStatus] = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
+    auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
     """List scan jobs."""
-    query = select(Scan)
+    # Filter by organization through cloud_account
+    query = (
+        select(Scan)
+        .join(CloudAccount, Scan.cloud_account_id == CloudAccount.id)
+        .where(CloudAccount.organization_id == auth.organization_id)
+    )
     if cloud_account_id:
         query = query.where(Scan.cloud_account_id == cloud_account_id)
     if status:
         query = query.where(Scan.status == status)
 
     # Get total count
-    count_query = select(Scan)
+    count_query = (
+        select(Scan)
+        .join(CloudAccount, Scan.cloud_account_id == CloudAccount.id)
+        .where(CloudAccount.organization_id == auth.organization_id)
+    )
     if cloud_account_id:
         count_query = count_query.where(Scan.cloud_account_id == cloud_account_id)
     if status:
@@ -57,12 +68,16 @@ async def list_scans(
 async def create_scan(
     scan_in: ScanCreate,
     background_tasks: BackgroundTasks,
+    auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
     """Create and start a new scan job."""
-    # Verify cloud account exists
+    # Verify cloud account exists and belongs to user's organization
     result = await db.execute(
-        select(CloudAccount).where(CloudAccount.id == scan_in.cloud_account_id)
+        select(CloudAccount).where(
+            CloudAccount.id == scan_in.cloud_account_id,
+            CloudAccount.organization_id == auth.organization_id,
+        )
     )
     account = result.scalar_one_or_none()
     if not account:
@@ -97,10 +112,18 @@ async def create_scan(
 @router.get("/{scan_id}", response_model=ScanResponse)
 async def get_scan(
     scan_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
     """Get a specific scan job."""
-    result = await db.execute(select(Scan).where(Scan.id == scan_id))
+    result = await db.execute(
+        select(Scan)
+        .join(CloudAccount, Scan.cloud_account_id == CloudAccount.id)
+        .where(
+            Scan.id == scan_id,
+            CloudAccount.organization_id == auth.organization_id,
+        )
+    )
     scan = result.scalar_one_or_none()
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")
@@ -110,10 +133,18 @@ async def get_scan(
 @router.post("/{scan_id}/cancel", response_model=ScanResponse)
 async def cancel_scan(
     scan_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
     """Cancel a running scan."""
-    result = await db.execute(select(Scan).where(Scan.id == scan_id))
+    result = await db.execute(
+        select(Scan)
+        .join(CloudAccount, Scan.cloud_account_id == CloudAccount.id)
+        .where(
+            Scan.id == scan_id,
+            CloudAccount.organization_id == auth.organization_id,
+        )
+    )
     scan = result.scalar_one_or_none()
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")

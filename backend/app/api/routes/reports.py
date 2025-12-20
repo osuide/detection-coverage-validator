@@ -9,6 +9,7 @@ from sqlalchemy import select
 import io
 
 from app.core.database import get_db
+from app.core.security import AuthContext, get_auth_context
 from app.models.cloud_account import CloudAccount
 from app.services.report_service import ReportService
 
@@ -18,12 +19,16 @@ router = APIRouter()
 @router.get("/coverage/csv")
 async def download_coverage_csv(
     cloud_account_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
     """Download coverage report as CSV."""
-    # Verify account exists
+    # Verify account exists and belongs to user's organization
     result = await db.execute(
-        select(CloudAccount).where(CloudAccount.id == cloud_account_id)
+        select(CloudAccount).where(
+            CloudAccount.id == cloud_account_id,
+            CloudAccount.organization_id == auth.organization_id,
+        )
     )
     account = result.scalar_one_or_none()
     if not account:
@@ -44,11 +49,15 @@ async def download_coverage_csv(
 @router.get("/gaps/csv")
 async def download_gaps_csv(
     cloud_account_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
     """Download gaps report as CSV."""
     result = await db.execute(
-        select(CloudAccount).where(CloudAccount.id == cloud_account_id)
+        select(CloudAccount).where(
+            CloudAccount.id == cloud_account_id,
+            CloudAccount.organization_id == auth.organization_id,
+        )
     )
     account = result.scalar_one_or_none()
     if not account:
@@ -69,11 +78,15 @@ async def download_gaps_csv(
 @router.get("/detections/csv")
 async def download_detections_csv(
     cloud_account_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
     """Download detections report as CSV."""
     result = await db.execute(
-        select(CloudAccount).where(CloudAccount.id == cloud_account_id)
+        select(CloudAccount).where(
+            CloudAccount.id == cloud_account_id,
+            CloudAccount.organization_id == auth.organization_id,
+        )
     )
     account = result.scalar_one_or_none()
     if not account:
@@ -96,11 +109,15 @@ async def download_executive_pdf(
     cloud_account_id: UUID,
     include_gaps: bool = Query(True, description="Include gap analysis section"),
     include_detections: bool = Query(False, description="Include detection details"),
+    auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
     """Download executive summary PDF report."""
     result = await db.execute(
-        select(CloudAccount).where(CloudAccount.id == cloud_account_id)
+        select(CloudAccount).where(
+            CloudAccount.id == cloud_account_id,
+            CloudAccount.organization_id == auth.organization_id,
+        )
     )
     account = result.scalar_one_or_none()
     if not account:
@@ -129,11 +146,15 @@ async def download_executive_pdf(
 @router.get("/full/pdf")
 async def download_full_pdf(
     cloud_account_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
     """Download full coverage PDF report with all sections."""
     result = await db.execute(
-        select(CloudAccount).where(CloudAccount.id == cloud_account_id)
+        select(CloudAccount).where(
+            CloudAccount.id == cloud_account_id,
+            CloudAccount.organization_id == auth.organization_id,
+        )
     )
     account = result.scalar_one_or_none()
     if not account:

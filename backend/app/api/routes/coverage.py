@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 
 from app.core.database import get_db
+from app.core.security import AuthContext, get_auth_context
 from app.models.coverage import CoverageSnapshot
 from app.models.cloud_account import CloudAccount
 from app.schemas.coverage import (
@@ -29,12 +30,16 @@ router = APIRouter()
 @router.get("/{cloud_account_id}", response_model=CoverageResponse)
 async def get_coverage(
     cloud_account_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
     """Get the latest coverage snapshot for a cloud account."""
-    # Verify account exists
+    # Verify account exists and belongs to user's organization
     account_result = await db.execute(
-        select(CloudAccount).where(CloudAccount.id == cloud_account_id)
+        select(CloudAccount).where(
+            CloudAccount.id == cloud_account_id,
+            CloudAccount.organization_id == auth.organization_id,
+        )
     )
     if not account_result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="Cloud account not found")
@@ -140,12 +145,16 @@ async def get_coverage(
 async def get_coverage_history(
     cloud_account_id: UUID,
     days: int = Query(30, ge=1, le=365),
+    auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
     """Get coverage history for trend analysis."""
-    # Verify account exists
+    # Verify account exists and belongs to user's organization
     account_result = await db.execute(
-        select(CloudAccount).where(CloudAccount.id == cloud_account_id)
+        select(CloudAccount).where(
+            CloudAccount.id == cloud_account_id,
+            CloudAccount.organization_id == auth.organization_id,
+        )
     )
     if not account_result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="Cloud account not found")
@@ -196,12 +205,16 @@ async def get_coverage_history(
 @router.get("/{cloud_account_id}/techniques")
 async def get_technique_coverage(
     cloud_account_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
     """Get per-technique coverage details for heatmap visualization."""
-    # Verify account exists
+    # Verify account exists and belongs to user's organization
     account_result = await db.execute(
-        select(CloudAccount).where(CloudAccount.id == cloud_account_id)
+        select(CloudAccount).where(
+            CloudAccount.id == cloud_account_id,
+            CloudAccount.organization_id == auth.organization_id,
+        )
     )
     if not account_result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="Cloud account not found")
@@ -274,12 +287,16 @@ async def get_technique_coverage(
 @router.post("/{cloud_account_id}/calculate", response_model=CoverageResponse)
 async def calculate_coverage(
     cloud_account_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
     """Manually trigger coverage calculation."""
-    # Verify account exists
+    # Verify account exists and belongs to user's organization
     account_result = await db.execute(
-        select(CloudAccount).where(CloudAccount.id == cloud_account_id)
+        select(CloudAccount).where(
+            CloudAccount.id == cloud_account_id,
+            CloudAccount.organization_id == auth.organization_id,
+        )
     )
     if not account_result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="Cloud account not found")
