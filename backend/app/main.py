@@ -33,6 +33,7 @@ from app.api.routes import (
     recommendations,
     cloud_organizations,
     analytics,
+    custom_detections,
 )
 from app.api.routes.admin import router as admin_router
 from app.api.v1.public import router as public_api_router
@@ -410,6 +411,11 @@ app.include_router(
     tags=["Cloud Organisations"],
 )
 app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["Analytics"])
+app.include_router(
+    custom_detections.router,
+    prefix="/api/v1/custom-detections",
+    tags=["Custom Detections"],
+)
 
 # Admin Portal routes (separate from user routes)
 app.include_router(admin_router, prefix="/api/v1/admin")

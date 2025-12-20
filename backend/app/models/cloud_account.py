@@ -83,6 +83,9 @@ class CloudAccount(Base):
     coverage_history = relationship(
         "CoverageHistory", back_populates="cloud_account", cascade="all, delete-orphan"
     )
+    custom_detections = relationship(
+        "CustomDetection", back_populates="cloud_account", cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:
         return f"<CloudAccount {self.name} ({self.provider.value}:{self.account_id})>"
