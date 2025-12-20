@@ -94,6 +94,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   // Set authentication data after login/signup
   setAuth: (data) => {
+    // Clear any legacy localStorage tokens to prevent stale token issues
+    try {
+      localStorage.removeItem('dcv_access_token')
+      localStorage.removeItem('dcv_refresh_token')
+    } catch {
+      // Ignore localStorage errors (e.g., in SSR or privacy mode)
+    }
+
     set({
       accessToken: data.accessToken,
       csrfToken: data.csrfToken || getCsrfTokenFromCookie(),
@@ -107,6 +115,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   // Clear all auth data on logout
   clearAuth: () => {
+    // Also clear any legacy localStorage tokens to prevent stale token issues
+    try {
+      localStorage.removeItem('dcv_access_token')
+      localStorage.removeItem('dcv_refresh_token')
+    } catch {
+      // Ignore localStorage errors (e.g., in SSR or privacy mode)
+    }
+
     set({
       accessToken: null,
       csrfToken: null,

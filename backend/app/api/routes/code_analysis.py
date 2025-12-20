@@ -135,10 +135,11 @@ async def get_feature_status(
             AccountTier.ENTERPRISE,
         ]
 
-    # Check consent
+    # Check consent - filter by organization_id for proper tenant isolation
     result = await db.execute(
         select(CodeAnalysisConsent).where(
-            CodeAnalysisConsent.cloud_account_id == cloud_account_id
+            CodeAnalysisConsent.cloud_account_id == cloud_account_id,
+            CodeAnalysisConsent.organization_id == org.id,
         )
     )
     consent = result.scalar_one_or_none()

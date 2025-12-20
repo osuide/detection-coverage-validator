@@ -1,23 +1,22 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios'
-
-const TOKEN_KEY = 'dcv_access_token'
-const REFRESH_TOKEN_KEY = 'dcv_refresh_token'
+import { useAuthStore, authActions } from '../stores/authStore'
 
 // Use environment variable for API base URL (production uses full URL, dev uses proxy)
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
 
 const api = axios.create({
   baseURL: `${API_BASE_URL}/api/v1`,
+  withCredentials: true, // Send cookies for httpOnly refresh token
   headers: {
     'Content-Type': 'application/json',
   },
 })
 
-// Add auth token interceptor
+// Add auth token interceptor - read from Zustand store (memory), not localStorage
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem(TOKEN_KEY)
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
+  const { accessToken } = useAuthStore.getState()
+  if (accessToken) {
+    config.headers.Authorization = `Bearer ${accessToken}`
   }
   return config
 })
@@ -63,26 +62,16 @@ api.interceptors.response.use(
       originalRequest._retry = true
       isRefreshing = true
 
-      const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY)
-      if (!refreshToken) {
-        // No refresh token, redirect to login
-        localStorage.removeItem(TOKEN_KEY)
-        localStorage.removeItem(REFRESH_TOKEN_KEY)
-        window.location.href = '/login'
-        return Promise.reject(error)
-      }
-
       try {
-        // Call refresh endpoint directly to avoid circular dependency
-        const response = await axios.post(`${API_BASE_URL}/api/v1/auth/refresh`, {
-          refresh_token: refreshToken,
-        })
+        // Use authActions to refresh via httpOnly cookie
+        const newAccessToken = await authActions.refreshToken()
 
-        const newAccessToken = response.data.access_token
-        const newRefreshToken = response.data.refresh_token
-
-        localStorage.setItem(TOKEN_KEY, newAccessToken)
-        localStorage.setItem(REFRESH_TOKEN_KEY, newRefreshToken)
+        if (!newAccessToken) {
+          // No valid session, redirect to login
+          useAuthStore.getState().clearAuth()
+          window.location.href = '/login'
+          return Promise.reject(error)
+        }
 
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`
         processQueue(null, newAccessToken)
@@ -90,9 +79,8 @@ api.interceptors.response.use(
         return api(originalRequest)
       } catch (refreshError) {
         processQueue(refreshError, null)
-        // Refresh failed, clear tokens and redirect to login
-        localStorage.removeItem(TOKEN_KEY)
-        localStorage.removeItem(REFRESH_TOKEN_KEY)
+        // Refresh failed, clear auth and redirect to login
+        useAuthStore.getState().clearAuth()
         window.location.href = '/login'
         return Promise.reject(refreshError)
       } finally {
