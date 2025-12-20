@@ -18,6 +18,12 @@ import OrgSecurity from './pages/OrgSecurity'
 import Billing from './pages/Billing'
 import Landing from './pages/Landing'
 
+// Organisation pages
+import Organizations from './pages/Organizations'
+import ConnectOrganization from './pages/ConnectOrganization'
+import OrganizationDashboard from './pages/OrganizationDashboard'
+import OrganizationMembers from './pages/OrganizationMembers'
+
 // Documentation pages
 import { DocsIndex } from './pages/docs/DocsIndex'
 import { DocsPage } from './pages/docs/DocsPage'
@@ -64,6 +70,10 @@ function App() {
               <Layout>
                 <Routes>
                   <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/organizations" element={<Organizations />} />
+                  <Route path="/organizations/connect" element={<ConnectOrganization />} />
+                  <Route path="/organizations/:orgId" element={<OrganizationDashboard />} />
+                  <Route path="/organizations/:orgId/members" element={<OrganizationMembers />} />
                   <Route path="/accounts" element={<Accounts />} />
                   <Route path="/detections" element={<Detections />} />
                   <Route path="/coverage" element={<Coverage />} />

@@ -9,6 +9,7 @@ import {
   LogOut,
   User,
   Building,
+  Building2,
   ChevronDown,
   ChevronRight,
   Users,
@@ -28,6 +29,7 @@ interface LayoutProps {
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Organisations', href: '/organizations', icon: Building2 },
   { name: 'Accounts', href: '/accounts', icon: Cloud },
   { name: 'Detections', href: '/detections', icon: Shield },
   { name: 'Coverage', href: '/coverage', icon: BarChart3 },
