@@ -4,6 +4,7 @@ from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
@@ -15,8 +16,67 @@ from app.models.detection import Detection, DetectionType, DetectionStatus
 from app.models.mapping import DetectionMapping
 from app.models.mitre import Technique
 from app.schemas.detection import DetectionResponse, DetectionListResponse
+from app.services.detection_health_service import DetectionHealthService
 
 router = APIRouter()
+
+
+# Health response models
+class HealthCheckResponse(BaseModel):
+    """Health check result."""
+
+    check_type: str
+    passed: bool
+    message: str
+    severity: str
+    details: dict = {}
+
+
+class DetectionHealthResponse(BaseModel):
+    """Detection health response."""
+
+    detection_id: str
+    detection_name: str
+    health_status: str
+    health_score: Optional[float]
+    health_issues: list = []
+    last_validated_at: Optional[str]
+    last_triggered_at: Optional[str]
+
+
+class ValidationResponse(BaseModel):
+    """Validation result response."""
+
+    detection_id: str
+    detection_name: str
+    health_status: str
+    health_score: float
+    checks: list[dict]
+    issues: list[dict]
+    validated_at: str
+
+
+class HealthSummaryResponse(BaseModel):
+    """Health summary response."""
+
+    total_detections: int
+    by_status: dict
+    stale_count: int
+    never_validated: int
+    average_health_score: float
+    overall_health: str
+
+
+class BulkValidationResponse(BaseModel):
+    """Bulk validation result response."""
+
+    total: int
+    validated: int
+    healthy: int
+    degraded: int
+    broken: int
+    unknown: int
+    errors: list[dict]
 
 
 @router.get("", response_model=DetectionListResponse)
@@ -223,3 +283,73 @@ async def delete_detection(
         raise HTTPException(status_code=404, detail="Detection not found")
 
     await db.delete(detection)
+    await db.commit()
+
+
+# Health validation endpoints
+@router.post("/{detection_id}/validate", response_model=ValidationResponse)
+async def validate_detection(
+    detection_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
+    db: AsyncSession = Depends(get_db),
+):
+    """Validate a detection and update its health status."""
+    service = DetectionHealthService(db)
+    result = await service.validate_detection(detection_id, auth.organization_id)
+
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+
+    return ValidationResponse(**result)
+
+
+@router.get("/{detection_id}/health", response_model=DetectionHealthResponse)
+async def get_detection_health(
+    detection_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get current health status for a detection."""
+    service = DetectionHealthService(db)
+    result = await service.get_detection_health(detection_id, auth.organization_id)
+
+    if not result:
+        raise HTTPException(status_code=404, detail="Detection not found")
+
+    return DetectionHealthResponse(**result)
+
+
+@router.post("/validate-all", response_model=BulkValidationResponse)
+async def validate_all_detections(
+    cloud_account_id: Optional[UUID] = None,
+    auth: AuthContext = Depends(get_auth_context),
+    db: AsyncSession = Depends(get_db),
+):
+    """Validate all detections for the organization.
+
+    This is a synchronous operation that may take time for large numbers
+    of detections. Consider using background tasks for production use.
+    """
+    service = DetectionHealthService(db)
+    result = await service.validate_all_detections(
+        auth.organization_id,
+        cloud_account_id,
+    )
+
+    return BulkValidationResponse(**result)
+
+
+@router.get("/health/summary", response_model=HealthSummaryResponse)
+async def get_health_summary(
+    cloud_account_id: Optional[UUID] = None,
+    auth: AuthContext = Depends(get_auth_context),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get health summary for all detections."""
+    service = DetectionHealthService(db)
+    result = await service.get_health_summary(
+        auth.organization_id,
+        cloud_account_id,
+    )
+
+    return HealthSummaryResponse(**result)

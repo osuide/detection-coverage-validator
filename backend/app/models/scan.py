@@ -68,6 +68,7 @@ class Scan(Base):
 
     # Relationships
     cloud_account = relationship("CloudAccount", back_populates="scans")
+    coverage_history = relationship("CoverageHistory", back_populates="scan")
 
     def __repr__(self) -> str:
         return f"<Scan {self.id} ({self.status.value})>"

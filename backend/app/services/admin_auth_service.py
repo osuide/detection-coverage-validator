@@ -530,11 +530,11 @@ class AdminAuthService:
         }
         log_hash = hashlib.sha256(str(log_data).encode()).hexdigest()
 
-        # Create log entry
+        # Create log entry (admin_id can be None for failed logins)
         audit_log = AdminAuditLog(
-            admin_id=admin_id or UUID("00000000-0000-0000-0000-000000000000"),
+            admin_id=admin_id,  # Can be None for failed login attempts
             admin_email=admin_email or "unknown",
-            admin_role=admin_role or AdminRole.READONLY_ADMIN,
+            admin_role=admin_role,  # Can be None for failed login attempts
             action=action,
             ip_address=ip_address,
             user_agent=user_agent,

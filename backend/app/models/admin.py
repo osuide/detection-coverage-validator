@@ -311,21 +311,21 @@ class AdminAuditLog(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
 
-    # Who
-    admin_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("admin_users.id"), nullable=False, index=True
+    # Who (nullable for failed logins where user doesn't exist)
+    admin_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("admin_users.id"), nullable=True, index=True
     )
     admin_email: Mapped[str] = mapped_column(
         String(255), nullable=False
     )  # Denormalized
-    admin_role: Mapped[AdminRole] = mapped_column(
+    admin_role: Mapped[Optional[AdminRole]] = mapped_column(
         SQLEnum(
             AdminRole,
             name="admin_role",
             create_type=False,
             values_callable=lambda x: [e.value for e in x],
         ),
-        nullable=False,
+        nullable=True,  # Nullable for failed logins
     )
 
     # What

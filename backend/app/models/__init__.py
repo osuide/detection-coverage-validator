@@ -18,6 +18,7 @@ from app.models.mitre import Tactic, Technique
 from app.models.mapping import DetectionMapping
 from app.models.scan import Scan, ScanStatus
 from app.models.coverage import CoverageSnapshot
+from app.models.coverage_history import CoverageHistory, CoverageAlert, DriftSeverity
 from app.models.schedule import ScanSchedule, ScheduleFrequency
 from app.models.alert import (
     AlertConfig,
@@ -76,6 +77,9 @@ __all__ = [
     "ScanStatus",
     # Coverage
     "CoverageSnapshot",
+    "CoverageHistory",
+    "CoverageAlert",
+    "DriftSeverity",
     # Schedules
     "ScanSchedule",
     "ScheduleFrequency",

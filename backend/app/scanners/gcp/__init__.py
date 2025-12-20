@@ -23,6 +23,10 @@ from app.scanners.gcp.org_chronicle_scanner import (
     OrgChronicleScanner,
     ChronicleRuleAlertsScanner,
 )
+from app.scanners.gcp.scc_findings_scanner import (
+    SCCFindingsScanner,
+    SCCModuleStatusScanner,
+)
 
 __all__ = [
     # Project-level scanners
@@ -38,4 +42,7 @@ __all__ = [
     "SCCSecurityPostureScanner",
     "OrgChronicleScanner",
     "ChronicleRuleAlertsScanner",
+    # SCC Premium findings scanners
+    "SCCFindingsScanner",
+    "SCCModuleStatusScanner",
 ]

@@ -34,6 +34,7 @@ from app.api.routes import (
     cloud_organizations,
 )
 from app.api.routes.admin import router as admin_router
+from app.api.v1.public import router as public_api_router
 from app.services.scheduler_service import scheduler_service
 
 
@@ -251,6 +252,67 @@ def seed_mitre_data():
         logger.warning("mitre_seed_failed", error=str(e))
 
 
+def seed_admin_user():
+    """Seed initial admin user for staging/production if not exists."""
+    from sqlalchemy import create_engine, text
+
+    env = os.environ.get("ENVIRONMENT", "development")
+    if env == "development":
+        logger.info("Skipping admin seed in development environment")
+        return
+
+    try:
+        database_url = settings.database_url.replace("+asyncpg", "")
+        engine = create_engine(database_url)
+
+        # Pre-computed bcrypt hash for 'A13eSecurePwd2025S'
+        password_hash = "$2b$12$4Q0K4qSFgTcUWVf7CG8xb.4sOgcVzFjwbKbLbd3Dxjv8BLtYzX2jm"
+
+        with engine.connect() as conn:
+            result = conn.execute(
+                text("SELECT id FROM admin_users WHERE email = :email"),
+                {"email": "admin@a13e.com"},
+            )
+            existing = result.fetchone()
+
+            if existing:
+                logger.info("admin_user_exists", email="admin@a13e.com")
+                return
+
+            from uuid import uuid4
+
+            admin_id = uuid4()
+            conn.execute(
+                text(
+                    """
+                    INSERT INTO admin_users (
+                        id, email, password_hash, role, full_name,
+                        mfa_enabled, is_active, failed_login_attempts,
+                        requires_password_change
+                    ) VALUES (
+                        :id, :email, :password_hash, 'super_admin', :full_name,
+                        false, true, 0, true
+                    )
+                """
+                ),
+                {
+                    "id": admin_id,
+                    "email": "admin@a13e.com",
+                    "password_hash": password_hash,
+                    "full_name": "Platform Admin",
+                },
+            )
+            conn.commit()
+
+            logger.info(
+                "admin_user_created",
+                email="admin@a13e.com",
+                admin_id=str(admin_id),
+            )
+    except Exception as e:
+        logger.warning("admin_seed_failed", error=str(e))
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events."""
@@ -262,6 +324,9 @@ async def lifespan(app: FastAPI):
 
     # Seed MITRE data if not present
     seed_mitre_data()
+
+    # Seed admin user for staging/production
+    seed_admin_user()
 
     try:
         await scheduler_service.start()
@@ -346,6 +411,9 @@ app.include_router(
 
 # Admin Portal routes (separate from user routes)
 app.include_router(admin_router, prefix="/api/v1/admin")
+
+# Public API routes (API key authentication)
+app.include_router(public_api_router, prefix="/api/v1")
 
 
 @app.get("/")

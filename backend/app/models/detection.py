@@ -39,6 +39,7 @@ class DetectionType(str, enum.Enum):
     GCP_EVENTARC = "gcp_eventarc"
     GCP_CLOUD_MONITORING = "gcp_cloud_monitoring"
     GCP_CLOUD_FUNCTION = "gcp_cloud_function"
+    GCP_CHRONICLE = "gcp_chronicle"
 
 
 class DetectionStatus(str, enum.Enum):

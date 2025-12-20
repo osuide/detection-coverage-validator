@@ -1,9 +1,11 @@
 """Coverage endpoints."""
 
+from typing import Optional
 from uuid import UUID
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 
@@ -25,11 +27,65 @@ from app.schemas.coverage import (
     AccountCoverageSummary,
 )
 from app.services.coverage_service import CoverageService
+from app.services.drift_detection_service import DriftDetectionService
 from app.models.mitre import Technique, Tactic
 from app.models.mapping import DetectionMapping
 from app.models.detection import Detection, DetectionStatus
 
 router = APIRouter()
+
+
+# Drift detection response models
+class DriftHistoryItem(BaseModel):
+    """Single drift history entry."""
+
+    id: str
+    recorded_at: str
+    coverage_percent: float
+    covered_techniques: int
+    total_techniques: int
+    coverage_delta: float
+    drift_severity: str
+    techniques_added_count: int
+    techniques_removed_count: int
+
+
+class DriftHistoryResponse(BaseModel):
+    """Drift history response."""
+
+    cloud_account_id: str
+    history: list[DriftHistoryItem]
+
+
+class DriftAlertItem(BaseModel):
+    """Drift alert item."""
+
+    id: str
+    cloud_account_id: Optional[str]
+    alert_type: str
+    severity: str
+    title: str
+    message: str
+    details: dict
+    is_acknowledged: bool
+    acknowledged_at: Optional[str]
+    created_at: str
+
+
+class DriftAlertsResponse(BaseModel):
+    """Drift alerts response."""
+
+    alerts: list[DriftAlertItem]
+    total: int
+
+
+class DriftSummaryResponse(BaseModel):
+    """Drift summary response."""
+
+    unacknowledged_alerts: dict
+    total_unacknowledged: int
+    coverage_trend_7d: float
+    snapshots_last_7d: int
 
 
 @router.get("/{cloud_account_id}", response_model=CoverageResponse)
@@ -612,3 +668,107 @@ async def calculate_org_coverage(
         mitre_version=snapshot.mitre_version,
         created_at=snapshot.created_at,
     )
+
+
+# Drift Detection Endpoints
+
+
+@router.get("/{cloud_account_id}/drift", response_model=DriftHistoryResponse)
+async def get_drift_history(
+    cloud_account_id: UUID,
+    days: int = Query(30, ge=1, le=365),
+    auth: AuthContext = Depends(get_auth_context),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get coverage drift history for trend analysis."""
+    service = DriftDetectionService(db)
+    history = await service.get_coverage_history(
+        cloud_account_id, auth.organization_id, days
+    )
+
+    return DriftHistoryResponse(
+        cloud_account_id=str(cloud_account_id),
+        history=[DriftHistoryItem(**h) for h in history],
+    )
+
+
+@router.post("/{cloud_account_id}/drift/snapshot")
+async def record_drift_snapshot(
+    cloud_account_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
+    db: AsyncSession = Depends(get_db),
+):
+    """Manually record a coverage snapshot for drift tracking."""
+    # Verify account belongs to organization
+    account_result = await db.execute(
+        select(CloudAccount).where(
+            CloudAccount.id == cloud_account_id,
+            CloudAccount.organization_id == auth.organization_id,
+        )
+    )
+    if not account_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Cloud account not found")
+
+    service = DriftDetectionService(db)
+    snapshot = await service.record_coverage_snapshot(cloud_account_id)
+
+    return {
+        "id": str(snapshot.id),
+        "coverage_percent": snapshot.coverage_percent,
+        "coverage_delta": snapshot.coverage_delta,
+        "drift_severity": snapshot.drift_severity.value,
+        "techniques_added": len(snapshot.techniques_added or []),
+        "techniques_removed": len(snapshot.techniques_removed or []),
+        "recorded_at": snapshot.recorded_at.isoformat(),
+    }
+
+
+@router.get("/drift/alerts", response_model=DriftAlertsResponse)
+async def get_drift_alerts(
+    cloud_account_id: Optional[UUID] = None,
+    acknowledged: Optional[bool] = None,
+    days: int = Query(30, ge=1, le=365),
+    auth: AuthContext = Depends(get_auth_context),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get coverage drift alerts for the organization."""
+    service = DriftDetectionService(db)
+    alerts = await service.get_drift_alerts(
+        auth.organization_id, cloud_account_id, acknowledged, days
+    )
+
+    return DriftAlertsResponse(
+        alerts=[DriftAlertItem(**a) for a in alerts],
+        total=len(alerts),
+    )
+
+
+@router.post("/drift/alerts/{alert_id}/acknowledge")
+async def acknowledge_drift_alert(
+    alert_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
+    db: AsyncSession = Depends(get_db),
+):
+    """Acknowledge a coverage drift alert."""
+    service = DriftDetectionService(db)
+    success = await service.acknowledge_alert(
+        alert_id, auth.organization_id, auth.user_id
+    )
+
+    if not success:
+        raise HTTPException(status_code=404, detail="Alert not found")
+
+    return {"message": "Alert acknowledged"}
+
+
+@router.get("/drift/summary", response_model=DriftSummaryResponse)
+async def get_drift_summary(
+    cloud_account_id: Optional[UUID] = None,
+    auth: AuthContext = Depends(get_auth_context),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get drift summary statistics for the organization."""
+    service = DriftDetectionService(db)
+    summary = await service.get_drift_summary(auth.organization_id, cloud_account_id)
+
+    return DriftSummaryResponse(**summary)
