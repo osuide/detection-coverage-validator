@@ -35,6 +35,7 @@ import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminSettings from './pages/admin/AdminSettings'
 import AdminOrganizations from './pages/admin/AdminOrganizations'
 import AdminUsers from './pages/admin/AdminUsers'
+import AdminFingerprints from './pages/admin/AdminFingerprints'
 import AdminAuditLogs from './pages/admin/AdminAuditLogs'
 import AdminBilling from './pages/admin/AdminBilling'
 import AdminAdmins from './pages/admin/AdminAdmins'
@@ -59,6 +60,7 @@ function App() {
         <Route path="/admin/settings" element={<AdminSettings />} />
         <Route path="/admin/organizations" element={<AdminOrganizations />} />
         <Route path="/admin/users" element={<AdminUsers />} />
+        <Route path="/admin/fingerprints" element={<AdminFingerprints />} />
         <Route path="/admin/audit-logs" element={<AdminAuditLogs />} />
         <Route path="/admin/billing" element={<AdminBilling />} />
         <Route path="/admin/admins" element={<AdminAdmins />} />

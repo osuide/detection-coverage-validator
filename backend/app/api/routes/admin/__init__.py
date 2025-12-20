@@ -10,6 +10,7 @@ from app.api.routes.admin.users import router as users_router
 from app.api.routes.admin.audit_logs import router as audit_logs_router
 from app.api.routes.admin.billing import router as billing_router
 from app.api.routes.admin.admins import router as admins_router
+from app.api.routes.admin.fingerprints import router as fingerprints_router
 
 # Create admin router - note: prefix is set in main.py as /api/v1/admin
 router = APIRouter(tags=["Admin Portal"])
@@ -23,5 +24,6 @@ router.include_router(users_router)
 router.include_router(audit_logs_router)
 router.include_router(billing_router)
 router.include_router(admins_router)
+router.include_router(fingerprints_router)
 
 __all__ = ["router"]
