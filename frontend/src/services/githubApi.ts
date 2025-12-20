@@ -26,14 +26,28 @@ export interface GitHubAuthorizeResponse {
 export interface GitHubTokenResponse {
   access_token: string
   refresh_token: string
+  csrf_token: string
   expires_in: number
   user: {
     id: string
     email: string
     full_name: string
-    role: string
+    role: 'owner' | 'admin' | 'member' | 'viewer'
     mfa_enabled: boolean
+    email_verified?: boolean
+    avatar_url?: string | null
+    timezone?: string
+    created_at?: string
     identity_provider: string
+  }
+  organization: {
+    id: string
+    name: string
+    slug: string
+    plan: string
+    logo_url?: string | null
+    require_mfa?: boolean
+    created_at?: string
   }
 }
 
