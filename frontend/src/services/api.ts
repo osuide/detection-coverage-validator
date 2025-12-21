@@ -93,15 +93,38 @@ api.interceptors.response.use(
 )
 
 // Types
+export type RegionScanMode = 'all' | 'selected' | 'auto'
+
+export interface RegionConfig {
+  mode: RegionScanMode
+  regions?: string[]
+  excluded_regions?: string[]
+  discovered_regions?: string[]
+  auto_discovered_at?: string
+}
+
 export interface CloudAccount {
   id: string
   name: string
   provider: 'aws' | 'gcp'
   account_id: string
   regions: string[]
+  region_config?: RegionConfig
   is_active: boolean
   last_scan_at: string | null
   created_at: string
+}
+
+export interface AvailableRegionsResponse {
+  provider: 'aws' | 'gcp'
+  regions: string[]
+  default_regions: string[]
+}
+
+export interface DiscoverRegionsResponse {
+  discovered_regions: string[]
+  discovery_method: string
+  discovered_at: string
 }
 
 export interface Detection {
@@ -207,7 +230,15 @@ export const accountsApi = {
   list: () => api.get<CloudAccount[]>('/accounts').then(r => r.data),
   get: (id: string) => api.get<CloudAccount>(`/accounts/${id}`).then(r => r.data),
   create: (data: Partial<CloudAccount>) => api.post<CloudAccount>('/accounts', data).then(r => r.data),
+  update: (id: string, data: Partial<CloudAccount>) => api.patch<CloudAccount>(`/accounts/${id}`, data).then(r => r.data),
   delete: (id: string) => api.delete(`/accounts/${id}`),
+}
+
+export const regionsApi = {
+  getAvailable: (provider: 'aws' | 'gcp') =>
+    api.get<AvailableRegionsResponse>(`/accounts/regions/${provider}`).then(r => r.data),
+  discover: (accountId: string) =>
+    api.post<DiscoverRegionsResponse>(`/accounts/${accountId}/discover-regions`).then(r => r.data),
 }
 
 export const scansApi = {

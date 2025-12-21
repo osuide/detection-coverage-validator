@@ -27,11 +27,19 @@ from app.models.gap import CoverageGap
 from app.models.compliance import ComplianceCoverageSnapshot
 from app.models.custom_detection import CustomDetection
 from app.models.user import UserRole
+from app.models.cloud_account import CloudProvider
 from app.schemas.cloud_account import (
     CloudAccountCreate,
     CloudAccountUpdate,
     CloudAccountResponse,
+    AvailableRegionsResponse,
+    DiscoverRegionsResponse,
 )
+from app.core.service_registry import get_all_regions, get_default_regions
+from app.services.region_discovery_service import region_discovery_service
+from app.services.aws_credential_service import aws_credential_service
+from app.models.cloud_credential import CredentialStatus, CredentialType
+from datetime import datetime, timezone
 
 logger = structlog.get_logger()
 
@@ -306,3 +314,144 @@ async def delete_account(
             status_code=500,
             detail="Failed to delete account. Please try again.",
         )
+
+
+@router.get("/regions/{provider}", response_model=AvailableRegionsResponse)
+async def list_available_regions(
+    provider: CloudProvider,
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """
+    Get list of available regions for a cloud provider.
+
+    Returns all available regions and commonly enabled defaults.
+    """
+    provider_str = provider.value
+    return AvailableRegionsResponse(
+        provider=provider,
+        regions=get_all_regions(provider_str),
+        default_regions=get_default_regions(provider_str),
+    )
+
+
+@router.post("/{account_id}/discover-regions", response_model=DiscoverRegionsResponse)
+async def discover_regions(
+    account_id: UUID,
+    auth: AuthContext = Depends(require_role(UserRole.OWNER, UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Discover active regions for a cloud account.
+
+    Uses various signals (EC2, GuardDuty, CloudWatch) to determine
+    which regions have active resources or security services enabled.
+
+    Requires admin or owner role.
+    """
+    # Get the account
+    query = select(CloudAccount).where(
+        and_(
+            CloudAccount.id == account_id,
+            CloudAccount.organization_id == auth.organization_id,
+        )
+    )
+    result = await db.execute(query)
+    account = result.scalar_one_or_none()
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    # Get credentials for this account
+    cred_result = await db.execute(
+        select(CloudCredential).where(CloudCredential.cloud_account_id == account_id)
+    )
+    credential = cred_result.scalar_one_or_none()
+
+    if not credential:
+        raise HTTPException(
+            status_code=400,
+            detail="No credentials configured for this account. Please add credentials first.",
+        )
+
+    if credential.status != CredentialStatus.VALID:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Credentials are not valid (status: {credential.status.value}). Please re-validate.",
+        )
+
+    discovery_method = ""
+    discovered_regions = []
+
+    if account.provider == CloudProvider.AWS:
+        if credential.credential_type != CredentialType.AWS_IAM_ROLE:
+            raise HTTPException(
+                status_code=400,
+                detail="AWS region discovery requires IAM Role credentials.",
+            )
+
+        try:
+            # Assume the role to get temporary credentials
+            creds = aws_credential_service.assume_role(
+                role_arn=credential.aws_role_arn,
+                external_id=credential.aws_external_id,
+                session_name=f"A13E-Discovery-{str(account.id)[:8]}",
+            )
+
+            import boto3
+
+            session = boto3.Session(
+                aws_access_key_id=creds["access_key_id"],
+                aws_secret_access_key=creds["secret_access_key"],
+                aws_session_token=creds["session_token"],
+            )
+
+            discovered_regions = (
+                await region_discovery_service.discover_aws_active_regions(
+                    session,
+                    check_ec2=True,
+                    check_guardduty=True,
+                    check_cloudwatch=True,
+                )
+            )
+            discovery_method = "AWS (EC2 + GuardDuty + CloudWatch)"
+
+        except Exception as e:
+            logger.error(
+                "region_discovery_failed",
+                account_id=str(account_id),
+                error=str(e),
+            )
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to discover regions: {str(e)}",
+            )
+
+    elif account.provider == CloudProvider.GCP:
+        # GCP discovery not yet implemented
+        raise HTTPException(
+            status_code=501,
+            detail="GCP region discovery not yet implemented. Please configure regions manually.",
+        )
+
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported provider: {account.provider.value}",
+        )
+
+    # Update the account with discovered regions
+    now = datetime.now(timezone.utc)
+    account.set_auto_discovered_regions(discovered_regions)
+    await db.commit()
+
+    logger.info(
+        "regions_discovered",
+        account_id=str(account_id),
+        regions=discovered_regions,
+        method=discovery_method,
+    )
+
+    return DiscoverRegionsResponse(
+        discovered_regions=discovered_regions,
+        discovery_method=discovery_method,
+        discovered_at=now,
+    )

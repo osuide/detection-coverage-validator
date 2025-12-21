@@ -39,6 +39,10 @@ class BaseScanner(ABC):
     - Each scanner handles one detection type
     - Returns normalized RawDetection objects
     - Handles pagination and rate limiting internally
+
+    Scanners can be either global or regional:
+    - Global scanners scan once from a designated region (e.g., IAM from us-east-1)
+    - Regional scanners scan each specified region independently
     """
 
     def __init__(self, session: Any):
@@ -51,6 +55,36 @@ class BaseScanner(ABC):
     def detection_type(self) -> DetectionType:
         """The type of detection this scanner discovers."""
         pass
+
+    @property
+    def is_global_service(self) -> bool:
+        """Whether this scanner targets a global (non-regional) service.
+
+        Override in subclass to return True for global services like IAM.
+        Global services are scanned once from global_scan_region.
+        """
+        return False
+
+    @property
+    def global_scan_region(self) -> str:
+        """Region to use when scanning a global service.
+
+        Only used when is_global_service is True.
+        Override in subclass if different from default.
+        """
+        return "us-east-1"
+
+    @property
+    def service_key(self) -> str:
+        """Service key for the service registry lookup.
+
+        Override in subclass if different from class name inference.
+        """
+        # Default: derive from class name, e.g., GuardDutyScanner -> guardduty
+        name = self.__class__.__name__
+        if name.endswith("Scanner"):
+            name = name[:-7]
+        return name.lower()
 
     @abstractmethod
     async def scan(

@@ -1,6 +1,7 @@
 """Scan orchestration service."""
 
 import os
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
@@ -10,7 +11,7 @@ import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 
-from app.models.cloud_account import CloudAccount
+from app.models.cloud_account import CloudAccount, CloudProvider
 from app.models.cloud_credential import (
     CloudCredential,
     CredentialType,
@@ -24,13 +25,22 @@ from app.scanners.aws.eventbridge_scanner import EventBridgeScanner
 from app.scanners.aws.guardduty_scanner import GuardDutyScanner
 from app.scanners.aws.config_scanner import ConfigRulesScanner
 from app.scanners.aws.securityhub_scanner import SecurityHubScanner
-from app.scanners.base import RawDetection
+from app.scanners.base import RawDetection, BaseScanner
 from app.mappers.pattern_mapper import PatternMapper
 from app.services.coverage_service import CoverageService
 from app.services.notification_service import trigger_scan_alerts
 from app.services.aws_credential_service import aws_credential_service
+from app.core.service_registry import get_all_regions
 
 logger = structlog.get_logger()
+
+
+@dataclass
+class RegionConfig:
+    """Configuration for multi-region scanning."""
+
+    regional_regions: list[str]  # Regions to scan for regional services
+    global_region: str  # Region to use for global services (e.g., us-east-1 for AWS)
 
 
 def _is_dev_mode_allowed() -> bool:
@@ -97,8 +107,20 @@ class ScanService:
             # Get boto3 session (with assumed role credentials)
             session = await self._get_boto3_session(account)
 
-            # Determine regions to scan
-            regions = scan.regions or account.regions or ["us-east-1"]
+            # Determine regions to scan using new multi-region logic
+            region_config = self._determine_scan_regions(scan, account)
+
+            self.logger.info(
+                "scan_regions_determined",
+                scan_id=str(scan_id),
+                regional_regions=region_config.regional_regions,
+                global_region=region_config.global_region,
+                mode=(
+                    account.get_region_scan_mode().value
+                    if account.region_config
+                    else "default"
+                ),
+            )
 
             # Scan for detections
             scan.current_step = "Scanning for detections"
@@ -106,7 +128,7 @@ class ScanService:
             await self.db.commit()
 
             raw_detections, scanner_errors = await self._scan_detections(
-                session, regions, scan.detection_types
+                session, region_config, scan.detection_types
             )
 
             # Store any scanner errors in scan results
@@ -189,6 +211,68 @@ class ScanService:
         )
         return result.scalar_one_or_none()
 
+    def _determine_scan_regions(
+        self, scan: Scan, account: CloudAccount
+    ) -> RegionConfig:
+        """Determine which regions to scan based on account configuration.
+
+        This method implements the multi-region scanning logic:
+        - For "all" mode: Scan all available regions (minus exclusions)
+        - For "auto" mode: Use auto-discovered active regions
+        - For "selected" mode: Use explicitly configured regions
+        - Fallback: Use the account's default region
+
+        Args:
+            scan: The scan request (may have region overrides)
+            account: The cloud account with region configuration
+
+        Returns:
+            RegionConfig with regions for regional and global services
+        """
+        # Scan-level override takes precedence
+        if scan.regions:
+            return RegionConfig(
+                regional_regions=scan.regions,
+                global_region=self._get_global_region(account),
+            )
+
+        # Get all available regions for this provider
+        provider = account.provider.value if account.provider else "aws"
+        all_regions = get_all_regions(provider)
+
+        # Use account's region configuration
+        effective_regions = account.get_effective_regions(all_regions)
+
+        # If no regions configured, use the account's default region
+        if not effective_regions:
+            default_region = account.get_default_region()
+            self.logger.warning(
+                "no_regions_configured",
+                account_id=str(account.id),
+                fallback_region=default_region,
+            )
+            effective_regions = [default_region]
+
+        return RegionConfig(
+            regional_regions=effective_regions,
+            global_region=self._get_global_region(account),
+        )
+
+    def _get_global_region(self, account: CloudAccount) -> str:
+        """Get the region to use for global service API calls.
+
+        Args:
+            account: The cloud account
+
+        Returns:
+            Region code for global service endpoints
+        """
+        if account.provider == CloudProvider.AWS:
+            return "us-east-1"  # AWS global services use us-east-1
+        elif account.provider == CloudProvider.GCP:
+            return "global"  # GCP uses "global" for organisation-level services
+        return "us-east-1"
+
     async def _get_boto3_session(self, account: CloudAccount) -> boto3.Session:
         """Get boto3 session for the account using stored credentials.
 
@@ -270,10 +354,18 @@ class ScanService:
     async def _scan_detections(
         self,
         session: boto3.Session,
-        regions: list[str],
+        region_config: RegionConfig,
         detection_types: list[str],
     ) -> tuple[list[RawDetection], list[str]]:
-        """Run all applicable scanners.
+        """Run all applicable scanners with proper global/regional handling.
+
+        Global services (like IAM) are scanned once from the global_region.
+        Regional services (like GuardDuty) are scanned in each regional_region.
+
+        Args:
+            session: boto3 session with credentials
+            region_config: Configuration specifying regional and global regions
+            detection_types: List of detection types to scan for
 
         Returns:
             Tuple of (detections, errors) where errors is a list of
@@ -283,7 +375,7 @@ class ScanService:
         scan_errors = []
 
         # Determine which scanners to use
-        scanners = []
+        scanners: list[BaseScanner] = []
         if not detection_types or "cloudwatch_logs_insights" in detection_types:
             scanners.append(CloudWatchLogsInsightsScanner(session))
         # CloudWatch Alarms scanner disabled until database migration is run
@@ -298,15 +390,34 @@ class ScanService:
         if not detection_types or "security_hub" in detection_types:
             scanners.append(SecurityHubScanner(session))
 
-        # Run scanners
+        # Run scanners with appropriate regions based on global/regional classification
         for scanner in scanners:
             try:
-                detections = await scanner.scan(regions)
+                # Determine which regions to use for this scanner
+                if scanner.is_global_service:
+                    # Global services scan once from the designated global region
+                    scan_regions = [scanner.global_scan_region]
+                    self.logger.debug(
+                        "scanning_global_service",
+                        scanner=scanner.__class__.__name__,
+                        region=scanner.global_scan_region,
+                    )
+                else:
+                    # Regional services scan all specified regions
+                    scan_regions = region_config.regional_regions
+                    self.logger.debug(
+                        "scanning_regional_service",
+                        scanner=scanner.__class__.__name__,
+                        regions=scan_regions,
+                    )
+
+                detections = await scanner.scan(scan_regions)
                 all_detections.extend(detections)
                 self.logger.info(
                     "scanner_complete",
                     scanner=scanner.__class__.__name__,
                     count=len(detections),
+                    regions_scanned=len(scan_regions),
                 )
             except Exception as e:
                 error_msg = f"{scanner.__class__.__name__}: {str(e)}"

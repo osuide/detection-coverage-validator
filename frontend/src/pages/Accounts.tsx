@@ -1,19 +1,25 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Cloud, Plus, Trash2, Play, RefreshCw, Link, CheckCircle2, AlertTriangle, Settings, Clock } from 'lucide-react'
+import { Cloud, Plus, Trash2, Play, RefreshCw, Link, CheckCircle2, AlertTriangle, Settings, Clock, Globe, MapPin } from 'lucide-react'
 import { Link as RouterLink } from 'react-router-dom'
-import { accountsApi, scansApi, credentialsApi, CloudAccount, scanStatusApi, ScanStatus } from '../services/api'
+import { accountsApi, scansApi, credentialsApi, CloudAccount, scanStatusApi, ScanStatus, RegionConfig } from '../services/api'
 import CredentialWizard from '../components/CredentialWizard'
+import RegionSelector from '../components/RegionSelector'
 
 export default function Accounts() {
   const queryClient = useQueryClient()
   const [showForm, setShowForm] = useState(false)
   const [connectingAccount, setConnectingAccount] = useState<CloudAccount | null>(null)
+  const [editingAccount, setEditingAccount] = useState<CloudAccount | null>(null)
   const [formData, setFormData] = useState({
     name: '',
     provider: 'aws' as 'aws' | 'gcp',
     account_id: '',
-    regions: ['us-east-1'],
+    regions: [] as string[],
+    region_config: {
+      mode: 'selected',
+      regions: ['eu-west-2'],  // A13E's primary region
+    } as RegionConfig,
   })
 
   const { data: accounts, isLoading } = useQuery({
@@ -32,7 +38,22 @@ export default function Accounts() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accounts'] })
       setShowForm(false)
-      setFormData({ name: '', provider: 'aws' as 'aws' | 'gcp', account_id: '', regions: ['us-east-1'] })
+      setFormData({
+        name: '',
+        provider: 'aws' as 'aws' | 'gcp',
+        account_id: '',
+        regions: [],
+        region_config: { mode: 'selected', regions: ['eu-west-2'] },
+      })
+    },
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<CloudAccount> }) =>
+      accountsApi.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['accounts'] })
+      setEditingAccount(null)
     },
   })
 
@@ -125,6 +146,16 @@ export default function Accounts() {
                 required
               />
             </div>
+
+            {/* Region Configuration */}
+            <div>
+              <RegionSelector
+                provider={formData.provider}
+                value={formData.region_config}
+                onChange={(config) => setFormData({ ...formData, region_config: config })}
+              />
+            </div>
+
             <div className="flex justify-end space-x-3">
               <button
                 type="button"
@@ -184,6 +215,7 @@ export default function Accounts() {
               key={account.id}
               account={account}
               onConnect={() => setConnectingAccount(account)}
+              onEdit={() => setEditingAccount(account)}
               onScan={() => scanMutation.mutate(account.id)}
               onDelete={() => deleteMutation.mutate(account.id)}
               isScanPending={scanMutation.isPending}
@@ -207,6 +239,63 @@ export default function Accounts() {
           }}
         />
       )}
+
+      {/* Edit Account Modal */}
+      {editingAccount && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold">Edit Account: {editingAccount.name}</h2>
+                <button
+                  onClick={() => setEditingAccount(null)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  &times;
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                <RegionSelector
+                  provider={editingAccount.provider}
+                  accountId={editingAccount.id}
+                  value={editingAccount.region_config || { mode: 'selected', regions: editingAccount.regions || [] }}
+                  onChange={(config) => {
+                    // Update local state for immediate feedback
+                    setEditingAccount({
+                      ...editingAccount,
+                      region_config: config,
+                    })
+                  }}
+                />
+
+                <div className="flex justify-end space-x-3 pt-4 border-t">
+                  <button
+                    type="button"
+                    onClick={() => setEditingAccount(null)}
+                    className="btn-secondary"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      updateMutation.mutate({
+                        id: editingAccount.id,
+                        data: { region_config: editingAccount.region_config },
+                      })
+                    }}
+                    disabled={updateMutation.isPending}
+                    className="btn-primary"
+                  >
+                    {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -215,6 +304,7 @@ export default function Accounts() {
 function AccountCard({
   account,
   onConnect,
+  onEdit,
   onScan,
   onDelete,
   isScanPending,
@@ -223,6 +313,7 @@ function AccountCard({
 }: {
   account: CloudAccount
   onConnect: () => void
+  onEdit: () => void
   onScan: () => void
   onDelete: () => void
   isScanPending: boolean
@@ -316,6 +407,15 @@ function AccountCard({
             {account.is_active ? 'Active' : 'Inactive'}
           </span>
 
+          {/* Edit Regions Button */}
+          <button
+            onClick={onEdit}
+            className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg"
+            title="Edit Regions"
+          >
+            <MapPin className="h-5 w-5" />
+          </button>
+
           {/* Connect/Configure Button */}
           {!credential || credential.status !== 'valid' ? (
             <button
@@ -373,6 +473,23 @@ function AccountCard({
       {/* Additional info row */}
       <div className="mt-3 flex items-center justify-between text-sm text-gray-500">
         <div className="flex items-center space-x-4">
+          {/* Region info */}
+          <div className="flex items-center text-xs">
+            <Globe className="h-3 w-3 mr-1" />
+            {account.region_config ? (
+              account.region_config.mode === 'all' ? (
+                <span>All regions{account.region_config.excluded_regions?.length ? ` (-${account.region_config.excluded_regions.length})` : ''}</span>
+              ) : account.region_config.mode === 'auto' ? (
+                <span>{account.region_config.discovered_regions?.length || 0} discovered</span>
+              ) : (
+                <span>{account.region_config.regions?.length || 0} selected</span>
+              )
+            ) : account.regions?.length ? (
+              <span>{account.regions.length} region{account.regions.length !== 1 ? 's' : ''}</span>
+            ) : (
+              <span className="text-yellow-600">No regions configured</span>
+            )}
+          </div>
           {account.last_scan_at && (
             <span>Last scanned: {new Date(account.last_scan_at).toLocaleString()}</span>
           )}

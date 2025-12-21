@@ -26,6 +26,14 @@ class CloudProvider(str, enum.Enum):
     GCP = "gcp"
 
 
+class RegionScanMode(str, enum.Enum):
+    """Region scanning mode for cloud accounts."""
+
+    ALL = "all"  # Scan all available regions (with optional exclusions)
+    SELECTED = "selected"  # Scan only explicitly selected regions
+    AUTO = "auto"  # Auto-discover and scan active regions
+
+
 class CloudAccount(Base):
     """Represents a cloud account to be scanned."""
 
@@ -65,6 +73,9 @@ class CloudAccount(Base):
     # (multiple orgs can scan the same AWS/GCP account)
     account_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     regions: Mapped[dict] = mapped_column(JSONB, default=list)
+    # Multi-region scanning configuration
+    # Structure: {mode, regions, excluded_regions, discovered_regions, auto_discovered_at}
+    region_config: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
     credentials_arn: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(default=True)
@@ -106,3 +117,63 @@ class CloudAccount(Base):
 
     def __repr__(self) -> str:
         return f"<CloudAccount {self.name} ({self.provider.value}:{self.account_id})>"
+
+    def get_region_scan_mode(self) -> RegionScanMode:
+        """Get the current region scanning mode."""
+        if not self.region_config:
+            return RegionScanMode.SELECTED
+        mode = self.region_config.get("mode", "selected")
+        return RegionScanMode(mode)
+
+    def get_effective_regions(self, all_regions: list[str]) -> list[str]:
+        """Get the effective list of regions to scan based on configuration.
+
+        Args:
+            all_regions: List of all available regions for this provider
+
+        Returns:
+            List of regions to scan
+        """
+        mode = self.get_region_scan_mode()
+
+        if mode == RegionScanMode.ALL:
+            # Scan all regions except exclusions
+            excluded = set(self.region_config.get("excluded_regions", []))
+            return [r for r in all_regions if r not in excluded]
+
+        elif mode == RegionScanMode.AUTO:
+            # Use auto-discovered regions, fall back to selected
+            discovered = self.region_config.get("discovered_regions", [])
+            if discovered:
+                return discovered
+            # Fall through to selected mode
+
+        # SELECTED mode or fallback
+        config_regions = (
+            self.region_config.get("regions", []) if self.region_config else []
+        )
+        return config_regions or self.regions or []
+
+    def set_auto_discovered_regions(self, regions: list[str]) -> None:
+        """Update the auto-discovered regions.
+
+        Args:
+            regions: List of discovered active regions
+        """
+        from datetime import datetime, timezone
+
+        if not self.region_config:
+            self.region_config = {"mode": "auto"}
+
+        self.region_config["discovered_regions"] = regions
+        self.region_config["auto_discovered_at"] = datetime.now(
+            timezone.utc
+        ).isoformat()
+
+    def get_default_region(self) -> str:
+        """Get the default region for this account's provider."""
+        if self.provider == CloudProvider.AWS:
+            return "eu-west-2"  # A13E's primary region
+        elif self.provider == CloudProvider.GCP:
+            return "europe-west2"  # GCP equivalent
+        return "us-east-1"
