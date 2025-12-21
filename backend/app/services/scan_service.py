@@ -2,8 +2,8 @@
 
 import os
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import datetime, timezone, date
+from typing import Any, Optional
 from uuid import UUID
 import boto3
 import structlog
@@ -35,6 +35,21 @@ from app.core.service_registry import get_all_regions, get_default_regions
 from app.models.cloud_account import RegionScanMode
 
 logger = structlog.get_logger()
+
+
+def _serialize_for_jsonb(obj: Any) -> Any:
+    """Recursively serialize datetime objects for JSONB storage.
+
+    AWS SDK returns datetime objects that aren't JSON serializable.
+    This converts them to ISO format strings.
+    """
+    if isinstance(obj, (datetime, date)):
+        return obj.isoformat()
+    elif isinstance(obj, dict):
+        return {k: _serialize_for_jsonb(v) for k, v in obj.items()}
+    elif isinstance(obj, (list, tuple)):
+        return [_serialize_for_jsonb(item) for item in obj]
+    return obj
 
 
 @dataclass
@@ -567,9 +582,10 @@ class ScanService:
             if detection:
                 # Update existing
                 detection.name = raw.name
-                detection.raw_config = raw.raw_config
+                # Serialize JSONB fields to handle datetime from AWS SDK
+                detection.raw_config = _serialize_for_jsonb(raw.raw_config)
                 detection.query_pattern = raw.query_pattern
-                detection.event_pattern = raw.event_pattern
+                detection.event_pattern = _serialize_for_jsonb(raw.event_pattern)
                 detection.log_groups = raw.log_groups
                 detection.description = raw.description
                 detection.status = DetectionStatus.ACTIVE
@@ -577,6 +593,7 @@ class ScanService:
                 stats["updated"] += 1
             else:
                 # Create new
+                # Serialize JSONB fields to handle datetime from AWS SDK
                 detection = Detection(
                     cloud_account_id=cloud_account_id,
                     name=raw.name,
@@ -584,9 +601,9 @@ class ScanService:
                     status=DetectionStatus.ACTIVE,
                     source_arn=raw.source_arn,
                     region=raw.region,
-                    raw_config=raw.raw_config,
+                    raw_config=_serialize_for_jsonb(raw.raw_config),
                     query_pattern=raw.query_pattern,
-                    event_pattern=raw.event_pattern,
+                    event_pattern=_serialize_for_jsonb(raw.event_pattern),
                     log_groups=raw.log_groups,
                     description=raw.description,
                     is_managed=raw.is_managed,
