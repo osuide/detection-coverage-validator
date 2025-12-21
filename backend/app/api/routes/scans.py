@@ -73,9 +73,22 @@ async def create_scan(
     db: AsyncSession = Depends(get_db),
 ):
     """Create and start a new scan job."""
-    # Check scan limits for FREE tier
+    # Verify cloud account exists and belongs to user's organization first
+    # (before consuming a scan from the limit)
+    result = await db.execute(
+        select(CloudAccount).where(
+            CloudAccount.id == scan_in.cloud_account_id,
+            CloudAccount.organization_id == auth.organization_id,
+        )
+    )
+    account = result.scalar_one_or_none()
+    if not account:
+        raise HTTPException(status_code=404, detail="Cloud account not found")
+
+    # H6: Atomically check scan limits and record the scan to prevent race conditions
+    # This uses row-level locking to ensure concurrent requests cannot bypass limits
     scan_limit_service = ScanLimitService(db)
-    can_scan, reason, next_available = await scan_limit_service.can_scan(
+    can_scan, reason, next_available = await scan_limit_service.can_scan_and_record(
         auth.organization_id
     )
 
@@ -90,17 +103,6 @@ async def create_scan(
                 "upgrade_url": "/settings/billing",
             },
         )
-
-    # Verify cloud account exists and belongs to user's organization
-    result = await db.execute(
-        select(CloudAccount).where(
-            CloudAccount.id == scan_in.cloud_account_id,
-            CloudAccount.organization_id == auth.organization_id,
-        )
-    )
-    account = result.scalar_one_or_none()
-    if not account:
-        raise HTTPException(status_code=404, detail="Cloud account not found")
 
     # Use account regions if not specified
     regions = scan_in.regions or account.regions
@@ -120,9 +122,6 @@ async def create_scan(
     db.add(scan)
     await db.flush()
     await db.refresh(scan)
-
-    # Record the scan for limit tracking
-    await scan_limit_service.record_scan(auth.organization_id)
 
     # Start scan in background
     scan_service = ScanService(db)

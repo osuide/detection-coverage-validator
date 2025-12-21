@@ -49,7 +49,10 @@ class ScanLimitService:
     async def can_scan(
         self, organization_id: UUID
     ) -> Tuple[bool, Optional[str], Optional[datetime]]:
-        """Check if an organisation can perform a scan.
+        """Check if an organisation can perform a scan (read-only check).
+
+        Note: For actual scan creation, use can_scan_and_record() to avoid
+        race conditions with concurrent requests.
 
         Args:
             organization_id: The organisation ID
@@ -108,6 +111,98 @@ class ScanLimitService:
                 f"Weekly scan limit ({weekly_limit}) reached. Upgrade for unlimited scans.",
                 next_available,
             )
+
+        return True, None, None
+
+    async def can_scan_and_record(
+        self, organization_id: UUID
+    ) -> Tuple[bool, Optional[str], Optional[datetime]]:
+        """Atomically check if scan is allowed and record it if so.
+
+        This method uses row-level locking to prevent race conditions where
+        concurrent requests could bypass scan limits.
+
+        Args:
+            organization_id: The organisation ID
+
+        Returns:
+            (can_scan, reason_if_blocked, next_available_at)
+        """
+        # Check if scan limits are disabled (for staging/testing)
+        settings = get_settings()
+        if settings.disable_scan_limits:
+            logger.debug(
+                "scan_limits_disabled",
+                organization_id=str(organization_id),
+            )
+            # Still record the scan for tracking purposes
+            await self.record_scan(organization_id)
+            return True, None, None
+
+        subscription = await self._get_subscription(organization_id)
+
+        if not subscription:
+            logger.warning(
+                "scan_check_no_subscription",
+                organization_id=str(organization_id),
+            )
+            return False, "No active subscription found", None
+
+        # Get tier limits
+        tier_limits = TIER_LIMITS.get(subscription.tier, {})
+        weekly_limit = tier_limits.get("weekly_scans_allowed")
+        reset_interval = tier_limits.get("scan_reset_interval_days", 7)
+
+        # None or negative means unlimited
+        if weekly_limit is None or weekly_limit < 0:
+            await self.record_scan(organization_id)
+            return True, None, None
+
+        # Get tracking record with row-level lock to prevent race conditions
+        result = await self.db.execute(
+            select(OrganisationScanTracking)
+            .where(OrganisationScanTracking.organization_id == organization_id)
+            .with_for_update()
+        )
+        tracking = result.scalar_one_or_none()
+
+        if not tracking:
+            # Create new tracking record (still under lock from SELECT FOR UPDATE)
+            tracking = OrganisationScanTracking(organization_id=organization_id)
+            self.db.add(tracking)
+            await self.db.flush()
+
+        # Check if week has expired and reset if needed
+        if tracking.is_week_expired(reset_interval):
+            tracking.reset_week()
+
+        # Check if limit reached
+        if tracking.weekly_scan_count >= weekly_limit:
+            next_available = tracking.get_next_scan_available_at(reset_interval)
+            logger.info(
+                "scan_limit_reached",
+                organization_id=str(organization_id),
+                used=tracking.weekly_scan_count,
+                limit=weekly_limit,
+                next_available=next_available.isoformat() if next_available else None,
+            )
+            await self.db.commit()  # Release the lock
+            return (
+                False,
+                f"Weekly scan limit ({weekly_limit}) reached. Upgrade for unlimited scans.",
+                next_available,
+            )
+
+        # Record the scan atomically while holding the lock
+        tracking.record_scan(reset_interval)
+        await self.db.commit()
+
+        logger.info(
+            "scan_recorded_atomic",
+            organization_id=str(organization_id),
+            weekly_count=tracking.weekly_scan_count,
+            total_count=tracking.total_scans,
+        )
 
         return True, None, None
 

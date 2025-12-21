@@ -250,6 +250,17 @@ async def _authenticate_jwt(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    # H1: Validate token type - reject admin tokens in user context
+    token_type = payload.get("type")
+    if token_type not in ("access", None):
+        # Only accept "access" tokens (or legacy tokens without type)
+        # Admin tokens (type="admin") must use admin-specific endpoints
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token type for this endpoint",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     user_id = UUID(payload.get("sub"))
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()

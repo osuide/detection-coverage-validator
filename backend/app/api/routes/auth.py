@@ -8,6 +8,7 @@ from uuid import UUID
 import structlog
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps.rate_limit import (
@@ -19,7 +20,7 @@ from app.api.deps.rate_limit import (
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.security import AuthContext, get_auth_context
-from app.models.user import User, Organization, MembershipStatus
+from app.models.user import User, Organization, OrganizationMember, MembershipStatus
 from app.schemas.auth import (
     LoginRequest,
     LoginResponse,
@@ -201,9 +202,22 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # Store org context if present
+    # H2: Store org context only if user has active membership
     if "org" in payload:
-        request.state.organization_id = UUID(payload["org"])
+        org_id = UUID(payload["org"])
+        # Verify active membership before trusting the org claim
+        membership = await db.execute(
+            select(OrganizationMember).where(
+                and_(
+                    OrganizationMember.user_id == user_id,
+                    OrganizationMember.organization_id == org_id,
+                    OrganizationMember.status == MembershipStatus.ACTIVE,
+                )
+            )
+        )
+        if membership.scalar_one_or_none():
+            request.state.organization_id = org_id
+        # If not a member, silently ignore the org claim (user should switch orgs)
 
     return user
 

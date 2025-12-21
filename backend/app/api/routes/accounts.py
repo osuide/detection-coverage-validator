@@ -15,6 +15,7 @@ from app.core.security import (
     get_auth_context_optional,
     require_role,
 )
+from app.models.billing import Subscription
 from app.models.cloud_account import CloudAccount
 from app.models.cloud_credential import CloudCredential
 from app.models.scan import Scan, ScanStatus
@@ -85,6 +86,31 @@ async def create_account(
 
     Requires admin or owner role.
     """
+    # H4: Check subscription account limits before creating
+    subscription_result = await db.execute(
+        select(Subscription).where(Subscription.organization_id == auth.organization_id)
+    )
+    subscription = subscription_result.scalar_one_or_none()
+
+    if subscription:
+        max_accounts = subscription.total_accounts_allowed
+        # -1 means unlimited (Enterprise tier)
+        if max_accounts != -1:
+            # Count current accounts
+            count_result = await db.execute(
+                select(CloudAccount).where(
+                    CloudAccount.organization_id == auth.organization_id
+                )
+            )
+            current_count = len(count_result.scalars().all())
+
+            if current_count >= max_accounts:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"Cloud account limit reached ({max_accounts}). "
+                    "Please upgrade your subscription to add more accounts.",
+                )
+
     # Check for duplicate account_id within the same organization
     existing = await db.execute(
         select(CloudAccount).where(
@@ -95,7 +121,7 @@ async def create_account(
     if existing.scalar_one_or_none():
         raise HTTPException(
             status_code=400,
-            detail=f"Account with ID {account_in.account_id} already exists in your organization",
+            detail=f"Account with ID {account_in.account_id} already exists in your organisation",
         )
 
     account = CloudAccount(

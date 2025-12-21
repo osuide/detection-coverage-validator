@@ -688,3 +688,24 @@ class Invoice(Base):
     def amount_dollars(self) -> float:
         """Amount in dollars."""
         return self.amount_cents / 100.0
+
+
+class ProcessedWebhookEvent(Base):
+    """Track processed webhook events for idempotency.
+
+    H11: Prevents replay attacks by storing processed event IDs.
+    Events are retained for 24 hours (Stripe webhooks expire after 3 hours).
+    """
+
+    __tablename__ = "processed_webhook_events"
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid()
+    )
+    event_id: Mapped[str] = mapped_column(
+        String(255), nullable=False, unique=True, index=True
+    )
+    event_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    processed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )

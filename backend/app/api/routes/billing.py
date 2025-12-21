@@ -5,6 +5,7 @@ from typing import Optional
 import stripe
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
@@ -530,6 +531,8 @@ async def stripe_webhook(
     db: AsyncSession = Depends(get_db),
 ):
     """Handle Stripe webhook events."""
+    from app.models.billing import ProcessedWebhookEvent
+
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature")
 
@@ -555,10 +558,24 @@ async def stripe_webhook(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid signature"
         )
 
+    event_id = event["id"]
     event_type = event["type"]
     data = event["data"]["object"]
 
-    logger.info("stripe_webhook_received", event_type=event_type)
+    # H11: Check for duplicate event (replay attack prevention)
+    existing = await db.execute(
+        select(ProcessedWebhookEvent).where(ProcessedWebhookEvent.event_id == event_id)
+    )
+    if existing.scalar_one_or_none():
+        logger.info(
+            "stripe_webhook_duplicate",
+            event_id=event_id,
+            event_type=event_type,
+        )
+        # Return success - idempotent, event already processed
+        return {"status": "already_processed"}
+
+    logger.info("stripe_webhook_received", event_id=event_id, event_type=event_type)
 
     try:
         if event_type == "checkout.session.completed":
@@ -574,9 +591,20 @@ async def stripe_webhook(
         else:
             logger.debug("stripe_webhook_unhandled", event_type=event_type)
 
+        # H11: Record event as processed (after successful handling)
+        # H12: This happens within the same transaction as the handler's commit
+        processed_event = ProcessedWebhookEvent(
+            event_id=event_id,
+            event_type=event_type,
+        )
+        db.add(processed_event)
+        await db.commit()
+
     except Exception as e:
+        await db.rollback()
         logger.error(
             "stripe_webhook_handler_error",
+            event_id=event_id,
             event_type=event_type,
             error=str(e),
             exc_info=True,
