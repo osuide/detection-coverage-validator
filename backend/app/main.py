@@ -325,12 +325,14 @@ async def seed_compliance_data():
         async with AsyncSessionLocal() as db:
             loader = ComplianceMappingLoader(db)
             result = await loader.load_all()
+            # Commit the loaded data
+            await db.commit()
             if result.get("frameworks_loaded", 0) > 0:
                 logger.info(
                     "compliance_data_seeded",
                     frameworks=result.get("frameworks_loaded"),
-                    controls=result.get("controls_loaded"),
-                    mappings=result.get("mappings_loaded"),
+                    controls=result.get("total_controls"),
+                    mappings=result.get("total_mappings"),
                 )
             else:
                 logger.debug("compliance_data_already_present")
