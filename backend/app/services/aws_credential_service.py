@@ -9,6 +9,7 @@ Security Best Practices:
 """
 
 import os
+from typing import Optional
 
 import boto3
 from botocore.exceptions import ClientError, NoCredentialsError
@@ -69,7 +70,7 @@ class AWSCredentialService:
         self,
         role_arn: str,
         external_id: str,
-        session_name: str = "A13E-DetectionScanner",
+        session_name: Optional[str] = None,
         duration_seconds: int = 3600,
     ) -> dict:
         """Assume a cross-account IAM role.
@@ -77,7 +78,7 @@ class AWSCredentialService:
         Args:
             role_arn: ARN of the role to assume
             external_id: External ID for confused deputy prevention
-            session_name: Name for the assumed role session
+            session_name: Name for the assumed role session (auto-generated if not provided)
             duration_seconds: Session duration (max 3600)
 
         Returns:
@@ -86,6 +87,15 @@ class AWSCredentialService:
         Raises:
             ValueError: If role assumption fails
         """
+        # M13: Generate unique session name for better audit tracking
+        if session_name is None:
+            import secrets
+            from datetime import datetime
+
+            timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
+            unique_suffix = secrets.token_hex(4)
+            session_name = f"A13E-{timestamp}-{unique_suffix}"
+
         try:
             response = self.sts_client.assume_role(
                 RoleArn=role_arn,

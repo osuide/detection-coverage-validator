@@ -86,3 +86,12 @@ def password_reset_rate_limit():
 def mfa_rate_limit():
     """Rate limit for MFA verification: 5 attempts per minute per IP."""
     return RateLimiter(times=5, seconds=60)
+
+
+def api_key_rate_limit():
+    """Rate limit for API key authentication: 100 requests per minute per IP.
+
+    M1: Add rate limiting for API key authentication to prevent brute force attacks.
+    This is a generous limit for legitimate API usage while still preventing abuse.
+    """
+    return RateLimiter(times=100, seconds=60)
