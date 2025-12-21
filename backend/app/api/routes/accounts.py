@@ -5,7 +5,8 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, delete
+import structlog
 
 from app.core.database import get_db
 from app.core.security import (
@@ -15,12 +16,23 @@ from app.core.security import (
     require_role,
 )
 from app.models.cloud_account import CloudAccount
+from app.models.cloud_credential import CloudCredential
+from app.models.scan import Scan
+from app.models.detection import Detection
+from app.models.schedule import ScanSchedule
+from app.models.alert import AlertConfig
+from app.models.coverage import CoverageSnapshot
+from app.models.gap import CoverageGap
+from app.models.compliance import ComplianceCoverageSnapshot
+from app.models.custom_detection import CustomDetection
 from app.models.user import UserRole
 from app.schemas.cloud_account import (
     CloudAccountCreate,
     CloudAccountUpdate,
     CloudAccountResponse,
 )
+
+logger = structlog.get_logger()
 
 router = APIRouter()
 
@@ -162,9 +174,16 @@ async def delete_account(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Delete a cloud account.
+    Delete a cloud account and all associated data.
 
     Requires admin or owner role.
+
+    This will delete:
+    - All scans for this account
+    - All detections for this account
+    - All schedules for this account
+    - All credentials for this account
+    - All coverage data for this account
     """
     query = select(CloudAccount).where(
         and_(
@@ -178,4 +197,63 @@ async def delete_account(
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
 
-    await db.delete(account)
+    try:
+        # Delete related records that don't have CASCADE delete
+        # Order matters due to foreign key dependencies
+        await db.execute(
+            delete(CoverageGap).where(CoverageGap.cloud_account_id == account_id)
+        )
+        await db.execute(
+            delete(ComplianceCoverageSnapshot).where(
+                ComplianceCoverageSnapshot.cloud_account_id == account_id
+            )
+        )
+        await db.execute(
+            delete(CoverageSnapshot).where(
+                CoverageSnapshot.cloud_account_id == account_id
+            )
+        )
+        await db.execute(
+            delete(Detection).where(Detection.cloud_account_id == account_id)
+        )
+        await db.execute(
+            delete(CustomDetection).where(
+                CustomDetection.cloud_account_id == account_id
+            )
+        )
+        await db.execute(delete(Scan).where(Scan.cloud_account_id == account_id))
+        await db.execute(
+            delete(ScanSchedule).where(ScanSchedule.cloud_account_id == account_id)
+        )
+        await db.execute(
+            delete(AlertConfig).where(AlertConfig.cloud_account_id == account_id)
+        )
+        await db.execute(
+            delete(CloudCredential).where(
+                CloudCredential.cloud_account_id == account_id
+            )
+        )
+
+        # Now delete the account itself
+        await db.delete(account)
+        await db.commit()
+
+        logger.info(
+            "cloud_account_deleted",
+            account_id=str(account_id),
+            account_name=account.name,
+            organization_id=str(auth.organization_id),
+            deleted_by=str(auth.user_id),
+        )
+
+    except Exception as e:
+        await db.rollback()
+        logger.error(
+            "cloud_account_delete_failed",
+            account_id=str(account_id),
+            error=str(e),
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to delete account. Please try again.",
+        )

@@ -1,12 +1,21 @@
 """Cloud account schemas."""
 
+import re
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.models.cloud_account import CloudProvider
+
+
+# AWS account IDs are exactly 12 digits
+AWS_ACCOUNT_ID_PATTERN = re.compile(r"^\d{12}$")
+
+# GCP project IDs: 6-30 chars, lowercase letters, digits, hyphens
+# Must start with a letter, cannot end with hyphen
+GCP_PROJECT_ID_PATTERN = re.compile(r"^[a-z][a-z0-9-]{4,28}[a-z0-9]$")
 
 
 class CloudAccountBase(BaseModel):
@@ -23,6 +32,23 @@ class CloudAccountCreate(CloudAccountBase):
     """Schema for creating a cloud account."""
 
     credentials_arn: Optional[str] = None
+
+    @model_validator(mode="after")
+    def validate_account_id_format(self) -> "CloudAccountCreate":
+        """Validate account_id format based on provider."""
+        if self.provider == CloudProvider.AWS:
+            if not AWS_ACCOUNT_ID_PATTERN.match(self.account_id):
+                raise ValueError(
+                    "AWS account ID must be exactly 12 digits (e.g., 123456789012)"
+                )
+        elif self.provider == CloudProvider.GCP:
+            if not GCP_PROJECT_ID_PATTERN.match(self.account_id):
+                raise ValueError(
+                    "GCP project ID must be 6-30 characters, start with a letter, "
+                    "contain only lowercase letters, digits, and hyphens, "
+                    "and cannot end with a hyphen (e.g., my-project-123)"
+                )
+        return self
 
 
 class CloudAccountUpdate(BaseModel):
