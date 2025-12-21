@@ -16,14 +16,11 @@ variable "node_type" {
 
 resource "aws_security_group" "redis" {
   name_prefix = "dcv-${var.environment}-redis-"
+  description = "Security group for Redis cache - ingress rules added by backend module"
   vpc_id      = var.vpc_id
 
-  ingress {
-    from_port   = 6379
-    to_port     = 6379
-    protocol    = "tcp"
-    cidr_blocks = ["10.0.0.0/8"]
-  }
+  # Ingress rules are added by the backend module using aws_security_group_rule
+  # to allow only ECS containers to access Redis (no CIDR blocks)
 
   egress {
     from_port   = 0

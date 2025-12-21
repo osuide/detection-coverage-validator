@@ -117,22 +117,40 @@ def get_client_ip(request: Request) -> Optional[str]:
 
     Security: Uses CloudFront-Viewer-Address if available (most reliable),
     otherwise falls back to X-Forwarded-For first IP (when behind trusted proxy).
+    Validates IP addresses using Python's ipaddress module to prevent injection.
     """
+    import ipaddress
+
+    def _validate_ip(ip_str: str) -> Optional[str]:
+        """Validate and return IP address, or None if invalid."""
+        try:
+            # Handle IPv6 with port (e.g., [::1]:8080)
+            if ip_str.startswith("["):
+                ip_str = ip_str.split("]")[0][1:]
+            # Handle IPv4 with port (e.g., 1.2.3.4:8080)
+            elif "." in ip_str and ":" in ip_str:
+                ip_str = ip_str.rsplit(":", 1)[0]
+            ipaddress.ip_address(ip_str)
+            return ip_str
+        except ValueError:
+            return None
+
     # CloudFront-Viewer-Address is most reliable when behind CloudFront
     cf_viewer = request.headers.get("CloudFront-Viewer-Address")
     if cf_viewer:
-        # Format is IP:port, extract just the IP
-        return cf_viewer.split(":")[0].strip()
+        # Format is IP:port, extract and validate
+        validated = _validate_ip(cf_viewer.split(":")[0].strip())
+        if validated:
+            return validated
 
     # X-Forwarded-For: client, proxy1, proxy2, ...
     # When behind AWS ALB/CloudFront, the first IP is the original client
     forwarded = request.headers.get("X-Forwarded-For")
     if forwarded:
-        # Get first IP (original client when behind trusted proxy)
         first_ip = forwarded.split(",")[0].strip()
-        # Basic validation - ensure it looks like an IP
-        if first_ip and ("." in first_ip or ":" in first_ip):
-            return first_ip
+        validated = _validate_ip(first_ip)
+        if validated:
+            return validated
 
     return request.client.host if request.client else None
 

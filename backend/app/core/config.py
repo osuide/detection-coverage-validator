@@ -29,9 +29,10 @@ class Settings(BaseSettings):
     aws_secret_access_key: Optional[str] = None
 
     # Security & Auth
-    # CRITICAL: Must be set to a cryptographically random value in production
+    # CRITICAL: Must be set to a cryptographically random value
     # Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"
-    secret_key: str = "change-me-in-production"
+    # No default value - must be explicitly set via SECRET_KEY environment variable
+    secret_key: str
 
     # Session binding: Optionally validate IP and User-Agent on session refresh
     # Set to True for higher security (may cause issues for mobile users on changing networks)
@@ -46,17 +47,12 @@ class Settings(BaseSettings):
 
     def model_post_init(self, __context) -> None:
         """Validate critical security settings after initialization."""
-        # Validate SECRET_KEY is not the default in non-development environments
-        if self.environment != "development":
-            if self.secret_key == "change-me-in-production":
-                raise ValueError(
-                    "CRITICAL: SECRET_KEY must be set to a strong random value in non-development environments. "
-                    'Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"'
-                )
-            if len(self.secret_key) < 32:
-                raise ValueError(
-                    "CRITICAL: SECRET_KEY must be at least 32 characters long for security."
-                )
+        # Validate SECRET_KEY length in all environments
+        if len(self.secret_key) < 32:
+            raise ValueError(
+                "CRITICAL: SECRET_KEY must be at least 32 characters long for security. "
+                'Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"'
+            )
 
         # Validate CREDENTIAL_ENCRYPTION_KEY if set
         if self.credential_encryption_key:

@@ -38,9 +38,9 @@ This runbook applies to:
 | Role | Responsibility | Contact |
 |------|---------------|---------|
 | **Incident Commander** | Overall coordination, decisions | On-call rotation |
-| **Security Lead** | Technical investigation, forensics | security@a13e.io |
-| **Engineering Lead** | System changes, containment | engineering@a13e.io |
-| **Communications Lead** | Customer/stakeholder comms | comms@a13e.io |
+| **Security Lead** | Technical investigation, forensics | security@a13e.com |
+| **Engineering Lead** | System changes, containment | engineering@a13e.com |
+| **Communications Lead** | Customer/stakeholder comms | comms@a13e.com |
 
 ### 2.2 Escalation Path
 
@@ -88,7 +88,7 @@ This runbook applies to:
 - **GuardDuty Findings** - AWS threat detection
 - **WAF Logs** - Attack pattern detection
 - **Application Logs** - Authentication failures, errors
-- **Customer Reports** - security@a13e.io
+- **Customer Reports** - security@a13e.com
 - **Security Researchers** - Via security.txt
 
 #### 3.1.2 Initial Assessment Checklist
@@ -359,7 +359,7 @@ Detection Coverage Validator platform.
 [Recommended customer actions]
 
 **For More Information:**
-Contact our security team at security@a13e.io
+Contact our security team at security@a13e.com
 
 Sincerely,
 The A13E Security Team
@@ -560,10 +560,10 @@ Update [Time]: [Progress update]
 
 | Role | Name | Phone | Email |
 |------|------|-------|-------|
-| Security Lead | [TO BE FILLED] | [TO BE FILLED] | security@a13e.io |
-| Engineering Lead | [TO BE FILLED] | [TO BE FILLED] | engineering@a13e.io |
+| Security Lead | [TO BE FILLED] | [TO BE FILLED] | security@a13e.com |
+| Engineering Lead | [TO BE FILLED] | [TO BE FILLED] | engineering@a13e.com |
 | CEO | [TO BE FILLED] | [TO BE FILLED] | [TO BE FILLED] |
-| Legal | [TO BE FILLED] | [TO BE FILLED] | legal@a13e.io |
+| Legal | [TO BE FILLED] | [TO BE FILLED] | legal@a13e.com |
 | AWS Support | - | - | AWS Support Console (Account: 123080274263, Region: eu-west-2) |
 
 ### Appendix B: External Contacts

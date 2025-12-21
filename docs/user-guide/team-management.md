@@ -142,7 +142,7 @@ Monitor seat usage in Settings → Billing and add seats proactively before hitt
 **SSO Integration** (Enterprise plan only):
 - Supported providers: Google Workspace, Okta, SAML 2.0
 - Enables centralized user management and automatic provisioning
-- Contact support@a13e.io for SSO setup
+- Contact support@a13e.com for SSO setup
 
 ### Audit Logs
 
@@ -152,5 +152,5 @@ Owner and Admin can access audit logs in Settings → Audit Logs. Logs track use
 
 For team management questions:
 - **In-App Help**: Click the ? icon in Team Management
-- **Support**: Email support@a13e.io for access issues
+- **Support**: Email support@a13e.com for access issues
 - **Related Docs**: See [Billing & Subscription](./billing-subscription.md) and [Getting Started](./getting-started.md)

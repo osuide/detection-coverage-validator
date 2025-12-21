@@ -55,7 +55,7 @@ def main():
     if len(sys.argv) < 3:
         print("Usage: python -m app.cli.reset_admin_password <email> <new_password>")
         print(
-            "Example: python -m app.cli.reset_admin_password admin@a13e.io NewSecurePass123!"
+            "Example: python -m app.cli.reset_admin_password admin@a13e.com NewSecurePass123!"
         )
         sys.exit(1)
 

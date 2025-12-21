@@ -270,7 +270,7 @@ useEffect(() => {
 │  │                │  │                                      │  │
 │  │ ─────────────  │  │  1. Navigate to signup page...       │  │
 │  │ Need help?     │  │                                      │  │
-│  │ support@a13e.io│  │  [Previous: Home]    [Next: AWS →]   │  │
+│  │ support@a13e.com│  │  [Previous: Home]    [Next: AWS →]   │  │
 │  └────────────────┘  └──────────────────────────────────────┘  │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘

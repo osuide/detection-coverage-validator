@@ -213,7 +213,7 @@ The main navigation menu includes:
 ## Getting Help
 
 - **Documentation**: Access comprehensive guides in the Help section
-- **Support**: Contact support@a13e.io for assistance
+- **Support**: Contact support@a13e.com for assistance
 - **Community**: Join our community forum for best practices and discussions
 
 ## Next Steps

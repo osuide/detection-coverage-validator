@@ -176,4 +176,4 @@ After connecting your AWS account:
 - [Understanding Coverage](./understanding-coverage.md) - Interpret your results
 - [Team Management](./team-management.md) - Share access with your team
 
-Need help? Check AWS CloudTrail for AssumeRole errors, test permissions using the IAM Policy Simulator, or contact support@a13e.io with your Role ARN and error details
+Need help? Check AWS CloudTrail for AssumeRole errors, test permissions using the IAM Policy Simulator, or contact support@a13e.com with your Role ARN and error details

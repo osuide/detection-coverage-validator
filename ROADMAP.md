@@ -21,7 +21,7 @@
 │   LOCAL DEV     │     │    STAGING      │     │   PRODUCTION    │
 │                 │     │                 │     │                 │
 │ docker-compose  │ --> │  AWS (scaled)   │ --> │  AWS (full)     │
-│ localhost:8000  │     │  staging.a13e   │     │  app.a13e.io    │
+│ localhost:8000  │     │  staging.a13e   │     │  app.a13e.com    │
 │ localhost:3000  │     │                 │     │                 │
 └─────────────────┘     └─────────────────┘     └─────────────────┘
      DEV MODE              REAL AWS               REAL AWS
@@ -30,14 +30,14 @@
 ```
 
 ### Staging Environment Requirements
-- **Frontend:** S3 + CloudFront (staging.a13e.io or similar)
+- **Frontend:** S3 + CloudFront (staging.a13e.com or similar)
 - **Backend:** ECS Fargate (1 task, small instance)
 - **Database:** RDS PostgreSQL (db.t3.micro, single AZ)
 - **Cache:** ElastiCache Redis (cache.t3.micro, single node)
 - **Cost:** ~$50-100/month
 
 ### Production Environment
-- **Frontend:** S3 + CloudFront (app.a13e.io)
+- **Frontend:** S3 + CloudFront (app.a13e.com)
 - **Backend:** ECS Fargate (2+ tasks, auto-scaling)
 - **Database:** RDS PostgreSQL (db.t3.small+, Multi-AZ)
 - **Cache:** ElastiCache Redis (cache.t3.small+, cluster mode)
@@ -82,7 +82,7 @@
   - ECS Cluster + Service
   - ALB for backend
   - S3 + CloudFront for frontend
-- [ ] Configure staging domain (staging.a13e.io or similar)
+- [ ] Configure staging domain (staging.a13e.com or similar)
 - [ ] Set up SSL certificates
 - [ ] Deploy backend to ECS
 - [ ] Deploy frontend to S3/CloudFront
@@ -195,7 +195,7 @@
 **Effort:** 4-6 hours
 
 - [ ] Create production Terraform config
-- [ ] Set up production domain (app.a13e.io)
+- [ ] Set up production domain (app.a13e.com)
 - [ ] Configure Multi-AZ database
 - [ ] Set up auto-scaling
 - [ ] Configure production Stripe (live mode)

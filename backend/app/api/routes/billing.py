@@ -569,9 +569,16 @@ async def stripe_webhook(
 
     except Exception as e:
         logger.error(
-            "stripe_webhook_handler_error", event_type=event_type, error=str(e)
+            "stripe_webhook_handler_error",
+            event_type=event_type,
+            error=str(e),
+            exc_info=True,
         )
-        # Return 200 to prevent Stripe retries for non-critical errors
-        # In production, you might want to handle this differently
+        # Return 500 to trigger Stripe retries for failed webhook processing
+        # This ensures we don't silently lose billing events
+        raise HTTPException(
+            status_code=500,
+            detail="Webhook processing failed",
+        )
 
     return {"status": "received"}

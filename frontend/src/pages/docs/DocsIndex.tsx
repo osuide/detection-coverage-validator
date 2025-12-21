@@ -134,7 +134,7 @@ export function DocsIndex() {
           Can't find what you're looking for? Our support team is here to help.
         </p>
         <a
-          href="mailto:support@a13e.io"
+          href="mailto:support@a13e.com"
           className="inline-flex items-center gap-2 text-blue-400 font-medium hover:text-blue-300 transition-colors"
         >
           Contact Support

@@ -235,7 +235,7 @@ A: Weekly for active detection development, monthly for stable environments. Use
 A: Yes, cancel anytime. Subscription ends at the end of your billing period. Data retained for 90 days.
 
 **Q: Do you offer discounts?**
-A: Annual subscriptions get 15% off. Enterprise customers can negotiate custom pricing. Contact sales@a13e.io.
+A: Annual subscriptions get 15% off. Enterprise customers can negotiate custom pricing. Contact sales@a13e.com.
 
 **Q: What payment methods do you accept?**
 A: Credit cards (Visa, MC, Amex, Discover) and ACH bank transfer. Enterprise customers can use wire transfer.
@@ -247,23 +247,23 @@ A: Credit cards (Visa, MC, Amex, Discover) and ACH bank transfer. Enterprise cus
 ### Documentation
 
 - **User Guides**: You're reading them!
-- **API Documentation**: [docs.a13e.io/api](https://docs.a13e.io/api) (Subscriber+)
-- **Knowledge Base**: [help.a13e.io](https://help.a13e.io)
+- **API Documentation**: [docs.a13e.com/api](https://docs.a13e.com/api) (Subscriber+)
+- **Knowledge Base**: [help.a13e.com](https://help.a13e.com)
 
 ### Support Channels
 
-- **Email**: support@a13e.io
+- **Email**: support@a13e.com
   - **Response time**: 24 hours (Free Scan), 8 hours (Subscriber), 4 hours (Enterprise)
 - **In-App Help**: Click the ? icon anywhere in the app
-- **Community Forum**: [community.a13e.io](https://community.a13e.io)
-- **Status Page**: [status.a13e.io](https://status.a13e.io)
+- **Community Forum**: [community.a13e.com](https://community.a13e.com)
+- **Status Page**: [status.a13e.com](https://status.a13e.com)
 
 ### Additional Resources
 
 - **MITRE ATT&CK**: [attack.mitre.org](https://attack.mitre.org)
 - **AWS Security Blog**: [aws.amazon.com/blogs/security](https://aws.amazon.com/blogs/security)
-- **A13E Blog**: [blog.a13e.io](https://blog.a13e.io)
-- **Webinars**: Register at [a13e.io/webinars](https://a13e.io/webinars)
+- **A13E Blog**: [blog.a13e.com](https://blog.a13e.com)
+- **Webinars**: Register at [a13e.com/webinars](https://a13e.com/webinars)
 
 ---
 
@@ -284,7 +284,7 @@ A13E is continuously improved with new features and enhancements.
 - Automated remediation workflows (Q2 2026)
 - Threat intelligence integration (Q2 2026)
 
-Subscribe to release notes: [a13e.io/releases](https://a13e.io/releases)
+Subscribe to release notes: [a13e.com/releases](https://a13e.com/releases)
 
 ---
 
@@ -293,9 +293,9 @@ Subscribe to release notes: [a13e.io/releases](https://a13e.io/releases)
 We value your input to improve A13E!
 
 **Feedback Channels**:
-- **Feature Requests**: Vote on features at [feedback.a13e.io](https://feedback.a13e.io)
-- **Bug Reports**: Email support@a13e.io
-- **Documentation**: Suggest improvements via support@a13e.io
+- **Feature Requests**: Vote on features at [feedback.a13e.com](https://feedback.a13e.com)
+- **Bug Reports**: Email support@a13e.com
+- **Documentation**: Suggest improvements via support@a13e.com
 
 **Enterprise Customers**:
 - Quarterly business reviews with your customer success manager
@@ -354,4 +354,4 @@ We value your input to improve A13E!
 
 **Ready to get started?** Begin with [Getting Started](./getting-started.md) or jump straight to [Connecting AWS Accounts](./connecting-aws-accounts.md).
 
-For questions or support, contact us at support@a13e.io or visit [help.a13e.io](https://help.a13e.io).
+For questions or support, contact us at support@a13e.com or visit [help.a13e.com](https://help.a13e.com).

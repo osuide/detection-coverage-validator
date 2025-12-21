@@ -61,7 +61,7 @@ def main():
     if len(sys.argv) < 3:
         print("Usage: python -m app.cli.create_admin <email> <password> [full_name]")
         print(
-            "Example: python -m app.cli.create_admin admin@a13e.io MySecurePass123! 'Platform Admin'"
+            "Example: python -m app.cli.create_admin admin@a13e.com MySecurePass123! 'Platform Admin'"
         )
         sys.exit(1)
 

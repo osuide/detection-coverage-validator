@@ -178,7 +178,7 @@ export function DocsLayout({ children }: DocsLayoutProps) {
               <ul className="space-y-1">
                 <li>
                   <a
-                    href="mailto:support@a13e.io"
+                    href="mailto:support@a13e.com"
                     className="flex items-center gap-3 px-3 py-2.5 text-sm text-gray-200 hover:bg-slate-800 hover:text-white rounded-lg transition-colors"
                   >
                     <Mail className="h-4 w-4" />

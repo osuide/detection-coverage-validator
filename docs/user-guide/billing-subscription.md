@@ -20,7 +20,7 @@ Perfect for teams evaluating A13E or conducting one-time security assessments.
 - Basic email support
 - Single user only
 
-Sign up at [app.a13e.io](https://app.a13e.io) and upgrade before 7 days to retain data.
+Sign up at [app.a13e.com](https://app.a13e.com) and upgrade before 7 days to retain data.
 
 ---
 
@@ -59,7 +59,7 @@ For large organisations (100+ accounts) with compliance and advanced support nee
 - 99.9% uptime SLA
 - Custom security controls and multi-organisation management
 
-Contact sales@a13e.io or click **Contact Sales** in the app.
+Contact sales@a13e.com or click **Contact Sales** in the app.
 
 ## Plan Comparison
 
@@ -124,7 +124,7 @@ You're immediately upgraded with unlimited scans, data retention, and all Subscr
 
 ### Subscriber to Enterprise
 
-Contact sales@a13e.io or click **Contact Sales** in Settings → Billing. Ideal when you have 20+ accounts or need SSO, compliance mapping, or dedicated support. All data migrates seamlessly with no downtime.
+Contact sales@a13e.com or click **Contact Sales** in Settings → Billing. Ideal when you have 20+ accounts or need SSO, compliance mapping, or dedicated support. All data migrates seamlessly with no downtime.
 
 ## Managing Cloud Accounts
 
@@ -160,7 +160,7 @@ Each invoice includes invoice number, billing period, line items (base fee, addi
 
 ### Downgrading
 
-**Enterprise to Subscriber**: Contact your customer success manager or support@a13e.io. Takes effect at end of billing period. Enterprise features disabled, but data retained for accounts within your new limit.
+**Enterprise to Subscriber**: Contact your customer success manager or support@a13e.com. Takes effect at end of billing period. Enterprise features disabled, but data retained for accounts within your new limit.
 
 **Subscriber to Free**: Not available (Free Scan is one-time only). Cancel subscription instead.
 
@@ -197,18 +197,18 @@ A: Yes. You're charged a pro-rated amount for the remainder of the month, then f
 A: Yes, based on billing address. US customers pay sales tax, EU customers may have VAT added.
 
 **Q: What's the minimum for Enterprise?**
-A: Typically 20+ cloud accounts. 30-day pilots available. Contact sales@a13e.io for custom pricing.
+A: Typically 20+ cloud accounts. 30-day pilots available. Contact sales@a13e.com for custom pricing.
 
 ## Getting Help
 
-**Billing Support**: billing@a13e.io (1 business day response)
+**Billing Support**: billing@a13e.com (1 business day response)
 
-**Sales**: sales@a13e.io | Schedule demo via Settings → Contact Sales
+**Sales**: sales@a13e.com | Schedule demo via Settings → Contact Sales
 
-**Technical Support**: support@a13e.io | In-app help (? icon)
+**Technical Support**: support@a13e.com | In-app help (? icon)
 
 ---
 
 **Next Steps**: [Team Management](./team-management.md) | [Running Scans](./running-scans.md) | [Getting Started](./getting-started.md)
 
-**Last updated**: December 2025 | Pricing subject to change. See [a13e.io/pricing](https://a13e.io/pricing)
+**Last updated**: December 2025 | Pricing subject to change. See [a13e.com/pricing](https://a13e.com/pricing)

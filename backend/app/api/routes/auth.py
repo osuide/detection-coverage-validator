@@ -2,8 +2,6 @@
 
 import re
 import secrets
-import time
-from collections import defaultdict
 from typing import Optional
 from uuid import UUID
 
@@ -12,6 +10,12 @@ from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps.rate_limit import (
+    auth_rate_limit,
+    signup_rate_limit,
+    password_reset_rate_limit,
+    mfa_rate_limit,
+)
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.security import AuthContext, get_auth_context
@@ -50,100 +54,14 @@ security = HTTPBearer(auto_error=False)
 
 
 # === Rate Limiting ===
-# Simple in-memory rate limiter for authentication endpoints
-# For production with multiple instances, use Redis-backed rate limiting
+# Redis-backed rate limiting for multi-instance deployments
+# See app/api/deps/rate_limit.py for implementation
 
-
-class RateLimiter:
-    """Simple in-memory rate limiter for authentication endpoints."""
-
-    def __init__(self):
-        # Format: {ip: [(timestamp, endpoint), ...]}
-        self._requests: dict[str, list[tuple[float, str]]] = defaultdict(list)
-        self._cleanup_interval = 60  # seconds
-        self._last_cleanup = time.time()
-
-    def _cleanup_old_requests(self, max_age: int = 300):
-        """Remove requests older than max_age seconds."""
-        now = time.time()
-        if now - self._last_cleanup < self._cleanup_interval:
-            return
-        self._last_cleanup = now
-        cutoff = now - max_age
-        for ip in list(self._requests.keys()):
-            self._requests[ip] = [
-                (ts, ep) for ts, ep in self._requests[ip] if ts > cutoff
-            ]
-            if not self._requests[ip]:
-                del self._requests[ip]
-
-    def is_rate_limited(
-        self, ip: str, endpoint: str, max_requests: int, window_seconds: int
-    ) -> bool:
-        """Check if IP is rate limited for the given endpoint."""
-        self._cleanup_old_requests()
-        now = time.time()
-        cutoff = now - window_seconds
-
-        # Count recent requests for this endpoint
-        recent_count = sum(
-            1 for ts, ep in self._requests[ip] if ts > cutoff and ep == endpoint
-        )
-
-        if recent_count >= max_requests:
-            return True
-
-        # Record this request
-        self._requests[ip].append((now, endpoint))
-        return False
-
-
-# Global rate limiter instance
-_rate_limiter = RateLimiter()
-
-
-def rate_limit_login(request: Request):
-    """Rate limit dependency for login endpoint: 10 requests per minute per IP."""
-    from app.core.security import get_client_ip
-
-    ip = get_client_ip(request) or "unknown"
-    if _rate_limiter.is_rate_limited(ip, "login", max_requests=10, window_seconds=60):
-        logger.warning("rate_limit_exceeded", ip=ip, endpoint="login")
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Too many login attempts. Please try again later.",
-            headers={"Retry-After": "60"},
-        )
-
-
-def rate_limit_signup(request: Request):
-    """Rate limit dependency for signup endpoint: 5 requests per minute per IP."""
-    from app.core.security import get_client_ip
-
-    ip = get_client_ip(request) or "unknown"
-    if _rate_limiter.is_rate_limited(ip, "signup", max_requests=5, window_seconds=60):
-        logger.warning("rate_limit_exceeded", ip=ip, endpoint="signup")
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Too many signup attempts. Please try again later.",
-            headers={"Retry-After": "60"},
-        )
-
-
-def rate_limit_password_reset(request: Request):
-    """Rate limit dependency for password reset: 3 requests per minute per IP."""
-    from app.core.security import get_client_ip
-
-    ip = get_client_ip(request) or "unknown"
-    if _rate_limiter.is_rate_limited(
-        ip, "password_reset", max_requests=3, window_seconds=60
-    ):
-        logger.warning("rate_limit_exceeded", ip=ip, endpoint="password_reset")
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Too many password reset attempts. Please try again later.",
-            headers={"Retry-After": "60"},
-        )
+# Create rate limit dependencies for use in endpoint decorators
+rate_limit_login = auth_rate_limit()
+rate_limit_signup = signup_rate_limit()
+rate_limit_password_reset = password_reset_rate_limit()
+rate_limit_mfa = mfa_rate_limit()
 
 
 # === Secure Cookie Configuration ===
@@ -510,16 +428,13 @@ async def signup(
                 detail=breach_message,
             )
 
-    # Generate slug from organization name
-    slug = re.sub(r"[^a-z0-9-]", "-", body.organization_name.lower())
-    slug = re.sub(r"-+", "-", slug).strip("-")
+    # Generate slug from organization name with guaranteed entropy
+    # Always add random suffix to prevent timing attacks and ensure uniqueness
+    import secrets
 
-    # Check if slug is available
-    if not await auth_service.check_slug_available(slug):
-        # Append random suffix (8 bytes = 16 hex chars for security)
-        import secrets
-
-        slug = f"{slug}-{secrets.token_hex(8)}"
+    slug_base = re.sub(r"[^a-z0-9-]", "-", body.organization_name.lower())
+    slug_base = re.sub(r"-+", "-", slug_base).strip("-")[:40]  # Limit base length
+    slug = f"{slug_base}-{secrets.token_hex(4)}"  # Always add 8 random chars
 
     # Create user
     user = await auth_service.create_user(

@@ -100,7 +100,7 @@ Similar to AWS, GCP credential validation is mocked in dev mode.
 
 ### Production Setup
 1. Switch to Stripe **live mode** keys (`sk_live_...`, `pk_live_...`)
-2. Create webhook endpoint in Stripe Dashboard pointing to `https://api.a13e.io/api/v1/billing/webhook`
+2. Create webhook endpoint in Stripe Dashboard pointing to `https://api.a13e.com/api/v1/billing/webhook`
 3. Configure events: `checkout.session.completed`, `customer.subscription.*`, `invoice.paid`, `invoice.payment_failed`
 4. Store live webhook secret in secrets manager
 

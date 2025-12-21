@@ -440,5 +440,5 @@ Whether the detection covers all variations of the technique.
 Questions about coverage analysis?
 
 - **In-App Help**: Click the ? icon in the Coverage page
-- **Knowledge Base**: Browse articles at docs.a13e.io
-- **Support**: Email support@a13e.io for coverage interpretation help
+- **Knowledge Base**: Browse articles at docs.a13e.com
+- **Support**: Email support@a13e.com for coverage interpretation help

@@ -33,6 +33,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=builder /install /usr/local
 ENV PATH=/usr/local/bin:$PATH
 
+# Remove conflicting 'multipart' package that breaks FastAPI
+# (python-multipart is the correct package, but 'multipart' gets installed as transitive dep)
+RUN pip uninstall -y multipart 2>/dev/null || true
+
 # Copy application code
 COPY backend/ .
 

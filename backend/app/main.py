@@ -38,6 +38,7 @@ from app.api.routes import (
 )
 from app.api.routes.admin import router as admin_router
 from app.api.v1.public import router as public_api_router
+from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.services.scheduler_service import scheduler_service
 
 
@@ -257,6 +258,8 @@ def seed_mitre_data():
 
 def seed_admin_user():
     """Seed initial admin user for staging/production if not exists."""
+    import secrets
+    import bcrypt
     from sqlalchemy import create_engine, text
 
     env = os.environ.get("ENVIRONMENT", "development")
@@ -268,9 +271,6 @@ def seed_admin_user():
         database_url = settings.database_url.replace("+asyncpg", "")
         engine = create_engine(database_url)
 
-        # Pre-computed bcrypt hash for 'A13eSecurePwd2025S'
-        password_hash = "$2b$12$4Q0K4qSFgTcUWVf7CG8xb.4sOgcVzFjwbKbLbd3Dxjv8BLtYzX2jm"
-
         with engine.connect() as conn:
             result = conn.execute(
                 text("SELECT id FROM admin_users WHERE email = :email"),
@@ -281,6 +281,25 @@ def seed_admin_user():
             if existing:
                 logger.info("admin_user_exists", email="admin@a13e.com")
                 return
+
+            # Check for environment variable first, otherwise generate random password
+            admin_password = os.environ.get("INITIAL_ADMIN_PASSWORD")
+
+            if not admin_password:
+                # Generate cryptographically secure password
+                admin_password = secrets.token_urlsafe(16)
+                # Log once for operator to save - this is the only time it will be shown
+                logger.critical(
+                    "generated_initial_admin_password",
+                    password=admin_password,
+                    email="admin@a13e.com",
+                    message="SAVE THIS PASSWORD IMMEDIATELY - it will not be shown again",
+                )
+
+            # Hash the password with bcrypt
+            password_hash = bcrypt.hashpw(
+                admin_password.encode(), bcrypt.gensalt(12)
+            ).decode()
 
             from uuid import uuid4
 
@@ -311,6 +330,7 @@ def seed_admin_user():
                 "admin_user_created",
                 email="admin@a13e.com",
                 admin_id=str(admin_id),
+                password_from_env=bool(os.environ.get("INITIAL_ADMIN_PASSWORD")),
             )
     except Exception as e:
         logger.warning("admin_seed_failed", error=str(e))
@@ -358,6 +378,14 @@ async def lifespan(app: FastAPI):
     # Seed compliance framework data if not present
     await seed_compliance_data()
 
+    # Initialise Redis-backed rate limiter
+    from app.api.deps.rate_limit import init_rate_limiter, close_rate_limiter
+
+    try:
+        await init_rate_limiter()
+    except Exception as e:
+        logger.error("rate_limiter_init_failed", error=str(e))
+
     try:
         await scheduler_service.start()
     except Exception as e:
@@ -369,6 +397,10 @@ async def lifespan(app: FastAPI):
         await scheduler_service.stop()
     except Exception as e:
         logger.error("scheduler_stop_failed", error=str(e))
+    try:
+        await close_rate_limiter()
+    except Exception as e:
+        logger.error("rate_limiter_close_failed", error=str(e))
 
 
 app = FastAPI(
@@ -403,6 +435,9 @@ app.add_middleware(
 
 # Add secure logging middleware (excludes sensitive endpoint bodies from logs)
 app.add_middleware(SecureLoggingMiddleware)
+
+# Add security headers middleware (X-Frame-Options, HSTS, CSP, etc.)
+app.add_middleware(SecurityHeadersMiddleware)
 
 # Include routers
 app.include_router(health.router, tags=["Health"])

@@ -25,14 +25,11 @@ resource "random_password" "db_password" {
 
 resource "aws_security_group" "db" {
   name_prefix = "dcv-${var.environment}-db-"
+  description = "Security group for RDS database - ingress rules added by backend module"
   vpc_id      = var.vpc_id
 
-  ingress {
-    from_port   = 5432
-    to_port     = 5432
-    protocol    = "tcp"
-    cidr_blocks = ["10.0.0.0/8"]
-  }
+  # Ingress rules are added by the backend module using aws_security_group_rule
+  # to allow only ECS containers to access the database (no CIDR blocks)
 
   egress {
     from_port   = 0

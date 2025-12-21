@@ -154,15 +154,21 @@ class CloudCredential(Base):
 
     @staticmethod
     def _get_encryption_key() -> bytes:
-        """Get encryption key from settings."""
+        """Get encryption key from settings.
+
+        Validates the key by attempting to create a Fernet instance,
+        which ensures the key is properly formatted base64.
+        """
         settings = get_settings()
         key = settings.credential_encryption_key
         if not key:
             raise ValueError("CREDENTIAL_ENCRYPTION_KEY not configured")
-        # Ensure key is valid Fernet format
-        if len(key) != 44:
-            raise ValueError("Invalid encryption key format")
-        return key.encode()
+        try:
+            # Validate key by creating Fernet instance
+            Fernet(key.encode())
+            return key.encode()
+        except Exception as e:
+            raise ValueError(f"Invalid encryption key: {e}")
 
     def set_gcp_service_account_key(self, key_json: str) -> None:
         """Encrypt and store GCP service account key.

@@ -1,21 +1,21 @@
 # Security Policy for A13E Detection Coverage Validator
 # https://securitytxt.org/
 
-Contact: mailto:security@a13e.io
+Contact: mailto:security@a13e.com
 Expires: 2026-12-31T23:59:59.000Z
-Encryption: https://a13e.io/.well-known/pgp-key.txt
+Encryption: https://a13e.com/.well-known/pgp-key.txt
 Preferred-Languages: en
-Canonical: https://a13e.io/.well-known/security.txt
-Policy: https://a13e.io/security-policy
+Canonical: https://a13e.com/.well-known/security.txt
+Policy: https://a13e.com/security-policy
 
 # Scope
-# This security.txt applies to all a13e.io domains and subdomains.
+# This security.txt applies to all a13e.com domains and subdomains.
 # We appreciate responsible disclosure of security vulnerabilities.
 
 # Acknowledgements
 # We maintain a hall of fame for security researchers who have
 # helped improve our security posture.
-Acknowledgments: https://a13e.io/security-thanks
+Acknowledgments: https://a13e.com/security-thanks
 
 # Our Commitment
 # We are committed to addressing reported vulnerabilities promptly.

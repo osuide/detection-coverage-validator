@@ -514,6 +514,14 @@ async def delete_credential(
 # Resolve template directory once at module load (absolute path for security)
 _TEMPLATE_DIR = (_Path(__file__).parent.parent.parent / "templates").resolve()
 
+# Explicit allowlist of permitted templates (defense in depth)
+_ALLOWED_TEMPLATES = {
+    "aws_cloudformation.yaml",
+    "terraform/aws/main.tf",
+    "terraform/gcp/main.tf",
+    "gcp_setup.sh",
+}
+
 
 def _read_template(relative_path: str) -> str:
     """Safely read a template file with path traversal protection.
@@ -525,9 +533,20 @@ def _read_template(relative_path: str) -> str:
         Template file contents
 
     Raises:
-        HTTPException 404: If template not found
+        HTTPException 404: If template not found or not in allowlist
         HTTPException 403: If path traversal attempt detected
     """
+    # Security: Check allowlist first (defense in depth)
+    if relative_path not in _ALLOWED_TEMPLATES:
+        logger.warning(
+            "template_not_in_allowlist",
+            requested_path=relative_path,
+        )
+        raise HTTPException(
+            status_code=404,
+            detail="Template not found",
+        )
+
     # Resolve the full path
     template_path = (_TEMPLATE_DIR / relative_path).resolve()
 

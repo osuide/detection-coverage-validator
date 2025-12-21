@@ -1,7 +1,7 @@
 """Scan orchestration service."""
 
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 import boto3
@@ -69,7 +69,7 @@ class ScanService:
         try:
             # Update to running
             scan.status = ScanStatus.RUNNING
-            scan.started_at = datetime.utcnow()
+            scan.started_at = datetime.now(timezone.utc)
             scan.current_step = "Initializing"
             await self.db.commit()
 
@@ -84,9 +84,15 @@ class ScanService:
             scan.progress_percent = 10
             await self.db.commit()
 
-            raw_detections = await self._scan_detections(
+            raw_detections, scanner_errors = await self._scan_detections(
                 session, regions, scan.detection_types
             )
+
+            # Store any scanner errors in scan results
+            if scanner_errors:
+                scan.errors = [
+                    {"message": e, "type": "scanner"} for e in scanner_errors
+                ]
 
             # Process detections
             scan.current_step = "Processing detections"
@@ -126,7 +132,7 @@ class ScanService:
 
             # Update scan results
             scan.status = ScanStatus.COMPLETED
-            scan.completed_at = datetime.utcnow()
+            scan.completed_at = datetime.now(timezone.utc)
             scan.current_step = "Complete"
             scan.progress_percent = 100
             scan.detections_found = stats["found"]
@@ -134,7 +140,7 @@ class ScanService:
             scan.detections_updated = stats["updated"]
 
             # Update account last scan time
-            account.last_scan_at = datetime.utcnow()
+            account.last_scan_at = datetime.now(timezone.utc)
 
             await self.db.commit()
 
@@ -245,9 +251,15 @@ class ScanService:
         session: boto3.Session,
         regions: list[str],
         detection_types: list[str],
-    ) -> list[RawDetection]:
-        """Run all applicable scanners."""
+    ) -> tuple[list[RawDetection], list[str]]:
+        """Run all applicable scanners.
+
+        Returns:
+            Tuple of (detections, errors) where errors is a list of
+            scanner failure messages to include in scan results.
+        """
         all_detections = []
+        scan_errors = []
 
         # Determine which scanners to use
         scanners = []
@@ -276,13 +288,15 @@ class ScanService:
                     count=len(detections),
                 )
             except Exception as e:
+                error_msg = f"{scanner.__class__.__name__}: {str(e)}"
+                scan_errors.append(error_msg)
                 self.logger.error(
                     "scanner_error",
                     scanner=scanner.__class__.__name__,
                     error=str(e),
                 )
 
-        return all_detections
+        return all_detections, scan_errors
 
     async def _process_detections(
         self,
@@ -316,7 +330,7 @@ class ScanService:
                 detection.log_groups = raw.log_groups
                 detection.description = raw.description
                 detection.status = DetectionStatus.ACTIVE
-                detection.updated_at = datetime.utcnow()
+                detection.updated_at = datetime.now(timezone.utc)
                 stats["updated"] += 1
             else:
                 # Create new
@@ -389,7 +403,12 @@ class ScanService:
         await self.db.flush()
 
     async def _map_detections(self, cloud_account_id: UUID) -> None:
-        """Map all detections to MITRE techniques."""
+        """Map all detections to MITRE techniques.
+
+        Optimised to avoid N+1 queries by bulk-fetching techniques.
+        """
+        from app.models.mitre import Technique
+
         # Get all detections for account
         result = await self.db.execute(
             select(Detection).where(
@@ -399,15 +418,22 @@ class ScanService:
         )
         detections = result.scalars().all()
 
-        for detection in detections:
-            # Delete existing mappings
-            await self.db.execute(
-                delete(DetectionMapping).where(
-                    DetectionMapping.detection_id == detection.id
-                )
-            )
+        if not detections:
+            return
 
-            # Create RawDetection for mapper
+        # Phase 1: Delete existing mappings for all detections (bulk operation)
+        detection_ids = [d.id for d in detections]
+        await self.db.execute(
+            delete(DetectionMapping).where(
+                DetectionMapping.detection_id.in_(detection_ids)
+            )
+        )
+
+        # Phase 2: Collect all technique IDs needed
+        detection_mappings_list = []  # [(detection, [mappings])]
+        technique_ids_needed = set()
+
+        for detection in detections:
             raw = RawDetection(
                 name=detection.name,
                 detection_type=detection.detection_type,
@@ -419,24 +445,24 @@ class ScanService:
                 log_groups=detection.log_groups,
                 description=detection.description,
             )
-
-            # Get mappings from pattern mapper
             mappings = self.mapper.map_detection(raw, min_confidence=0.4)
+            detection_mappings_list.append((detection, mappings))
+            technique_ids_needed.update(m.technique_id for m in mappings)
 
-            # Create mapping records
-            # Note: This requires technique records to exist in DB
-            # For now, we store technique_id as string reference
-            for mapping in mappings:
-                # Look up technique in DB
-                from app.models.mitre import Technique
-
-                tech_result = await self.db.execute(
-                    select(Technique).where(
-                        Technique.technique_id == mapping.technique_id
-                    )
+        # Phase 3: Bulk fetch all techniques in one query
+        techniques_map = {}
+        if technique_ids_needed:
+            tech_result = await self.db.execute(
+                select(Technique).where(
+                    Technique.technique_id.in_(technique_ids_needed)
                 )
-                technique = tech_result.scalar_one_or_none()
+            )
+            techniques_map = {t.technique_id: t for t in tech_result.scalars().all()}
 
+        # Phase 4: Create all mapping records using cached techniques
+        for detection, mappings in detection_mappings_list:
+            for mapping in mappings:
+                technique = techniques_map.get(mapping.technique_id)
                 if technique:
                     dm = DetectionMapping(
                         detection_id=detection.id,
@@ -453,6 +479,6 @@ class ScanService:
     async def _fail_scan(self, scan: Scan, error: str) -> None:
         """Mark scan as failed."""
         scan.status = ScanStatus.FAILED
-        scan.completed_at = datetime.utcnow()
+        scan.completed_at = datetime.now(timezone.utc)
         scan.errors = [{"message": error}]
         await self.db.commit()

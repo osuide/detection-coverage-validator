@@ -336,7 +336,7 @@ If a scan fails:
 2. **Review Permissions**: Ensure IAM role still has required permissions
 3. **Check AWS Status**: Verify no AWS service outages in your regions
 4. **Retry**: Click **Run Scan** again after resolving issues
-5. **Contact Support**: If issues persist, email support@a13e.io with scan ID
+5. **Contact Support**: If issues persist, email support@a13e.com with scan ID
 
 ### Managing Results
 
@@ -389,4 +389,4 @@ For scan-related issues:
 - **Check Account Connection**: Ensure "Connected" status before scanning
 - **Review Permissions**: Verify IAM role has all required permissions
 - **Check Logs**: Navigate to Settings → Audit Logs for detailed error messages
-- **Contact Support**: Email support@a13e.io with scan ID and error details
+- **Contact Support**: Email support@a13e.com with scan ID and error details

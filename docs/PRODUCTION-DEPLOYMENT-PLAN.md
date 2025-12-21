@@ -3,7 +3,7 @@
 **Created:** 2025-12-19
 **Status:** PLANNING (Not Yet Executed)
 **Target Environment:** AWS eu-west-2
-**Production Domain:** app.a13e.io / api.a13e.io
+**Production Domain:** app.a13e.com / api.a13e.com
 
 ---
 
@@ -24,7 +24,7 @@ This document outlines the complete plan for deploying the A13E Detection Covera
 
 Before starting production deployment, ensure:
 
-- [ ] Domain `a13e.io` is registered and accessible
+- [ ] Domain `a13e.com` is registered and accessible
 - [ ] AWS CLI configured with appropriate IAM permissions
 - [ ] Terraform v1.0+ installed
 - [ ] Stripe account ready for live mode activation
@@ -47,7 +47,7 @@ Before starting production deployment, ensure:
 | **CloudFront Price Class** | 100 (US/EU) | 100 (US/EU) | Same |
 | **WAF** | Enabled | Enabled | Same |
 | **Deletion Protection** | No | Yes | Enable |
-| **Domain** | staging.a13e.com | app.a13e.io | Change |
+| **Domain** | staging.a13e.com | app.a13e.com | Change |
 | **Stripe Mode** | Test | Live | Switch |
 
 ---
@@ -106,7 +106,7 @@ ecs_min_capacity  = 2
 ecs_max_capacity  = 6
 
 # Domain Configuration
-domain_name  = "a13e.io"
+domain_name  = "a13e.com"
 subdomain    = "app"
 api_subdomain = "api"
 enable_https = true
@@ -126,7 +126,7 @@ enable_ses = true
 
 # Monitoring
 enable_enhanced_monitoring = true
-alarm_email = "alerts@a13e.io"
+alarm_email = "alerts@a13e.com"
 
 # Tags
 tags = {
@@ -182,11 +182,11 @@ variable "alarm_email" {
 
 ### Phase 2: Domain & SSL Setup (30 min)
 
-**Task 2.1: Create Route 53 Hosted Zone for a13e.io**
+**Task 2.1: Create Route 53 Hosted Zone for a13e.com**
 
 If not already done:
 ```bash
-aws route53 create-hosted-zone --name a13e.io --caller-reference $(date +%s)
+aws route53 create-hosted-zone --name a13e.com --caller-reference $(date +%s)
 ```
 
 **Task 2.2: Update Domain Registrar**
@@ -198,8 +198,8 @@ Point nameservers from your registrar to Route 53:
 **Task 2.3: ACM Certificates Will Be Created by Terraform**
 
 Certificates needed:
-- `app.a13e.io` (CloudFront - us-east-1)
-- `api.a13e.io` (ALB - eu-west-2)
+- `app.a13e.com` (CloudFront - us-east-1)
+- `api.a13e.com` (ALB - eu-west-2)
 
 ---
 
@@ -227,7 +227,7 @@ Certificates needed:
 **Task 3.3: Create Live Webhook Endpoint**
 
 1. Go to Developers > Webhooks
-2. Add endpoint: `https://api.a13e.io/api/v1/billing/webhook`
+2. Add endpoint: `https://api.a13e.com/api/v1/billing/webhook`
 3. Select events:
    - `checkout.session.completed`
    - `customer.subscription.created`
@@ -260,7 +260,7 @@ aws secretsmanager create-secret \
 1. Go to Google Cloud Console > APIs & Services > Credentials
 2. Edit OAuth 2.0 Client
 3. Add Authorized redirect URI:
-   - `https://app.a13e.io/auth/callback`
+   - `https://app.a13e.com/auth/callback`
    - `https://dcv-production-xxx.auth.eu-west-2.amazoncognito.com/oauth2/idpresponse`
 
 **Task 4.2: Update GitHub OAuth App**
@@ -268,7 +268,7 @@ aws secretsmanager create-secret \
 1. Go to GitHub > Settings > Developer settings > OAuth Apps
 2. Edit application
 3. Update Authorization callback URL:
-   - `https://api.a13e.io/api/v1/auth/github/callback`
+   - `https://api.a13e.com/api/v1/auth/github/callback`
 
 ---
 
@@ -304,7 +304,7 @@ terraform plan -var-file=production.tfvars -out=production.tfplan
 Verify:
 - [ ] RDS is db.t3.small with Multi-AZ
 - [ ] ECS has 2 desired tasks
-- [ ] Domain names are correct (app.a13e.io, api.a13e.io)
+- [ ] Domain names are correct (app.a13e.com, api.a13e.com)
 - [ ] Deletion protection is enabled
 - [ ] No resources from staging will be affected
 
@@ -359,7 +359,7 @@ aws ecs execute-command \
   --task <task-id> \
   --container backend \
   --interactive \
-  --command "python scripts/create_admin.py --email admin@a13e.io"
+  --command "python scripts/create_admin.py --email admin@a13e.com"
 ```
 
 ---
@@ -393,7 +393,7 @@ docker push <account-id>.dkr.ecr.eu-west-2.amazonaws.com/a13e-production-backend
 cd frontend
 
 # Update environment for production
-echo "VITE_API_BASE_URL=https://api.a13e.io" > .env.production
+echo "VITE_API_BASE_URL=https://api.a13e.com" > .env.production
 
 # Build
 npm run build
@@ -424,11 +424,11 @@ aws ecs update-service \
 
 ```bash
 # API health
-curl https://api.a13e.io/health
+curl https://api.a13e.com/health
 # Expected: {"status":"healthy","version":"0.1.0"}
 
 # Frontend loads
-curl -I https://app.a13e.io
+curl -I https://app.a13e.com
 # Expected: HTTP/2 200
 ```
 
@@ -451,7 +451,7 @@ curl -I https://app.a13e.io
 
 **Task 8.3: Admin Portal Testing**
 
-- [ ] Admin login at https://admin.a13e.io
+- [ ] Admin login at https://admin.a13e.com
 - [ ] View organizations
 - [ ] View users
 - [ ] View metrics dashboard
@@ -484,7 +484,7 @@ aws sns create-topic --name a13e-production-alerts --region eu-west-2
 aws sns subscribe \
   --topic-arn arn:aws:sns:eu-west-2:<account-id>:a13e-production-alerts \
   --protocol email \
-  --notification-endpoint alerts@a13e.io
+  --notification-endpoint alerts@a13e.com
 ```
 
 **Task 9.3: Create CloudWatch Dashboard**
@@ -506,7 +506,7 @@ Create dashboard with widgets for:
 2. Click "Request production access"
 3. Fill out:
    - Mail type: Transactional
-   - Website URL: https://app.a13e.io
+   - Website URL: https://app.a13e.com
    - Use case description: "Password reset, team invitations, subscription confirmations"
    - Expected send volume: < 1000/day initially
 
@@ -518,7 +518,7 @@ AWS typically responds within 24-48 hours.
 
 If using different domain than staging:
 ```bash
-aws ses verify-domain-identity --domain a13e.io --region eu-west-2
+aws ses verify-domain-identity --domain a13e.com --region eu-west-2
 ```
 
 Add DNS records:
@@ -625,8 +625,8 @@ terraform destroy -var-file=production.tfvars
 
 | Role | Contact | Responsibility |
 |------|---------|----------------|
-| Platform Lead | austin@a13e.io | Infrastructure decisions |
-| On-Call | alerts@a13e.io | Incident response |
+| Platform Lead | austin@a13e.com | Infrastructure decisions |
+| On-Call | alerts@a13e.com | Incident response |
 | AWS Support | AWS Console | Infrastructure issues |
 | Stripe Support | dashboard.stripe.com | Payment issues |
 

@@ -179,7 +179,7 @@ class ReportService:
                 canvas_obj.drawString(
                     0.75 * inch,
                     0.5 * inch,
-                    "Free tier report - Upgrade to remove watermark: a13e.io/upgrade",
+                    "Free tier report - Upgrade to remove watermark: a13e.com/upgrade",
                 )
                 canvas_obj.restoreState()
 
