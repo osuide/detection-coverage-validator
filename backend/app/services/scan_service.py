@@ -28,6 +28,7 @@ from app.scanners.aws.securityhub_scanner import SecurityHubScanner
 from app.scanners.base import RawDetection, BaseScanner
 from app.mappers.pattern_mapper import PatternMapper
 from app.services.coverage_service import CoverageService
+from app.services.drift_detection_service import DriftDetectionService
 from app.services.notification_service import trigger_scan_alerts
 from app.services.aws_credential_service import aws_credential_service
 from app.services.region_discovery_service import region_discovery_service
@@ -178,6 +179,17 @@ class ScanService:
             coverage_snapshot = await coverage_service.calculate_coverage(
                 account.id, scan.id
             )
+
+            # Record coverage history for drift detection
+            try:
+                drift_service = DriftDetectionService(self.db)
+                await drift_service.record_coverage_snapshot(account.id, scan.id)
+            except Exception as drift_error:
+                self.logger.warning(
+                    "drift_detection_failed",
+                    scan_id=str(scan_id),
+                    error=str(drift_error),
+                )
 
             # Trigger alerts based on scan results
             try:
