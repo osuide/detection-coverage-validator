@@ -149,3 +149,18 @@ variable "waf_allowed_ips" {
   type        = list(string)
   default     = []
 }
+
+# ============================================================================
+# GuardDuty Configuration
+# ============================================================================
+
+variable "guardduty_finding_publishing_frequency" {
+  description = "Frequency of GuardDuty finding exports. FIFTEEN_MINUTES for prod, SIX_HOURS for staging."
+  type        = string
+  default     = "SIX_HOURS"
+
+  validation {
+    condition     = contains(["FIFTEEN_MINUTES", "ONE_HOUR", "SIX_HOURS"], var.guardduty_finding_publishing_frequency)
+    error_message = "guardduty_finding_publishing_frequency must be FIFTEEN_MINUTES, ONE_HOUR, or SIX_HOURS."
+  }
+}

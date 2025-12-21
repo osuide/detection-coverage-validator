@@ -253,3 +253,36 @@ module "cognito" {
 #   domain      = var.domain_name
 #   environment = var.environment
 # }
+
+# ============================================================================
+# GuardDuty - AWS Threat Detection
+# ============================================================================
+
+resource "aws_guardduty_detector" "main" {
+  enable                       = true
+  finding_publishing_frequency = var.guardduty_finding_publishing_frequency
+
+  # Enable all relevant data sources
+  datasources {
+    s3_logs {
+      enable = true
+    }
+    kubernetes {
+      audit_logs {
+        enable = true
+      }
+    }
+    malware_protection {
+      scan_ec2_instance_with_findings {
+        ebs_volumes {
+          enable = true
+        }
+      }
+    }
+  }
+
+  tags = {
+    Name        = "a13e-${var.environment}-guardduty"
+    Environment = var.environment
+  }
+}
