@@ -13,6 +13,7 @@ from app.mappers.indicator_library import (
 )
 from app.mappers.guardduty_mappings import get_mitre_mappings_for_finding
 from app.mappers.config_rule_mappings import get_techniques_for_config_rule
+from app.mappers.securityhub_mappings import get_techniques_for_security_hub
 from app.scanners.base import RawDetection
 from app.models.detection import DetectionType
 
@@ -126,48 +127,37 @@ class PatternMapper:
                             )
                         )
 
-        # Security Hub mappings based on standard controls
+        # Security Hub mappings - using official MITRE CTID mappings
         elif detection.detection_type == DetectionType.SECURITY_HUB:
             raw_config = detection.raw_config or {}
             standard_name = raw_config.get("standard_name", "")
+            control_id = raw_config.get("control_id", "")
+            finding_title = detection.description or detection.name or ""
 
-            # Map Security Hub standards to general techniques
-            if (
-                "foundational" in standard_name.lower()
-                or "best-practices" in standard_name.lower()
-            ):
-                # AWS Foundational Best Practices covers multiple defense areas
-                for tech_id in ["T1562.008", "T1078.004", "T1098"]:
-                    indicator = TECHNIQUE_BY_ID.get(tech_id)
-                    if indicator:
-                        results.append(
-                            MappingResult(
-                                technique_id=tech_id,
-                                technique_name=indicator.technique_name,
-                                tactic_id=indicator.tactic_id,
-                                tactic_name=indicator.tactic_name,
-                                confidence=0.7,
-                                matched_indicators=[f"securityhub:{standard_name}"],
-                                rationale=f"Security Hub {standard_name} standard coverage",
-                            )
-                        )
+            # Get official MITRE mappings for this Security Hub finding
+            technique_mappings = get_techniques_for_security_hub(
+                standard_name=standard_name,
+                control_id=control_id,
+                finding_title=finding_title,
+            )
 
-            elif "cis" in standard_name.lower():
-                # CIS benchmarks focus on hardening
-                for tech_id in ["T1562.008", "T1078.004", "T1098", "T1552.005"]:
-                    indicator = TECHNIQUE_BY_ID.get(tech_id)
-                    if indicator:
-                        results.append(
-                            MappingResult(
-                                technique_id=tech_id,
-                                technique_name=indicator.technique_name,
-                                tactic_id=indicator.tactic_id,
-                                tactic_name=indicator.tactic_name,
-                                confidence=0.75,
-                                matched_indicators=[f"securityhub:{standard_name}"],
-                                rationale=f"Security Hub {standard_name} standard coverage",
-                            )
+            for technique_id, confidence in technique_mappings:
+                indicator = TECHNIQUE_BY_ID.get(technique_id)
+                if indicator:
+                    matched = (
+                        f"{standard_name}:{control_id}" if control_id else standard_name
+                    )
+                    results.append(
+                        MappingResult(
+                            technique_id=technique_id,
+                            technique_name=indicator.technique_name,
+                            tactic_id=indicator.tactic_id,
+                            tactic_name=indicator.tactic_name,
+                            confidence=confidence,
+                            matched_indicators=[f"securityhub:{matched}"],
+                            rationale=f"Security Hub {matched} - MITRE CTID mapping",
                         )
+                    )
 
         # Config Rule mappings - using official MITRE CTID mappings
         elif detection.detection_type == DetectionType.CONFIG_RULE:
