@@ -4,7 +4,14 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import String, DateTime, Enum as SQLEnum, Text, ForeignKey
+from sqlalchemy import (
+    String,
+    DateTime,
+    Enum as SQLEnum,
+    Text,
+    ForeignKey,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 import enum
@@ -23,6 +30,13 @@ class CloudAccount(Base):
     """Represents a cloud account to be scanned."""
 
     __tablename__ = "cloud_accounts"
+    __table_args__ = (
+        # Unique constraint per organisation - same cloud account can be
+        # connected by different organisations (e.g., consultants scanning clients)
+        UniqueConstraint(
+            "organization_id", "account_id", name="uq_cloud_accounts_org_account"
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
@@ -47,9 +61,9 @@ class CloudAccount(Base):
         SQLEnum(CloudProvider, values_callable=lambda x: [e.value for e in x]),
         nullable=False,
     )
-    account_id: Mapped[str] = mapped_column(
-        String(64), nullable=False, unique=True, index=True
-    )
+    # Account ID is unique per organisation, not globally
+    # (multiple orgs can scan the same AWS/GCP account)
+    account_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     regions: Mapped[dict] = mapped_column(JSONB, default=list)
     credentials_arn: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
