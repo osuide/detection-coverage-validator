@@ -13,7 +13,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "021_fix_cloud_account_unique"
-down_revision = "020_add_compliance_frameworks"
+down_revision = "020_add_compliance"
 branch_labels = None
 depends_on = None
 
