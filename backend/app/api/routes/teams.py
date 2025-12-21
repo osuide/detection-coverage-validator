@@ -426,6 +426,18 @@ async def accept_invite(
             detail="Invalid or expired invite token",
         )
 
+    # H5: Additional validation - if invite has a user_id set, verify it matches
+    if invite.user_id and invite.user_id != auth.user.id:
+        logger.warning(
+            "invite_user_mismatch",
+            invite_user_id=str(invite.user_id),
+            current_user_id=str(auth.user.id),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This invite is not for your account",
+        )
+
     # Accept the invite
     invite.user_id = auth.user.id
     invite.status = MembershipStatus.ACTIVE

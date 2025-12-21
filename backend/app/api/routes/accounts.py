@@ -3,7 +3,7 @@
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, delete
 import structlog
@@ -196,6 +196,14 @@ async def delete_account(
     account = result.scalar_one_or_none()
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
+
+    # H3: Validate account access if user has restricted allowed_account_ids
+    if auth.membership and auth.membership.allowed_account_ids is not None:
+        if not auth.can_access_account(account_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied to this cloud account",
+            )
 
     # H7: Check for active scans before allowing deletion
     active_scans_result = await db.execute(
