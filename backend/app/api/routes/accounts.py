@@ -132,8 +132,10 @@ async def create_account(
             detail=f"Account with ID {account_in.account_id} already exists in your organisation",
         )
 
+    # Use mode="json" to serialize region_config properly for JSONB storage
+    account_data = account_in.model_dump(mode="json")
     account = CloudAccount(
-        **account_in.model_dump(),
+        **account_data,
         organization_id=auth.organization_id,
     )
     db.add(account)
@@ -194,6 +196,9 @@ async def update_account(
 
     update_data = account_in.model_dump(exclude_unset=True)
     for field, value in update_data.items():
+        # Serialize region_config to JSON-compatible dict for JSONB storage
+        if field == "region_config" and value is not None:
+            value = account_in.region_config.model_dump(mode="json")
         setattr(account, field, value)
 
     await db.flush()
