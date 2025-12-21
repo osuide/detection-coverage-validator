@@ -45,12 +45,40 @@ class Settings(BaseSettings):
     hibp_password_check_enabled: bool = True
     hibp_min_breach_count: int = 1  # Minimum breach count to reject password
 
+    @staticmethod
+    def _calculate_entropy(s: str) -> float:
+        """Calculate Shannon entropy of a string (bits per character)."""
+        import math
+        from collections import Counter
+
+        if not s:
+            return 0.0
+
+        length = len(s)
+        freq = Counter(s)
+        entropy = 0.0
+
+        for count in freq.values():
+            probability = count / length
+            entropy -= probability * math.log2(probability)
+
+        return entropy
+
     def model_post_init(self, __context) -> None:
         """Validate critical security settings after initialization."""
         # Validate SECRET_KEY length in all environments
         if len(self.secret_key) < 32:
             raise ValueError(
                 "CRITICAL: SECRET_KEY must be at least 32 characters long for security. "
+                'Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"'
+            )
+
+        # Validate SECRET_KEY entropy (prevent weak keys like 'aaaa....')
+        entropy = self._calculate_entropy(self.secret_key)
+        if entropy < 3.0:  # Minimum ~3 bits per character for reasonable randomness
+            raise ValueError(
+                f"CRITICAL: SECRET_KEY has insufficient entropy ({entropy:.2f} bits/char). "
+                "The key appears to be non-random (e.g., repeated characters). "
                 'Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"'
             )
 

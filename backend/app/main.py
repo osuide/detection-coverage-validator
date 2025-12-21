@@ -414,7 +414,81 @@ app = FastAPI(
 cors_origins_str = os.environ.get(
     "CORS_ORIGINS", "http://localhost:3000,http://localhost:3001,http://localhost:5173"
 )
-cors_origins = [origin.strip() for origin in cors_origins_str.split(",")]
+cors_origins = [
+    origin.strip() for origin in cors_origins_str.split(",") if origin.strip()
+]
+
+
+def validate_cors_origins(origins: list[str], environment: str) -> list[str]:
+    """Validate CORS origins on startup.
+
+    Security checks:
+    - No wildcards (*) allowed
+    - Valid URL format required
+    - HTTPS required in production (except localhost)
+    """
+    from urllib.parse import urlparse
+
+    validated = []
+    for origin in origins:
+        # Reject wildcards
+        if origin == "*" or "*" in origin:
+            logger.error(
+                "cors_wildcard_rejected",
+                origin=origin,
+                message="Wildcard CORS origins are not allowed",
+            )
+            continue
+
+        # Parse and validate URL
+        try:
+            parsed = urlparse(origin)
+            if not parsed.scheme or not parsed.netloc:
+                logger.error(
+                    "cors_invalid_origin",
+                    origin=origin,
+                    message="Invalid URL format",
+                )
+                continue
+
+            # Require HTTPS in production (except for localhost)
+            is_localhost = parsed.netloc.startswith(
+                "localhost"
+            ) or parsed.netloc.startswith("127.0.0.1")
+            if (
+                environment not in ("development", "test")
+                and parsed.scheme != "https"
+                and not is_localhost
+            ):
+                logger.error(
+                    "cors_insecure_origin",
+                    origin=origin,
+                    environment=environment,
+                    message="HTTPS required for CORS origins in production",
+                )
+                continue
+
+            validated.append(origin)
+
+        except Exception as e:
+            logger.error("cors_parse_error", origin=origin, error=str(e))
+            continue
+
+    if not validated:
+        logger.warning(
+            "cors_no_valid_origins",
+            message="No valid CORS origins configured - CORS will block all cross-origin requests",
+        )
+
+    return validated
+
+
+# Validate CORS origins on startup
+cors_origins = validate_cors_origins(
+    cors_origins, os.environ.get("ENVIRONMENT", "development")
+)
+logger.info("cors_origins_configured", origins=cors_origins)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,

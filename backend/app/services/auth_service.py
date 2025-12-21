@@ -222,9 +222,21 @@ class AuthService:
         ):
             # Increment failed attempts
             user.failed_login_attempts += 1
+
+            # Exponential backoff lockout (H3 security fix)
+            # Each time user hits max attempts, lockout doubles, capped at 24 hours
             if user.failed_login_attempts >= settings.max_login_attempts:
+                # Calculate lockout count (how many times they've hit max attempts)
+                lockout_count = (
+                    user.failed_login_attempts // settings.max_login_attempts
+                )
+                # Exponential backoff: base * 2^(count-1), capped at 1440 minutes (24 hours)
+                lockout_minutes = min(
+                    settings.lockout_duration_minutes * (2 ** (lockout_count - 1)),
+                    1440,  # 24 hour cap
+                )
                 user.locked_until = datetime.now(timezone.utc) + timedelta(
-                    minutes=settings.lockout_duration_minutes
+                    minutes=lockout_minutes
                 )
 
             await self._log_audit(

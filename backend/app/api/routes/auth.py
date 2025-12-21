@@ -131,6 +131,34 @@ def generate_csrf_token() -> str:
     return secrets.token_urlsafe(32)
 
 
+async def validate_csrf_token(request: Request) -> None:
+    """Validate CSRF token using double-submit cookie pattern.
+
+    Security: Uses hmac.compare_digest for constant-time comparison
+    to prevent timing attacks (fixes M2 from security audit).
+
+    Raises HTTPException 403 if validation fails.
+    """
+    import hmac
+
+    csrf_header = request.headers.get("X-CSRF-Token")
+    csrf_cookie = request.cookies.get(CSRF_TOKEN_COOKIE_NAME)
+
+    # Both must be present
+    if not csrf_header or not csrf_cookie:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="CSRF token missing",
+        )
+
+    # Constant-time comparison to prevent timing attacks
+    if not hmac.compare_digest(csrf_header, csrf_cookie):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="CSRF token validation failed",
+        )
+
+
 def get_client_ip(request: Request) -> Optional[str]:
     """Get client IP address from request."""
     # Check X-Forwarded-For header first (for proxies)
@@ -527,6 +555,9 @@ async def refresh_session_cookie(
     response: Response,
     dcv_refresh_token: Optional[str] = Cookie(None),
     db: AsyncSession = Depends(get_db),
+    _csrf: None = Depends(
+        validate_csrf_token
+    ),  # CSRF validation with constant-time comparison
 ):
     """Refresh access token using httpOnly cookie.
 
@@ -539,22 +570,6 @@ async def refresh_session_cookie(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="No refresh token cookie found. Please log in again.",
-        )
-
-    # Validate CSRF token (double-submit cookie pattern)
-    csrf_header = request.headers.get("X-CSRF-Token")
-    csrf_cookie = request.cookies.get(CSRF_TOKEN_COOKIE_NAME)
-
-    if not csrf_header or not csrf_cookie or csrf_header != csrf_cookie:
-        logger.warning(
-            "csrf_validation_failed",
-            ip=get_client_ip(request),
-            has_header=bool(csrf_header),
-            has_cookie=bool(csrf_cookie),
-        )
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="CSRF token validation failed",
         )
 
     auth_service = AuthService(db)
@@ -591,10 +606,12 @@ async def logout_session_cookie(
     dcv_refresh_token: Optional[str] = Cookie(None),
     current_user: Optional[User] = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_db),
+    _csrf: None = Depends(validate_csrf_token),  # CSRF validation
 ):
     """Logout using httpOnly cookie-based session.
 
     Clears the httpOnly cookie and invalidates the session.
+    Requires CSRF token to prevent cross-site logout attacks.
     """
     if dcv_refresh_token:
         auth_service = AuthService(db)

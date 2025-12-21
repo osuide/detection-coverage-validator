@@ -51,17 +51,30 @@ resource "aws_elasticache_subnet_group" "main" {
   subnet_ids = var.private_subnet_ids
 }
 
-resource "aws_elasticache_cluster" "main" {
-  cluster_id           = "dcv-${var.environment}-redis"
+# Using replication group instead of cluster to enable encryption
+resource "aws_elasticache_replication_group" "main" {
+  replication_group_id = "dcv-${var.environment}-redis"
+  description          = "Redis cache for ${var.environment} environment"
+
   engine               = "redis"
   engine_version       = "7.0"
   node_type            = var.node_type
-  num_cache_nodes      = 1
+  num_cache_clusters   = 1
   parameter_group_name = "default.redis7"
   port                 = 6379
 
   subnet_group_name  = aws_elasticache_subnet_group.main.name
   security_group_ids = [aws_security_group.redis.id]
+
+  # Security: Enable encryption
+  at_rest_encryption_enabled = true
+  transit_encryption_enabled = true
+
+  # Maintenance window (off-peak hours UK time)
+  maintenance_window = "sun:03:00-sun:04:00"
+
+  # Auto minor version upgrade for security patches
+  auto_minor_version_upgrade = true
 
   tags = {
     Name = "dcv-${var.environment}-redis"
@@ -69,11 +82,12 @@ resource "aws_elasticache_cluster" "main" {
 }
 
 output "endpoint" {
-  value = aws_elasticache_cluster.main.cache_nodes[0].address
+  value = aws_elasticache_replication_group.main.primary_endpoint_address
 }
 
 output "connection_string" {
-  value = "redis://${aws_elasticache_cluster.main.cache_nodes[0].address}:6379/0"
+  # Use rediss:// (with double s) for TLS connection
+  value = "rediss://${aws_elasticache_replication_group.main.primary_endpoint_address}:6379/0"
 }
 
 output "security_group_id" {
