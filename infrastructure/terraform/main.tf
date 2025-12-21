@@ -238,6 +238,9 @@ module "cognito" {
   enable_google_idp    = var.google_client_id != ""
   google_client_id     = var.google_client_id
   google_client_secret = var.google_client_secret
+
+  # Advanced Security: AUDIT for staging (logs only), ENFORCED for prod (blocks risky logins)
+  advanced_security_mode = var.environment == "prod" ? "ENFORCED" : "AUDIT"
 }
 
 # SES Email Service

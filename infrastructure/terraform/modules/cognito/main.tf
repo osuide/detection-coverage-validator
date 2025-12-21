@@ -63,9 +63,11 @@ resource "aws_cognito_user_pool" "main" {
     }
   }
 
-  # User pool add-ons
+  # User pool add-ons - Advanced Security for threat protection
+  # AUDIT: Logs suspicious activity (recommended for staging)
+  # ENFORCED: Blocks risky logins (recommended for production)
   user_pool_add_ons {
-    advanced_security_mode = "AUDIT"
+    advanced_security_mode = var.advanced_security_mode
   }
 
   # Lambda triggers (optional - for future customization)

@@ -37,3 +37,14 @@ variable "google_client_secret" {
 
 # Note: GitHub authentication is handled by the backend directly (not via Cognito)
 # Microsoft SSO has been removed from the product
+
+variable "advanced_security_mode" {
+  description = "Cognito Advanced Security mode: AUDIT (logs only) or ENFORCED (blocks risky logins)"
+  type        = string
+  default     = "AUDIT"
+
+  validation {
+    condition     = contains(["OFF", "AUDIT", "ENFORCED"], var.advanced_security_mode)
+    error_message = "advanced_security_mode must be OFF, AUDIT, or ENFORCED"
+  }
+}
