@@ -1,5 +1,11 @@
 """API dependencies."""
 
+from app.api.deps.admin import (
+    get_current_admin,
+    require_permission,
+    require_reauth,
+    get_client_ip,
+)
 from app.api.deps.rate_limit import (
     init_rate_limiter,
     close_rate_limiter,
@@ -10,6 +16,12 @@ from app.api.deps.rate_limit import (
 )
 
 __all__ = [
+    # Admin auth
+    "get_current_admin",
+    "require_permission",
+    "require_reauth",
+    "get_client_ip",
+    # Rate limiting
     "init_rate_limiter",
     "close_rate_limiter",
     "auth_rate_limit",
