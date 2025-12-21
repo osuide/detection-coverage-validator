@@ -8,11 +8,14 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
+import structlog
 
 from app.core.database import get_db
 from app.models.admin import AdminUser, AdminRole
 from app.services.admin_auth_service import get_admin_auth_service
 from app.api.deps import get_current_admin
+
+logger = structlog.get_logger()
 
 router = APIRouter(prefix="/admins", tags=["Admin Management"])
 
@@ -138,7 +141,11 @@ async def create_admin(
             created_by=admin,
         )
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        logger.warning("admin_creation_failed", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Failed to create admin user",
+        )
 
     return AdminUserResponse(
         id=str(new_admin.id),

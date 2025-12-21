@@ -1,5 +1,6 @@
 """Report generation endpoints."""
 
+import io
 import re
 from uuid import UUID
 
@@ -7,13 +8,15 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-import io
+import structlog
 
 from app.core.database import get_db
 from app.core.security import AuthContext, get_auth_context
 from app.models.cloud_account import CloudAccount
 from app.models.billing import Subscription, AccountTier
 from app.services.report_service import ReportService
+
+logger = structlog.get_logger()
 
 router = APIRouter()
 
@@ -181,7 +184,8 @@ async def download_executive_pdf(
             },
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to generate PDF: {str(e)}")
+        logger.error("pdf_generation_failed", error=str(e))
+        raise HTTPException(status_code=500, detail="Failed to generate PDF report")
 
 
 @router.get("/full/pdf")
@@ -226,4 +230,5 @@ async def download_full_pdf(
             },
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to generate PDF: {str(e)}")
+        logger.error("pdf_generation_failed", error=str(e))
+        raise HTTPException(status_code=500, detail="Failed to generate PDF report")

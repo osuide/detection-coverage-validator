@@ -22,8 +22,29 @@ from app.models.cloud_credential import (
 
 logger = structlog.get_logger()
 
-# Development mode - skip real AWS calls
-DEV_MODE = os.environ.get("A13E_DEV_MODE", "false").lower() == "true"
+
+def _is_dev_mode_allowed() -> bool:
+    """Check if DEV_MODE is allowed in current environment.
+
+    Security: DEV_MODE bypasses real AWS credential validation.
+    It must be blocked in production/staging to prevent abuse.
+    """
+    dev_mode_requested = os.environ.get("A13E_DEV_MODE", "false").lower() == "true"
+    environment = os.environ.get("ENVIRONMENT", "development")
+
+    # DEV_MODE only allowed in development/local environments
+    if dev_mode_requested and environment in ("production", "staging"):
+        logger.warning(
+            "dev_mode_blocked",
+            environment=environment,
+            message="DEV_MODE requested but blocked in non-development environment",
+        )
+        return False
+    return dev_mode_requested
+
+
+# Development mode - skip real AWS calls (blocked in production/staging)
+DEV_MODE = _is_dev_mode_allowed()
 
 
 class AWSCredentialService:

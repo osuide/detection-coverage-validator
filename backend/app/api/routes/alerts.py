@@ -7,6 +7,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+import structlog
 
 from app.core.database import get_db
 from app.core.security import AuthContext, get_auth_context
@@ -22,6 +23,8 @@ from app.schemas.alert import (
     TestAlertRequest,
 )
 from app.services.notification_service import NotificationService
+
+logger = structlog.get_logger()
 
 router = APIRouter()
 
@@ -297,9 +300,10 @@ async def test_alert(
         return {"status": "success", "message": "Test notification sent"}
 
     except Exception as e:
+        logger.error("test_notification_failed", error=str(e))
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to send test notification: {str(e)}",
+            detail="Failed to send test notification",
         )
 
 

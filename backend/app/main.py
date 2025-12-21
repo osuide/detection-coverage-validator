@@ -4,8 +4,11 @@ import os
 import time
 from contextlib import asynccontextmanager
 
+import uuid
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 import structlog
 
@@ -39,6 +42,7 @@ from app.api.routes import (
 from app.api.routes.admin import router as admin_router
 from app.api.v1.public import router as public_api_router
 from app.middleware.security_headers import SecurityHeadersMiddleware
+from app.middleware.request_id import RequestIDMiddleware
 from app.services.scheduler_service import scheduler_service
 
 
@@ -288,13 +292,16 @@ def seed_admin_user():
             if not admin_password:
                 # Generate cryptographically secure password
                 admin_password = secrets.token_urlsafe(16)
-                # Log once for operator to save - this is the only time it will be shown
-                logger.critical(
-                    "generated_initial_admin_password",
-                    password=admin_password,
-                    email="admin@a13e.com",
-                    message="SAVE THIS PASSWORD IMMEDIATELY - it will not be shown again",
-                )
+                # Print to console ONLY (not captured in structured logs)
+                # This is the only time the password will be shown
+                print("\n" + "=" * 60)
+                print("INITIAL ADMIN PASSWORD GENERATED")
+                print("Email: admin@a13e.com")
+                print(f"Password: {admin_password}")
+                print("SAVE THIS IMMEDIATELY - it will not be shown again")
+                print("=" * 60 + "\n")
+                # Log event without sensitive data
+                logger.info("admin_password_generated", email="admin@a13e.com")
 
             # Hash the password with bcrypt
             password_hash = bcrypt.hashpw(
@@ -410,6 +417,42 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+
+# === Global Exception Handler ===
+# Catches unhandled exceptions and returns generic error messages
+# to prevent information disclosure while logging full details server-side
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Catch unhandled exceptions and return generic error.
+
+    Security: Prevents internal error details from being exposed to clients.
+    Full details are logged server-side with request ID for correlation.
+    """
+    # Get or generate request ID for correlation
+    request_id = getattr(request.state, "request_id", None) or str(uuid.uuid4())
+
+    # Log full error server-side for debugging
+    logger.error(
+        "unhandled_exception",
+        request_id=request_id,
+        path=request.url.path,
+        method=request.method,
+        error_type=type(exc).__name__,
+        error=str(exc),
+        exc_info=True,
+    )
+
+    # Return generic error to client with request ID for support reference
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "An internal error occurred. Please try again later.",
+            "request_id": request_id,
+        },
+        headers={"X-Request-ID": request_id},
+    )
+
+
 # CORS middleware - origins from environment or defaults for local dev
 cors_origins_str = os.environ.get(
     "CORS_ORIGINS", "http://localhost:3000,http://localhost:3001,http://localhost:5173"
@@ -512,6 +555,9 @@ app.add_middleware(SecureLoggingMiddleware)
 
 # Add security headers middleware (X-Frame-Options, HSTS, CSP, etc.)
 app.add_middleware(SecurityHeadersMiddleware)
+
+# Add request ID correlation middleware (enables log correlation)
+app.add_middleware(RequestIDMiddleware)
 
 # Include routers
 app.include_router(health.router, tags=["Health"])

@@ -213,9 +213,10 @@ async def _discover_aws_organization(
     try:
         result = await discovery_service.discover_organisation()
     except PermissionError as e:
+        logger.warning("gcp_organisation_permission_denied", error=str(e))
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=str(e),
+            detail="Insufficient permissions for GCP Organisation discovery",
         )
     except Exception as e:
         logger.error("organisation_discovery_failed", error=str(e))
@@ -288,7 +289,7 @@ async def _discover_gcp_organization(
         logger.error("failed_to_get_gcp_credentials", error=str(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Failed to obtain GCP credentials: {str(e)}",
+            detail="Failed to obtain GCP credentials. Please check your configuration.",
         )
 
     # Discover organisation
@@ -297,15 +298,16 @@ async def _discover_gcp_organization(
     try:
         result = await discovery_service.discover_organisation(gcp_org_id)
     except PermissionError as e:
+        logger.warning("gcp_organisation_permission_denied", error=str(e))
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=str(e),
+            detail="Insufficient permissions for GCP Organisation discovery",
         )
     except Exception as e:
         logger.error("gcp_organisation_discovery_failed", error=str(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"GCP Organisation discovery failed: {str(e)}",
+            detail="GCP Organisation discovery failed. Please check permissions and try again.",
         )
 
     # Save to database

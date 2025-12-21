@@ -112,6 +112,14 @@ class Settings(BaseSettings):
                 "This should be configured before production deployment."
             )
 
+        # Validate DATABASE_URL doesn't use default credentials in production/staging
+        if self.environment in ("production", "staging"):
+            if "postgres:postgres" in self.database_url:
+                raise ValueError(
+                    "CRITICAL: Default database credentials detected in production/staging. "
+                    "Set DATABASE_URL with secure credentials."
+                )
+
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
     password_reset_expire_hours: int = 24
@@ -156,7 +164,7 @@ class Settings(BaseSettings):
     smtp_port: int = 587
     smtp_username: Optional[str] = None
     smtp_password: Optional[str] = None
-    smtp_from_email: str = "noreply@detectioncoverage.io"
+    smtp_from_email: str = "noreply@a13e.com"  # Single source of truth for email sender
 
     # Coverage Thresholds
     confidence_threshold_covered: float = 0.6

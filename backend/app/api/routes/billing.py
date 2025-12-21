@@ -336,7 +336,8 @@ async def calculate_pricing(body: PricingCalculatorRequest):
     try:
         result = calculate_account_cost(body.account_count, tier)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.warning("cost_calculation_failed", error=str(e))
+        raise HTTPException(status_code=400, detail="Invalid account count or tier")
 
     # Format breakdown for response
     breakdown = [
@@ -451,7 +452,10 @@ async def create_checkout(
         return CheckoutResponse(**result)
 
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        logger.warning("checkout_validation_failed", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid checkout request"
+        )
     except stripe.error.StripeError as e:
         logger.error("stripe_error", error=str(e))
         raise HTTPException(
@@ -497,7 +501,10 @@ async def create_portal(
         return PortalResponse(**result)
 
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        logger.warning("portal_validation_failed", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid portal request"
+        )
     except stripe.error.StripeError as e:
         logger.error("stripe_error", error=str(e))
         raise HTTPException(

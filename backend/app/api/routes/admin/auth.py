@@ -6,11 +6,14 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
+import structlog
 
 from app.core.database import get_db
 from app.models.admin import AdminUser
 from app.services.admin_auth_service import get_admin_auth_service
 from app.api.deps import get_current_admin
+
+logger = structlog.get_logger()
 
 router = APIRouter(prefix="/auth", tags=["Admin Auth"])
 
@@ -119,7 +122,10 @@ async def admin_login(
             user_agent=user_agent,
         )
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
+        logger.warning("admin_auth_failed", error=str(e), email=body.email)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials"
+        )
 
     if requires_mfa:
         # Generate temporary MFA token

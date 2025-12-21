@@ -111,7 +111,8 @@ class EmailService:
     def __init__(self):
         self.logger = logger.bind(service="EmailService")
         self._client = None
-        self.from_email = os.environ.get("SES_FROM_EMAIL", "noreply@a13e.com")
+        # Use config as single source of truth for email sender
+        self.from_email = settings.smtp_from_email
         self.app_url = os.environ.get("APP_URL", "https://staging.a13e.com")
         self.enabled = os.environ.get("SES_ENABLED", "true").lower() == "true"
 
