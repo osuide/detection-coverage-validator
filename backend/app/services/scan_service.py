@@ -30,7 +30,9 @@ from app.mappers.pattern_mapper import PatternMapper
 from app.services.coverage_service import CoverageService
 from app.services.notification_service import trigger_scan_alerts
 from app.services.aws_credential_service import aws_credential_service
-from app.core.service_registry import get_all_regions
+from app.services.region_discovery_service import region_discovery_service
+from app.core.service_registry import get_all_regions, get_default_regions
+from app.models.cloud_account import RegionScanMode
 
 logger = structlog.get_logger()
 
@@ -108,7 +110,8 @@ class ScanService:
             session = await self._get_boto3_session(account)
 
             # Determine regions to scan using new multi-region logic
-            region_config = self._determine_scan_regions(scan, account)
+            # This may trigger auto-discovery if mode=AUTO and no regions cached
+            region_config = await self._determine_scan_regions(scan, account, session)
 
             self.logger.info(
                 "scan_regions_determined",
@@ -211,26 +214,35 @@ class ScanService:
         )
         return result.scalar_one_or_none()
 
-    def _determine_scan_regions(
-        self, scan: Scan, account: CloudAccount
+    async def _determine_scan_regions(
+        self,
+        scan: Scan,
+        account: CloudAccount,
+        session: boto3.Session,
     ) -> RegionConfig:
         """Determine which regions to scan based on account configuration.
 
         This method implements the multi-region scanning logic:
         - For "all" mode: Scan all available regions (minus exclusions)
-        - For "auto" mode: Use auto-discovered active regions
+        - For "auto" mode: Auto-discover active regions if not already done
         - For "selected" mode: Use explicitly configured regions
-        - Fallback: Use the account's default region
+        - Fallback: Use default enabled regions for the provider
 
         Args:
             scan: The scan request (may have region overrides)
             account: The cloud account with region configuration
+            session: boto3 session for AWS API calls (used for auto-discovery)
 
         Returns:
             RegionConfig with regions for regional and global services
         """
         # Scan-level override takes precedence
         if scan.regions:
+            self.logger.info(
+                "using_scan_level_regions",
+                account_id=str(account.id),
+                regions=scan.regions,
+            )
             return RegionConfig(
                 regional_regions=scan.regions,
                 global_region=self._get_global_region(account),
@@ -239,11 +251,110 @@ class ScanService:
         # Get all available regions for this provider
         provider = account.provider.value if account.provider else "aws"
         all_regions = get_all_regions(provider)
+        default_regions = get_default_regions(provider)
 
-        # Use account's region configuration
-        effective_regions = account.get_effective_regions(all_regions)
+        # Get the current mode
+        mode = account.get_region_scan_mode()
 
-        # If no regions configured, use the account's default region
+        if mode == RegionScanMode.ALL:
+            # Scan all regions except exclusions
+            excluded = set(
+                account.region_config.get("excluded_regions", [])
+                if account.region_config
+                else []
+            )
+            effective_regions = [r for r in all_regions if r not in excluded]
+            self.logger.info(
+                "using_all_regions_mode",
+                account_id=str(account.id),
+                total_regions=len(effective_regions),
+                excluded=list(excluded),
+            )
+
+        elif mode == RegionScanMode.AUTO:
+            # Check for already-discovered regions
+            discovered = (
+                account.region_config.get("discovered_regions", [])
+                if account.region_config
+                else []
+            )
+
+            if discovered:
+                effective_regions = discovered
+                self.logger.info(
+                    "using_discovered_regions",
+                    account_id=str(account.id),
+                    regions=effective_regions,
+                )
+            else:
+                # No discovered regions - run auto-discovery now
+                self.logger.info(
+                    "running_auto_discovery",
+                    account_id=str(account.id),
+                    reason="no_discovered_regions_cached",
+                )
+                try:
+                    if account.provider == CloudProvider.AWS:
+                        effective_regions = (
+                            await region_discovery_service.discover_aws_active_regions(
+                                session,
+                                check_ec2=True,
+                                check_guardduty=True,
+                                check_cloudwatch=True,
+                            )
+                        )
+                        # Save discovered regions to account for future scans
+                        account.set_auto_discovered_regions(effective_regions)
+                        await self.db.commit()
+                        self.logger.info(
+                            "auto_discovery_complete",
+                            account_id=str(account.id),
+                            discovered_regions=effective_regions,
+                        )
+                    else:
+                        # GCP discovery not implemented, use defaults
+                        self.logger.warning(
+                            "gcp_discovery_not_implemented",
+                            account_id=str(account.id),
+                        )
+                        effective_regions = default_regions
+                except Exception as e:
+                    # Discovery failed - fall back to default regions
+                    self.logger.warning(
+                        "auto_discovery_failed",
+                        account_id=str(account.id),
+                        error=str(e),
+                        fallback="default_regions",
+                    )
+                    effective_regions = default_regions
+
+        else:  # SELECTED mode
+            # Use explicitly configured regions
+            config_regions = (
+                account.region_config.get("regions", [])
+                if account.region_config
+                else []
+            )
+            # Fall back to legacy regions field, then to default region
+            effective_regions = config_regions or []
+            if not effective_regions:
+                # Don't use legacy self.regions - it often has stale us-east-1
+                # Instead use the account's default region
+                default_region = account.get_default_region()
+                effective_regions = [default_region]
+                self.logger.warning(
+                    "no_regions_in_selected_mode",
+                    account_id=str(account.id),
+                    fallback_region=default_region,
+                )
+            else:
+                self.logger.info(
+                    "using_selected_regions",
+                    account_id=str(account.id),
+                    regions=effective_regions,
+                )
+
+        # Final fallback - should never reach here but just in case
         if not effective_regions:
             default_region = account.get_default_region()
             self.logger.warning(
