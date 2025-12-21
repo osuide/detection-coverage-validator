@@ -165,21 +165,32 @@ async def upload_batch(
     if not auth.organization_id or not auth.user_id:
         raise HTTPException(status_code=401, detail="Authentication required")
 
-    # Read file content
-    content = await file.read()
+    # Security: Check file size BEFORE reading full content to prevent memory exhaustion
+    max_size = 1024 * 1024  # 1MB limit
+    chunks = []
+    total_size = 0
+
+    # Read in chunks and check size incrementally
+    while True:
+        chunk = await file.read(8192)  # 8KB chunks
+        if not chunk:
+            break
+        total_size += len(chunk)
+        if total_size > max_size:
+            raise HTTPException(
+                status_code=400,
+                detail="File too large. Maximum size is 1MB.",
+            )
+        chunks.append(chunk)
+
+    content = b"".join(chunks)
+
     try:
         content_str = content.decode("utf-8")
     except UnicodeDecodeError:
         raise HTTPException(
             status_code=400,
             detail="File must be UTF-8 encoded text",
-        )
-
-    # Limit file size (1MB)
-    if len(content) > 1024 * 1024:
-        raise HTTPException(
-            status_code=400,
-            detail="File too large. Maximum size is 1MB.",
         )
 
     service = CustomDetectionService(db)

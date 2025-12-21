@@ -1,5 +1,6 @@
 """Report generation endpoints."""
 
+import re
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -15,6 +16,26 @@ from app.models.billing import Subscription, AccountTier
 from app.services.report_service import ReportService
 
 router = APIRouter()
+
+
+def sanitize_filename(name: str) -> str:
+    """Sanitise a string for use in Content-Disposition filename.
+
+    Security: Prevents header injection and path traversal by:
+    - Removing all characters except alphanumeric, underscore, hyphen
+    - Limiting length to 100 characters
+    - Providing fallback for empty results
+    """
+    # Remove all characters except alphanumeric, underscore, hyphen
+    safe_name = re.sub(r"[^a-zA-Z0-9_-]", "_", name)
+    # Collapse multiple underscores
+    safe_name = re.sub(r"_+", "_", safe_name)
+    # Strip leading/trailing underscores
+    safe_name = safe_name.strip("_")
+    # Limit length
+    safe_name = safe_name[:100]
+    # Fallback if empty
+    return safe_name or "report"
 
 
 async def _is_free_tier(db: AsyncSession, organization_id: UUID) -> bool:
@@ -53,7 +74,7 @@ async def download_coverage_csv(
         io.StringIO(csv_content),
         media_type="text/csv",
         headers={
-            "Content-Disposition": f"attachment; filename=coverage_report_{account.name}.csv"
+            "Content-Disposition": f"attachment; filename=coverage_report_{sanitize_filename(account.name)}.csv"
         },
     )
 
@@ -82,7 +103,7 @@ async def download_gaps_csv(
         io.StringIO(csv_content),
         media_type="text/csv",
         headers={
-            "Content-Disposition": f"attachment; filename=gaps_report_{account.name}.csv"
+            "Content-Disposition": f"attachment; filename=gaps_report_{sanitize_filename(account.name)}.csv"
         },
     )
 
@@ -111,7 +132,7 @@ async def download_detections_csv(
         io.StringIO(csv_content),
         media_type="text/csv",
         headers={
-            "Content-Disposition": f"attachment; filename=detections_report_{account.name}.csv"
+            "Content-Disposition": f"attachment; filename=detections_report_{sanitize_filename(account.name)}.csv"
         },
     )
 
@@ -156,7 +177,7 @@ async def download_executive_pdf(
             io.BytesIO(pdf_content),
             media_type="application/pdf",
             headers={
-                "Content-Disposition": f"attachment; filename=executive_report_{account.name}.pdf"
+                "Content-Disposition": f"attachment; filename=executive_report_{sanitize_filename(account.name)}.pdf"
             },
         )
     except Exception as e:
@@ -201,7 +222,7 @@ async def download_full_pdf(
             io.BytesIO(pdf_content),
             media_type="application/pdf",
             headers={
-                "Content-Disposition": f"attachment; filename=full_report_{account.name}.pdf"
+                "Content-Disposition": f"attachment; filename=full_report_{sanitize_filename(account.name)}.pdf"
             },
         )
     except Exception as e:

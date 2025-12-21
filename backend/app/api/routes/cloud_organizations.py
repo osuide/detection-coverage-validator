@@ -204,7 +204,7 @@ async def _discover_aws_organization(
         logger.error("failed_to_assume_role", error=str(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Failed to assume role: {str(e)}",
+            detail="Failed to assume role. Please verify the role ARN and trust policy.",
         )
 
     # Discover organisation
@@ -221,7 +221,7 @@ async def _discover_aws_organization(
         logger.error("organisation_discovery_failed", error=str(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Organisation discovery failed: {str(e)}",
+            detail="Organisation discovery failed. Please check the role has the required permissions.",
         )
 
     # Save to database

@@ -155,6 +155,43 @@ def get_client_ip(request: Request) -> Optional[str]:
     return request.client.host if request.client else None
 
 
+def _check_ip_in_allowlist(client_ip: str, allowlist: list) -> bool:
+    """Check if client IP is in the allowlist, supporting both IPs and CIDR notation.
+
+    Args:
+        client_ip: The client's IP address
+        allowlist: List of allowed IPs or CIDR ranges (e.g., ["192.168.1.1", "10.0.0.0/8"])
+
+    Returns:
+        True if the IP is allowed, False otherwise
+    """
+    import ipaddress
+
+    try:
+        client = ipaddress.ip_address(client_ip)
+    except ValueError:
+        # Invalid client IP - reject
+        return False
+
+    for entry in allowlist:
+        try:
+            # Try parsing as a network (CIDR notation)
+            if "/" in entry:
+                network = ipaddress.ip_network(entry, strict=False)
+                if client in network:
+                    return True
+            else:
+                # Try parsing as a single IP address
+                allowed_ip = ipaddress.ip_address(entry)
+                if client == allowed_ip:
+                    return True
+        except ValueError:
+            # Invalid allowlist entry - skip it
+            continue
+
+    return False
+
+
 async def get_auth_context(
     request: Request,
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
@@ -292,11 +329,10 @@ async def _authenticate_api_key(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # Check IP allowlist
+    # Check IP allowlist with CIDR support
     client_ip = get_client_ip(request)
     if api_key.ip_allowlist and client_ip:
-        # Simple IP check (could be enhanced with CIDR support)
-        if client_ip not in api_key.ip_allowlist:
+        if not _check_ip_in_allowlist(client_ip, api_key.ip_allowlist):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="IP address not in allowlist",

@@ -44,6 +44,9 @@ class Settings(BaseSettings):
     # Uses k-anonymity API - only first 5 chars of hash sent, privacy-preserving
     hibp_password_check_enabled: bool = True
     hibp_min_breach_count: int = 1  # Minimum breach count to reject password
+    # Fail-closed mode: if True, reject password when HIBP API is unavailable (recommended for prod)
+    # If False, allow password when API fails (fail-open, less secure but more available)
+    hibp_fail_closed: bool = False  # Set to True in production for maximum security
 
     @staticmethod
     def _calculate_entropy(s: str) -> float:
@@ -93,11 +96,20 @@ class Settings(BaseSettings):
                     f"CRITICAL: CREDENTIAL_ENCRYPTION_KEY is invalid: {e}. "
                     'Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"'
                 )
-        elif self.environment != "development":
+        elif self.environment == "production":
+            # Fail in production - cloud credential storage is a core feature
+            raise ValueError(
+                "CRITICAL: CREDENTIAL_ENCRYPTION_KEY is required in production. "
+                "Cloud credential storage will not work without it. "
+                'Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"'
+            )
+        elif self.environment not in ("development", "test"):
+            # Warn in staging - should be configured but not fatal
             import logging
 
             logging.warning(
-                "CREDENTIAL_ENCRYPTION_KEY not set - cloud credential storage will be disabled"
+                "CREDENTIAL_ENCRYPTION_KEY not set - cloud credential storage will be disabled. "
+                "This should be configured before production deployment."
             )
 
     access_token_expire_minutes: int = 30

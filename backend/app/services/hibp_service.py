@@ -38,6 +38,8 @@ class HIBPService:
 
     def __init__(self):
         self._enabled = getattr(settings, "hibp_password_check_enabled", True)
+        # Fail-closed mode: reject passwords when API is unavailable (more secure)
+        self._fail_closed = getattr(settings, "hibp_fail_closed", False)
 
     def is_enabled(self) -> bool:
         """Check if HIBP password checking is enabled."""
@@ -99,9 +101,11 @@ class HIBPService:
                     logger.warning(
                         "hibp_api_error",
                         status_code=response.status_code,
+                        fail_closed=self._fail_closed,
                     )
-                    # Fail open - don't block registration if API is unavailable
-                    return False, 0
+                    # Fail-closed: treat as breached when API fails (more secure)
+                    # Fail-open: allow password when API fails (more available)
+                    return self._fail_closed, -1 if self._fail_closed else 0
 
                 # Parse response - each line is "SUFFIX:COUNT"
                 for line in response.text.splitlines():
@@ -122,13 +126,17 @@ class HIBPService:
                 return False, 0
 
         except httpx.TimeoutException:
-            logger.warning("hibp_api_timeout")
-            # Fail open - don't block registration if API times out
-            return False, 0
+            logger.warning("hibp_api_timeout", fail_closed=self._fail_closed)
+            # Fail-closed: treat as breached on timeout (more secure)
+            # Fail-open: allow password on timeout (more available)
+            return self._fail_closed, -1 if self._fail_closed else 0
         except Exception as e:
-            logger.error("hibp_api_exception", error=str(e))
-            # Fail open on any error
-            return False, 0
+            logger.error(
+                "hibp_api_exception", error=str(e), fail_closed=self._fail_closed
+            )
+            # Fail-closed: treat as breached on error (more secure)
+            # Fail-open: allow password on error (more available)
+            return self._fail_closed, -1 if self._fail_closed else 0
 
     async def check_password_with_message(
         self, password: str, min_breach_count: int = 1
