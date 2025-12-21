@@ -22,12 +22,21 @@ from app.models.user import Organization
 logger = structlog.get_logger()
 settings = get_settings()
 
-# Initialize Stripe
-stripe.api_key = settings.stripe_secret_key
-
 
 class StripeService:
     """Service for Stripe billing operations."""
+
+    @staticmethod
+    def _ensure_stripe_configured() -> None:
+        """Ensure Stripe API key is configured.
+
+        Security: Lazy-load the API key to prevent exposure in stack traces
+        during module import and allow runtime key rotation.
+        """
+        if not stripe.api_key:
+            stripe.api_key = settings.stripe_secret_key
+            if not stripe.api_key:
+                raise ValueError("Stripe API key not configured")
 
     @staticmethod
     async def get_or_create_customer(
@@ -48,6 +57,7 @@ class StripeService:
 
         # Create a new Stripe customer
         try:
+            StripeService._ensure_stripe_configured()
             customer = stripe.Customer.create(
                 email=email,
                 name=name or organization.name,
@@ -175,6 +185,7 @@ class StripeService:
             else:
                 checkout_params["customer_email"] = customer_email
 
+            StripeService._ensure_stripe_configured()
             session = stripe.checkout.Session.create(**checkout_params)
 
             logger.info(
@@ -208,6 +219,7 @@ class StripeService:
             raise ValueError("No Stripe customer found for this organization")
 
         try:
+            StripeService._ensure_stripe_configured()
             session = stripe.billing_portal.Session.create(
                 customer=subscription.stripe_customer_id,
                 return_url=return_url,
@@ -227,11 +239,28 @@ class StripeService:
     async def handle_checkout_completed(
         db: AsyncSession, session: Dict[str, Any]
     ) -> None:
-        """Handle checkout.session.completed webhook event."""
+        """Handle checkout.session.completed webhook event.
+
+        Security: Validates organization exists before processing to prevent
+        manipulation of subscription state for non-existent orgs.
+        """
         organization_id = UUID(session["metadata"]["organization_id"])
         additional_accounts = int(session["metadata"].get("additional_accounts", 0))
         customer_id = session["customer"]
         subscription_id = session["subscription"]
+
+        # Security: Verify organization exists before processing
+        org_result = await db.execute(
+            select(Organization).where(Organization.id == organization_id)
+        )
+        organization = org_result.scalar_one_or_none()
+        if not organization:
+            logger.error(
+                "webhook_org_not_found",
+                org_id=str(organization_id),
+                subscription_id=subscription_id,
+            )
+            raise ValueError(f"Organization {organization_id} not found")
 
         # Get or create subscription record
         result = await db.execute(
@@ -255,6 +284,7 @@ class StripeService:
 
         # Fetch subscription details from Stripe
         try:
+            StripeService._ensure_stripe_configured()
             stripe_sub = stripe.Subscription.retrieve(subscription_id)
             subscription.current_period_start = datetime.fromtimestamp(
                 stripe_sub.current_period_start, tz=timezone.utc

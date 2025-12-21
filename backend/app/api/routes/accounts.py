@@ -17,7 +17,7 @@ from app.core.security import (
 )
 from app.models.cloud_account import CloudAccount
 from app.models.cloud_credential import CloudCredential
-from app.models.scan import Scan
+from app.models.scan import Scan, ScanStatus
 from app.models.detection import Detection
 from app.models.schedule import ScanSchedule
 from app.models.alert import AlertConfig
@@ -196,6 +196,21 @@ async def delete_account(
     account = result.scalar_one_or_none()
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
+
+    # H7: Check for active scans before allowing deletion
+    active_scans_result = await db.execute(
+        select(Scan).where(
+            and_(
+                Scan.cloud_account_id == account_id,
+                Scan.status.in_([ScanStatus.PENDING, ScanStatus.RUNNING]),
+            )
+        )
+    )
+    if active_scans_result.scalar_one_or_none():
+        raise HTTPException(
+            status_code=409,
+            detail="Cannot delete account with active scans. Please wait for scans to complete or cancel them first.",
+        )
 
     try:
         # Delete related records that don't have CASCADE delete

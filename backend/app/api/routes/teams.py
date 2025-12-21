@@ -511,14 +511,24 @@ async def update_member_role(
     current_role = auth.membership.role if auth.membership else UserRole.MEMBER
 
     # Only owner can change admin roles or transfer ownership
+    old_role = member.role  # Capture before any changes
+
     if body.role == UserRole.OWNER:
         if current_role != UserRole.OWNER:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only owners can transfer ownership",
             )
-        # Transfer ownership - demote current owner to admin
+        # Transfer ownership atomically with row-level locking to prevent race conditions
+        # Lock both membership records to ensure consistent state
+        await db.execute(
+            select(OrganizationMember)
+            .where(OrganizationMember.id.in_([member.id, auth.membership.id]))
+            .with_for_update()
+        )
+        # Now safely transfer ownership
         auth.membership.role = UserRole.ADMIN
+        member.role = UserRole.OWNER
 
     elif body.role == UserRole.ADMIN or member.role == UserRole.ADMIN:
         if current_role != UserRole.OWNER:
@@ -526,9 +536,11 @@ async def update_member_role(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only owners can promote to or demote from admin",
             )
+        member.role = body.role
 
-    old_role = member.role
-    member.role = body.role
+    else:
+        # Regular role change (member/viewer)
+        member.role = body.role
 
     # Log the action
     await log_team_action(

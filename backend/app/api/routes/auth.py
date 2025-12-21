@@ -304,7 +304,9 @@ async def login(
     )
 
 
-@router.post("/login/mfa", response_model=LoginResponse)
+@router.post(
+    "/login/mfa", response_model=LoginResponse, dependencies=[Depends(rate_limit_mfa)]
+)
 async def verify_mfa(
     request: Request,
     response: Response,
