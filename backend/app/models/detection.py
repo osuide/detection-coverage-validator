@@ -107,7 +107,11 @@ class Detection(Base):
 
     # Detection scope
     detection_scope: Mapped[DetectionScope] = mapped_column(
-        SQLEnum(DetectionScope, values_callable=lambda x: [e.value for e in x]),
+        SQLEnum(
+            DetectionScope,
+            values_callable=lambda x: [e.value for e in x],
+            name="detection_scope",  # Must match migration enum name
+        ),
         default=DetectionScope.ACCOUNT,
         nullable=False,
         index=True,

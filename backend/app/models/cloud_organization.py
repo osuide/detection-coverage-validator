@@ -83,7 +83,9 @@ class CloudOrganization(Base):
     # Connection status
     status: Mapped[CloudOrganizationStatus] = mapped_column(
         SQLEnum(
-            CloudOrganizationStatus, values_callable=lambda x: [e.value for e in x]
+            CloudOrganizationStatus,
+            values_callable=lambda x: [e.value for e in x],
+            name="cloud_organization_status",  # Must match migration enum name
         ),
         default=CloudOrganizationStatus.DISCOVERED,
         index=True,
@@ -186,6 +188,7 @@ class CloudOrganizationMember(Base):
         SQLEnum(
             CloudOrganizationMemberStatus,
             values_callable=lambda x: [e.value for e in x],
+            name="cloud_organization_member_status",  # Must match migration enum name
         ),
         default=CloudOrganizationMemberStatus.DISCOVERED,
         index=True,
