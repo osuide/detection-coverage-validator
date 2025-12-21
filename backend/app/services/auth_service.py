@@ -88,7 +88,9 @@ class AuthService:
         if organization_id:
             payload["org"] = str(organization_id)
 
-        return jwt.encode(payload, settings.secret_key, algorithm="HS256")
+        return jwt.encode(
+            payload, settings.secret_key.get_secret_value(), algorithm="HS256"
+        )
 
     @staticmethod
     def generate_refresh_token() -> str:
@@ -99,7 +101,9 @@ class AuthService:
     def decode_token(token: str) -> Optional[dict]:
         """Decode and validate a JWT token."""
         try:
-            payload = jwt.decode(token, settings.secret_key, algorithms=["HS256"])
+            payload = jwt.decode(
+                token, settings.secret_key.get_secret_value(), algorithms=["HS256"]
+            )
             return payload
         except jwt.ExpiredSignatureError:
             return None

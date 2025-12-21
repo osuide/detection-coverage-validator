@@ -3,6 +3,7 @@
 from functools import lru_cache
 from typing import Optional
 
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings
 
 
@@ -32,7 +33,8 @@ class Settings(BaseSettings):
     # CRITICAL: Must be set to a cryptographically random value
     # Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"
     # No default value - must be explicitly set via SECRET_KEY environment variable
-    secret_key: str
+    # M16: Using SecretStr to prevent accidental exposure in logs/repr
+    secret_key: SecretStr
 
     # Session binding: Optionally validate IP and User-Agent on session refresh
     # Set to True for higher security (may cause issues for mobile users on changing networks)
@@ -69,15 +71,18 @@ class Settings(BaseSettings):
 
     def model_post_init(self, __context) -> None:
         """Validate critical security settings after initialization."""
+        # M16: Get secret value for validation
+        secret_key_value = self.secret_key.get_secret_value()
+
         # Validate SECRET_KEY length in all environments
-        if len(self.secret_key) < 32:
+        if len(secret_key_value) < 32:
             raise ValueError(
                 "CRITICAL: SECRET_KEY must be at least 32 characters long for security. "
                 'Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"'
             )
 
         # Validate SECRET_KEY entropy (prevent weak keys like 'aaaa....')
-        entropy = self._calculate_entropy(self.secret_key)
+        entropy = self._calculate_entropy(secret_key_value)
         if entropy < 3.0:  # Minimum ~3 bits per character for reasonable randomness
             raise ValueError(
                 f"CRITICAL: SECRET_KEY has insufficient entropy ({entropy:.2f} bits/char). "

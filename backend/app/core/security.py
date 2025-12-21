@@ -39,13 +39,17 @@ def create_access_token(
         expires_delta or timedelta(minutes=settings.access_token_expire_minutes)
     )
     to_encode.update({"exp": expire, "iat": datetime.now(timezone.utc)})
-    return jwt.encode(to_encode, settings.secret_key, algorithm="HS256")
+    return jwt.encode(
+        to_encode, settings.secret_key.get_secret_value(), algorithm="HS256"
+    )
 
 
 def decode_token(token: str) -> Optional[dict]:
     """Decode and validate a JWT token."""
     try:
-        payload = jwt.decode(token, settings.secret_key, algorithms=["HS256"])
+        payload = jwt.decode(
+            token, settings.secret_key.get_secret_value(), algorithms=["HS256"]
+        )
         return payload
     except jwt.ExpiredSignatureError:
         return None
@@ -96,7 +100,10 @@ class AuthContext:
         return self.has_role(UserRole.OWNER, UserRole.ADMIN, UserRole.MEMBER)
 
     def can_access_account(self, account_id: UUID) -> bool:
-        """Check if user can access a specific cloud account."""
+        """Check if user can access a specific cloud account.
+
+        M3: Uses consistent string comparison with normalised UUID format.
+        """
         if not self.membership:
             return False
 
@@ -108,8 +115,15 @@ class AuthContext:
         if self.membership.allowed_account_ids is None:
             return True
 
-        # Check if account is in allowed list
-        return str(account_id) in self.membership.allowed_account_ids
+        # M3: Normalise account_id to lowercase string for consistent comparison
+        # UUIDs should be compared case-insensitively
+        account_id_str = str(account_id).lower()
+
+        # Check if account is in allowed list (normalise each entry)
+        return any(
+            str(allowed_id).lower() == account_id_str
+            for allowed_id in self.membership.allowed_account_ids
+        )
 
 
 def get_client_ip(request: Request) -> Optional[str]:
@@ -156,14 +170,22 @@ def get_client_ip(request: Request) -> Optional[str]:
 
 
 def _check_ip_in_allowlist(client_ip: str, allowlist: list) -> bool:
-    """Check if client IP is in the allowlist, supporting both IPs and CIDR notation.
+    """Check if client IP is in the allowlist, supporting IPv4, IPv6, and CIDR notation.
+
+    M15: Fully supports IPv6 addresses and CIDR ranges.
 
     Args:
-        client_ip: The client's IP address
-        allowlist: List of allowed IPs or CIDR ranges (e.g., ["192.168.1.1", "10.0.0.0/8"])
+        client_ip: The client's IP address (IPv4 or IPv6)
+        allowlist: List of allowed IPs or CIDR ranges
+            - IPv4: "192.168.1.1", "10.0.0.0/8"
+            - IPv6: "2001:db8::1", "2001:db8::/32"
 
     Returns:
         True if the IP is allowed, False otherwise
+
+    Note:
+        IPv4 and IPv6 are compared separately - an IPv4 client won't match
+        an IPv6 allowlist entry and vice versa.
     """
     import ipaddress
 
@@ -178,13 +200,17 @@ def _check_ip_in_allowlist(client_ip: str, allowlist: list) -> bool:
             # Try parsing as a network (CIDR notation)
             if "/" in entry:
                 network = ipaddress.ip_network(entry, strict=False)
-                if client in network:
-                    return True
+                # M15: Only compare matching IP versions (IPv4 vs IPv6)
+                if isinstance(client, type(network.network_address)):
+                    if client in network:
+                        return True
             else:
                 # Try parsing as a single IP address
                 allowed_ip = ipaddress.ip_address(entry)
-                if client == allowed_ip:
-                    return True
+                # M15: Only compare matching IP versions (IPv4 vs IPv6)
+                if isinstance(client, type(allowed_ip)):
+                    if client == allowed_ip:
+                        return True
         except ValueError:
             # Invalid allowlist entry - skip it
             continue
@@ -349,7 +375,20 @@ async def _authenticate_api_key(
                 detail="IP address not in allowlist",
             )
 
-    # Update usage stats
+    # M8: Update usage stats with atomic increment for transaction isolation
+    # This prevents lost updates when concurrent requests use the same API key
+    from sqlalchemy import update
+
+    await db.execute(
+        update(APIKey)
+        .where(APIKey.id == api_key.id)
+        .values(
+            last_used_at=datetime.now(timezone.utc),
+            last_used_ip=client_ip,
+            usage_count=APIKey.usage_count + 1,
+        )
+    )
+    # Update local object for response (approximate, may differ from DB)
     api_key.last_used_at = datetime.now(timezone.utc)
     api_key.last_used_ip = client_ip
     api_key.usage_count += 1

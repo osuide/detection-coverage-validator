@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from cryptography.fernet import Fernet
-from sqlalchemy import DateTime, Enum as SQLEnum, ForeignKey, String, Text
+from sqlalchemy import DateTime, Enum as SQLEnum, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -136,6 +136,12 @@ class CloudCredential(Base):
         onupdate=lambda: datetime.now(timezone.utc),
     )
 
+    # M14: Key rotation tracking for audit trail
+    key_rotated_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    key_rotation_count: Mapped[int] = mapped_column(Integer, default=0)
+
     # Relationships
     cloud_account = relationship("CloudAccount", backref="credential")
     organization = relationship("Organization")
@@ -175,11 +181,18 @@ class CloudCredential(Base):
 
         WARNING: Service account keys are a security risk.
         Workload Identity Federation is preferred.
+
+        M14: Tracks key rotation for audit trail.
         """
         if self.credential_type != CredentialType.GCP_SERVICE_ACCOUNT_KEY:
             raise ValueError(
                 "This credential type does not support service account keys"
             )
+
+        # M14: Track rotation if key already exists
+        if self._encrypted_key is not None:
+            self.key_rotated_at = datetime.now(timezone.utc)
+            self.key_rotation_count = (self.key_rotation_count or 0) + 1
 
         fernet = Fernet(self._get_encryption_key())
         self._encrypted_key = fernet.encrypt(key_json.encode()).decode()

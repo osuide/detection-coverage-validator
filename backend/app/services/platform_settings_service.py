@@ -44,7 +44,7 @@ class PlatformSettingsService:
         In production, this should use AWS KMS or similar.
         """
         # Derive a 32-byte key from the secret key
-        key_material = settings.secret_key.encode()
+        key_material = settings.secret_key.get_secret_value().encode()
         # Use SHA256 to get consistent 32 bytes, then base64 encode for Fernet
         import base64
 

@@ -67,13 +67,25 @@ class GCPCredentialCreate(BaseModel):
     @field_validator("service_account_key")
     @classmethod
     def validate_key(cls, v: Optional[str]) -> Optional[str]:
+        """Validate GCP service account key format.
+
+        M7: Sanitise error messages to prevent key data leakage in logs.
+        """
         if v:
             try:
                 key_data = json.loads(v)
                 if "private_key" not in key_data:
+                    # M7: Generic error - don't reveal what fields are present/missing
                     raise ValueError("Invalid service account key format")
-            except json.JSONDecodeError:
-                raise ValueError("Service account key must be valid JSON")
+            except json.JSONDecodeError as e:
+                # M7: Don't include the actual JSON error which may contain key fragments
+                raise ValueError(
+                    "Service account key must be valid JSON. "
+                    f"Parse error at position {e.pos if hasattr(e, 'pos') else 'unknown'}"
+                )
+            except Exception:
+                # M7: Catch-all to prevent any key data in error messages
+                raise ValueError("Invalid service account key format")
         return v
 
 
@@ -258,9 +270,11 @@ async def create_aws_credential(
         raise HTTPException(status_code=400, detail="Account is not AWS")
 
     # Get existing credential or create new
+    # M6b: Include organisation check when fetching credential
     result = await db.execute(
         select(CloudCredential).where(
-            CloudCredential.cloud_account_id == body.cloud_account_id
+            CloudCredential.cloud_account_id == body.cloud_account_id,
+            CloudCredential.organization_id == auth.organization_id,
         )
     )
     credential = result.scalar_one_or_none()
@@ -326,9 +340,11 @@ async def create_gcp_credential(
         raise HTTPException(status_code=400, detail="Account is not GCP")
 
     # Get existing credential or create new
+    # M6b: Include organisation check when fetching credential
     result = await db.execute(
         select(CloudCredential).where(
-            CloudCredential.cloud_account_id == body.cloud_account_id
+            CloudCredential.cloud_account_id == body.cloud_account_id,
+            CloudCredential.organization_id == auth.organization_id,
         )
     )
     credential = result.scalar_one_or_none()

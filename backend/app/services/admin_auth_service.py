@@ -483,7 +483,7 @@ class AdminAuthService:
         For now, use simple XOR with app secret (NOT production-ready).
         """
         # TODO: Use proper encryption (KMS) in production
-        key = settings.secret_key[:32].encode()
+        key = settings.secret_key.get_secret_value()[:32].encode()
         secret_bytes = secret.encode()
 
         # Simple XOR for development (replace with Fernet/KMS)
@@ -492,7 +492,7 @@ class AdminAuthService:
 
     def _decrypt_mfa_secret(self, encrypted: bytes) -> str:
         """Decrypt MFA secret."""
-        key = settings.secret_key[:32].encode()
+        key = settings.secret_key.get_secret_value()[:32].encode()
 
         decrypted = bytes(a ^ b for a, b in zip(encrypted, key * 10))
         return decrypted.decode()
