@@ -11,6 +11,7 @@ from app.mappers.indicator_library import (
     CLOUDTRAIL_EVENT_TO_TECHNIQUES,
     TechniqueIndicator,
 )
+from app.mappers.technique_metadata import get_technique_metadata
 from app.mappers.guardduty_mappings import get_mitre_mappings_for_finding
 from app.mappers.config_rule_mappings import get_techniques_for_config_rule
 from app.mappers.securityhub_mappings import get_techniques_for_security_hub
@@ -131,18 +132,27 @@ class PatternMapper:
             for finding_type in finding_types:
                 mappings = get_mitre_mappings_for_finding(finding_type)
                 for technique_id, confidence in mappings:
-                    indicator = TECHNIQUE_BY_ID.get(technique_id)
-                    if indicator:
+                    # Use technique_metadata for CTID lookups (comprehensive)
+                    # Fall back to indicator_library for pattern-matching techniques
+                    metadata = get_technique_metadata(technique_id)
+                    if metadata:
                         results.append(
                             MappingResult(
                                 technique_id=technique_id,
-                                technique_name=indicator.technique_name,
-                                tactic_id=indicator.tactic_id,
-                                tactic_name=indicator.tactic_name,
+                                technique_name=metadata.technique_name,
+                                tactic_id=metadata.tactic_id,
+                                tactic_name=metadata.tactic_name,
                                 confidence=confidence,
                                 matched_indicators=[f"guardduty:{finding_type}"],
                                 rationale=f"GuardDuty vendor mapping for {finding_type}",
                             )
+                        )
+                    else:
+                        # Log missing technique for debugging
+                        self.logger.warning(
+                            "missing_technique_metadata",
+                            technique_id=technique_id,
+                            source="guardduty",
                         )
 
         # Security Hub mappings - using official MITRE CTID mappings
@@ -160,21 +170,27 @@ class PatternMapper:
             )
 
             for technique_id, confidence in technique_mappings:
-                indicator = TECHNIQUE_BY_ID.get(technique_id)
-                if indicator:
+                metadata = get_technique_metadata(technique_id)
+                if metadata:
                     matched = (
                         f"{standard_name}:{control_id}" if control_id else standard_name
                     )
                     results.append(
                         MappingResult(
                             technique_id=technique_id,
-                            technique_name=indicator.technique_name,
-                            tactic_id=indicator.tactic_id,
-                            tactic_name=indicator.tactic_name,
+                            technique_name=metadata.technique_name,
+                            tactic_id=metadata.tactic_id,
+                            tactic_name=metadata.tactic_name,
                             confidence=confidence,
                             matched_indicators=[f"securityhub:{matched}"],
                             rationale=f"Security Hub {matched} - MITRE CTID mapping",
                         )
+                    )
+                else:
+                    self.logger.warning(
+                        "missing_technique_metadata",
+                        technique_id=technique_id,
+                        source="securityhub",
                     )
 
         # Config Rule mappings - using official MITRE CTID mappings
@@ -191,18 +207,24 @@ class PatternMapper:
 
             matched_rule = source_identifier or rule_name
             for technique_id, confidence in technique_mappings:
-                indicator = TECHNIQUE_BY_ID.get(technique_id)
-                if indicator:
+                metadata = get_technique_metadata(technique_id)
+                if metadata:
                     results.append(
                         MappingResult(
                             technique_id=technique_id,
-                            technique_name=indicator.technique_name,
-                            tactic_id=indicator.tactic_id,
-                            tactic_name=indicator.tactic_name,
+                            technique_name=metadata.technique_name,
+                            tactic_id=metadata.tactic_id,
+                            tactic_name=metadata.tactic_name,
                             confidence=confidence,
                             matched_indicators=[f"config:{matched_rule}"],
                             rationale=f"AWS Config Rule {matched_rule} - MITRE CTID mapping",
                         )
+                    )
+                else:
+                    self.logger.warning(
+                        "missing_technique_metadata",
+                        technique_id=technique_id,
+                        source="config",
                     )
 
         # GCP Security Command Center mappings - using official MITRE CTID mappings
@@ -218,18 +240,24 @@ class PatternMapper:
             )
 
             for technique_id, confidence in technique_mappings:
-                indicator = TECHNIQUE_BY_ID.get(technique_id)
-                if indicator:
+                metadata = get_technique_metadata(technique_id)
+                if metadata:
                     results.append(
                         MappingResult(
                             technique_id=technique_id,
-                            technique_name=indicator.technique_name,
-                            tactic_id=indicator.tactic_id,
-                            tactic_name=indicator.tactic_name,
+                            technique_name=metadata.technique_name,
+                            tactic_id=metadata.tactic_id,
+                            tactic_name=metadata.tactic_name,
                             confidence=confidence,
                             matched_indicators=[f"scc:{finding_category}"],
                             rationale=f"GCP SCC {finding_category} - MITRE CTID mapping",
                         )
+                    )
+                else:
+                    self.logger.warning(
+                        "missing_technique_metadata",
+                        technique_id=technique_id,
+                        source="scc",
                     )
 
         # GCP Chronicle mappings - using official MITRE CTID mappings
@@ -245,18 +273,24 @@ class PatternMapper:
             )
 
             for technique_id, confidence in technique_mappings:
-                indicator = TECHNIQUE_BY_ID.get(technique_id)
-                if indicator:
+                metadata = get_technique_metadata(technique_id)
+                if metadata:
                     results.append(
                         MappingResult(
                             technique_id=technique_id,
-                            technique_name=indicator.technique_name,
-                            tactic_id=indicator.tactic_id,
-                            tactic_name=indicator.tactic_name,
+                            technique_name=metadata.technique_name,
+                            tactic_id=metadata.tactic_id,
+                            tactic_name=metadata.tactic_name,
                             confidence=confidence,
                             matched_indicators=[f"chronicle:{rule_category}"],
                             rationale=f"GCP Chronicle {rule_category} - MITRE CTID mapping",
                         )
+                    )
+                else:
+                    self.logger.warning(
+                        "missing_technique_metadata",
+                        technique_id=technique_id,
+                        source="chronicle",
                     )
 
         # Deduplicate by technique_id, keeping highest confidence

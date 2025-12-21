@@ -378,6 +378,12 @@ GUARDDUTY_MITRE_MAPPINGS: dict[str, list[tuple[str, float]]] = {
     "Execution:EC2/MaliciousFile": [("T1204.002", 0.9)],
     "Execution:ECS/MaliciousFile": [("T1204.002", 0.9)],
     "Execution:Kubernetes/MaliciousFile": [("T1204.002", 0.9)],
+    "Execution:Container/MaliciousFile": [("T1204.002", 0.9)],
+    # Suspicious file findings - lower confidence than malicious
+    "Execution:EC2/SuspiciousFile": [("T1204.002", 0.75)],
+    "Execution:ECS/SuspiciousFile": [("T1204.002", 0.75)],
+    "Execution:Kubernetes/SuspiciousFile": [("T1204.002", 0.75)],
+    "Execution:Container/SuspiciousFile": [("T1204.002", 0.75)],
     # === Initial Access (where mappable) ===
     "InitialAccess:IAMUser/AnomalousBehavior": [
         ("T1078", 0.75),
