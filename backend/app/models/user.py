@@ -388,6 +388,10 @@ class UserSession(Base):
     refresh_token_hash: Mapped[str] = mapped_column(
         String(255), nullable=False, unique=True
     )
+    # M2: Track previous token hash for rotation detection (theft indicator)
+    previous_token_hash: Mapped[Optional[str]] = mapped_column(
+        String(255), nullable=True, index=True
+    )
 
     # Session metadata
     user_agent: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
@@ -548,10 +552,12 @@ class AuditLogAction(str, enum.Enum):
     USER_LOGIN = "user.login"
     USER_LOGOUT = "user.logout"
     USER_LOGIN_FAILED = "user.login_failed"
+    USER_ACCOUNT_LOCKED = "user.account_locked"  # M18: Track lockout events
     USER_MFA_ENABLED = "user.mfa_enabled"
     USER_MFA_DISABLED = "user.mfa_disabled"
     USER_PASSWORD_CHANGED = "user.password_changed"
     USER_PASSWORD_RESET = "user.password_reset"
+    USER_SESSION_REVOKED = "user.session_revoked"  # M18: Track session revocation
 
     # User management
     USER_INVITE = "user.invite"

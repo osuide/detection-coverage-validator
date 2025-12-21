@@ -228,6 +228,8 @@ class AuthService:
 
             # Exponential backoff lockout (H3 security fix)
             # Each time user hits max attempts, lockout doubles, capped at 24 hours
+            account_locked = False
+            lockout_minutes = 0
             if user.failed_login_attempts >= settings.max_login_attempts:
                 # Calculate lockout count (how many times they've hit max attempts)
                 lockout_count = (
@@ -241,7 +243,9 @@ class AuthService:
                 user.locked_until = datetime.now(timezone.utc) + timedelta(
                     minutes=lockout_minutes
                 )
+                account_locked = True
 
+            # M18/M19: Log failed attempt with attempt count
             await self._log_audit(
                 action=AuditLogAction.USER_LOGIN_FAILED,
                 user_id=user.id,
@@ -250,9 +254,26 @@ class AuthService:
                 details={
                     "reason": "invalid_password",
                     "attempts": user.failed_login_attempts,
+                    "max_attempts": settings.max_login_attempts,
                 },
                 success=False,
             )
+
+            # M18: Log explicit lockout event for security monitoring
+            if account_locked:
+                await self._log_audit(
+                    action=AuditLogAction.USER_ACCOUNT_LOCKED,
+                    user_id=user.id,
+                    ip_address=ip_address,
+                    user_agent=user_agent,
+                    details={
+                        "lockout_minutes": lockout_minutes,
+                        "failed_attempts": user.failed_login_attempts,
+                        "locked_until": user.locked_until.isoformat(),
+                    },
+                    success=False,
+                )
+
             return None, "Invalid email or password"
 
         # Reset failed attempts on success
@@ -310,10 +331,42 @@ class AuthService:
         """
         Refresh an access token using a refresh token.
 
+        M2: Implements refresh token rotation detection to identify potential token theft.
+        If a previously-rotated token is reused, all sessions for that user are revoked.
+
         Returns:
             Tuple of (new_access_token, new_refresh_token) or (None, None) if invalid.
         """
         token_hash = self.hash_token(refresh_token)
+
+        # M2: Check if this token was previously rotated (theft indicator)
+        # If someone is using an old token, it means the token was stolen
+        theft_check = await self.db.execute(
+            select(UserSession).where(
+                and_(
+                    UserSession.previous_token_hash == token_hash,
+                    UserSession.is_active.is_(True),
+                )
+            )
+        )
+        compromised_session = theft_check.scalar_one_or_none()
+
+        if compromised_session:
+            # Token theft detected - revoke all sessions for this user
+            self.logger.warning(
+                "refresh_token_theft_detected",
+                user_id=str(compromised_session.user_id),
+                session_id=str(compromised_session.id),
+                ip_address=ip_address,
+            )
+            await self.logout_all_sessions(
+                compromised_session.user_id,
+                reason="token_theft_detected",
+                ip_address=ip_address,
+            )
+            return None, None
+
+        # Normal token lookup
         result = await self.db.execute(
             select(UserSession).where(
                 and_(
@@ -332,6 +385,9 @@ class AuthService:
         user = await self.get_user_by_id(session.user_id)
         if not user or not user.is_active:
             return None, None
+
+        # M2: Save current hash as previous before rotating
+        session.previous_token_hash = session.refresh_token_hash
 
         # Rotate refresh token
         new_refresh_token = self.generate_refresh_token()
@@ -370,8 +426,16 @@ class AuthService:
             return True
         return False
 
-    async def logout_all_sessions(self, user_id: UUID) -> int:
-        """Logout all sessions for a user."""
+    async def logout_all_sessions(
+        self,
+        user_id: UUID,
+        reason: Optional[str] = None,
+        ip_address: Optional[str] = None,
+    ) -> int:
+        """Logout all sessions for a user.
+
+        M18: Enhanced with audit logging for security monitoring.
+        """
         result = await self.db.execute(
             select(UserSession).where(
                 and_(
@@ -385,6 +449,19 @@ class AuthService:
         for session in sessions:
             session.is_active = False
             count += 1
+
+        # M18: Log session revocation for security monitoring
+        if count > 0:
+            await self._log_audit(
+                action=AuditLogAction.USER_SESSION_REVOKED,
+                user_id=user_id,
+                ip_address=ip_address,
+                details={
+                    "sessions_revoked": count,
+                    "reason": reason or "all_sessions_logout",
+                },
+            )
+
         return count
 
     # Organization operations
