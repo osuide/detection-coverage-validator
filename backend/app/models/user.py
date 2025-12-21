@@ -83,8 +83,9 @@ class User(Base):
         if not key:
             return None
         try:
-            Fernet(key.encode())
-            return key.encode()
+            key_value = key.get_secret_value()
+            Fernet(key_value.encode())
+            return key_value.encode()
         except Exception:
             return None
 

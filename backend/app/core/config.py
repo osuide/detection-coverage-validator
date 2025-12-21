@@ -95,7 +95,7 @@ class Settings(BaseSettings):
             try:
                 from cryptography.fernet import Fernet
 
-                Fernet(self.credential_encryption_key.encode())
+                Fernet(self.credential_encryption_key.get_secret_value().encode())
             except Exception as e:
                 raise ValueError(
                     f"CRITICAL: CREDENTIAL_ENCRYPTION_KEY is invalid: {e}. "
@@ -159,7 +159,9 @@ class Settings(BaseSettings):
 
     # Cloud Credentials Encryption
     # Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-    credential_encryption_key: Optional[str] = None
+    credential_encryption_key: Optional[SecretStr] = (
+        None  # SecretStr prevents accidental exposure
+    )
 
     # A13E Cloud Infrastructure (for cross-account access)
     a13e_aws_account_id: str = "123080274263"  # A13E's AWS account for AssumeRole trust

@@ -171,8 +171,9 @@ class CloudCredential(Base):
             raise ValueError("CREDENTIAL_ENCRYPTION_KEY not configured")
         try:
             # Validate key by creating Fernet instance
-            Fernet(key.encode())
-            return key.encode()
+            key_value = key.get_secret_value()
+            Fernet(key_value.encode())
+            return key_value.encode()
         except Exception as e:
             raise ValueError(f"Invalid encryption key: {e}")
 

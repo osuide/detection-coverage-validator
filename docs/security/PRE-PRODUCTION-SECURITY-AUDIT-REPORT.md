@@ -144,7 +144,7 @@ A comprehensive security audit was conducted covering authentication, API securi
 | ID | Severity | Issue | Recommendation | Status |
 |----|----------|-------|----------------|--------|
 | DATA-H1 | High | Fernet uses AES-128-CBC (not AES-256) | Acceptable - HMAC provides integrity, migration complex | ACCEPTED |
-| DATA-H2 | High | `credential_encryption_key` not SecretStr | Add SecretStr type annotation | BACKLOG |
+| DATA-H2 | High | `credential_encryption_key` not SecretStr | Add SecretStr type annotation | FIXED |
 | DATA-M1 | Medium | Admin password printed to console on seed | Remove console output | BACKLOG |
 | DATA-M2 | Medium | GCP key JSON not schema-validated | Add JSON schema validation | BACKLOG |
 | DATA-M3 | Medium | Key rotation timestamp added | Migration deployed | FIXED |
@@ -285,7 +285,7 @@ The application meets all must-pass criteria for production deployment. The rema
 1. Enable VPC Flow Logs for forensic capability
 2. Add `pip-audit` to CI/CD pipeline
 3. Implement stricter MFA rate limiting (3/min)
-4. Add SecretStr to credential_encryption_key
+4. ~~Add SecretStr to credential_encryption_key~~ (FIXED)
 
 ### Long-term (Backlog)
 
