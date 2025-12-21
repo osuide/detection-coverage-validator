@@ -60,8 +60,17 @@ resource "random_password" "jwt_secret" {
   special = true
 }
 
+# Random credential encryption key if not provided (Fernet-compatible base64)
+resource "random_password" "credential_encryption" {
+  count   = var.credential_encryption_key == "" ? 1 : 0
+  length  = 32
+  special = false
+}
+
 locals {
   jwt_secret_key = var.jwt_secret_key != "" ? var.jwt_secret_key : random_password.jwt_secret[0].result
+  # Fernet requires URL-safe base64-encoded 32-byte key
+  credential_encryption_key = var.credential_encryption_key != "" ? var.credential_encryption_key : base64encode(random_password.credential_encryption[0].result)
 }
 
 # VPC
@@ -151,12 +160,13 @@ module "backend" {
   ecr_repository_url         = module.ecr.repository_url
   domain_name                = var.domain_name != "" ? (var.subdomain != "" ? "api.${var.subdomain}.${var.domain_name}" : "api.${var.domain_name}") : ""
   # Certificate and HTTPS are enabled in phase 2 after initial deployment
-  certificate_arn       = var.enable_https && var.domain_name != "" ? module.dns[0].alb_certificate_arn : ""
-  enable_https          = var.enable_https
-  jwt_secret_key        = local.jwt_secret_key
-  stripe_secret_key     = var.stripe_secret_key
-  stripe_webhook_secret = var.stripe_webhook_secret
-  stripe_price_ids      = var.stripe_price_ids
+  certificate_arn           = var.enable_https && var.domain_name != "" ? module.dns[0].alb_certificate_arn : ""
+  enable_https              = var.enable_https
+  jwt_secret_key            = local.jwt_secret_key
+  credential_encryption_key = local.credential_encryption_key
+  stripe_secret_key         = var.stripe_secret_key
+  stripe_webhook_secret     = var.stripe_webhook_secret
+  stripe_price_ids          = var.stripe_price_ids
 
   # Cognito OAuth configuration
   cognito_user_pool_id = var.enable_cognito ? module.cognito[0].user_pool_id : ""

@@ -59,6 +59,13 @@ variable "jwt_secret_key" {
   sensitive = true
 }
 
+variable "credential_encryption_key" {
+  type        = string
+  sensitive   = true
+  default     = ""
+  description = "Fernet key for encrypting cloud credentials. Required in production."
+}
+
 variable "stripe_secret_key" {
   type      = string
   sensitive = true
@@ -488,6 +495,7 @@ resource "aws_ecs_task_definition" "backend" {
       { name = "DISABLE_SCAN_LIMITS", value = var.environment == "prod" ? "false" : "true" },
       { name = "A13E_DEV_MODE", value = "false" },
       { name = "SECRET_KEY", value = var.jwt_secret_key },
+      { name = "CREDENTIAL_ENCRYPTION_KEY", value = var.credential_encryption_key },
       { name = "STRIPE_SECRET_KEY", value = var.stripe_secret_key },
       { name = "STRIPE_WEBHOOK_SECRET", value = var.stripe_webhook_secret },
       { name = "STRIPE_PRICE_ID_SUBSCRIBER", value = var.stripe_price_ids.subscriber },

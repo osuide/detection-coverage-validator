@@ -53,6 +53,13 @@ variable "jwt_secret_key" {
   default     = ""
 }
 
+variable "credential_encryption_key" {
+  description = "Fernet key for encrypting cloud credentials (auto-generated if not provided)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "stripe_secret_key" {
   description = "Stripe secret API key"
   type        = string
