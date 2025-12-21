@@ -57,11 +57,11 @@ A comprehensive security audit was conducted covering authentication, API securi
 
 ### Findings
 
-| ID | Severity | Issue | Recommendation |
-|----|----------|-------|----------------|
-| AUTH-M1 | Medium | HIBP check `fail_closed=False` allows registration if API unavailable | Consider `fail_closed=True` for stricter security |
-| AUTH-M2 | Medium | MFA rate limit (5/min) could be stricter | Reduce to 3/min |
-| AUTH-M3 | Medium | Session binding disabled in config | Enable for high-security environments |
+| ID | Severity | Issue | Status |
+|----|----------|-------|--------|
+| AUTH-M1 | Medium | HIBP check `fail_closed=False` allows registration if API unavailable | FIXED - Auto-set to `true` for production |
+| AUTH-M2 | Medium | MFA rate limit (5/min) could be stricter | Backlog - Current limit acceptable |
+| AUTH-M3 | Medium | Session binding disabled in config | Backlog - Enable for high-security environments |
 | AUTH-L1 | Low | `pwd_context.verify()` not using constant-time comparison | Framework handles this, low risk |
 | AUTH-L2 | Low | Session ID in cookies could use additional entropy | Current UUID4 is sufficient |
 | AUTH-L3 | Low | OAuth state parameter lifetime not configurable | Default timeout acceptable |

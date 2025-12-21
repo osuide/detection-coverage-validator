@@ -493,6 +493,7 @@ resource "aws_ecs_task_definition" "backend" {
       { name = "ENVIRONMENT", value = var.environment },
       { name = "DEBUG", value = var.environment == "prod" ? "false" : "true" },
       { name = "DISABLE_SCAN_LIMITS", value = var.environment == "prod" ? "false" : "true" },
+      { name = "HIBP_FAIL_CLOSED", value = var.environment == "prod" ? "true" : "false" },
       { name = "A13E_DEV_MODE", value = "false" },
       { name = "SECRET_KEY", value = var.jwt_secret_key },
       { name = "CREDENTIAL_ENCRYPTION_KEY", value = var.credential_encryption_key },
