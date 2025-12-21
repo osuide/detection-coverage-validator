@@ -12,6 +12,7 @@ from app.mappers.indicator_library import (
     TechniqueIndicator,
 )
 from app.mappers.guardduty_mappings import get_mitre_mappings_for_finding
+from app.mappers.config_rule_mappings import get_techniques_for_config_rule
 from app.scanners.base import RawDetection
 from app.models.detection import DetectionType
 
@@ -168,41 +169,33 @@ class PatternMapper:
                             )
                         )
 
-        # Config Rule mappings
+        # Config Rule mappings - using official MITRE CTID mappings
         elif detection.detection_type == DetectionType.CONFIG_RULE:
             raw_config = detection.raw_config or {}
             source_identifier = raw_config.get("source_identifier", "")
+            rule_name = detection.name or ""
 
-            # Map common Config Rules to techniques
-            config_rule_mappings = {
-                "IAM_": [("T1098", 0.7), ("T1078.004", 0.65)],
-                "CLOUDTRAIL": [("T1562.008", 0.8)],
-                "S3_BUCKET_PUBLIC": [("T1537", 0.75)],
-                "S3_BUCKET_LOGGING": [("T1562.008", 0.7)],
-                "ENCRYPTED": [("T1486", 0.6)],
-                "ACCESS_KEY": [("T1098.001", 0.75)],
-                "MFA": [("T1078.004", 0.7)],
-                "ROOT": [("T1078.004", 0.8)],
-                "VPC_": [("T1562.007", 0.65)],
-                "SECURITY_GROUP": [("T1562.007", 0.65)],
-            }
+            # Get official MITRE mappings for this Config rule
+            technique_mappings = get_techniques_for_config_rule(
+                source_identifier=source_identifier,
+                rule_name=rule_name,
+            )
 
-            for prefix, mappings in config_rule_mappings.items():
-                if prefix in source_identifier.upper():
-                    for technique_id, confidence in mappings:
-                        indicator = TECHNIQUE_BY_ID.get(technique_id)
-                        if indicator:
-                            results.append(
-                                MappingResult(
-                                    technique_id=technique_id,
-                                    technique_name=indicator.technique_name,
-                                    tactic_id=indicator.tactic_id,
-                                    tactic_name=indicator.tactic_name,
-                                    confidence=confidence,
-                                    matched_indicators=[f"config:{source_identifier}"],
-                                    rationale=f"AWS Config Rule {source_identifier} coverage",
-                                )
-                            )
+            matched_rule = source_identifier or rule_name
+            for technique_id, confidence in technique_mappings:
+                indicator = TECHNIQUE_BY_ID.get(technique_id)
+                if indicator:
+                    results.append(
+                        MappingResult(
+                            technique_id=technique_id,
+                            technique_name=indicator.technique_name,
+                            tactic_id=indicator.tactic_id,
+                            tactic_name=indicator.tactic_name,
+                            confidence=confidence,
+                            matched_indicators=[f"config:{matched_rule}"],
+                            rationale=f"AWS Config Rule {matched_rule} - MITRE CTID mapping",
+                        )
+                    )
 
         # Deduplicate by technique_id, keeping highest confidence
         seen = {}
