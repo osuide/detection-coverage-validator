@@ -6,6 +6,7 @@ import secrets
 from datetime import datetime, timezone
 from typing import Optional, List
 
+from cryptography.fernet import Fernet
 from sqlalchemy import (
     String,
     DateTime,
@@ -20,6 +21,7 @@ from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+from app.core.config import get_settings
 
 
 class UserRole(str, enum.Enum):
@@ -63,10 +65,62 @@ class User(Base):
         DateTime(timezone=True), nullable=True
     )
 
-    # MFA
+    # MFA - secret is encrypted at rest using Fernet (L1 security fix)
     mfa_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
-    mfa_secret: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    _mfa_secret_encrypted: Mapped[Optional[str]] = mapped_column(
+        "mfa_secret", String(255), nullable=True
+    )  # Column name kept as 'mfa_secret' for backwards compatibility
     mfa_backup_codes: Mapped[Optional[List[str]]] = mapped_column(JSONB, nullable=True)
+
+    @staticmethod
+    def _get_mfa_encryption_key() -> Optional[bytes]:
+        """Get encryption key for MFA secrets.
+
+        Returns None if encryption key is not configured (development mode).
+        """
+        settings = get_settings()
+        key = settings.credential_encryption_key
+        if not key:
+            return None
+        try:
+            Fernet(key.encode())
+            return key.encode()
+        except Exception:
+            return None
+
+    @property
+    def mfa_secret(self) -> Optional[str]:
+        """Get decrypted MFA secret."""
+        if not self._mfa_secret_encrypted:
+            return None
+
+        key = self._get_mfa_encryption_key()
+        if not key:
+            # No encryption key - return as-is (legacy/development mode)
+            return self._mfa_secret_encrypted
+
+        try:
+            fernet = Fernet(key)
+            return fernet.decrypt(self._mfa_secret_encrypted.encode()).decode()
+        except Exception:
+            # If decryption fails, assume it's unencrypted legacy data
+            return self._mfa_secret_encrypted
+
+    @mfa_secret.setter
+    def mfa_secret(self, value: Optional[str]) -> None:
+        """Set encrypted MFA secret."""
+        if value is None:
+            self._mfa_secret_encrypted = None
+            return
+
+        key = self._get_mfa_encryption_key()
+        if not key:
+            # No encryption key - store as-is (development mode)
+            self._mfa_secret_encrypted = value
+            return
+
+        fernet = Fernet(key)
+        self._mfa_secret_encrypted = fernet.encrypt(value.encode()).decode()
 
     # OAuth (legacy)
     oauth_provider: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
