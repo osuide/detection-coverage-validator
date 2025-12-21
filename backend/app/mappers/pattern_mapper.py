@@ -49,6 +49,15 @@ class PatternMapper:
         self.logger = logger.bind(mapper="PatternMapper")
         self.indicators = TECHNIQUE_INDICATORS
 
+    # Detection types with official MITRE CTID mappings - skip pattern matching
+    CTID_MAPPED_TYPES = {
+        DetectionType.GUARDDUTY_FINDING,
+        DetectionType.SECURITY_HUB,
+        DetectionType.CONFIG_RULE,
+        DetectionType.GCP_SECURITY_COMMAND_CENTER,
+        DetectionType.GCP_CHRONICLE,
+    }
+
     def map_detection(
         self,
         detection: RawDetection,
@@ -65,18 +74,24 @@ class PatternMapper:
         """
         results = []
 
-        # Check for vendor-specific mappings (GuardDuty, SecurityHub)
+        # Check for vendor-specific mappings (GuardDuty, SecurityHub, SCC, etc.)
         vendor_results = self._get_vendor_mappings(detection)
         if vendor_results:
             results.extend(vendor_results)
 
-        # Also run pattern-based mapping for additional coverage
-        for indicator in self.indicators:
-            # Skip if we already have a high-confidence vendor mapping for this technique
-            existing_ids = {r.technique_id for r in results if r.confidence >= 0.8}
-            if indicator.technique_id in existing_ids:
-                continue
+        # For managed services with official CTID mappings, use only vendor mappings
+        # Pattern matching is only for user-defined detections (CloudWatch, EventBridge, etc.)
+        if detection.detection_type in self.CTID_MAPPED_TYPES:
+            self.logger.debug(
+                "mapping_complete",
+                detection=detection.name,
+                mappings=len(results),
+                source="ctid",
+            )
+            return results
 
+        # Run pattern-based mapping for user-defined detection types
+        for indicator in self.indicators:
             confidence, matched, rationale = self._calculate_match(detection, indicator)
 
             if confidence >= min_confidence:
@@ -99,6 +114,7 @@ class PatternMapper:
             "mapping_complete",
             detection=detection.name,
             mappings=len(results),
+            source="pattern",
         )
 
         return results
