@@ -104,14 +104,13 @@ async def create_scan(
             },
         )
 
-    # Use account regions if not specified
-    regions = scan_in.regions or account.regions
-    if not regions:
-        regions = ["us-east-1"]  # Default region
+    # Only use scan-level regions if explicitly specified in the request
+    # Otherwise leave empty so scan service uses account.region_config
+    scan_regions = scan_in.regions if scan_in.regions else []
 
     scan = Scan(
         cloud_account_id=scan_in.cloud_account_id,
-        regions=regions,
+        regions=scan_regions,
         detection_types=(
             [dt.value for dt in scan_in.detection_types]
             if scan_in.detection_types
