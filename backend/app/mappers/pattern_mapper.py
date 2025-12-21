@@ -14,6 +14,8 @@ from app.mappers.indicator_library import (
 from app.mappers.guardduty_mappings import get_mitre_mappings_for_finding
 from app.mappers.config_rule_mappings import get_techniques_for_config_rule
 from app.mappers.securityhub_mappings import get_techniques_for_security_hub
+from app.mappers.gcp_scc_mappings import get_mitre_mappings_for_scc_finding
+from app.mappers.gcp_chronicle_mappings import get_mitre_mappings_for_chronicle_rule
 from app.scanners.base import RawDetection
 from app.models.detection import DetectionType
 
@@ -184,6 +186,60 @@ class PatternMapper:
                             confidence=confidence,
                             matched_indicators=[f"config:{matched_rule}"],
                             rationale=f"AWS Config Rule {matched_rule} - MITRE CTID mapping",
+                        )
+                    )
+
+        # GCP Security Command Center mappings - using official MITRE CTID mappings
+        elif detection.detection_type == DetectionType.GCP_SECURITY_COMMAND_CENTER:
+            raw_config = detection.raw_config or {}
+            finding_category = raw_config.get("category", "")
+            finding_class = raw_config.get("finding_class", "")
+
+            # Get official MITRE mappings for this SCC finding
+            technique_mappings = get_mitre_mappings_for_scc_finding(
+                finding_category=finding_category,
+                finding_class=finding_class,
+            )
+
+            for technique_id, confidence in technique_mappings:
+                indicator = TECHNIQUE_BY_ID.get(technique_id)
+                if indicator:
+                    results.append(
+                        MappingResult(
+                            technique_id=technique_id,
+                            technique_name=indicator.technique_name,
+                            tactic_id=indicator.tactic_id,
+                            tactic_name=indicator.tactic_name,
+                            confidence=confidence,
+                            matched_indicators=[f"scc:{finding_category}"],
+                            rationale=f"GCP SCC {finding_category} - MITRE CTID mapping",
+                        )
+                    )
+
+        # GCP Chronicle mappings - using official MITRE CTID mappings
+        elif detection.detection_type == DetectionType.GCP_CHRONICLE:
+            raw_config = detection.raw_config or {}
+            rule_category = raw_config.get("rule_category", "")
+            rule_name = detection.name or ""
+
+            # Get official MITRE mappings for this Chronicle rule
+            technique_mappings = get_mitre_mappings_for_chronicle_rule(
+                rule_category=rule_category,
+                rule_name=rule_name,
+            )
+
+            for technique_id, confidence in technique_mappings:
+                indicator = TECHNIQUE_BY_ID.get(technique_id)
+                if indicator:
+                    results.append(
+                        MappingResult(
+                            technique_id=technique_id,
+                            technique_name=indicator.technique_name,
+                            tactic_id=indicator.tactic_id,
+                            tactic_name=indicator.tactic_name,
+                            confidence=confidence,
+                            matched_indicators=[f"chronicle:{rule_category}"],
+                            rationale=f"GCP Chronicle {rule_category} - MITRE CTID mapping",
                         )
                     )
 
