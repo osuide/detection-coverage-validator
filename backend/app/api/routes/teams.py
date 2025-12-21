@@ -254,16 +254,17 @@ async def invite_member(
     )
     existing = existing_member.scalars().all()
 
+    # M9: Use generic message to prevent email enumeration
     for m in existing:
         if m.user and m.user.email == body.email:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="User is already a member",
+                detail="Unable to send invite to this email address",
             )
         if m.invited_email == body.email and m.status == MembershipStatus.PENDING:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="User already has a pending invite",
+                detail="Unable to send invite to this email address",
             )
 
     # Check if user exists

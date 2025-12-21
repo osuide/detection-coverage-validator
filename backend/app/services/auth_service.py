@@ -76,11 +76,14 @@ class AuthService:
         expire = datetime.now(timezone.utc) + timedelta(
             minutes=expires_minutes or settings.access_token_expire_minutes
         )
+        # M5: Add JTI (JWT ID) claim for token uniqueness and revocation support
+        jti = secrets.token_urlsafe(16)
         payload = {
             "sub": str(user_id),
             "exp": expire,
             "iat": datetime.now(timezone.utc),
             "type": "access",
+            "jti": jti,  # Unique token identifier
         }
         if organization_id:
             payload["org"] = str(organization_id)

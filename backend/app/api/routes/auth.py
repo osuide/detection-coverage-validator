@@ -272,11 +272,12 @@ async def login(
     if user.mfa_enabled:
         # Generate a short-lived MFA token
         mfa_token = auth_service.generate_access_token(user.id, expires_minutes=5)
+        # M4: Don't leak user info before MFA verification - return minimal data
         return LoginResponse(
             access_token="",
             refresh_token="",
             expires_in=0,
-            user=UserResponse.model_validate(user),
+            user=None,  # Don't return user details until MFA verified
             requires_mfa=True,
             mfa_token=mfa_token,
         )
@@ -456,11 +457,12 @@ async def signup(
             )
 
     # Check if email already exists
+    # M10: Return generic message to prevent email enumeration
     existing_user = await auth_service.get_user_by_email(body.email)
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered",
+            detail="Unable to create account with this email address",
         )
 
     # Check if password has been exposed in data breaches (HIBP)
