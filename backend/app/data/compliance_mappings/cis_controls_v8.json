@@ -2,667 +2,5729 @@
   "framework": {
     "framework_id": "cis-controls-v8",
     "name": "CIS Controls v8",
-    "version": "v8",
-    "description": "CIS Critical Security Controls are a prioritised set of actions that collectively form a defence-in-depth set of best practices that mitigate the most common attacks against systems and networks. Version 8 was released in 2021.",
-    "source_url": "https://www.cisecurity.org/insights/white-papers/cis-controls-v8-master-mapping-to-mitre-enterprise-attck-v82"
+    "version": "8.0",
+    "description": "CIS Critical Security Controls Version 8. The CIS Controls are a prioritised set of safeguards to mitigate the most prevalent cyber-attacks. Mappings based on CIS official ATT&CK v8.2 mapping.",
+    "source_url": "https://www.cisecurity.org/controls/v8"
   },
   "controls": [
     {
       "control_id": "1",
       "control_family": "Inventory and Control of Enterprise Assets",
       "name": "Inventory and Control of Enterprise Assets",
-      "description": "Actively manage all enterprise assets connected to the infrastructure physically, virtually, remotely, and those within cloud environments.",
+      "description": "CIS Control 1: Inventory and Control of Enterprise Assets",
       "priority": "P1",
+      "is_enhancement": false,
       "cloud_applicability": "highly_relevant",
       "cloud_context": {
-        "aws_services": ["AWS Config", "Resource Groups", "Systems Manager", "EC2"],
-        "gcp_services": ["Cloud Asset Inventory", "Resource Manager", "Compute Engine"],
-        "shared_responsibility": "customer",
-        "detection_guidance": "Use AWS Config or Cloud Asset Inventory for continuous asset discovery and tracking."
+        "aws_services": [
+          "Config",
+          "Systems Manager",
+          "EC2",
+          "Resource Groups"
+        ],
+        "gcp_services": [
+          "Cloud Asset Inventory",
+          "Compute Engine",
+          "Resource Manager"
+        ],
+        "shared_responsibility": "customer"
       },
       "technique_mappings": [
-        {"technique_id": "T1580", "mapping_type": "mitigates"},
-        {"technique_id": "T1526", "mapping_type": "mitigates"},
-        {"technique_id": "T1087", "mapping_type": "mitigates"}
+        {
+          "technique_id": "T1046",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1200",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1526",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1557",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1580",
+          "mapping_type": "mitigates"
+        }
       ]
     },
     {
       "control_id": "1.1",
       "control_family": "Inventory and Control of Enterprise Assets",
       "name": "Establish and Maintain Detailed Enterprise Asset Inventory",
-      "description": "Establish and maintain an accurate, detailed, and up-to-date inventory of all enterprise assets.",
+      "description": "CIS Safeguard 1.1: Establish and Maintain Detailed Enterprise Asset Inventory (IG1)",
       "priority": "P1",
       "is_enhancement": true,
       "cloud_applicability": "highly_relevant",
       "cloud_context": {
-        "aws_services": ["AWS Config", "Systems Manager Inventory"],
-        "gcp_services": ["Cloud Asset Inventory"],
-        "shared_responsibility": "customer",
-        "detection_guidance": "Enable AWS Config recording for all resource types in all regions."
+        "aws_services": [
+          "Config",
+          "Systems Manager",
+          "EC2",
+          "Resource Groups"
+        ],
+        "gcp_services": [
+          "Cloud Asset Inventory",
+          "Compute Engine",
+          "Resource Manager"
+        ],
+        "shared_responsibility": "customer"
       },
       "technique_mappings": [
-        {"technique_id": "T1580", "mapping_type": "mitigates"}
+        {
+          "technique_id": "T1580",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1526",
+          "mapping_type": "mitigates"
+        }
       ]
     },
     {
       "control_id": "1.2",
       "control_family": "Inventory and Control of Enterprise Assets",
       "name": "Address Unauthorised Assets",
-      "description": "Ensure that a process exists to address unauthorised assets on a weekly basis.",
+      "description": "CIS Safeguard 1.2: Address Unauthorised Assets (IG1)",
       "priority": "P1",
       "is_enhancement": true,
       "cloud_applicability": "highly_relevant",
       "cloud_context": {
-        "aws_services": ["AWS Config Rules", "Security Hub"],
-        "gcp_services": ["Security Command Center", "Organization Policy"],
-        "shared_responsibility": "customer",
-        "detection_guidance": "Create Config rules to detect resources outside approved configurations."
+        "aws_services": [
+          "Config",
+          "Systems Manager",
+          "EC2",
+          "Resource Groups"
+        ],
+        "gcp_services": [
+          "Cloud Asset Inventory",
+          "Compute Engine",
+          "Resource Manager"
+        ],
+        "shared_responsibility": "customer"
       },
       "technique_mappings": [
-        {"technique_id": "T1580", "mapping_type": "mitigates"},
-        {"technique_id": "T1526", "mapping_type": "mitigates"}
+        {
+          "technique_id": "T1580",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1526",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1200",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "1.3",
+      "control_family": "Inventory and Control of Enterprise Assets",
+      "name": "Utilise an Active Discovery Tool",
+      "description": "CIS Safeguard 1.3: Utilise an Active Discovery Tool (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Config",
+          "Systems Manager",
+          "EC2",
+          "Resource Groups"
+        ],
+        "gcp_services": [
+          "Cloud Asset Inventory",
+          "Compute Engine",
+          "Resource Manager"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1580",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1046",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "1.4",
+      "control_family": "Inventory and Control of Enterprise Assets",
+      "name": "Use Dynamic Host Configuration Protocol (DHCP) Logging",
+      "description": "CIS Safeguard 1.4: Use Dynamic Host Configuration Protocol (DHCP) Logging (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Config",
+          "Systems Manager",
+          "EC2",
+          "Resource Groups"
+        ],
+        "gcp_services": [
+          "Cloud Asset Inventory",
+          "Compute Engine",
+          "Resource Manager"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1200",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1557",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "1.5",
+      "control_family": "Inventory and Control of Enterprise Assets",
+      "name": "Use a Passive Asset Discovery Tool",
+      "description": "CIS Safeguard 1.5: Use a Passive Asset Discovery Tool (IG3)",
+      "priority": "P3",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Config",
+          "Systems Manager",
+          "EC2",
+          "Resource Groups"
+        ],
+        "gcp_services": [
+          "Cloud Asset Inventory",
+          "Compute Engine",
+          "Resource Manager"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1580",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1046",
+          "mapping_type": "mitigates"
+        }
       ]
     },
     {
       "control_id": "2",
       "control_family": "Inventory and Control of Software Assets",
       "name": "Inventory and Control of Software Assets",
-      "description": "Actively manage all software on the network so that only authorised software is installed and can execute.",
+      "description": "CIS Control 2: Inventory and Control of Software Assets",
       "priority": "P1",
+      "is_enhancement": false,
       "cloud_applicability": "highly_relevant",
       "cloud_context": {
-        "aws_services": ["Systems Manager", "ECR", "Lambda"],
-        "gcp_services": ["Container Registry", "Cloud Functions", "Binary Authorization"],
-        "shared_responsibility": "customer",
-        "detection_guidance": "Use Systems Manager Inventory and ECR scanning for software inventory."
+        "aws_services": [
+          "Systems Manager",
+          "Inspector",
+          "ECR"
+        ],
+        "gcp_services": [
+          "Artifact Registry",
+          "Cloud Build",
+          "Container Analysis"
+        ],
+        "shared_responsibility": "customer"
       },
       "technique_mappings": [
-        {"technique_id": "T1204", "mapping_type": "mitigates"},
-        {"technique_id": "T1059", "mapping_type": "mitigates"},
-        {"technique_id": "T1195", "mapping_type": "mitigates"},
-        {"technique_id": "T1072", "mapping_type": "mitigates"}
+        {
+          "technique_id": "T1055",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1059",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1072",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1190",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1204",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1505",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1574",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "2.1",
+      "control_family": "Inventory and Control of Software Assets",
+      "name": "Establish and Maintain a Software Inventory",
+      "description": "CIS Safeguard 2.1: Establish and Maintain a Software Inventory (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Systems Manager",
+          "Inspector",
+          "ECR"
+        ],
+        "gcp_services": [
+          "Artifact Registry",
+          "Cloud Build",
+          "Container Analysis"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1072",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1505",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "2.2",
+      "control_family": "Inventory and Control of Software Assets",
+      "name": "Ensure Authorised Software is Currently Supported",
+      "description": "CIS Safeguard 2.2: Ensure Authorised Software is Currently Supported (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Systems Manager",
+          "Inspector",
+          "ECR"
+        ],
+        "gcp_services": [
+          "Artifact Registry",
+          "Cloud Build",
+          "Container Analysis"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1072",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1190",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "2.3",
+      "control_family": "Inventory and Control of Software Assets",
+      "name": "Address Unauthorised Software",
+      "description": "CIS Safeguard 2.3: Address Unauthorised Software (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Systems Manager",
+          "Inspector",
+          "ECR"
+        ],
+        "gcp_services": [
+          "Artifact Registry",
+          "Cloud Build",
+          "Container Analysis"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1072",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1505",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1204",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "2.4",
+      "control_family": "Inventory and Control of Software Assets",
+      "name": "Utilise Automated Software Inventory Tools",
+      "description": "CIS Safeguard 2.4: Utilise Automated Software Inventory Tools (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Systems Manager",
+          "Inspector",
+          "ECR"
+        ],
+        "gcp_services": [
+          "Artifact Registry",
+          "Cloud Build",
+          "Container Analysis"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1072",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "2.5",
+      "control_family": "Inventory and Control of Software Assets",
+      "name": "Allowlist Authorised Software",
+      "description": "CIS Safeguard 2.5: Allowlist Authorised Software (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Systems Manager",
+          "Inspector",
+          "ECR"
+        ],
+        "gcp_services": [
+          "Artifact Registry",
+          "Cloud Build",
+          "Container Analysis"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1204",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1059",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1072",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "2.6",
+      "control_family": "Inventory and Control of Software Assets",
+      "name": "Allowlist Authorised Libraries",
+      "description": "CIS Safeguard 2.6: Allowlist Authorised Libraries (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Systems Manager",
+          "Inspector",
+          "ECR"
+        ],
+        "gcp_services": [
+          "Artifact Registry",
+          "Cloud Build",
+          "Container Analysis"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1574",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1055",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "2.7",
+      "control_family": "Inventory and Control of Software Assets",
+      "name": "Allowlist Authorised Scripts",
+      "description": "CIS Safeguard 2.7: Allowlist Authorised Scripts (IG3)",
+      "priority": "P3",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Systems Manager",
+          "Inspector",
+          "ECR"
+        ],
+        "gcp_services": [
+          "Artifact Registry",
+          "Cloud Build",
+          "Container Analysis"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1059",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1204",
+          "mapping_type": "mitigates"
+        }
       ]
     },
     {
       "control_id": "3",
       "control_family": "Data Protection",
       "name": "Data Protection",
-      "description": "Develop processes and technical controls to identify, classify, securely handle, retain, and dispose of data.",
+      "description": "CIS Control 3: Data Protection",
       "priority": "P1",
+      "is_enhancement": false,
       "cloud_applicability": "highly_relevant",
       "cloud_context": {
-        "aws_services": ["S3", "KMS", "Macie", "Secrets Manager"],
-        "gcp_services": ["Cloud Storage", "Cloud KMS", "DLP", "Secret Manager"],
-        "shared_responsibility": "customer",
-        "detection_guidance": "Enable S3 encryption, use Macie for data discovery, and KMS for key management."
+        "aws_services": [
+          "S3",
+          "KMS",
+          "Macie",
+          "EBS Encryption",
+          "RDS Encryption"
+        ],
+        "gcp_services": [
+          "Cloud Storage",
+          "Cloud KMS",
+          "DLP API",
+          "BigQuery"
+        ],
+        "shared_responsibility": "customer"
       },
       "technique_mappings": [
-        {"technique_id": "T1530", "mapping_type": "mitigates"},
-        {"technique_id": "T1537", "mapping_type": "mitigates"},
-        {"technique_id": "T1552", "mapping_type": "mitigates"},
-        {"technique_id": "T1048", "mapping_type": "mitigates"},
-        {"technique_id": "T1567", "mapping_type": "mitigates"}
+        {
+          "technique_id": "T1005",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1025",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1039",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1040",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1041",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1048",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1052",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1213",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1485",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1490",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1530",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1537",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1557",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1565",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1567",
+          "mapping_type": "mitigates"
+        }
       ]
     },
     {
       "control_id": "3.1",
       "control_family": "Data Protection",
       "name": "Establish and Maintain a Data Management Process",
-      "description": "Establish and maintain a data management process that addresses data sensitivity, ownership, and handling.",
+      "description": "CIS Safeguard 3.1: Establish and Maintain a Data Management Process (IG1)",
       "priority": "P1",
       "is_enhancement": true,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "highly_relevant",
       "cloud_context": {
-        "aws_services": ["Macie", "S3"],
-        "gcp_services": ["DLP", "Cloud Storage"],
-        "shared_responsibility": "customer",
-        "detection_guidance": "Use Macie or DLP to discover and classify sensitive data."
+        "aws_services": [
+          "S3",
+          "KMS",
+          "Macie",
+          "EBS Encryption",
+          "RDS Encryption"
+        ],
+        "gcp_services": [
+          "Cloud Storage",
+          "Cloud KMS",
+          "DLP API",
+          "BigQuery"
+        ],
+        "shared_responsibility": "customer"
       },
       "technique_mappings": [
-        {"technique_id": "T1530", "mapping_type": "mitigates"}
+        {
+          "technique_id": "T1530",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1567",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "3.2",
+      "control_family": "Data Protection",
+      "name": "Establish and Maintain a Data Inventory",
+      "description": "CIS Safeguard 3.2: Establish and Maintain a Data Inventory (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "S3",
+          "KMS",
+          "Macie",
+          "EBS Encryption",
+          "RDS Encryption"
+        ],
+        "gcp_services": [
+          "Cloud Storage",
+          "Cloud KMS",
+          "DLP API",
+          "BigQuery"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1530",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1537",
+          "mapping_type": "mitigates"
+        }
       ]
     },
     {
       "control_id": "3.3",
       "control_family": "Data Protection",
       "name": "Configure Data Access Control Lists",
-      "description": "Configure data access control lists based on a user's need to know.",
+      "description": "CIS Safeguard 3.3: Configure Data Access Control Lists (IG1)",
       "priority": "P1",
       "is_enhancement": true,
       "cloud_applicability": "highly_relevant",
       "cloud_context": {
-        "aws_services": ["S3 Bucket Policies", "IAM", "Lake Formation"],
-        "gcp_services": ["Cloud Storage IAM", "Cloud IAM"],
-        "shared_responsibility": "customer",
-        "detection_guidance": "Use S3 Access Analyzer to identify overly permissive bucket policies."
+        "aws_services": [
+          "S3",
+          "KMS",
+          "Macie",
+          "EBS Encryption",
+          "RDS Encryption"
+        ],
+        "gcp_services": [
+          "Cloud Storage",
+          "Cloud KMS",
+          "DLP API",
+          "BigQuery"
+        ],
+        "shared_responsibility": "customer"
       },
       "technique_mappings": [
-        {"technique_id": "T1530", "mapping_type": "mitigates"},
-        {"technique_id": "T1537", "mapping_type": "mitigates"}
+        {
+          "technique_id": "T1530",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1537",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1039",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "3.4",
+      "control_family": "Data Protection",
+      "name": "Enforce Data Retention",
+      "description": "CIS Safeguard 3.4: Enforce Data Retention (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "S3",
+          "KMS",
+          "Macie",
+          "EBS Encryption",
+          "RDS Encryption"
+        ],
+        "gcp_services": [
+          "Cloud Storage",
+          "Cloud KMS",
+          "DLP API",
+          "BigQuery"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1485",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1490",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "3.5",
+      "control_family": "Data Protection",
+      "name": "Securely Dispose of Data",
+      "description": "CIS Safeguard 3.5: Securely Dispose of Data (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "S3",
+          "KMS",
+          "Macie",
+          "EBS Encryption",
+          "RDS Encryption"
+        ],
+        "gcp_services": [
+          "Cloud Storage",
+          "Cloud KMS",
+          "DLP API",
+          "BigQuery"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1485",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "3.6",
+      "control_family": "Data Protection",
+      "name": "Encrypt Data on End-User Devices",
+      "description": "CIS Safeguard 3.6: Encrypt Data on End-User Devices (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "S3",
+          "KMS",
+          "Macie",
+          "EBS Encryption",
+          "RDS Encryption"
+        ],
+        "gcp_services": [
+          "Cloud Storage",
+          "Cloud KMS",
+          "DLP API",
+          "BigQuery"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1005",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1025",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "3.7",
+      "control_family": "Data Protection",
+      "name": "Establish and Maintain a Data Classification Scheme",
+      "description": "CIS Safeguard 3.7: Establish and Maintain a Data Classification Scheme (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "S3",
+          "KMS",
+          "Macie",
+          "EBS Encryption",
+          "RDS Encryption"
+        ],
+        "gcp_services": [
+          "Cloud Storage",
+          "Cloud KMS",
+          "DLP API",
+          "BigQuery"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1530",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "3.8",
+      "control_family": "Data Protection",
+      "name": "Document Data Flows",
+      "description": "CIS Safeguard 3.8: Document Data Flows (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "S3",
+          "KMS",
+          "Macie",
+          "EBS Encryption",
+          "RDS Encryption"
+        ],
+        "gcp_services": [
+          "Cloud Storage",
+          "Cloud KMS",
+          "DLP API",
+          "BigQuery"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1048",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "3.9",
+      "control_family": "Data Protection",
+      "name": "Encrypt Data on Removable Media",
+      "description": "CIS Safeguard 3.9: Encrypt Data on Removable Media (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "S3",
+          "KMS",
+          "Macie",
+          "EBS Encryption",
+          "RDS Encryption"
+        ],
+        "gcp_services": [
+          "Cloud Storage",
+          "Cloud KMS",
+          "DLP API",
+          "BigQuery"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1025",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1052",
+          "mapping_type": "mitigates"
+        }
       ]
     },
     {
       "control_id": "3.10",
       "control_family": "Data Protection",
       "name": "Encrypt Sensitive Data in Transit",
-      "description": "Encrypt sensitive data in transit using secure protocols.",
-      "priority": "P1",
+      "description": "CIS Safeguard 3.10: Encrypt Sensitive Data in Transit (IG2)",
+      "priority": "P2",
       "is_enhancement": true,
       "cloud_applicability": "highly_relevant",
       "cloud_context": {
-        "aws_services": ["ACM", "ALB", "CloudFront"],
-        "gcp_services": ["Cloud Load Balancing", "Cloud CDN"],
-        "shared_responsibility": "shared",
-        "detection_guidance": "Enforce HTTPS and TLS 1.2+ for all services."
+        "aws_services": [
+          "S3",
+          "KMS",
+          "Macie",
+          "EBS Encryption",
+          "RDS Encryption"
+        ],
+        "gcp_services": [
+          "Cloud Storage",
+          "Cloud KMS",
+          "DLP API",
+          "BigQuery"
+        ],
+        "shared_responsibility": "customer"
       },
       "technique_mappings": [
-        {"technique_id": "T1040", "mapping_type": "mitigates"},
-        {"technique_id": "T1557", "mapping_type": "mitigates"}
+        {
+          "technique_id": "T1040",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1557",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1565",
+          "mapping_type": "mitigates"
+        }
       ]
     },
     {
       "control_id": "3.11",
       "control_family": "Data Protection",
       "name": "Encrypt Sensitive Data at Rest",
-      "description": "Encrypt sensitive data at rest on servers, applications, and databases.",
-      "priority": "P1",
+      "description": "CIS Safeguard 3.11: Encrypt Sensitive Data at Rest (IG2)",
+      "priority": "P2",
       "is_enhancement": true,
       "cloud_applicability": "highly_relevant",
       "cloud_context": {
-        "aws_services": ["KMS", "S3 Encryption", "RDS Encryption", "EBS Encryption"],
-        "gcp_services": ["Cloud KMS", "Cloud Storage Encryption", "Cloud SQL Encryption"],
-        "shared_responsibility": "customer",
-        "detection_guidance": "Enable default encryption for S3, RDS, and EBS volumes."
+        "aws_services": [
+          "S3",
+          "KMS",
+          "Macie",
+          "EBS Encryption",
+          "RDS Encryption"
+        ],
+        "gcp_services": [
+          "Cloud Storage",
+          "Cloud KMS",
+          "DLP API",
+          "BigQuery"
+        ],
+        "shared_responsibility": "customer"
       },
       "technique_mappings": [
-        {"technique_id": "T1530", "mapping_type": "mitigates"}
+        {
+          "technique_id": "T1530",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1005",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "3.12",
+      "control_family": "Data Protection",
+      "name": "Segment Data Processing and Storage Based on Sensitivity",
+      "description": "CIS Safeguard 3.12: Segment Data Processing and Storage Based on Sensitivity (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "S3",
+          "KMS",
+          "Macie",
+          "EBS Encryption",
+          "RDS Encryption"
+        ],
+        "gcp_services": [
+          "Cloud Storage",
+          "Cloud KMS",
+          "DLP API",
+          "BigQuery"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1530",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1537",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "3.13",
+      "control_family": "Data Protection",
+      "name": "Deploy a Data Loss Prevention Solution",
+      "description": "CIS Safeguard 3.13: Deploy a Data Loss Prevention Solution (IG3)",
+      "priority": "P3",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "S3",
+          "KMS",
+          "Macie",
+          "EBS Encryption",
+          "RDS Encryption"
+        ],
+        "gcp_services": [
+          "Cloud Storage",
+          "Cloud KMS",
+          "DLP API",
+          "BigQuery"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1048",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1567",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1041",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "3.14",
+      "control_family": "Data Protection",
+      "name": "Log Sensitive Data Access",
+      "description": "CIS Safeguard 3.14: Log Sensitive Data Access (IG3)",
+      "priority": "P3",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "S3",
+          "KMS",
+          "Macie",
+          "EBS Encryption",
+          "RDS Encryption"
+        ],
+        "gcp_services": [
+          "Cloud Storage",
+          "Cloud KMS",
+          "DLP API",
+          "BigQuery"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1530",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1213",
+          "mapping_type": "mitigates"
+        }
       ]
     },
     {
       "control_id": "4",
       "control_family": "Secure Configuration of Enterprise Assets and Software",
       "name": "Secure Configuration of Enterprise Assets and Software",
-      "description": "Establish and maintain the secure configuration of enterprise assets and software.",
+      "description": "CIS Control 4: Secure Configuration of Enterprise Assets and Software",
       "priority": "P1",
+      "is_enhancement": false,
       "cloud_applicability": "highly_relevant",
       "cloud_context": {
-        "aws_services": ["AWS Config", "Systems Manager", "Security Hub"],
-        "gcp_services": ["Security Command Center", "Organization Policy"],
-        "shared_responsibility": "customer",
-        "detection_guidance": "Use AWS Config conformance packs or SCC for configuration compliance."
+        "aws_services": [
+          "Config",
+          "Security Hub",
+          "Firewall Manager",
+          "Security Groups"
+        ],
+        "gcp_services": [
+          "Security Command Center",
+          "Firewall Rules",
+          "Organization Policy"
+        ],
+        "shared_responsibility": "customer"
       },
       "technique_mappings": [
-        {"technique_id": "T1078", "mapping_type": "mitigates"},
-        {"technique_id": "T1578", "mapping_type": "mitigates"},
-        {"technique_id": "T1190", "mapping_type": "mitigates"},
-        {"technique_id": "T1133", "mapping_type": "mitigates"},
-        {"technique_id": "T1525", "mapping_type": "mitigates"}
+        {
+          "technique_id": "T1021",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1071",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1071.004",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1078",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1078.001",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1190",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1543",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1568",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1570",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "4.1",
+      "control_family": "Secure Configuration of Enterprise Assets and Software",
+      "name": "Establish and Maintain a Secure Configuration Process",
+      "description": "CIS Safeguard 4.1: Establish and Maintain a Secure Configuration Process (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Config",
+          "Security Hub",
+          "Firewall Manager",
+          "Security Groups"
+        ],
+        "gcp_services": [
+          "Security Command Center",
+          "Firewall Rules",
+          "Organization Policy"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1078",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1190",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "4.2",
+      "control_family": "Secure Configuration of Enterprise Assets and Software",
+      "name": "Establish and Maintain a Secure Configuration Process for Network Infrastructure",
+      "description": "CIS Safeguard 4.2: Establish and Maintain a Secure Configuration Process for Network Infrastructure (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Config",
+          "Security Hub",
+          "Firewall Manager",
+          "Security Groups"
+        ],
+        "gcp_services": [
+          "Security Command Center",
+          "Firewall Rules",
+          "Organization Policy"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1190",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1021",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "4.3",
+      "control_family": "Secure Configuration of Enterprise Assets and Software",
+      "name": "Configure Automatic Session Locking on Enterprise Assets",
+      "description": "CIS Safeguard 4.3: Configure Automatic Session Locking on Enterprise Assets (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Config",
+          "Security Hub",
+          "Firewall Manager",
+          "Security Groups"
+        ],
+        "gcp_services": [
+          "Security Command Center",
+          "Firewall Rules",
+          "Organization Policy"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1078",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "4.4",
+      "control_family": "Secure Configuration of Enterprise Assets and Software",
+      "name": "Implement and Manage a Firewall on Servers",
+      "description": "CIS Safeguard 4.4: Implement and Manage a Firewall on Servers (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Config",
+          "Security Hub",
+          "Firewall Manager",
+          "Security Groups"
+        ],
+        "gcp_services": [
+          "Security Command Center",
+          "Firewall Rules",
+          "Organization Policy"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1190",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1021",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1071",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "4.5",
+      "control_family": "Secure Configuration of Enterprise Assets and Software",
+      "name": "Implement and Manage a Firewall on End-User Devices",
+      "description": "CIS Safeguard 4.5: Implement and Manage a Firewall on End-User Devices (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Config",
+          "Security Hub",
+          "Firewall Manager",
+          "Security Groups"
+        ],
+        "gcp_services": [
+          "Security Command Center",
+          "Firewall Rules",
+          "Organization Policy"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1071",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1021",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "4.6",
+      "control_family": "Secure Configuration of Enterprise Assets and Software",
+      "name": "Securely Manage Enterprise Assets and Software",
+      "description": "CIS Safeguard 4.6: Securely Manage Enterprise Assets and Software (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Config",
+          "Security Hub",
+          "Firewall Manager",
+          "Security Groups"
+        ],
+        "gcp_services": [
+          "Security Command Center",
+          "Firewall Rules",
+          "Organization Policy"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1021",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1570",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "4.7",
+      "control_family": "Secure Configuration of Enterprise Assets and Software",
+      "name": "Manage Default Accounts on Enterprise Assets and Software",
+      "description": "CIS Safeguard 4.7: Manage Default Accounts on Enterprise Assets and Software (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Config",
+          "Security Hub",
+          "Firewall Manager",
+          "Security Groups"
+        ],
+        "gcp_services": [
+          "Security Command Center",
+          "Firewall Rules",
+          "Organization Policy"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1078.001",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "4.8",
+      "control_family": "Secure Configuration of Enterprise Assets and Software",
+      "name": "Uninstall or Disable Unnecessary Services on Enterprise Assets and Software",
+      "description": "CIS Safeguard 4.8: Uninstall or Disable Unnecessary Services on Enterprise Assets and Software (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Config",
+          "Security Hub",
+          "Firewall Manager",
+          "Security Groups"
+        ],
+        "gcp_services": [
+          "Security Command Center",
+          "Firewall Rules",
+          "Organization Policy"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1190",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1543",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "4.9",
+      "control_family": "Secure Configuration of Enterprise Assets and Software",
+      "name": "Configure Trusted DNS Servers on Enterprise Assets",
+      "description": "CIS Safeguard 4.9: Configure Trusted DNS Servers on Enterprise Assets (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Config",
+          "Security Hub",
+          "Firewall Manager",
+          "Security Groups"
+        ],
+        "gcp_services": [
+          "Security Command Center",
+          "Firewall Rules",
+          "Organization Policy"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1071.004",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1568",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "4.10",
+      "control_family": "Secure Configuration of Enterprise Assets and Software",
+      "name": "Enforce Automatic Device Lockout on Portable End-User Devices",
+      "description": "CIS Safeguard 4.10: Enforce Automatic Device Lockout on Portable End-User Devices (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Config",
+          "Security Hub",
+          "Firewall Manager",
+          "Security Groups"
+        ],
+        "gcp_services": [
+          "Security Command Center",
+          "Firewall Rules",
+          "Organization Policy"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1078",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "4.11",
+      "control_family": "Secure Configuration of Enterprise Assets and Software",
+      "name": "Enforce Remote Wipe Capability on Portable End-User Devices",
+      "description": "CIS Safeguard 4.11: Enforce Remote Wipe Capability on Portable End-User Devices (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Config",
+          "Security Hub",
+          "Firewall Manager",
+          "Security Groups"
+        ],
+        "gcp_services": [
+          "Security Command Center",
+          "Firewall Rules",
+          "Organization Policy"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1078",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "4.12",
+      "control_family": "Secure Configuration of Enterprise Assets and Software",
+      "name": "Separate Enterprise Workspaces on Mobile End-User Devices",
+      "description": "CIS Safeguard 4.12: Separate Enterprise Workspaces on Mobile End-User Devices (IG3)",
+      "priority": "P3",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Config",
+          "Security Hub",
+          "Firewall Manager",
+          "Security Groups"
+        ],
+        "gcp_services": [
+          "Security Command Center",
+          "Firewall Rules",
+          "Organization Policy"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1078",
+          "mapping_type": "mitigates"
+        }
       ]
     },
     {
       "control_id": "5",
       "control_family": "Account Management",
       "name": "Account Management",
-      "description": "Use processes and tools to assign and manage authorisation to credentials for user accounts.",
+      "description": "CIS Control 5: Account Management",
       "priority": "P1",
+      "is_enhancement": false,
       "cloud_applicability": "highly_relevant",
       "cloud_context": {
-        "aws_services": ["IAM", "AWS SSO", "Organizations"],
-        "gcp_services": ["Cloud IAM", "Cloud Identity"],
-        "shared_responsibility": "customer",
-        "detection_guidance": "Monitor IAM events in CloudTrail for account lifecycle changes."
+        "aws_services": [
+          "IAM",
+          "Organizations",
+          "SSO",
+          "Cognito"
+        ],
+        "gcp_services": [
+          "Cloud IAM",
+          "Cloud Identity",
+          "Identity Platform"
+        ],
+        "shared_responsibility": "customer"
       },
       "technique_mappings": [
-        {"technique_id": "T1078", "mapping_type": "mitigates"},
-        {"technique_id": "T1078.001", "mapping_type": "mitigates"},
-        {"technique_id": "T1078.004", "mapping_type": "mitigates"},
-        {"technique_id": "T1136", "mapping_type": "mitigates"},
-        {"technique_id": "T1136.003", "mapping_type": "mitigates"},
-        {"technique_id": "T1098", "mapping_type": "mitigates"},
-        {"technique_id": "T1098.001", "mapping_type": "mitigates"}
+        {
+          "technique_id": "T1078",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1078.001",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1078.004",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1098",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1110",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1136",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1136.001",
+          "mapping_type": "mitigates"
+        }
       ]
     },
     {
       "control_id": "5.1",
       "control_family": "Account Management",
       "name": "Establish and Maintain an Inventory of Accounts",
-      "description": "Establish and maintain an inventory of all accounts managed in the enterprise.",
+      "description": "CIS Safeguard 5.1: Establish and Maintain an Inventory of Accounts (IG1)",
       "priority": "P1",
       "is_enhancement": true,
       "cloud_applicability": "highly_relevant",
       "cloud_context": {
-        "aws_services": ["IAM", "AWS SSO", "Organizations"],
-        "gcp_services": ["Cloud IAM", "Cloud Identity"],
-        "shared_responsibility": "customer",
-        "detection_guidance": "Use IAM Credential Report and Organizations to inventory all accounts."
+        "aws_services": [
+          "IAM",
+          "Organizations",
+          "SSO",
+          "Cognito"
+        ],
+        "gcp_services": [
+          "Cloud IAM",
+          "Cloud Identity",
+          "Identity Platform"
+        ],
+        "shared_responsibility": "customer"
       },
       "technique_mappings": [
-        {"technique_id": "T1078", "mapping_type": "mitigates"},
-        {"technique_id": "T1136", "mapping_type": "mitigates"}
+        {
+          "technique_id": "T1078",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1136",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "5.2",
+      "control_family": "Account Management",
+      "name": "Use Unique Passwords",
+      "description": "CIS Safeguard 5.2: Use Unique Passwords (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "IAM",
+          "Organizations",
+          "SSO",
+          "Cognito"
+        ],
+        "gcp_services": [
+          "Cloud IAM",
+          "Cloud Identity",
+          "Identity Platform"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1110",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1078",
+          "mapping_type": "mitigates"
+        }
       ]
     },
     {
       "control_id": "5.3",
       "control_family": "Account Management",
       "name": "Disable Dormant Accounts",
-      "description": "Delete or disable any dormant accounts after a period of inactivity.",
+      "description": "CIS Safeguard 5.3: Disable Dormant Accounts (IG1)",
       "priority": "P1",
       "is_enhancement": true,
       "cloud_applicability": "highly_relevant",
       "cloud_context": {
-        "aws_services": ["IAM", "IAM Access Analyzer"],
-        "gcp_services": ["Cloud IAM", "Policy Intelligence"],
-        "shared_responsibility": "customer",
-        "detection_guidance": "Use IAM Credential Report to identify accounts without recent activity."
+        "aws_services": [
+          "IAM",
+          "Organizations",
+          "SSO",
+          "Cognito"
+        ],
+        "gcp_services": [
+          "Cloud IAM",
+          "Cloud Identity",
+          "Identity Platform"
+        ],
+        "shared_responsibility": "customer"
       },
       "technique_mappings": [
-        {"technique_id": "T1078", "mapping_type": "mitigates"}
+        {
+          "technique_id": "T1078",
+          "mapping_type": "mitigates"
+        }
       ]
     },
     {
       "control_id": "5.4",
       "control_family": "Account Management",
       "name": "Restrict Administrator Privileges to Dedicated Administrator Accounts",
-      "description": "Restrict administrator privileges to dedicated administrator accounts on enterprise assets.",
+      "description": "CIS Safeguard 5.4: Restrict Administrator Privileges to Dedicated Administrator Accounts (IG1)",
       "priority": "P1",
       "is_enhancement": true,
       "cloud_applicability": "highly_relevant",
       "cloud_context": {
-        "aws_services": ["IAM", "AWS SSO", "Organizations"],
-        "gcp_services": ["Cloud IAM", "Privileged Access Management"],
-        "shared_responsibility": "customer",
-        "detection_guidance": "Separate admin and user accounts; monitor admin account usage."
+        "aws_services": [
+          "IAM",
+          "Organizations",
+          "SSO",
+          "Cognito"
+        ],
+        "gcp_services": [
+          "Cloud IAM",
+          "Cloud Identity",
+          "Identity Platform"
+        ],
+        "shared_responsibility": "customer"
       },
       "technique_mappings": [
-        {"technique_id": "T1078.004", "mapping_type": "mitigates"}
+        {
+          "technique_id": "T1078.004",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1098",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "5.5",
+      "control_family": "Account Management",
+      "name": "Establish and Maintain an Inventory of Service Accounts",
+      "description": "CIS Safeguard 5.5: Establish and Maintain an Inventory of Service Accounts (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "IAM",
+          "Organizations",
+          "SSO",
+          "Cognito"
+        ],
+        "gcp_services": [
+          "Cloud IAM",
+          "Cloud Identity",
+          "Identity Platform"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1078.001",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1136.001",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "5.6",
+      "control_family": "Account Management",
+      "name": "Centralise Account Management",
+      "description": "CIS Safeguard 5.6: Centralise Account Management (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "IAM",
+          "Organizations",
+          "SSO",
+          "Cognito"
+        ],
+        "gcp_services": [
+          "Cloud IAM",
+          "Cloud Identity",
+          "Identity Platform"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1078",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1136",
+          "mapping_type": "mitigates"
+        }
       ]
     },
     {
       "control_id": "6",
       "control_family": "Access Control Management",
       "name": "Access Control Management",
-      "description": "Use processes and tools to create, assign, manage, and revoke access credentials and privileges for user, administrator, and service accounts.",
+      "description": "CIS Control 6: Access Control Management",
       "priority": "P1",
+      "is_enhancement": false,
       "cloud_applicability": "highly_relevant",
       "cloud_context": {
-        "aws_services": ["IAM", "Organizations SCPs", "IAM Access Analyzer"],
-        "gcp_services": ["Cloud IAM", "VPC Service Controls", "IAM Recommender"],
-        "shared_responsibility": "customer",
-        "detection_guidance": "Use IAM Access Analyzer to identify excessive permissions."
+        "aws_services": [
+          "IAM",
+          "SSO",
+          "Cognito",
+          "Organizations"
+        ],
+        "gcp_services": [
+          "Cloud IAM",
+          "Identity Platform",
+          "BeyondCorp"
+        ],
+        "shared_responsibility": "customer"
       },
       "technique_mappings": [
-        {"technique_id": "T1078", "mapping_type": "mitigates"},
-        {"technique_id": "T1078.004", "mapping_type": "mitigates"},
-        {"technique_id": "T1098", "mapping_type": "mitigates"},
-        {"technique_id": "T1548", "mapping_type": "mitigates"},
-        {"technique_id": "T1530", "mapping_type": "mitigates"},
-        {"technique_id": "T1580", "mapping_type": "mitigates"}
+        {
+          "technique_id": "T1078",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1078.004",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1098",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1110",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1133",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1556",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "6.1",
+      "control_family": "Access Control Management",
+      "name": "Establish an Access Granting Process",
+      "description": "CIS Safeguard 6.1: Establish an Access Granting Process (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "IAM",
+          "SSO",
+          "Cognito",
+          "Organizations"
+        ],
+        "gcp_services": [
+          "Cloud IAM",
+          "Identity Platform",
+          "BeyondCorp"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1098",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1078",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "6.2",
+      "control_family": "Access Control Management",
+      "name": "Establish an Access Revoking Process",
+      "description": "CIS Safeguard 6.2: Establish an Access Revoking Process (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "IAM",
+          "SSO",
+          "Cognito",
+          "Organizations"
+        ],
+        "gcp_services": [
+          "Cloud IAM",
+          "Identity Platform",
+          "BeyondCorp"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1098",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1078",
+          "mapping_type": "mitigates"
+        }
       ]
     },
     {
       "control_id": "6.3",
       "control_family": "Access Control Management",
       "name": "Require MFA for Externally-Exposed Applications",
-      "description": "Require all externally-exposed applications to enforce MFA.",
+      "description": "CIS Safeguard 6.3: Require MFA for Externally-Exposed Applications (IG1)",
       "priority": "P1",
       "is_enhancement": true,
       "cloud_applicability": "highly_relevant",
       "cloud_context": {
-        "aws_services": ["Cognito", "IAM MFA", "ALB with OIDC"],
-        "gcp_services": ["Identity Platform", "Cloud Identity MFA"],
-        "shared_responsibility": "customer",
-        "detection_guidance": "Enforce MFA for all public-facing applications."
+        "aws_services": [
+          "IAM",
+          "SSO",
+          "Cognito",
+          "Organizations"
+        ],
+        "gcp_services": [
+          "Cloud IAM",
+          "Identity Platform",
+          "BeyondCorp"
+        ],
+        "shared_responsibility": "customer"
       },
       "technique_mappings": [
-        {"technique_id": "T1078", "mapping_type": "mitigates"},
-        {"technique_id": "T1110", "mapping_type": "mitigates"}
+        {
+          "technique_id": "T1078",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1110",
+          "mapping_type": "mitigates"
+        }
       ]
     },
     {
       "control_id": "6.4",
       "control_family": "Access Control Management",
       "name": "Require MFA for Remote Network Access",
-      "description": "Require MFA for remote network access.",
+      "description": "CIS Safeguard 6.4: Require MFA for Remote Network Access (IG1)",
       "priority": "P1",
       "is_enhancement": true,
       "cloud_applicability": "highly_relevant",
       "cloud_context": {
-        "aws_services": ["Client VPN", "AWS SSO MFA"],
-        "gcp_services": ["Cloud VPN", "BeyondCorp"],
-        "shared_responsibility": "customer",
-        "detection_guidance": "Enforce MFA for all VPN and remote access connections."
+        "aws_services": [
+          "IAM",
+          "SSO",
+          "Cognito",
+          "Organizations"
+        ],
+        "gcp_services": [
+          "Cloud IAM",
+          "Identity Platform",
+          "BeyondCorp"
+        ],
+        "shared_responsibility": "customer"
       },
       "technique_mappings": [
-        {"technique_id": "T1078", "mapping_type": "mitigates"},
-        {"technique_id": "T1133", "mapping_type": "mitigates"}
+        {
+          "technique_id": "T1078",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1110",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1133",
+          "mapping_type": "mitigates"
+        }
       ]
     },
     {
       "control_id": "6.5",
       "control_family": "Access Control Management",
       "name": "Require MFA for Administrative Access",
-      "description": "Require MFA for all administrative access accounts.",
+      "description": "CIS Safeguard 6.5: Require MFA for Administrative Access (IG1)",
       "priority": "P1",
       "is_enhancement": true,
       "cloud_applicability": "highly_relevant",
       "cloud_context": {
-        "aws_services": ["IAM MFA", "AWS SSO MFA"],
-        "gcp_services": ["Cloud Identity MFA", "2-Step Verification"],
-        "shared_responsibility": "customer",
-        "detection_guidance": "Monitor for root/admin logins without MFA via CloudTrail."
+        "aws_services": [
+          "IAM",
+          "SSO",
+          "Cognito",
+          "Organizations"
+        ],
+        "gcp_services": [
+          "Cloud IAM",
+          "Identity Platform",
+          "BeyondCorp"
+        ],
+        "shared_responsibility": "customer"
       },
       "technique_mappings": [
-        {"technique_id": "T1078.004", "mapping_type": "mitigates"}
+        {
+          "technique_id": "T1078.004",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1110",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "6.6",
+      "control_family": "Access Control Management",
+      "name": "Establish and Maintain an Inventory of Authentication and Authorisation Systems",
+      "description": "CIS Safeguard 6.6: Establish and Maintain an Inventory of Authentication and Authorisation Systems (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "IAM",
+          "SSO",
+          "Cognito",
+          "Organizations"
+        ],
+        "gcp_services": [
+          "Cloud IAM",
+          "Identity Platform",
+          "BeyondCorp"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1078",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1556",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "6.7",
+      "control_family": "Access Control Management",
+      "name": "Centralise Access Control",
+      "description": "CIS Safeguard 6.7: Centralise Access Control (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "IAM",
+          "SSO",
+          "Cognito",
+          "Organizations"
+        ],
+        "gcp_services": [
+          "Cloud IAM",
+          "Identity Platform",
+          "BeyondCorp"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1078",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1098",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "6.8",
+      "control_family": "Access Control Management",
+      "name": "Define and Maintain Role-Based Access Control",
+      "description": "CIS Safeguard 6.8: Define and Maintain Role-Based Access Control (IG3)",
+      "priority": "P3",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "IAM",
+          "SSO",
+          "Cognito",
+          "Organizations"
+        ],
+        "gcp_services": [
+          "Cloud IAM",
+          "Identity Platform",
+          "BeyondCorp"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1078",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1098",
+          "mapping_type": "mitigates"
+        }
       ]
     },
     {
       "control_id": "7",
       "control_family": "Continuous Vulnerability Management",
       "name": "Continuous Vulnerability Management",
-      "description": "Develop a plan to continuously assess and track vulnerabilities on all enterprise assets.",
-      "priority": "P1",
+      "description": "CIS Control 7: Continuous Vulnerability Management",
+      "priority": "P2",
+      "is_enhancement": false,
       "cloud_applicability": "highly_relevant",
       "cloud_context": {
-        "aws_services": ["Inspector", "ECR Scanning", "Security Hub"],
-        "gcp_services": ["Security Command Center", "Container Analysis"],
-        "shared_responsibility": "customer",
-        "detection_guidance": "Enable Amazon Inspector for EC2 and container vulnerability scanning."
+        "aws_services": [
+          "Inspector",
+          "Systems Manager Patch Manager",
+          "Security Hub"
+        ],
+        "gcp_services": [
+          "Security Command Center",
+          "OS Config",
+          "Container Analysis"
+        ],
+        "shared_responsibility": "customer"
       },
       "technique_mappings": [
-        {"technique_id": "T1190", "mapping_type": "mitigates"},
-        {"technique_id": "T1068", "mapping_type": "mitigates"},
-        {"technique_id": "T1210", "mapping_type": "mitigates"},
-        {"technique_id": "T1203", "mapping_type": "mitigates"}
+        {
+          "technique_id": "T1046",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1068",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1190",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1203",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1595",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "7.1",
+      "control_family": "Continuous Vulnerability Management",
+      "name": "Establish and Maintain a Vulnerability Management Process",
+      "description": "CIS Safeguard 7.1: Establish and Maintain a Vulnerability Management Process (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Inspector",
+          "Systems Manager Patch Manager",
+          "Security Hub"
+        ],
+        "gcp_services": [
+          "Security Command Center",
+          "OS Config",
+          "Container Analysis"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1190",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1203",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "7.2",
+      "control_family": "Continuous Vulnerability Management",
+      "name": "Establish and Maintain a Remediation Process",
+      "description": "CIS Safeguard 7.2: Establish and Maintain a Remediation Process (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Inspector",
+          "Systems Manager Patch Manager",
+          "Security Hub"
+        ],
+        "gcp_services": [
+          "Security Command Center",
+          "OS Config",
+          "Container Analysis"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1190",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1203",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "7.3",
+      "control_family": "Continuous Vulnerability Management",
+      "name": "Perform Automated Operating System Patch Management",
+      "description": "CIS Safeguard 7.3: Perform Automated Operating System Patch Management (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Inspector",
+          "Systems Manager Patch Manager",
+          "Security Hub"
+        ],
+        "gcp_services": [
+          "Security Command Center",
+          "OS Config",
+          "Container Analysis"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1190",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1203",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1068",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "7.4",
+      "control_family": "Continuous Vulnerability Management",
+      "name": "Perform Automated Application Patch Management",
+      "description": "CIS Safeguard 7.4: Perform Automated Application Patch Management (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Inspector",
+          "Systems Manager Patch Manager",
+          "Security Hub"
+        ],
+        "gcp_services": [
+          "Security Command Center",
+          "OS Config",
+          "Container Analysis"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1190",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1203",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1068",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "7.5",
+      "control_family": "Continuous Vulnerability Management",
+      "name": "Perform Automated Vulnerability Scans of Internal Enterprise Assets",
+      "description": "CIS Safeguard 7.5: Perform Automated Vulnerability Scans of Internal Enterprise Assets (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Inspector",
+          "Systems Manager Patch Manager",
+          "Security Hub"
+        ],
+        "gcp_services": [
+          "Security Command Center",
+          "OS Config",
+          "Container Analysis"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1190",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1046",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "7.6",
+      "control_family": "Continuous Vulnerability Management",
+      "name": "Perform Automated Vulnerability Scans of Externally-Exposed Enterprise Assets",
+      "description": "CIS Safeguard 7.6: Perform Automated Vulnerability Scans of Externally-Exposed Enterprise Assets (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Inspector",
+          "Systems Manager Patch Manager",
+          "Security Hub"
+        ],
+        "gcp_services": [
+          "Security Command Center",
+          "OS Config",
+          "Container Analysis"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1190",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1595",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "7.7",
+      "control_family": "Continuous Vulnerability Management",
+      "name": "Remediate Detected Vulnerabilities",
+      "description": "CIS Safeguard 7.7: Remediate Detected Vulnerabilities (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Inspector",
+          "Systems Manager Patch Manager",
+          "Security Hub"
+        ],
+        "gcp_services": [
+          "Security Command Center",
+          "OS Config",
+          "Container Analysis"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1190",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1068",
+          "mapping_type": "mitigates"
+        }
       ]
     },
     {
       "control_id": "8",
       "control_family": "Audit Log Management",
       "name": "Audit Log Management",
-      "description": "Collect, alert, review, and retain audit logs of events that could help detect, understand, or recover from an attack.",
-      "priority": "P1",
+      "description": "CIS Control 8: Audit Log Management",
+      "priority": "P2",
+      "is_enhancement": false,
       "cloud_applicability": "highly_relevant",
       "cloud_context": {
-        "aws_services": ["CloudTrail", "CloudWatch Logs", "S3", "Security Hub"],
-        "gcp_services": ["Cloud Audit Logs", "Cloud Logging", "Cloud Storage"],
-        "shared_responsibility": "customer",
-        "detection_guidance": "Enable CloudTrail in all regions with log file validation and S3 storage."
+        "aws_services": [
+          "CloudTrail",
+          "CloudWatch Logs",
+          "S3",
+          "Athena",
+          "OpenSearch"
+        ],
+        "gcp_services": [
+          "Cloud Audit Logs",
+          "Cloud Logging",
+          "BigQuery",
+          "Chronicle"
+        ],
+        "shared_responsibility": "customer"
       },
       "technique_mappings": [
-        {"technique_id": "T1562", "mapping_type": "mitigates"},
-        {"technique_id": "T1562.008", "mapping_type": "mitigates"},
-        {"technique_id": "T1070", "mapping_type": "mitigates"},
-        {"technique_id": "T1070.002", "mapping_type": "mitigates"}
+        {
+          "technique_id": "T1059",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1070",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1070.001",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1070.006",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1071.001",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1071.004",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1078",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1102",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1110",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1562.008",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1568",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "8.1",
+      "control_family": "Audit Log Management",
+      "name": "Establish and Maintain an Audit Log Management Process",
+      "description": "CIS Safeguard 8.1: Establish and Maintain an Audit Log Management Process (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "CloudTrail",
+          "CloudWatch Logs",
+          "S3",
+          "Athena",
+          "OpenSearch"
+        ],
+        "gcp_services": [
+          "Cloud Audit Logs",
+          "Cloud Logging",
+          "BigQuery",
+          "Chronicle"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1562.008",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1070",
+          "mapping_type": "mitigates"
+        }
       ]
     },
     {
       "control_id": "8.2",
       "control_family": "Audit Log Management",
       "name": "Collect Audit Logs",
-      "description": "Collect audit logs from enterprise assets.",
+      "description": "CIS Safeguard 8.2: Collect Audit Logs (IG1)",
       "priority": "P1",
       "is_enhancement": true,
       "cloud_applicability": "highly_relevant",
       "cloud_context": {
-        "aws_services": ["CloudTrail", "VPC Flow Logs", "CloudWatch Logs"],
-        "gcp_services": ["Cloud Audit Logs", "VPC Flow Logs", "Cloud Logging"],
-        "shared_responsibility": "customer",
-        "detection_guidance": "Enable CloudTrail management events and VPC Flow Logs."
+        "aws_services": [
+          "CloudTrail",
+          "CloudWatch Logs",
+          "S3",
+          "Athena",
+          "OpenSearch"
+        ],
+        "gcp_services": [
+          "Cloud Audit Logs",
+          "Cloud Logging",
+          "BigQuery",
+          "Chronicle"
+        ],
+        "shared_responsibility": "customer"
       },
       "technique_mappings": [
-        {"technique_id": "T1562.008", "mapping_type": "mitigates"}
+        {
+          "technique_id": "T1562.008",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1070.001",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "8.3",
+      "control_family": "Audit Log Management",
+      "name": "Ensure Adequate Audit Log Storage",
+      "description": "CIS Safeguard 8.3: Ensure Adequate Audit Log Storage (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "CloudTrail",
+          "CloudWatch Logs",
+          "S3",
+          "Athena",
+          "OpenSearch"
+        ],
+        "gcp_services": [
+          "Cloud Audit Logs",
+          "Cloud Logging",
+          "BigQuery",
+          "Chronicle"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1562.008",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "8.4",
+      "control_family": "Audit Log Management",
+      "name": "Standardise Time Synchronisation",
+      "description": "CIS Safeguard 8.4: Standardise Time Synchronisation (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "CloudTrail",
+          "CloudWatch Logs",
+          "S3",
+          "Athena",
+          "OpenSearch"
+        ],
+        "gcp_services": [
+          "Cloud Audit Logs",
+          "Cloud Logging",
+          "BigQuery",
+          "Chronicle"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1070.006",
+          "mapping_type": "mitigates"
+        }
       ]
     },
     {
       "control_id": "8.5",
       "control_family": "Audit Log Management",
       "name": "Collect Detailed Audit Logs",
-      "description": "Configure detailed audit logging for enterprise assets containing sensitive data.",
-      "priority": "P1",
+      "description": "CIS Safeguard 8.5: Collect Detailed Audit Logs (IG2)",
+      "priority": "P2",
       "is_enhancement": true,
       "cloud_applicability": "highly_relevant",
       "cloud_context": {
-        "aws_services": ["CloudTrail Data Events", "S3 Access Logs"],
-        "gcp_services": ["Data Access Audit Logs", "Cloud Storage Access Logs"],
-        "shared_responsibility": "customer",
-        "detection_guidance": "Enable CloudTrail data events for S3, Lambda, and DynamoDB."
+        "aws_services": [
+          "CloudTrail",
+          "CloudWatch Logs",
+          "S3",
+          "Athena",
+          "OpenSearch"
+        ],
+        "gcp_services": [
+          "Cloud Audit Logs",
+          "Cloud Logging",
+          "BigQuery",
+          "Chronicle"
+        ],
+        "shared_responsibility": "customer"
       },
       "technique_mappings": [
-        {"technique_id": "T1070", "mapping_type": "mitigates"}
+        {
+          "technique_id": "T1562.008",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1070",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "8.6",
+      "control_family": "Audit Log Management",
+      "name": "Collect DNS Query Audit Logs",
+      "description": "CIS Safeguard 8.6: Collect DNS Query Audit Logs (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "CloudTrail",
+          "CloudWatch Logs",
+          "S3",
+          "Athena",
+          "OpenSearch"
+        ],
+        "gcp_services": [
+          "Cloud Audit Logs",
+          "Cloud Logging",
+          "BigQuery",
+          "Chronicle"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1071.004",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1568",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "8.7",
+      "control_family": "Audit Log Management",
+      "name": "Collect URL Request Audit Logs",
+      "description": "CIS Safeguard 8.7: Collect URL Request Audit Logs (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "CloudTrail",
+          "CloudWatch Logs",
+          "S3",
+          "Athena",
+          "OpenSearch"
+        ],
+        "gcp_services": [
+          "Cloud Audit Logs",
+          "Cloud Logging",
+          "BigQuery",
+          "Chronicle"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1071.001",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1102",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "8.8",
+      "control_family": "Audit Log Management",
+      "name": "Collect Command-Line Audit Logs",
+      "description": "CIS Safeguard 8.8: Collect Command-Line Audit Logs (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "CloudTrail",
+          "CloudWatch Logs",
+          "S3",
+          "Athena",
+          "OpenSearch"
+        ],
+        "gcp_services": [
+          "Cloud Audit Logs",
+          "Cloud Logging",
+          "BigQuery",
+          "Chronicle"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1059",
+          "mapping_type": "mitigates"
+        }
       ]
     },
     {
       "control_id": "8.9",
       "control_family": "Audit Log Management",
       "name": "Centralise Audit Logs",
-      "description": "Centralise, to the extent possible, audit log collection and retention across enterprise assets.",
-      "priority": "P1",
+      "description": "CIS Safeguard 8.9: Centralise Audit Logs (IG2)",
+      "priority": "P2",
       "is_enhancement": true,
       "cloud_applicability": "highly_relevant",
       "cloud_context": {
-        "aws_services": ["CloudTrail Organization Trail", "CloudWatch Logs", "S3"],
-        "gcp_services": ["Cloud Logging", "Log Router", "Cloud Storage"],
-        "shared_responsibility": "customer",
-        "detection_guidance": "Use organization trail to centralise logs across all accounts."
+        "aws_services": [
+          "CloudTrail",
+          "CloudWatch Logs",
+          "S3",
+          "Athena",
+          "OpenSearch"
+        ],
+        "gcp_services": [
+          "Cloud Audit Logs",
+          "Cloud Logging",
+          "BigQuery",
+          "Chronicle"
+        ],
+        "shared_responsibility": "customer"
       },
       "technique_mappings": [
-        {"technique_id": "T1562", "mapping_type": "mitigates"}
+        {
+          "technique_id": "T1562.008",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1070",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "8.10",
+      "control_family": "Audit Log Management",
+      "name": "Retain Audit Logs",
+      "description": "CIS Safeguard 8.10: Retain Audit Logs (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "CloudTrail",
+          "CloudWatch Logs",
+          "S3",
+          "Athena",
+          "OpenSearch"
+        ],
+        "gcp_services": [
+          "Cloud Audit Logs",
+          "Cloud Logging",
+          "BigQuery",
+          "Chronicle"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1070",
+          "mapping_type": "mitigates"
+        }
       ]
     },
     {
       "control_id": "8.11",
       "control_family": "Audit Log Management",
       "name": "Conduct Audit Log Reviews",
-      "description": "Conduct reviews of audit logs to detect anomalies or abnormal events.",
-      "priority": "P1",
+      "description": "CIS Safeguard 8.11: Conduct Audit Log Reviews (IG2)",
+      "priority": "P2",
       "is_enhancement": true,
       "cloud_applicability": "highly_relevant",
       "cloud_context": {
-        "aws_services": ["CloudWatch Logs Insights", "Security Hub", "Athena"],
-        "gcp_services": ["Cloud Logging", "Chronicle", "BigQuery"],
-        "shared_responsibility": "customer",
-        "detection_guidance": "Use CloudWatch Logs Insights or Chronicle for log analysis."
+        "aws_services": [
+          "CloudTrail",
+          "CloudWatch Logs",
+          "S3",
+          "Athena",
+          "OpenSearch"
+        ],
+        "gcp_services": [
+          "Cloud Audit Logs",
+          "Cloud Logging",
+          "BigQuery",
+          "Chronicle"
+        ],
+        "shared_responsibility": "customer"
       },
       "technique_mappings": [
-        {"technique_id": "T1078", "mapping_type": "mitigates"},
-        {"technique_id": "T1110", "mapping_type": "mitigates"}
+        {
+          "technique_id": "T1078",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1110",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "8.12",
+      "control_family": "Audit Log Management",
+      "name": "Collect Service Provider Logs",
+      "description": "CIS Safeguard 8.12: Collect Service Provider Logs (IG3)",
+      "priority": "P3",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "CloudTrail",
+          "CloudWatch Logs",
+          "S3",
+          "Athena",
+          "OpenSearch"
+        ],
+        "gcp_services": [
+          "Cloud Audit Logs",
+          "Cloud Logging",
+          "BigQuery",
+          "Chronicle"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1562.008",
+          "mapping_type": "mitigates"
+        }
       ]
     },
     {
       "control_id": "9",
       "control_family": "Email and Web Browser Protections",
       "name": "Email and Web Browser Protections",
-      "description": "Improve protections and detections of threats from email and web vectors.",
-      "priority": "P1",
+      "description": "CIS Control 9: Email and Web Browser Protections",
+      "priority": "P2",
+      "is_enhancement": false,
       "cloud_applicability": "moderately_relevant",
       "cloud_context": {
-        "aws_services": ["WorkMail", "WAF", "CloudFront"],
-        "gcp_services": ["Cloud Armor", "reCAPTCHA"],
-        "shared_responsibility": "customer",
-        "detection_guidance": "Use WAF or Cloud Armor to protect web applications from common attacks."
+        "aws_services": [
+          "Route 53 Resolver DNS Firewall",
+          "WorkMail"
+        ],
+        "gcp_services": [
+          "Cloud DNS",
+          "Workspace"
+        ],
+        "shared_responsibility": "customer"
       },
       "technique_mappings": [
-        {"technique_id": "T1566", "mapping_type": "mitigates"},
-        {"technique_id": "T1566.001", "mapping_type": "mitigates"},
-        {"technique_id": "T1566.002", "mapping_type": "mitigates"},
-        {"technique_id": "T1204", "mapping_type": "mitigates"}
+        {
+          "technique_id": "T1071.004",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1176",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1189",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1204",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1204.002",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1534",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1566",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1566.001",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1566.002",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1568",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "9.1",
+      "control_family": "Email and Web Browser Protections",
+      "name": "Ensure Use of Only Fully Supported Browsers and Email Clients",
+      "description": "CIS Safeguard 9.1: Ensure Use of Only Fully Supported Browsers and Email Clients (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Route 53 Resolver DNS Firewall",
+          "WorkMail"
+        ],
+        "gcp_services": [
+          "Cloud DNS",
+          "Workspace"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1189",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1566",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "9.2",
+      "control_family": "Email and Web Browser Protections",
+      "name": "Use DNS Filtering Services",
+      "description": "CIS Safeguard 9.2: Use DNS Filtering Services (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Route 53 Resolver DNS Firewall",
+          "WorkMail"
+        ],
+        "gcp_services": [
+          "Cloud DNS",
+          "Workspace"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1071.004",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1568",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1189",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "9.3",
+      "control_family": "Email and Web Browser Protections",
+      "name": "Maintain and Enforce Network-Based URL Filters",
+      "description": "CIS Safeguard 9.3: Maintain and Enforce Network-Based URL Filters (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Route 53 Resolver DNS Firewall",
+          "WorkMail"
+        ],
+        "gcp_services": [
+          "Cloud DNS",
+          "Workspace"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1189",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1566.002",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "9.4",
+      "control_family": "Email and Web Browser Protections",
+      "name": "Restrict Unnecessary or Unauthorised Browser and Email Client Extensions",
+      "description": "CIS Safeguard 9.4: Restrict Unnecessary or Unauthorised Browser and Email Client Extensions (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Route 53 Resolver DNS Firewall",
+          "WorkMail"
+        ],
+        "gcp_services": [
+          "Cloud DNS",
+          "Workspace"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1176",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1189",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "9.5",
+      "control_family": "Email and Web Browser Protections",
+      "name": "Implement DMARC",
+      "description": "CIS Safeguard 9.5: Implement DMARC (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Route 53 Resolver DNS Firewall",
+          "WorkMail"
+        ],
+        "gcp_services": [
+          "Cloud DNS",
+          "Workspace"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1566",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1534",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "9.6",
+      "control_family": "Email and Web Browser Protections",
+      "name": "Block Unnecessary File Types",
+      "description": "CIS Safeguard 9.6: Block Unnecessary File Types (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Route 53 Resolver DNS Firewall",
+          "WorkMail"
+        ],
+        "gcp_services": [
+          "Cloud DNS",
+          "Workspace"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1566.001",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1204",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "9.7",
+      "control_family": "Email and Web Browser Protections",
+      "name": "Deploy and Maintain Email Server Anti-Malware Protections",
+      "description": "CIS Safeguard 9.7: Deploy and Maintain Email Server Anti-Malware Protections (IG3)",
+      "priority": "P3",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Route 53 Resolver DNS Firewall",
+          "WorkMail"
+        ],
+        "gcp_services": [
+          "Cloud DNS",
+          "Workspace"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1566.001",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1204.002",
+          "mapping_type": "mitigates"
+        }
       ]
     },
     {
       "control_id": "10",
       "control_family": "Malware Defences",
       "name": "Malware Defences",
-      "description": "Prevent or control the installation, spread, and execution of malicious applications, code, or scripts.",
-      "priority": "P1",
-      "cloud_applicability": "highly_relevant",
+      "description": "CIS Control 10: Malware Defences",
+      "priority": "P2",
+      "is_enhancement": false,
+      "cloud_applicability": "moderately_relevant",
       "cloud_context": {
-        "aws_services": ["GuardDuty Malware Protection", "Inspector"],
-        "gcp_services": ["Security Command Center", "Container Analysis"],
-        "shared_responsibility": "customer",
-        "detection_guidance": "Enable GuardDuty Malware Protection for EBS volume scanning."
+        "aws_services": [
+          "GuardDuty",
+          "Inspector"
+        ],
+        "gcp_services": [
+          "Security Command Center",
+          "Chronicle"
+        ],
+        "shared_responsibility": "shared"
       },
       "technique_mappings": [
-        {"technique_id": "T1204", "mapping_type": "mitigates"},
-        {"technique_id": "T1059", "mapping_type": "mitigates"},
-        {"technique_id": "T1566", "mapping_type": "mitigates"},
-        {"technique_id": "T1195", "mapping_type": "mitigates"}
+        {
+          "technique_id": "T1052",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1055",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1059",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1068",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1091",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1105",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1203",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1204",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "10.1",
+      "control_family": "Malware Defences",
+      "name": "Deploy and Maintain Anti-Malware Software",
+      "description": "CIS Safeguard 10.1: Deploy and Maintain Anti-Malware Software (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "GuardDuty",
+          "Inspector"
+        ],
+        "gcp_services": [
+          "Security Command Center",
+          "Chronicle"
+        ],
+        "shared_responsibility": "shared"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1204",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1059",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1105",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "10.2",
+      "control_family": "Malware Defences",
+      "name": "Configure Automatic Anti-Malware Signature Updates",
+      "description": "CIS Safeguard 10.2: Configure Automatic Anti-Malware Signature Updates (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "GuardDuty",
+          "Inspector"
+        ],
+        "gcp_services": [
+          "Security Command Center",
+          "Chronicle"
+        ],
+        "shared_responsibility": "shared"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1204",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1059",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "10.3",
+      "control_family": "Malware Defences",
+      "name": "Disable Autorun and Autoplay for Removable Media",
+      "description": "CIS Safeguard 10.3: Disable Autorun and Autoplay for Removable Media (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "GuardDuty",
+          "Inspector"
+        ],
+        "gcp_services": [
+          "Security Command Center",
+          "Chronicle"
+        ],
+        "shared_responsibility": "shared"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1091",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1052",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "10.4",
+      "control_family": "Malware Defences",
+      "name": "Configure Automatic Anti-Malware Scanning of Removable Media",
+      "description": "CIS Safeguard 10.4: Configure Automatic Anti-Malware Scanning of Removable Media (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "GuardDuty",
+          "Inspector"
+        ],
+        "gcp_services": [
+          "Security Command Center",
+          "Chronicle"
+        ],
+        "shared_responsibility": "shared"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1091",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1052",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "10.5",
+      "control_family": "Malware Defences",
+      "name": "Enable Anti-Exploitation Features",
+      "description": "CIS Safeguard 10.5: Enable Anti-Exploitation Features (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "GuardDuty",
+          "Inspector"
+        ],
+        "gcp_services": [
+          "Security Command Center",
+          "Chronicle"
+        ],
+        "shared_responsibility": "shared"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1068",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1203",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "10.6",
+      "control_family": "Malware Defences",
+      "name": "Centralise Anti-Malware Logging",
+      "description": "CIS Safeguard 10.6: Centralise Anti-Malware Logging (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "GuardDuty",
+          "Inspector"
+        ],
+        "gcp_services": [
+          "Security Command Center",
+          "Chronicle"
+        ],
+        "shared_responsibility": "shared"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1204",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1059",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "10.7",
+      "control_family": "Malware Defences",
+      "name": "Use Behaviour-Based Anti-Malware Software",
+      "description": "CIS Safeguard 10.7: Use Behaviour-Based Anti-Malware Software (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "GuardDuty",
+          "Inspector"
+        ],
+        "gcp_services": [
+          "Security Command Center",
+          "Chronicle"
+        ],
+        "shared_responsibility": "shared"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1059",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1204",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1055",
+          "mapping_type": "mitigates"
+        }
       ]
     },
     {
       "control_id": "11",
       "control_family": "Data Recovery",
       "name": "Data Recovery",
-      "description": "Establish and maintain data recovery practices sufficient to restore in-scope enterprise assets to a pre-incident and trusted state.",
-      "priority": "P1",
+      "description": "CIS Control 11: Data Recovery",
+      "priority": "P2",
+      "is_enhancement": false,
       "cloud_applicability": "highly_relevant",
       "cloud_context": {
-        "aws_services": ["AWS Backup", "S3 Versioning", "RDS Snapshots", "EBS Snapshots"],
-        "gcp_services": ["Cloud Storage Versioning", "Cloud SQL Backups", "Persistent Disk Snapshots"],
-        "shared_responsibility": "customer",
-        "detection_guidance": "Enable AWS Backup with cross-region replication for critical data."
+        "aws_services": [
+          "Backup",
+          "S3",
+          "RDS Snapshots",
+          "EBS Snapshots",
+          "Glacier"
+        ],
+        "gcp_services": [
+          "Cloud Storage",
+          "Persistent Disk Snapshots",
+          "Cloud SQL Backups"
+        ],
+        "shared_responsibility": "customer"
       },
       "technique_mappings": [
-        {"technique_id": "T1485", "mapping_type": "mitigates"},
-        {"technique_id": "T1486", "mapping_type": "mitigates"},
-        {"technique_id": "T1490", "mapping_type": "mitigates"}
+        {
+          "technique_id": "T1485",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1486",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1490",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "11.1",
+      "control_family": "Data Recovery",
+      "name": "Establish and Maintain a Data Recovery Process",
+      "description": "CIS Safeguard 11.1: Establish and Maintain a Data Recovery Process (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Backup",
+          "S3",
+          "RDS Snapshots",
+          "EBS Snapshots",
+          "Glacier"
+        ],
+        "gcp_services": [
+          "Cloud Storage",
+          "Persistent Disk Snapshots",
+          "Cloud SQL Backups"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1490",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1485",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "11.2",
+      "control_family": "Data Recovery",
+      "name": "Perform Automated Backups",
+      "description": "CIS Safeguard 11.2: Perform Automated Backups (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Backup",
+          "S3",
+          "RDS Snapshots",
+          "EBS Snapshots",
+          "Glacier"
+        ],
+        "gcp_services": [
+          "Cloud Storage",
+          "Persistent Disk Snapshots",
+          "Cloud SQL Backups"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1490",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1485",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1486",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "11.3",
+      "control_family": "Data Recovery",
+      "name": "Protect Recovery Data",
+      "description": "CIS Safeguard 11.3: Protect Recovery Data (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Backup",
+          "S3",
+          "RDS Snapshots",
+          "EBS Snapshots",
+          "Glacier"
+        ],
+        "gcp_services": [
+          "Cloud Storage",
+          "Persistent Disk Snapshots",
+          "Cloud SQL Backups"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1490",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1485",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "11.4",
+      "control_family": "Data Recovery",
+      "name": "Establish and Maintain an Isolated Instance of Recovery Data",
+      "description": "CIS Safeguard 11.4: Establish and Maintain an Isolated Instance of Recovery Data (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Backup",
+          "S3",
+          "RDS Snapshots",
+          "EBS Snapshots",
+          "Glacier"
+        ],
+        "gcp_services": [
+          "Cloud Storage",
+          "Persistent Disk Snapshots",
+          "Cloud SQL Backups"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1490",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1486",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "11.5",
+      "control_family": "Data Recovery",
+      "name": "Test Data Recovery",
+      "description": "CIS Safeguard 11.5: Test Data Recovery (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Backup",
+          "S3",
+          "RDS Snapshots",
+          "EBS Snapshots",
+          "Glacier"
+        ],
+        "gcp_services": [
+          "Cloud Storage",
+          "Persistent Disk Snapshots",
+          "Cloud SQL Backups"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1490",
+          "mapping_type": "mitigates"
+        }
       ]
     },
     {
       "control_id": "12",
       "control_family": "Network Infrastructure Management",
       "name": "Network Infrastructure Management",
-      "description": "Establish and maintain the secure configuration of network devices.",
-      "priority": "P1",
+      "description": "CIS Control 12: Network Infrastructure Management",
+      "priority": "P2",
+      "is_enhancement": false,
       "cloud_applicability": "highly_relevant",
       "cloud_context": {
-        "aws_services": ["VPC", "Security Groups", "NACLs", "Transit Gateway"],
-        "gcp_services": ["VPC", "Firewall Rules", "Cloud Router"],
-        "shared_responsibility": "customer",
-        "detection_guidance": "Use AWS Config rules to monitor security group and NACL changes."
+        "aws_services": [
+          "VPC",
+          "Transit Gateway",
+          "Direct Connect",
+          "Client VPN"
+        ],
+        "gcp_services": [
+          "VPC",
+          "Cloud Interconnect",
+          "Cloud VPN",
+          "Network Connectivity Center"
+        ],
+        "shared_responsibility": "customer"
       },
       "technique_mappings": [
-        {"technique_id": "T1557", "mapping_type": "mitigates"},
-        {"technique_id": "T1040", "mapping_type": "mitigates"},
-        {"technique_id": "T1071", "mapping_type": "mitigates"},
-        {"technique_id": "T1048", "mapping_type": "mitigates"}
+        {
+          "technique_id": "T1021",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1040",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1046",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1078",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1078.004",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1133",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1190",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1557",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1580",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "12.1",
+      "control_family": "Network Infrastructure Management",
+      "name": "Ensure Network Infrastructure is Up-to-Date",
+      "description": "CIS Safeguard 12.1: Ensure Network Infrastructure is Up-to-Date (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "VPC",
+          "Transit Gateway",
+          "Direct Connect",
+          "Client VPN"
+        ],
+        "gcp_services": [
+          "VPC",
+          "Cloud Interconnect",
+          "Cloud VPN",
+          "Network Connectivity Center"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1190",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1040",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "12.2",
+      "control_family": "Network Infrastructure Management",
+      "name": "Establish and Maintain a Secure Network Architecture",
+      "description": "CIS Safeguard 12.2: Establish and Maintain a Secure Network Architecture (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "VPC",
+          "Transit Gateway",
+          "Direct Connect",
+          "Client VPN"
+        ],
+        "gcp_services": [
+          "VPC",
+          "Cloud Interconnect",
+          "Cloud VPN",
+          "Network Connectivity Center"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1046",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1557",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "12.3",
+      "control_family": "Network Infrastructure Management",
+      "name": "Securely Manage Network Infrastructure",
+      "description": "CIS Safeguard 12.3: Securely Manage Network Infrastructure (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "VPC",
+          "Transit Gateway",
+          "Direct Connect",
+          "Client VPN"
+        ],
+        "gcp_services": [
+          "VPC",
+          "Cloud Interconnect",
+          "Cloud VPN",
+          "Network Connectivity Center"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1021",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1557",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "12.4",
+      "control_family": "Network Infrastructure Management",
+      "name": "Establish and Maintain Architecture Diagram(s)",
+      "description": "CIS Safeguard 12.4: Establish and Maintain Architecture Diagram(s) (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "VPC",
+          "Transit Gateway",
+          "Direct Connect",
+          "Client VPN"
+        ],
+        "gcp_services": [
+          "VPC",
+          "Cloud Interconnect",
+          "Cloud VPN",
+          "Network Connectivity Center"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1580",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "12.5",
+      "control_family": "Network Infrastructure Management",
+      "name": "Centralise Network Authentication, Authorisation, and Auditing (AAA)",
+      "description": "CIS Safeguard 12.5: Centralise Network Authentication, Authorisation, and Auditing (AAA) (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "VPC",
+          "Transit Gateway",
+          "Direct Connect",
+          "Client VPN"
+        ],
+        "gcp_services": [
+          "VPC",
+          "Cloud Interconnect",
+          "Cloud VPN",
+          "Network Connectivity Center"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1078",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1021",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "12.6",
+      "control_family": "Network Infrastructure Management",
+      "name": "Use of Secure Network Management and Communication Protocols",
+      "description": "CIS Safeguard 12.6: Use of Secure Network Management and Communication Protocols (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "VPC",
+          "Transit Gateway",
+          "Direct Connect",
+          "Client VPN"
+        ],
+        "gcp_services": [
+          "VPC",
+          "Cloud Interconnect",
+          "Cloud VPN",
+          "Network Connectivity Center"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1557",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1040",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "12.7",
+      "control_family": "Network Infrastructure Management",
+      "name": "Ensure Remote Devices Utilise a VPN and are Connecting to an Enterprise's AAA Infrastructure",
+      "description": "CIS Safeguard 12.7: Ensure Remote Devices Utilise a VPN and are Connecting to an Enterprise's AAA Infrastructure (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "VPC",
+          "Transit Gateway",
+          "Direct Connect",
+          "Client VPN"
+        ],
+        "gcp_services": [
+          "VPC",
+          "Cloud Interconnect",
+          "Cloud VPN",
+          "Network Connectivity Center"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1133",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1021",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "12.8",
+      "control_family": "Network Infrastructure Management",
+      "name": "Establish and Maintain Dedicated Computing Resources for All Administrative Work",
+      "description": "CIS Safeguard 12.8: Establish and Maintain Dedicated Computing Resources for All Administrative Work (IG3)",
+      "priority": "P3",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "VPC",
+          "Transit Gateway",
+          "Direct Connect",
+          "Client VPN"
+        ],
+        "gcp_services": [
+          "VPC",
+          "Cloud Interconnect",
+          "Cloud VPN",
+          "Network Connectivity Center"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1078.004",
+          "mapping_type": "mitigates"
+        }
       ]
     },
     {
       "control_id": "13",
       "control_family": "Network Monitoring and Defence",
       "name": "Network Monitoring and Defence",
-      "description": "Operate processes and tooling to establish and maintain comprehensive network monitoring and defence against security threats.",
-      "priority": "P1",
+      "description": "CIS Control 13: Network Monitoring and Defence",
+      "priority": "P2",
+      "is_enhancement": false,
       "cloud_applicability": "highly_relevant",
       "cloud_context": {
-        "aws_services": ["VPC Flow Logs", "GuardDuty", "Network Firewall", "Traffic Mirroring"],
-        "gcp_services": ["VPC Flow Logs", "Cloud IDS", "Packet Mirroring"],
-        "shared_responsibility": "customer",
-        "detection_guidance": "Enable VPC Flow Logs and GuardDuty for network threat detection."
+        "aws_services": [
+          "GuardDuty",
+          "VPC Flow Logs",
+          "Network Firewall",
+          "WAF",
+          "Security Hub"
+        ],
+        "gcp_services": [
+          "Cloud IDS",
+          "VPC Flow Logs",
+          "Cloud Armor",
+          "Security Command Center"
+        ],
+        "shared_responsibility": "customer"
       },
       "technique_mappings": [
-        {"technique_id": "T1048", "mapping_type": "mitigates"},
-        {"technique_id": "T1041", "mapping_type": "mitigates"},
-        {"technique_id": "T1071", "mapping_type": "mitigates"},
-        {"technique_id": "T1190", "mapping_type": "mitigates"},
-        {"technique_id": "T1133", "mapping_type": "mitigates"}
+        {
+          "technique_id": "T1021",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1040",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1046",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1048",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1055",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1059",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1071",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1102",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1133",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1190",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1200",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1562",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "13.1",
+      "control_family": "Network Monitoring and Defence",
+      "name": "Centralise Security Event Alerting",
+      "description": "CIS Safeguard 13.1: Centralise Security Event Alerting (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "GuardDuty",
+          "VPC Flow Logs",
+          "Network Firewall",
+          "WAF",
+          "Security Hub"
+        ],
+        "gcp_services": [
+          "Cloud IDS",
+          "VPC Flow Logs",
+          "Cloud Armor",
+          "Security Command Center"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1562",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1040",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "13.2",
+      "control_family": "Network Monitoring and Defence",
+      "name": "Deploy a Host-Based Intrusion Detection Solution",
+      "description": "CIS Safeguard 13.2: Deploy a Host-Based Intrusion Detection Solution (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "GuardDuty",
+          "VPC Flow Logs",
+          "Network Firewall",
+          "WAF",
+          "Security Hub"
+        ],
+        "gcp_services": [
+          "Cloud IDS",
+          "VPC Flow Logs",
+          "Cloud Armor",
+          "Security Command Center"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1055",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1059",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "13.3",
+      "control_family": "Network Monitoring and Defence",
+      "name": "Deploy a Network Intrusion Detection Solution",
+      "description": "CIS Safeguard 13.3: Deploy a Network Intrusion Detection Solution (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "GuardDuty",
+          "VPC Flow Logs",
+          "Network Firewall",
+          "WAF",
+          "Security Hub"
+        ],
+        "gcp_services": [
+          "Cloud IDS",
+          "VPC Flow Logs",
+          "Cloud Armor",
+          "Security Command Center"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1040",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1046",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "13.4",
+      "control_family": "Network Monitoring and Defence",
+      "name": "Perform Traffic Filtering Between Network Segments",
+      "description": "CIS Safeguard 13.4: Perform Traffic Filtering Between Network Segments (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "GuardDuty",
+          "VPC Flow Logs",
+          "Network Firewall",
+          "WAF",
+          "Security Hub"
+        ],
+        "gcp_services": [
+          "Cloud IDS",
+          "VPC Flow Logs",
+          "Cloud Armor",
+          "Security Command Center"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1046",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1021",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1071",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "13.5",
+      "control_family": "Network Monitoring and Defence",
+      "name": "Manage Access Control for Remote Assets",
+      "description": "CIS Safeguard 13.5: Manage Access Control for Remote Assets (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "GuardDuty",
+          "VPC Flow Logs",
+          "Network Firewall",
+          "WAF",
+          "Security Hub"
+        ],
+        "gcp_services": [
+          "Cloud IDS",
+          "VPC Flow Logs",
+          "Cloud Armor",
+          "Security Command Center"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1133",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1021",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "13.6",
+      "control_family": "Network Monitoring and Defence",
+      "name": "Collect Network Traffic Flow Logs",
+      "description": "CIS Safeguard 13.6: Collect Network Traffic Flow Logs (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "GuardDuty",
+          "VPC Flow Logs",
+          "Network Firewall",
+          "WAF",
+          "Security Hub"
+        ],
+        "gcp_services": [
+          "Cloud IDS",
+          "VPC Flow Logs",
+          "Cloud Armor",
+          "Security Command Center"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1046",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1071",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1048",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "13.7",
+      "control_family": "Network Monitoring and Defence",
+      "name": "Deploy a Host-Based Intrusion Prevention Solution",
+      "description": "CIS Safeguard 13.7: Deploy a Host-Based Intrusion Prevention Solution (IG3)",
+      "priority": "P3",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "GuardDuty",
+          "VPC Flow Logs",
+          "Network Firewall",
+          "WAF",
+          "Security Hub"
+        ],
+        "gcp_services": [
+          "Cloud IDS",
+          "VPC Flow Logs",
+          "Cloud Armor",
+          "Security Command Center"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1055",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1059",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "13.8",
+      "control_family": "Network Monitoring and Defence",
+      "name": "Deploy a Network Intrusion Prevention Solution",
+      "description": "CIS Safeguard 13.8: Deploy a Network Intrusion Prevention Solution (IG3)",
+      "priority": "P3",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "GuardDuty",
+          "VPC Flow Logs",
+          "Network Firewall",
+          "WAF",
+          "Security Hub"
+        ],
+        "gcp_services": [
+          "Cloud IDS",
+          "VPC Flow Logs",
+          "Cloud Armor",
+          "Security Command Center"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1046",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1190",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "13.9",
+      "control_family": "Network Monitoring and Defence",
+      "name": "Deploy Port-Level Access Control",
+      "description": "CIS Safeguard 13.9: Deploy Port-Level Access Control (IG3)",
+      "priority": "P3",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "GuardDuty",
+          "VPC Flow Logs",
+          "Network Firewall",
+          "WAF",
+          "Security Hub"
+        ],
+        "gcp_services": [
+          "Cloud IDS",
+          "VPC Flow Logs",
+          "Cloud Armor",
+          "Security Command Center"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1046",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1200",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "13.10",
+      "control_family": "Network Monitoring and Defence",
+      "name": "Perform Application Layer Filtering",
+      "description": "CIS Safeguard 13.10: Perform Application Layer Filtering (IG3)",
+      "priority": "P3",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "GuardDuty",
+          "VPC Flow Logs",
+          "Network Firewall",
+          "WAF",
+          "Security Hub"
+        ],
+        "gcp_services": [
+          "Cloud IDS",
+          "VPC Flow Logs",
+          "Cloud Armor",
+          "Security Command Center"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1071",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1102",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "13.11",
+      "control_family": "Network Monitoring and Defence",
+      "name": "Tune Security Event Alerting Thresholds",
+      "description": "CIS Safeguard 13.11: Tune Security Event Alerting Thresholds (IG3)",
+      "priority": "P3",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "GuardDuty",
+          "VPC Flow Logs",
+          "Network Firewall",
+          "WAF",
+          "Security Hub"
+        ],
+        "gcp_services": [
+          "Cloud IDS",
+          "VPC Flow Logs",
+          "Cloud Armor",
+          "Security Command Center"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1562",
+          "mapping_type": "mitigates"
+        }
       ]
     },
     {
       "control_id": "14",
       "control_family": "Security Awareness and Skills Training",
       "name": "Security Awareness and Skills Training",
-      "description": "Establish and maintain a security awareness programme to influence behaviour among the workforce.",
-      "priority": "P1",
+      "description": "CIS Control 14: Security Awareness and Skills Training",
+      "priority": "P2",
+      "is_enhancement": false,
       "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [],
         "gcp_services": [],
-        "shared_responsibility": "customer",
-        "detection_guidance": "Security awareness training is an organisational process. Not detectable via cloud APIs."
+        "shared_responsibility": "customer"
       },
       "technique_mappings": [
-        {"technique_id": "T1566", "mapping_type": "mitigates"},
-        {"technique_id": "T1204", "mapping_type": "mitigates"},
-        {"technique_id": "T1078", "mapping_type": "mitigates"}
+        {
+          "technique_id": "T1040",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1078",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1110",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1190",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1204",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1530",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1534",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1537",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1557",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1566",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1567",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "14.1",
+      "control_family": "Security Awareness and Skills Training",
+      "name": "Establish and Maintain a Security Awareness Programme",
+      "description": "CIS Safeguard 14.1: Establish and Maintain a Security Awareness Programme (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "informational",
+      "cloud_context": {
+        "aws_services": [],
+        "gcp_services": [],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1566",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1204",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "14.2",
+      "control_family": "Security Awareness and Skills Training",
+      "name": "Train Workforce Members to Recognise Social Engineering Attacks",
+      "description": "CIS Safeguard 14.2: Train Workforce Members to Recognise Social Engineering Attacks (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "informational",
+      "cloud_context": {
+        "aws_services": [],
+        "gcp_services": [],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1566",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1534",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "14.3",
+      "control_family": "Security Awareness and Skills Training",
+      "name": "Train Workforce Members on Authentication Best Practices",
+      "description": "CIS Safeguard 14.3: Train Workforce Members on Authentication Best Practices (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "informational",
+      "cloud_context": {
+        "aws_services": [],
+        "gcp_services": [],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1078",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1110",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "14.4",
+      "control_family": "Security Awareness and Skills Training",
+      "name": "Train Workforce Members on Data Handling Best Practices",
+      "description": "CIS Safeguard 14.4: Train Workforce Members on Data Handling Best Practices (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "informational",
+      "cloud_context": {
+        "aws_services": [],
+        "gcp_services": [],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1530",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1567",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "14.5",
+      "control_family": "Security Awareness and Skills Training",
+      "name": "Train Workforce Members on Causes of Unintentional Data Exposure",
+      "description": "CIS Safeguard 14.5: Train Workforce Members on Causes of Unintentional Data Exposure (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "informational",
+      "cloud_context": {
+        "aws_services": [],
+        "gcp_services": [],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1530",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1537",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "14.6",
+      "control_family": "Security Awareness and Skills Training",
+      "name": "Train Workforce Members on Recognising and Reporting Security Incidents",
+      "description": "CIS Safeguard 14.6: Train Workforce Members on Recognising and Reporting Security Incidents (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "informational",
+      "cloud_context": {
+        "aws_services": [],
+        "gcp_services": [],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1566",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "14.7",
+      "control_family": "Security Awareness and Skills Training",
+      "name": "Train Workforce Members on How to Identify and Report if Their Enterprise Assets are Missing Security Updates",
+      "description": "CIS Safeguard 14.7: Train Workforce Members on How to Identify and Report if Their Enterprise Assets are Missing Security Updates (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "informational",
+      "cloud_context": {
+        "aws_services": [],
+        "gcp_services": [],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1190",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "14.8",
+      "control_family": "Security Awareness and Skills Training",
+      "name": "Train Workforce Members on the Dangers of Connecting to and Transmitting Enterprise Data Over Insecure Networks",
+      "description": "CIS Safeguard 14.8: Train Workforce Members on the Dangers of Connecting to and Transmitting Enterprise Data Over Insecure Networks (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "informational",
+      "cloud_context": {
+        "aws_services": [],
+        "gcp_services": [],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1557",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1040",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "14.9",
+      "control_family": "Security Awareness and Skills Training",
+      "name": "Conduct Role-Specific Security Awareness and Skills Training",
+      "description": "CIS Safeguard 14.9: Conduct Role-Specific Security Awareness and Skills Training (IG3)",
+      "priority": "P3",
+      "is_enhancement": true,
+      "cloud_applicability": "informational",
+      "cloud_context": {
+        "aws_services": [],
+        "gcp_services": [],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1566",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1078",
+          "mapping_type": "mitigates"
+        }
       ]
     },
     {
       "control_id": "15",
       "control_family": "Service Provider Management",
       "name": "Service Provider Management",
-      "description": "Develop a process to evaluate service providers who hold sensitive data or are responsible for an enterprise's critical IT platforms.",
-      "priority": "P1",
+      "description": "CIS Control 15: Service Provider Management",
+      "priority": "P2",
+      "is_enhancement": false,
       "cloud_applicability": "moderately_relevant",
       "cloud_context": {
-        "aws_services": ["Organizations", "RAM", "Service Catalog"],
-        "gcp_services": ["Organization Policy", "Resource Manager"],
-        "shared_responsibility": "shared",
-        "detection_guidance": "Monitor third-party integrations and cross-account access."
+        "aws_services": [
+          "Organizations",
+          "Service Catalog",
+          "Control Tower"
+        ],
+        "gcp_services": [
+          "Resource Manager",
+          "Organization Policy"
+        ],
+        "shared_responsibility": "customer"
       },
       "technique_mappings": [
-        {"technique_id": "T1199", "mapping_type": "mitigates"},
-        {"technique_id": "T1195", "mapping_type": "mitigates"},
-        {"technique_id": "T1078", "mapping_type": "mitigates"}
+        {
+          "technique_id": "T1195",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1199",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "15.1",
+      "control_family": "Service Provider Management",
+      "name": "Establish and Maintain an Inventory of Service Providers",
+      "description": "CIS Safeguard 15.1: Establish and Maintain an Inventory of Service Providers (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Organizations",
+          "Service Catalog",
+          "Control Tower"
+        ],
+        "gcp_services": [
+          "Resource Manager",
+          "Organization Policy"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1199",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1195",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "15.2",
+      "control_family": "Service Provider Management",
+      "name": "Establish and Maintain a Service Provider Management Policy",
+      "description": "CIS Safeguard 15.2: Establish and Maintain a Service Provider Management Policy (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Organizations",
+          "Service Catalog",
+          "Control Tower"
+        ],
+        "gcp_services": [
+          "Resource Manager",
+          "Organization Policy"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1199",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "15.3",
+      "control_family": "Service Provider Management",
+      "name": "Classify Service Providers",
+      "description": "CIS Safeguard 15.3: Classify Service Providers (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Organizations",
+          "Service Catalog",
+          "Control Tower"
+        ],
+        "gcp_services": [
+          "Resource Manager",
+          "Organization Policy"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1199",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "15.4",
+      "control_family": "Service Provider Management",
+      "name": "Ensure Service Provider Contracts Include Security Requirements",
+      "description": "CIS Safeguard 15.4: Ensure Service Provider Contracts Include Security Requirements (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Organizations",
+          "Service Catalog",
+          "Control Tower"
+        ],
+        "gcp_services": [
+          "Resource Manager",
+          "Organization Policy"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1199",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "15.5",
+      "control_family": "Service Provider Management",
+      "name": "Assess Service Providers",
+      "description": "CIS Safeguard 15.5: Assess Service Providers (IG3)",
+      "priority": "P3",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Organizations",
+          "Service Catalog",
+          "Control Tower"
+        ],
+        "gcp_services": [
+          "Resource Manager",
+          "Organization Policy"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1199",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1195",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "15.6",
+      "control_family": "Service Provider Management",
+      "name": "Monitor Service Providers",
+      "description": "CIS Safeguard 15.6: Monitor Service Providers (IG3)",
+      "priority": "P3",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Organizations",
+          "Service Catalog",
+          "Control Tower"
+        ],
+        "gcp_services": [
+          "Resource Manager",
+          "Organization Policy"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1199",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "15.7",
+      "control_family": "Service Provider Management",
+      "name": "Securely Decommission Service Providers",
+      "description": "CIS Safeguard 15.7: Securely Decommission Service Providers (IG3)",
+      "priority": "P3",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Organizations",
+          "Service Catalog",
+          "Control Tower"
+        ],
+        "gcp_services": [
+          "Resource Manager",
+          "Organization Policy"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1199",
+          "mapping_type": "mitigates"
+        }
       ]
     },
     {
       "control_id": "16",
       "control_family": "Application Software Security",
       "name": "Application Software Security",
-      "description": "Manage the security life cycle of in-house developed, hosted, or acquired software to prevent, detect, and remediate security weaknesses.",
-      "priority": "P1",
-      "cloud_applicability": "highly_relevant",
+      "description": "CIS Control 16: Application Software Security",
+      "priority": "P2",
+      "is_enhancement": false,
+      "cloud_applicability": "moderately_relevant",
       "cloud_context": {
-        "aws_services": ["CodeGuru", "Inspector", "ECR Scanning"],
-        "gcp_services": ["Container Analysis", "Binary Authorization"],
-        "shared_responsibility": "customer",
-        "detection_guidance": "Enable container image scanning and code analysis in CI/CD pipelines."
+        "aws_services": [
+          "CodePipeline",
+          "CodeBuild",
+          "Inspector",
+          "ECR"
+        ],
+        "gcp_services": [
+          "Cloud Build",
+          "Container Analysis",
+          "Artifact Registry"
+        ],
+        "shared_responsibility": "customer"
       },
       "technique_mappings": [
-        {"technique_id": "T1190", "mapping_type": "mitigates"},
-        {"technique_id": "T1059", "mapping_type": "mitigates"},
-        {"technique_id": "T1203", "mapping_type": "mitigates"},
-        {"technique_id": "T1525", "mapping_type": "mitigates"}
+        {
+          "technique_id": "T1059",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1190",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1195.002",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1530",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "16.1",
+      "control_family": "Application Software Security",
+      "name": "Establish and Maintain a Secure Application Development Process",
+      "description": "CIS Safeguard 16.1: Establish and Maintain a Secure Application Development Process (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "CodePipeline",
+          "CodeBuild",
+          "Inspector",
+          "ECR"
+        ],
+        "gcp_services": [
+          "Cloud Build",
+          "Container Analysis",
+          "Artifact Registry"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1190",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1059",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "16.2",
+      "control_family": "Application Software Security",
+      "name": "Establish and Maintain a Process to Accept and Address Software Vulnerabilities",
+      "description": "CIS Safeguard 16.2: Establish and Maintain a Process to Accept and Address Software Vulnerabilities (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "CodePipeline",
+          "CodeBuild",
+          "Inspector",
+          "ECR"
+        ],
+        "gcp_services": [
+          "Cloud Build",
+          "Container Analysis",
+          "Artifact Registry"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1190",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "16.3",
+      "control_family": "Application Software Security",
+      "name": "Perform Root Cause Analysis on Security Vulnerabilities",
+      "description": "CIS Safeguard 16.3: Perform Root Cause Analysis on Security Vulnerabilities (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "CodePipeline",
+          "CodeBuild",
+          "Inspector",
+          "ECR"
+        ],
+        "gcp_services": [
+          "Cloud Build",
+          "Container Analysis",
+          "Artifact Registry"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1190",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "16.4",
+      "control_family": "Application Software Security",
+      "name": "Establish and Manage an Inventory of Third-Party Software Components",
+      "description": "CIS Safeguard 16.4: Establish and Manage an Inventory of Third-Party Software Components (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "CodePipeline",
+          "CodeBuild",
+          "Inspector",
+          "ECR"
+        ],
+        "gcp_services": [
+          "Cloud Build",
+          "Container Analysis",
+          "Artifact Registry"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1195.002",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "16.5",
+      "control_family": "Application Software Security",
+      "name": "Use Up-to-Date and Trusted Third-Party Software Components",
+      "description": "CIS Safeguard 16.5: Use Up-to-Date and Trusted Third-Party Software Components (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "CodePipeline",
+          "CodeBuild",
+          "Inspector",
+          "ECR"
+        ],
+        "gcp_services": [
+          "Cloud Build",
+          "Container Analysis",
+          "Artifact Registry"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1195.002",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "16.6",
+      "control_family": "Application Software Security",
+      "name": "Establish and Maintain a Severity Rating System and Process for Application Vulnerabilities",
+      "description": "CIS Safeguard 16.6: Establish and Maintain a Severity Rating System and Process for Application Vulnerabilities (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "CodePipeline",
+          "CodeBuild",
+          "Inspector",
+          "ECR"
+        ],
+        "gcp_services": [
+          "Cloud Build",
+          "Container Analysis",
+          "Artifact Registry"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1190",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "16.7",
+      "control_family": "Application Software Security",
+      "name": "Use Standard Hardening Configuration Templates for Application Infrastructure",
+      "description": "CIS Safeguard 16.7: Use Standard Hardening Configuration Templates for Application Infrastructure (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "CodePipeline",
+          "CodeBuild",
+          "Inspector",
+          "ECR"
+        ],
+        "gcp_services": [
+          "Cloud Build",
+          "Container Analysis",
+          "Artifact Registry"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1190",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "16.8",
+      "control_family": "Application Software Security",
+      "name": "Separate Production and Non-Production Systems",
+      "description": "CIS Safeguard 16.8: Separate Production and Non-Production Systems (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "CodePipeline",
+          "CodeBuild",
+          "Inspector",
+          "ECR"
+        ],
+        "gcp_services": [
+          "Cloud Build",
+          "Container Analysis",
+          "Artifact Registry"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1530",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "16.9",
+      "control_family": "Application Software Security",
+      "name": "Train Developers in Application Security Concepts and Secure Coding",
+      "description": "CIS Safeguard 16.9: Train Developers in Application Security Concepts and Secure Coding (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "CodePipeline",
+          "CodeBuild",
+          "Inspector",
+          "ECR"
+        ],
+        "gcp_services": [
+          "Cloud Build",
+          "Container Analysis",
+          "Artifact Registry"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1190",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1059",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "16.10",
+      "control_family": "Application Software Security",
+      "name": "Apply Secure Design Principles in Application Architectures",
+      "description": "CIS Safeguard 16.10: Apply Secure Design Principles in Application Architectures (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "CodePipeline",
+          "CodeBuild",
+          "Inspector",
+          "ECR"
+        ],
+        "gcp_services": [
+          "Cloud Build",
+          "Container Analysis",
+          "Artifact Registry"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1190",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "16.11",
+      "control_family": "Application Software Security",
+      "name": "Leverage Vetted Modules or Services for Application Security Components",
+      "description": "CIS Safeguard 16.11: Leverage Vetted Modules or Services for Application Security Components (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "CodePipeline",
+          "CodeBuild",
+          "Inspector",
+          "ECR"
+        ],
+        "gcp_services": [
+          "Cloud Build",
+          "Container Analysis",
+          "Artifact Registry"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1195.002",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "16.12",
+      "control_family": "Application Software Security",
+      "name": "Implement Code-Level Security Checks",
+      "description": "CIS Safeguard 16.12: Implement Code-Level Security Checks (IG3)",
+      "priority": "P3",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "CodePipeline",
+          "CodeBuild",
+          "Inspector",
+          "ECR"
+        ],
+        "gcp_services": [
+          "Cloud Build",
+          "Container Analysis",
+          "Artifact Registry"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1190",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1059",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "16.13",
+      "control_family": "Application Software Security",
+      "name": "Conduct Application Penetration Testing",
+      "description": "CIS Safeguard 16.13: Conduct Application Penetration Testing (IG3)",
+      "priority": "P3",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "CodePipeline",
+          "CodeBuild",
+          "Inspector",
+          "ECR"
+        ],
+        "gcp_services": [
+          "Cloud Build",
+          "Container Analysis",
+          "Artifact Registry"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1190",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "16.14",
+      "control_family": "Application Software Security",
+      "name": "Conduct Threat Modelling",
+      "description": "CIS Safeguard 16.14: Conduct Threat Modelling (IG3)",
+      "priority": "P3",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "CodePipeline",
+          "CodeBuild",
+          "Inspector",
+          "ECR"
+        ],
+        "gcp_services": [
+          "Cloud Build",
+          "Container Analysis",
+          "Artifact Registry"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1190",
+          "mapping_type": "mitigates"
+        }
       ]
     },
     {
       "control_id": "17",
       "control_family": "Incident Response Management",
       "name": "Incident Response Management",
-      "description": "Establish a programme to develop and maintain an incident response capability.",
-      "priority": "P1",
+      "description": "CIS Control 17: Incident Response Management",
+      "priority": "P2",
+      "is_enhancement": false,
       "cloud_applicability": "moderately_relevant",
       "cloud_context": {
-        "aws_services": ["Security Hub", "Detective", "Systems Manager Incident Manager"],
-        "gcp_services": ["Security Command Center", "Chronicle"],
-        "shared_responsibility": "customer",
-        "detection_guidance": "Use Security Hub or SCC to centralise incident detection and response."
+        "aws_services": [
+          "Security Hub",
+          "Detective",
+          "EventBridge",
+          "Lambda"
+        ],
+        "gcp_services": [
+          "Security Command Center",
+          "Cloud Functions",
+          "Pub/Sub"
+        ],
+        "shared_responsibility": "customer"
       },
-      "technique_mappings": [
-        {"technique_id": "T1078", "mapping_type": "mitigates"},
-        {"technique_id": "T1562", "mapping_type": "mitigates"},
-        {"technique_id": "T1530", "mapping_type": "mitigates"},
-        {"technique_id": "T1485", "mapping_type": "mitigates"}
-      ]
+      "technique_mappings": []
+    },
+    {
+      "control_id": "17.1",
+      "control_family": "Incident Response Management",
+      "name": "Designate Personnel to Manage Incident Handling",
+      "description": "CIS Safeguard 17.1: Designate Personnel to Manage Incident Handling (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Security Hub",
+          "Detective",
+          "EventBridge",
+          "Lambda"
+        ],
+        "gcp_services": [
+          "Security Command Center",
+          "Cloud Functions",
+          "Pub/Sub"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": []
+    },
+    {
+      "control_id": "17.2",
+      "control_family": "Incident Response Management",
+      "name": "Establish and Maintain Contact Information for Reporting Security Incidents",
+      "description": "CIS Safeguard 17.2: Establish and Maintain Contact Information for Reporting Security Incidents (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Security Hub",
+          "Detective",
+          "EventBridge",
+          "Lambda"
+        ],
+        "gcp_services": [
+          "Security Command Center",
+          "Cloud Functions",
+          "Pub/Sub"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": []
+    },
+    {
+      "control_id": "17.3",
+      "control_family": "Incident Response Management",
+      "name": "Establish and Maintain an Enterprise Process for Reporting Incidents",
+      "description": "CIS Safeguard 17.3: Establish and Maintain an Enterprise Process for Reporting Incidents (IG1)",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Security Hub",
+          "Detective",
+          "EventBridge",
+          "Lambda"
+        ],
+        "gcp_services": [
+          "Security Command Center",
+          "Cloud Functions",
+          "Pub/Sub"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": []
+    },
+    {
+      "control_id": "17.4",
+      "control_family": "Incident Response Management",
+      "name": "Establish and Maintain an Incident Response Process",
+      "description": "CIS Safeguard 17.4: Establish and Maintain an Incident Response Process (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Security Hub",
+          "Detective",
+          "EventBridge",
+          "Lambda"
+        ],
+        "gcp_services": [
+          "Security Command Center",
+          "Cloud Functions",
+          "Pub/Sub"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": []
+    },
+    {
+      "control_id": "17.5",
+      "control_family": "Incident Response Management",
+      "name": "Assign Key Roles and Responsibilities",
+      "description": "CIS Safeguard 17.5: Assign Key Roles and Responsibilities (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Security Hub",
+          "Detective",
+          "EventBridge",
+          "Lambda"
+        ],
+        "gcp_services": [
+          "Security Command Center",
+          "Cloud Functions",
+          "Pub/Sub"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": []
+    },
+    {
+      "control_id": "17.6",
+      "control_family": "Incident Response Management",
+      "name": "Define Mechanisms for Communicating During Incident Response",
+      "description": "CIS Safeguard 17.6: Define Mechanisms for Communicating During Incident Response (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Security Hub",
+          "Detective",
+          "EventBridge",
+          "Lambda"
+        ],
+        "gcp_services": [
+          "Security Command Center",
+          "Cloud Functions",
+          "Pub/Sub"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": []
+    },
+    {
+      "control_id": "17.7",
+      "control_family": "Incident Response Management",
+      "name": "Conduct Routine Incident Response Exercises",
+      "description": "CIS Safeguard 17.7: Conduct Routine Incident Response Exercises (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Security Hub",
+          "Detective",
+          "EventBridge",
+          "Lambda"
+        ],
+        "gcp_services": [
+          "Security Command Center",
+          "Cloud Functions",
+          "Pub/Sub"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": []
+    },
+    {
+      "control_id": "17.8",
+      "control_family": "Incident Response Management",
+      "name": "Conduct Post-Incident Reviews",
+      "description": "CIS Safeguard 17.8: Conduct Post-Incident Reviews (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Security Hub",
+          "Detective",
+          "EventBridge",
+          "Lambda"
+        ],
+        "gcp_services": [
+          "Security Command Center",
+          "Cloud Functions",
+          "Pub/Sub"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": []
+    },
+    {
+      "control_id": "17.9",
+      "control_family": "Incident Response Management",
+      "name": "Establish and Maintain Security Incident Thresholds",
+      "description": "CIS Safeguard 17.9: Establish and Maintain Security Incident Thresholds (IG3)",
+      "priority": "P3",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Security Hub",
+          "Detective",
+          "EventBridge",
+          "Lambda"
+        ],
+        "gcp_services": [
+          "Security Command Center",
+          "Cloud Functions",
+          "Pub/Sub"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": []
     },
     {
       "control_id": "18",
       "control_family": "Penetration Testing",
       "name": "Penetration Testing",
-      "description": "Test the effectiveness and resiliency of enterprise assets through identifying and exploiting weaknesses in controls.",
+      "description": "CIS Control 18: Penetration Testing",
       "priority": "P2",
+      "is_enhancement": false,
       "cloud_applicability": "moderately_relevant",
       "cloud_context": {
-        "aws_services": ["Inspector"],
-        "gcp_services": ["Web Security Scanner"],
-        "shared_responsibility": "customer",
-        "detection_guidance": "Regular penetration testing complements automated scanning. Follow AWS/GCP penetration testing policies."
+        "aws_services": [
+          "Inspector"
+        ],
+        "gcp_services": [
+          "Security Command Center"
+        ],
+        "shared_responsibility": "customer"
       },
       "technique_mappings": [
-        {"technique_id": "T1190", "mapping_type": "mitigates"},
-        {"technique_id": "T1078", "mapping_type": "mitigates"},
-        {"technique_id": "T1068", "mapping_type": "mitigates"}
+        {
+          "technique_id": "T1046",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1190",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1595",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "18.1",
+      "control_family": "Penetration Testing",
+      "name": "Establish and Maintain a Penetration Testing Programme",
+      "description": "CIS Safeguard 18.1: Establish and Maintain a Penetration Testing Programme (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Inspector"
+        ],
+        "gcp_services": [
+          "Security Command Center"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1595",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "18.2",
+      "control_family": "Penetration Testing",
+      "name": "Perform Periodic External Penetration Tests",
+      "description": "CIS Safeguard 18.2: Perform Periodic External Penetration Tests (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Inspector"
+        ],
+        "gcp_services": [
+          "Security Command Center"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1595",
+          "mapping_type": "mitigates"
+        },
+        {
+          "technique_id": "T1190",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "18.3",
+      "control_family": "Penetration Testing",
+      "name": "Remediate Penetration Test Findings",
+      "description": "CIS Safeguard 18.3: Remediate Penetration Test Findings (IG2)",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Inspector"
+        ],
+        "gcp_services": [
+          "Security Command Center"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1190",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "18.4",
+      "control_family": "Penetration Testing",
+      "name": "Validate Security Measures",
+      "description": "CIS Safeguard 18.4: Validate Security Measures (IG3)",
+      "priority": "P3",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Inspector"
+        ],
+        "gcp_services": [
+          "Security Command Center"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1190",
+          "mapping_type": "mitigates"
+        }
+      ]
+    },
+    {
+      "control_id": "18.5",
+      "control_family": "Penetration Testing",
+      "name": "Perform Periodic Internal Penetration Tests",
+      "description": "CIS Safeguard 18.5: Perform Periodic Internal Penetration Tests (IG3)",
+      "priority": "P3",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": [
+          "Inspector"
+        ],
+        "gcp_services": [
+          "Security Command Center"
+        ],
+        "shared_responsibility": "customer"
+      },
+      "technique_mappings": [
+        {
+          "technique_id": "T1046",
+          "mapping_type": "mitigates"
+        }
       ]
     }
   ]
