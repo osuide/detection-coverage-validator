@@ -513,3 +513,44 @@ async def seed_mitre_data(
         "total_tactics": len(existing_tactics),
         "total_techniques": len(existing_techniques),
     }
+
+
+@router.post("/seed-compliance")
+async def seed_compliance_data(
+    force_reload: bool = False,
+    admin: AdminUser = Depends(require_permission("settings:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Seed or reload compliance framework data.
+
+    Loads NIST 800-53 and CIS Controls v8 from JSON files.
+    Use force_reload=true to clear and reload existing data.
+    Requires super_admin role.
+    """
+    if admin.role != AdminRole.SUPER_ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only super_admin can seed compliance data",
+        )
+
+    from app.data.compliance_mappings.loader import ComplianceMappingLoader
+
+    loader = ComplianceMappingLoader(db)
+
+    if force_reload:
+        # Clear existing data first
+        await loader.clear_all()
+        await db.commit()
+
+    # Load all frameworks
+    results = await loader.load_all()
+    await db.commit()
+
+    return {
+        "message": "Compliance data seeded",
+        "force_reload": force_reload,
+        "frameworks_loaded": results["frameworks_loaded"],
+        "frameworks_skipped": results["frameworks_skipped"],
+        "total_controls": results["total_controls"],
+        "total_mappings": results["total_mappings"],
+    }
