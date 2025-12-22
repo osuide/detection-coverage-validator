@@ -58,3 +58,31 @@ Every MITRE ATT&CK technique template should provide:
 - TypeScript: Strict mode enabled, use interfaces over types
 - All API endpoints should be documented with OpenAPI schemas
 - Tests should be placed adjacent to the code they test
+
+## RBAC (Role-Based Access Control)
+
+**IMPORTANT: `require_role()` uses exact match, NOT hierarchical.**
+
+User roles in order of privilege: `OWNER > ADMIN > MEMBER > VIEWER`
+
+When using `require_role()` in API endpoints, you must explicitly list ALL roles that should have access:
+
+```python
+# WRONG - Only allows MEMBER, blocks OWNER and ADMIN!
+auth: AuthContext = Depends(require_role(UserRole.MEMBER))
+
+# CORRECT - Allows OWNER, ADMIN, and MEMBER
+auth: AuthContext = Depends(
+    require_role(UserRole.OWNER, UserRole.ADMIN, UserRole.MEMBER)
+)
+
+# For read-only endpoints, include VIEWER
+auth: AuthContext = Depends(
+    require_role(UserRole.OWNER, UserRole.ADMIN, UserRole.MEMBER, UserRole.VIEWER)
+)
+```
+
+Related dependencies in `app/core/security.py`:
+- `require_role(*roles)` - Exact match for specified roles
+- `require_org_features()` - Requires Pro/Enterprise subscription with org features
+- `require_feature(feature)` - Requires specific subscription feature
