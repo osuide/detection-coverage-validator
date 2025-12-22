@@ -146,22 +146,17 @@ async def auth_headers(
 @pytest_asyncio.fixture(scope="function")
 async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     """Create a test HTTP client (unauthenticated)."""
-    from app.api.deps.rate_limit import (
-        auth_rate_limit,
-        signup_rate_limit,
-        password_reset_rate_limit,
-        mfa_rate_limit,
-    )
+    from app.api.routes import auth as auth_routes
 
     async def override_get_db():
         yield db_session
 
-    # Override database and rate limiters
+    # Override database and rate limiter instances
     app.dependency_overrides[get_db] = override_get_db
-    app.dependency_overrides[auth_rate_limit] = lambda: _noop_rate_limiter
-    app.dependency_overrides[signup_rate_limit] = lambda: _noop_rate_limiter
-    app.dependency_overrides[password_reset_rate_limit] = lambda: _noop_rate_limiter
-    app.dependency_overrides[mfa_rate_limit] = lambda: _noop_rate_limiter
+    app.dependency_overrides[auth_routes.rate_limit_login] = _noop_rate_limiter
+    app.dependency_overrides[auth_routes.rate_limit_signup] = _noop_rate_limiter
+    app.dependency_overrides[auth_routes.rate_limit_password_reset] = _noop_rate_limiter
+    app.dependency_overrides[auth_routes.rate_limit_mfa] = _noop_rate_limiter
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
