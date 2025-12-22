@@ -50,12 +50,22 @@ export interface TechniqueMapping {
   mapping_source: string
 }
 
+export interface CloudCoverageMetrics {
+  cloud_detectable_total: number
+  cloud_detectable_covered: number
+  cloud_coverage_percent: number
+  customer_responsibility_total: number
+  customer_responsibility_covered: number
+  provider_managed_total: number
+}
+
 export interface ComplianceCoverageSummary {
   framework_id: string
   framework_name: string
   coverage_percent: number
   covered_controls: number
   total_controls: number
+  cloud_coverage_percent: number | null
 }
 
 export interface FamilyCoverageItem {
@@ -89,6 +99,7 @@ export interface ComplianceCoverage {
   partial_controls: number
   uncovered_controls: number
   coverage_percent: number
+  cloud_metrics: CloudCoverageMetrics | null
   family_coverage: FamilyCoverageItem[]
   top_gaps: ControlGapItem[]
   created_at: string

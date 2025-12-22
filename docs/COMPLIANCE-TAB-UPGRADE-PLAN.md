@@ -71,7 +71,16 @@ This plan outlines improvements to make the Compliance tab more useful and appli
 
 ---
 
-## Upgrade Plan: Phase 1 - Data Enhancement
+## Upgrade Plan: Phase 1 - Data Enhancement [COMPLETED]
+
+**Commit**: `90350d8` - Phase 1: Add cloud applicability metadata to compliance framework
+
+**Implemented**:
+- Added `cloud_applicability` and `cloud_context` fields to ComplianceControl model
+- Created migration `026_add_compliance_cloud_metadata.py`
+- Expanded NIST 800-53 from 35 to 50 controls with full cloud metadata
+- Expanded CIS Controls v8 from 18 to 32 controls (added safeguards)
+- Each control now has AWS/GCP service mappings and shared responsibility
 
 ### 1.1 Add Cloud Applicability Metadata
 
@@ -158,7 +167,17 @@ cloud_context: JSON {
 
 ---
 
-## Upgrade Plan: Phase 2 - UI Enhancements
+## Upgrade Plan: Phase 2 - UI Enhancements [COMPLETED]
+
+**Commit**: `75018f4` - Phase 2: Add cloud applicability UI enhancements
+
+**Implemented**:
+- Added `CloudContext` and `CloudApplicability` types to frontend API
+- ControlsTable now shows cloud applicability badges (green/yellow/blue/purple)
+- ControlsTable shows AWS (orange) and GCP (blue) service badges
+- FamilyCoverageChart shows shared responsibility indicators
+- ComplianceCoverageContent has cloud applicability filter dropdown
+- Updated backend calculator and service to include cloud fields
 
 ### 2.1 Cloud Applicability Filter
 
@@ -229,7 +248,7 @@ For controls marked as `informational` or `provider_responsibility`:
 
 ---
 
-## Upgrade Plan: Phase 3 - Enhanced Analytics
+## Upgrade Plan: Phase 3 - Enhanced Analytics [IN PROGRESS]
 
 ### 3.1 Cloud-Specific Coverage Score
 

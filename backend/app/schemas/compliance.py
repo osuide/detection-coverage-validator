@@ -62,6 +62,17 @@ class TechniqueMappingResponse(BaseModel):
         from_attributes = True
 
 
+class CloudCoverageMetricsResponse(BaseModel):
+    """Cloud-specific coverage metrics."""
+
+    cloud_detectable_total: int
+    cloud_detectable_covered: int
+    cloud_coverage_percent: float
+    customer_responsibility_total: int
+    customer_responsibility_covered: int
+    provider_managed_total: int
+
+
 class ComplianceCoverageSummary(BaseModel):
     """Summary of compliance coverage for a framework."""
 
@@ -70,6 +81,7 @@ class ComplianceCoverageSummary(BaseModel):
     coverage_percent: float
     covered_controls: int
     total_controls: int
+    cloud_coverage_percent: Optional[float] = None  # Cloud-detectable coverage
 
 
 class FamilyCoverageItem(BaseModel):
@@ -107,6 +119,7 @@ class ComplianceCoverageResponse(BaseModel):
     partial_controls: int
     uncovered_controls: int
     coverage_percent: float
+    cloud_metrics: Optional[CloudCoverageMetricsResponse] = None
     family_coverage: list[FamilyCoverageItem]
     top_gaps: list[ControlGapItem]
     created_at: datetime

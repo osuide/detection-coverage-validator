@@ -24,6 +24,7 @@ from app.schemas.compliance import (
     ComplianceCoverageResponse,
     FamilyCoverageItem,
     ControlGapItem,
+    CloudCoverageMetricsResponse,
 )
 from app.services.compliance_service import ComplianceService
 
@@ -266,6 +267,11 @@ async def get_framework_coverage(
     ]
     top_gaps = [ControlGapItem(**gap) for gap in snapshot.top_gaps]
 
+    # Build cloud metrics response if available
+    cloud_metrics = None
+    if snapshot.cloud_metrics:
+        cloud_metrics = CloudCoverageMetricsResponse(**snapshot.cloud_metrics)
+
     return ComplianceCoverageResponse(
         id=snapshot.id,
         cloud_account_id=snapshot.cloud_account_id,
@@ -284,6 +290,7 @@ async def get_framework_coverage(
         partial_controls=snapshot.partial_controls,
         uncovered_controls=snapshot.uncovered_controls,
         coverage_percent=snapshot.coverage_percent,
+        cloud_metrics=cloud_metrics,
         family_coverage=family_coverage,
         top_gaps=top_gaps,
         created_at=snapshot.created_at,

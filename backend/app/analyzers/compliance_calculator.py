@@ -55,6 +55,18 @@ class FamilyCoverageInfo:
 
 
 @dataclass
+class CloudCoverageMetrics:
+    """Cloud-specific coverage metrics."""
+
+    cloud_detectable_total: int  # Controls that are cloud-detectable
+    cloud_detectable_covered: int
+    cloud_coverage_percent: float  # Cloud detection coverage only
+    customer_responsibility_total: int  # Customer responsibility controls
+    customer_responsibility_covered: int
+    provider_managed_total: int  # Provider responsibility controls
+
+
+@dataclass
 class ComplianceCoverageResult:
     """Complete compliance coverage calculation result."""
 
@@ -66,6 +78,7 @@ class ComplianceCoverageResult:
     partial_controls: int
     uncovered_controls: int
     coverage_percent: float
+    cloud_metrics: CloudCoverageMetrics  # Cloud-specific analytics
     family_coverage: dict[str, FamilyCoverageInfo]
     control_details: list[ControlCoverageInfo]
     top_gaps: list[ControlCoverageInfo]
@@ -229,10 +242,65 @@ class ComplianceCoverageCalculator:
             (covered_controls / total_controls * 100) if total_controls > 0 else 0
         )
 
+        # Calculate cloud-specific metrics
+        cloud_detectable = [
+            c
+            for c in control_details
+            if c.status != "not_applicable"
+            and c.cloud_applicability in ("highly_relevant", "moderately_relevant")
+        ]
+        cloud_detectable_covered = len(
+            [c for c in cloud_detectable if c.status == "covered"]
+        )
+        cloud_coverage_pct = (
+            (cloud_detectable_covered / len(cloud_detectable) * 100)
+            if cloud_detectable
+            else 0
+        )
+
+        # Customer responsibility controls (not provider_responsibility)
+        customer_controls = [
+            c
+            for c in control_details
+            if c.status != "not_applicable"
+            and c.cloud_applicability != "provider_responsibility"
+        ]
+        customer_covered = len([c for c in customer_controls if c.status == "covered"])
+
+        # Provider managed controls
+        provider_controls = [
+            c
+            for c in control_details
+            if c.cloud_applicability == "provider_responsibility"
+        ]
+
+        cloud_metrics = CloudCoverageMetrics(
+            cloud_detectable_total=len(cloud_detectable),
+            cloud_detectable_covered=cloud_detectable_covered,
+            cloud_coverage_percent=cloud_coverage_pct,
+            customer_responsibility_total=len(customer_controls),
+            customer_responsibility_covered=customer_covered,
+            provider_managed_total=len(provider_controls),
+        )
+
         # Get top gaps (uncovered + partial, sorted by priority then coverage)
+        # Prioritise cloud-detectable gaps over informational ones
         priority_order = {"P1": 0, "P2": 1, "P3": 2, None: 3}
+        applicability_order = {
+            "highly_relevant": 0,
+            "moderately_relevant": 1,
+            "informational": 2,
+            "provider_responsibility": 3,
+            None: 4,
+        }
         gaps = [c for c in control_details if c.status in ("uncovered", "partial")]
-        gaps.sort(key=lambda c: (priority_order.get(c.priority, 3), c.coverage_percent))
+        gaps.sort(
+            key=lambda c: (
+                applicability_order.get(c.cloud_applicability, 4),
+                priority_order.get(c.priority, 3),
+                c.coverage_percent,
+            )
+        )
         top_gaps = gaps[:10]  # Top 10 gaps
 
         result = ComplianceCoverageResult(
@@ -244,6 +312,7 @@ class ComplianceCoverageCalculator:
             partial_controls=partial_controls,
             uncovered_controls=uncovered_controls,
             coverage_percent=coverage_percent,
+            cloud_metrics=cloud_metrics,
             family_coverage=family_coverage,
             control_details=control_details,
             top_gaps=top_gaps,

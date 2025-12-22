@@ -203,6 +203,10 @@ class ComplianceCoverageSnapshot(Base):
     # Structure: [{"control_id": "AC-2", "name": "...", "priority": "P1", "coverage_percent": 0.2, "missing_techniques": ["T1078"]}]
     top_gaps: Mapped[list] = mapped_column(JSONB, default=list)
 
+    # Cloud-specific coverage metrics (JSONB)
+    # Structure: {"cloud_detectable_total": 45, "cloud_detectable_covered": 38, "cloud_coverage_percent": 84.4, ...}
+    cloud_metrics: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow
     )

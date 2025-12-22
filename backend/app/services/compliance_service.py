@@ -174,6 +174,16 @@ class ComplianceService:
                     for name, info in result.family_coverage.items()
                 }
 
+                # Build cloud metrics dict for storage
+                cloud_metrics = {
+                    "cloud_detectable_total": result.cloud_metrics.cloud_detectable_total,
+                    "cloud_detectable_covered": result.cloud_metrics.cloud_detectable_covered,
+                    "cloud_coverage_percent": result.cloud_metrics.cloud_coverage_percent,
+                    "customer_responsibility_total": result.cloud_metrics.customer_responsibility_total,
+                    "customer_responsibility_covered": result.cloud_metrics.customer_responsibility_covered,
+                    "provider_managed_total": result.cloud_metrics.provider_managed_total,
+                }
+
                 # Build top gaps list for storage
                 top_gaps = [
                     {
@@ -201,6 +211,7 @@ class ComplianceService:
                     coverage_percent=result.coverage_percent,
                     family_coverage=family_coverage,
                     top_gaps=top_gaps,
+                    cloud_metrics=cloud_metrics,
                 )
                 self.db.add(snapshot)
                 snapshots.append(snapshot)
@@ -337,6 +348,11 @@ class ComplianceService:
 
         summaries = []
         for snapshot in snapshots:
+            # Extract cloud coverage percent from stored metrics
+            cloud_coverage = None
+            if snapshot.cloud_metrics:
+                cloud_coverage = snapshot.cloud_metrics.get("cloud_coverage_percent")
+
             summaries.append(
                 {
                     "framework_id": snapshot.framework.framework_id,
@@ -344,6 +360,7 @@ class ComplianceService:
                     "coverage_percent": snapshot.coverage_percent,
                     "covered_controls": snapshot.covered_controls,
                     "total_controls": snapshot.total_controls,
+                    "cloud_coverage_percent": cloud_coverage,
                 }
             )
 

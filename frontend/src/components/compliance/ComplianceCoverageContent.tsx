@@ -169,6 +169,48 @@ export function ComplianceCoverageContent({ accountId }: ComplianceCoverageConte
                 </div>
               </div>
             </div>
+
+            {/* Cloud Metrics Summary */}
+            {coverage.cloud_metrics && (
+              <div className="mt-6 pt-4 border-t border-gray-700">
+                <h4 className="text-sm font-medium text-gray-300 mb-3 flex items-center gap-2">
+                  <Cloud className="w-4 h-4" />
+                  Cloud Detection Analytics
+                </h4>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  <div className="bg-gray-700/30 rounded-lg p-3">
+                    <div className="text-xs text-gray-400 mb-1">Cloud-Detectable</div>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-lg font-bold text-green-400">
+                        {coverage.cloud_metrics.cloud_coverage_percent.toFixed(0)}%
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        ({coverage.cloud_metrics.cloud_detectable_covered}/
+                        {coverage.cloud_metrics.cloud_detectable_total})
+                      </span>
+                    </div>
+                  </div>
+                  <div className="bg-gray-700/30 rounded-lg p-3">
+                    <div className="text-xs text-gray-400 mb-1">Customer Responsibility</div>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-lg font-bold text-blue-400">
+                        {coverage.cloud_metrics.customer_responsibility_total}
+                      </span>
+                      <span className="text-xs text-gray-500">controls</span>
+                    </div>
+                  </div>
+                  <div className="bg-gray-700/30 rounded-lg p-3">
+                    <div className="text-xs text-gray-400 mb-1">Provider Managed</div>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-lg font-bold text-purple-400">
+                        {coverage.cloud_metrics.provider_managed_total}
+                      </span>
+                      <span className="text-xs text-gray-500">controls</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Family Coverage Chart */}
