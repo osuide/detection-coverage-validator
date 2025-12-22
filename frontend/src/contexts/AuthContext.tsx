@@ -9,11 +9,13 @@
  * - Access tokens stored in memory only (Zustand)
  * - CSRF protection via double-submit cookie pattern
  * - No localStorage usage for tokens
+ * - Proactive token refresh before expiry (prevents unexpected logouts)
  */
 
 import { createContext, useContext, useEffect, useCallback, ReactNode } from 'react'
 import { useAuthStore, authActions, User, Organization } from '../stores/authStore'
 import { authApi } from '../services/authApi'
+import { useTokenRefresh } from '../hooks/useTokenRefresh'
 
 // Types for backwards compatibility
 interface LoginResponse {
@@ -73,6 +75,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       authActions.restoreSession()
     }
   }, [isInitialised])
+
+  // Proactive token refresh - prevents unexpected logouts
+  // This hook handles:
+  // - Periodic refresh before token expiry (25 min intervals for 30 min tokens)
+  // - Refresh on tab focus after being idle
+  // - CSRF token sync across tabs
+  // - Refresh when coming back online
+  useTokenRefresh()
 
   // Login handler - uses secure cookie-based auth
   const login = useCallback(async (email: string, password: string): Promise<LoginResponse> => {

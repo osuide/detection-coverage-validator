@@ -67,7 +67,9 @@ api.interceptors.response.use(
         const newAccessToken = await authActions.refreshToken()
 
         if (!newAccessToken) {
-          // No valid session, redirect to login
+          // No valid session - process queue BEFORE redirecting to prevent orphaned promises
+          const sessionExpiredError = new Error('Session expired')
+          processQueue(sessionExpiredError, null)
           useAuthStore.getState().clearAuth()
           window.location.href = '/login'
           return Promise.reject(error)

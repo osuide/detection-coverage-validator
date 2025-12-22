@@ -291,12 +291,22 @@ export const authActions = {
 
   /**
    * Refresh the access token using httpOnly cookie
+   *
+   * Enhanced with:
+   * - Always reads fresh CSRF token from cookie (handles cross-tab sync)
+   * - Only clears auth on definitive session errors (401, 403)
+   * - Preserves auth on network errors (allows retry)
    */
   refreshToken: async (): Promise<string | null> => {
     const store = useAuthStore.getState()
-    const csrfToken = store.csrfToken || getCsrfTokenFromCookie()
+
+    // Always read fresh CSRF token from cookie first (handles cross-tab updates)
+    // Fall back to store value if cookie is not accessible
+    const csrfToken = getCsrfTokenFromCookie() || store.csrfToken
 
     if (!csrfToken) {
+      // No CSRF token at all - no valid session
+      store.clearAuth()
       return null
     }
 
@@ -312,26 +322,45 @@ export const authActions = {
       )
 
       const data = response.data
+
+      // Update both tokens from response
       store.setAccessToken(data.access_token)
-      store.setCsrfToken(data.csrf_token)
+      // Use response CSRF token (freshest) over cookie
+      if (data.csrf_token) {
+        store.setCsrfToken(data.csrf_token)
+      }
 
       return data.access_token
-    } catch {
-      // Refresh failed - clear auth
-      store.clearAuth()
+    } catch (error) {
+      // Check if this is a definitive auth failure vs network error
+      const axiosError = error as { response?: { status?: number } }
+      const status = axiosError?.response?.status
+
+      if (status === 401 || status === 403) {
+        // Definitive session failure - clear auth
+        store.clearAuth()
+      }
+      // For network errors (no status), don't clear auth - allow retry
+
       return null
     }
   },
 
   /**
    * Logout and clear session
+   *
+   * Fix: Include CSRF token in logout request (was causing 403 errors)
    */
   logout: async () => {
     const store = useAuthStore.getState()
+    const csrfToken = store.csrfToken || getCsrfTokenFromCookie()
 
     try {
       // Call backend to clear httpOnly cookie
-      await authApi.post('/logout-session')
+      // Must include CSRF token for the request to be accepted
+      await authApi.post('/logout-session', {}, {
+        headers: csrfToken ? { 'X-CSRF-Token': csrfToken } : {},
+      })
     } catch {
       // Ignore errors - we still clear local state
     }
