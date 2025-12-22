@@ -457,7 +457,7 @@ class ComplianceService:
                 DetectionMapping.confidence,
                 Detection.id.label("detection_id"),
                 Detection.name.label("detection_name"),
-                Detection.source.label("detection_source"),
+                Detection.detection_type.label("detection_source"),
             )
             .join(Detection, Detection.id == DetectionMapping.detection_id)
             .where(
@@ -477,7 +477,7 @@ class ComplianceService:
                 {
                     "id": row[2],
                     "name": row[3],
-                    "source": row[4],
+                    "source": row[4].value if hasattr(row[4], "value") else str(row[4]),
                     "confidence": row[1],
                 }
             )
