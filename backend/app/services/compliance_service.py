@@ -659,20 +659,35 @@ class ComplianceService:
         if not framework:
             return {}, {}
 
-        # Get covered technique UUIDs from active detection mappings
+        # Get technique coverage status from active detection mappings
+        # Using same confidence thresholds as _extract_technique_coverage:
+        # >= 0.6 = covered, >= 0.4 = partial
         from app.models.mapping import DetectionMapping
         from app.models.detection import Detection, DetectionStatus
 
         mappings_result = await self.db.execute(
-            select(DetectionMapping.technique_id)
+            select(
+                DetectionMapping.technique_id,
+                func.max(DetectionMapping.confidence).label("max_confidence"),
+            )
             .join(Detection, Detection.id == DetectionMapping.detection_id)
             .where(
                 Detection.cloud_account_id == cloud_account_id,
                 Detection.status == DetectionStatus.ACTIVE,
             )
-            .distinct()
+            .group_by(DetectionMapping.technique_id)
         )
-        covered_technique_uuids = {row[0] for row in mappings_result.fetchall()}
+
+        # Build technique status lookup matching _extract_technique_coverage logic
+        technique_status: dict[UUID, str] = {}
+        for row in mappings_result.fetchall():
+            technique_uuid = row[0]
+            max_confidence = row[1]
+            if max_confidence >= 0.6:
+                technique_status[technique_uuid] = "covered"
+            elif max_confidence >= 0.4:
+                technique_status[technique_uuid] = "partial"
+            # else not in dict = uncovered
 
         # Get all controls with their technique mappings
         controls_result = await self.db.execute(
@@ -712,7 +727,8 @@ class ComplianceService:
             cloud_context = control.cloud_context or {}
             shared_resp = cloud_context.get("shared_responsibility", "customer")
 
-            # Calculate coverage
+            # Calculate coverage using same logic as compliance calculator
+            # Only count techniques with "covered" status (confidence >= 0.6)
             if is_not_assessable or not mapped_technique_uuids:
                 status = "not_assessable"
                 coverage_pct = 0.0
@@ -721,7 +737,7 @@ class ComplianceService:
                 covered_count = sum(
                     1
                     for t_uuid in mapped_technique_uuids
-                    if t_uuid in covered_technique_uuids
+                    if technique_status.get(t_uuid) == "covered"
                 )
                 coverage_pct = (
                     covered_count / len(mapped_technique_uuids) * 100
