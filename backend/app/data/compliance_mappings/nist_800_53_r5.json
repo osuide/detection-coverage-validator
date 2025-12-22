@@ -14,7 +14,7 @@
       "description": "a. Develop, document, and disseminate to [Assignment: organization-defined personnel or roles]:\n1. [Selection (one or more): organization-level; mission/business process-level; system-level] access control policy that:\n(a) Addresses purpose, scope, roles, responsibilities, management commitment, coordination among organizational entities, and compliance; and\n(b) Is consistent with applicable laws, executive orders, directives, regulations, policies, standards, and guidelines; and\n2. Procedures t",
       "priority": "P3",
       "is_enhancement": false,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "IAM",
@@ -5592,7 +5592,7 @@
       "description": "a. Develop, document, and disseminate to [Assignment: organization-defined personnel or roles]:\n1. [Selection (one or more): organization-level; mission/business process-level; system-level] audit and accountability policy that:\n(a) Addresses purpose, scope, roles, responsibilities, management commitment, coordination among organizational entities, and compliance; and\n(b) Is consistent with applicable laws, executive orders, directives, regulations, policies, standards, and guidelines; and\n2. Pr",
       "priority": "P3",
       "is_enhancement": false,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "CloudTrail",
@@ -5691,7 +5691,7 @@
       "description": "a. Review and analyze system audit records [Assignment: organization-defined frequency] for indications of [Assignment: organization-defined inappropriate or unusual activity] and the potential impact of the inappropriate or unusual activity;\nb. Report findings to [Assignment: organization-defined personnel or roles]; and\nc. Adjust the level of audit record review, analysis, and reporting within the system when there is a change in risk based on law enforcement information, intelligence informat",
       "priority": "P1",
       "is_enhancement": false,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "CloudTrail",
@@ -5720,7 +5720,7 @@
       "description": "a. Select the appropriate assessor or assessment team for the type of assessment to be conducted;\nb. Develop a control assessment plan that describes the scope of the assessment including:\n1. Controls and control enhancements under assessment;\n2. Assessment procedures to be used to determine control effectiveness; and\n3. Assessment environment, assessment team, and assessment roles and responsibilities;\nc. Ensure the control assessment plan is reviewed and approved by the authorizing official or",
       "priority": null,
       "is_enhancement": false,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Security Hub",
@@ -6641,7 +6641,7 @@
       "description": "Conduct penetration testing [Assignment: organization-defined frequency] on [Assignment: organization-defined systems or system components].\n\nPenetration testing is a specialized type of assessment conducted on systems or individual system components to identify vulnerabilities that could be exploited by adversaries. Penetration testing goes beyond automated vulnerability scanning and is conducted by agents and teams with demonstrable skills and experience that include technical expertise in net",
       "priority": null,
       "is_enhancement": false,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Security Hub",
@@ -11560,7 +11560,7 @@
       "description": "a. Develop a contingency plan for the system that:\n1. Identifies essential mission and business functions and associated contingency requirements;\n2. Provides recovery objectives, restoration priorities, and metrics;\n3. Addresses contingency roles, responsibilities, assigned individuals with contact information;\n4. Addresses maintaining essential mission and business functions despite a system disruption, compromise, or failure;\n5. Addresses eventual, full system restoration without deterioratio",
       "priority": null,
       "is_enhancement": false,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Backup",
@@ -14059,7 +14059,7 @@
       "description": "Identify critical system components and functions by performing a criticality analysis for [Assignment: organization-defined systems, system components, or system services] at [Assignment: organization-defined decision points in the system development life cycle].\n\nNot all system components, functions, or services necessarily require significant protections. For example, criticality analysis is a key tenet of supply chain risk management and informs the prioritization of protection activities. T",
       "priority": null,
       "is_enhancement": false,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Inspector",
@@ -14130,7 +14130,7 @@
       "description": "Require the developer of the system, system component, or system service to:\na. Perform configuration management during system, component, or service [Selection (one or more): design; development; implementation; operation; disposal];\nb. Document, manage, and control the integrity of changes to [Assignment: organization-defined configuration items under configuration management];\nc. Implement only organization-approved changes to the system, component, or service;\nd. Document approved changes to",
       "priority": null,
       "is_enhancement": false,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Marketplace",
@@ -14253,7 +14253,7 @@
       "description": "Require the developer of the system, system component, or system service, at all post-design stages of the system development life cycle, to:\na. Develop and implement a plan for ongoing security and privacy assessments;\nb. Perform [Selection (one or more): unit; integration; system; regression] testing/evaluation [Assignment: organization-defined frequency] at [Assignment: organization-defined depth and coverage];\nc. Produce evidence of the execution of the assessment plan and the results of the",
       "priority": null,
       "is_enhancement": false,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Marketplace",
@@ -14408,7 +14408,7 @@
       "description": "a. Require the developer of the system, system component, or system service to follow a documented development process that:\n1. Explicitly addresses security and privacy requirements;\n2. Identifies the standards and tools used in the development process;\n3. Documents the specific tool options and tool configurations used in the development process; and\n4. Documents, manages, and ensures the integrity of changes to the process and/or tools used in development; and\nb. Review the development proces",
       "priority": null,
       "is_enhancement": false,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Marketplace",
@@ -14483,7 +14483,7 @@
       "description": "Require the developer of the system, system component, or system service to provide the following training on the correct use and operation of the implemented security and privacy functions, controls, and/or mechanisms: [Assignment: organization-defined training].\n\nDeveloper-provided training applies to external and internal (in-house) developers. Training personnel is essential to ensuring the effectiveness of the controls implemented within organizational systems. Types of training include web",
       "priority": null,
       "is_enhancement": false,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Marketplace",
@@ -14526,7 +14526,7 @@
       "description": "Require the developer of the system, system component, or system service to produce a design specification and security and privacy architecture that:\na. Is consistent with the organization's security and privacy architecture that is an integral part the organization's enterprise architecture;\nb. Accurately and completely describes the required security and privacy functionality, and the allocation of controls among physical and logical components; and\nc. Expresses how individual security and pr",
       "priority": null,
       "is_enhancement": false,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Marketplace",
@@ -14624,7 +14624,7 @@
       "description": "a. Acquire, develop, and manage the system using [Assignment: organization-defined system development life cycle] that incorporates information security and privacy considerations;\nb. Define and document information security and privacy roles and responsibilities throughout the system development life cycle;\nc. Identify individuals having information security and privacy roles and responsibilities; and\nd. Integrate the organizational information security and privacy risk management process into ",
       "priority": null,
       "is_enhancement": false,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Marketplace",
@@ -14671,7 +14671,7 @@
       "description": "Include the following requirements, descriptions, and criteria, explicitly or by reference, using [Selection (one or more): standardized contract language; \n                  [Assignment: organization-defined contract language]\n               ] in the acquisition contract for the system, system component, or system service:\na. Security and privacy functional requirements;\nb. Strength of mechanism requirements;\nc. Security and privacy assurance requirements;\nd. Controls needed to satisfy the secu",
       "priority": null,
       "is_enhancement": false,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Marketplace",
@@ -14718,7 +14718,7 @@
       "description": "Apply the following systems security and privacy engineering principles in the specification, design, development, implementation, and modification of the system and system components: [Assignment: organization-defined systems security and privacy engineering principles].\n\nSystems security and privacy engineering principles are closely related to and implemented throughout the system development life cycle (see SA-3). Organizations can apply systems security and privacy engineering principles to",
       "priority": null,
       "is_enhancement": false,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Marketplace",
@@ -14821,7 +14821,7 @@
       "description": "a. Require that providers of external system services comply with organizational security and privacy requirements and employ the following controls: [Assignment: organization-defined controls];\nb. Define and document organizational oversight and user roles and responsibilities with regard to external system services; and\nc. Employ the following processes, methods, and techniques to monitor control compliance by external service providers on an ongoing basis: [Assignment: organization-defined pr",
       "priority": null,
       "is_enhancement": false,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Marketplace",
@@ -22377,7 +22377,7 @@
       "description": "Document, monitor, and maintain valid provenance of the following systems, system components, and associated data: [Assignment: organization-defined systems, system components, and associated data].\n\nEvery system and system component has a point of origin and may be changed throughout its existence. Provenance is the chronology of the origin, development, ownership, location, and changes to a system or system component and associated data. It may also include personnel and processes used to inte",
       "priority": null,
       "is_enhancement": false,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Config",
@@ -22470,7 +22470,7 @@
       "description": "Employ the following acquisition strategies, contract tools, and procurement methods to protect against, identify, and mitigate supply chain risks: [Assignment: organization-defined acquisition strategies, contract tools, and procurement methods].\n\nThe use of the acquisition process provides an important vehicle to protect the supply chain. There are many useful tools and techniques available, including obscuring the end use of a system or system component, using blind or filtered buys, requirin",
       "priority": null,
       "is_enhancement": false,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Config",
@@ -22535,7 +22535,7 @@
       "description": "Assess and review the supply chain-related risks associated with suppliers or contractors and the system, system component, or system service they provide [Assignment: organization-defined frequency].\n\nAn assessment and review of supplier risk includes security and supply chain risk management processes, foreign ownership, control or influence (FOCI), and the ability of the supplier to effectively assess subordinate second-tier and third-tier suppliers and contractors. The reviews may be conduct",
       "priority": null,
       "is_enhancement": false,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Config",

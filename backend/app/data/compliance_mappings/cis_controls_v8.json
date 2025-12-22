@@ -595,7 +595,7 @@
       "description": "CIS Safeguard 3.1: Establish and Maintain a Data Management Process (IG1)",
       "priority": "P1",
       "is_enhancement": true,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "S3",
@@ -805,7 +805,7 @@
       "description": "CIS Safeguard 3.7: Establish and Maintain a Data Classification Scheme (IG2)",
       "priority": "P2",
       "is_enhancement": true,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "S3",
@@ -836,7 +836,7 @@
       "description": "CIS Safeguard 3.8: Document Data Flows (IG2)",
       "priority": "P2",
       "is_enhancement": true,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "S3",
@@ -1146,7 +1146,7 @@
       "description": "CIS Safeguard 4.1: Establish and Maintain a Secure Configuration Process (IG1)",
       "priority": "P1",
       "is_enhancement": true,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Config",
@@ -1179,7 +1179,7 @@
       "description": "CIS Safeguard 4.2: Establish and Maintain a Secure Configuration Process for Network Infrastructure (IG1)",
       "priority": "P1",
       "is_enhancement": true,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Config",
@@ -1822,7 +1822,7 @@
       "description": "CIS Safeguard 6.1: Establish an Access Granting Process (IG1)",
       "priority": "P1",
       "is_enhancement": true,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "IAM",
@@ -1855,7 +1855,7 @@
       "description": "CIS Safeguard 6.2: Establish an Access Revoking Process (IG1)",
       "priority": "P1",
       "is_enhancement": true,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "IAM",
@@ -2134,7 +2134,7 @@
       "description": "CIS Safeguard 7.1: Establish and Maintain a Vulnerability Management Process (IG1)",
       "priority": "P1",
       "is_enhancement": true,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Inspector",
@@ -2166,7 +2166,7 @@
       "description": "CIS Safeguard 7.2: Establish and Maintain a Remediation Process (IG1)",
       "priority": "P1",
       "is_enhancement": true,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Inspector",
@@ -2437,7 +2437,7 @@
       "description": "CIS Safeguard 8.1: Establish and Maintain an Audit Log Management Process (IG1)",
       "priority": "P1",
       "is_enhancement": true,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "CloudTrail",
@@ -2771,7 +2771,7 @@
       "description": "CIS Safeguard 8.11: Conduct Audit Log Reviews (IG2)",
       "priority": "P2",
       "is_enhancement": true,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "CloudTrail",
@@ -4651,7 +4651,7 @@
       "description": "CIS Control 15: Service Provider Management",
       "priority": "P2",
       "is_enhancement": false,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Organizations",
@@ -4682,7 +4682,7 @@
       "description": "CIS Safeguard 15.1: Establish and Maintain an Inventory of Service Providers (IG1)",
       "priority": "P1",
       "is_enhancement": true,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Organizations",
@@ -4713,7 +4713,7 @@
       "description": "CIS Safeguard 15.2: Establish and Maintain a Service Provider Management Policy (IG2)",
       "priority": "P2",
       "is_enhancement": true,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Organizations",
@@ -4740,7 +4740,7 @@
       "description": "CIS Safeguard 15.3: Classify Service Providers (IG2)",
       "priority": "P2",
       "is_enhancement": true,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Organizations",
@@ -4767,7 +4767,7 @@
       "description": "CIS Safeguard 15.4: Ensure Service Provider Contracts Include Security Requirements (IG2)",
       "priority": "P2",
       "is_enhancement": true,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Organizations",
@@ -4794,7 +4794,7 @@
       "description": "CIS Safeguard 15.5: Assess Service Providers (IG3)",
       "priority": "P3",
       "is_enhancement": true,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Organizations",
@@ -4825,7 +4825,7 @@
       "description": "CIS Safeguard 15.6: Monitor Service Providers (IG3)",
       "priority": "P3",
       "is_enhancement": true,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Organizations",
@@ -4852,7 +4852,7 @@
       "description": "CIS Safeguard 15.7: Securely Decommission Service Providers (IG3)",
       "priority": "P3",
       "is_enhancement": true,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Organizations",
@@ -4920,7 +4920,7 @@
       "description": "CIS Safeguard 16.1: Establish and Maintain a Secure Application Development Process (IG1)",
       "priority": "P1",
       "is_enhancement": true,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "CodePipeline",
@@ -4953,7 +4953,7 @@
       "description": "CIS Safeguard 16.2: Establish and Maintain a Process to Accept and Address Software Vulnerabilities (IG1)",
       "priority": "P1",
       "is_enhancement": true,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "CodePipeline",
@@ -4982,7 +4982,7 @@
       "description": "CIS Safeguard 16.3: Perform Root Cause Analysis on Security Vulnerabilities (IG2)",
       "priority": "P2",
       "is_enhancement": true,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "CodePipeline",
@@ -5069,7 +5069,7 @@
       "description": "CIS Safeguard 16.6: Establish and Maintain a Severity Rating System and Process for Application Vulnerabilities (IG2)",
       "priority": "P2",
       "is_enhancement": true,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "CodePipeline",
@@ -5156,7 +5156,7 @@
       "description": "CIS Safeguard 16.9: Train Developers in Application Security Concepts and Secure Coding (IG2)",
       "priority": "P2",
       "is_enhancement": true,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "CodePipeline",
@@ -5189,7 +5189,7 @@
       "description": "CIS Safeguard 16.10: Apply Secure Design Principles in Application Architectures (IG2)",
       "priority": "P2",
       "is_enhancement": true,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "CodePipeline",
@@ -5280,7 +5280,7 @@
       "description": "CIS Safeguard 16.13: Conduct Application Penetration Testing (IG3)",
       "priority": "P3",
       "is_enhancement": true,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "CodePipeline",
@@ -5309,7 +5309,7 @@
       "description": "CIS Safeguard 16.14: Conduct Threat Modelling (IG3)",
       "priority": "P3",
       "is_enhancement": true,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "CodePipeline",
@@ -5338,7 +5338,7 @@
       "description": "CIS Control 17: Incident Response Management",
       "priority": "P2",
       "is_enhancement": false,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Security Hub",
@@ -5362,7 +5362,7 @@
       "description": "CIS Safeguard 17.1: Designate Personnel to Manage Incident Handling (IG1)",
       "priority": "P1",
       "is_enhancement": true,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Security Hub",
@@ -5386,7 +5386,7 @@
       "description": "CIS Safeguard 17.2: Establish and Maintain Contact Information for Reporting Security Incidents (IG1)",
       "priority": "P1",
       "is_enhancement": true,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Security Hub",
@@ -5410,7 +5410,7 @@
       "description": "CIS Safeguard 17.3: Establish and Maintain an Enterprise Process for Reporting Incidents (IG1)",
       "priority": "P1",
       "is_enhancement": true,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Security Hub",
@@ -5434,7 +5434,7 @@
       "description": "CIS Safeguard 17.4: Establish and Maintain an Incident Response Process (IG2)",
       "priority": "P2",
       "is_enhancement": true,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Security Hub",
@@ -5458,7 +5458,7 @@
       "description": "CIS Safeguard 17.5: Assign Key Roles and Responsibilities (IG2)",
       "priority": "P2",
       "is_enhancement": true,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Security Hub",
@@ -5482,7 +5482,7 @@
       "description": "CIS Safeguard 17.6: Define Mechanisms for Communicating During Incident Response (IG2)",
       "priority": "P2",
       "is_enhancement": true,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Security Hub",
@@ -5506,7 +5506,7 @@
       "description": "CIS Safeguard 17.7: Conduct Routine Incident Response Exercises (IG2)",
       "priority": "P2",
       "is_enhancement": true,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Security Hub",
@@ -5530,7 +5530,7 @@
       "description": "CIS Safeguard 17.8: Conduct Post-Incident Reviews (IG2)",
       "priority": "P2",
       "is_enhancement": true,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Security Hub",
@@ -5554,7 +5554,7 @@
       "description": "CIS Safeguard 17.9: Establish and Maintain Security Incident Thresholds (IG3)",
       "priority": "P3",
       "is_enhancement": true,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Security Hub",
@@ -5578,7 +5578,7 @@
       "description": "CIS Control 18: Penetration Testing",
       "priority": "P2",
       "is_enhancement": false,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Inspector"
@@ -5610,7 +5610,7 @@
       "description": "CIS Safeguard 18.1: Establish and Maintain a Penetration Testing Programme (IG2)",
       "priority": "P2",
       "is_enhancement": true,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Inspector"
@@ -5634,7 +5634,7 @@
       "description": "CIS Safeguard 18.2: Perform Periodic External Penetration Tests (IG2)",
       "priority": "P2",
       "is_enhancement": true,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Inspector"
@@ -5662,7 +5662,7 @@
       "description": "CIS Safeguard 18.3: Remediate Penetration Test Findings (IG2)",
       "priority": "P2",
       "is_enhancement": true,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Inspector"
@@ -5686,7 +5686,7 @@
       "description": "CIS Safeguard 18.4: Validate Security Measures (IG3)",
       "priority": "P3",
       "is_enhancement": true,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Inspector"
@@ -5710,7 +5710,7 @@
       "description": "CIS Safeguard 18.5: Perform Periodic Internal Penetration Tests (IG3)",
       "priority": "P3",
       "is_enhancement": true,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Inspector"
