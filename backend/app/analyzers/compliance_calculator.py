@@ -51,7 +51,10 @@ class FamilyCoverageInfo:
     covered: int
     partial: int
     uncovered: int
+    not_assessable: int  # Controls that cannot be assessed via cloud scanning
     percent: float
+    cloud_applicability: Optional[str] = None  # "highly_relevant", etc.
+    shared_responsibility: Optional[str] = None  # "customer", "shared", "provider"
 
 
 @dataclass
@@ -64,6 +67,7 @@ class CloudCoverageMetrics:
     customer_responsibility_total: int  # Customer responsibility controls
     customer_responsibility_covered: int
     provider_managed_total: int  # Provider responsibility controls
+    not_assessable_total: int = 0  # Controls that cannot be assessed via cloud scanning
 
 
 @dataclass
@@ -144,8 +148,32 @@ class ComplianceCoverageCalculator:
                 if str(uuid) in technique_ids
             ]
 
+            # Check if control is assessable via cloud scanning
+            # Informational and provider_responsibility controls cannot be
+            # assessed by the DCV tool - they require human/organisational review
+            is_not_assessable = control.cloud_applicability in (
+                "informational",
+                "provider_responsibility",
+            )
+
             # Calculate coverage
-            if not mapped_technique_ids:
+            if is_not_assessable:
+                # Control cannot be assessed via cloud scanning
+                # (e.g., security training, physical security)
+                coverage_info = ControlCoverageInfo(
+                    control_id=control.control_id,
+                    control_name=control.name,
+                    control_family=control.control_family,
+                    priority=control.priority,
+                    status="not_assessable",
+                    coverage_percent=0.0,
+                    mapped_technique_count=len(mapped_technique_ids),
+                    covered_technique_count=0,
+                    missing_techniques=[],
+                    cloud_applicability=control.cloud_applicability,
+                    cloud_context=control.cloud_context,
+                )
+            elif not mapped_technique_ids:
                 # No technique mappings - not applicable
                 coverage_info = ControlCoverageInfo(
                     control_id=control.control_id,
@@ -198,11 +226,19 @@ class ComplianceCoverageCalculator:
             # Update family stats
             family = control.control_family
             if family not in family_stats:
+                # Get shared_responsibility from cloud_context if available
+                shared_resp = None
+                if control.cloud_context and isinstance(control.cloud_context, dict):
+                    shared_resp = control.cloud_context.get("shared_responsibility")
+
                 family_stats[family] = {
                     "total": 0,
                     "covered": 0,
                     "partial": 0,
                     "uncovered": 0,
+                    "not_assessable": 0,
+                    "cloud_applicability": control.cloud_applicability,
+                    "shared_responsibility": shared_resp,
                 }
 
             family_stats[family]["total"] += 1
@@ -212,30 +248,47 @@ class ComplianceCoverageCalculator:
                 family_stats[family]["partial"] += 1
             elif coverage_info.status == "uncovered":
                 family_stats[family]["uncovered"] += 1
-            # not_applicable doesn't count
+            elif coverage_info.status == "not_assessable":
+                family_stats[family]["not_assessable"] += 1
+            # not_applicable doesn't count towards any bucket
 
         # Build family coverage
         family_coverage: dict[str, FamilyCoverageInfo] = {}
         for family, stats in family_stats.items():
             total = stats["total"]
             covered = stats["covered"]
+            not_assessable = stats["not_assessable"]
+            # Calculate percent based on assessable controls only
+            assessable_total = total - not_assessable
             family_coverage[family] = FamilyCoverageInfo(
                 family=family,
                 total=total,
                 covered=covered,
                 partial=stats["partial"],
                 uncovered=stats["uncovered"],
-                percent=(covered / total * 100) if total > 0 else 0,
+                not_assessable=not_assessable,
+                percent=(
+                    (covered / assessable_total * 100) if assessable_total > 0 else 0
+                ),
+                cloud_applicability=stats.get("cloud_applicability"),
+                shared_responsibility=stats.get("shared_responsibility"),
             )
 
-        # Calculate totals
-        total_controls = len(
-            [c for c in control_details if c.status != "not_applicable"]
-        )
+        # Calculate totals - exclude not_applicable AND not_assessable from main totals
+        # not_assessable controls cannot be evaluated via cloud scanning
+        assessable_controls = [
+            c
+            for c in control_details
+            if c.status not in ("not_applicable", "not_assessable")
+        ]
+        total_controls = len(assessable_controls)
         covered_controls = len([c for c in control_details if c.status == "covered"])
         partial_controls = len([c for c in control_details if c.status == "partial"])
         uncovered_controls = len(
             [c for c in control_details if c.status == "uncovered"]
+        )
+        not_assessable_controls = len(
+            [c for c in control_details if c.status == "not_assessable"]
         )
 
         coverage_percent = (
@@ -281,22 +334,24 @@ class ComplianceCoverageCalculator:
             customer_responsibility_total=len(customer_controls),
             customer_responsibility_covered=customer_covered,
             provider_managed_total=len(provider_controls),
+            not_assessable_total=not_assessable_controls,
         )
 
         # Get top gaps (uncovered + partial, sorted by priority then coverage)
-        # Prioritise cloud-detectable gaps over informational ones
+        # IMPORTANT: Exclude not_assessable controls from gaps - they cannot be
+        # addressed via cloud detections (e.g., security training, physical security)
         priority_order = {"P1": 0, "P2": 1, "P3": 2, None: 3}
-        applicability_order = {
-            "highly_relevant": 0,
-            "moderately_relevant": 1,
-            "informational": 2,
-            "provider_responsibility": 3,
-            None: 4,
-        }
-        gaps = [c for c in control_details if c.status in ("uncovered", "partial")]
+        gaps = [
+            c
+            for c in control_details
+            if c.status in ("uncovered", "partial")
+            and c.cloud_applicability in ("highly_relevant", "moderately_relevant")
+        ]
+        # Sort by: highly_relevant first, then priority (P1 > P2 > P3), then coverage %
+        applicability_order = {"highly_relevant": 0, "moderately_relevant": 1}
         gaps.sort(
             key=lambda c: (
-                applicability_order.get(c.cloud_applicability, 4),
+                applicability_order.get(c.cloud_applicability, 2),
                 priority_order.get(c.priority, 3),
                 c.coverage_percent,
             )

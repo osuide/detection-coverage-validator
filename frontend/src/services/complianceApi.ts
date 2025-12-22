@@ -57,6 +57,7 @@ export interface CloudCoverageMetrics {
   customer_responsibility_total: number
   customer_responsibility_covered: number
   provider_managed_total: number
+  not_assessable_total: number // Controls that cannot be assessed via cloud scanning
 }
 
 export interface ComplianceCoverageSummary {
@@ -74,6 +75,7 @@ export interface FamilyCoverageItem {
   covered: number
   partial: number
   uncovered: number
+  not_assessable: number // Controls that cannot be assessed via cloud scanning
   percent: number
   cloud_applicability?: CloudApplicability
   shared_responsibility?: 'customer' | 'shared' | 'provider'

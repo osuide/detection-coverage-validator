@@ -169,7 +169,10 @@ class ComplianceService:
                         "covered": info.covered,
                         "partial": info.partial,
                         "uncovered": info.uncovered,
+                        "not_assessable": info.not_assessable,
                         "percent": info.percent,
+                        "cloud_applicability": info.cloud_applicability,
+                        "shared_responsibility": info.shared_responsibility,
                     }
                     for name, info in result.family_coverage.items()
                 }
@@ -182,6 +185,7 @@ class ComplianceService:
                     "customer_responsibility_total": result.cloud_metrics.customer_responsibility_total,
                     "customer_responsibility_covered": result.cloud_metrics.customer_responsibility_covered,
                     "provider_managed_total": result.cloud_metrics.provider_managed_total,
+                    "not_assessable_total": result.cloud_metrics.not_assessable_total,
                 }
 
                 # Build top gaps list for storage

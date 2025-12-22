@@ -84,6 +84,11 @@ export function FamilyCoverageChart({ coverage }: FamilyCoverageChartProps) {
                 <span className="text-green-400">{family.covered} covered</span>
                 <span className="text-yellow-400">{family.partial} partial</span>
                 <span className="text-red-400">{family.uncovered} uncovered</span>
+                {family.not_assessable > 0 && (
+                  <span className="text-gray-500" title="Cannot be assessed via cloud scanning">
+                    {family.not_assessable} N/A
+                  </span>
+                )}
                 <span className="text-gray-400 w-12 text-right">{family.percent.toFixed(0)}%</span>
               </div>
             </div>
@@ -114,13 +119,24 @@ export function FamilyCoverageChart({ coverage }: FamilyCoverageChartProps) {
                   title={`${family.uncovered} uncovered`}
                 />
               )}
+              {/* Not Assessable (gray with pattern) */}
+              {family.not_assessable > 0 && (
+                <div
+                  className="bg-gray-600 h-full transition-all"
+                  style={{
+                    width: `${(family.not_assessable / family.total) * 100}%`,
+                    backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0,0,0,0.3) 2px, rgba(0,0,0,0.3) 4px)',
+                  }}
+                  title={`${family.not_assessable} not assessable via cloud scanning`}
+                />
+              )}
             </div>
           </div>
         )
       })}
 
       {/* Coverage Legend */}
-      <div className="flex items-center justify-center gap-6 pt-4 border-t border-gray-700 mt-4">
+      <div className="flex flex-wrap items-center justify-center gap-4 pt-4 border-t border-gray-700 mt-4">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 bg-green-500 rounded" />
           <span className="text-xs text-gray-400">Covered (80%+)</span>
@@ -132,6 +148,13 @@ export function FamilyCoverageChart({ coverage }: FamilyCoverageChartProps) {
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 bg-red-500/50 rounded" />
           <span className="text-xs text-gray-400">Uncovered (&lt;40%)</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div
+            className="w-3 h-3 bg-gray-600 rounded"
+            style={{ backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 1px, rgba(0,0,0,0.4) 1px, rgba(0,0,0,0.4) 2px)' }}
+          />
+          <span className="text-xs text-gray-400">Not Assessable</span>
         </div>
       </div>
 

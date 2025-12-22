@@ -177,7 +177,7 @@ export function ComplianceCoverageContent({ accountId }: ComplianceCoverageConte
                   <Cloud className="w-4 h-4" />
                   Cloud Detection Analytics
                 </h4>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <div className="bg-gray-700/30 rounded-lg p-3">
                     <div className="text-xs text-gray-400 mb-1">Cloud-Detectable</div>
                     <div className="flex items-baseline gap-2">
@@ -204,6 +204,17 @@ export function ComplianceCoverageContent({ accountId }: ComplianceCoverageConte
                     <div className="flex items-baseline gap-2">
                       <span className="text-lg font-bold text-purple-400">
                         {coverage.cloud_metrics.provider_managed_total}
+                      </span>
+                      <span className="text-xs text-gray-500">controls</span>
+                    </div>
+                  </div>
+                  <div className="bg-gray-700/30 rounded-lg p-3">
+                    <div className="text-xs text-gray-400 mb-1" title="Controls that cannot be assessed via cloud scanning (e.g., training, physical security)">
+                      Not Assessable
+                    </div>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-lg font-bold text-gray-500">
+                        {coverage.cloud_metrics.not_assessable_total}
                       </span>
                       <span className="text-xs text-gray-500">controls</span>
                     </div>

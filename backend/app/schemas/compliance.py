@@ -71,6 +71,7 @@ class CloudCoverageMetricsResponse(BaseModel):
     customer_responsibility_total: int
     customer_responsibility_covered: int
     provider_managed_total: int
+    not_assessable_total: int = 0  # Controls that cannot be assessed via cloud scanning
 
 
 class ComplianceCoverageSummary(BaseModel):
@@ -92,7 +93,10 @@ class FamilyCoverageItem(BaseModel):
     covered: int
     partial: int
     uncovered: int
+    not_assessable: int = 0  # Controls that cannot be assessed via cloud scanning
     percent: float
+    cloud_applicability: Optional[str] = None  # "highly_relevant", etc.
+    shared_responsibility: Optional[str] = None  # "customer", "shared", "provider"
 
 
 class ControlGapItem(BaseModel):
