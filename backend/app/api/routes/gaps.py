@@ -8,7 +8,8 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.auth import require_role, AuthContext, UserRole
+from app.core.security import AuthContext, require_role
+from app.models.user import UserRole
 from app.models.gap import GapStatus, GapPriority, CoverageGap
 from sqlalchemy import select, and_
 
