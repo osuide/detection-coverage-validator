@@ -108,6 +108,38 @@ class MissingTechniqueDetail(BaseModel):
     tactic_ids: list[str] = []  # MITRE tactic IDs (e.g., ["TA0001", "TA0003"])
 
 
+class ControlStatusItem(BaseModel):
+    """Compact control info for status-based grouping."""
+
+    control_id: str
+    control_name: str
+    control_family: str
+    priority: Optional[str] = None
+    coverage_percent: float
+    mapped_techniques: int = 0  # Total mapped techniques
+    covered_techniques: int = 0  # Techniques with detections
+    cloud_applicability: Optional[str] = None
+    shared_responsibility: Optional[str] = None  # customer/shared/provider
+
+
+class ControlsByStatus(BaseModel):
+    """Controls grouped by coverage status."""
+
+    covered: list[ControlStatusItem] = []
+    partial: list[ControlStatusItem] = []
+    uncovered: list[ControlStatusItem] = []
+    not_assessable: list[ControlStatusItem] = []
+
+
+class ControlsByCloudCategory(BaseModel):
+    """Controls grouped by cloud responsibility category."""
+
+    cloud_detectable: list[ControlStatusItem] = []  # Can be assessed via cloud scanning
+    customer_responsibility: list[ControlStatusItem] = []  # Customer must cover
+    provider_managed: list[ControlStatusItem] = []  # AWS/GCP manages
+    not_assessable: list[ControlStatusItem] = []  # Outside cloud scope
+
+
 class ControlGapItem(BaseModel):
     """A control that needs attention (gap)."""
 
@@ -138,6 +170,9 @@ class ComplianceCoverageResponse(BaseModel):
     cloud_metrics: Optional[CloudCoverageMetricsResponse] = None
     family_coverage: list[FamilyCoverageItem]
     top_gaps: list[ControlGapItem]
+    # Detailed breakdowns for clickable stat cards
+    controls_by_status: Optional[ControlsByStatus] = None
+    controls_by_cloud_category: Optional[ControlsByCloudCategory] = None
     created_at: datetime
 
     class Config:

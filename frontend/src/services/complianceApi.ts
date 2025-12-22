@@ -100,6 +100,32 @@ export interface ControlGapItem {
   cloud_context?: CloudContext
 }
 
+export interface ControlStatusItem {
+  control_id: string
+  control_name: string
+  control_family: string
+  priority: string | null
+  coverage_percent: number
+  mapped_techniques: number
+  covered_techniques: number
+  cloud_applicability?: CloudApplicability
+  shared_responsibility?: 'customer' | 'shared' | 'provider'
+}
+
+export interface ControlsByStatus {
+  covered: ControlStatusItem[]
+  partial: ControlStatusItem[]
+  uncovered: ControlStatusItem[]
+  not_assessable: ControlStatusItem[]
+}
+
+export interface ControlsByCloudCategory {
+  cloud_detectable: ControlStatusItem[]
+  customer_responsibility: ControlStatusItem[]
+  provider_managed: ControlStatusItem[]
+  not_assessable: ControlStatusItem[]
+}
+
 export interface ComplianceCoverage {
   id: string
   cloud_account_id: string
@@ -112,6 +138,8 @@ export interface ComplianceCoverage {
   cloud_metrics: CloudCoverageMetrics | null
   family_coverage: FamilyCoverageItem[]
   top_gaps: ControlGapItem[]
+  controls_by_status?: ControlsByStatus
+  controls_by_cloud_category?: ControlsByCloudCategory
   created_at: string
 }
 

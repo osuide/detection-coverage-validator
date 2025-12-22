@@ -26,6 +26,9 @@ from app.schemas.compliance import (
     ControlGapItem,
     CloudCoverageMetricsResponse,
     MissingTechniqueDetail,
+    ControlStatusItem,
+    ControlsByStatus,
+    ControlsByCloudCategory,
 )
 from app.services.compliance_service import ComplianceService
 
@@ -294,6 +297,35 @@ async def get_framework_coverage(
     if snapshot.cloud_metrics:
         cloud_metrics = CloudCoverageMetricsResponse(**snapshot.cloud_metrics)
 
+    # Get controls grouped by status and cloud category for clickable cards
+    by_status, by_cloud = await service.get_controls_by_status(
+        cloud_account_id, framework_id
+    )
+
+    controls_by_status = ControlsByStatus(
+        covered=[ControlStatusItem(**c) for c in by_status.get("covered", [])],
+        partial=[ControlStatusItem(**c) for c in by_status.get("partial", [])],
+        uncovered=[ControlStatusItem(**c) for c in by_status.get("uncovered", [])],
+        not_assessable=[
+            ControlStatusItem(**c) for c in by_status.get("not_assessable", [])
+        ],
+    )
+
+    controls_by_cloud_category = ControlsByCloudCategory(
+        cloud_detectable=[
+            ControlStatusItem(**c) for c in by_cloud.get("cloud_detectable", [])
+        ],
+        customer_responsibility=[
+            ControlStatusItem(**c) for c in by_cloud.get("customer_responsibility", [])
+        ],
+        provider_managed=[
+            ControlStatusItem(**c) for c in by_cloud.get("provider_managed", [])
+        ],
+        not_assessable=[
+            ControlStatusItem(**c) for c in by_cloud.get("not_assessable", [])
+        ],
+    )
+
     return ComplianceCoverageResponse(
         id=snapshot.id,
         cloud_account_id=snapshot.cloud_account_id,
@@ -315,5 +347,7 @@ async def get_framework_coverage(
         cloud_metrics=cloud_metrics,
         family_coverage=family_coverage,
         top_gaps=top_gaps,
+        controls_by_status=controls_by_status,
+        controls_by_cloud_category=controls_by_cloud_category,
         created_at=snapshot.created_at,
     )

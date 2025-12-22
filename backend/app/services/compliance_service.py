@@ -439,3 +439,155 @@ class ComplianceService:
             )
 
         return enriched
+
+    async def get_controls_by_status(
+        self,
+        cloud_account_id: UUID,
+        framework_id: str,
+    ) -> tuple[dict, dict]:
+        """Get controls grouped by coverage status and cloud category.
+
+        Returns:
+            Tuple of (controls_by_status, controls_by_cloud_category)
+        """
+        from app.analyzers.compliance_calculator import (
+            COVERED_THRESHOLD,
+            PARTIAL_THRESHOLD,
+        )
+
+        # Get the framework
+        result = await self.db.execute(
+            select(ComplianceFramework).where(
+                ComplianceFramework.framework_id == framework_id
+            )
+        )
+        framework = result.scalar_one_or_none()
+        if not framework:
+            return {}, {}
+
+        # Get latest technique coverage snapshot for this account
+        from app.models.coverage import CoverageSnapshot
+
+        coverage_result = await self.db.execute(
+            select(CoverageSnapshot)
+            .where(CoverageSnapshot.cloud_account_id == cloud_account_id)
+            .order_by(CoverageSnapshot.created_at.desc())
+            .limit(1)
+        )
+        coverage_snapshot = coverage_result.scalar_one_or_none()
+        if not coverage_snapshot:
+            return {}, {}
+
+        # Get covered technique IDs from the snapshot
+        covered_technique_ids = set(coverage_snapshot.covered_techniques or [])
+
+        # Get all controls with their technique mappings
+        controls_result = await self.db.execute(
+            select(ComplianceControl)
+            .where(ComplianceControl.framework_id == framework.id)
+            .options(selectinload(ComplianceControl.technique_mappings))
+        )
+        controls = controls_result.scalars().all()
+
+        # Build technique ID lookup
+        technique_result = await self.db.execute(select(Technique))
+        techniques = technique_result.scalars().all()
+        technique_uuid_to_id = {t.id: t.technique_id for t in techniques}
+
+        # Group controls by status
+        by_status = {
+            "covered": [],
+            "partial": [],
+            "uncovered": [],
+            "not_assessable": [],
+        }
+        by_cloud = {
+            "cloud_detectable": [],
+            "customer_responsibility": [],
+            "provider_managed": [],
+            "not_assessable": [],
+        }
+
+        for control in controls:
+            # Get mapped technique IDs
+            mapped_technique_uuids = [
+                m.technique_id for m in control.technique_mappings
+            ]
+            mapped_technique_ids = [
+                technique_uuid_to_id.get(t_uuid)
+                for t_uuid in mapped_technique_uuids
+                if t_uuid in technique_uuid_to_id
+            ]
+            mapped_technique_ids = [t for t in mapped_technique_ids if t]
+
+            # Determine if assessable via cloud scanning
+            is_not_assessable = control.cloud_applicability in (
+                "informational",
+                "provider_responsibility",
+            )
+
+            # Get cloud context for shared responsibility
+            cloud_context = control.cloud_context or {}
+            shared_resp = cloud_context.get("shared_responsibility", "customer")
+
+            # Calculate coverage
+            if is_not_assessable or not mapped_technique_ids:
+                status = "not_assessable"
+                coverage_pct = 0.0
+                covered_count = 0
+            else:
+                covered_count = sum(
+                    1 for t in mapped_technique_ids if t in covered_technique_ids
+                )
+                coverage_pct = (
+                    covered_count / len(mapped_technique_ids) * 100
+                    if mapped_technique_ids
+                    else 0.0
+                )
+
+                if coverage_pct >= COVERED_THRESHOLD * 100:
+                    status = "covered"
+                elif coverage_pct >= PARTIAL_THRESHOLD * 100:
+                    status = "partial"
+                else:
+                    status = "uncovered"
+
+            # Build control item
+            control_item = {
+                "control_id": control.control_id,
+                "control_name": control.name,
+                "control_family": control.control_family,
+                "priority": control.priority,
+                "coverage_percent": round(coverage_pct, 1),
+                "mapped_techniques": len(mapped_technique_ids),
+                "covered_techniques": covered_count,
+                "cloud_applicability": control.cloud_applicability,
+                "shared_responsibility": shared_resp,
+            }
+
+            # Add to status group
+            by_status[status].append(control_item)
+
+            # Add to cloud category group
+            if is_not_assessable:
+                by_cloud["not_assessable"].append(control_item)
+            elif shared_resp == "provider":
+                by_cloud["provider_managed"].append(control_item)
+            elif shared_resp == "customer":
+                by_cloud["customer_responsibility"].append(control_item)
+                by_cloud["cloud_detectable"].append(control_item)
+            else:  # shared
+                by_cloud["customer_responsibility"].append(control_item)
+                by_cloud["cloud_detectable"].append(control_item)
+
+        # Sort each group by priority then control_id
+        def sort_key(c):
+            priority_order = {"P1": 0, "P2": 1, "P3": 2, None: 3}
+            return (priority_order.get(c.get("priority"), 3), c.get("control_id", ""))
+
+        for status_list in by_status.values():
+            status_list.sort(key=sort_key)
+        for cloud_list in by_cloud.values():
+            cloud_list.sort(key=sort_key)
+
+        return by_status, by_cloud

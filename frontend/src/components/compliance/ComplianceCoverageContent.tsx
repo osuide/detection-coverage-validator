@@ -22,6 +22,9 @@ import { complianceApi, CloudApplicability } from '../../services/complianceApi'
 import { FrameworkCard } from './FrameworkCard'
 import { FamilyCoverageChart } from './FamilyCoverageChart'
 import { ControlsTable } from './ControlsTable'
+import { CoverageDetailModal } from './CoverageDetailModal'
+
+type ModalType = 'covered' | 'partial' | 'uncovered' | 'total' | 'cloud_detectable' | 'customer' | 'provider' | 'not_assessable' | null
 
 interface ComplianceCoverageContentProps {
   accountId: string
@@ -40,6 +43,7 @@ export function ComplianceCoverageContent({ accountId }: ComplianceCoverageConte
   const [selectedFramework, setSelectedFramework] = useState<string>('')
   const [cloudFilter, setCloudFilter] = useState<CloudApplicability | 'all'>('all')
   const [familyCoverageExpanded, setFamilyCoverageExpanded] = useState(false)
+  const [activeModal, setActiveModal] = useState<ModalType>(null)
 
   // Get compliance summary for all frameworks
   const { data: summary, isLoading: summaryLoading } = useQuery({
@@ -133,44 +137,60 @@ export function ComplianceCoverageContent({ accountId }: ComplianceCoverageConte
               )}
             </div>
 
-            {/* Coverage Stats */}
+            {/* Coverage Stats - Clickable */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-gray-700/50 rounded-lg p-4">
+              <button
+                onClick={() => setActiveModal('covered')}
+                className="bg-gray-700/50 rounded-lg p-4 text-left hover:bg-gray-700 transition-colors cursor-pointer group"
+              >
                 <div className="flex items-center gap-2 mb-2">
                   <CheckCircle className="w-4 h-4 text-green-400" />
-                  <span className="text-sm text-gray-400">Covered</span>
+                  <span className="text-sm text-gray-400 group-hover:text-gray-300">Covered</span>
                 </div>
                 <div className="text-2xl font-bold text-green-400">
                   {coverage.covered_controls}
                 </div>
-              </div>
-              <div className="bg-gray-700/50 rounded-lg p-4">
+                <div className="text-xs text-gray-500 mt-1 group-hover:text-gray-400">Click for details</div>
+              </button>
+              <button
+                onClick={() => setActiveModal('partial')}
+                className="bg-gray-700/50 rounded-lg p-4 text-left hover:bg-gray-700 transition-colors cursor-pointer group"
+              >
                 <div className="flex items-center gap-2 mb-2">
                   <AlertTriangle className="w-4 h-4 text-yellow-400" />
-                  <span className="text-sm text-gray-400">Partial</span>
+                  <span className="text-sm text-gray-400 group-hover:text-gray-300">Partial</span>
                 </div>
                 <div className="text-2xl font-bold text-yellow-400">
                   {coverage.partial_controls}
                 </div>
-              </div>
-              <div className="bg-gray-700/50 rounded-lg p-4">
+                <div className="text-xs text-gray-500 mt-1 group-hover:text-gray-400">Click for details</div>
+              </button>
+              <button
+                onClick={() => setActiveModal('uncovered')}
+                className="bg-gray-700/50 rounded-lg p-4 text-left hover:bg-gray-700 transition-colors cursor-pointer group"
+              >
                 <div className="flex items-center gap-2 mb-2">
                   <XCircle className="w-4 h-4 text-red-400" />
-                  <span className="text-sm text-gray-400">Uncovered</span>
+                  <span className="text-sm text-gray-400 group-hover:text-gray-300">Uncovered</span>
                 </div>
                 <div className="text-2xl font-bold text-red-400">
                   {coverage.uncovered_controls}
                 </div>
-              </div>
-              <div className="bg-gray-700/50 rounded-lg p-4">
+                <div className="text-xs text-gray-500 mt-1 group-hover:text-gray-400">Click for details</div>
+              </button>
+              <button
+                onClick={() => setActiveModal('total')}
+                className="bg-gray-700/50 rounded-lg p-4 text-left hover:bg-gray-700 transition-colors cursor-pointer group"
+              >
                 <div className="flex items-center gap-2 mb-2">
                   <Shield className="w-4 h-4 text-blue-400" />
-                  <span className="text-sm text-gray-400">Total</span>
+                  <span className="text-sm text-gray-400 group-hover:text-gray-300">Total</span>
                 </div>
                 <div className="text-2xl font-bold text-white">
                   {coverage.total_controls}
                 </div>
-              </div>
+                <div className="text-xs text-gray-500 mt-1 group-hover:text-gray-400">Click for details</div>
+              </button>
             </div>
 
             {/* Cloud Metrics Summary */}
@@ -181,8 +201,11 @@ export function ComplianceCoverageContent({ accountId }: ComplianceCoverageConte
                   Cloud Detection Analytics
                 </h4>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <div className="bg-gray-700/30 rounded-lg p-3">
-                    <div className="text-xs text-gray-400 mb-1">Cloud-Detectable</div>
+                  <button
+                    onClick={() => setActiveModal('cloud_detectable')}
+                    className="bg-gray-700/30 rounded-lg p-3 text-left hover:bg-gray-700/50 transition-colors cursor-pointer group"
+                  >
+                    <div className="text-xs text-gray-400 mb-1 group-hover:text-gray-300">Cloud-Detectable</div>
                     <div className="flex items-baseline gap-2">
                       <span className="text-lg font-bold text-green-400">
                         {coverage.cloud_metrics.cloud_coverage_percent.toFixed(0)}%
@@ -192,27 +215,37 @@ export function ComplianceCoverageContent({ accountId }: ComplianceCoverageConte
                         {coverage.cloud_metrics.cloud_detectable_total})
                       </span>
                     </div>
-                  </div>
-                  <div className="bg-gray-700/30 rounded-lg p-3">
-                    <div className="text-xs text-gray-400 mb-1">Customer Responsibility</div>
+                  </button>
+                  <button
+                    onClick={() => setActiveModal('customer')}
+                    className="bg-gray-700/30 rounded-lg p-3 text-left hover:bg-gray-700/50 transition-colors cursor-pointer group"
+                  >
+                    <div className="text-xs text-gray-400 mb-1 group-hover:text-gray-300">Customer Responsibility</div>
                     <div className="flex items-baseline gap-2">
                       <span className="text-lg font-bold text-blue-400">
                         {coverage.cloud_metrics.customer_responsibility_total}
                       </span>
                       <span className="text-xs text-gray-500">controls</span>
                     </div>
-                  </div>
-                  <div className="bg-gray-700/30 rounded-lg p-3">
-                    <div className="text-xs text-gray-400 mb-1">Provider Managed</div>
+                  </button>
+                  <button
+                    onClick={() => setActiveModal('provider')}
+                    className="bg-gray-700/30 rounded-lg p-3 text-left hover:bg-gray-700/50 transition-colors cursor-pointer group"
+                  >
+                    <div className="text-xs text-gray-400 mb-1 group-hover:text-gray-300">Provider Managed</div>
                     <div className="flex items-baseline gap-2">
                       <span className="text-lg font-bold text-purple-400">
                         {coverage.cloud_metrics.provider_managed_total}
                       </span>
                       <span className="text-xs text-gray-500">controls</span>
                     </div>
-                  </div>
-                  <div className="bg-gray-700/30 rounded-lg p-3">
-                    <div className="text-xs text-gray-400 mb-1" title="Controls that cannot be assessed via cloud scanning (e.g., training, physical security)">
+                  </button>
+                  <button
+                    onClick={() => setActiveModal('not_assessable')}
+                    className="bg-gray-700/30 rounded-lg p-3 text-left hover:bg-gray-700/50 transition-colors cursor-pointer group"
+                    title="Controls that cannot be assessed via cloud scanning (e.g., training, physical security)"
+                  >
+                    <div className="text-xs text-gray-400 mb-1 group-hover:text-gray-300">
                       Not Assessable
                     </div>
                     <div className="flex items-baseline gap-2">
@@ -221,7 +254,7 @@ export function ComplianceCoverageContent({ accountId }: ComplianceCoverageConte
                       </span>
                       <span className="text-xs text-gray-500">controls</span>
                     </div>
-                  </div>
+                  </button>
                 </div>
               </div>
             )}
@@ -301,6 +334,56 @@ export function ComplianceCoverageContent({ accountId }: ComplianceCoverageConte
             </div>
           )}
         </div>
+      )}
+
+      {/* Coverage Detail Modal */}
+      {coverage && activeModal && (
+        <CoverageDetailModal
+          isOpen={!!activeModal}
+          onClose={() => setActiveModal(null)}
+          title={
+            activeModal === 'covered' ? 'Covered Controls' :
+            activeModal === 'partial' ? 'Partial Controls' :
+            activeModal === 'uncovered' ? 'Uncovered Controls' :
+            activeModal === 'total' ? 'All Controls' :
+            activeModal === 'cloud_detectable' ? 'Cloud-Detectable Controls' :
+            activeModal === 'customer' ? 'Customer Responsibility' :
+            activeModal === 'provider' ? 'Provider Managed' :
+            'Not Assessable'
+          }
+          description={
+            activeModal === 'covered' ? 'Controls with 80% or more technique coverage. These controls have adequate detection mechanisms in place.' :
+            activeModal === 'partial' ? 'Controls with 40-79% technique coverage. These controls have some detection mechanisms but gaps remain.' :
+            activeModal === 'uncovered' ? 'Controls with less than 40% technique coverage. These controls need attention to improve detection capabilities.' :
+            activeModal === 'total' ? 'All controls in this compliance framework with their current coverage status.' :
+            activeModal === 'cloud_detectable' ? 'Controls that can be assessed via cloud log scanning (AWS CloudTrail, GCP Cloud Logging, etc.).' :
+            activeModal === 'customer' ? 'Controls that are the customer\'s responsibility to implement and monitor.' :
+            activeModal === 'provider' ? 'Controls managed by the cloud provider (AWS/GCP). These are typically infrastructure-level controls.' :
+            'Controls that cannot be assessed via cloud scanning (e.g., security training, physical security, governance).'
+          }
+          controls={
+            activeModal === 'covered' ? (coverage.controls_by_status?.covered ?? []) :
+            activeModal === 'partial' ? (coverage.controls_by_status?.partial ?? []) :
+            activeModal === 'uncovered' ? (coverage.controls_by_status?.uncovered ?? []) :
+            activeModal === 'total' ? [
+              ...(coverage.controls_by_status?.covered ?? []),
+              ...(coverage.controls_by_status?.partial ?? []),
+              ...(coverage.controls_by_status?.uncovered ?? []),
+              ...(coverage.controls_by_status?.not_assessable ?? []),
+            ] :
+            activeModal === 'cloud_detectable' ? (coverage.controls_by_cloud_category?.cloud_detectable ?? []) :
+            activeModal === 'customer' ? (coverage.controls_by_cloud_category?.customer_responsibility ?? []) :
+            activeModal === 'provider' ? (coverage.controls_by_cloud_category?.provider_managed ?? []) :
+            (coverage.controls_by_cloud_category?.not_assessable ?? [])
+          }
+          variant={
+            activeModal === 'covered' ? 'covered' :
+            activeModal === 'partial' ? 'partial' :
+            activeModal === 'uncovered' ? 'uncovered' :
+            activeModal === 'not_assessable' ? 'not_assessable' :
+            'cloud'
+          }
+        />
       )}
     </div>
   )
