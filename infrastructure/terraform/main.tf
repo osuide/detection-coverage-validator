@@ -182,8 +182,9 @@ module "backend" {
   github_client_id     = var.github_client_id
   github_client_secret = var.github_client_secret
 
-  # WAF IP restriction
-  allowed_ips = var.waf_allowed_ips
+  # WAF IP restriction - NOT applied to API (only frontend)
+  # API relies on authentication, not IP allowlisting
+  allowed_ips = []
 
   # Force reload compliance data (one-time migration flag)
   force_reload_compliance = var.force_reload_compliance

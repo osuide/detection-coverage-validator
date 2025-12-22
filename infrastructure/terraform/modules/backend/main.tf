@@ -602,9 +602,10 @@ resource "aws_ecs_service" "backend" {
 # WAF Web ACL for API Protection
 # ============================================================================
 
-# IP Set for allowed addresses (only created when IPs are specified)
+# IP Set for allowed addresses
+# NOTE: Always created (no count) to avoid destroy-ordering issues with WAF ACL references.
+# When allowed_ips is empty, this is just an empty IP Set and the WAF rule isn't created.
 resource "aws_wafv2_ip_set" "api_allowed_ips" {
-  count              = length(var.allowed_ips) > 0 ? 1 : 0
   name               = "a13e-${var.environment}-api-allowed-ips"
   description        = "IP addresses allowed to access ${var.environment} API"
   scope              = "REGIONAL"
@@ -648,7 +649,7 @@ resource "aws_wafv2_web_acl" "api" {
 
       statement {
         ip_set_reference_statement {
-          arn = aws_wafv2_ip_set.api_allowed_ips[0].arn
+          arn = aws_wafv2_ip_set.api_allowed_ips.arn
         }
       }
 
