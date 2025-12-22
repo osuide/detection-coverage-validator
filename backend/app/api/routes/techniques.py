@@ -157,7 +157,12 @@ async def get_technique_detail(
                     description=c.description,
                     reference_url=c.reference_url,
                 )
-                for c in template.threat_context.recent_campaigns
+                # Sort by year descending (most recent first)
+                for c in sorted(
+                    template.threat_context.recent_campaigns,
+                    key=lambda x: x.year,
+                    reverse=True,
+                )
             ],
             prevalence=template.threat_context.prevalence,
             trend=template.threat_context.trend,
