@@ -285,15 +285,8 @@ export const detectionsApi = {
 export const coverageApi = {
   get: (accountId: string) => api.get<CoverageData>(`/coverage/${accountId}`).then(r => r.data),
   calculate: (accountId: string) => api.post<CoverageData>(`/coverage/${accountId}/calculate`).then(r => r.data),
-  getTechniques: (accountId: string, options?: { cloudOnly?: boolean }) => {
-    const params = new URLSearchParams()
-    if (options?.cloudOnly !== undefined) {
-      params.set('cloud_only', String(options.cloudOnly))
-    }
-    const queryString = params.toString()
-    const url = `/coverage/${accountId}/techniques${queryString ? `?${queryString}` : ''}`
-    return api.get<{ techniques: TechniqueCoverage[] }>(url).then(r => r.data.techniques)
-  },
+  getTechniques: (accountId: string) =>
+    api.get<{ techniques: TechniqueCoverage[] }>(`/coverage/${accountId}/techniques`).then(r => r.data.techniques),
 }
 
 // Credential types

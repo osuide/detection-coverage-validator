@@ -13,7 +13,6 @@ type CoverageTab = 'mitre' | 'compliance'
 export default function Coverage() {
   const [viewMode, setViewMode] = useState<ViewMode>('heatmap')
   const [activeTab, setActiveTab] = useState<CoverageTab>('mitre')
-  const [cloudOnly, setCloudOnly] = useState(true)
 
   const { data: accounts } = useQuery({
     queryKey: ['accounts'],
@@ -29,8 +28,8 @@ export default function Coverage() {
   })
 
   const { data: techniques, isLoading: techniquesLoading } = useQuery({
-    queryKey: ['techniques', firstAccount?.id, cloudOnly],
-    queryFn: () => coverageApi.getTechniques(firstAccount!.id, { cloudOnly }),
+    queryKey: ['techniques', firstAccount?.id],
+    queryFn: () => coverageApi.getTechniques(firstAccount!.id),
     enabled: !!firstAccount,
   })
 
@@ -176,18 +175,7 @@ export default function Coverage() {
         <div className="card lg:col-span-3">
           {viewMode === 'heatmap' ? (
             <>
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold text-gray-900">MITRE ATT&CK Technique Heatmap</h3>
-                <label className="flex items-center text-sm text-gray-600 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={!cloudOnly}
-                    onChange={(e) => setCloudOnly(!e.target.checked)}
-                    className="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  Show all Enterprise techniques
-                </label>
-              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-6">MITRE ATT&CK Technique Heatmap</h3>
               {techniquesLoading ? (
                 <div className="flex items-center justify-center h-64">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
