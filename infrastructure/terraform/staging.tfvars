@@ -47,7 +47,7 @@ enable_cognito = true
 # ============================================================================
 # Restrict staging access to specific IPs only (CIDR notation)
 # Set to [] to allow all traffic (authentication handles access control)
-waf_allowed_ips = []
+waf_allowed_ips = ["81.174.169.212/32"]
 
 # ============================================================================
 # Compliance Data Migration
