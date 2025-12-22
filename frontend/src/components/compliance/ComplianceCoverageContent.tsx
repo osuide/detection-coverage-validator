@@ -5,8 +5,9 @@
  * coverage summary cards, cloud applicability filters, and detailed breakdown.
  */
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useSearchParams } from 'react-router-dom'
 import {
   Shield,
   AlertTriangle,
@@ -26,8 +27,15 @@ import { CoverageDetailModal } from './CoverageDetailModal'
 
 type ModalType = 'covered' | 'partial' | 'uncovered' | 'total' | 'cloud_detectable' | 'customer' | 'provider' | 'not_assessable' | null
 
+interface InitialModalState {
+  modalType: ModalType
+  frameworkId: string | null
+  controlId: string | null
+}
+
 interface ComplianceCoverageContentProps {
   accountId: string
+  initialModalState?: InitialModalState
 }
 
 // Cloud applicability filter options
@@ -39,11 +47,50 @@ const applicabilityFilters: { value: CloudApplicability | 'all'; label: string }
   { value: 'provider_responsibility', label: 'Provider Managed' },
 ]
 
-export function ComplianceCoverageContent({ accountId }: ComplianceCoverageContentProps) {
-  const [selectedFramework, setSelectedFramework] = useState<string>('')
+export function ComplianceCoverageContent({ accountId, initialModalState }: ComplianceCoverageContentProps) {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [selectedFramework, setSelectedFramework] = useState<string>(
+    initialModalState?.frameworkId || ''
+  )
   const [cloudFilter, setCloudFilter] = useState<CloudApplicability | 'all'>('all')
   const [familyCoverageExpanded, setFamilyCoverageExpanded] = useState(false)
-  const [activeModal, setActiveModal] = useState<ModalType>(null)
+
+  // Sync modal state with URL params for back navigation support
+  const activeModal = (searchParams.get('modal') as ModalType) || null
+  const initialExpandedControl = searchParams.get('control')
+
+  const setActiveModal = (modal: ModalType) => {
+    if (modal) {
+      setSearchParams({
+        modal,
+        framework: selectedFramework,
+      })
+    } else {
+      // Clear modal params but keep other params
+      const newParams = new URLSearchParams(searchParams)
+      newParams.delete('modal')
+      newParams.delete('control')
+      setSearchParams(newParams)
+    }
+  }
+
+  // Handle control expansion - update URL so back navigation works
+  const handleControlExpand = (controlId: string | null) => {
+    const newParams = new URLSearchParams(searchParams)
+    if (controlId) {
+      newParams.set('control', controlId)
+    } else {
+      newParams.delete('control')
+    }
+    setSearchParams(newParams, { replace: true })
+  }
+
+  // Initialize modal from URL params on mount
+  useEffect(() => {
+    if (initialModalState?.modalType && initialModalState?.frameworkId) {
+      setSelectedFramework(initialModalState.frameworkId)
+    }
+  }, [initialModalState])
 
   // Get compliance summary for all frameworks
   const { data: summary, isLoading: summaryLoading } = useQuery({
@@ -385,6 +432,8 @@ export function ComplianceCoverageContent({ accountId }: ComplianceCoverageConte
           }
           accountId={accountId}
           frameworkId={selectedFramework}
+          initialExpandedControl={initialExpandedControl}
+          onControlExpand={handleControlExpand}
         />
       )}
     </div>

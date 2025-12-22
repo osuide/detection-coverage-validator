@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard'
 import Accounts from './pages/Accounts'
 import Detections from './pages/Detections'
 import Coverage from './pages/Coverage'
+import Compliance from './pages/Compliance'
 import Gaps from './pages/Gaps'
 import TechniqueDetail from './pages/TechniqueDetail'
 import Reports from './pages/Reports'
@@ -111,6 +112,7 @@ function App() {
                   <Route path="/accounts" element={<Accounts />} />
                   <Route path="/detections" element={<Detections />} />
                   <Route path="/coverage" element={<Coverage />} />
+                  <Route path="/compliance" element={<Compliance />} />
                   <Route path="/gaps" element={<Gaps />} />
                   <Route path="/techniques/:techniqueId" element={<TechniqueDetail />} />
                   <Route path="/reports" element={<Reports />} />

@@ -31,6 +31,8 @@ interface CoverageDetailModalProps {
   variant: 'covered' | 'partial' | 'uncovered' | 'not_assessable' | 'cloud'
   accountId: string
   frameworkId: string
+  initialExpandedControl?: string | null
+  onControlExpand?: (controlId: string | null) => void
 }
 
 const variantConfig = {
@@ -93,13 +95,23 @@ function ExpandableControlRow({
   config,
   accountId,
   frameworkId,
+  isInitiallyExpanded,
+  onExpand,
 }: {
   control: ControlStatusItem
   config: typeof variantConfig.covered
   accountId: string
   frameworkId: string
+  isInitiallyExpanded?: boolean
+  onExpand?: (controlId: string | null) => void
 }) {
-  const [isExpanded, setIsExpanded] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(isInitiallyExpanded || false)
+
+  const handleToggle = () => {
+    const newExpanded = !isExpanded
+    setIsExpanded(newExpanded)
+    onExpand?.(newExpanded ? control.control_id : null)
+  }
 
   // Fetch control coverage detail when expanded
   const { data: coverageDetail, isLoading } = useQuery({
@@ -117,7 +129,7 @@ function ExpandableControlRow({
       {/* Control header - clickable */}
       <div
         className={`p-4 ${canExpand ? 'cursor-pointer hover:bg-gray-700/50' : ''} transition-colors`}
-        onClick={() => canExpand && setIsExpanded(!isExpanded)}
+        onClick={() => canExpand && handleToggle()}
       >
         <div className="flex items-start justify-between">
           <div className="flex items-start gap-2">
@@ -237,6 +249,8 @@ export function CoverageDetailModal({
   variant,
   accountId,
   frameworkId,
+  initialExpandedControl,
+  onControlExpand,
 }: CoverageDetailModalProps) {
   if (!isOpen) return null
 
@@ -295,6 +309,8 @@ export function CoverageDetailModal({
                     config={config}
                     accountId={accountId}
                     frameworkId={frameworkId}
+                    isInitiallyExpanded={control.control_id === initialExpandedControl}
+                    onExpand={onControlExpand}
                   />
                 ))}
               </div>
