@@ -9,7 +9,9 @@ from typing import AsyncGenerator, Generator
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from redis import asyncio as aioredis
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from fastapi_limiter import FastAPILimiter
 
 from app.main import app
 from app.core.database import Base, get_db
@@ -32,6 +34,9 @@ TEST_DATABASE_URL = os.environ.get(
     ),
 )
 
+# Redis URL for rate limiter
+TEST_REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+
 
 @pytest.fixture(scope="session")
 def event_loop() -> Generator:
@@ -39,6 +44,29 @@ def event_loop() -> Generator:
     loop = asyncio.get_event_loop_policy().new_event_loop()
     yield loop
     loop.close()
+
+
+@pytest_asyncio.fixture(scope="session", autouse=True)
+async def init_rate_limiter():
+    """Initialize FastAPILimiter for tests.
+
+    This is required because rate-limited endpoints will fail without it.
+    Uses the Redis instance from CI or local Docker.
+    """
+    try:
+        redis = await aioredis.from_url(
+            TEST_REDIS_URL,
+            encoding="utf-8",
+            decode_responses=True,
+        )
+        await FastAPILimiter.init(redis)
+        yield
+        await FastAPILimiter.close()
+        await redis.close()
+    except Exception:
+        # If Redis is not available, skip rate limiter init
+        # Tests will fail if they hit rate-limited endpoints
+        yield
 
 
 @pytest_asyncio.fixture(scope="function")
