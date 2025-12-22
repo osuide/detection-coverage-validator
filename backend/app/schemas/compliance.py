@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class ComplianceFrameworkResponse(BaseModel):
@@ -19,8 +19,7 @@ class ComplianceFrameworkResponse(BaseModel):
     total_controls: int = 0
     is_active: bool
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CloudContextResponse(BaseModel):
@@ -46,8 +45,7 @@ class ControlResponse(BaseModel):
     cloud_applicability: Optional[str] = "highly_relevant"
     cloud_context: Optional[CloudContextResponse] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TechniqueMappingResponse(BaseModel):
@@ -58,8 +56,7 @@ class TechniqueMappingResponse(BaseModel):
     mapping_type: str
     mapping_source: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CloudCoverageMetricsResponse(BaseModel):
@@ -175,5 +172,4 @@ class ComplianceCoverageResponse(BaseModel):
     controls_by_cloud_category: Optional[ControlsByCloudCategory] = None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

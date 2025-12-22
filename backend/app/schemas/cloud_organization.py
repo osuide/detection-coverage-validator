@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 from app.models.cloud_account import CloudProvider
 from app.models.cloud_organization import (
@@ -58,8 +58,7 @@ class CloudOrganizationResponse(CloudOrganizationBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CloudOrganizationSummary(BaseModel):
@@ -73,8 +72,7 @@ class CloudOrganizationSummary(BaseModel):
     total_accounts_connected: int
     last_sync_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============================================================================
@@ -107,8 +105,7 @@ class CloudOrganizationMemberResponse(CloudOrganizationMemberBase):
     connected_at: Optional[datetime] = None
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CloudOrganizationMemberSummary(BaseModel):
@@ -121,8 +118,7 @@ class CloudOrganizationMemberSummary(BaseModel):
     hierarchy_path: Optional[str] = None
     is_connected: bool = False
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============================================================================

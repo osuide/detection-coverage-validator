@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 from app.models.detection import DetectionType
 from app.models.scan import ScanStatus
@@ -37,8 +37,7 @@ class ScanResponse(BaseModel):
     completed_at: Optional[datetime] = None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ScanListResponse(BaseModel):

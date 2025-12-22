@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Optional, Any
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from app.models.detection import DetectionType, DetectionStatus
 
@@ -31,8 +31,7 @@ class DetectionResponse(BaseModel):
     mapping_count: int = 0
     top_techniques: list[str] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DetectionListResponse(BaseModel):

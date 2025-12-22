@@ -6,7 +6,7 @@ from enum import Enum
 from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, model_validator, ConfigDict
 
 from app.models.cloud_account import CloudProvider
 
@@ -112,8 +112,7 @@ class CloudAccountResponse(CloudAccountBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AvailableRegionsResponse(BaseModel):

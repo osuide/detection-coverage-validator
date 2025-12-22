@@ -6,7 +6,7 @@ from uuid import UUID
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -53,8 +53,7 @@ class APIKeyResponse(BaseModel):
     created_at: datetime
     created_by_name: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class APIKeyCreatedResponse(APIKeyResponse):

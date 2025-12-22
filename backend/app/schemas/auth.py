@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Optional, List
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict
 
 
 # Password validation
@@ -187,8 +187,7 @@ class UserResponse(BaseModel):
         None  # User's role in current org context (populated at runtime)
     )
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserUpdateRequest(BaseModel):
@@ -210,8 +209,7 @@ class OrganizationResponse(BaseModel):
     require_mfa: bool
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class OrganizationCreateRequest(BaseModel):
@@ -234,8 +232,7 @@ class OrganizationMemberResponse(BaseModel):
     created_at: datetime
     avatar_url: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class InviteMemberRequest(BaseModel):
@@ -288,8 +285,7 @@ class SessionResponse(BaseModel):
     last_activity_at: datetime
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SwitchOrganizationRequest(BaseModel):

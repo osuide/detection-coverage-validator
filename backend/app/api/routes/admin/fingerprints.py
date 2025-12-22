@@ -195,7 +195,7 @@ async def list_fingerprints(
     min_abuse_score: int = Query(0, ge=0, le=100),
     flagged_only: bool = Query(False),
     sort_by: str = Query(
-        "abuse_score", regex="^(abuse_score|created_at|last_seen_at)$"
+        "abuse_score", pattern="^(abuse_score|created_at|last_seen_at)$"
     ),
     admin: AdminUser = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),

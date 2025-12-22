@@ -14,7 +14,7 @@ from fastapi import (
     status,
     BackgroundTasks,
 )
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from sqlalchemy import select, and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -49,8 +49,7 @@ class MemberResponse(BaseModel):
     status: MembershipStatus
     joined_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class InviteRequest(BaseModel):
