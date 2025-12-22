@@ -6,7 +6,7 @@
  */
 
 import { useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
   ArrowLeft,
@@ -381,6 +381,7 @@ function StrategyCard({ strategy, defaultOpen }: { strategy: DetectionStrategy; 
 
 export default function TechniqueDetail() {
   const { techniqueId } = useParams<{ techniqueId: string }>()
+  const navigate = useNavigate()
   const [cloudFilter, setCloudFilter] = useState<'all' | 'aws' | 'gcp'>('all')
 
   const { data: technique, isLoading, error } = useQuery({
@@ -429,14 +430,21 @@ export default function TechniqueDetail() {
 
   return (
     <div className="space-y-6">
-      {/* Back link */}
-      <Link
-        to="/coverage"
+      {/* Back button - uses browser history to return to previous page */}
+      <button
+        onClick={() => {
+          // Use browser history if available, fallback to coverage page
+          if (window.history.length > 1) {
+            navigate(-1)
+          } else {
+            navigate('/coverage')
+          }
+        }}
         className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
-        Back to Coverage
-      </Link>
+        Back
+      </button>
 
       {/* Header */}
       <div className="bg-gray-800 rounded-lg p-6">
