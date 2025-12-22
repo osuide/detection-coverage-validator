@@ -558,6 +558,7 @@ app.add_middleware(
         "Authorization",
         "X-Request-ID",
         "X-Correlation-ID",
+        "X-CSRF-Token",  # Required for cookie-based auth refresh
         "Accept",
         "Accept-Language",
         "Cache-Control",
