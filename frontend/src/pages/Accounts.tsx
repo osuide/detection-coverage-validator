@@ -64,10 +64,33 @@ export default function Accounts() {
     },
   })
 
+  // Track which account is currently being scanned for per-account loading state
+  const [scanningAccountId, setScanningAccountId] = useState<string | null>(null)
+  // Feedback message for scan status
+  const [scanFeedback, setScanFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+
   const scanMutation = useMutation({
     mutationFn: (accountId: string) => scansApi.create({ cloud_account_id: accountId }),
+    onMutate: (accountId) => {
+      // Immediate visual feedback
+      setScanningAccountId(accountId)
+      setScanFeedback(null) // Clear any previous feedback
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['scans'] })
+      queryClient.invalidateQueries({ queryKey: ['scanStatus'] })
+      setScanFeedback({ type: 'success', message: 'Scan started successfully! Check the Coverage page for results.' })
+      // Auto-dismiss after 5 seconds
+      setTimeout(() => setScanFeedback(null), 5000)
+    },
+    onError: (error: Error) => {
+      setScanFeedback({ type: 'error', message: error.message || 'Failed to start scan. Please try again.' })
+      // Auto-dismiss after 5 seconds
+      setTimeout(() => setScanFeedback(null), 5000)
+    },
+    onSettled: () => {
+      // Clear scanning state regardless of success/failure
+      setScanningAccountId(null)
     },
   })
 
@@ -99,6 +122,32 @@ export default function Accounts() {
           Add Account
         </button>
       </div>
+
+      {/* Scan Feedback Message */}
+      {scanFeedback && (
+        <div
+          className={`mb-4 p-4 rounded-lg flex items-center justify-between ${
+            scanFeedback.type === 'success'
+              ? 'bg-green-50 border border-green-200 text-green-800'
+              : 'bg-red-50 border border-red-200 text-red-800'
+          }`}
+        >
+          <div className="flex items-center">
+            {scanFeedback.type === 'success' ? (
+              <CheckCircle2 className="h-5 w-5 mr-2" />
+            ) : (
+              <AlertTriangle className="h-5 w-5 mr-2" />
+            )}
+            <span>{scanFeedback.message}</span>
+          </div>
+          <button
+            onClick={() => setScanFeedback(null)}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            &times;
+          </button>
+        </div>
+      )}
 
       {/* Add Account Form */}
       {showForm && (
@@ -218,7 +267,7 @@ export default function Accounts() {
               onEdit={() => setEditingAccount(account)}
               onScan={() => scanMutation.mutate(account.id)}
               onDelete={() => deleteMutation.mutate(account.id)}
-              isScanPending={scanMutation.isPending}
+              isScanPending={scanningAccountId === account.id}
               isDeletePending={deleteMutation.isPending}
               scanStatus={scanStatus}
             />
@@ -437,15 +486,20 @@ function AccountCard({
 
           {/* Scan Button - only enabled if connected and within limits */}
           <button
-            onClick={onScan}
+            onClick={(e) => {
+              e.stopPropagation()
+              onScan()
+            }}
             disabled={isScanPending || !credential || credential.status !== 'valid' || scanLimitReached}
-            className={`p-2 rounded-lg ${
+            className={`p-2 rounded-lg transition-all duration-150 ${
               credential?.status === 'valid' && !scanLimitReached
-                ? 'text-blue-600 hover:bg-blue-50'
+                ? 'text-blue-600 hover:bg-blue-50 hover:scale-110 active:scale-95 active:bg-blue-100'
                 : 'text-gray-400 cursor-not-allowed'
-            }`}
+            } ${isScanPending ? 'bg-blue-50' : ''}`}
             title={
-              scanLimitReached
+              isScanPending
+                ? 'Scan in progress...'
+                : scanLimitReached
                 ? 'Weekly scan limit reached - upgrade for unlimited'
                 : credential?.status === 'valid'
                 ? 'Run Scan'
@@ -453,7 +507,7 @@ function AccountCard({
             }
           >
             {isScanPending ? (
-              <RefreshCw className="h-5 w-5 animate-spin" />
+              <RefreshCw className="h-5 w-5 animate-spin text-blue-600" />
             ) : (
               <Play className="h-5 w-5" />
             )}
