@@ -75,6 +75,20 @@ class ComplianceControl(Base):
         String(8), nullable=True
     )  # "P1", "P2", "P3" or null
 
+    # Cloud applicability metadata
+    cloud_applicability: Mapped[Optional[str]] = mapped_column(
+        String(32), nullable=True, default="highly_relevant"
+    )  # "highly_relevant", "moderately_relevant", "informational", "provider_responsibility"
+
+    # Cloud context (JSONB) - AWS/GCP service mappings and shared responsibility
+    # Structure: {
+    #   "aws_services": ["IAM", "CloudTrail"],
+    #   "gcp_services": ["Cloud IAM", "Cloud Audit Logs"],
+    #   "shared_responsibility": "customer" | "shared" | "provider",
+    #   "detection_guidance": "Monitor IAM events in CloudTrail..."
+    # }
+    cloud_context: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+
     # For nested controls (e.g., AC-2(1) is enhancement of AC-2)
     parent_control_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("compliance_controls.id"), nullable=True

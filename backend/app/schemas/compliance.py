@@ -23,6 +23,15 @@ class ComplianceFrameworkResponse(BaseModel):
         from_attributes = True
 
 
+class CloudContextResponse(BaseModel):
+    """Cloud context for a compliance control."""
+
+    aws_services: list[str] = []
+    gcp_services: list[str] = []
+    shared_responsibility: str = "customer"  # "customer", "shared", "provider"
+    detection_guidance: Optional[str] = None
+
+
 class ControlResponse(BaseModel):
     """Response schema for a compliance control."""
 
@@ -34,6 +43,8 @@ class ControlResponse(BaseModel):
     priority: Optional[str] = None
     is_enhancement: bool
     mapped_technique_count: int = 0
+    cloud_applicability: Optional[str] = "highly_relevant"
+    cloud_context: Optional[CloudContextResponse] = None
 
     class Config:
         from_attributes = True

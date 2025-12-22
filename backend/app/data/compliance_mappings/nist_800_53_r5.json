@@ -4,7 +4,7 @@
     "name": "NIST 800-53 Rev 5",
     "version": "Rev 5",
     "description": "Security and Privacy Controls for Information Systems and Organisations. NIST Special Publication 800-53 provides a catalogue of security and privacy controls for all US federal information systems.",
-    "source_url": "https://ctid.mitre.org/projects/nist-800-53-control-mappings/"
+    "source_url": "https://center-for-threat-informed-defense.github.io/mappings-explorer/external/nist/"
   },
   "controls": [
     {
@@ -13,6 +13,13 @@
       "name": "Account Management",
       "description": "Manage system accounts, group memberships, privileges, credentials, and access authorisations.",
       "priority": "P1",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["IAM", "Organizations", "CloudTrail", "AWS SSO"],
+        "gcp_services": ["Cloud IAM", "Cloud Identity", "Cloud Audit Logs"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Monitor IAM user/role creation, modification, and deletion events in CloudTrail or Cloud Audit Logs."
+      },
       "technique_mappings": [
         {"technique_id": "T1078", "mapping_type": "mitigates"},
         {"technique_id": "T1078.001", "mapping_type": "mitigates"},
@@ -24,11 +31,57 @@
       ]
     },
     {
+      "control_id": "AC-2(1)",
+      "control_family": "Access Control",
+      "name": "Automated Account Management",
+      "description": "Support the management of system accounts using automated mechanisms.",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["IAM", "AWS SSO", "Lambda", "EventBridge"],
+        "gcp_services": ["Cloud IAM", "Cloud Functions", "Eventarc"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Automate account lifecycle management and monitor for manual overrides."
+      },
+      "technique_mappings": [
+        {"technique_id": "T1078", "mapping_type": "mitigates"},
+        {"technique_id": "T1136", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "AC-2(4)",
+      "control_family": "Access Control",
+      "name": "Automated Audit Actions",
+      "description": "Automatically audit account creation, modification, enabling, disabling, and removal actions.",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["CloudTrail", "CloudWatch", "EventBridge", "Security Hub"],
+        "gcp_services": ["Cloud Audit Logs", "Cloud Logging", "Security Command Center"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Configure CloudTrail/Cloud Audit Logs to capture all IAM events with alerting on critical changes."
+      },
+      "technique_mappings": [
+        {"technique_id": "T1078", "mapping_type": "mitigates"},
+        {"technique_id": "T1562", "mapping_type": "mitigates"},
+        {"technique_id": "T1562.008", "mapping_type": "mitigates"}
+      ]
+    },
+    {
       "control_id": "AC-3",
       "control_family": "Access Control",
       "name": "Access Enforcement",
       "description": "Enforce approved authorisations for logical access to information and system resources.",
       "priority": "P1",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["IAM", "Organizations SCPs", "S3 Bucket Policies", "KMS"],
+        "gcp_services": ["Cloud IAM", "Organization Policy", "VPC Service Controls"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Monitor access denied events and policy evaluation failures."
+      },
       "technique_mappings": [
         {"technique_id": "T1078", "mapping_type": "mitigates"},
         {"technique_id": "T1078.004", "mapping_type": "mitigates"},
@@ -43,6 +96,13 @@
       "name": "Information Flow Enforcement",
       "description": "Enforce approved authorisations for controlling the flow of information within the system and between systems.",
       "priority": "P1",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["VPC", "Security Groups", "NACLs", "AWS WAF", "Transit Gateway"],
+        "gcp_services": ["VPC", "Firewall Rules", "Cloud NAT", "Cloud Armor"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Monitor VPC Flow Logs and firewall rule changes for unexpected traffic patterns."
+      },
       "technique_mappings": [
         {"technique_id": "T1048", "mapping_type": "mitigates"},
         {"technique_id": "T1041", "mapping_type": "mitigates"},
@@ -56,6 +116,13 @@
       "name": "Separation of Duties",
       "description": "Separate duties of individuals to reduce risk of malevolent activity.",
       "priority": "P1",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["IAM", "Organizations", "AWS SSO"],
+        "gcp_services": ["Cloud IAM", "Organization Policy"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Monitor for single identities with excessive permissions spanning multiple roles."
+      },
       "technique_mappings": [
         {"technique_id": "T1078", "mapping_type": "mitigates"},
         {"technique_id": "T1098", "mapping_type": "mitigates"},
@@ -68,6 +135,13 @@
       "name": "Least Privilege",
       "description": "Employ the principle of least privilege, allowing only authorised accesses for users necessary to accomplish assigned tasks.",
       "priority": "P1",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["IAM Access Analyzer", "IAM", "Organizations SCPs"],
+        "gcp_services": ["IAM Recommender", "Cloud IAM", "Policy Intelligence"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Use IAM Access Analyzer or IAM Recommender to identify over-privileged accounts."
+      },
       "technique_mappings": [
         {"technique_id": "T1078", "mapping_type": "mitigates"},
         {"technique_id": "T1078.004", "mapping_type": "mitigates"},
@@ -78,11 +152,75 @@
       ]
     },
     {
+      "control_id": "AC-6(1)",
+      "control_family": "Access Control",
+      "name": "Authorise Access to Security Functions",
+      "description": "Explicitly authorise access to security-relevant information and system functions.",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["IAM", "Organizations SCPs", "AWS Config"],
+        "gcp_services": ["Cloud IAM", "Organization Policy"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Monitor access to security services (GuardDuty, Security Hub, CloudTrail)."
+      },
+      "technique_mappings": [
+        {"technique_id": "T1548", "mapping_type": "mitigates"},
+        {"technique_id": "T1562", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "AC-6(5)",
+      "control_family": "Access Control",
+      "name": "Privileged Accounts",
+      "description": "Restrict privileged accounts on the system to personnel or roles specifically designated.",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["IAM", "AWS SSO", "Organizations"],
+        "gcp_services": ["Cloud IAM", "Cloud Identity", "Privileged Access Management"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Monitor root/admin account usage and privileged role assumptions."
+      },
+      "technique_mappings": [
+        {"technique_id": "T1078.004", "mapping_type": "mitigates"},
+        {"technique_id": "T1098", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "AC-6(9)",
+      "control_family": "Access Control",
+      "name": "Log Use of Privileged Functions",
+      "description": "Log the execution of privileged functions.",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["CloudTrail", "CloudWatch Logs"],
+        "gcp_services": ["Cloud Audit Logs", "Cloud Logging"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Enable CloudTrail management events and data events for sensitive resources."
+      },
+      "technique_mappings": [
+        {"technique_id": "T1078", "mapping_type": "mitigates"},
+        {"technique_id": "T1562.008", "mapping_type": "mitigates"}
+      ]
+    },
+    {
       "control_id": "AC-7",
       "control_family": "Access Control",
       "name": "Unsuccessful Logon Attempts",
       "description": "Enforce a limit of consecutive invalid logon attempts by a user and take action when the maximum is exceeded.",
       "priority": "P2",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["IAM", "Cognito", "CloudWatch"],
+        "gcp_services": ["Cloud Identity", "Identity Platform"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Monitor for repeated failed authentication attempts in CloudTrail or identity logs."
+      },
       "technique_mappings": [
         {"technique_id": "T1110", "mapping_type": "mitigates"},
         {"technique_id": "T1110.001", "mapping_type": "mitigates"},
@@ -95,6 +233,13 @@
       "name": "Remote Access",
       "description": "Establish usage restrictions and implementation guidance for each type of remote access allowed.",
       "priority": "P1",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["VPC", "Systems Manager Session Manager", "Client VPN"],
+        "gcp_services": ["Cloud IAP", "VPC", "Cloud VPN"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Monitor Session Manager sessions and VPN connections for unusual patterns."
+      },
       "technique_mappings": [
         {"technique_id": "T1133", "mapping_type": "mitigates"},
         {"technique_id": "T1021", "mapping_type": "mitigates"},
@@ -107,6 +252,13 @@
       "name": "Event Logging",
       "description": "Identify the types of events that the system is capable of logging in support of the audit function.",
       "priority": "P1",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["CloudTrail", "CloudWatch Logs", "VPC Flow Logs", "S3 Access Logs"],
+        "gcp_services": ["Cloud Audit Logs", "Cloud Logging", "VPC Flow Logs"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Ensure all management and data plane events are logged and retained."
+      },
       "technique_mappings": [
         {"technique_id": "T1562", "mapping_type": "mitigates"},
         {"technique_id": "T1562.008", "mapping_type": "mitigates"},
@@ -119,6 +271,13 @@
       "name": "Content of Audit Records",
       "description": "Ensure that audit records contain information that establishes what occurred, when, where, the source, and the outcome.",
       "priority": "P1",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["CloudTrail", "CloudWatch Logs"],
+        "gcp_services": ["Cloud Audit Logs", "Cloud Logging"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "CloudTrail and Cloud Audit Logs automatically capture required metadata."
+      },
       "technique_mappings": [
         {"technique_id": "T1562", "mapping_type": "mitigates"},
         {"technique_id": "T1070", "mapping_type": "mitigates"}
@@ -130,10 +289,35 @@
       "name": "Audit Record Review, Analysis, and Reporting",
       "description": "Review and analyse system audit records for indications of inappropriate or unusual activity.",
       "priority": "P1",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["CloudWatch Logs Insights", "Security Hub", "Detective", "Athena"],
+        "gcp_services": ["Cloud Logging", "Security Command Center", "Chronicle"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Use CloudWatch Logs Insights or Chronicle to query and analyse audit logs."
+      },
       "technique_mappings": [
         {"technique_id": "T1078", "mapping_type": "mitigates"},
         {"technique_id": "T1110", "mapping_type": "mitigates"},
         {"technique_id": "T1562", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "AU-6(1)",
+      "control_family": "Audit and Accountability",
+      "name": "Automated Process Integration",
+      "description": "Integrate audit record review, analysis, and reporting with automated mechanisms.",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["Security Hub", "EventBridge", "Lambda", "SNS"],
+        "gcp_services": ["Security Command Center", "Pub/Sub", "Cloud Functions"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Configure Security Hub or SCC with automated alerting on critical findings."
+      },
+      "technique_mappings": [
+        {"technique_id": "T1562.008", "mapping_type": "mitigates"}
       ]
     },
     {
@@ -142,6 +326,13 @@
       "name": "Protection of Audit Information",
       "description": "Protect audit information and audit logging tools from unauthorised access, modification, and deletion.",
       "priority": "P1",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["S3 Object Lock", "CloudTrail Log File Integrity", "KMS"],
+        "gcp_services": ["Cloud Storage Retention", "Cloud Audit Logs", "Cloud KMS"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Enable CloudTrail log file validation and S3 Object Lock for immutable storage."
+      },
       "technique_mappings": [
         {"technique_id": "T1562.008", "mapping_type": "mitigates"},
         {"technique_id": "T1070", "mapping_type": "mitigates"},
@@ -154,6 +345,13 @@
       "name": "Audit Record Generation",
       "description": "Provide audit record generation capability for the event types the system is capable of auditing.",
       "priority": "P1",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["CloudTrail", "Config", "VPC Flow Logs"],
+        "gcp_services": ["Cloud Audit Logs", "Cloud Asset Inventory"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Ensure CloudTrail is enabled in all regions with multi-region trail."
+      },
       "technique_mappings": [
         {"technique_id": "T1562", "mapping_type": "mitigates"},
         {"technique_id": "T1562.008", "mapping_type": "mitigates"}
@@ -165,6 +363,13 @@
       "name": "Baseline Configuration",
       "description": "Develop, document, and maintain a current baseline configuration of the system.",
       "priority": "P1",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["AWS Config", "Systems Manager", "CloudFormation"],
+        "gcp_services": ["Cloud Asset Inventory", "Security Command Center", "Terraform"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Use AWS Config or Cloud Asset Inventory to track configuration drift."
+      },
       "technique_mappings": [
         {"technique_id": "T1578", "mapping_type": "mitigates"},
         {"technique_id": "T1578.002", "mapping_type": "mitigates"},
@@ -177,6 +382,13 @@
       "name": "Configuration Change Control",
       "description": "Determine and document the types of changes to the system that are configuration-controlled.",
       "priority": "P1",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["AWS Config", "CloudTrail", "Service Catalog"],
+        "gcp_services": ["Cloud Asset Inventory", "Cloud Audit Logs"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Monitor for configuration changes outside approved change windows."
+      },
       "technique_mappings": [
         {"technique_id": "T1578", "mapping_type": "mitigates"},
         {"technique_id": "T1525", "mapping_type": "mitigates"},
@@ -189,6 +401,13 @@
       "name": "Configuration Settings",
       "description": "Establish and document configuration settings for components within the system.",
       "priority": "P1",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["AWS Config Rules", "Systems Manager", "Security Hub"],
+        "gcp_services": ["Security Command Center", "Organization Policy"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Use AWS Config conformance packs or SCC for configuration compliance."
+      },
       "technique_mappings": [
         {"technique_id": "T1578", "mapping_type": "mitigates"},
         {"technique_id": "T1562", "mapping_type": "mitigates"},
@@ -201,10 +420,35 @@
       "name": "Least Functionality",
       "description": "Configure the system to provide only essential capabilities and prohibit or restrict use of non-essential functions.",
       "priority": "P1",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["Security Groups", "NACLs", "Organizations SCPs"],
+        "gcp_services": ["Firewall Rules", "Organization Policy", "VPC Service Controls"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Monitor for services or ports enabled beyond baseline requirements."
+      },
       "technique_mappings": [
         {"technique_id": "T1190", "mapping_type": "mitigates"},
         {"technique_id": "T1133", "mapping_type": "mitigates"},
         {"technique_id": "T1578", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "CM-8",
+      "control_family": "Configuration Management",
+      "name": "System Component Inventory",
+      "description": "Develop and document an inventory of system components that accurately reflects the system.",
+      "priority": "P1",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["AWS Config", "Resource Groups", "Systems Manager Inventory"],
+        "gcp_services": ["Cloud Asset Inventory", "Resource Manager"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Use AWS Config or Cloud Asset Inventory for continuous inventory."
+      },
+      "technique_mappings": [
+        {"technique_id": "T1580", "mapping_type": "mitigates"},
+        {"technique_id": "T1526", "mapping_type": "mitigates"}
       ]
     },
     {
@@ -213,6 +457,13 @@
       "name": "Identification and Authentication (Organisational Users)",
       "description": "Uniquely identify and authenticate organisational users and associate that unique identification with processes acting on behalf of those users.",
       "priority": "P1",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["IAM", "AWS SSO", "Cognito"],
+        "gcp_services": ["Cloud IAM", "Cloud Identity", "Identity Platform"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Monitor authentication events and identity provider integrations."
+      },
       "technique_mappings": [
         {"technique_id": "T1078", "mapping_type": "mitigates"},
         {"technique_id": "T1078.001", "mapping_type": "mitigates"},
@@ -221,11 +472,56 @@
       ]
     },
     {
+      "control_id": "IA-2(1)",
+      "control_family": "Identification and Authentication",
+      "name": "Multi-Factor Authentication to Privileged Accounts",
+      "description": "Implement multi-factor authentication for access to privileged accounts.",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["IAM MFA", "AWS SSO MFA"],
+        "gcp_services": ["Cloud Identity MFA", "2-Step Verification"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Monitor for console logins without MFA, especially for privileged accounts."
+      },
+      "technique_mappings": [
+        {"technique_id": "T1078", "mapping_type": "mitigates"},
+        {"technique_id": "T1110", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "IA-2(2)",
+      "control_family": "Identification and Authentication",
+      "name": "Multi-Factor Authentication to Non-Privileged Accounts",
+      "description": "Implement multi-factor authentication for access to non-privileged accounts.",
+      "priority": "P2",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["IAM MFA", "Cognito MFA"],
+        "gcp_services": ["Cloud Identity MFA", "Identity Platform MFA"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Enforce MFA for all user accounts via IAM policies or identity provider."
+      },
+      "technique_mappings": [
+        {"technique_id": "T1078", "mapping_type": "mitigates"},
+        {"technique_id": "T1133", "mapping_type": "mitigates"}
+      ]
+    },
+    {
       "control_id": "IA-4",
       "control_family": "Identification and Authentication",
       "name": "Identifier Management",
       "description": "Manage system identifiers for users and devices by receiving authorisation and assigning unique identifiers.",
       "priority": "P1",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["IAM", "AWS SSO", "Directory Service"],
+        "gcp_services": ["Cloud IAM", "Cloud Identity"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Monitor for duplicate or unauthorized user/service account creation."
+      },
       "technique_mappings": [
         {"technique_id": "T1078", "mapping_type": "mitigates"},
         {"technique_id": "T1136", "mapping_type": "mitigates"}
@@ -237,6 +533,13 @@
       "name": "Authenticator Management",
       "description": "Manage system authenticators by verifying the identity of the individual receiving the authenticator.",
       "priority": "P1",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["IAM", "Secrets Manager", "AWS SSO"],
+        "gcp_services": ["Cloud IAM", "Secret Manager", "Cloud Identity"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Monitor access key age, password policy compliance, and credential rotation."
+      },
       "technique_mappings": [
         {"technique_id": "T1110", "mapping_type": "mitigates"},
         {"technique_id": "T1078", "mapping_type": "mitigates"},
@@ -245,11 +548,36 @@
       ]
     },
     {
+      "control_id": "IA-5(1)",
+      "control_family": "Identification and Authentication",
+      "name": "Password-Based Authentication",
+      "description": "For password-based authentication, enforce minimum password complexity and change requirements.",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["IAM Password Policy", "Cognito Password Policy"],
+        "gcp_services": ["Cloud Identity Password Policy"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Use AWS Config or Security Hub to monitor password policy compliance."
+      },
+      "technique_mappings": [
+        {"technique_id": "T1110", "mapping_type": "mitigates"}
+      ]
+    },
+    {
       "control_id": "IA-8",
       "control_family": "Identification and Authentication",
       "name": "Identification and Authentication (Non-Organisational Users)",
       "description": "Uniquely identify and authenticate non-organisational users or processes acting on behalf of non-organisational users.",
       "priority": "P1",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["Cognito", "IAM", "API Gateway"],
+        "gcp_services": ["Identity Platform", "Cloud IAM", "API Gateway"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Monitor external identity federation and API authentication events."
+      },
       "technique_mappings": [
         {"technique_id": "T1078", "mapping_type": "mitigates"},
         {"technique_id": "T1078.004", "mapping_type": "mitigates"}
@@ -261,6 +589,13 @@
       "name": "Incident Handling",
       "description": "Implement an incident handling capability that includes preparation, detection, analysis, containment, eradication, and recovery.",
       "priority": "P1",
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": ["Security Hub", "Detective", "GuardDuty", "Systems Manager Incident Manager"],
+        "gcp_services": ["Security Command Center", "Chronicle"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Use Security Hub or SCC to centralise incident detection and response."
+      },
       "technique_mappings": [
         {"technique_id": "T1078", "mapping_type": "mitigates"},
         {"technique_id": "T1562", "mapping_type": "mitigates"},
@@ -273,6 +608,13 @@
       "name": "Incident Monitoring",
       "description": "Track and document system security and privacy incidents.",
       "priority": "P1",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["Security Hub", "CloudWatch", "EventBridge"],
+        "gcp_services": ["Security Command Center", "Cloud Monitoring"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Aggregate findings in Security Hub or SCC for centralised monitoring."
+      },
       "technique_mappings": [
         {"technique_id": "T1078", "mapping_type": "mitigates"},
         {"technique_id": "T1110", "mapping_type": "mitigates"},
@@ -280,123 +622,50 @@
       ]
     },
     {
-      "control_id": "SC-4",
-      "control_family": "System and Communications Protection",
-      "name": "Information in Shared System Resources",
-      "description": "Prevent unauthorised and unintended information transfer via shared system resources.",
+      "control_id": "PE-2",
+      "control_family": "Physical and Environmental Protection",
+      "name": "Physical Access Authorisations",
+      "description": "Develop, approve, and maintain a list of individuals with authorised access to the facility.",
       "priority": "P1",
-      "technique_mappings": [
-        {"technique_id": "T1530", "mapping_type": "mitigates"},
-        {"technique_id": "T1552", "mapping_type": "mitigates"}
-      ]
+      "cloud_applicability": "provider_responsibility",
+      "cloud_context": {
+        "aws_services": [],
+        "gcp_services": [],
+        "shared_responsibility": "provider",
+        "detection_guidance": "Physical data centre security is managed by AWS/GCP. Review provider SOC 2 and ISO 27001 certifications."
+      },
+      "technique_mappings": []
     },
     {
-      "control_id": "SC-7",
-      "control_family": "System and Communications Protection",
-      "name": "Boundary Protection",
-      "description": "Monitor and control communications at the external managed interfaces to the system and at key internal managed interfaces.",
+      "control_id": "PE-3",
+      "control_family": "Physical and Environmental Protection",
+      "name": "Physical Access Control",
+      "description": "Enforce physical access authorisations at entry and exit points to the facility.",
       "priority": "P1",
-      "technique_mappings": [
-        {"technique_id": "T1048", "mapping_type": "mitigates"},
-        {"technique_id": "T1041", "mapping_type": "mitigates"},
-        {"technique_id": "T1071", "mapping_type": "mitigates"},
-        {"technique_id": "T1190", "mapping_type": "mitigates"},
-        {"technique_id": "T1133", "mapping_type": "mitigates"}
-      ]
+      "cloud_applicability": "provider_responsibility",
+      "cloud_context": {
+        "aws_services": [],
+        "gcp_services": [],
+        "shared_responsibility": "provider",
+        "detection_guidance": "Physical access controls are managed by AWS/GCP. Review provider compliance certifications."
+      },
+      "technique_mappings": []
     },
     {
-      "control_id": "SC-8",
-      "control_family": "System and Communications Protection",
-      "name": "Transmission Confidentiality and Integrity",
-      "description": "Protect the confidentiality and integrity of transmitted information.",
+      "control_id": "PS-3",
+      "control_family": "Personnel Security",
+      "name": "Personnel Screening",
+      "description": "Screen individuals prior to authorising access to the system.",
       "priority": "P1",
+      "cloud_applicability": "informational",
+      "cloud_context": {
+        "aws_services": [],
+        "gcp_services": [],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Personnel screening is an organisational process. Not detectable via cloud APIs."
+      },
       "technique_mappings": [
-        {"technique_id": "T1557", "mapping_type": "mitigates"},
-        {"technique_id": "T1040", "mapping_type": "mitigates"}
-      ]
-    },
-    {
-      "control_id": "SC-12",
-      "control_family": "System and Communications Protection",
-      "name": "Cryptographic Key Establishment and Management",
-      "description": "Establish and manage cryptographic keys when cryptography is employed within the system.",
-      "priority": "P1",
-      "technique_mappings": [
-        {"technique_id": "T1552", "mapping_type": "mitigates"},
-        {"technique_id": "T1552.004", "mapping_type": "mitigates"},
-        {"technique_id": "T1528", "mapping_type": "mitigates"}
-      ]
-    },
-    {
-      "control_id": "SC-23",
-      "control_family": "System and Communications Protection",
-      "name": "Session Authenticity",
-      "description": "Protect the authenticity of communications sessions.",
-      "priority": "P1",
-      "technique_mappings": [
-        {"technique_id": "T1557", "mapping_type": "mitigates"},
-        {"technique_id": "T1550", "mapping_type": "mitigates"}
-      ]
-    },
-    {
-      "control_id": "SI-3",
-      "control_family": "System and Information Integrity",
-      "name": "Malicious Code Protection",
-      "description": "Implement malicious code protection mechanisms at system entry and exit points to detect and eradicate malicious code.",
-      "priority": "P1",
-      "technique_mappings": [
-        {"technique_id": "T1204", "mapping_type": "mitigates"},
-        {"technique_id": "T1566", "mapping_type": "mitigates"},
-        {"technique_id": "T1059", "mapping_type": "mitigates"}
-      ]
-    },
-    {
-      "control_id": "SI-4",
-      "control_family": "System and Information Integrity",
-      "name": "System Monitoring",
-      "description": "Monitor the system to detect attacks, indicators of potential attacks, and unauthorised connections.",
-      "priority": "P1",
-      "technique_mappings": [
-        {"technique_id": "T1078", "mapping_type": "mitigates"},
-        {"technique_id": "T1110", "mapping_type": "mitigates"},
-        {"technique_id": "T1562", "mapping_type": "mitigates"},
-        {"technique_id": "T1530", "mapping_type": "mitigates"},
-        {"technique_id": "T1537", "mapping_type": "mitigates"},
-        {"technique_id": "T1190", "mapping_type": "mitigates"}
-      ]
-    },
-    {
-      "control_id": "SI-5",
-      "control_family": "System and Information Integrity",
-      "name": "Security Alerts, Advisories, and Directives",
-      "description": "Receive system security alerts, advisories, and directives from external organisations on an ongoing basis.",
-      "priority": "P1",
-      "technique_mappings": [
-        {"technique_id": "T1190", "mapping_type": "mitigates"},
-        {"technique_id": "T1068", "mapping_type": "mitigates"}
-      ]
-    },
-    {
-      "control_id": "SI-7",
-      "control_family": "System and Information Integrity",
-      "name": "Software, Firmware, and Information Integrity",
-      "description": "Employ integrity verification tools to detect unauthorised changes to software, firmware, and information.",
-      "priority": "P1",
-      "technique_mappings": [
-        {"technique_id": "T1525", "mapping_type": "mitigates"},
-        {"technique_id": "T1195", "mapping_type": "mitigates"},
-        {"technique_id": "T1072", "mapping_type": "mitigates"}
-      ]
-    },
-    {
-      "control_id": "SI-10",
-      "control_family": "System and Information Integrity",
-      "name": "Information Input Validation",
-      "description": "Check the validity of information inputs.",
-      "priority": "P1",
-      "technique_mappings": [
-        {"technique_id": "T1190", "mapping_type": "mitigates"},
-        {"technique_id": "T1059", "mapping_type": "mitigates"}
+        {"technique_id": "T1078", "mapping_type": "mitigates"}
       ]
     },
     {
@@ -405,6 +674,13 @@
       "name": "Vulnerability Monitoring and Scanning",
       "description": "Monitor and scan for vulnerabilities in the system and hosted applications.",
       "priority": "P1",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["Inspector", "ECR Scanning", "Security Hub"],
+        "gcp_services": ["Security Command Center", "Container Analysis", "Web Security Scanner"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Enable Amazon Inspector or SCC vulnerability scanning for continuous assessment."
+      },
       "technique_mappings": [
         {"technique_id": "T1190", "mapping_type": "mitigates"},
         {"technique_id": "T1068", "mapping_type": "mitigates"},
@@ -417,10 +693,300 @@
       "name": "Continuous Monitoring",
       "description": "Develop a system-level continuous monitoring strategy and implement continuous monitoring.",
       "priority": "P1",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["Security Hub", "GuardDuty", "AWS Config", "CloudWatch"],
+        "gcp_services": ["Security Command Center", "Cloud Monitoring", "Chronicle"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Enable Security Hub with all available integrations for continuous monitoring."
+      },
       "technique_mappings": [
         {"technique_id": "T1078", "mapping_type": "mitigates"},
         {"technique_id": "T1562", "mapping_type": "mitigates"},
         {"technique_id": "T1190", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "SC-4",
+      "control_family": "System and Communications Protection",
+      "name": "Information in Shared System Resources",
+      "description": "Prevent unauthorised and unintended information transfer via shared system resources.",
+      "priority": "P1",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["VPC", "S3 Bucket Policies", "KMS"],
+        "gcp_services": ["VPC", "Cloud Storage IAM", "Cloud KMS"],
+        "shared_responsibility": "shared",
+        "detection_guidance": "Monitor for cross-account or cross-project resource sharing."
+      },
+      "technique_mappings": [
+        {"technique_id": "T1530", "mapping_type": "mitigates"},
+        {"technique_id": "T1552", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "SC-7",
+      "control_family": "System and Communications Protection",
+      "name": "Boundary Protection",
+      "description": "Monitor and control communications at the external managed interfaces to the system and at key internal managed interfaces.",
+      "priority": "P1",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["VPC", "Security Groups", "NACLs", "AWS WAF", "Network Firewall"],
+        "gcp_services": ["VPC", "Firewall Rules", "Cloud Armor", "Cloud NAT"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Enable VPC Flow Logs and monitor for unexpected inbound/outbound traffic."
+      },
+      "technique_mappings": [
+        {"technique_id": "T1048", "mapping_type": "mitigates"},
+        {"technique_id": "T1041", "mapping_type": "mitigates"},
+        {"technique_id": "T1071", "mapping_type": "mitigates"},
+        {"technique_id": "T1190", "mapping_type": "mitigates"},
+        {"technique_id": "T1133", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "SC-7(4)",
+      "control_family": "System and Communications Protection",
+      "name": "External Telecommunications Services",
+      "description": "Implement a managed interface for each external telecommunications service.",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["VPC", "Direct Connect", "Transit Gateway"],
+        "gcp_services": ["VPC", "Cloud Interconnect", "Cloud VPN"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Monitor Direct Connect or Cloud Interconnect for unusual traffic patterns."
+      },
+      "technique_mappings": [
+        {"technique_id": "T1048", "mapping_type": "mitigates"},
+        {"technique_id": "T1071", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "SC-7(5)",
+      "control_family": "System and Communications Protection",
+      "name": "Deny by Default / Allow by Exception",
+      "description": "Deny network communications traffic by default and allow by exception.",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["Security Groups", "NACLs", "Network Firewall"],
+        "gcp_services": ["Firewall Rules", "VPC Service Controls"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Ensure security groups deny all inbound by default with explicit allow rules."
+      },
+      "technique_mappings": [
+        {"technique_id": "T1190", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "SC-8",
+      "control_family": "System and Communications Protection",
+      "name": "Transmission Confidentiality and Integrity",
+      "description": "Protect the confidentiality and integrity of transmitted information.",
+      "priority": "P1",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["ACM", "ALB/NLB TLS", "KMS"],
+        "gcp_services": ["Cloud Load Balancing TLS", "Cloud KMS"],
+        "shared_responsibility": "shared",
+        "detection_guidance": "Monitor for unencrypted connections and certificate expiration."
+      },
+      "technique_mappings": [
+        {"technique_id": "T1557", "mapping_type": "mitigates"},
+        {"technique_id": "T1040", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "SC-12",
+      "control_family": "System and Communications Protection",
+      "name": "Cryptographic Key Establishment and Management",
+      "description": "Establish and manage cryptographic keys when cryptography is employed within the system.",
+      "priority": "P1",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["KMS", "CloudHSM", "Secrets Manager"],
+        "gcp_services": ["Cloud KMS", "Cloud HSM", "Secret Manager"],
+        "shared_responsibility": "shared",
+        "detection_guidance": "Monitor KMS key usage, rotation, and access patterns."
+      },
+      "technique_mappings": [
+        {"technique_id": "T1552", "mapping_type": "mitigates"},
+        {"technique_id": "T1552.004", "mapping_type": "mitigates"},
+        {"technique_id": "T1528", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "SC-23",
+      "control_family": "System and Communications Protection",
+      "name": "Session Authenticity",
+      "description": "Protect the authenticity of communications sessions.",
+      "priority": "P1",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["ALB", "API Gateway", "CloudFront"],
+        "gcp_services": ["Cloud Load Balancing", "API Gateway"],
+        "shared_responsibility": "shared",
+        "detection_guidance": "Enforce TLS and monitor for session hijacking attempts."
+      },
+      "technique_mappings": [
+        {"technique_id": "T1557", "mapping_type": "mitigates"},
+        {"technique_id": "T1550", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "SI-3",
+      "control_family": "System and Information Integrity",
+      "name": "Malicious Code Protection",
+      "description": "Implement malicious code protection mechanisms at system entry and exit points to detect and eradicate malicious code.",
+      "priority": "P1",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["GuardDuty Malware Protection", "Inspector"],
+        "gcp_services": ["Security Command Center", "VirusTotal"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Enable GuardDuty Malware Protection for EBS scanning."
+      },
+      "technique_mappings": [
+        {"technique_id": "T1204", "mapping_type": "mitigates"},
+        {"technique_id": "T1566", "mapping_type": "mitigates"},
+        {"technique_id": "T1059", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "SI-4",
+      "control_family": "System and Information Integrity",
+      "name": "System Monitoring",
+      "description": "Monitor the system to detect attacks, indicators of potential attacks, and unauthorised connections.",
+      "priority": "P1",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["GuardDuty", "Security Hub", "CloudWatch", "VPC Flow Logs"],
+        "gcp_services": ["Security Command Center", "Chronicle", "Cloud Monitoring"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Enable GuardDuty and Security Hub for comprehensive threat detection."
+      },
+      "technique_mappings": [
+        {"technique_id": "T1078", "mapping_type": "mitigates"},
+        {"technique_id": "T1110", "mapping_type": "mitigates"},
+        {"technique_id": "T1562", "mapping_type": "mitigates"},
+        {"technique_id": "T1530", "mapping_type": "mitigates"},
+        {"technique_id": "T1537", "mapping_type": "mitigates"},
+        {"technique_id": "T1190", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "SI-4(2)",
+      "control_family": "System and Information Integrity",
+      "name": "Automated Tools and Mechanisms for Real-Time Analysis",
+      "description": "Employ automated tools and mechanisms to support near real-time analysis of events.",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["GuardDuty", "Security Hub", "EventBridge"],
+        "gcp_services": ["Security Command Center", "Chronicle", "Pub/Sub"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "GuardDuty and SCC provide automated real-time threat detection."
+      },
+      "technique_mappings": [
+        {"technique_id": "T1562", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "SI-4(4)",
+      "control_family": "System and Information Integrity",
+      "name": "Inbound and Outbound Communications Traffic",
+      "description": "Monitor inbound and outbound communications traffic for unusual or unauthorised activities.",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["VPC Flow Logs", "Network Firewall", "GuardDuty"],
+        "gcp_services": ["VPC Flow Logs", "Cloud IDS", "Chronicle"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Enable VPC Flow Logs and use GuardDuty for traffic analysis."
+      },
+      "technique_mappings": [
+        {"technique_id": "T1048", "mapping_type": "mitigates"},
+        {"technique_id": "T1041", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "SI-4(5)",
+      "control_family": "System and Information Integrity",
+      "name": "System-Generated Alerts",
+      "description": "Alert personnel when system-generated indicators of compromise or potential compromise occur.",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["Security Hub", "EventBridge", "SNS", "CloudWatch Alarms"],
+        "gcp_services": ["Security Command Center", "Cloud Monitoring Alerts", "Pub/Sub"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Configure Security Hub or SCC with notification integrations."
+      },
+      "technique_mappings": [
+        {"technique_id": "T1562", "mapping_type": "mitigates"},
+        {"technique_id": "T1078", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "SI-5",
+      "control_family": "System and Information Integrity",
+      "name": "Security Alerts, Advisories, and Directives",
+      "description": "Receive system security alerts, advisories, and directives from external organisations on an ongoing basis.",
+      "priority": "P1",
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": ["Security Hub", "Health Dashboard"],
+        "gcp_services": ["Security Command Center", "Cloud Status"],
+        "shared_responsibility": "shared",
+        "detection_guidance": "Subscribe to AWS Security Bulletins and GCP Security Advisories."
+      },
+      "technique_mappings": [
+        {"technique_id": "T1190", "mapping_type": "mitigates"},
+        {"technique_id": "T1068", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "SI-7",
+      "control_family": "System and Information Integrity",
+      "name": "Software, Firmware, and Information Integrity",
+      "description": "Employ integrity verification tools to detect unauthorised changes to software, firmware, and information.",
+      "priority": "P1",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["CloudTrail Log File Integrity", "Systems Manager", "ECR Signing"],
+        "gcp_services": ["Binary Authorization", "Container Analysis"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Enable CloudTrail log file validation and container image signing."
+      },
+      "technique_mappings": [
+        {"technique_id": "T1525", "mapping_type": "mitigates"},
+        {"technique_id": "T1195", "mapping_type": "mitigates"},
+        {"technique_id": "T1072", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "SI-10",
+      "control_family": "System and Information Integrity",
+      "name": "Information Input Validation",
+      "description": "Check the validity of information inputs.",
+      "priority": "P1",
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": ["WAF", "API Gateway"],
+        "gcp_services": ["Cloud Armor", "API Gateway"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Use WAF or Cloud Armor with managed rule sets for input validation."
+      },
+      "technique_mappings": [
+        {"technique_id": "T1190", "mapping_type": "mitigates"},
+        {"technique_id": "T1059", "mapping_type": "mitigates"}
       ]
     }
   ]

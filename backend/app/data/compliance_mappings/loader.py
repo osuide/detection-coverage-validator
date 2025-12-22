@@ -115,6 +115,10 @@ class ComplianceMappingLoader:
                 priority=control_data.get("priority"),
                 is_enhancement=control_data.get("is_enhancement", False),
                 display_order=i,
+                cloud_applicability=control_data.get(
+                    "cloud_applicability", "highly_relevant"
+                ),
+                cloud_context=control_data.get("cloud_context"),
             )
             self.db.add(control)
             await self.db.flush()

@@ -13,10 +13,54 @@
       "name": "Inventory and Control of Enterprise Assets",
       "description": "Actively manage all enterprise assets connected to the infrastructure physically, virtually, remotely, and those within cloud environments.",
       "priority": "P1",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["AWS Config", "Resource Groups", "Systems Manager", "EC2"],
+        "gcp_services": ["Cloud Asset Inventory", "Resource Manager", "Compute Engine"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Use AWS Config or Cloud Asset Inventory for continuous asset discovery and tracking."
+      },
       "technique_mappings": [
         {"technique_id": "T1580", "mapping_type": "mitigates"},
         {"technique_id": "T1526", "mapping_type": "mitigates"},
         {"technique_id": "T1087", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "1.1",
+      "control_family": "Inventory and Control of Enterprise Assets",
+      "name": "Establish and Maintain Detailed Enterprise Asset Inventory",
+      "description": "Establish and maintain an accurate, detailed, and up-to-date inventory of all enterprise assets.",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["AWS Config", "Systems Manager Inventory"],
+        "gcp_services": ["Cloud Asset Inventory"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Enable AWS Config recording for all resource types in all regions."
+      },
+      "technique_mappings": [
+        {"technique_id": "T1580", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "1.2",
+      "control_family": "Inventory and Control of Enterprise Assets",
+      "name": "Address Unauthorised Assets",
+      "description": "Ensure that a process exists to address unauthorised assets on a weekly basis.",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["AWS Config Rules", "Security Hub"],
+        "gcp_services": ["Security Command Center", "Organization Policy"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Create Config rules to detect resources outside approved configurations."
+      },
+      "technique_mappings": [
+        {"technique_id": "T1580", "mapping_type": "mitigates"},
+        {"technique_id": "T1526", "mapping_type": "mitigates"}
       ]
     },
     {
@@ -25,6 +69,13 @@
       "name": "Inventory and Control of Software Assets",
       "description": "Actively manage all software on the network so that only authorised software is installed and can execute.",
       "priority": "P1",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["Systems Manager", "ECR", "Lambda"],
+        "gcp_services": ["Container Registry", "Cloud Functions", "Binary Authorization"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Use Systems Manager Inventory and ECR scanning for software inventory."
+      },
       "technique_mappings": [
         {"technique_id": "T1204", "mapping_type": "mitigates"},
         {"technique_id": "T1059", "mapping_type": "mitigates"},
@@ -38,6 +89,13 @@
       "name": "Data Protection",
       "description": "Develop processes and technical controls to identify, classify, securely handle, retain, and dispose of data.",
       "priority": "P1",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["S3", "KMS", "Macie", "Secrets Manager"],
+        "gcp_services": ["Cloud Storage", "Cloud KMS", "DLP", "Secret Manager"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Enable S3 encryption, use Macie for data discovery, and KMS for key management."
+      },
       "technique_mappings": [
         {"technique_id": "T1530", "mapping_type": "mitigates"},
         {"technique_id": "T1537", "mapping_type": "mitigates"},
@@ -47,11 +105,92 @@
       ]
     },
     {
+      "control_id": "3.1",
+      "control_family": "Data Protection",
+      "name": "Establish and Maintain a Data Management Process",
+      "description": "Establish and maintain a data management process that addresses data sensitivity, ownership, and handling.",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": ["Macie", "S3"],
+        "gcp_services": ["DLP", "Cloud Storage"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Use Macie or DLP to discover and classify sensitive data."
+      },
+      "technique_mappings": [
+        {"technique_id": "T1530", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "3.3",
+      "control_family": "Data Protection",
+      "name": "Configure Data Access Control Lists",
+      "description": "Configure data access control lists based on a user's need to know.",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["S3 Bucket Policies", "IAM", "Lake Formation"],
+        "gcp_services": ["Cloud Storage IAM", "Cloud IAM"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Use S3 Access Analyzer to identify overly permissive bucket policies."
+      },
+      "technique_mappings": [
+        {"technique_id": "T1530", "mapping_type": "mitigates"},
+        {"technique_id": "T1537", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "3.10",
+      "control_family": "Data Protection",
+      "name": "Encrypt Sensitive Data in Transit",
+      "description": "Encrypt sensitive data in transit using secure protocols.",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["ACM", "ALB", "CloudFront"],
+        "gcp_services": ["Cloud Load Balancing", "Cloud CDN"],
+        "shared_responsibility": "shared",
+        "detection_guidance": "Enforce HTTPS and TLS 1.2+ for all services."
+      },
+      "technique_mappings": [
+        {"technique_id": "T1040", "mapping_type": "mitigates"},
+        {"technique_id": "T1557", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "3.11",
+      "control_family": "Data Protection",
+      "name": "Encrypt Sensitive Data at Rest",
+      "description": "Encrypt sensitive data at rest on servers, applications, and databases.",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["KMS", "S3 Encryption", "RDS Encryption", "EBS Encryption"],
+        "gcp_services": ["Cloud KMS", "Cloud Storage Encryption", "Cloud SQL Encryption"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Enable default encryption for S3, RDS, and EBS volumes."
+      },
+      "technique_mappings": [
+        {"technique_id": "T1530", "mapping_type": "mitigates"}
+      ]
+    },
+    {
       "control_id": "4",
       "control_family": "Secure Configuration of Enterprise Assets and Software",
       "name": "Secure Configuration of Enterprise Assets and Software",
       "description": "Establish and maintain the secure configuration of enterprise assets and software.",
       "priority": "P1",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["AWS Config", "Systems Manager", "Security Hub"],
+        "gcp_services": ["Security Command Center", "Organization Policy"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Use AWS Config conformance packs or SCC for configuration compliance."
+      },
       "technique_mappings": [
         {"technique_id": "T1078", "mapping_type": "mitigates"},
         {"technique_id": "T1578", "mapping_type": "mitigates"},
@@ -66,6 +205,13 @@
       "name": "Account Management",
       "description": "Use processes and tools to assign and manage authorisation to credentials for user accounts.",
       "priority": "P1",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["IAM", "AWS SSO", "Organizations"],
+        "gcp_services": ["Cloud IAM", "Cloud Identity"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Monitor IAM events in CloudTrail for account lifecycle changes."
+      },
       "technique_mappings": [
         {"technique_id": "T1078", "mapping_type": "mitigates"},
         {"technique_id": "T1078.001", "mapping_type": "mitigates"},
@@ -77,11 +223,73 @@
       ]
     },
     {
+      "control_id": "5.1",
+      "control_family": "Account Management",
+      "name": "Establish and Maintain an Inventory of Accounts",
+      "description": "Establish and maintain an inventory of all accounts managed in the enterprise.",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["IAM", "AWS SSO", "Organizations"],
+        "gcp_services": ["Cloud IAM", "Cloud Identity"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Use IAM Credential Report and Organizations to inventory all accounts."
+      },
+      "technique_mappings": [
+        {"technique_id": "T1078", "mapping_type": "mitigates"},
+        {"technique_id": "T1136", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "5.3",
+      "control_family": "Account Management",
+      "name": "Disable Dormant Accounts",
+      "description": "Delete or disable any dormant accounts after a period of inactivity.",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["IAM", "IAM Access Analyzer"],
+        "gcp_services": ["Cloud IAM", "Policy Intelligence"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Use IAM Credential Report to identify accounts without recent activity."
+      },
+      "technique_mappings": [
+        {"technique_id": "T1078", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "5.4",
+      "control_family": "Account Management",
+      "name": "Restrict Administrator Privileges to Dedicated Administrator Accounts",
+      "description": "Restrict administrator privileges to dedicated administrator accounts on enterprise assets.",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["IAM", "AWS SSO", "Organizations"],
+        "gcp_services": ["Cloud IAM", "Privileged Access Management"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Separate admin and user accounts; monitor admin account usage."
+      },
+      "technique_mappings": [
+        {"technique_id": "T1078.004", "mapping_type": "mitigates"}
+      ]
+    },
+    {
       "control_id": "6",
       "control_family": "Access Control Management",
       "name": "Access Control Management",
       "description": "Use processes and tools to create, assign, manage, and revoke access credentials and privileges for user, administrator, and service accounts.",
       "priority": "P1",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["IAM", "Organizations SCPs", "IAM Access Analyzer"],
+        "gcp_services": ["Cloud IAM", "VPC Service Controls", "IAM Recommender"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Use IAM Access Analyzer to identify excessive permissions."
+      },
       "technique_mappings": [
         {"technique_id": "T1078", "mapping_type": "mitigates"},
         {"technique_id": "T1078.004", "mapping_type": "mitigates"},
@@ -92,11 +300,74 @@
       ]
     },
     {
+      "control_id": "6.3",
+      "control_family": "Access Control Management",
+      "name": "Require MFA for Externally-Exposed Applications",
+      "description": "Require all externally-exposed applications to enforce MFA.",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["Cognito", "IAM MFA", "ALB with OIDC"],
+        "gcp_services": ["Identity Platform", "Cloud Identity MFA"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Enforce MFA for all public-facing applications."
+      },
+      "technique_mappings": [
+        {"technique_id": "T1078", "mapping_type": "mitigates"},
+        {"technique_id": "T1110", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "6.4",
+      "control_family": "Access Control Management",
+      "name": "Require MFA for Remote Network Access",
+      "description": "Require MFA for remote network access.",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["Client VPN", "AWS SSO MFA"],
+        "gcp_services": ["Cloud VPN", "BeyondCorp"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Enforce MFA for all VPN and remote access connections."
+      },
+      "technique_mappings": [
+        {"technique_id": "T1078", "mapping_type": "mitigates"},
+        {"technique_id": "T1133", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "6.5",
+      "control_family": "Access Control Management",
+      "name": "Require MFA for Administrative Access",
+      "description": "Require MFA for all administrative access accounts.",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["IAM MFA", "AWS SSO MFA"],
+        "gcp_services": ["Cloud Identity MFA", "2-Step Verification"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Monitor for root/admin logins without MFA via CloudTrail."
+      },
+      "technique_mappings": [
+        {"technique_id": "T1078.004", "mapping_type": "mitigates"}
+      ]
+    },
+    {
       "control_id": "7",
       "control_family": "Continuous Vulnerability Management",
       "name": "Continuous Vulnerability Management",
       "description": "Develop a plan to continuously assess and track vulnerabilities on all enterprise assets.",
       "priority": "P1",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["Inspector", "ECR Scanning", "Security Hub"],
+        "gcp_services": ["Security Command Center", "Container Analysis"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Enable Amazon Inspector for EC2 and container vulnerability scanning."
+      },
       "technique_mappings": [
         {"technique_id": "T1190", "mapping_type": "mitigates"},
         {"technique_id": "T1068", "mapping_type": "mitigates"},
@@ -110,6 +381,13 @@
       "name": "Audit Log Management",
       "description": "Collect, alert, review, and retain audit logs of events that could help detect, understand, or recover from an attack.",
       "priority": "P1",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["CloudTrail", "CloudWatch Logs", "S3", "Security Hub"],
+        "gcp_services": ["Cloud Audit Logs", "Cloud Logging", "Cloud Storage"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Enable CloudTrail in all regions with log file validation and S3 storage."
+      },
       "technique_mappings": [
         {"technique_id": "T1562", "mapping_type": "mitigates"},
         {"technique_id": "T1562.008", "mapping_type": "mitigates"},
@@ -118,11 +396,91 @@
       ]
     },
     {
+      "control_id": "8.2",
+      "control_family": "Audit Log Management",
+      "name": "Collect Audit Logs",
+      "description": "Collect audit logs from enterprise assets.",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["CloudTrail", "VPC Flow Logs", "CloudWatch Logs"],
+        "gcp_services": ["Cloud Audit Logs", "VPC Flow Logs", "Cloud Logging"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Enable CloudTrail management events and VPC Flow Logs."
+      },
+      "technique_mappings": [
+        {"technique_id": "T1562.008", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "8.5",
+      "control_family": "Audit Log Management",
+      "name": "Collect Detailed Audit Logs",
+      "description": "Configure detailed audit logging for enterprise assets containing sensitive data.",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["CloudTrail Data Events", "S3 Access Logs"],
+        "gcp_services": ["Data Access Audit Logs", "Cloud Storage Access Logs"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Enable CloudTrail data events for S3, Lambda, and DynamoDB."
+      },
+      "technique_mappings": [
+        {"technique_id": "T1070", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "8.9",
+      "control_family": "Audit Log Management",
+      "name": "Centralise Audit Logs",
+      "description": "Centralise, to the extent possible, audit log collection and retention across enterprise assets.",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["CloudTrail Organization Trail", "CloudWatch Logs", "S3"],
+        "gcp_services": ["Cloud Logging", "Log Router", "Cloud Storage"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Use organization trail to centralise logs across all accounts."
+      },
+      "technique_mappings": [
+        {"technique_id": "T1562", "mapping_type": "mitigates"}
+      ]
+    },
+    {
+      "control_id": "8.11",
+      "control_family": "Audit Log Management",
+      "name": "Conduct Audit Log Reviews",
+      "description": "Conduct reviews of audit logs to detect anomalies or abnormal events.",
+      "priority": "P1",
+      "is_enhancement": true,
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["CloudWatch Logs Insights", "Security Hub", "Athena"],
+        "gcp_services": ["Cloud Logging", "Chronicle", "BigQuery"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Use CloudWatch Logs Insights or Chronicle for log analysis."
+      },
+      "technique_mappings": [
+        {"technique_id": "T1078", "mapping_type": "mitigates"},
+        {"technique_id": "T1110", "mapping_type": "mitigates"}
+      ]
+    },
+    {
       "control_id": "9",
       "control_family": "Email and Web Browser Protections",
       "name": "Email and Web Browser Protections",
       "description": "Improve protections and detections of threats from email and web vectors.",
       "priority": "P1",
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": ["WorkMail", "WAF", "CloudFront"],
+        "gcp_services": ["Cloud Armor", "reCAPTCHA"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Use WAF or Cloud Armor to protect web applications from common attacks."
+      },
       "technique_mappings": [
         {"technique_id": "T1566", "mapping_type": "mitigates"},
         {"technique_id": "T1566.001", "mapping_type": "mitigates"},
@@ -136,6 +494,13 @@
       "name": "Malware Defences",
       "description": "Prevent or control the installation, spread, and execution of malicious applications, code, or scripts.",
       "priority": "P1",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["GuardDuty Malware Protection", "Inspector"],
+        "gcp_services": ["Security Command Center", "Container Analysis"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Enable GuardDuty Malware Protection for EBS volume scanning."
+      },
       "technique_mappings": [
         {"technique_id": "T1204", "mapping_type": "mitigates"},
         {"technique_id": "T1059", "mapping_type": "mitigates"},
@@ -149,6 +514,13 @@
       "name": "Data Recovery",
       "description": "Establish and maintain data recovery practices sufficient to restore in-scope enterprise assets to a pre-incident and trusted state.",
       "priority": "P1",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["AWS Backup", "S3 Versioning", "RDS Snapshots", "EBS Snapshots"],
+        "gcp_services": ["Cloud Storage Versioning", "Cloud SQL Backups", "Persistent Disk Snapshots"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Enable AWS Backup with cross-region replication for critical data."
+      },
       "technique_mappings": [
         {"technique_id": "T1485", "mapping_type": "mitigates"},
         {"technique_id": "T1486", "mapping_type": "mitigates"},
@@ -161,6 +533,13 @@
       "name": "Network Infrastructure Management",
       "description": "Establish and maintain the secure configuration of network devices.",
       "priority": "P1",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["VPC", "Security Groups", "NACLs", "Transit Gateway"],
+        "gcp_services": ["VPC", "Firewall Rules", "Cloud Router"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Use AWS Config rules to monitor security group and NACL changes."
+      },
       "technique_mappings": [
         {"technique_id": "T1557", "mapping_type": "mitigates"},
         {"technique_id": "T1040", "mapping_type": "mitigates"},
@@ -174,6 +553,13 @@
       "name": "Network Monitoring and Defence",
       "description": "Operate processes and tooling to establish and maintain comprehensive network monitoring and defence against security threats.",
       "priority": "P1",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["VPC Flow Logs", "GuardDuty", "Network Firewall", "Traffic Mirroring"],
+        "gcp_services": ["VPC Flow Logs", "Cloud IDS", "Packet Mirroring"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Enable VPC Flow Logs and GuardDuty for network threat detection."
+      },
       "technique_mappings": [
         {"technique_id": "T1048", "mapping_type": "mitigates"},
         {"technique_id": "T1041", "mapping_type": "mitigates"},
@@ -188,6 +574,13 @@
       "name": "Security Awareness and Skills Training",
       "description": "Establish and maintain a security awareness programme to influence behaviour among the workforce.",
       "priority": "P1",
+      "cloud_applicability": "informational",
+      "cloud_context": {
+        "aws_services": [],
+        "gcp_services": [],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Security awareness training is an organisational process. Not detectable via cloud APIs."
+      },
       "technique_mappings": [
         {"technique_id": "T1566", "mapping_type": "mitigates"},
         {"technique_id": "T1204", "mapping_type": "mitigates"},
@@ -200,6 +593,13 @@
       "name": "Service Provider Management",
       "description": "Develop a process to evaluate service providers who hold sensitive data or are responsible for an enterprise's critical IT platforms.",
       "priority": "P1",
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": ["Organizations", "RAM", "Service Catalog"],
+        "gcp_services": ["Organization Policy", "Resource Manager"],
+        "shared_responsibility": "shared",
+        "detection_guidance": "Monitor third-party integrations and cross-account access."
+      },
       "technique_mappings": [
         {"technique_id": "T1199", "mapping_type": "mitigates"},
         {"technique_id": "T1195", "mapping_type": "mitigates"},
@@ -212,6 +612,13 @@
       "name": "Application Software Security",
       "description": "Manage the security life cycle of in-house developed, hosted, or acquired software to prevent, detect, and remediate security weaknesses.",
       "priority": "P1",
+      "cloud_applicability": "highly_relevant",
+      "cloud_context": {
+        "aws_services": ["CodeGuru", "Inspector", "ECR Scanning"],
+        "gcp_services": ["Container Analysis", "Binary Authorization"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Enable container image scanning and code analysis in CI/CD pipelines."
+      },
       "technique_mappings": [
         {"technique_id": "T1190", "mapping_type": "mitigates"},
         {"technique_id": "T1059", "mapping_type": "mitigates"},
@@ -225,6 +632,13 @@
       "name": "Incident Response Management",
       "description": "Establish a programme to develop and maintain an incident response capability.",
       "priority": "P1",
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": ["Security Hub", "Detective", "Systems Manager Incident Manager"],
+        "gcp_services": ["Security Command Center", "Chronicle"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Use Security Hub or SCC to centralise incident detection and response."
+      },
       "technique_mappings": [
         {"technique_id": "T1078", "mapping_type": "mitigates"},
         {"technique_id": "T1562", "mapping_type": "mitigates"},
@@ -238,6 +652,13 @@
       "name": "Penetration Testing",
       "description": "Test the effectiveness and resiliency of enterprise assets through identifying and exploiting weaknesses in controls.",
       "priority": "P2",
+      "cloud_applicability": "moderately_relevant",
+      "cloud_context": {
+        "aws_services": ["Inspector"],
+        "gcp_services": ["Web Security Scanner"],
+        "shared_responsibility": "customer",
+        "detection_guidance": "Regular penetration testing complements automated scanning. Follow AWS/GCP penetration testing policies."
+      },
       "technique_mappings": [
         {"technique_id": "T1190", "mapping_type": "mitigates"},
         {"technique_id": "T1078", "mapping_type": "mitigates"},
