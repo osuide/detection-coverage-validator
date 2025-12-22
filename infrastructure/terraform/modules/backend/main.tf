@@ -122,6 +122,12 @@ variable "frontend_url" {
   default     = "http://localhost:3001"
 }
 
+variable "force_reload_compliance" {
+  type        = bool
+  description = "Force reload compliance framework data on startup (one-time migration)"
+  default     = false
+}
+
 # OAuth Provider Client IDs (for backend to know which providers are enabled)
 variable "google_client_id" {
   type        = string
@@ -503,7 +509,8 @@ resource "aws_ecs_task_definition" "backend" {
       { name = "STRIPE_PRICE_ID_ENTERPRISE", value = var.stripe_price_ids.enterprise },
       { name = "STRIPE_PRICE_ID_ADDITIONAL_ACCOUNT", value = var.stripe_price_ids.additional_account },
       { name = "CORS_ORIGINS", value = var.frontend_url != "" && var.frontend_url != "http://localhost:3001" ? var.frontend_url : "*" },
-      { name = "FRONTEND_URL", value = var.frontend_url }
+      { name = "FRONTEND_URL", value = var.frontend_url },
+      { name = "FORCE_RELOAD_COMPLIANCE", value = var.force_reload_compliance ? "true" : "false" }
       ],
       # Cognito OAuth configuration (only if Cognito is enabled)
       var.cognito_user_pool_id != "" ? [

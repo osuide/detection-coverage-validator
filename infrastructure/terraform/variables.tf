@@ -151,6 +151,16 @@ variable "waf_allowed_ips" {
 }
 
 # ============================================================================
+# Compliance Data Migration
+# ============================================================================
+
+variable "force_reload_compliance" {
+  description = "Force reload compliance framework data on backend startup. Set to true after updating JSON files, then set back to false."
+  type        = bool
+  default     = false
+}
+
+# ============================================================================
 # GuardDuty Configuration
 # ============================================================================
 

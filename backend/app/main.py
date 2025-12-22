@@ -344,13 +344,25 @@ def seed_admin_user():
 
 
 async def seed_compliance_data():
-    """Seed compliance framework data if not present."""
+    """Seed compliance framework data if not present.
+
+    Set FORCE_RELOAD_COMPLIANCE=true to clear and reload all compliance data.
+    This is useful when the JSON source files have been updated.
+    """
     from app.core.database import AsyncSessionLocal
     from app.data.compliance_mappings.loader import ComplianceMappingLoader
+
+    force_reload = os.environ.get("FORCE_RELOAD_COMPLIANCE", "").lower() == "true"
 
     try:
         async with AsyncSessionLocal() as db:
             loader = ComplianceMappingLoader(db)
+
+            if force_reload:
+                logger.info("force_reloading_compliance_data")
+                await loader.clear_all()
+                await db.commit()
+
             result = await loader.load_all()
             # Commit the loaded data
             await db.commit()
@@ -360,6 +372,7 @@ async def seed_compliance_data():
                     frameworks=result.get("frameworks_loaded"),
                     controls=result.get("total_controls"),
                     mappings=result.get("total_mappings"),
+                    force_reload=force_reload,
                 )
             else:
                 logger.debug("compliance_data_already_present")

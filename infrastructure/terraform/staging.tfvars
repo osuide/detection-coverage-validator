@@ -48,3 +48,10 @@ enable_cognito = true
 # Restrict staging access to specific IPs only (CIDR notation)
 # Set to [] to allow all traffic (authentication handles access control)
 waf_allowed_ips = []
+
+# ============================================================================
+# Compliance Data Migration
+# ============================================================================
+# Set to true to force reload compliance framework data on next deployment
+# IMPORTANT: Set back to false after the data has been reloaded
+force_reload_compliance = true

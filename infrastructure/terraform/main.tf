@@ -184,6 +184,9 @@ module "backend" {
 
   # WAF IP restriction
   allowed_ips = var.waf_allowed_ips
+
+  # Force reload compliance data (one-time migration flag)
+  force_reload_compliance = var.force_reload_compliance
 }
 
 # Frontend (S3 + CloudFront)
