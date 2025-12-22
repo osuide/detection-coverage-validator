@@ -9,7 +9,9 @@ from typing import AsyncGenerator, Generator
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from redis import asyncio as aioredis
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from fastapi_limiter import FastAPILimiter
 
 from app.main import app
 from app.core.database import Base, get_db
@@ -23,7 +25,7 @@ from app.models.user import (
 from app.services.auth_service import AuthService
 
 
-# Test settings - use DATABASE_URL from environment (set by CI), fallback to Docker hostname
+# Test settings - use environment variables from CI, fallback to Docker hostname
 TEST_DATABASE_URL = os.environ.get(
     "DATABASE_URL",
     os.environ.get(
@@ -32,6 +34,8 @@ TEST_DATABASE_URL = os.environ.get(
     ),
 )
 
+TEST_REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+
 
 @pytest.fixture(scope="session")
 def event_loop() -> Generator:
@@ -39,11 +43,6 @@ def event_loop() -> Generator:
     loop = asyncio.get_event_loop_policy().new_event_loop()
     yield loop
     loop.close()
-
-
-async def _noop_rate_limiter(*args, **kwargs):
-    """No-op rate limiter for tests."""
-    pass
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -145,18 +144,23 @@ async def auth_headers(
 
 @pytest_asyncio.fixture(scope="function")
 async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
-    """Create a test HTTP client (unauthenticated)."""
-    from app.api.routes import auth as auth_routes
+    """Create a test HTTP client (unauthenticated).
+
+    Initializes FastAPILimiter with Redis in the same event loop as the test
+    to avoid event loop conflicts with session-scoped fixtures.
+    """
+    # Initialize rate limiter with test Redis (same event loop as test)
+    redis = await aioredis.from_url(
+        TEST_REDIS_URL,
+        encoding="utf-8",
+        decode_responses=True,
+    )
+    await FastAPILimiter.init(redis)
 
     async def override_get_db():
         yield db_session
 
-    # Override database and rate limiter instances
     app.dependency_overrides[get_db] = override_get_db
-    app.dependency_overrides[auth_routes.rate_limit_login] = _noop_rate_limiter
-    app.dependency_overrides[auth_routes.rate_limit_signup] = _noop_rate_limiter
-    app.dependency_overrides[auth_routes.rate_limit_password_reset] = _noop_rate_limiter
-    app.dependency_overrides[auth_routes.rate_limit_mfa] = _noop_rate_limiter
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -164,13 +168,27 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
 
     app.dependency_overrides.clear()
 
+    # Cleanup rate limiter
+    await FastAPILimiter.close()
+    await redis.aclose()
+
 
 @pytest_asyncio.fixture(scope="function")
 async def authenticated_client(
     db_session: AsyncSession,
     auth_headers: dict[str, str],
 ) -> AsyncGenerator[AsyncClient, None]:
-    """Create a test HTTP client with authentication."""
+    """Create a test HTTP client with authentication.
+
+    Initializes FastAPILimiter with Redis in the same event loop as the test.
+    """
+    # Initialize rate limiter with test Redis (same event loop as test)
+    redis = await aioredis.from_url(
+        TEST_REDIS_URL,
+        encoding="utf-8",
+        decode_responses=True,
+    )
+    await FastAPILimiter.init(redis)
 
     async def override_get_db():
         yield db_session
@@ -186,3 +204,7 @@ async def authenticated_client(
         yield ac
 
     app.dependency_overrides.clear()
+
+    # Cleanup rate limiter
+    await FastAPILimiter.close()
+    await redis.aclose()
