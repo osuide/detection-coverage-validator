@@ -770,7 +770,7 @@
       "description": "CIS Safeguard 3.6: Encrypt Data on End-User Devices (IG1)",
       "priority": "P1",
       "is_enhancement": true,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "S3",
@@ -867,7 +867,7 @@
       "description": "CIS Safeguard 3.9: Encrypt Data on Removable Media (IG2)",
       "priority": "P2",
       "is_enhancement": true,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "S3",
@@ -1212,7 +1212,7 @@
       "description": "CIS Safeguard 4.3: Configure Automatic Session Locking on Enterprise Assets (IG1)",
       "priority": "P1",
       "is_enhancement": true,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Config",
@@ -1278,7 +1278,7 @@
       "description": "CIS Safeguard 4.5: Implement and Manage a Firewall on End-User Devices (IG1)",
       "priority": "P1",
       "is_enhancement": true,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Config",
@@ -1439,7 +1439,7 @@
       "description": "CIS Safeguard 4.10: Enforce Automatic Device Lockout on Portable End-User Devices (IG2)",
       "priority": "P2",
       "is_enhancement": true,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Config",
@@ -1468,7 +1468,7 @@
       "description": "CIS Safeguard 4.11: Enforce Remote Wipe Capability on Portable End-User Devices (IG2)",
       "priority": "P2",
       "is_enhancement": true,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Config",
@@ -1497,7 +1497,7 @@
       "description": "CIS Safeguard 4.12: Separate Enterprise Workspaces on Mobile End-User Devices (IG3)",
       "priority": "P3",
       "is_enhancement": true,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Config",
@@ -3167,7 +3167,7 @@
       "description": "CIS Safeguard 10.1: Deploy and Maintain Anti-Malware Software (IG1)",
       "priority": "P1",
       "is_enhancement": true,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "GuardDuty",
@@ -3201,7 +3201,7 @@
       "description": "CIS Safeguard 10.2: Configure Automatic Anti-Malware Signature Updates (IG1)",
       "priority": "P1",
       "is_enhancement": true,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "GuardDuty",
@@ -3231,7 +3231,7 @@
       "description": "CIS Safeguard 10.3: Disable Autorun and Autoplay for Removable Media (IG1)",
       "priority": "P1",
       "is_enhancement": true,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "GuardDuty",
@@ -3261,7 +3261,7 @@
       "description": "CIS Safeguard 10.4: Configure Automatic Anti-Malware Scanning of Removable Media (IG2)",
       "priority": "P2",
       "is_enhancement": true,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "GuardDuty",
@@ -3291,7 +3291,7 @@
       "description": "CIS Safeguard 10.5: Enable Anti-Exploitation Features (IG2)",
       "priority": "P2",
       "is_enhancement": true,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "GuardDuty",
@@ -3351,7 +3351,7 @@
       "description": "CIS Safeguard 10.7: Use Behaviour-Based Anti-Malware Software (IG2)",
       "priority": "P2",
       "is_enhancement": true,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "GuardDuty",
@@ -3757,7 +3757,7 @@
       "description": "CIS Safeguard 12.4: Establish and Maintain Architecture Diagram(s) (IG2)",
       "priority": "P2",
       "is_enhancement": true,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "VPC",

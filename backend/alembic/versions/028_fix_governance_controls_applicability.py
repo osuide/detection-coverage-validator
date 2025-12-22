@@ -1,12 +1,15 @@
-"""Fix cloud applicability for governance/process controls.
+"""Fix cloud applicability for governance/process/endpoint controls.
 
 Revision ID: 028
 Revises: 027
 Create Date: 2025-12-22
 
-Mark 43 CIS Controls and 19 NIST 800-53 controls as 'informational'
-that cannot be assessed via cloud log scanning (governance, process,
-documentation, training, assessment controls).
+Mark 57 CIS Controls and 19 NIST 800-53 controls as 'informational'
+that cannot be assessed via cloud log scanning:
+- Governance/process/documentation controls
+- Training and assessment controls
+- Endpoint/workstation controls (require MDM, not cloud logs)
+- Anti-malware controls (require endpoint agents)
 """
 
 from alembic import op
@@ -67,6 +70,23 @@ CIS_INFORMATIONAL_CONTROLS = [
     "7.2",
     "8.1",
     "8.11",
+    # End-user device controls (require MDM/endpoint tools, not cloud logs)
+    "3.6",  # Encrypt Data on End-User Devices
+    "3.9",  # Encrypt Data on Removable Media
+    "4.3",  # Configure Automatic Session Locking on Enterprise Assets
+    "4.5",  # Implement and Manage a Firewall on End-User Devices
+    "4.10",  # Enforce Automatic Device Lockout on Portable End-User Devices
+    "4.11",  # Enforce Remote Wipe Capability on Portable End-User Devices
+    "4.12",  # Separate Enterprise Workspaces on Mobile End-User Devices
+    # Anti-malware on endpoints
+    "10.1",  # Deploy and Maintain Anti-Malware Software
+    "10.2",  # Configure Automatic Anti-Malware Signature Updates
+    "10.3",  # Disable Autorun and Autoplay for Removable Media
+    "10.4",  # Configure Automatic Anti-Malware Scanning of Removable Media
+    "10.5",  # Enable Anti-Exploitation Features
+    "10.7",  # Use Behaviour-Based Anti-Malware Software
+    # Documentation
+    "12.4",  # Establish and Maintain Architecture Diagram(s)
 ]
 
 # NIST 800-53 Controls that should be 'informational'
