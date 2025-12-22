@@ -175,7 +175,10 @@ export default function Coverage() {
         <div className="card lg:col-span-3">
           {viewMode === 'heatmap' ? (
             <>
-              <h3 className="text-lg font-semibold text-gray-900 mb-6">MITRE ATT&CK Technique Heatmap</h3>
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900">MITRE ATT&CK Cloud Technique Heatmap</h3>
+                <p className="text-sm text-gray-500 mt-1">Coverage across 168 cloud-applicable techniques (IaaS, AWS, GCP)</p>
+              </div>
               {techniquesLoading ? (
                 <div className="flex items-center justify-center h-64">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
