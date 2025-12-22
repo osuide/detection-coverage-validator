@@ -13,7 +13,7 @@ from app.models.user import UserRole
 from app.models.gap import GapStatus, GapPriority, CoverageGap
 from sqlalchemy import select, and_
 
-router = APIRouter(prefix="/gaps", tags=["gaps"])
+router = APIRouter(tags=["gaps"])
 
 
 class AcknowledgeGapRequest(BaseModel):
