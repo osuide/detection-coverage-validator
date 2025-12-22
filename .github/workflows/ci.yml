@@ -66,6 +66,10 @@ jobs:
         env:
           DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/dcv_test
           REDIS_URL: redis://localhost:6379/0
+          SECRET_KEY: test-secret-key-for-ci-minimum-32-characters-long
+          ENVIRONMENT: test
+          STRIPE_SECRET_KEY: sk_test_fake_key_for_ci
+          STRIPE_WEBHOOK_SECRET: whsec_test_fake_webhook_secret
         run: |
           pytest tests/ -v --cov=app --cov-report=xml
 
