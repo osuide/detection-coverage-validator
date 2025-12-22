@@ -248,7 +248,20 @@ For controls marked as `informational` or `provider_responsibility`:
 
 ---
 
-## Upgrade Plan: Phase 3 - Enhanced Analytics [IN PROGRESS]
+## Upgrade Plan: Phase 3 - Enhanced Analytics [COMPLETED]
+
+**Commit**: `219db9b` - Phase 3: Add enhanced cloud analytics to compliance
+
+**Implemented**:
+- Added `CloudCoverageMetrics` dataclass for cloud-specific analytics
+- Calculates cloud-detectable coverage separately from overall coverage
+- Tracks customer responsibility vs provider managed control breakdown
+- Prioritises cloud-centric gaps (highly_relevant first, then moderately_relevant)
+- Added `cloud_metrics` JSONB column to compliance snapshots
+- Created migration `027_add_cloud_coverage_metrics.py`
+- FrameworkCard shows both overall and cloud detection coverage
+- Coverage summary shows Cloud Detection Analytics section
+- API returns cloud metrics in summary and detailed coverage responses
 
 ### 3.1 Cloud-Specific Coverage Score
 
