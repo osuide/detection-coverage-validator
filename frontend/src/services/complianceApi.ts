@@ -143,6 +143,39 @@ export interface ComplianceCoverage {
   created_at: string
 }
 
+// Control Coverage Detail types
+export interface DetectionSummary {
+  id: string
+  name: string
+  source: string
+  confidence: number
+}
+
+export interface TechniqueCoverageDetail {
+  technique_id: string
+  technique_name: string
+  status: 'covered' | 'partial' | 'uncovered'
+  confidence: number | null
+  detections: DetectionSummary[]
+  has_template: boolean
+}
+
+export interface ControlCoverageDetail {
+  control_id: string
+  control_name: string
+  control_family: string
+  description: string | null
+  priority: string | null
+  status: 'covered' | 'partial' | 'uncovered' | 'not_assessable'
+  coverage_percent: number
+  coverage_rationale: string
+  mapped_techniques: number
+  covered_techniques: number
+  cloud_applicability: CloudApplicability | null
+  cloud_context: CloudContext | null
+  techniques: TechniqueCoverageDetail[]
+}
+
 export const complianceApi = {
   /**
    * Get all active compliance frameworks.
@@ -188,5 +221,26 @@ export const complianceApi = {
   getCoverage: (accountId: string, frameworkId: string) =>
     api
       .get<ComplianceCoverage>(`/compliance/coverage/${accountId}/${frameworkId}`)
+      .then((r) => r.data),
+
+  /**
+   * Get detailed coverage breakdown for a single control.
+   * Shows which techniques are covered vs. uncovered and what detections provide coverage.
+   */
+  getControlCoverageDetail: (
+    controlId: string,
+    accountId: string,
+    frameworkId: string
+  ) =>
+    api
+      .get<ControlCoverageDetail>(
+        `/compliance/controls/${controlId}/coverage`,
+        {
+          params: {
+            cloud_account_id: accountId,
+            framework_id: frameworkId,
+          },
+        }
+      )
       .then((r) => r.data),
 }

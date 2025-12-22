@@ -352,12 +352,12 @@ export function ComplianceCoverageContent({ accountId }: ComplianceCoverageConte
             'Not Assessable'
           }
           description={
-            activeModal === 'covered' ? 'Controls with 80% or more technique coverage. These controls have adequate detection mechanisms in place.' :
-            activeModal === 'partial' ? 'Controls with 40-79% technique coverage. These controls have some detection mechanisms but gaps remain.' :
-            activeModal === 'uncovered' ? 'Controls with less than 40% technique coverage. These controls need attention to improve detection capabilities.' :
-            activeModal === 'total' ? 'All controls in this compliance framework with their current coverage status.' :
-            activeModal === 'cloud_detectable' ? 'Controls that can be assessed via cloud log scanning (AWS CloudTrail, GCP Cloud Logging, etc.).' :
-            activeModal === 'customer' ? 'Controls that are the customer\'s responsibility to implement and monitor.' :
+            activeModal === 'covered' ? 'Controls with 80% or more technique coverage. These controls have adequate detection mechanisms in place. Click a control to see which techniques and detections provide coverage.' :
+            activeModal === 'partial' ? 'Controls with 40-79% technique coverage. These controls have some detection mechanisms but gaps remain. Click a control to see the technique breakdown.' :
+            activeModal === 'uncovered' ? 'Controls with less than 40% technique coverage. These controls need attention to improve detection capabilities. Click a control to see which techniques need detections.' :
+            activeModal === 'total' ? 'All controls in this compliance framework with their current coverage status. Click a control to see its technique breakdown.' :
+            activeModal === 'cloud_detectable' ? 'Controls that can be assessed via cloud log scanning (AWS CloudTrail, GCP Cloud Logging, etc.). Click a control to see details.' :
+            activeModal === 'customer' ? 'Controls that are the customer\'s responsibility to implement and monitor. Click a control to see its technique breakdown.' :
             activeModal === 'provider' ? 'Controls managed by the cloud provider (AWS/GCP). These are typically infrastructure-level controls.' :
             'Controls that cannot be assessed via cloud scanning (e.g., security training, physical security, governance).'
           }
@@ -383,6 +383,8 @@ export function ComplianceCoverageContent({ accountId }: ComplianceCoverageConte
             activeModal === 'not_assessable' ? 'not_assessable' :
             'cloud'
           }
+          accountId={accountId}
+          frameworkId={selectedFramework}
         />
       )}
     </div>

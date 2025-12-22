@@ -105,6 +105,46 @@ class MissingTechniqueDetail(BaseModel):
     tactic_ids: list[str] = []  # MITRE tactic IDs (e.g., ["TA0001", "TA0003"])
 
 
+class DetectionSummary(BaseModel):
+    """Summary of a detection providing coverage."""
+
+    id: UUID
+    name: str
+    source: str  # e.g., "aws_cloudwatch", "aws_config"
+    confidence: float
+
+
+class TechniqueCoverageDetail(BaseModel):
+    """Detailed coverage information for a single technique within a control."""
+
+    technique_id: str
+    technique_name: str
+    status: str  # "covered", "partial", "uncovered"
+    confidence: Optional[float] = None  # Max confidence if covered
+    detections: list[DetectionSummary] = []  # Detections providing coverage
+    has_template: bool = False  # Whether a remediation template is available
+
+
+class ControlCoverageDetailResponse(BaseModel):
+    """Detailed coverage breakdown for a single compliance control."""
+
+    control_id: str
+    control_name: str
+    control_family: str
+    description: Optional[str] = None
+    priority: Optional[str] = None
+    status: str  # "covered", "partial", "uncovered", "not_assessable"
+    coverage_percent: float
+    coverage_rationale: (
+        str  # Human-readable explanation, e.g., "2 of 4 techniques covered"
+    )
+    mapped_techniques: int
+    covered_techniques: int
+    cloud_applicability: Optional[str] = None
+    cloud_context: Optional[CloudContextResponse] = None
+    techniques: list[TechniqueCoverageDetail] = []
+
+
 class ControlStatusItem(BaseModel):
     """Compact control info for status-based grouping."""
 

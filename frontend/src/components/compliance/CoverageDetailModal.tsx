@@ -3,10 +3,24 @@
  *
  * Displays detailed control information when clicking on coverage stat cards.
  * Shows controls grouped by status or cloud category with coverage details.
+ * Controls are expandable to show technique-level coverage breakdown.
  */
 
-import { X, CheckCircle, AlertTriangle, XCircle, MinusCircle, Shield } from 'lucide-react'
-import { ControlStatusItem } from '../../services/complianceApi'
+import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import {
+  X,
+  CheckCircle,
+  AlertTriangle,
+  XCircle,
+  MinusCircle,
+  Shield,
+  ChevronDown,
+  ChevronRight,
+  Loader2,
+} from 'lucide-react'
+import { ControlStatusItem, complianceApi } from '../../services/complianceApi'
+import { TechniqueBreakdown } from './TechniqueBreakdown'
 
 interface CoverageDetailModalProps {
   isOpen: boolean
@@ -15,6 +29,8 @@ interface CoverageDetailModalProps {
   description: string
   controls: ControlStatusItem[]
   variant: 'covered' | 'partial' | 'uncovered' | 'not_assessable' | 'cloud'
+  accountId: string
+  frameworkId: string
 }
 
 const variantConfig = {
@@ -71,6 +87,147 @@ function getPriorityBadge(priority: string | null) {
   )
 }
 
+// Expandable control row component
+function ExpandableControlRow({
+  control,
+  config,
+  accountId,
+  frameworkId,
+}: {
+  control: ControlStatusItem
+  config: typeof variantConfig.covered
+  accountId: string
+  frameworkId: string
+}) {
+  const [isExpanded, setIsExpanded] = useState(false)
+
+  // Fetch control coverage detail when expanded
+  const { data: coverageDetail, isLoading } = useQuery({
+    queryKey: ['controlCoverageDetail', control.control_id, accountId, frameworkId],
+    queryFn: () =>
+      complianceApi.getControlCoverageDetail(control.control_id, accountId, frameworkId),
+    enabled: isExpanded && control.mapped_techniques > 0,
+    staleTime: 30000, // Cache for 30 seconds
+  })
+
+  const canExpand = control.mapped_techniques > 0
+
+  return (
+    <div className="bg-gray-700/30 rounded-lg overflow-hidden">
+      {/* Control header - clickable */}
+      <div
+        className={`p-4 ${canExpand ? 'cursor-pointer hover:bg-gray-700/50' : ''} transition-colors`}
+        onClick={() => canExpand && setIsExpanded(!isExpanded)}
+      >
+        <div className="flex items-start justify-between">
+          <div className="flex items-start gap-2">
+            {canExpand && (
+              <div className="mt-0.5">
+                {isExpanded ? (
+                  <ChevronDown className="w-4 h-4 text-gray-400" />
+                ) : (
+                  <ChevronRight className="w-4 h-4 text-gray-400" />
+                )}
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="font-mono text-sm text-blue-400">
+                  {control.control_id}
+                </span>
+                {getPriorityBadge(control.priority)}
+                {canExpand && (
+                  <span className="text-xs text-gray-500">
+                    Click to see technique breakdown
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-white" title={control.control_name}>
+                {control.control_name}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">{control.control_family}</p>
+            </div>
+          </div>
+          <div className="text-right ml-4">
+            <div className="text-sm font-medium text-white">
+              {control.covered_techniques}/{control.mapped_techniques}
+            </div>
+            <div className="text-xs text-gray-400">techniques</div>
+          </div>
+        </div>
+
+        {/* Coverage bar */}
+        {control.mapped_techniques > 0 && (
+          <div className="mt-3 ml-6">
+            <div className="flex items-center justify-between text-xs mb-1">
+              <span className="text-gray-400">Coverage</span>
+              <span
+                className={
+                  control.coverage_percent >= 80
+                    ? 'text-green-400'
+                    : control.coverage_percent >= 40
+                    ? 'text-yellow-400'
+                    : 'text-red-400'
+                }
+              >
+                {control.coverage_percent.toFixed(0)}%
+              </span>
+            </div>
+            <div className="w-full h-1.5 bg-gray-600 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full ${config.barColor}`}
+                style={{ width: `${Math.min(control.coverage_percent, 100)}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Responsibility badge */}
+        {control.shared_responsibility && (
+          <div className="mt-2 ml-6 flex items-center gap-2">
+            <span
+              className={`text-xs px-2 py-0.5 rounded ${
+                control.shared_responsibility === 'customer'
+                  ? 'bg-blue-900/50 text-blue-300'
+                  : control.shared_responsibility === 'provider'
+                  ? 'bg-purple-900/50 text-purple-300'
+                  : 'bg-gray-600 text-gray-300'
+              }`}
+            >
+              {control.shared_responsibility === 'customer'
+                ? 'Customer'
+                : control.shared_responsibility === 'provider'
+                ? 'Provider'
+                : 'Shared'}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Expanded technique breakdown */}
+      {isExpanded && (
+        <div className="border-t border-gray-700 p-4">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="w-5 h-5 text-blue-400 animate-spin" />
+              <span className="ml-2 text-sm text-gray-400">Loading technique details...</span>
+            </div>
+          ) : coverageDetail ? (
+            <TechniqueBreakdown
+              techniques={coverageDetail.techniques}
+              rationale={coverageDetail.coverage_rationale}
+            />
+          ) : (
+            <div className="text-sm text-gray-400 text-center py-4">
+              Unable to load technique details
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function CoverageDetailModal({
   isOpen,
   onClose,
@@ -78,6 +235,8 @@ export function CoverageDetailModal({
   description,
   controls,
   variant,
+  accountId,
+  frameworkId,
 }: CoverageDetailModalProps) {
   if (!isOpen) return null
 
@@ -94,9 +253,11 @@ export function CoverageDetailModal({
 
       {/* Modal */}
       <div className="relative min-h-screen flex items-center justify-center p-4">
-        <div className="relative bg-gray-800 rounded-xl shadow-xl max-w-2xl w-full max-h-[80vh] flex flex-col">
+        <div className="relative bg-gray-800 rounded-xl shadow-xl max-w-3xl w-full max-h-[80vh] flex flex-col">
           {/* Header */}
-          <div className={`px-6 py-4 border-b ${config.borderColor} flex items-center justify-between`}>
+          <div
+            className={`px-6 py-4 border-b ${config.borderColor} flex items-center justify-between`}
+          >
             <div className="flex items-center gap-3">
               <div className={`p-2 rounded-lg ${config.bgColor}`}>
                 <Icon className={`w-5 h-5 ${config.iconColor}`} />
@@ -128,65 +289,13 @@ export function CoverageDetailModal({
             ) : (
               <div className="space-y-3">
                 {controls.map((control) => (
-                  <div
+                  <ExpandableControlRow
                     key={control.control_id}
-                    className="bg-gray-700/30 rounded-lg p-4 hover:bg-gray-700/50 transition-colors"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-mono text-sm text-blue-400">
-                            {control.control_id}
-                          </span>
-                          {getPriorityBadge(control.priority)}
-                        </div>
-                        <p className="text-sm text-white truncate" title={control.control_name}>
-                          {control.control_name}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1">{control.control_family}</p>
-                      </div>
-                      <div className="text-right ml-4">
-                        <div className="text-sm font-medium text-white">
-                          {control.covered_techniques}/{control.mapped_techniques}
-                        </div>
-                        <div className="text-xs text-gray-400">techniques</div>
-                      </div>
-                    </div>
-
-                    {/* Coverage bar */}
-                    {control.mapped_techniques > 0 && (
-                      <div className="mt-3">
-                        <div className="flex items-center justify-between text-xs mb-1">
-                          <span className="text-gray-400">Coverage</span>
-                          <span className={control.coverage_percent >= 80 ? 'text-green-400' : control.coverage_percent >= 40 ? 'text-yellow-400' : 'text-red-400'}>
-                            {control.coverage_percent.toFixed(0)}%
-                          </span>
-                        </div>
-                        <div className="w-full h-1.5 bg-gray-600 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full ${config.barColor}`}
-                            style={{ width: `${Math.min(control.coverage_percent, 100)}%` }}
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Responsibility badge */}
-                    {control.shared_responsibility && (
-                      <div className="mt-2 flex items-center gap-2">
-                        <span className={`text-xs px-2 py-0.5 rounded ${
-                          control.shared_responsibility === 'customer'
-                            ? 'bg-blue-900/50 text-blue-300'
-                            : control.shared_responsibility === 'provider'
-                            ? 'bg-purple-900/50 text-purple-300'
-                            : 'bg-gray-600 text-gray-300'
-                        }`}>
-                          {control.shared_responsibility === 'customer' ? 'Customer' :
-                           control.shared_responsibility === 'provider' ? 'Provider' : 'Shared'}
-                        </span>
-                      </div>
-                    )}
-                  </div>
+                    control={control}
+                    config={config}
+                    accountId={accountId}
+                    frameworkId={frameworkId}
+                  />
                 ))}
               </div>
             )}

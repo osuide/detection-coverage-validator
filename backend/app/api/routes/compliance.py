@@ -29,6 +29,7 @@ from app.schemas.compliance import (
     ControlStatusItem,
     ControlsByStatus,
     ControlsByCloudCategory,
+    ControlCoverageDetailResponse,
 )
 from app.services.compliance_service import ComplianceService
 
@@ -200,6 +201,49 @@ async def get_control_techniques(
         )
         for m in mappings
     ]
+
+
+@router.get(
+    "/controls/{control_id}/coverage",
+    response_model=ControlCoverageDetailResponse,
+)
+async def get_control_coverage_detail(
+    control_id: str,
+    cloud_account_id: UUID,
+    framework_id: str,
+    db: AsyncSession = Depends(get_db),
+    auth: AuthContext = Depends(
+        require_role(UserRole.MEMBER, UserRole.VIEWER, UserRole.ADMIN, UserRole.OWNER)
+    ),
+) -> ControlCoverageDetailResponse:
+    """Get detailed coverage breakdown for a compliance control.
+
+    Shows which MITRE techniques are covered vs. uncovered and what detections
+    provide the coverage. This helps users understand WHY a control is marked
+    as covered, partial, or uncovered.
+    """
+    # Verify access to account
+    account = await db.get(CloudAccount, cloud_account_id)
+    if not account or account.organization_id != auth.organization_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Account not found",
+        )
+
+    service = ComplianceService(db)
+    result = await service.get_control_coverage_detail(
+        control_id=control_id,
+        framework_id=framework_id,
+        cloud_account_id=cloud_account_id,
+    )
+
+    if not result:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Control '{control_id}' not found in framework '{framework_id}'",
+        )
+
+    return ControlCoverageDetailResponse(**result)
 
 
 @router.get(

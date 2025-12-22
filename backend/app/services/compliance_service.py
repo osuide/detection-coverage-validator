@@ -401,6 +401,200 @@ class ComplianceService:
 
         return result.scalar_one_or_none()
 
+    async def get_control_coverage_detail(
+        self,
+        control_id: str,
+        framework_id: str,
+        cloud_account_id: UUID,
+    ) -> Optional[dict]:
+        """Get detailed coverage breakdown for a single control.
+
+        Shows which techniques are covered vs. uncovered and what detections
+        provide the coverage.
+
+        Args:
+            control_id: The control ID (e.g., "1", "AC-2")
+            framework_id: The framework identifier (e.g., "cis-controls-v8")
+            cloud_account_id: The cloud account UUID
+
+        Returns:
+            Detailed coverage breakdown or None if control not found
+        """
+        from app.models.mapping import DetectionMapping
+        from app.models.detection import Detection, DetectionStatus
+        from app.data.remediation_templates.template_loader import get_template
+        from app.analyzers.compliance_calculator import (
+            COVERED_THRESHOLD,
+            PARTIAL_THRESHOLD,
+        )
+
+        # Get the framework
+        framework = await self.get_framework(framework_id)
+        if not framework:
+            return None
+
+        # Get the control with technique mappings
+        result = await self.db.execute(
+            select(ComplianceControl)
+            .where(
+                ComplianceControl.control_id == control_id,
+                ComplianceControl.framework_id == framework.id,
+            )
+            .options(
+                selectinload(ComplianceControl.technique_mappings).selectinload(
+                    ControlTechniqueMapping.technique
+                )
+            )
+        )
+        control = result.scalar_one_or_none()
+        if not control:
+            return None
+
+        # Get all detection mappings for this account
+        mappings_result = await self.db.execute(
+            select(
+                DetectionMapping.technique_id,
+                DetectionMapping.confidence,
+                Detection.id.label("detection_id"),
+                Detection.name.label("detection_name"),
+                Detection.source.label("detection_source"),
+            )
+            .join(Detection, Detection.id == DetectionMapping.detection_id)
+            .where(
+                Detection.cloud_account_id == cloud_account_id,
+                Detection.status == DetectionStatus.ACTIVE,
+            )
+        )
+        detection_rows = mappings_result.fetchall()
+
+        # Build detection lookup: technique_uuid -> list of (detection_info, confidence)
+        detection_by_technique: dict[UUID, list[dict]] = {}
+        for row in detection_rows:
+            tech_uuid = row[0]
+            if tech_uuid not in detection_by_technique:
+                detection_by_technique[tech_uuid] = []
+            detection_by_technique[tech_uuid].append(
+                {
+                    "id": row[2],
+                    "name": row[3],
+                    "source": row[4],
+                    "confidence": row[1],
+                }
+            )
+
+        # Build technique details
+        techniques_detail = []
+        covered_count = 0
+
+        for mapping in control.technique_mappings:
+            technique = mapping.technique
+            if not technique:
+                continue
+
+            # Get detections for this technique
+            detections = detection_by_technique.get(technique.id, [])
+
+            # Calculate max confidence
+            max_confidence = max((d["confidence"] for d in detections), default=0)
+
+            # Determine status
+            if max_confidence >= COVERED_THRESHOLD:
+                status = "covered"
+                covered_count += 1
+            elif max_confidence >= PARTIAL_THRESHOLD:
+                status = "partial"
+            else:
+                status = "uncovered"
+
+            # Check for remediation template
+            template = get_template(technique.technique_id)
+
+            techniques_detail.append(
+                {
+                    "technique_id": technique.technique_id,
+                    "technique_name": technique.name,
+                    "status": status,
+                    "confidence": max_confidence if detections else None,
+                    "detections": [
+                        {
+                            "id": d["id"],
+                            "name": d["name"],
+                            "source": d["source"],
+                            "confidence": d["confidence"],
+                        }
+                        for d in sorted(
+                            detections, key=lambda x: x["confidence"], reverse=True
+                        )
+                    ],
+                    "has_template": template is not None,
+                }
+            )
+
+        # Sort by status (covered first, then partial, then uncovered)
+        status_order = {"covered": 0, "partial": 1, "uncovered": 2}
+        techniques_detail.sort(key=lambda t: status_order.get(t["status"], 3))
+
+        # Calculate overall coverage
+        total_techniques = len(control.technique_mappings)
+        coverage_pct = (
+            (covered_count / total_techniques * 100) if total_techniques > 0 else 0
+        )
+
+        # Determine overall status
+        if total_techniques == 0:
+            overall_status = "not_assessable"
+        elif coverage_pct >= COVERED_THRESHOLD * 100:
+            overall_status = "covered"
+        elif coverage_pct >= PARTIAL_THRESHOLD * 100:
+            overall_status = "partial"
+        else:
+            overall_status = "uncovered"
+
+        # Build human-readable rationale
+        if total_techniques == 0:
+            rationale = "No MITRE techniques mapped to this control"
+        elif covered_count == total_techniques:
+            rationale = (
+                f"All {total_techniques} mapped techniques have active detections"
+            )
+        elif covered_count == 0:
+            rationale = (
+                f"None of the {total_techniques} mapped techniques have detections"
+            )
+        else:
+            rationale = (
+                f"{covered_count} of {total_techniques} mapped techniques "
+                f"have active detections"
+            )
+
+        # Build cloud context
+        cloud_context = None
+        if control.cloud_context:
+            cloud_context = {
+                "aws_services": control.cloud_context.get("aws_services", []),
+                "gcp_services": control.cloud_context.get("gcp_services", []),
+                "shared_responsibility": control.cloud_context.get(
+                    "shared_responsibility", "customer"
+                ),
+                "detection_guidance": control.cloud_context.get("detection_guidance"),
+            }
+
+        return {
+            "control_id": control.control_id,
+            "control_name": control.name,
+            "control_family": control.control_family,
+            "description": control.description,
+            "priority": control.priority,
+            "status": overall_status,
+            "coverage_percent": round(coverage_pct, 1),
+            "coverage_rationale": rationale,
+            "mapped_techniques": total_techniques,
+            "covered_techniques": covered_count,
+            "cloud_applicability": control.cloud_applicability,
+            "cloud_context": cloud_context,
+            "techniques": techniques_detail,
+        }
+
     async def enrich_gap_techniques(self, technique_ids: list[str]) -> list[dict]:
         """Enrich technique IDs with names and template availability.
 
