@@ -1150,13 +1150,40 @@ const ProtectedRoute: React.FC<{
 };
 ```
 
+### Critical: Cross-Origin Cookie Authentication
+
+**IMPORTANT**: When frontend and API are on different subdomains (e.g., `staging.a13e.com` and `api.staging.a13e.com`), ALL axios instances that handle authentication MUST include `withCredentials: true`.
+
+Without this flag, the browser will:
+1. NOT send cookies with requests
+2. NOT accept `Set-Cookie` headers from responses
+
+**Symptom**: Users appear logged in after OAuth, but are logged out on page refresh (cookies were never stored).
+
+This applies to ALL auth-related API services:
+- `cognitoApi.ts` (Google SSO)
+- `githubApi.ts` (GitHub SSO)
+- `authApi.ts` (session refresh)
+- Any other OAuth provider integrations
+
+### Auth Initialisation Race Condition
+
+**IMPORTANT**: Don't render protected pages until auth state is fully initialised.
+
+When a page loads, the `AuthContext` needs to restore the session from cookies via `/refresh-session`. If protected pages render before this completes, they'll make API calls without valid tokens.
+
+**Solution**: Show a loading spinner in `AuthContext` while `isInitialised === false`, instead of rendering `{children}`.
+
+**Symptom**: 403 errors on page load, especially on pages that make immediate API calls.
+
 ### Backend Integration Points
 
 ```typescript
 // API client configuration
+// CRITICAL: withCredentials is required for cross-origin cookie auth
 const api = axios.create({
   baseURL: process.env.REACT_APP_API_URL,
-  withCredentials: true, // Send cookies
+  withCredentials: true, // Required for cross-origin Set-Cookie headers
 });
 
 // Interceptor for token refresh

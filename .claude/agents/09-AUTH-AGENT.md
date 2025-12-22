@@ -936,6 +936,87 @@ Flag these issues back to the orchestrator:
 
 ---
 
+## Implementation Notes (Lessons Learned)
+
+### Frontend Cross-Origin Cookie Authentication
+
+**CRITICAL: All axios instances that handle authentication must include `withCredentials: true`**
+
+When the frontend (e.g., `staging.a13e.com`) makes API calls to a different subdomain (e.g., `api.staging.a13e.com`), the browser will NOT:
+1. Send cookies with requests
+2. Accept `Set-Cookie` headers from responses
+
+...unless `withCredentials: true` is set on the axios instance.
+
+```typescript
+// WRONG - Cookies will not be stored after OAuth login
+const api = axios.create({
+  baseURL: `${API_BASE_URL}/api/v1/auth/cognito`,
+  headers: { 'Content-Type': 'application/json' },
+})
+
+// CORRECT - Enables cross-origin cookie handling
+const api = axios.create({
+  baseURL: `${API_BASE_URL}/api/v1/auth/cognito`,
+  headers: { 'Content-Type': 'application/json' },
+  withCredentials: true, // Critical for cross-origin cookie auth
+})
+```
+
+**Symptom**: Users appear logged in after OAuth, but are logged out on page refresh (cookies were never stored).
+
+### Auth Initialization Race Condition
+
+**CRITICAL: Don't render protected pages until auth state is initialised**
+
+When a page loads, the auth context needs to restore the session from cookies. If protected pages render before this completes, they'll make API calls without valid tokens.
+
+```tsx
+// WRONG - Renders children while auth is still loading
+if (!isInitialised) {
+  return (
+    <AuthContext.Provider value={{...}}>
+      {children}  {/* Pages mount and make API calls! */}
+    </AuthContext.Provider>
+  )
+}
+
+// CORRECT - Show loading until auth is ready
+if (!isInitialised) {
+  return (
+    <AuthContext.Provider value={{...}}>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      </div>
+    </AuthContext.Provider>
+  )
+}
+```
+
+**Symptom**: 403 errors on page load, especially on pages like Gaps or Cloud Organisations.
+
+### CORS Configuration for CSRF
+
+The backend CORS configuration must include `X-CSRF-Token` in `allow_headers`:
+
+```python
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[...],
+    allow_credentials=True,
+    allow_headers=[
+        "Content-Type",
+        "Authorization",
+        "X-CSRF-Token",  # Required for cookie-based auth refresh
+        ...
+    ],
+)
+```
+
+**Symptom**: `/refresh-session` fails with 403, users logged out on refresh.
+
+---
+
 ## Next Agent
 
 Once auth design is validated, implementation should:
