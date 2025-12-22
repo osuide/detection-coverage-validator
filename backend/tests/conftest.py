@@ -46,13 +46,15 @@ def event_loop() -> Generator:
     loop.close()
 
 
-@pytest_asyncio.fixture(scope="session", autouse=True)
-async def init_rate_limiter():
-    """Initialize FastAPILimiter for tests.
+_rate_limiter_initialized = False
 
-    This is required because rate-limited endpoints will fail without it.
-    Uses the Redis instance from CI or local Docker.
-    """
+
+async def _init_rate_limiter_once():
+    """Initialize FastAPILimiter once for all tests."""
+    global _rate_limiter_initialized
+    if _rate_limiter_initialized:
+        return
+
     try:
         redis = await aioredis.from_url(
             TEST_REDIS_URL,
@@ -60,13 +62,10 @@ async def init_rate_limiter():
             decode_responses=True,
         )
         await FastAPILimiter.init(redis)
-        yield
-        await FastAPILimiter.close()
-        await redis.close()
+        _rate_limiter_initialized = True
     except Exception:
         # If Redis is not available, skip rate limiter init
-        # Tests will fail if they hit rate-limited endpoints
-        yield
+        pass
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -169,6 +168,8 @@ async def auth_headers(
 @pytest_asyncio.fixture(scope="function")
 async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     """Create a test HTTP client (unauthenticated)."""
+    # Initialize rate limiter if not already done
+    await _init_rate_limiter_once()
 
     async def override_get_db():
         yield db_session
