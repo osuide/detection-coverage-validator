@@ -81,6 +81,13 @@ export interface FamilyCoverageItem {
   shared_responsibility?: 'customer' | 'shared' | 'provider'
 }
 
+export interface MissingTechniqueDetail {
+  technique_id: string
+  technique_name: string
+  has_template: boolean
+  tactic_ids: string[]
+}
+
 export interface ControlGapItem {
   control_id: string
   control_name: string
@@ -88,6 +95,7 @@ export interface ControlGapItem {
   priority: string | null
   coverage_percent: number
   missing_techniques: string[]
+  missing_technique_details: MissingTechniqueDetail[]
   cloud_applicability?: CloudApplicability
   cloud_context?: CloudContext
 }

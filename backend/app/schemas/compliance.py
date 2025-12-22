@@ -99,6 +99,15 @@ class FamilyCoverageItem(BaseModel):
     shared_responsibility: Optional[str] = None  # "customer", "shared", "provider"
 
 
+class MissingTechniqueDetail(BaseModel):
+    """Enriched details for a missing technique with remediation info."""
+
+    technique_id: str
+    technique_name: str
+    has_template: bool = False  # Whether a remediation template is available
+    tactic_ids: list[str] = []  # MITRE tactic IDs (e.g., ["TA0001", "TA0003"])
+
+
 class ControlGapItem(BaseModel):
     """A control that needs attention (gap)."""
 
@@ -107,7 +116,10 @@ class ControlGapItem(BaseModel):
     control_family: str
     priority: Optional[str] = None
     coverage_percent: float
-    missing_techniques: list[str] = []
+    missing_techniques: list[str] = []  # Technique IDs for backwards compatibility
+    missing_technique_details: list[MissingTechniqueDetail] = (
+        []
+    )  # Enriched technique info
     cloud_applicability: Optional[str] = None
     cloud_context: Optional[CloudContextResponse] = None
 

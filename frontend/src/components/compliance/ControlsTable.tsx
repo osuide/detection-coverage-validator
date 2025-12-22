@@ -1,12 +1,14 @@
 /**
  * Controls Table Component.
  *
- * Displays a table of control gaps with their coverage status
- * and cloud applicability information.
+ * Displays a table of control gaps with their coverage status,
+ * cloud applicability information, and actionable remediation guidance.
  */
 
-import { AlertTriangle, Cloud, Building, Info } from 'lucide-react'
-import { ControlGapItem, CloudApplicability } from '../../services/complianceApi'
+import React, { useState } from 'react'
+import { Link } from 'react-router-dom'
+import { AlertTriangle, Cloud, Building, Info, ChevronDown, ChevronRight, FileCode, ExternalLink } from 'lucide-react'
+import { ControlGapItem, CloudApplicability, MissingTechniqueDetail } from '../../services/complianceApi'
 
 interface ControlsTableProps {
   controls: ControlGapItem[]
@@ -43,7 +45,52 @@ const applicabilityConfig: Record<
   },
 }
 
+// Component for displaying a single technique with template link
+function TechniqueItem({ technique }: { technique: MissingTechniqueDetail }) {
+  return (
+    <div className="flex items-center justify-between py-1.5 px-2 bg-gray-700/30 rounded hover:bg-gray-700/50">
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-mono text-blue-400">{technique.technique_id}</span>
+        <span className="text-sm text-gray-300">{technique.technique_name}</span>
+      </div>
+      {technique.has_template ? (
+        <Link
+          to={`/techniques/${technique.technique_id}`}
+          className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-green-900/50 text-green-300 border border-green-700 rounded hover:bg-green-800/50 transition-colors"
+        >
+          <FileCode className="w-3 h-3" />
+          View Template
+        </Link>
+      ) : (
+        <a
+          href={`https://attack.mitre.org/techniques/${technique.technique_id.replace('.', '/')}/`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-gray-700 text-gray-400 border border-gray-600 rounded hover:bg-gray-600 transition-colors"
+        >
+          <ExternalLink className="w-3 h-3" />
+          MITRE ATT&CK
+        </a>
+      )}
+    </div>
+  )
+}
+
 export function ControlsTable({ controls }: ControlsTableProps) {
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
+
+  const toggleRow = (controlId: string) => {
+    setExpandedRows((prev) => {
+      const next = new Set(prev)
+      if (next.has(controlId)) {
+        next.delete(controlId)
+      } else {
+        next.add(controlId)
+      }
+      return next
+    })
+  }
+
   const getPriorityBadge = (priority: string | null) => {
     if (!priority) return null
 
@@ -98,77 +145,129 @@ export function ControlsTable({ controls }: ControlsTableProps) {
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-700">
-          {controls.map((control) => (
-            <tr key={control.control_id} className="hover:bg-gray-700/30">
-              <td className="py-3 pr-4">
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 text-yellow-400 flex-shrink-0" />
-                  <div>
-                    <span className="text-white font-medium">{control.control_id}</span>
-                    <p className="text-sm text-gray-400 truncate max-w-[200px]" title={control.control_name}>
-                      {control.control_name}
-                    </p>
-                  </div>
-                </div>
-              </td>
-              <td className="py-3 pr-4">
-                <span className="text-sm text-gray-300">{control.control_family}</span>
-              </td>
-              <td className="py-3 pr-4">
-                {getApplicabilityBadge(control.cloud_applicability)}
-              </td>
-              <td className="py-3 pr-4">
-                {getPriorityBadge(control.priority)}
-              </td>
-              <td className="py-3 pr-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-16 h-2 bg-gray-700 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full ${
-                        control.coverage_percent >= 0.4 ? 'bg-yellow-500' : 'bg-red-500'
-                      }`}
-                      style={{ width: `${control.coverage_percent * 100}%` }}
-                    />
-                  </div>
-                  <span className={`text-sm ${getCoverageColour(control.coverage_percent)}`}>
-                    {(control.coverage_percent * 100).toFixed(0)}%
-                  </span>
-                </div>
-              </td>
-              <td className="py-3">
-                <div className="flex flex-wrap gap-1">
-                  {control.cloud_context?.aws_services?.slice(0, 2).map((svc) => (
-                    <span
-                      key={svc}
-                      className="px-2 py-0.5 text-xs bg-orange-900/50 text-orange-300 border border-orange-700 rounded"
-                      title={`AWS: ${svc}`}
-                    >
-                      AWS {svc}
-                    </span>
-                  ))}
-                  {control.cloud_context?.gcp_services?.slice(0, 2).map((svc) => (
-                    <span
-                      key={svc}
-                      className="px-2 py-0.5 text-xs bg-blue-900/50 text-blue-300 border border-blue-700 rounded"
-                      title={`GCP: ${svc}`}
-                    >
-                      GCP {svc}
-                    </span>
-                  ))}
-                  {!control.cloud_context?.aws_services?.length &&
-                    !control.cloud_context?.gcp_services?.length && (
-                      <span className="text-xs text-gray-500 italic">
-                        {control.cloud_applicability === 'provider_responsibility'
-                          ? 'Managed by provider'
-                          : control.cloud_applicability === 'informational'
-                            ? 'Not cloud-specific'
-                            : 'No services mapped'}
+          {controls.map((control) => {
+            const isExpanded = expandedRows.has(control.control_id)
+            const hasTechniques = control.missing_technique_details?.length > 0
+            const templatesAvailable = control.missing_technique_details?.filter(t => t.has_template).length || 0
+
+            return (
+              <React.Fragment key={control.control_id}>
+                <tr
+                  className={`hover:bg-gray-700/30 ${hasTechniques ? 'cursor-pointer' : ''}`}
+                  onClick={() => hasTechniques && toggleRow(control.control_id)}
+                >
+                  <td className="py-3 pr-4">
+                    <div className="flex items-center gap-2">
+                      {hasTechniques ? (
+                        isExpanded ? (
+                          <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                        ) : (
+                          <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                        )
+                      ) : (
+                        <AlertTriangle className="w-4 h-4 text-yellow-400 flex-shrink-0" />
+                      )}
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-white font-medium">{control.control_id}</span>
+                          {hasTechniques && (
+                            <span className="text-xs text-gray-500">
+                              {control.missing_technique_details.length} technique{control.missing_technique_details.length !== 1 ? 's' : ''}
+                              {templatesAvailable > 0 && (
+                                <span className="text-green-400 ml-1">
+                                  ({templatesAvailable} with templates)
+                                </span>
+                              )}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-400 truncate max-w-[300px]" title={control.control_name}>
+                          {control.control_name}
+                        </p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="py-3 pr-4">
+                    <span className="text-sm text-gray-300">{control.control_family}</span>
+                  </td>
+                  <td className="py-3 pr-4">
+                    {getApplicabilityBadge(control.cloud_applicability)}
+                  </td>
+                  <td className="py-3 pr-4">
+                    {getPriorityBadge(control.priority)}
+                  </td>
+                  <td className="py-3 pr-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-16 h-2 bg-gray-700 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full ${
+                            control.coverage_percent >= 0.4 ? 'bg-yellow-500' : 'bg-red-500'
+                          }`}
+                          style={{ width: `${control.coverage_percent * 100}%` }}
+                        />
+                      </div>
+                      <span className={`text-sm ${getCoverageColour(control.coverage_percent)}`}>
+                        {(control.coverage_percent * 100).toFixed(0)}%
                       </span>
-                    )}
-                </div>
-              </td>
-            </tr>
-          ))}
+                    </div>
+                  </td>
+                  <td className="py-3">
+                    <div className="flex flex-wrap gap-1">
+                      {control.cloud_context?.aws_services?.slice(0, 2).map((svc) => (
+                        <span
+                          key={svc}
+                          className="px-2 py-0.5 text-xs bg-orange-900/50 text-orange-300 border border-orange-700 rounded"
+                          title={`AWS: ${svc}`}
+                        >
+                          AWS {svc}
+                        </span>
+                      ))}
+                      {control.cloud_context?.gcp_services?.slice(0, 2).map((svc) => (
+                        <span
+                          key={svc}
+                          className="px-2 py-0.5 text-xs bg-blue-900/50 text-blue-300 border border-blue-700 rounded"
+                          title={`GCP: ${svc}`}
+                        >
+                          GCP {svc}
+                        </span>
+                      ))}
+                      {!control.cloud_context?.aws_services?.length &&
+                        !control.cloud_context?.gcp_services?.length && (
+                          <span className="text-xs text-gray-500 italic">
+                            {control.cloud_applicability === 'provider_responsibility'
+                              ? 'Managed by provider'
+                              : control.cloud_applicability === 'informational'
+                                ? 'Not cloud-specific'
+                                : 'No services mapped'}
+                          </span>
+                        )}
+                    </div>
+                  </td>
+                </tr>
+
+                {/* Expanded row with technique details */}
+                {isExpanded && hasTechniques && (
+                  <tr key={`${control.control_id}-details`} className="bg-gray-800/50">
+                    <td colSpan={6} className="py-4 px-6">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 mb-3">
+                          <FileCode className="w-4 h-4 text-green-400" />
+                          <span className="text-sm font-medium text-gray-300">
+                            Add these detections to improve coverage:
+                          </span>
+                        </div>
+                        <div className="grid gap-2 max-w-2xl">
+                          {control.missing_technique_details.map((technique) => (
+                            <TechniqueItem key={technique.technique_id} technique={technique} />
+                          ))}
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </React.Fragment>
+            )
+          })}
         </tbody>
       </table>
     </div>

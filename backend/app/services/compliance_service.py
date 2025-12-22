@@ -400,3 +400,42 @@ class ComplianceService:
         )
 
         return result.scalar_one_or_none()
+
+    async def enrich_gap_techniques(self, technique_ids: list[str]) -> list[dict]:
+        """Enrich technique IDs with names and template availability.
+
+        Args:
+            technique_ids: List of MITRE technique IDs (e.g., ["T1078", "T1136"])
+
+        Returns:
+            List of enriched technique details with names and template status
+        """
+        if not technique_ids:
+            return []
+
+        from app.data.remediation_templates.template_loader import get_template
+
+        # Query technique names from database
+        result = await self.db.execute(
+            select(Technique).where(Technique.technique_id.in_(technique_ids))
+        )
+        techniques = result.scalars().all()
+
+        # Build lookup map
+        technique_map = {t.technique_id: t for t in techniques}
+
+        enriched = []
+        for tech_id in technique_ids:
+            technique = technique_map.get(tech_id)
+            template = get_template(tech_id)
+
+            enriched.append(
+                {
+                    "technique_id": tech_id,
+                    "technique_name": technique.name if technique else tech_id,
+                    "has_template": template is not None,
+                    "tactic_ids": template.tactic_ids if template else [],
+                }
+            )
+
+        return enriched

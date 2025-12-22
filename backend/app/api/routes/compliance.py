@@ -25,6 +25,7 @@ from app.schemas.compliance import (
     FamilyCoverageItem,
     ControlGapItem,
     CloudCoverageMetricsResponse,
+    MissingTechniqueDetail,
 )
 from app.services.compliance_service import ComplianceService
 
@@ -265,7 +266,28 @@ async def get_framework_coverage(
     family_coverage = [
         FamilyCoverageItem(**fc) for fc in snapshot.family_coverage.values()
     ]
-    top_gaps = [ControlGapItem(**gap) for gap in snapshot.top_gaps]
+
+    # Enrich gaps with technique details and template availability
+    top_gaps = []
+    for gap in snapshot.top_gaps:
+        missing_techniques = gap.get("missing_techniques", [])
+        enriched_techniques = await service.enrich_gap_techniques(missing_techniques)
+
+        top_gaps.append(
+            ControlGapItem(
+                control_id=gap.get("control_id", ""),
+                control_name=gap.get("control_name", ""),
+                control_family=gap.get("control_family", ""),
+                priority=gap.get("priority"),
+                coverage_percent=gap.get("coverage_percent", 0.0),
+                missing_techniques=missing_techniques,
+                missing_technique_details=[
+                    MissingTechniqueDetail(**t) for t in enriched_techniques
+                ],
+                cloud_applicability=gap.get("cloud_applicability"),
+                cloud_context=gap.get("cloud_context"),
+            )
+        )
 
     # Build cloud metrics response if available
     cloud_metrics = None
