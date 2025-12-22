@@ -9,6 +9,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // Critical: enables receiving Set-Cookie headers from cross-origin responses
 })
 
 // Types

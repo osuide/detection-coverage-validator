@@ -184,7 +184,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await authActions.refreshToken()
   }, [])
 
-  // Show loading state until initialised
+  // Show loading state until initialised - don't render children yet to prevent
+  // API calls racing ahead of auth restoration
   if (!isInitialised) {
     return (
       <AuthContext.Provider
@@ -203,7 +204,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           refreshToken,
         }}
       >
-        {children}
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        </div>
       </AuthContext.Provider>
     )
   }
