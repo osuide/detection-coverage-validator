@@ -9,6 +9,7 @@ from sqlalchemy import select
 from app.models.coverage import CoverageSnapshot, OrgCoverageSnapshot
 from app.models.cloud_account import CloudAccount
 from app.models.cloud_organization import CloudOrganization
+from app.models.gap import CoverageGap, GapStatus
 from app.analyzers.coverage_calculator import CoverageCalculator, OrgCoverageCalculator
 from app.analyzers.gap_analyzer import GapAnalyzer
 from app.core.config import get_settings
@@ -58,6 +59,22 @@ class CoverageService:
             result.technique_details,
             cloud_provider=cloud_provider,
         )
+
+        # Filter out acknowledged and risk-accepted gaps
+        acknowledged_stmt = select(CoverageGap.technique_id).where(
+            CoverageGap.cloud_account_id == cloud_account_id,
+            CoverageGap.status.in_([GapStatus.ACKNOWLEDGED, GapStatus.RISK_ACCEPTED]),
+        )
+        acknowledged_result = await self.db.execute(acknowledged_stmt)
+        acknowledged_technique_ids = {row[0] for row in acknowledged_result.all()}
+
+        if acknowledged_technique_ids:
+            self.logger.info(
+                "filtering_acknowledged_gaps",
+                account_id=str(cloud_account_id),
+                acknowledged_count=len(acknowledged_technique_ids),
+            )
+            gaps = [g for g in gaps if g.technique_id not in acknowledged_technique_ids]
 
         # Build tactic coverage dict
         tactic_coverage = {}

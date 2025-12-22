@@ -1,8 +1,9 @@
-import { useQuery } from '@tanstack/react-query'
-import { AlertTriangle, ExternalLink, ChevronDown, ChevronUp, Filter, Search, Clock, Zap, Shield, Users } from 'lucide-react'
-import { accountsApi, coverageApi, Gap, RecommendedStrategy } from '../services/api'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { AlertTriangle, ExternalLink, ChevronDown, ChevronUp, Filter, Search, Clock, Zap, Shield, Users, Check, Loader2 } from 'lucide-react'
+import { accountsApi, coverageApi, gapsApi, Gap, RecommendedStrategy } from '../services/api'
 import { useState } from 'react'
 import StrategyDetailModal from '../components/StrategyDetailModal'
+import toast from 'react-hot-toast'
 
 const priorityStyles = {
   critical: 'bg-red-100 text-red-800 border-red-200',
@@ -241,6 +242,7 @@ export default function Gaps() {
               gap={gap}
               isExpanded={expandedGaps.has(gap.technique_id)}
               onToggle={() => toggleExpand(gap.technique_id)}
+              accountId={firstAccount?.id}
             />
           ))}
         </div>
@@ -252,13 +254,31 @@ export default function Gaps() {
 function GapCard({
   gap,
   isExpanded,
-  onToggle
+  onToggle,
+  accountId
 }: {
   gap: Gap
   isExpanded: boolean
   onToggle: () => void
+  accountId: string | undefined
 }) {
+  const queryClient = useQueryClient()
   const mitreUrl = `https://attack.mitre.org/techniques/${gap.technique_id.replace('.', '/')}/`
+
+  const acknowledgeMutation = useMutation({
+    mutationFn: () => {
+      if (!accountId) throw new Error('No account selected')
+      return gapsApi.acknowledge(gap.technique_id, accountId)
+    },
+    onSuccess: () => {
+      toast.success(`Gap ${gap.technique_id} acknowledged. It will not appear in future scans.`)
+      // Invalidate coverage query to refresh the gaps list
+      queryClient.invalidateQueries({ queryKey: ['coverage'] })
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to acknowledge gap: ${error.message}`)
+    }
+  })
 
   return (
     <div className={`card border-l-4 ${
@@ -450,8 +470,25 @@ function GapCard({
             >
               View MITRE Details
             </a>
-            <button className="btn-secondary text-sm">
-              Mark as Acknowledged
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                acknowledgeMutation.mutate()
+              }}
+              disabled={acknowledgeMutation.isPending || !accountId}
+              className="btn-secondary text-sm inline-flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {acknowledgeMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  Acknowledging...
+                </>
+              ) : (
+                <>
+                  <Check className="h-4 w-4 mr-1" />
+                  Mark as Acknowledged
+                </>
+              )}
             </button>
           </div>
         </div>

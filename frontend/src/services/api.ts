@@ -413,4 +413,45 @@ export const credentialsApi = {
     api.get<string>('/credentials/templates/gcp/setup-script', { responseType: 'text' }).then(r => r.data),
 }
 
+// Gap acknowledgement API
+export interface GapAcknowledgeResponse {
+  message: string
+  gap_id: string
+  technique_id: string
+  status: string
+}
+
+export interface AcceptRiskRequest {
+  reason: string
+}
+
+export const gapsApi = {
+  acknowledge: (techniqueId: string, cloudAccountId: string, notes?: string) =>
+    api.post<GapAcknowledgeResponse>(
+      `/gaps/${techniqueId}/acknowledge`,
+      notes ? { notes } : {},
+      { params: { cloud_account_id: cloudAccountId } }
+    ).then(r => r.data),
+
+  acceptRisk: (techniqueId: string, cloudAccountId: string, reason: string) =>
+    api.post<GapAcknowledgeResponse>(
+      `/gaps/${techniqueId}/accept-risk`,
+      { reason },
+      { params: { cloud_account_id: cloudAccountId } }
+    ).then(r => r.data),
+
+  reopen: (techniqueId: string, cloudAccountId: string) =>
+    api.post<GapAcknowledgeResponse>(
+      `/gaps/${techniqueId}/reopen`,
+      {},
+      { params: { cloud_account_id: cloudAccountId } }
+    ).then(r => r.data),
+
+  listAcknowledged: (cloudAccountId: string) =>
+    api.get<{ acknowledged_technique_ids: string[]; count: number }>(
+      '/gaps/acknowledged',
+      { params: { cloud_account_id: cloudAccountId } }
+    ).then(r => r.data),
+}
+
 export default api
