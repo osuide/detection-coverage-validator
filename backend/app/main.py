@@ -38,6 +38,7 @@ from app.api.routes import (
     analytics,
     custom_detections,
     compliance,
+    techniques,
 )
 from app.api.routes.admin import router as admin_router
 from app.api.v1.public import router as public_api_router
@@ -616,6 +617,11 @@ app.include_router(
     compliance.router,
     prefix="/api/v1",
     tags=["Compliance"],
+)
+app.include_router(
+    techniques.router,
+    prefix="/api/v1",
+    tags=["Techniques"],
 )
 
 # Admin Portal routes (separate from user routes)
