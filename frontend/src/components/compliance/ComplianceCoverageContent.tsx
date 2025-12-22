@@ -15,6 +15,8 @@ import {
   ExternalLink,
   Cloud,
   Filter,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react'
 import { complianceApi, CloudApplicability } from '../../services/complianceApi'
 import { FrameworkCard } from './FrameworkCard'
@@ -37,6 +39,7 @@ const applicabilityFilters: { value: CloudApplicability | 'all'; label: string }
 export function ComplianceCoverageContent({ accountId }: ComplianceCoverageContentProps) {
   const [selectedFramework, setSelectedFramework] = useState<string>('')
   const [cloudFilter, setCloudFilter] = useState<CloudApplicability | 'all'>('all')
+  const [familyCoverageExpanded, setFamilyCoverageExpanded] = useState(false)
 
   // Get compliance summary for all frameworks
   const { data: summary, isLoading: summaryLoading } = useQuery({
@@ -224,11 +227,30 @@ export function ComplianceCoverageContent({ accountId }: ComplianceCoverageConte
             )}
           </div>
 
-          {/* Family Coverage Chart */}
+          {/* Family Coverage Chart - Collapsible */}
           {coverage.family_coverage.length > 0 && (
-            <div className="bg-gray-800 rounded-lg p-6">
-              <h3 className="text-lg font-medium text-white mb-4">Coverage by Control Family</h3>
-              <FamilyCoverageChart coverage={coverage.family_coverage} />
+            <div className="bg-gray-800 rounded-lg overflow-hidden">
+              <button
+                onClick={() => setFamilyCoverageExpanded(!familyCoverageExpanded)}
+                className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-700/50 transition-colors"
+              >
+                <h3 className="text-lg font-medium text-white flex items-center gap-2">
+                  Coverage by Control Family
+                  <span className="text-sm font-normal text-gray-400">
+                    ({coverage.family_coverage.length} families)
+                  </span>
+                </h3>
+                {familyCoverageExpanded ? (
+                  <ChevronDown className="w-5 h-5 text-gray-400" />
+                ) : (
+                  <ChevronRight className="w-5 h-5 text-gray-400" />
+                )}
+              </button>
+              {familyCoverageExpanded && (
+                <div className="px-6 pb-6">
+                  <FamilyCoverageChart coverage={coverage.family_coverage} />
+                </div>
+              )}
             </div>
           )}
 
