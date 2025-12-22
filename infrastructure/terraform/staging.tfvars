@@ -54,7 +54,7 @@ waf_allowed_ips = []
 # ============================================================================
 # Set to true to force reload compliance framework data on next deployment
 # IMPORTANT: Set back to false after the data has been reloaded
-force_reload_compliance = false
+force_reload_compliance = true
 
 # ============================================================================
 # Cookie Domain for Cross-Subdomain Auth
