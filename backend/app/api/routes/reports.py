@@ -41,15 +41,31 @@ def sanitize_filename(name: str) -> str:
     return safe_name or "report"
 
 
-async def _is_free_tier(db: AsyncSession, organization_id: UUID) -> bool:
-    """Check if organisation is on a free tier (requires watermark)."""
+async def _require_paid_subscription(db: AsyncSession, organization_id: UUID) -> None:
+    """Require a paid subscription to access reports.
+
+    Raises HTTPException 403 if on free tier.
+    Reports are a premium feature - free tier users should upgrade.
+    """
     result = await db.execute(
         select(Subscription).where(Subscription.organization_id == organization_id)
     )
     subscription = result.scalar_one_or_none()
-    if not subscription:
-        return True  # No subscription = free tier
-    return subscription.tier in (AccountTier.FREE, AccountTier.FREE_SCAN)
+
+    is_free = not subscription or subscription.tier in (
+        AccountTier.FREE,
+        AccountTier.FREE_SCAN,
+    )
+
+    if is_free:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": "subscription_required",
+                "message": "Reports are available on paid plans only. Upgrade to Individual or higher to export reports.",
+                "upgrade_url": "/settings/billing",
+            },
+        )
 
 
 @router.get("/coverage/csv")
@@ -58,7 +74,13 @@ async def download_coverage_csv(
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
-    """Download coverage report as CSV."""
+    """Download coverage report as CSV.
+
+    Requires paid subscription (Individual tier or higher).
+    """
+    # Require paid subscription for reports
+    await _require_paid_subscription(db, auth.organization_id)
+
     # Verify account exists and belongs to user's organization
     result = await db.execute(
         select(CloudAccount).where(
@@ -88,7 +110,13 @@ async def download_gaps_csv(
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
-    """Download gaps report as CSV."""
+    """Download gaps report as CSV.
+
+    Requires paid subscription (Individual tier or higher).
+    """
+    # Require paid subscription for reports
+    await _require_paid_subscription(db, auth.organization_id)
+
     result = await db.execute(
         select(CloudAccount).where(
             CloudAccount.id == cloud_account_id,
@@ -117,7 +145,13 @@ async def download_detections_csv(
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
-    """Download detections report as CSV."""
+    """Download detections report as CSV.
+
+    Requires paid subscription (Individual tier or higher).
+    """
+    # Require paid subscription for reports
+    await _require_paid_subscription(db, auth.organization_id)
+
     result = await db.execute(
         select(CloudAccount).where(
             CloudAccount.id == cloud_account_id,
@@ -150,9 +184,11 @@ async def download_executive_pdf(
 ):
     """Download executive summary PDF report.
 
-    Note: Free tier reports include a watermark. Upgrade to a paid plan for
-    unwatermarked reports.
+    Requires paid subscription (Individual tier or higher).
     """
+    # Require paid subscription for reports
+    await _require_paid_subscription(db, auth.organization_id)
+
     result = await db.execute(
         select(CloudAccount).where(
             CloudAccount.id == cloud_account_id,
@@ -163,9 +199,6 @@ async def download_executive_pdf(
     if not account:
         raise HTTPException(status_code=404, detail="Cloud account not found")
 
-    # Check if free tier (requires watermark)
-    add_watermark = await _is_free_tier(db, auth.organization_id)
-
     try:
         service = ReportService(db)
         pdf_content = await service.generate_pdf_report(
@@ -173,7 +206,7 @@ async def download_executive_pdf(
             include_executive_summary=True,
             include_gap_analysis=include_gaps,
             include_detection_details=include_detections,
-            add_watermark=add_watermark,
+            add_watermark=False,  # No watermark for paid subscribers
         )
 
         return StreamingResponse(
@@ -196,9 +229,11 @@ async def download_full_pdf(
 ):
     """Download full coverage PDF report with all sections.
 
-    Note: Free tier reports include a watermark. Upgrade to a paid plan for
-    unwatermarked reports.
+    Requires paid subscription (Individual tier or higher).
     """
+    # Require paid subscription for reports
+    await _require_paid_subscription(db, auth.organization_id)
+
     result = await db.execute(
         select(CloudAccount).where(
             CloudAccount.id == cloud_account_id,
@@ -209,9 +244,6 @@ async def download_full_pdf(
     if not account:
         raise HTTPException(status_code=404, detail="Cloud account not found")
 
-    # Check if free tier (requires watermark)
-    add_watermark = await _is_free_tier(db, auth.organization_id)
-
     try:
         service = ReportService(db)
         pdf_content = await service.generate_pdf_report(
@@ -219,7 +251,7 @@ async def download_full_pdf(
             include_executive_summary=True,
             include_gap_analysis=True,
             include_detection_details=True,
-            add_watermark=add_watermark,
+            add_watermark=False,  # No watermark for paid subscribers
         )
 
         return StreamingResponse(

@@ -2,21 +2,24 @@
  * Reports Page
  *
  * Allows users to generate and download coverage reports in various formats.
- * Free tier users receive watermarked PDF reports.
+ * Reports are a premium feature - requires Individual tier or higher.
  */
 
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import {
   FileText,
   Download,
   FileSpreadsheet,
   Loader2,
   AlertTriangle,
-  Info,
+  Lock,
   Cloud,
   FileBarChart,
   Check,
+  ArrowRight,
+  Sparkles,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { billingApi, Subscription } from '../services/billingApi'
@@ -61,7 +64,8 @@ export default function Reports() {
     enabled: !!accessToken,
   })
 
-  const isFreeUser = subscription?.tier === 'free_scan'
+  // Free users cannot access reports - they need to upgrade
+  const isFreeUser = !subscription || subscription.tier === 'free' || subscription.tier === 'free_scan'
   const selectedAccount = accounts?.find((a) => a.id === selectedAccountId)
 
   const handleDownload = async (
@@ -164,16 +168,43 @@ export default function Reports() {
         </p>
       </div>
 
-      {/* Free tier watermark notice */}
+      {/* Free tier upgrade prompt */}
       {isFreeUser && (
-        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-start">
-          <Info className="h-5 w-5 text-amber-600 mr-3 flex-shrink-0 mt-0.5" />
-          <div>
-            <h3 className="font-medium text-amber-900">Free Tier Notice</h3>
-            <p className="text-sm text-amber-800 mt-1">
-              PDF reports on the free tier include a watermark. Upgrade to Subscriber or
-              Enterprise to receive unwatermarked reports.
-            </p>
+        <div className="mb-6 p-6 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl text-white">
+          <div className="flex items-start justify-between">
+            <div className="flex items-start">
+              <div className="p-2 bg-white/20 rounded-lg mr-4">
+                <Lock className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-lg">Reports are a Premium Feature</h3>
+                <p className="text-blue-100 mt-1 max-w-xl">
+                  Export professional PDF and CSV reports with your detection coverage analysis.
+                  Upgrade to the Individual plan to unlock reports and more features.
+                </p>
+                <ul className="mt-3 space-y-1 text-sm text-blue-100">
+                  <li className="flex items-center">
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Executive summary PDF reports
+                  </li>
+                  <li className="flex items-center">
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Gap analysis and coverage CSV exports
+                  </li>
+                  <li className="flex items-center">
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Detection inventory reports
+                  </li>
+                </ul>
+              </div>
+            </div>
+            <Link
+              to="/settings/billing"
+              className="flex items-center px-4 py-2 bg-white text-blue-600 font-medium rounded-lg hover:bg-blue-50 transition-colors whitespace-nowrap"
+            >
+              Upgrade Now
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Link>
           </div>
         </div>
       )}
@@ -255,51 +286,60 @@ export default function Reports() {
                 className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
               >
                 <div className="flex items-start">
-                  <div className={`p-2 rounded-lg ${report.colour}`}>
+                  <div className={`p-2 rounded-lg ${report.colour} ${isFreeUser ? 'opacity-50' : ''}`}>
                     <report.icon className="h-5 w-5" />
                   </div>
                   <div className="ml-4">
                     <div className="flex items-center">
-                      <h3 className="font-medium text-gray-900">{report.name}</h3>
+                      <h3 className={`font-medium ${isFreeUser ? 'text-gray-500' : 'text-gray-900'}`}>
+                        {report.name}
+                      </h3>
                       <span className="ml-2 px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-600">
                         {report.format}
                       </span>
-                      {report.isPdf && isFreeUser && (
-                        <span className="ml-2 px-2 py-0.5 text-xs font-medium rounded-full bg-amber-100 text-amber-700">
-                          Watermarked
-                        </span>
-                      )}
                     </div>
-                    <p className="text-sm text-gray-500 mt-1">{report.description}</p>
+                    <p className={`text-sm mt-1 ${isFreeUser ? 'text-gray-400' : 'text-gray-500'}`}>
+                      {report.description}
+                    </p>
                   </div>
                 </div>
 
-                <button
-                  onClick={() => handleDownload(report.id)}
-                  disabled={downloading === report.id}
-                  className={`flex items-center px-4 py-2 rounded-lg font-medium transition-colors ${
-                    downloadSuccess === report.id
-                      ? 'bg-green-100 text-green-700'
-                      : 'bg-blue-600 text-white hover:bg-blue-700'
-                  } disabled:opacity-50 disabled:cursor-not-allowed`}
-                >
-                  {downloading === report.id ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Generating...
-                    </>
-                  ) : downloadSuccess === report.id ? (
-                    <>
-                      <Check className="h-4 w-4 mr-2" />
-                      Downloaded
-                    </>
-                  ) : (
-                    <>
-                      <Download className="h-4 w-4 mr-2" />
-                      Download
-                    </>
-                  )}
-                </button>
+                {isFreeUser ? (
+                  <Link
+                    to="/settings/billing"
+                    className="flex items-center px-4 py-2 rounded-lg font-medium bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors"
+                  >
+                    <Lock className="h-4 w-4 mr-2" />
+                    Upgrade
+                  </Link>
+                ) : (
+                  <button
+                    onClick={() => handleDownload(report.id)}
+                    disabled={downloading === report.id}
+                    className={`flex items-center px-4 py-2 rounded-lg font-medium transition-colors ${
+                      downloadSuccess === report.id
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  >
+                    {downloading === report.id ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Generating...
+                      </>
+                    ) : downloadSuccess === report.id ? (
+                      <>
+                        <Check className="h-4 w-4 mr-2" />
+                        Downloaded
+                      </>
+                    ) : (
+                      <>
+                        <Download className="h-4 w-4 mr-2" />
+                        Download
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             ))}
           </div>
