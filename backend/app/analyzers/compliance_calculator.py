@@ -38,6 +38,8 @@ class ControlCoverageInfo:
     mapped_technique_count: int
     covered_technique_count: int
     missing_techniques: list[str] = field(default_factory=list)
+    cloud_applicability: Optional[str] = None  # "highly_relevant", etc.
+    cloud_context: Optional[dict] = None
 
 
 @dataclass
@@ -142,6 +144,8 @@ class ComplianceCoverageCalculator:
                     mapped_technique_count=0,
                     covered_technique_count=0,
                     missing_techniques=[],
+                    cloud_applicability=control.cloud_applicability,
+                    cloud_context=control.cloud_context,
                 )
             else:
                 covered_count = 0
@@ -172,6 +176,8 @@ class ComplianceCoverageCalculator:
                     mapped_technique_count=len(mapped_technique_ids),
                     covered_technique_count=covered_count,
                     missing_techniques=missing[:5],  # Limit to 5
+                    cloud_applicability=control.cloud_applicability,
+                    cloud_context=control.cloud_context,
                 )
 
             control_details.append(coverage_info)

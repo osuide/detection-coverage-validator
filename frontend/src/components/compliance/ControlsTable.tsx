@@ -1,14 +1,46 @@
 /**
  * Controls Table Component.
  *
- * Displays a table of control gaps with their coverage status.
+ * Displays a table of control gaps with their coverage status
+ * and cloud applicability information.
  */
 
-import { AlertTriangle } from 'lucide-react'
-import { ControlGapItem } from '../../services/complianceApi'
+import { AlertTriangle, Cloud, Building, Info } from 'lucide-react'
+import { ControlGapItem, CloudApplicability } from '../../services/complianceApi'
 
 interface ControlsTableProps {
   controls: ControlGapItem[]
+}
+
+// Cloud applicability display configuration
+const applicabilityConfig: Record<
+  CloudApplicability,
+  { label: string; colour: string; icon: React.ReactNode; description: string }
+> = {
+  highly_relevant: {
+    label: 'Cloud',
+    colour: 'bg-green-900/50 text-green-300 border-green-700',
+    icon: <Cloud className="w-3 h-3" />,
+    description: 'Directly applicable to cloud environments',
+  },
+  moderately_relevant: {
+    label: 'Partial',
+    colour: 'bg-yellow-900/50 text-yellow-300 border-yellow-700',
+    icon: <Cloud className="w-3 h-3" />,
+    description: 'Partially applicable to cloud',
+  },
+  informational: {
+    label: 'Info',
+    colour: 'bg-blue-900/50 text-blue-300 border-blue-700',
+    icon: <Info className="w-3 h-3" />,
+    description: 'Informational - may require adaptation',
+  },
+  provider_responsibility: {
+    label: 'Provider',
+    colour: 'bg-purple-900/50 text-purple-300 border-purple-700',
+    icon: <Building className="w-3 h-3" />,
+    description: 'Managed by cloud provider',
+  },
 }
 
 export function ControlsTable({ controls }: ControlsTableProps) {
@@ -32,6 +64,20 @@ export function ControlsTable({ controls }: ControlsTableProps) {
     )
   }
 
+  const getApplicabilityBadge = (applicability: CloudApplicability | undefined) => {
+    if (!applicability) return null
+    const config = applicabilityConfig[applicability]
+    return (
+      <span
+        className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded border ${config.colour}`}
+        title={config.description}
+      >
+        {config.icon}
+        {config.label}
+      </span>
+    )
+  }
+
   const getCoverageColour = (percent: number) => {
     if (percent >= 0.8) return 'text-green-400'
     if (percent >= 0.4) return 'text-yellow-400'
@@ -45,9 +91,10 @@ export function ControlsTable({ controls }: ControlsTableProps) {
           <tr className="text-left text-xs text-gray-400 uppercase tracking-wider border-b border-gray-700">
             <th className="pb-3 pr-4">Control</th>
             <th className="pb-3 pr-4">Family</th>
+            <th className="pb-3 pr-4">Cloud</th>
             <th className="pb-3 pr-4">Priority</th>
             <th className="pb-3 pr-4">Coverage</th>
-            <th className="pb-3">Missing Techniques</th>
+            <th className="pb-3">Cloud Services</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-700">
@@ -66,6 +113,9 @@ export function ControlsTable({ controls }: ControlsTableProps) {
               </td>
               <td className="py-3 pr-4">
                 <span className="text-sm text-gray-300">{control.control_family}</span>
+              </td>
+              <td className="py-3 pr-4">
+                {getApplicabilityBadge(control.cloud_applicability)}
               </td>
               <td className="py-3 pr-4">
                 {getPriorityBadge(control.priority)}
@@ -87,19 +137,34 @@ export function ControlsTable({ controls }: ControlsTableProps) {
               </td>
               <td className="py-3">
                 <div className="flex flex-wrap gap-1">
-                  {control.missing_techniques.slice(0, 3).map((tech) => (
+                  {control.cloud_context?.aws_services?.slice(0, 2).map((svc) => (
                     <span
-                      key={tech}
-                      className="px-2 py-0.5 text-xs bg-gray-700 text-gray-300 rounded"
+                      key={svc}
+                      className="px-2 py-0.5 text-xs bg-orange-900/50 text-orange-300 border border-orange-700 rounded"
+                      title={`AWS: ${svc}`}
                     >
-                      {tech}
+                      AWS {svc}
                     </span>
                   ))}
-                  {control.missing_techniques.length > 3 && (
-                    <span className="px-2 py-0.5 text-xs bg-gray-700 text-gray-400 rounded">
-                      +{control.missing_techniques.length - 3} more
+                  {control.cloud_context?.gcp_services?.slice(0, 2).map((svc) => (
+                    <span
+                      key={svc}
+                      className="px-2 py-0.5 text-xs bg-blue-900/50 text-blue-300 border border-blue-700 rounded"
+                      title={`GCP: ${svc}`}
+                    >
+                      GCP {svc}
                     </span>
-                  )}
+                  ))}
+                  {!control.cloud_context?.aws_services?.length &&
+                    !control.cloud_context?.gcp_services?.length && (
+                      <span className="text-xs text-gray-500 italic">
+                        {control.cloud_applicability === 'provider_responsibility'
+                          ? 'Managed by provider'
+                          : control.cloud_applicability === 'informational'
+                            ? 'Not cloud-specific'
+                            : 'No services mapped'}
+                      </span>
+                    )}
                 </div>
               </td>
             </tr>

@@ -2,13 +2,21 @@
  * Compliance Coverage Content Component.
  *
  * Displays compliance framework coverage with framework selector,
- * coverage summary cards, and detailed breakdown.
+ * coverage summary cards, cloud applicability filters, and detailed breakdown.
  */
 
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Shield, AlertTriangle, CheckCircle, XCircle, ExternalLink } from 'lucide-react'
-import { complianceApi } from '../../services/complianceApi'
+import {
+  Shield,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+  ExternalLink,
+  Cloud,
+  Filter,
+} from 'lucide-react'
+import { complianceApi, CloudApplicability } from '../../services/complianceApi'
 import { FrameworkCard } from './FrameworkCard'
 import { FamilyCoverageChart } from './FamilyCoverageChart'
 import { ControlsTable } from './ControlsTable'
@@ -17,8 +25,18 @@ interface ComplianceCoverageContentProps {
   accountId: string
 }
 
+// Cloud applicability filter options
+const applicabilityFilters: { value: CloudApplicability | 'all'; label: string }[] = [
+  { value: 'all', label: 'All Controls' },
+  { value: 'highly_relevant', label: 'Cloud-Centric' },
+  { value: 'moderately_relevant', label: 'Partially Cloud' },
+  { value: 'informational', label: 'Informational' },
+  { value: 'provider_responsibility', label: 'Provider Managed' },
+]
+
 export function ComplianceCoverageContent({ accountId }: ComplianceCoverageContentProps) {
   const [selectedFramework, setSelectedFramework] = useState<string>('')
+  const [cloudFilter, setCloudFilter] = useState<CloudApplicability | 'all'>('all')
 
   // Get compliance summary for all frameworks
   const { data: summary, isLoading: summaryLoading } = useQuery({
@@ -60,6 +78,14 @@ export function ComplianceCoverageContent({ accountId }: ComplianceCoverageConte
       </div>
     )
   }
+
+  // Filter gaps by cloud applicability
+  const filteredGaps =
+    cloudFilter === 'all'
+      ? coverage?.top_gaps ?? []
+      : (coverage?.top_gaps ?? []).filter(
+          (gap) => gap.cloud_applicability === cloudFilter
+        )
 
   return (
     <div className="space-y-6">
@@ -153,16 +179,50 @@ export function ComplianceCoverageContent({ accountId }: ComplianceCoverageConte
             </div>
           )}
 
-          {/* Top Gaps */}
+          {/* Top Gaps with Cloud Filter */}
           {coverage.top_gaps.length > 0 && (
             <div className="bg-gray-800 rounded-lg p-6">
-              <h3 className="text-lg font-medium text-white mb-4">
-                Top Coverage Gaps
-                <span className="text-sm font-normal text-gray-400 ml-2">
-                  ({coverage.top_gaps.length} controls need attention)
-                </span>
-              </h3>
-              <ControlsTable controls={coverage.top_gaps} />
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+                <h3 className="text-lg font-medium text-white">
+                  Top Coverage Gaps
+                  <span className="text-sm font-normal text-gray-400 ml-2">
+                    ({filteredGaps.length} of {coverage.top_gaps.length} controls)
+                  </span>
+                </h3>
+
+                {/* Cloud Applicability Filter */}
+                <div className="flex items-center gap-2">
+                  <Filter className="w-4 h-4 text-gray-400" />
+                  <select
+                    value={cloudFilter}
+                    onChange={(e) =>
+                      setCloudFilter(e.target.value as CloudApplicability | 'all')
+                    }
+                    className="bg-gray-700 border border-gray-600 text-gray-200 text-sm rounded-lg px-3 py-1.5 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    {applicabilityFilters.map((filter) => (
+                      <option key={filter.value} value={filter.value}>
+                        {filter.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {filteredGaps.length > 0 ? (
+                <ControlsTable controls={filteredGaps} />
+              ) : (
+                <div className="text-center py-8 text-gray-400">
+                  <Cloud className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p>No gaps match the selected filter.</p>
+                  <button
+                    onClick={() => setCloudFilter('all')}
+                    className="mt-2 text-blue-400 hover:text-blue-300 text-sm"
+                  >
+                    Clear filter
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

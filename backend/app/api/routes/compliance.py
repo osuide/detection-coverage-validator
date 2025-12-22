@@ -159,6 +159,8 @@ async def list_controls(
                 priority=control.priority,
                 is_enhancement=control.is_enhancement,
                 mapped_technique_count=mapping_count,
+                cloud_applicability=control.cloud_applicability,
+                cloud_context=control.cloud_context,
             )
         )
 

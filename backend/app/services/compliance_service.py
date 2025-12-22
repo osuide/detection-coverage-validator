@@ -183,6 +183,8 @@ class ComplianceService:
                         "priority": gap.priority,
                         "coverage_percent": gap.coverage_percent,
                         "missing_techniques": gap.missing_techniques,
+                        "cloud_applicability": gap.cloud_applicability,
+                        "cloud_context": gap.cloud_context,
                     }
                     for gap in result.top_gaps
                 ]

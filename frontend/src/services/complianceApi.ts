@@ -17,6 +17,19 @@ export interface ComplianceFramework {
   is_active: boolean
 }
 
+export interface CloudContext {
+  aws_services: string[]
+  gcp_services: string[]
+  shared_responsibility: 'customer' | 'shared' | 'provider'
+  detection_guidance: string | null
+}
+
+export type CloudApplicability =
+  | 'highly_relevant'
+  | 'moderately_relevant'
+  | 'informational'
+  | 'provider_responsibility'
+
 export interface ControlResponse {
   id: string
   control_id: string
@@ -26,6 +39,8 @@ export interface ControlResponse {
   priority: string | null
   is_enhancement: boolean
   mapped_technique_count: number
+  cloud_applicability: CloudApplicability | null
+  cloud_context: CloudContext | null
 }
 
 export interface TechniqueMapping {
@@ -50,6 +65,8 @@ export interface FamilyCoverageItem {
   partial: number
   uncovered: number
   percent: number
+  cloud_applicability?: CloudApplicability
+  shared_responsibility?: 'customer' | 'shared' | 'provider'
 }
 
 export interface ControlGapItem {
@@ -59,6 +76,8 @@ export interface ControlGapItem {
   priority: string | null
   coverage_percent: number
   missing_techniques: string[]
+  cloud_applicability?: CloudApplicability
+  cloud_context?: CloudContext
 }
 
 export interface ComplianceCoverage {

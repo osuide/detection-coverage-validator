@@ -92,6 +92,8 @@ class ControlGapItem(BaseModel):
     priority: Optional[str] = None
     coverage_percent: float
     missing_techniques: list[str] = []
+    cloud_applicability: Optional[str] = None
+    cloud_context: Optional[CloudContextResponse] = None
 
 
 class ComplianceCoverageResponse(BaseModel):
