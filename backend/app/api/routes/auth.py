@@ -151,12 +151,30 @@ async def validate_csrf_token(request: Request) -> None:
     Raises HTTPException 403 if validation fails.
     """
     import hmac
+    import structlog
+
+    logger = structlog.get_logger()
 
     csrf_header = request.headers.get("X-CSRF-Token")
     csrf_cookie = request.cookies.get(CSRF_TOKEN_COOKIE_NAME)
 
+    # Debug logging to diagnose CSRF issues
+    logger.debug(
+        "csrf_validation",
+        has_header=bool(csrf_header),
+        has_cookie=bool(csrf_cookie),
+        header_len=len(csrf_header) if csrf_header else 0,
+        cookie_len=len(csrf_cookie) if csrf_cookie else 0,
+        cookies_received=list(request.cookies.keys()),
+    )
+
     # Both must be present
     if not csrf_header or not csrf_cookie:
+        logger.warning(
+            "csrf_token_missing",
+            has_header=bool(csrf_header),
+            has_cookie=bool(csrf_cookie),
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="CSRF token missing",
@@ -164,6 +182,11 @@ async def validate_csrf_token(request: Request) -> None:
 
     # Constant-time comparison to prevent timing attacks
     if not hmac.compare_digest(csrf_header, csrf_cookie):
+        logger.warning(
+            "csrf_token_mismatch",
+            header_prefix=csrf_header[:8] if csrf_header else None,
+            cookie_prefix=csrf_cookie[:8] if csrf_cookie else None,
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="CSRF token validation failed",
