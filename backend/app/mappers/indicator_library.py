@@ -150,12 +150,13 @@ INITIAL_ACCESS_TECHNIQUES = [
             "mfa",
             # MITRE official terms for credential misuse detection
             "unauthorized",
+            "unauthorised",  # UK spelling
             "access denied",
             "accessdenied",
             "suspicious",
             "anomalous",
             "unusual",
-            # AWS error codes indicating credential issues
+            # AWS error codes indicating credential issues (keep US spelling)
             "unauthorizedoperation",
             # CIS benchmark terminology
             "root account",
@@ -166,7 +167,7 @@ INITIAL_ACCESS_TECHNIQUES = [
             r"signin",
             r"console",
             r"assume.*role",
-            r"unauthorized",
+            r"unauthori[sz]ed",  # Match both UK and US spellings
             r"denied",
         ],
         base_confidence=0.75,
@@ -572,18 +573,20 @@ DEFENSE_EVASION_TECHNIQUES = [
             "account",
             "legitimate",
             "authorized",
+            "authorised",  # UK spelling
             # MITRE official terms for credential misuse detection
             "unauthorized",
+            "unauthorised",  # UK spelling
             "access denied",
             "accessdenied",
             "suspicious",
             "anomalous",
             "unusual",
-            # AWS error codes
+            # AWS error codes (keep US spelling)
             "unauthorizedoperation",
         ],
         aws_services=["iam", "sts"],
-        log_patterns=[r"login", r"valid", r"account", r"unauthorized", r"denied"],
+        log_patterns=[r"login", r"valid", r"account", r"unauthori[sz]ed", r"denied"],
         base_confidence=0.65,
         priority=2,
     ),
