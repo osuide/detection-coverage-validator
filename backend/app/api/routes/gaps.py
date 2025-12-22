@@ -59,7 +59,9 @@ async def acknowledge_gap(
     cloud_account_id: UUID = Query(..., description="Cloud account ID"),
     request: AcknowledgeGapRequest = None,
     db: AsyncSession = Depends(get_db),
-    auth: AuthContext = Depends(require_role(UserRole.MEMBER)),
+    auth: AuthContext = Depends(
+        require_role(UserRole.OWNER, UserRole.ADMIN, UserRole.MEMBER)
+    ),
 ) -> dict:
     """Acknowledge a coverage gap.
 
@@ -209,7 +211,9 @@ async def reopen_gap(
     technique_id: str,
     cloud_account_id: UUID = Query(..., description="Cloud account ID"),
     db: AsyncSession = Depends(get_db),
-    auth: AuthContext = Depends(require_role(UserRole.MEMBER)),
+    auth: AuthContext = Depends(
+        require_role(UserRole.OWNER, UserRole.ADMIN, UserRole.MEMBER)
+    ),
 ) -> dict:
     """Reopen an acknowledged or risk-accepted gap.
 
@@ -265,7 +269,9 @@ async def list_gaps(
     limit: int = Query(100, le=500),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
-    auth: AuthContext = Depends(require_role(UserRole.MEMBER)),
+    auth: AuthContext = Depends(
+        require_role(UserRole.OWNER, UserRole.ADMIN, UserRole.MEMBER, UserRole.VIEWER)
+    ),
 ) -> GapListResponse:
     """List coverage gaps for a cloud account.
 
@@ -316,7 +322,9 @@ async def list_gaps(
 async def list_acknowledged_gaps(
     cloud_account_id: UUID = Query(..., description="Cloud account ID"),
     db: AsyncSession = Depends(get_db),
-    auth: AuthContext = Depends(require_role(UserRole.MEMBER)),
+    auth: AuthContext = Depends(
+        require_role(UserRole.OWNER, UserRole.ADMIN, UserRole.MEMBER, UserRole.VIEWER)
+    ),
 ) -> dict:
     """Get list of technique IDs that are acknowledged or risk-accepted.
 
