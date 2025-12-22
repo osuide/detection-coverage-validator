@@ -9,9 +9,7 @@ from typing import AsyncGenerator, Generator
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from redis import asyncio as aioredis
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-from fastapi_limiter import FastAPILimiter
 
 from app.main import app
 from app.core.database import Base, get_db
@@ -34,9 +32,6 @@ TEST_DATABASE_URL = os.environ.get(
     ),
 )
 
-# Redis URL for rate limiter
-TEST_REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
-
 
 @pytest.fixture(scope="session")
 def event_loop() -> Generator:
@@ -46,26 +41,9 @@ def event_loop() -> Generator:
     loop.close()
 
 
-_rate_limiter_initialized = False
-
-
-async def _init_rate_limiter_once():
-    """Initialize FastAPILimiter once for all tests."""
-    global _rate_limiter_initialized
-    if _rate_limiter_initialized:
-        return
-
-    try:
-        redis = await aioredis.from_url(
-            TEST_REDIS_URL,
-            encoding="utf-8",
-            decode_responses=True,
-        )
-        await FastAPILimiter.init(redis)
-        _rate_limiter_initialized = True
-    except Exception:
-        # If Redis is not available, skip rate limiter init
-        pass
+async def _noop_rate_limiter(*args, **kwargs):
+    """No-op rate limiter for tests."""
+    pass
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -168,13 +146,22 @@ async def auth_headers(
 @pytest_asyncio.fixture(scope="function")
 async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     """Create a test HTTP client (unauthenticated)."""
-    # Initialize rate limiter if not already done
-    await _init_rate_limiter_once()
+    from app.api.deps.rate_limit import (
+        auth_rate_limit,
+        signup_rate_limit,
+        password_reset_rate_limit,
+        mfa_rate_limit,
+    )
 
     async def override_get_db():
         yield db_session
 
+    # Override database and rate limiters
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[auth_rate_limit] = lambda: _noop_rate_limiter
+    app.dependency_overrides[signup_rate_limit] = lambda: _noop_rate_limiter
+    app.dependency_overrides[password_reset_rate_limit] = lambda: _noop_rate_limiter
+    app.dependency_overrides[mfa_rate_limit] = lambda: _noop_rate_limiter
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
