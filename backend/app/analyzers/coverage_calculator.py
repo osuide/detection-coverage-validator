@@ -25,6 +25,19 @@ from app.core.config import get_settings
 logger = structlog.get_logger()
 settings = get_settings()
 
+# Cloud-relevant platforms from MITRE ATT&CK Cloud Matrix
+# Used to filter techniques to only include cloud-relevant ones in coverage calculations
+CLOUD_PLATFORMS = [
+    "IaaS",
+    "SaaS",
+    "AWS",
+    "Azure",
+    "GCP",
+    "Azure AD",
+    "Google Workspace",
+    "Office 365",
+]
+
 
 @dataclass
 class TechniqueCoverageInfo:
@@ -400,11 +413,23 @@ class CoverageCalculator:
 
         return coverage_info, breakdown
 
-    async def _get_all_techniques(self) -> list[Technique]:
-        """Get all MITRE techniques from database."""
-        result = await self.db.execute(
-            select(Technique).options(selectinload(Technique.tactic))
-        )
+    async def _get_all_techniques(self, cloud_only: bool = True) -> list[Technique]:
+        """Get MITRE techniques from database.
+
+        Args:
+            cloud_only: If True, only return cloud-relevant techniques (AWS, GCP, etc.)
+                       If False, return all Enterprise techniques.
+        """
+        query = select(Technique).options(selectinload(Technique.tactic))
+
+        if cloud_only:
+            # Filter to only include cloud-relevant techniques
+            platform_conditions = [
+                Technique.platforms.contains([platform]) for platform in CLOUD_PLATFORMS
+            ]
+            query = query.where(or_(*platform_conditions))
+
+        result = await self.db.execute(query)
         return list(result.scalars().unique().all())
 
     async def _get_account_mappings(
@@ -692,11 +717,23 @@ class OrgCoverageCalculator:
 
         return result
 
-    async def _get_all_techniques(self) -> list[Technique]:
-        """Get all MITRE techniques from database."""
-        result = await self.db.execute(
-            select(Technique).options(selectinload(Technique.tactic))
-        )
+    async def _get_all_techniques(self, cloud_only: bool = True) -> list[Technique]:
+        """Get MITRE techniques from database.
+
+        Args:
+            cloud_only: If True, only return cloud-relevant techniques (AWS, GCP, etc.)
+                       If False, return all Enterprise techniques.
+        """
+        query = select(Technique).options(selectinload(Technique.tactic))
+
+        if cloud_only:
+            # Filter to only include cloud-relevant techniques
+            platform_conditions = [
+                Technique.platforms.contains([platform]) for platform in CLOUD_PLATFORMS
+            ]
+            query = query.where(or_(*platform_conditions))
+
+        result = await self.db.execute(query)
         return list(result.scalars().unique().all())
 
     async def _get_org_mappings(

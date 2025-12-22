@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc
+from sqlalchemy import select, desc, or_
 
 from app.core.database import get_db
 from app.core.security import AuthContext, get_auth_context
@@ -33,6 +33,19 @@ from app.models.mapping import DetectionMapping
 from app.models.detection import Detection, DetectionStatus
 
 router = APIRouter()
+
+# Cloud-relevant platforms from MITRE ATT&CK Cloud Matrix
+# Used to filter techniques to only show cloud-relevant ones in the heatmap
+CLOUD_PLATFORMS = [
+    "IaaS",
+    "SaaS",
+    "AWS",
+    "Azure",
+    "GCP",
+    "Azure AD",
+    "Google Workspace",
+    "Office 365",
+]
 
 
 # Drift detection response models
@@ -286,10 +299,18 @@ async def get_coverage_history(
 @router.get("/{cloud_account_id}/techniques")
 async def get_technique_coverage(
     cloud_account_id: UUID,
+    cloud_only: bool = Query(
+        True, description="Filter to cloud-relevant techniques only"
+    ),
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get per-technique coverage details for heatmap visualization."""
+    """Get per-technique coverage details for heatmap visualization.
+
+    By default, only returns techniques relevant to cloud platforms (AWS, GCP, Azure,
+    IaaS, SaaS, etc.) from the MITRE ATT&CK Cloud Matrix. Set cloud_only=false to
+    return all Enterprise techniques.
+    """
     # Verify account exists and belongs to user's organization
     account_result = await db.execute(
         select(CloudAccount).where(
@@ -300,10 +321,17 @@ async def get_technique_coverage(
     if not account_result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="Cloud account not found")
 
-    # Get all techniques with their tactics
-    techniques_result = await db.execute(
-        select(Technique, Tactic).join(Tactic, Technique.tactic_id == Tactic.id)
-    )
+    # Build technique query
+    query = select(Technique, Tactic).join(Tactic, Technique.tactic_id == Tactic.id)
+
+    # Apply cloud platform filter if requested (default: True)
+    if cloud_only:
+        platform_conditions = [
+            Technique.platforms.contains([platform]) for platform in CLOUD_PLATFORMS
+        ]
+        query = query.where(or_(*platform_conditions))
+
+    techniques_result = await db.execute(query)
     techniques_with_tactics = techniques_result.all()
 
     # Get detections for this account
