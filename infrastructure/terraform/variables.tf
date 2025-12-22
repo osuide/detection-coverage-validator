@@ -160,6 +160,12 @@ variable "force_reload_compliance" {
   default     = false
 }
 
+variable "cookie_domain" {
+  description = "Cookie domain for cross-subdomain auth. Required when frontend and API are on different subdomains (e.g., '.a13e.com'). Leave empty for same-origin setups."
+  type        = string
+  default     = ""
+}
+
 # ============================================================================
 # GuardDuty Configuration
 # ============================================================================

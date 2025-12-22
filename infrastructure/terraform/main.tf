@@ -187,6 +187,9 @@ module "backend" {
 
   # Force reload compliance data (one-time migration flag)
   force_reload_compliance = var.force_reload_compliance
+
+  # Cookie domain for cross-subdomain auth
+  cookie_domain = var.cookie_domain
 }
 
 # Frontend (S3 + CloudFront)

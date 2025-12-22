@@ -92,6 +92,10 @@ def set_auth_cookies(
         else settings.refresh_token_expire_days * 24 * 60 * 60
     )
 
+    # Cookie domain for cross-subdomain auth (e.g., ".a13e.com")
+    # When set, cookies are accessible to all subdomains (frontend + API)
+    cookie_domain = settings.cookie_domain
+
     # Refresh token - httpOnly (not accessible to JS)
     response.set_cookie(
         key=REFRESH_TOKEN_COOKIE_NAME,
@@ -101,6 +105,7 @@ def set_auth_cookies(
         secure=settings.environment != "development",  # HTTPS only in production
         samesite="lax",  # Protects against CSRF for most cases
         path="/api/v1/auth",  # Only sent to auth endpoints
+        domain=cookie_domain,  # Required for cross-subdomain setups
     )
 
     # CSRF token - NOT httpOnly (JS needs to read and send in header)
@@ -112,18 +117,23 @@ def set_auth_cookies(
         secure=settings.environment != "development",
         samesite="lax",
         path="/",
+        domain=cookie_domain,  # Required for cross-subdomain setups
     )
 
 
 def clear_auth_cookies(response: Response) -> None:
     """Clear authentication cookies on logout."""
+    cookie_domain = settings.cookie_domain
+
     response.delete_cookie(
         key=REFRESH_TOKEN_COOKIE_NAME,
         path="/api/v1/auth",
+        domain=cookie_domain,
     )
     response.delete_cookie(
         key=CSRF_TOKEN_COOKIE_NAME,
         path="/",
+        domain=cookie_domain,
     )
 
 

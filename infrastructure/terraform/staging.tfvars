@@ -55,3 +55,10 @@ waf_allowed_ips = []
 # Set to true to force reload compliance framework data on next deployment
 # IMPORTANT: Set back to false after the data has been reloaded
 force_reload_compliance = false
+
+# ============================================================================
+# Cookie Domain for Cross-Subdomain Auth
+# ============================================================================
+# Required when frontend (staging.a13e.com) and API (api.staging.a13e.com) are
+# on different subdomains. The leading dot makes cookies accessible to all subdomains.
+cookie_domain = ".a13e.com"

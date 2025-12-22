@@ -99,9 +99,9 @@ export default function Dashboard() {
         <h3 className="mt-2 text-lg font-medium text-gray-900">No cloud accounts</h3>
         <p className="mt-1 text-sm text-gray-500">Get started by adding a cloud account.</p>
         <div className="mt-6">
-          <a href="/accounts" className="btn-primary">
+          <Link to="/accounts" className="btn-primary">
             Add Cloud Account
-          </a>
+          </Link>
         </div>
       </div>
     )
@@ -309,12 +309,12 @@ export default function Dashboard() {
               </div>
             ))}
           </div>
-          <a
-            href="/gaps"
+          <Link
+            to="/gaps"
             className="block mt-4 text-center text-sm text-blue-600 hover:text-blue-700"
           >
             View all gaps →
-          </a>
+          </Link>
         </div>
       ) : null}
     </div>

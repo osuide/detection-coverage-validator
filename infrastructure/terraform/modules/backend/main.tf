@@ -128,6 +128,12 @@ variable "force_reload_compliance" {
   default     = false
 }
 
+variable "cookie_domain" {
+  type        = string
+  description = "Cookie domain for cross-subdomain auth (e.g., '.a13e.com')"
+  default     = ""
+}
+
 # OAuth Provider Client IDs (for backend to know which providers are enabled)
 variable "google_client_id" {
   type        = string
@@ -510,7 +516,8 @@ resource "aws_ecs_task_definition" "backend" {
       { name = "STRIPE_PRICE_ID_ADDITIONAL_ACCOUNT", value = var.stripe_price_ids.additional_account },
       { name = "CORS_ORIGINS", value = var.frontend_url != "" && var.frontend_url != "http://localhost:3001" ? var.frontend_url : "*" },
       { name = "FRONTEND_URL", value = var.frontend_url },
-      { name = "FORCE_RELOAD_COMPLIANCE", value = var.force_reload_compliance ? "true" : "false" }
+      { name = "FORCE_RELOAD_COMPLIANCE", value = var.force_reload_compliance ? "true" : "false" },
+      { name = "COOKIE_DOMAIN", value = var.cookie_domain }
       ],
       # Cognito OAuth configuration (only if Cognito is enabled)
       var.cognito_user_pool_id != "" ? [

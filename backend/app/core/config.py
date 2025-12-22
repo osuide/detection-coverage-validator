@@ -136,6 +136,11 @@ class Settings(BaseSettings):
     # CORS
     cors_origins: str = "http://localhost:3000,http://localhost:3001"
 
+    # Cookie domain for cross-subdomain auth (e.g., ".a13e.com")
+    # Required when frontend and API are on different subdomains
+    # Leave empty for same-origin setups (localhost development)
+    cookie_domain: Optional[str] = None
+
     # AWS Cognito
     cognito_user_pool_id: Optional[str] = None
     cognito_client_id: Optional[str] = None
