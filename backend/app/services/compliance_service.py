@@ -465,21 +465,20 @@ class ComplianceService:
         if not framework:
             return {}, {}
 
-        # Get latest technique coverage snapshot for this account
-        from app.models.coverage import CoverageSnapshot
+        # Get covered technique UUIDs from active detection mappings
+        from app.models.mapping import DetectionMapping
+        from app.models.detection import Detection, DetectionStatus
 
-        coverage_result = await self.db.execute(
-            select(CoverageSnapshot)
-            .where(CoverageSnapshot.cloud_account_id == cloud_account_id)
-            .order_by(CoverageSnapshot.created_at.desc())
-            .limit(1)
+        mappings_result = await self.db.execute(
+            select(DetectionMapping.technique_id)
+            .join(Detection, Detection.id == DetectionMapping.detection_id)
+            .where(
+                Detection.cloud_account_id == cloud_account_id,
+                Detection.status == DetectionStatus.ACTIVE,
+            )
+            .distinct()
         )
-        coverage_snapshot = coverage_result.scalar_one_or_none()
-        if not coverage_snapshot:
-            return {}, {}
-
-        # Get covered technique IDs from the snapshot
-        covered_technique_ids = set(coverage_snapshot.covered_techniques or [])
+        covered_technique_uuids = {row[0] for row in mappings_result.fetchall()}
 
         # Get all controls with their technique mappings
         controls_result = await self.db.execute(
@@ -488,11 +487,6 @@ class ComplianceService:
             .options(selectinload(ComplianceControl.technique_mappings))
         )
         controls = controls_result.scalars().all()
-
-        # Build technique ID lookup
-        technique_result = await self.db.execute(select(Technique))
-        techniques = technique_result.scalars().all()
-        technique_uuid_to_id = {t.id: t.technique_id for t in techniques}
 
         # Group controls by status
         by_status = {
@@ -509,16 +503,10 @@ class ComplianceService:
         }
 
         for control in controls:
-            # Get mapped technique IDs
+            # Get mapped technique UUIDs
             mapped_technique_uuids = [
                 m.technique_id for m in control.technique_mappings
             ]
-            mapped_technique_ids = [
-                technique_uuid_to_id.get(t_uuid)
-                for t_uuid in mapped_technique_uuids
-                if t_uuid in technique_uuid_to_id
-            ]
-            mapped_technique_ids = [t for t in mapped_technique_ids if t]
 
             # Determine if assessable via cloud scanning
             is_not_assessable = control.cloud_applicability in (
@@ -531,17 +519,19 @@ class ComplianceService:
             shared_resp = cloud_context.get("shared_responsibility", "customer")
 
             # Calculate coverage
-            if is_not_assessable or not mapped_technique_ids:
+            if is_not_assessable or not mapped_technique_uuids:
                 status = "not_assessable"
                 coverage_pct = 0.0
                 covered_count = 0
             else:
                 covered_count = sum(
-                    1 for t in mapped_technique_ids if t in covered_technique_ids
+                    1
+                    for t_uuid in mapped_technique_uuids
+                    if t_uuid in covered_technique_uuids
                 )
                 coverage_pct = (
-                    covered_count / len(mapped_technique_ids) * 100
-                    if mapped_technique_ids
+                    covered_count / len(mapped_technique_uuids) * 100
+                    if mapped_technique_uuids
                     else 0.0
                 )
 
@@ -559,7 +549,7 @@ class ComplianceService:
                 "control_family": control.control_family,
                 "priority": control.priority,
                 "coverage_percent": round(coverage_pct, 1),
-                "mapped_techniques": len(mapped_technique_ids),
+                "mapped_techniques": len(mapped_technique_uuids),
                 "covered_techniques": covered_count,
                 "cloud_applicability": control.cloud_applicability,
                 "shared_responsibility": shared_resp,
