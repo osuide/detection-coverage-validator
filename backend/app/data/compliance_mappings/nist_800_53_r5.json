@@ -90,7 +90,7 @@
       "description": "a. Prevent further access to the system by [Selection (one or more): initiating a device lock after [Assignment: organization-defined time period] of inactivity; requiring the user to initiate a device lock before leaving the system unattended]; and\nb. Retain the device lock until the user reestablishes access using established identification and authentication procedures.\n\nDevice locks are temporary actions taken to prevent logical access to organizational systems when users stop work and move ",
       "priority": "P2",
       "is_enhancement": false,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "IAM",
@@ -756,7 +756,7 @@
       "description": "a. Establish configuration requirements, connection requirements, and implementation guidance for each type of wireless access; and\nb. Authorize each type of wireless access to the system prior to allowing such connections.\n\nWireless technologies include microwave, packet radio (ultra-high frequency or very high frequency), 802.11x, and Bluetooth. Wireless networks use authentication protocols that provide authenticator protection and mutual authentication.",
       "priority": "P3",
       "is_enhancement": false,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "IAM",
@@ -878,7 +878,7 @@
       "description": "a. Establish configuration requirements, connection requirements, and implementation guidance for organization-controlled mobile devices, to include when such devices are outside of controlled areas; and\nb. Authorize the connection of mobile devices to organizational systems.\n\nA mobile device is a computing device that has a small form factor such that it can easily be carried by a single individual; is designed to operate without a physical connection; possesses local, non-removable or removabl",
       "priority": "P3",
       "is_enhancement": false,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "IAM",
@@ -6984,7 +6984,7 @@
       "description": "a. Establish [Assignment: organization-defined policies] governing the installation of software by users;\nb. Enforce software installation policies through the following methods: [Assignment: organization-defined methods]; and\nc. Monitor policy compliance [Assignment: organization-defined frequency].\n\nIf provided the necessary privileges, users can install software in organizational systems. To maintain control over the software installed, organizations identify permitted and prohibited actions ",
       "priority": "P3",
       "is_enhancement": false,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Config",
@@ -13573,7 +13573,7 @@
       "description": "a. Establish and maintain a cyber threat hunting capability to:\n1. Search for indicators of compromise in organizational systems; and\n2. Detect, track, and disrupt threats that evade existing controls; and\nb. Employ the threat hunting capability [Assignment: organization-defined frequency].\n\nThreat hunting is an active means of cyber defense in contrast to traditional protection measures, such as firewalls, intrusion detection and prevention systems, quarantining malicious code in sandboxes, and",
       "priority": null,
       "is_enhancement": false,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Inspector",
@@ -16084,7 +16084,7 @@
       "description": "a. Perform a covert channel analysis to identify those aspects of communications within the system that are potential avenues for covert [Selection (one or more): storage; timing] channels; and\nb. Estimate the maximum bandwidth of those channels.\n\nDevelopers are in the best position to identify potential areas within systems that might lead to covert channels. Covert channel analysis is a meaningful activity when there is the potential for unauthorized information flows across security domains, ",
       "priority": "P3",
       "is_enhancement": false,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "VPC",
@@ -16340,7 +16340,7 @@
       "description": "Employ the following out-of-band channels for the physical delivery or electronic transmission of [Assignment: organization-defined information, system components, or devices] to [Assignment: organization-defined individuals or systems]: [Assignment: organization-defined out-of-band channels].\n\nOut-of-band channels include local, non-network accesses to systems; network paths physically separate from network paths used for operational traffic; or non-electronic paths, such as the U.S. Postal Ser",
       "priority": "P3",
       "is_enhancement": false,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "VPC",
@@ -16388,7 +16388,7 @@
       "description": "Employ the following operations security controls to protect key organizational information throughout the system development life cycle: [Assignment: organization-defined operations security controls].\n\nOperations security (OPSEC) is a systematic process by which potential adversaries can be denied information about the capabilities and intentions of organizations by identifying, controlling, and protecting generally unclassified information that specifically relates to the planning and executi",
       "priority": "P3",
       "is_enhancement": false,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "VPC",
@@ -16680,7 +16680,7 @@
       "description": "[Selection: Physically; Logically] disable or remove [Assignment: organization-defined connection ports or input/output devices] on the following systems or system components: [Assignment: organization-defined systems or system components].\n\nConnection ports include Universal Serial Bus (USB), Thunderbolt, and Firewire (IEEE 1394). Input/output (I/O) devices include compact disc and digital versatile disc drives. Disabling or removing such connection ports and I/O devices helps prevent the exfil",
       "priority": "P3",
       "is_enhancement": false,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "VPC",

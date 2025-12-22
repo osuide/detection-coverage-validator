@@ -162,7 +162,7 @@
       "description": "CIS Safeguard 1.4: Use Dynamic Host Configuration Protocol (DHCP) Logging (IG2)",
       "priority": "P2",
       "is_enhancement": true,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Config",
@@ -408,7 +408,7 @@
       "description": "CIS Safeguard 2.5: Allowlist Authorised Software (IG2)",
       "priority": "P2",
       "is_enhancement": true,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Systems Manager",
@@ -444,7 +444,7 @@
       "description": "CIS Safeguard 2.6: Allowlist Authorised Libraries (IG2)",
       "priority": "P2",
       "is_enhancement": true,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Systems Manager",
@@ -476,7 +476,7 @@
       "description": "CIS Safeguard 2.7: Allowlist Authorised Scripts (IG3)",
       "priority": "P3",
       "is_enhancement": true,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Systems Manager",
@@ -1991,7 +1991,7 @@
       "description": "CIS Safeguard 6.6: Establish and Maintain an Inventory of Authentication and Authorisation Systems (IG2)",
       "priority": "P2",
       "is_enhancement": true,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "IAM",
@@ -2899,7 +2899,7 @@
       "description": "CIS Safeguard 9.1: Ensure Use of Only Fully Supported Browsers and Email Clients (IG1)",
       "priority": "P1",
       "is_enhancement": true,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Route 53 Resolver DNS Firewall",
@@ -2993,7 +2993,7 @@
       "description": "CIS Safeguard 9.4: Restrict Unnecessary or Unauthorised Browser and Email Client Extensions (IG2)",
       "priority": "P2",
       "is_enhancement": true,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Route 53 Resolver DNS Firewall",
@@ -3423,7 +3423,7 @@
       "description": "CIS Safeguard 11.1: Establish and Maintain a Data Recovery Process (IG1)",
       "priority": "P1",
       "is_enhancement": true,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Backup",
@@ -3563,7 +3563,7 @@
       "description": "CIS Safeguard 11.5: Test Data Recovery (IG2)",
       "priority": "P2",
       "is_enhancement": true,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Backup",
@@ -4212,7 +4212,7 @@
       "description": "CIS Safeguard 13.7: Deploy a Host-Based Intrusion Prevention Solution (IG3)",
       "priority": "P3",
       "is_enhancement": true,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "GuardDuty",

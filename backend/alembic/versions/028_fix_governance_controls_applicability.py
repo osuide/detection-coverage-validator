@@ -87,6 +87,17 @@ CIS_INFORMATIONAL_CONTROLS = [
     "10.7",  # Use Behaviour-Based Anti-Malware Software
     # Documentation
     "12.4",  # Establish and Maintain Architecture Diagram(s)
+    # Additional from deep analysis - on-prem/endpoint focused
+    "1.4",  # Use DHCP Logging - on-prem network
+    "2.5",  # Allowlist Authorised Software - endpoint
+    "2.6",  # Allowlist Authorised Libraries - endpoint
+    "2.7",  # Allowlist Authorised Scripts - endpoint
+    "6.6",  # Inventory of Auth Systems - documentation
+    "9.1",  # Fully Supported Browsers - endpoint
+    "9.4",  # Browser Extensions - endpoint
+    "11.1",  # Data Recovery Process - process
+    "11.5",  # Test Data Recovery - process
+    "13.7",  # Host-Based IPS - endpoint agent
 ]
 
 # NIST 800-53 Controls that should be 'informational'
@@ -116,6 +127,16 @@ NIST_INFORMATIONAL_CONTROLS = [
     "SR-6",
     # Other governance/analysis
     "RA-9",
+    # Additional from deep analysis - endpoint/process focused
+    "AC-11",  # Device Lock - workstation screen lock
+    "AC-18",  # Wireless Access - on-prem WiFi
+    "AC-19",  # Mobile Device Access Control - MDM
+    "CM-11",  # User-installed Software - endpoint
+    "SC-41",  # Port and I/O Device Access - physical ports
+    "RA-10",  # Threat Hunting - human process
+    "SC-31",  # Covert Channel Analysis - process
+    "SC-37",  # Out-of-band Channels - process
+    "SC-38",  # Operations Security - process
 ]
 
 
