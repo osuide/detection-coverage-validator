@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, ExternalLink, ChevronDown, ChevronUp, Filter, Search, Clock, Zap, Shield, Users, Check, Loader2 } from 'lucide-react'
-import { accountsApi, coverageApi, gapsApi, Gap, RecommendedStrategy } from '../services/api'
+import { AlertTriangle, ExternalLink, ChevronDown, ChevronUp, Filter, Search, Clock, Zap, Shield, Users, Check, Loader2, RotateCcw, CheckCircle, ShieldAlert } from 'lucide-react'
+import { accountsApi, coverageApi, gapsApi, Gap, RecommendedStrategy, AcknowledgedGap } from '../services/api'
 import { useState } from 'react'
 import StrategyDetailModal from '../components/StrategyDetailModal'
 import toast from 'react-hot-toast'
@@ -20,6 +20,7 @@ export default function Gaps() {
   const [priorityFilter, setPriorityFilter] = useState('')
   const [expandedGaps, setExpandedGaps] = useState<Set<string>>(new Set())
   const [showLowPriority, setShowLowPriority] = useState(false)
+  const [showAcknowledged, setShowAcknowledged] = useState(false)
 
   const { data: accounts } = useQuery({
     queryKey: ['accounts'],
@@ -33,6 +34,26 @@ export default function Gaps() {
     queryFn: () => coverageApi.get(firstAccount!.id),
     enabled: !!firstAccount,
   })
+
+  // Fetch acknowledged gaps (both acknowledged and risk_accepted)
+  const { data: acknowledgedGapsData } = useQuery({
+    queryKey: ['acknowledgedGaps', firstAccount?.id],
+    queryFn: async () => {
+      if (!firstAccount?.id) return { gaps: [], total: 0 }
+      const [acknowledged, riskAccepted] = await Promise.all([
+        gapsApi.list(firstAccount.id, 'acknowledged'),
+        gapsApi.list(firstAccount.id, 'risk_accepted'),
+      ])
+      return {
+        gaps: [...acknowledged.gaps, ...riskAccepted.gaps],
+        total: acknowledged.total + riskAccepted.total,
+      }
+    },
+    enabled: !!firstAccount?.id,
+  })
+
+  const acknowledgedGaps = acknowledgedGapsData?.gaps ?? []
+  const acknowledgedCount = acknowledgedGapsData?.total ?? 0
 
   const allGaps = coverage?.top_gaps ?? []
 
@@ -200,6 +221,21 @@ export default function Gaps() {
               </span>
             </label>
           )}
+
+          {/* Acknowledged gaps toggle */}
+          {acknowledgedCount > 0 && (
+            <label className="flex items-center space-x-2 cursor-pointer ml-2">
+              <input
+                type="checkbox"
+                checked={showAcknowledged}
+                onChange={(e) => setShowAcknowledged(e.target.checked)}
+                className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+              />
+              <span className="text-sm text-gray-600">
+                Show acknowledged ({acknowledgedCount})
+              </span>
+            </label>
+          )}
         </div>
 
         <div className="flex items-center space-x-2 ml-auto">
@@ -245,6 +281,28 @@ export default function Gaps() {
               accountId={firstAccount?.id}
             />
           ))}
+        </div>
+      )}
+
+      {/* Acknowledged Gaps Section */}
+      {showAcknowledged && acknowledgedGaps.length > 0 && (
+        <div className="mt-8">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+            <CheckCircle className="h-5 w-5 text-purple-500 mr-2" />
+            Acknowledged Gaps
+          </h2>
+          <p className="text-sm text-gray-500 mb-4">
+            These gaps have been acknowledged or risk-accepted. They will not appear in future scans unless reopened.
+          </p>
+          <div className="space-y-3">
+            {acknowledgedGaps.map((gap) => (
+              <AcknowledgedGapCard
+                key={gap.id}
+                gap={gap}
+                accountId={firstAccount?.id}
+              />
+            ))}
+          </div>
         </div>
       )}
     </div>
@@ -493,6 +551,99 @@ function GapCard({
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// Acknowledged gap card with reopen functionality
+function AcknowledgedGapCard({
+  gap,
+  accountId
+}: {
+  gap: AcknowledgedGap
+  accountId: string | undefined
+}) {
+  const queryClient = useQueryClient()
+  const mitreUrl = `https://attack.mitre.org/techniques/${gap.technique_id.replace('.', '/')}/`
+
+  const reopenMutation = useMutation({
+    mutationFn: () => {
+      if (!accountId) throw new Error('No account selected')
+      return gapsApi.reopen(gap.technique_id, accountId)
+    },
+    onSuccess: () => {
+      toast.success(`Gap ${gap.technique_id} reopened. It will appear in future scans.`)
+      // Invalidate both queries to refresh
+      queryClient.invalidateQueries({ queryKey: ['coverage'] })
+      queryClient.invalidateQueries({ queryKey: ['acknowledgedGaps'] })
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to reopen gap: ${error.message}`)
+    }
+  })
+
+  const isRiskAccepted = gap.status === 'risk_accepted'
+
+  return (
+    <div className={`card border-l-4 ${isRiskAccepted ? 'border-purple-500' : 'border-gray-400'} bg-gray-50`}>
+      <div className="flex items-start justify-between">
+        <div className="flex-1">
+          <div className="flex items-center space-x-3">
+            {isRiskAccepted ? (
+              <span className="px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-800 border border-purple-200 flex items-center">
+                <ShieldAlert className="h-3 w-3 mr-1" />
+                Risk Accepted
+              </span>
+            ) : (
+              <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-200 text-gray-700 border border-gray-300 flex items-center">
+                <CheckCircle className="h-3 w-3 mr-1" />
+                Acknowledged
+              </span>
+            )}
+            <h3 className="font-semibold text-gray-700">
+              {gap.technique_id}: {gap.technique_name || 'Unknown technique'}
+            </h3>
+          </div>
+          <p className="mt-1 text-sm text-gray-500">{gap.tactic_name || 'Unknown tactic'}</p>
+
+          {/* Show reason if available */}
+          {(gap.risk_acceptance_reason || gap.remediation_notes) && (
+            <div className="mt-2 text-sm text-gray-600 bg-white rounded p-2 border border-gray-200">
+              <span className="font-medium">Note: </span>
+              {gap.risk_acceptance_reason || gap.remediation_notes}
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <a
+            href={mitreUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
+            title="View on MITRE ATT&CK"
+          >
+            <ExternalLink className="h-5 w-5" />
+          </a>
+          <button
+            onClick={() => reopenMutation.mutate()}
+            disabled={reopenMutation.isPending || !accountId}
+            className="btn-secondary text-sm inline-flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {reopenMutation.isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                Reopening...
+              </>
+            ) : (
+              <>
+                <RotateCcw className="h-4 w-4 mr-1" />
+                Reopen
+              </>
+            )}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

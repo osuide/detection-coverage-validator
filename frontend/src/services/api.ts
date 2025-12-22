@@ -425,6 +425,24 @@ export interface AcceptRiskRequest {
   reason: string
 }
 
+export interface AcknowledgedGap {
+  id: string
+  technique_id: string
+  technique_name: string
+  tactic_id: string
+  tactic_name: string
+  status: 'acknowledged' | 'risk_accepted'
+  priority: string
+  reason: string | null
+  remediation_notes: string | null
+  risk_acceptance_reason: string | null
+}
+
+export interface AcknowledgedGapsResponse {
+  gaps: AcknowledgedGap[]
+  total: number
+}
+
 export const gapsApi = {
   acknowledge: (techniqueId: string, cloudAccountId: string, notes?: string) =>
     api.post<GapAcknowledgeResponse>(
@@ -451,6 +469,12 @@ export const gapsApi = {
     api.get<{ acknowledged_technique_ids: string[]; count: number }>(
       '/gaps/acknowledged',
       { params: { cloud_account_id: cloudAccountId } }
+    ).then(r => r.data),
+
+  list: (cloudAccountId: string, status?: string) =>
+    api.get<AcknowledgedGapsResponse>(
+      '/gaps',
+      { params: { cloud_account_id: cloudAccountId, status } }
     ).then(r => r.data),
 }
 
