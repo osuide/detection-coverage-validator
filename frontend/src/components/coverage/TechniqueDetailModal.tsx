@@ -20,6 +20,24 @@ import {
 } from 'lucide-react'
 import { TechniqueCoverage } from '../../services/api'
 
+// MITRE ATT&CK tactics in kill chain order
+const TACTIC_ORDER = [
+  'Reconnaissance',
+  'Resource Development',
+  'Initial Access',
+  'Execution',
+  'Persistence',
+  'Privilege Escalation',
+  'Defense Evasion',
+  'Credential Access',
+  'Discovery',
+  'Lateral Movement',
+  'Collection',
+  'Command and Control',
+  'Exfiltration',
+  'Impact',
+]
+
 interface TechniqueDetailModalProps {
   isOpen: boolean
   onClose: () => void
@@ -224,8 +242,16 @@ export function TechniqueDetailModal({
     {} as Record<string, TechniqueCoverage[]>
   )
 
-  // Sort tactics alphabetically
-  const sortedTactics = Object.keys(tacticGroups).sort()
+  // Sort tactics by MITRE ATT&CK kill chain order
+  const sortedTactics = Object.keys(tacticGroups).sort((a, b) => {
+    const indexA = TACTIC_ORDER.indexOf(a)
+    const indexB = TACTIC_ORDER.indexOf(b)
+    // Put unknown tactics at the end
+    if (indexA === -1 && indexB === -1) return a.localeCompare(b)
+    if (indexA === -1) return 1
+    if (indexB === -1) return -1
+    return indexA - indexB
+  })
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
