@@ -406,85 +406,84 @@ class MitreSyncService:
         """Sync software (malware and tools) from STIX data."""
         stats = SyncStats()
 
-        # Get both malware and tools
-        malware_list = attack_data.get_malware()
-        tool_list = attack_data.get_tools()
+        # Get all software (includes both malware and tools)
+        software_list = attack_data.get_software()
 
         logger.info(
             "syncing_software",
-            malware_count=len(malware_list),
-            tool_count=len(tool_list),
+            software_count=len(software_list),
         )
 
-        for software, software_type in [
-            (malware_list, "malware"),
-            (tool_list, "tool"),
-        ]:
-            for item in software:
-                try:
-                    if getattr(item, "revoked", False):
-                        stats.skipped += 1
-                        continue
+        for item in software_list:
+            try:
+                if getattr(item, "revoked", False):
+                    stats.skipped += 1
+                    continue
 
-                    external_id = None
-                    external_refs = []
-                    for ref in getattr(item, "external_references", []):
-                        if ref.get("source_name") == "mitre-attack":
-                            external_id = ref.get("external_id")
-                        external_refs.append(
-                            {
-                                "source_name": ref.get("source_name"),
-                                "url": ref.get("url"),
-                                "external_id": ref.get("external_id"),
-                                "description": ref.get("description"),
-                            }
-                        )
-
-                    if not external_id:
-                        stats.skipped += 1
-                        continue
-
-                    platforms = getattr(item, "x_mitre_platforms", []) or []
-
-                    stmt = insert(MitreSoftware).values(
-                        stix_id=item.id,
-                        external_id=external_id,
-                        name=item.name,
-                        software_type=software_type,
-                        aliases=getattr(item, "aliases", []) or [],
-                        description=getattr(item, "description", None),
-                        platforms=platforms,
-                        is_revoked=getattr(item, "revoked", False),
-                        is_deprecated=getattr(item, "x_mitre_deprecated", False),
-                        external_references=external_refs,
-                        mitre_version=version,
-                        updated_at=datetime.now(timezone.utc),
+                external_id = None
+                external_refs = []
+                for ref in getattr(item, "external_references", []):
+                    if ref.get("source_name") == "mitre-attack":
+                        external_id = ref.get("external_id")
+                    external_refs.append(
+                        {
+                            "source_name": ref.get("source_name"),
+                            "url": ref.get("url"),
+                            "external_id": ref.get("external_id"),
+                            "description": ref.get("description"),
+                        }
                     )
-                    stmt = stmt.on_conflict_do_update(
-                        index_elements=["stix_id"],
-                        set_={
-                            "name": stmt.excluded.name,
-                            "software_type": stmt.excluded.software_type,
-                            "aliases": stmt.excluded.aliases,
-                            "description": stmt.excluded.description,
-                            "platforms": stmt.excluded.platforms,
-                            "is_revoked": stmt.excluded.is_revoked,
-                            "is_deprecated": stmt.excluded.is_deprecated,
-                            "external_references": stmt.excluded.external_references,
-                            "mitre_version": stmt.excluded.mitre_version,
-                            "updated_at": stmt.excluded.updated_at,
-                        },
-                    )
-                    await self.db.execute(stmt)
-                    stats.added += 1
 
-                except Exception as e:
-                    logger.warning(
-                        "software_sync_error",
-                        software_id=getattr(item, "id", "unknown"),
-                        error=str(e),
-                    )
-                    stats.errors += 1
+                if not external_id:
+                    stats.skipped += 1
+                    continue
+
+                # Determine software type from STIX object type
+                software_type = getattr(item, "type", "tool")
+                if software_type not in ("malware", "tool"):
+                    software_type = "tool"
+
+                platforms = getattr(item, "x_mitre_platforms", []) or []
+
+                stmt = insert(MitreSoftware).values(
+                    stix_id=item.id,
+                    external_id=external_id,
+                    name=item.name,
+                    software_type=software_type,
+                    aliases=getattr(item, "aliases", []) or [],
+                    description=getattr(item, "description", None),
+                    platforms=platforms,
+                    is_revoked=getattr(item, "revoked", False),
+                    is_deprecated=getattr(item, "x_mitre_deprecated", False),
+                    external_references=external_refs,
+                    mitre_version=version,
+                    updated_at=datetime.now(timezone.utc),
+                )
+                stmt = stmt.on_conflict_do_update(
+                    index_elements=["stix_id"],
+                    set_={
+                        "name": stmt.excluded.name,
+                        "software_type": stmt.excluded.software_type,
+                        "aliases": stmt.excluded.aliases,
+                        "description": stmt.excluded.description,
+                        "platforms": stmt.excluded.platforms,
+                        "is_revoked": stmt.excluded.is_revoked,
+                        "is_deprecated": stmt.excluded.is_deprecated,
+                        "external_references": stmt.excluded.external_references,
+                        "mitre_version": stmt.excluded.mitre_version,
+                        "updated_at": stmt.excluded.updated_at,
+                    },
+                )
+                await self.db.execute(stmt)
+                stats.added += 1
+
+            except Exception as e:
+                logger.warning(
+                    "software_sync_error",
+                    software_id=getattr(item, "id", "unknown"),
+                    error=str(e),
+                )
+                stats.errors += 1
 
         await self.db.flush()
         return stats

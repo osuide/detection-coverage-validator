@@ -229,6 +229,15 @@ export default function AdminDashboard() {
             <h3 className="text-white font-medium">Abuse Detection</h3>
             <p className="text-sm text-gray-400">Device fingerprints</p>
           </Link>
+
+          <Link
+            to="/admin/mitre"
+            className="p-4 bg-gray-800 rounded-xl border border-gray-700 hover:border-gray-600 transition-colors group"
+          >
+            <Database className="w-6 h-6 text-indigo-400 mb-2" />
+            <h3 className="text-white font-medium">MITRE Data</h3>
+            <p className="text-sm text-gray-400">Threat intelligence</p>
+          </Link>
         </div>
 
         {/* Metrics Grid */}
