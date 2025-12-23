@@ -127,14 +127,16 @@ CIS_CONTROLS = [
             {
                 "id": "3.1",
                 "name": "Establish and Maintain a Data Management Process",
-                "techniques": ["T1530", "T1567"],
+                "techniques": [],  # Administrative process - validated via documentation review
                 "ig": 1,
+                "cloud_applicability": "informational",
             },
             {
                 "id": "3.2",
                 "name": "Establish and Maintain a Data Inventory",
-                "techniques": ["T1530", "T1537"],
+                "techniques": [],  # Administrative process - validated via documentation review
                 "ig": 1,
+                "cloud_applicability": "informational",
             },
             {
                 "id": "3.3",
@@ -163,14 +165,16 @@ CIS_CONTROLS = [
             {
                 "id": "3.7",
                 "name": "Establish and Maintain a Data Classification Scheme",
-                "techniques": ["T1530"],
+                "techniques": [],  # Administrative process - validated via documentation review
                 "ig": 2,
+                "cloud_applicability": "informational",
             },
             {
                 "id": "3.8",
                 "name": "Document Data Flows",
-                "techniques": ["T1048"],
+                "techniques": [],  # Administrative process - validated via documentation review
                 "ig": 2,
+                "cloud_applicability": "informational",
             },
             {
                 "id": "3.9",
@@ -224,8 +228,9 @@ CIS_CONTROLS = [
             {
                 "id": "4.1",
                 "name": "Establish and Maintain a Secure Configuration Process",
-                "techniques": ["T1078", "T1190"],
+                "techniques": [],  # Administrative process - validated via documentation review
                 "ig": 1,
+                "cloud_applicability": "informational",
             },
             {
                 "id": "4.2",
@@ -768,8 +773,9 @@ CIS_CONTROLS = [
             {
                 "id": "12.4",
                 "name": "Establish and Maintain Architecture Diagram(s)",
-                "techniques": ["T1580"],
+                "techniques": [],  # Administrative process - validated via documentation review
                 "ig": 2,
+                "cloud_applicability": "informational",
             },
             {
                 "id": "12.5",
@@ -1040,8 +1046,9 @@ CIS_CONTROLS = [
             {
                 "id": "16.3",
                 "name": "Perform Root Cause Analysis on Security Vulnerabilities",
-                "techniques": ["T1190"],
+                "techniques": [],  # Administrative process - validated via incident records review
                 "ig": 2,
+                "cloud_applicability": "informational",
             },
             {
                 "id": "16.4",
@@ -1058,8 +1065,9 @@ CIS_CONTROLS = [
             {
                 "id": "16.6",
                 "name": "Establish and Maintain a Severity Rating System and Process for Application Vulnerabilities",
-                "techniques": ["T1190"],
+                "techniques": [],  # Administrative process - validated via documentation review
                 "ig": 2,
+                "cloud_applicability": "informational",
             },
             {
                 "id": "16.7",
@@ -1070,14 +1078,16 @@ CIS_CONTROLS = [
             {
                 "id": "16.8",
                 "name": "Separate Production and Non-Production Systems",
-                "techniques": ["T1530"],
+                "techniques": [],  # Administrative control - environment separation validated via architecture review, not log detection
                 "ig": 2,
+                "cloud_applicability": "informational",
             },
             {
                 "id": "16.9",
                 "name": "Train Developers in Application Security Concepts and Secure Coding",
-                "techniques": ["T1190", "T1059"],
+                "techniques": [],  # Training is administrative - validated via completion records
                 "ig": 2,
+                "cloud_applicability": "informational",
             },
             {
                 "id": "16.10",
@@ -1106,8 +1116,9 @@ CIS_CONTROLS = [
             {
                 "id": "16.14",
                 "name": "Conduct Threat Modelling",
-                "techniques": ["T1190"],
+                "techniques": [],  # Administrative process - validated via documentation review
                 "ig": 3,
+                "cloud_applicability": "informational",
             },
         ],
         "cloud_applicability": "moderately_relevant",
@@ -1275,6 +1286,10 @@ def build_cis_mappings() -> dict:
 
         # Add safeguards as sub-controls
         for sg in control["safeguards"]:
+            # Use safeguard-level cloud_applicability if specified, otherwise inherit from parent
+            sg_cloud_applicability = sg.get(
+                "cloud_applicability", control["cloud_applicability"]
+            )
             safeguard = {
                 "control_id": sg["id"],
                 "control_family": control["name"],
@@ -1286,7 +1301,7 @@ def build_cis_mappings() -> dict:
                     else ("P2" if sg.get("ig", 1) == 2 else "P3")
                 ),
                 "is_enhancement": True,
-                "cloud_applicability": control["cloud_applicability"],
+                "cloud_applicability": sg_cloud_applicability,
                 "cloud_context": control["cloud_context"],
                 "technique_mappings": [
                     {"technique_id": t, "mapping_type": "mitigates"}
