@@ -1,15 +1,18 @@
 import { useQuery } from '@tanstack/react-query'
-import { BarChart3, RefreshCw, Grid3X3, List } from 'lucide-react'
+import { BarChart3, RefreshCw, Grid3X3, List, CheckCircle, AlertTriangle, XCircle, Shield } from 'lucide-react'
 import { useState } from 'react'
 import { accountsApi, coverageApi } from '../services/api'
 import TacticHeatmap from '../components/TacticHeatmap'
 import CoverageGauge from '../components/CoverageGauge'
 import MitreHeatmap from '../components/MitreHeatmap'
+import { TechniqueDetailModal } from '../components/coverage/TechniqueDetailModal'
 
 type ViewMode = 'heatmap' | 'tactics'
+type ModalType = 'covered' | 'partial' | 'uncovered' | 'total' | null
 
 export default function Coverage() {
   const [viewMode, setViewMode] = useState<ViewMode>('heatmap')
+  const [activeModal, setActiveModal] = useState<ModalType>(null)
 
   const { data: accounts } = useQuery({
     queryKey: ['accounts'],
@@ -95,24 +98,52 @@ export default function Coverage() {
         </div>
       </div>
 
-      {/* Summary Cards */}
+      {/* Summary Cards - Clickable */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <div className="stat-card text-center">
+        <button
+          onClick={() => setActiveModal('covered')}
+          className="stat-card text-center hover:bg-gray-50 hover:shadow-md transition-all cursor-pointer group"
+        >
+          <div className="flex items-center justify-center gap-2 mb-1">
+            <CheckCircle className="w-5 h-5 text-green-500" />
+          </div>
           <p className="text-3xl font-bold text-green-600">{coverage.covered_techniques}</p>
           <p className="text-sm text-gray-500">Covered</p>
-        </div>
-        <div className="stat-card text-center">
+          <p className="text-xs text-gray-400 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">Click for details</p>
+        </button>
+        <button
+          onClick={() => setActiveModal('partial')}
+          className="stat-card text-center hover:bg-gray-50 hover:shadow-md transition-all cursor-pointer group"
+        >
+          <div className="flex items-center justify-center gap-2 mb-1">
+            <AlertTriangle className="w-5 h-5 text-yellow-500" />
+          </div>
           <p className="text-3xl font-bold text-yellow-600">{coverage.partial_techniques}</p>
           <p className="text-sm text-gray-500">Partial</p>
-        </div>
-        <div className="stat-card text-center">
+          <p className="text-xs text-gray-400 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">Click for details</p>
+        </button>
+        <button
+          onClick={() => setActiveModal('uncovered')}
+          className="stat-card text-center hover:bg-gray-50 hover:shadow-md transition-all cursor-pointer group"
+        >
+          <div className="flex items-center justify-center gap-2 mb-1">
+            <XCircle className="w-5 h-5 text-gray-400" />
+          </div>
           <p className="text-3xl font-bold text-gray-400">{coverage.uncovered_techniques}</p>
           <p className="text-sm text-gray-500">Uncovered</p>
-        </div>
-        <div className="stat-card text-center">
+          <p className="text-xs text-gray-400 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">Click for details</p>
+        </button>
+        <button
+          onClick={() => setActiveModal('total')}
+          className="stat-card text-center hover:bg-gray-50 hover:shadow-md transition-all cursor-pointer group"
+        >
+          <div className="flex items-center justify-center gap-2 mb-1">
+            <Shield className="w-5 h-5 text-blue-500" />
+          </div>
           <p className="text-3xl font-bold text-blue-600">{coverage.total_techniques}</p>
           <p className="text-sm text-gray-500">Total Techniques</p>
-        </div>
+          <p className="text-xs text-gray-400 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">Click for details</p>
+        </button>
       </div>
 
       {/* Main Coverage View */}
@@ -181,6 +212,32 @@ export default function Coverage() {
           </div>
         </div>
       </div>
+
+      {/* Technique Detail Modal */}
+      {activeModal && techniques && (
+        <TechniqueDetailModal
+          isOpen={!!activeModal}
+          onClose={() => setActiveModal(null)}
+          title={
+            activeModal === 'covered' ? 'Covered Techniques' :
+            activeModal === 'partial' ? 'Partial Techniques' :
+            activeModal === 'uncovered' ? 'Uncovered Techniques' :
+            'All Techniques'
+          }
+          description={
+            activeModal === 'covered' ? 'Techniques with 60% or higher detection confidence. These have adequate detection coverage.' :
+            activeModal === 'partial' ? 'Techniques with 40-60% detection confidence. Some detection exists but coverage could be improved.' :
+            activeModal === 'uncovered' ? 'Techniques with less than 40% detection confidence. These need detection coverage to be implemented.' :
+            'All MITRE ATT&CK cloud techniques and their current detection coverage status.'
+          }
+          techniques={
+            activeModal === 'total'
+              ? techniques
+              : techniques.filter(t => t.status === activeModal)
+          }
+          variant={activeModal}
+        />
+      )}
     </div>
   )
 }

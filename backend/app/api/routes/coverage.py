@@ -31,6 +31,7 @@ from app.services.drift_detection_service import DriftDetectionService
 from app.models.mitre import Technique, Tactic
 from app.models.mapping import DetectionMapping
 from app.models.detection import Detection, DetectionStatus
+from app.data.remediation_templates import get_all_templates
 
 router = APIRouter()
 
@@ -342,6 +343,10 @@ async def get_technique_coverage(
     )
     detection_ids = [d[0] for d in detections_result.all()]
 
+    # Get set of technique IDs that have remediation templates
+    available_templates = get_all_templates()
+    template_technique_ids = {t.technique_id for t in available_templates}
+
     # Get mappings for these detections grouped by technique
     technique_coverage = []
 
@@ -387,6 +392,7 @@ async def get_technique_coverage(
                 "max_confidence": round(max_confidence, 2) if max_confidence else 0.0,
                 "status": status,
                 "detection_names": detection_names,
+                "has_template": technique.technique_id in template_technique_ids,
             }
         )
 
