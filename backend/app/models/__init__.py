@@ -57,6 +57,18 @@ from app.models.compliance import (
     ControlTechniqueMapping,
     ComplianceCoverageSnapshot,
 )
+from app.models.mitre_threat import (
+    MitreThreatGroup,
+    MitreCampaign,
+    MitreSoftware,
+    MitreTechniqueRelationship,
+    MitreSyncHistory,
+    MitreDataVersion,
+    SyncStatus,
+    SyncTriggerType,
+    RelatedType,
+    SoftwareType,
+)
 
 __all__ = [
     # Cloud accounts
@@ -121,4 +133,15 @@ __all__ = [
     "ComplianceControl",
     "ControlTechniqueMapping",
     "ComplianceCoverageSnapshot",
+    # MITRE Threat Intelligence
+    "MitreThreatGroup",
+    "MitreCampaign",
+    "MitreSoftware",
+    "MitreTechniqueRelationship",
+    "MitreSyncHistory",
+    "MitreDataVersion",
+    "SyncStatus",
+    "SyncTriggerType",
+    "RelatedType",
+    "SoftwareType",
 ]

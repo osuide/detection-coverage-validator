@@ -57,6 +57,9 @@ structlog==24.1.0
 # Scheduling
 apscheduler==3.10.4
 
+# MITRE ATT&CK Threat Intelligence
+mitreattack-python>=5.3.0
+
 # Reporting
 reportlab==4.0.9
 weasyprint==60.2
