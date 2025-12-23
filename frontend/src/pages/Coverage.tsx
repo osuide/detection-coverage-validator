@@ -7,6 +7,7 @@ import CoverageGauge from '../components/CoverageGauge'
 import MitreHeatmap from '../components/MitreHeatmap'
 import { TechniqueDetailModal } from '../components/coverage/TechniqueDetailModal'
 import { useSelectedAccount } from '../hooks/useSelectedAccount'
+import SecurityFunctionBreakdown from '../components/SecurityFunctionBreakdown'
 
 type ViewMode = 'heatmap' | 'tactics'
 type ModalType = 'covered' | 'partial' | 'uncovered' | 'total' | null
@@ -160,6 +161,13 @@ export default function Coverage() {
               <p className="text-xs text-gray-500">Mapped</p>
             </div>
           </div>
+
+          {/* Security Function Breakdown */}
+          {coverage.security_function_breakdown && (
+            <div className="mt-6 p-4 bg-slate-800 rounded-lg">
+              <SecurityFunctionBreakdown breakdown={coverage.security_function_breakdown} />
+            </div>
+          )}
         </div>
 
         <div className="card lg:col-span-3">

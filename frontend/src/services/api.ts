@@ -188,6 +188,15 @@ export interface Gap {
   recommended_strategies: RecommendedStrategy[]
 }
 
+export interface SecurityFunctionBreakdown {
+  detect: number
+  protect: number
+  identify: number
+  recover: number
+  operational: number
+  total: number
+}
+
 export interface CoverageData {
   id: string
   cloud_account_id: string
@@ -204,6 +213,7 @@ export interface CoverageData {
   top_gaps: Gap[]
   mitre_version: string
   created_at: string
+  security_function_breakdown?: SecurityFunctionBreakdown
 }
 
 export interface Scan {
