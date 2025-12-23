@@ -30,16 +30,7 @@
         ],
         "shared_responsibility": "customer"
       },
-      "technique_mappings": [
-        {
-          "technique_id": "T1556.006",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1556.007",
-          "mapping_type": "mitigates"
-        }
-      ]
+      "technique_mappings": []
     },
     {
       "control_id": "AC-10",
@@ -106,16 +97,7 @@
         ],
         "shared_responsibility": "customer"
       },
-      "technique_mappings": [
-        {
-          "technique_id": "T1021.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1563.002",
-          "mapping_type": "mitigates"
-        }
-      ]
+      "technique_mappings": []
     },
     {
       "control_id": "AC-12",
@@ -772,104 +754,7 @@
         ],
         "shared_responsibility": "customer"
       },
-      "technique_mappings": [
-        {
-          "technique_id": "T1011",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1011.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1020.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1070",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1070.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1558",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1558.003",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1565",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1565.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1565.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1602.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1070.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1552",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1552.004",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1557.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1558.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1558.004",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1602",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1602.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1040",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1119",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1530",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1557",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1070.008",
-          "mapping_type": "mitigates"
-        }
-      ]
+      "technique_mappings": []
     },
     {
       "control_id": "AC-19",
@@ -894,116 +779,7 @@
         ],
         "shared_responsibility": "customer"
       },
-      "technique_mappings": [
-        {
-          "technique_id": "T1020.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1070",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1070.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1550.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1558",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1558.003",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1565",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1565.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1565.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1602.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1070.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1114",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1114.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1114.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1114.003",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1552",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1552.004",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1557.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1558.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1558.004",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1602",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1602.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1040",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1119",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1530",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1557",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1070.008",
-          "mapping_type": "mitigates"
-        }
-      ]
+      "technique_mappings": []
     },
     {
       "control_id": "AC-2",
@@ -5607,16 +5383,7 @@
         ],
         "shared_responsibility": "customer"
       },
-      "technique_mappings": [
-        {
-          "technique_id": "T1556.006",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1556.007",
-          "mapping_type": "mitigates"
-        }
-      ]
+      "technique_mappings": []
     },
     {
       "control_id": "AU-2",
@@ -5706,12 +5473,7 @@
         ],
         "shared_responsibility": "customer"
       },
-      "technique_mappings": [
-        {
-          "technique_id": "T1593.003",
-          "mapping_type": "mitigates"
-        }
-      ]
+      "technique_mappings": []
     },
     {
       "control_id": "CA-2",
@@ -5733,28 +5495,7 @@
         ],
         "shared_responsibility": "customer"
       },
-      "technique_mappings": [
-        {
-          "technique_id": "T1190",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1195",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1195.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1195.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1210",
-          "mapping_type": "mitigates"
-        }
-      ]
+      "technique_mappings": []
     },
     {
       "control_id": "CA-3",
@@ -6654,268 +6395,7 @@
         ],
         "shared_responsibility": "customer"
       },
-      "technique_mappings": [
-        {
-          "technique_id": "T1021.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1053",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1053.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1053.003",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1053.005",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1059",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1176",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1210",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1211",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1495",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1505",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1525",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1543",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1548.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1550.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1562",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1574",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1574.007",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1021.005",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1204.003",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1213",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1213.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1213.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1484",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1505.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1505.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1505.004",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1542",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1542.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1542.003",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1542.004",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1542.005",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1548",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1552",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1552.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1552.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1552.004",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1552.006",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1553",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1553.006",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1554",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1558.004",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1560",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1563",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1574.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1574.005",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1574.008",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1574.009",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1574.010",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1578",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1578.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1578.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1578.003",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1601",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1601.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1601.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1612",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1068",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1195.003",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1212",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1482",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1528",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1530",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1560.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1574.013",
-          "mapping_type": "mitigates"
-        }
-      ]
+      "technique_mappings": []
     },
     {
       "control_id": "CM-10",
@@ -6998,136 +6478,7 @@
         ],
         "shared_responsibility": "customer"
       },
-      "technique_mappings": [
-        {
-          "technique_id": "T1059",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1176",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1195",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1195.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1195.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1218.003",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1218.004",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1218.008",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1218.009",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1218.012",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1218.013",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1218.014",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1505",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1543",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1543.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1543.003",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1550.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1021.005",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1059.006",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1218.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1218.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1218.005",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1505.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1505.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1505.004",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1543.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1543.004",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1547.013",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1564.009",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1569",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1569.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1218",
-          "mapping_type": "mitigates"
-        }
-      ]
+      "technique_mappings": []
     },
     {
       "control_id": "CM-12",
@@ -11574,44 +10925,7 @@
         ],
         "shared_responsibility": "customer"
       },
-      "technique_mappings": [
-        {
-          "technique_id": "T1486",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1490",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1491",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1491.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1491.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1485",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1561",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1561.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1561.002",
-          "mapping_type": "mitigates"
-        }
-      ]
+      "technique_mappings": []
     },
     {
       "control_id": "CP-6",
@@ -13586,40 +12900,7 @@
         ],
         "shared_responsibility": "customer"
       },
-      "technique_mappings": [
-        {
-          "technique_id": "T1190",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1195",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1195.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1195.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1210",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1211",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1068",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1212",
-          "mapping_type": "mitigates"
-        }
-      ]
+      "technique_mappings": []
     },
     {
       "control_id": "RA-5",
@@ -14072,56 +13353,7 @@
         ],
         "shared_responsibility": "customer"
       },
-      "technique_mappings": [
-        {
-          "technique_id": "T1495",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1542",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1542.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1542.003",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1542.004",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1542.005",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1553",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1553.006",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1601",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1601.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1601.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1195.003",
-          "mapping_type": "mitigates"
-        }
-      ]
+      "technique_mappings": []
     },
     {
       "control_id": "SA-10",
@@ -14143,108 +13375,7 @@
         ],
         "shared_responsibility": "shared"
       },
-      "technique_mappings": [
-        {
-          "technique_id": "T1078.004",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1213.003",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1495",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1505",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1078.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1078.003",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1505.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1505.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1505.004",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1542",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1542.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1542.003",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1542.004",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1542.005",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1553",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1553.006",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1564.009",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1574.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1601",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1601.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1601.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1078",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1195.003",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1559.003",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1647",
-          "mapping_type": "mitigates"
-        }
-      ]
+      "technique_mappings": []
     },
     {
       "control_id": "SA-11",
@@ -14266,140 +13397,7 @@
         ],
         "shared_responsibility": "shared"
       },
-      "technique_mappings": [
-        {
-          "technique_id": "T1078.004",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1213.003",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1495",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1505",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1078.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1078.003",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1134.005",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1505.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1505.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1505.004",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1542",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1542.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1542.003",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1542.004",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1542.005",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1552",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1552.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1552.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1552.004",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1552.006",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1553",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1553.006",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1558.004",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1574.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1601",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1601.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1601.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1612",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1078",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1195.003",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1528",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1559.003",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1647",
-          "mapping_type": "mitigates"
-        }
-      ]
+      "technique_mappings": []
     },
     {
       "control_id": "SA-15",
@@ -14421,60 +13419,7 @@
         ],
         "shared_responsibility": "shared"
       },
-      "technique_mappings": [
-        {
-          "technique_id": "T1078.004",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1213.003",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1078.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1078.003",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1552",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1552.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1552.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1552.004",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1552.006",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1558.004",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1574.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1078",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1528",
-          "mapping_type": "mitigates"
-        }
-      ]
+      "technique_mappings": []
     },
     {
       "control_id": "SA-16",
@@ -14496,28 +13441,7 @@
         ],
         "shared_responsibility": "shared"
       },
-      "technique_mappings": [
-        {
-          "technique_id": "T1078.004",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1078.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1078.003",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1574.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1078",
-          "mapping_type": "mitigates"
-        }
-      ]
+      "technique_mappings": []
     },
     {
       "control_id": "SA-17",
@@ -14539,36 +13463,7 @@
         ],
         "shared_responsibility": "shared"
       },
-      "technique_mappings": [
-        {
-          "technique_id": "T1078.004",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1078.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1078.003",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1134.005",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1574.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1078",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1482",
-          "mapping_type": "mitigates"
-        }
-      ]
+      "technique_mappings": []
     },
     {
       "control_id": "SA-22",
@@ -14637,32 +13532,7 @@
         ],
         "shared_responsibility": "shared"
       },
-      "technique_mappings": [
-        {
-          "technique_id": "T1078.004",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1213.003",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1078.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1078.003",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1574.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1078",
-          "mapping_type": "mitigates"
-        }
-      ]
+      "technique_mappings": []
     },
     {
       "control_id": "SA-4",
@@ -14684,32 +13554,7 @@
         ],
         "shared_responsibility": "shared"
       },
-      "technique_mappings": [
-        {
-          "technique_id": "T1078.004",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1078.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1078.003",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1134.005",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1574.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1078",
-          "mapping_type": "mitigates"
-        }
-      ]
+      "technique_mappings": []
     },
     {
       "control_id": "SA-8",
@@ -14731,88 +13576,7 @@
         ],
         "shared_responsibility": "shared"
       },
-      "technique_mappings": [
-        {
-          "technique_id": "T1078.004",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1190",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1213.003",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1567",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1025",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1041",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1048",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1048.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1048.003",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1052",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1052.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1078.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1078.003",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1134.005",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1574.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1005",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1078",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1482",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1559.003",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1647",
-          "mapping_type": "mitigates"
-        }
-      ]
+      "technique_mappings": []
     },
     {
       "control_id": "SA-9",
@@ -14834,28 +13598,7 @@
         ],
         "shared_responsibility": "shared"
       },
-      "technique_mappings": [
-        {
-          "technique_id": "T1567",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1041",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1048",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1048.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1048.003",
-          "mapping_type": "mitigates"
-        }
-      ]
+      "technique_mappings": []
     },
     {
       "control_id": "SC-10",
@@ -16102,48 +14845,7 @@
         ],
         "shared_responsibility": "customer"
       },
-      "technique_mappings": [
-        {
-          "technique_id": "T1567",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1041",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1048",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1048.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1048.003",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1071",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1071.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1071.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1071.003",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1071.004",
-          "mapping_type": "mitigates"
-        }
-      ]
+      "technique_mappings": []
     },
     {
       "control_id": "SC-34",
@@ -16358,28 +15060,7 @@
         ],
         "shared_responsibility": "customer"
       },
-      "technique_mappings": [
-        {
-          "technique_id": "T1071",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1071.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1071.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1071.003",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1071.004",
-          "mapping_type": "mitigates"
-        }
-      ]
+      "technique_mappings": []
     },
     {
       "control_id": "SC-38",
@@ -16406,16 +15087,7 @@
         ],
         "shared_responsibility": "customer"
       },
-      "technique_mappings": [
-        {
-          "technique_id": "T1025",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1005",
-          "mapping_type": "mitigates"
-        }
-      ]
+      "technique_mappings": []
     },
     {
       "control_id": "SC-39",
@@ -16698,28 +15370,7 @@
         ],
         "shared_responsibility": "customer"
       },
-      "technique_mappings": [
-        {
-          "technique_id": "T1025",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1052",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1052.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1091",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1200",
-          "mapping_type": "mitigates"
-        }
-      ]
+      "technique_mappings": []
     },
     {
       "control_id": "SC-43",
@@ -22388,80 +21039,7 @@
         ],
         "shared_responsibility": "shared"
       },
-      "technique_mappings": [
-        {
-          "technique_id": "T1059.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1505",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1546.006",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1567",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1041",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1048",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1048.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1048.003",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1052",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1052.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1204.003",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1505.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1505.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1505.004",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1554",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1601",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1601.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1601.002",
-          "mapping_type": "mitigates"
-        }
-      ]
+      "technique_mappings": []
     },
     {
       "control_id": "SR-5",
@@ -22481,52 +21059,7 @@
         ],
         "shared_responsibility": "shared"
       },
-      "technique_mappings": [
-        {
-          "technique_id": "T1059.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1505",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1546.006",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1204.003",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1505.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1505.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1505.004",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1554",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1601",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1601.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1601.002",
-          "mapping_type": "mitigates"
-        }
-      ]
+      "technique_mappings": []
     },
     {
       "control_id": "SR-6",
@@ -22546,56 +21079,7 @@
         ],
         "shared_responsibility": "shared"
       },
-      "technique_mappings": [
-        {
-          "technique_id": "T1059.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1505",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1546.006",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1204.003",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1505.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1505.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1505.004",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1554",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1601",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1601.001",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1601.002",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1078",
-          "mapping_type": "mitigates"
-        }
-      ]
+      "technique_mappings": []
     }
   ]
 }
