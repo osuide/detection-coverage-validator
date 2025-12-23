@@ -188,7 +188,17 @@ export function ControlsTable({ controls }: ControlsTableProps) {
                     </div>
                   </td>
                   <td className="py-3 pr-4">
-                    <span className="text-sm text-gray-300">{control.control_family}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-300">{control.control_family}</span>
+                      {control.related_gaps_count && control.related_gaps_count > 0 && (
+                        <span
+                          className="px-1.5 py-0.5 text-xs bg-gray-700 text-gray-400 rounded"
+                          title={`${control.related_gaps_count} more gap${control.related_gaps_count !== 1 ? 's' : ''} in this family`}
+                        >
+                          +{control.related_gaps_count} more
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="py-3 pr-4">
                     {getApplicabilityBadge(control.cloud_applicability)}

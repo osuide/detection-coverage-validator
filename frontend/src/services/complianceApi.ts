@@ -116,6 +116,9 @@ export interface ControlGapItem {
   in_scope_services?: string[]
   covered_services?: string[]
   uncovered_services?: string[]
+  // Family grouping - for consolidated gap display
+  related_gaps_count?: number // Number of other gaps in same family
+  related_gap_ids?: string[] // Control IDs of related gaps in same family
 }
 
 export interface ControlStatusItem {

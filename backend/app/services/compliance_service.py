@@ -219,6 +219,9 @@ class ComplianceService:
                         "in_scope_services": gap.in_scope_services,
                         "covered_services": gap.covered_services,
                         "uncovered_services": gap.uncovered_services,
+                        # Family grouping fields
+                        "related_gaps_count": gap.related_gaps_count,
+                        "related_gap_ids": gap.related_gap_ids,
                     }
                     for gap in result.top_gaps
                 ]

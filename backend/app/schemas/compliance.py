@@ -243,6 +243,9 @@ class ControlGapItem(BaseModel):
     in_scope_services: list[str] = []
     covered_services: list[str] = []
     uncovered_services: list[str] = []
+    # Family grouping fields - for consolidated gap display
+    related_gaps_count: int = 0  # Number of other gaps in same family
+    related_gap_ids: list[str] = []  # Control IDs of related gaps in same family
 
 
 class ComplianceCoverageResponse(BaseModel):

@@ -59,6 +59,11 @@ class ControlCoverageInfo:
     technique_service_coverage: list[ServiceCoverageResult] = field(
         default_factory=list
     )  # Per-technique service breakdown
+    # Family grouping fields - populated for top_gaps only
+    related_gaps_count: int = 0  # Number of other gaps in same family
+    related_gap_ids: list[str] = field(
+        default_factory=list
+    )  # Control IDs of related gaps
 
 
 @dataclass
@@ -508,7 +513,37 @@ class ComplianceCoverageCalculator:
                 c.coverage_percent,
             )
         )
-        top_gaps = gaps[:10]  # Top 10 gaps
+
+        # Group gaps by family and select representative per family
+        # This ensures diversity in top gaps while preserving all signals
+        family_gaps: dict[str, list[ControlCoverageInfo]] = {}
+        for gap in gaps:
+            if gap.control_family not in family_gaps:
+                family_gaps[gap.control_family] = []
+            family_gaps[gap.control_family].append(gap)
+
+        # Build top gaps with family grouping info
+        # Select 1 representative per family (already sorted by priority)
+        # Add related_gaps_count and related_gap_ids for each representative
+        top_gaps: list[ControlCoverageInfo] = []
+
+        for family, family_gap_list in family_gaps.items():
+            representative = family_gap_list[0]  # Best gap in family (already sorted)
+            related_ids = [g.control_id for g in family_gap_list[1:]]
+            # Populate family grouping fields on the representative
+            representative.related_gaps_count = len(related_ids)
+            representative.related_gap_ids = related_ids
+            top_gaps.append(representative)
+
+        # Re-sort representatives by priority to get final top 10
+        top_gaps.sort(
+            key=lambda c: (
+                applicability_order.get(c.cloud_applicability, 2),
+                priority_order.get(c.priority, 3),
+                c.coverage_percent,
+            )
+        )
+        top_gaps = top_gaps[:10]  # Top 10 family representatives
 
         # Calculate aggregate service coverage metrics
         service_metrics: Optional[ServiceCoverageMetrics] = None

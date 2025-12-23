@@ -222,11 +222,104 @@ resource "aws_wafv2_web_acl" "frontend" {
   description = "WAF ACL for A13E ${var.environment} frontend - OWASP protection"
   scope       = "CLOUDFRONT"
 
+  # Custom response for blocked requests - "Coming Soon" page
+  dynamic "custom_response_body" {
+    for_each = length(var.allowed_ips) > 0 ? [1] : []
+    content {
+      key          = "coming-soon"
+      content_type = "TEXT_HTML"
+      content      = <<-HTML
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>A13E - Coming Soon</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #e2e8f0;
+    }
+    .container {
+      text-align: center;
+      padding: 2rem;
+      max-width: 600px;
+    }
+    .logo {
+      font-size: 3rem;
+      font-weight: bold;
+      background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 1.5rem;
+    }
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      color: #f8fafc;
+    }
+    p {
+      font-size: 1.125rem;
+      color: #94a3b8;
+      line-height: 1.7;
+      margin-bottom: 2rem;
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.5rem 1rem;
+      background: rgba(59, 130, 246, 0.1);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: 9999px;
+      font-size: 0.875rem;
+      color: #60a5fa;
+    }
+    .shield {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 2rem;
+      opacity: 0.8;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <svg class="shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="#3b82f6"/>
+      <path d="M9 12l2 2 4-4" stroke="#22c55e" stroke-width="2"/>
+    </svg>
+    <div class="logo">A13E</div>
+    <h1>Coming Soon</h1>
+    <p>
+      We're building something powerful for cloud security teams.
+      Our Detection Coverage Validator will help you identify and close
+      gaps in your MITRE ATT&CK coverage.
+    </p>
+    <span class="badge">Private Beta</span>
+  </div>
+</body>
+</html>
+      HTML
+    }
+  }
+
   # Default action: block if IP restriction is enabled, allow otherwise
   default_action {
     dynamic "block" {
       for_each = length(var.allowed_ips) > 0 ? [1] : []
-      content {}
+      content {
+        custom_response {
+          response_code            = 403
+          custom_response_body_key = "coming-soon"
+        }
+      }
     }
     dynamic "allow" {
       for_each = length(var.allowed_ips) == 0 ? [1] : []
