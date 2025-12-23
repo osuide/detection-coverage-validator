@@ -113,14 +113,7 @@ jobs:
           working_directory: ./infrastructure/terraform
           soft_fail: true
           format: json
-          out: tfsec-results.json
-
-      - name: Upload tfsec results
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: tfsec-results
-          path: infrastructure/terraform/tfsec-results.json
+          github_token: ${{ secrets.GITHUB_TOKEN }}
 
   # Container image scanning with Trivy
   trivy:
