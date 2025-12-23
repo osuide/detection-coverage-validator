@@ -6,23 +6,23 @@ pydantic-settings>=2.6.0
 email-validator>=2.2.0
 
 # Database
-sqlalchemy==2.0.25
-alembic==1.13.1
-asyncpg==0.29.0
-psycopg2-binary==2.9.9
+sqlalchemy==2.0.45
+alembic==1.17.2
+asyncpg==0.31.0
+psycopg2-binary==2.9.11
 
 # AWS (requires matching boto3/botocore versions)
 boto3>=1.35.0
 botocore>=1.35.0
 
 # GCP
-google-auth==2.27.0
-google-cloud-logging==3.9.0
-google-cloud-monitoring==2.19.0
-google-api-python-client==2.116.0
+google-auth==2.45.0
+google-cloud-logging==3.13.0
+google-cloud-monitoring==2.28.0
+google-api-python-client==2.187.0
 
 # Google SecOps (Chronicle SIEM) - requires Python 3.10+
-secops==0.3.0
+secops==0.30.0
 
 # Encryption
 cryptography>=44.0.1
@@ -44,24 +44,24 @@ python-jose[cryptography]>=3.4.0
 passlib[bcrypt]==1.7.4
 python-multipart>=0.0.18
 bcrypt==4.1.2
-PyJWT==2.8.0
+PyJWT==2.10.1
 pyotp==2.9.0
 
 # Payments
 stripe==7.9.0
 
 # Utilities
-python-dotenv==1.0.0
+python-dotenv==1.2.1
 structlog==24.1.0
 
 # Scheduling
-apscheduler==3.10.4
+apscheduler==3.11.2
 
 # MITRE ATT&CK Threat Intelligence
 mitreattack-python>=5.3.0
 
 # Reporting
-reportlab==4.0.9
+reportlab==4.4.7
 weasyprint==60.2
 
 # Testing
