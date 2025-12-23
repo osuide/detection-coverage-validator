@@ -1,6 +1,7 @@
 """Compliance coverage calculator.
 
 Calculates compliance framework coverage from MITRE ATT&CK technique coverage.
+Supports service-aware coverage when cloud_account_id is provided.
 """
 
 from dataclasses import dataclass, field
@@ -17,6 +18,10 @@ from app.models.compliance import (
     ComplianceControl,
 )
 from app.models.mitre import Technique
+from app.analyzers.service_coverage_calculator import (
+    ServiceCoverageCalculator,
+    ServiceCoverageResult,
+)
 
 logger = structlog.get_logger()
 
@@ -40,6 +45,20 @@ class ControlCoverageInfo:
     missing_techniques: list[str] = field(default_factory=list)
     cloud_applicability: Optional[str] = None  # "highly_relevant", etc.
     cloud_context: Optional[dict] = None
+    # Service-aware coverage fields
+    service_coverage_percent: Optional[float] = None  # % of in-scope services covered
+    in_scope_services: list[str] = field(
+        default_factory=list
+    )  # Services with resources
+    covered_services: list[str] = field(
+        default_factory=list
+    )  # Services with detections
+    uncovered_services: list[str] = field(
+        default_factory=list
+    )  # Services without detections
+    technique_service_coverage: list[ServiceCoverageResult] = field(
+        default_factory=list
+    )  # Per-technique service breakdown
 
 
 @dataclass
@@ -78,6 +97,16 @@ class CloudCoverageMetrics:
 
 
 @dataclass
+class ServiceCoverageMetrics:
+    """Service-aware coverage metrics across all controls."""
+
+    total_in_scope_services: int  # Unique services with resources in account
+    total_covered_services: int  # Unique services with detection coverage
+    service_coverage_percent: float  # Overall service coverage
+    uncovered_services: list[str]  # Services without detection coverage
+
+
+@dataclass
 class ComplianceCoverageResult:
     """Complete compliance coverage calculation result."""
 
@@ -93,6 +122,8 @@ class ComplianceCoverageResult:
     family_coverage: dict[str, FamilyCoverageInfo]
     control_details: list[ControlCoverageInfo]
     top_gaps: list[ControlCoverageInfo]
+    # Service-aware coverage metrics
+    service_metrics: Optional[ServiceCoverageMetrics] = None
 
 
 class ComplianceCoverageCalculator:
@@ -106,6 +137,7 @@ class ComplianceCoverageCalculator:
         self,
         framework_id: UUID,
         technique_coverage: dict[str, str],  # technique_id (str) -> status
+        cloud_account_id: Optional[UUID] = None,  # For service-aware coverage
     ) -> ComplianceCoverageResult:
         """Calculate compliance coverage for a framework.
 
@@ -113,6 +145,9 @@ class ComplianceCoverageCalculator:
             framework_id: The compliance framework UUID
             technique_coverage: Dict mapping MITRE technique IDs to coverage status
                                 ("covered", "partial", "uncovered")
+            cloud_account_id: Optional cloud account UUID for service-aware coverage.
+                              When provided, coverage is calculated based on which
+                              services have detection coverage, not just techniques.
 
         Returns:
             ComplianceCoverageResult with full coverage breakdown
@@ -121,7 +156,13 @@ class ComplianceCoverageCalculator:
             "calculating_compliance_coverage",
             framework_id=str(framework_id),
             technique_count=len(technique_coverage),
+            service_aware=cloud_account_id is not None,
         )
+
+        # Initialize service coverage calculator if cloud_account_id provided
+        service_calc: Optional[ServiceCoverageCalculator] = None
+        if cloud_account_id:
+            service_calc = ServiceCoverageCalculator(self.db)
 
         # Get framework
         framework = await self.db.get(ComplianceFramework, framework_id)
@@ -214,6 +255,50 @@ class ComplianceCoverageCalculator:
                 else:
                     status = "uncovered"
 
+                # Calculate service coverage if enabled and control has aws_services
+                service_coverage_pct: Optional[float] = None
+                in_scope_services: list[str] = []
+                covered_services: list[str] = []
+                uncovered_services: list[str] = []
+
+                if service_calc and cloud_account_id:
+                    # Extract required services from cloud_context
+                    control_required_services: list[str] = []
+                    if control.cloud_context and isinstance(
+                        control.cloud_context, dict
+                    ):
+                        control_required_services = control.cloud_context.get(
+                            "aws_services", []
+                        )
+
+                    if control_required_services:
+                        # Calculate service coverage for this control
+                        service_result = await service_calc.calculate_control_coverage(
+                            cloud_account_id=cloud_account_id,
+                            control_id=control.control_id,
+                            technique_ids=[t for t in mapped_technique_ids if t],
+                            control_required_services=control_required_services,
+                        )
+                        service_coverage_pct = service_result.coverage_percent
+                        in_scope_services = service_result.in_scope_services
+                        covered_services = service_result.covered_services
+                        uncovered_services = service_result.uncovered_services
+
+                        # Adjust status based on service coverage
+                        # If technique coverage is high but service coverage is low,
+                        # downgrade the status
+                        if (
+                            service_coverage_pct is not None
+                            and service_coverage_pct < 100
+                        ):
+                            effective_coverage = (
+                                coverage_pct + (service_coverage_pct / 100)
+                            ) / 2
+                            if effective_coverage < PARTIAL_THRESHOLD:
+                                status = "uncovered"
+                            elif effective_coverage < COVERED_THRESHOLD:
+                                status = "partial"
+
                 coverage_info = ControlCoverageInfo(
                     control_id=control.control_id,
                     control_name=control.name,
@@ -226,6 +311,10 @@ class ComplianceCoverageCalculator:
                     missing_techniques=missing[:5],  # Limit to 5
                     cloud_applicability=control.cloud_applicability,
                     cloud_context=control.cloud_context,
+                    service_coverage_percent=service_coverage_pct,
+                    in_scope_services=in_scope_services,
+                    covered_services=covered_services,
+                    uncovered_services=uncovered_services,
                 )
 
             control_details.append(coverage_info)
@@ -421,6 +510,28 @@ class ComplianceCoverageCalculator:
         )
         top_gaps = gaps[:10]  # Top 10 gaps
 
+        # Calculate aggregate service coverage metrics
+        service_metrics: Optional[ServiceCoverageMetrics] = None
+        if cloud_account_id:
+            # Aggregate unique services across all controls
+            all_in_scope: set[str] = set()
+            all_covered: set[str] = set()
+            for c in control_details:
+                all_in_scope.update(c.in_scope_services)
+                all_covered.update(c.covered_services)
+
+            all_uncovered = sorted(all_in_scope - all_covered)
+            svc_pct = (
+                (len(all_covered) / len(all_in_scope) * 100) if all_in_scope else 100.0
+            )
+
+            service_metrics = ServiceCoverageMetrics(
+                total_in_scope_services=len(all_in_scope),
+                total_covered_services=len(all_covered),
+                service_coverage_percent=round(svc_pct, 1),
+                uncovered_services=all_uncovered,
+            )
+
         result = ComplianceCoverageResult(
             framework_id=framework.framework_id,
             framework_name=framework.name,
@@ -434,6 +545,7 @@ class ComplianceCoverageCalculator:
             family_coverage=family_coverage,
             control_details=control_details,
             top_gaps=top_gaps,
+            service_metrics=service_metrics,
         )
 
         self.logger.info(
@@ -443,6 +555,12 @@ class ComplianceCoverageCalculator:
             covered=covered_controls,
             partial=partial_controls,
             uncovered=uncovered_controls,
+            service_coverage_percent=(
+                service_metrics.service_coverage_percent if service_metrics else None
+            ),
+            uncovered_services=(
+                service_metrics.uncovered_services if service_metrics else None
+            ),
         )
 
         return result
@@ -455,11 +573,13 @@ class ComplianceCoverageCalculator:
     async def calculate_for_all_frameworks(
         self,
         technique_coverage: dict[str, str],
+        cloud_account_id: Optional[UUID] = None,
     ) -> list[ComplianceCoverageResult]:
         """Calculate coverage for all active compliance frameworks.
 
         Args:
             technique_coverage: Dict mapping MITRE technique IDs to coverage status
+            cloud_account_id: Optional cloud account UUID for service-aware coverage
 
         Returns:
             List of ComplianceCoverageResult for each framework
@@ -472,7 +592,9 @@ class ComplianceCoverageCalculator:
 
         results = []
         for framework in frameworks:
-            coverage = await self.calculate(framework.id, technique_coverage)
+            coverage = await self.calculate(
+                framework.id, technique_coverage, cloud_account_id
+            )
             results.append(coverage)
 
         return results

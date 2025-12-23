@@ -82,6 +82,15 @@ class CloudAccount(Base):
     last_scan_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+
+    # Service awareness - which cloud services have resources in this account
+    discovered_services: Mapped[Optional[list]] = mapped_column(
+        JSONB, nullable=True, default=list
+    )  # e.g., ["S3", "RDS", "DynamoDB"] - services with resources in account
+    discovered_services_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow
     )

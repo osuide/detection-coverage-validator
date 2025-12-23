@@ -172,7 +172,7 @@ function ExpandableControlRow({
         {control.mapped_techniques > 0 && (
           <div className="mt-3 ml-6">
             <div className="flex items-center justify-between text-xs mb-1">
-              <span className="text-gray-400">Coverage</span>
+              <span className="text-gray-400">Technique Coverage</span>
               <span
                 className={
                   control.coverage_percent >= 80
@@ -191,6 +191,54 @@ function ExpandableControlRow({
                 style={{ width: `${Math.min(control.coverage_percent, 100)}%` }}
               />
             </div>
+          </div>
+        )}
+
+        {/* Service coverage bar */}
+        {control.service_coverage_percent != null && control.in_scope_services && control.in_scope_services.length > 0 && (
+          <div className="mt-2 ml-6">
+            <div className="flex items-center justify-between text-xs mb-1">
+              <span className="text-gray-400">
+                Service Coverage ({control.covered_services?.length || 0}/{control.in_scope_services.length})
+              </span>
+              <span
+                className={
+                  control.service_coverage_percent >= 80
+                    ? 'text-green-400'
+                    : control.service_coverage_percent >= 50
+                    ? 'text-yellow-400'
+                    : 'text-red-400'
+                }
+              >
+                {control.service_coverage_percent.toFixed(0)}%
+              </span>
+            </div>
+            <div className="w-full h-1.5 bg-gray-600 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full ${
+                  control.service_coverage_percent >= 80
+                    ? 'bg-green-500'
+                    : control.service_coverage_percent >= 50
+                    ? 'bg-yellow-500'
+                    : 'bg-red-500'
+                }`}
+                style={{ width: `${Math.min(control.service_coverage_percent, 100)}%` }}
+              />
+            </div>
+            {/* Service badges */}
+            {control.uncovered_services && control.uncovered_services.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                <span className="text-xs text-gray-500 mr-1">Missing:</span>
+                {control.uncovered_services.map((service) => (
+                  <span
+                    key={service}
+                    className="px-1.5 py-0.5 text-xs bg-red-900/50 text-red-300 border border-red-700/50 rounded"
+                  >
+                    {service}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

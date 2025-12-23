@@ -147,6 +147,11 @@ class Detection(Base):
     log_groups: Mapped[Optional[list]] = mapped_column(JSONB, nullable=True)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
+    # Service awareness - which cloud services this detection monitors
+    target_services: Mapped[Optional[list]] = mapped_column(
+        JSONB, nullable=True, default=list
+    )  # e.g., ["S3", "RDS", "DynamoDB"] - normalised service names
+
     # Health metrics (Phase 3)
     last_triggered_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True

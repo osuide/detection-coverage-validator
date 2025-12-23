@@ -50,6 +50,13 @@ export interface TechniqueMapping {
   mapping_source: string
 }
 
+export interface ServiceCoverageItem {
+  total_in_scope_services: number // Services with resources in account
+  total_covered_services: number // Services with detection coverage
+  service_coverage_percent: number // % of in-scope services covered
+  uncovered_services: string[] // Services without detection coverage
+}
+
 export interface CloudCoverageMetrics {
   cloud_detectable_total: number
   cloud_detectable_covered: number
@@ -58,6 +65,8 @@ export interface CloudCoverageMetrics {
   customer_responsibility_covered: number
   provider_managed_total: number
   not_assessable_total: number // Controls that cannot be assessed via cloud scanning
+  // Service-aware coverage
+  service_coverage?: ServiceCoverageItem
 }
 
 export interface ComplianceCoverageSummary {
@@ -102,6 +111,11 @@ export interface ControlGapItem {
   missing_technique_details: MissingTechniqueDetail[]
   cloud_applicability?: CloudApplicability
   cloud_context?: CloudContext
+  // Service-aware coverage
+  service_coverage_percent?: number
+  in_scope_services?: string[]
+  covered_services?: string[]
+  uncovered_services?: string[]
 }
 
 export interface ControlStatusItem {
@@ -114,6 +128,11 @@ export interface ControlStatusItem {
   covered_techniques: number
   cloud_applicability?: CloudApplicability
   shared_responsibility?: 'customer' | 'shared' | 'provider'
+  // Service-aware coverage
+  service_coverage_percent?: number
+  in_scope_services?: string[]
+  covered_services?: string[]
+  uncovered_services?: string[]
 }
 
 export interface ControlsByStatus {
@@ -155,6 +174,14 @@ export interface DetectionSummary {
   confidence: number
 }
 
+export interface TechniqueServiceCoverage {
+  in_scope_services: string[]
+  covered_services: string[]
+  uncovered_services: string[]
+  coverage_percent: number
+  detections_by_service: Record<string, string[]> // service -> detection names
+}
+
 export interface TechniqueCoverageDetail {
   technique_id: string
   technique_name: string
@@ -162,6 +189,15 @@ export interface TechniqueCoverageDetail {
   confidence: number | null
   detections: DetectionSummary[]
   has_template: boolean
+  // Service-aware coverage
+  service_coverage?: TechniqueServiceCoverage
+}
+
+export interface ControlServiceCoverage {
+  in_scope_services: string[]
+  covered_services: string[]
+  uncovered_services: string[]
+  service_coverage_percent?: number
 }
 
 export interface ControlCoverageDetail {
@@ -178,6 +214,8 @@ export interface ControlCoverageDetail {
   cloud_applicability: CloudApplicability | null
   cloud_context: CloudContext | null
   techniques: TechniqueCoverageDetail[]
+  // Service-aware coverage
+  service_coverage?: ControlServiceCoverage
 }
 
 export const complianceApi = {

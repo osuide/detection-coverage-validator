@@ -59,6 +59,15 @@ class TechniqueMappingResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class ServiceCoverageItem(BaseModel):
+    """Service-level coverage information."""
+
+    total_in_scope_services: int  # Services with resources in account
+    total_covered_services: int  # Services with detection coverage
+    service_coverage_percent: float  # % of in-scope services covered
+    uncovered_services: list[str] = []  # Services without detection coverage
+
+
 class CloudCoverageMetricsResponse(BaseModel):
     """Cloud-specific coverage metrics."""
 
@@ -69,6 +78,8 @@ class CloudCoverageMetricsResponse(BaseModel):
     customer_responsibility_covered: int
     provider_managed_total: int
     not_assessable_total: int = 0  # Controls that cannot be assessed via cloud scanning
+    # Service-aware coverage
+    service_coverage: Optional[ServiceCoverageItem] = None
 
 
 class ComplianceCoverageSummary(BaseModel):
@@ -122,6 +133,16 @@ class DetectionSummary(BaseModel):
     confidence: float
 
 
+class TechniqueServiceCoverageItem(BaseModel):
+    """Service coverage for a single technique."""
+
+    in_scope_services: list[str] = []  # Services in scope for this technique
+    covered_services: list[str] = []  # Services with detection coverage
+    uncovered_services: list[str] = []  # Services without coverage
+    coverage_percent: float = 100.0  # % of in-scope services covered
+    detections_by_service: dict[str, list[str]] = {}  # service -> detection names
+
+
 class TechniqueCoverageDetail(BaseModel):
     """Detailed coverage information for a single technique within a control."""
 
@@ -131,6 +152,17 @@ class TechniqueCoverageDetail(BaseModel):
     confidence: Optional[float] = None  # Max confidence if covered
     detections: list[DetectionSummary] = []  # Detections providing coverage
     has_template: bool = False  # Whether a remediation template is available
+    # Service-aware coverage
+    service_coverage: Optional[TechniqueServiceCoverageItem] = None
+
+
+class ControlServiceCoverageItem(BaseModel):
+    """Service coverage for a compliance control."""
+
+    in_scope_services: list[str] = []  # Services in scope (resources in account)
+    covered_services: list[str] = []  # Services with detection coverage
+    uncovered_services: list[str] = []  # Services without coverage
+    service_coverage_percent: Optional[float] = None  # % of in-scope services covered
 
 
 class ControlCoverageDetailResponse(BaseModel):
@@ -151,6 +183,8 @@ class ControlCoverageDetailResponse(BaseModel):
     cloud_applicability: Optional[str] = None
     cloud_context: Optional[CloudContextResponse] = None
     techniques: list[TechniqueCoverageDetail] = []
+    # Service-aware coverage
+    service_coverage: Optional[ControlServiceCoverageItem] = None
 
 
 class ControlStatusItem(BaseModel):
@@ -165,6 +199,11 @@ class ControlStatusItem(BaseModel):
     covered_techniques: int = 0  # Techniques with detections
     cloud_applicability: Optional[str] = None
     shared_responsibility: Optional[str] = None  # customer/shared/provider
+    # Service-aware coverage
+    service_coverage_percent: Optional[float] = None
+    in_scope_services: list[str] = []
+    covered_services: list[str] = []
+    uncovered_services: list[str] = []
 
 
 class ControlsByStatus(BaseModel):
@@ -199,6 +238,11 @@ class ControlGapItem(BaseModel):
     )  # Enriched technique info
     cloud_applicability: Optional[str] = None
     cloud_context: Optional[CloudContextResponse] = None
+    # Service-aware coverage fields
+    service_coverage_percent: Optional[float] = None
+    in_scope_services: list[str] = []
+    covered_services: list[str] = []
+    uncovered_services: list[str] = []
 
 
 class ComplianceCoverageResponse(BaseModel):

@@ -70,6 +70,57 @@ function DetectionItem({ detection }: { detection: DetectionSummary }) {
   )
 }
 
+function ServiceCoverageIndicator({
+  service_coverage,
+}: {
+  service_coverage?: TechniqueCoverageDetail['service_coverage']
+}) {
+  if (!service_coverage || service_coverage.in_scope_services.length === 0) {
+    return null
+  }
+
+  const { covered_services, uncovered_services, coverage_percent } = service_coverage
+
+  return (
+    <div className="mt-2 mx-3 mb-2 px-3 py-2 bg-gray-900/50 rounded-md border border-gray-700/50">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-medium text-gray-400">Service Coverage</span>
+        <span
+          className={`text-xs font-medium ${
+            coverage_percent >= 80
+              ? 'text-green-400'
+              : coverage_percent >= 50
+                ? 'text-yellow-400'
+                : 'text-red-400'
+          }`}
+        >
+          {Math.round(coverage_percent)}%
+        </span>
+      </div>
+      <div className="flex flex-wrap gap-1">
+        {covered_services.map((service) => (
+          <span
+            key={service}
+            className="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-green-900/50 text-green-300 border border-green-700/50 rounded"
+          >
+            <CheckCircle className="w-3 h-3" />
+            {service}
+          </span>
+        ))}
+        {uncovered_services.map((service) => (
+          <span
+            key={service}
+            className="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-red-900/50 text-red-300 border border-red-700/50 rounded"
+          >
+            <XCircle className="w-3 h-3" />
+            {service}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function TechniqueRow({ technique }: { technique: TechniqueCoverageDetail }) {
   const isUncovered = technique.status === 'uncovered'
 
@@ -119,6 +170,9 @@ function TechniqueRow({ technique }: { technique: TechniqueCoverageDetail }) {
           )}
         </div>
       </div>
+
+      {/* Service coverage indicator */}
+      <ServiceCoverageIndicator service_coverage={technique.service_coverage} />
 
       {/* Detection details for covered techniques */}
       {technique.detections.length > 0 && (

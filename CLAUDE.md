@@ -86,3 +86,111 @@ Related dependencies in `app/core/security.py`:
 - `require_role(*roles)` - Exact match for specified roles
 - `require_org_features()` - Requires Pro/Enterprise subscription with org features
 - `require_feature(feature)` - Requires specific subscription feature
+
+## Service-Aware Coverage Implementation (COMPLETE)
+
+### Problem Statement
+Control 3.5 "Securely Dispose of Data" showed 100% coverage with only S3 deletion detection, when data exists in many services (RDS, DynamoDB, EBS, etc.). The coverage model was technique-based but ignored service scope.
+
+**Old formula**: `coverage = covered_techniques / total_techniques`
+**New formula**: `coverage = (covered_services ∩ in_scope_services) / in_scope_services`
+
+### Implementation Status - ALL COMPLETE
+
+#### Database & Models
+- `backend/app/models/detection.py` - Added `target_services` JSONB field (line 150-153)
+- `backend/app/models/cloud_account.py` - Added `discovered_services` and `discovered_services_at` fields (line 86-92)
+- `backend/alembic/versions/029_add_service_awareness.py` - Migration with GIN indexes
+
+#### Service Mappings & Discovery
+- `backend/app/scanners/aws/service_mappings.py` (NEW) - Core 10 services constants:
+  - `CORE_SERVICES`: S3, EBS, EFS, RDS, DynamoDB, Redshift, ElastiCache, SecretsManager, CloudWatchLogs, ECR
+  - `AWS_RESOURCE_TO_SERVICE`: CloudFormation type → service name
+  - `AWS_EVENT_SOURCE_TO_SERVICE`: EventBridge source → service name
+  - `extract_services_from_event_pattern()`, `extract_services_from_resource_types()`, `extract_services_from_log_groups()`
+- `backend/app/scanners/aws/service_discovery_scanner.py` (NEW) - Discovers which services have resources in account
+
+#### Scanner Updates
+- `backend/app/scanners/base.py` - Added `target_services` field to `RawDetection` dataclass (line 30-31)
+- `backend/app/scanners/aws/eventbridge_scanner.py` - Extracts target_services from event patterns (line 127)
+- `backend/app/scanners/aws/config_scanner.py` - Extracts target_services from compliance_resource_types (line 95-96)
+- `backend/app/scanners/aws/cloudwatch_scanner.py` - Extracts target_services from log group names (line 111-112)
+- `backend/app/services/scan_service.py` - Persists target_services on detection create/update (lines 603, 624)
+
+#### Coverage Calculator Integration
+- `backend/app/analyzers/service_coverage_calculator.py` (NEW) - Core service-aware coverage calculation:
+  - `ServiceCoverageResult` dataclass - per-technique coverage
+  - `ControlServiceCoverage` dataclass - per-control aggregate coverage
+  - `get_account_services()` - gets discovered services for account
+  - `get_detection_services()` - gets service → detection mapping
+  - `calculate_technique_coverage()` - calculates coverage per technique
+  - `calculate_control_coverage()` - calculates aggregate control coverage
+
+- `backend/app/analyzers/compliance_calculator.py` - Updated to use service coverage:
+  - `calculate()` method now accepts `cloud_account_id` parameter for service-aware coverage
+  - `ControlCoverageInfo` dataclass includes: `service_coverage_percent`, `in_scope_services`, `covered_services`, `uncovered_services`
+  - `ServiceCoverageMetrics` dataclass for aggregate service metrics
+  - Coverage status adjusted based on combined technique + service coverage
+
+- `backend/app/services/compliance_service.py` - Updated to pass `cloud_account_id` to calculator and store service metrics
+
+#### API Schema Updates
+- `backend/app/schemas/compliance.py` - Added service coverage schemas:
+  - `ServiceCoverageItem` - overall service coverage metrics
+  - `TechniqueServiceCoverageItem` - per-technique service coverage
+  - `ControlServiceCoverageItem` - per-control service coverage
+  - Added `service_coverage` fields to `TechniqueCoverageDetail`, `ControlCoverageDetailResponse`, `ControlGapItem`, `ControlStatusItem`
+  - Added `service_coverage` to `CloudCoverageMetricsResponse`
+
+#### Frontend Updates
+- `frontend/src/services/complianceApi.ts` - Added TypeScript interfaces:
+  - `ServiceCoverageItem`, `TechniqueServiceCoverage`, `ControlServiceCoverage`
+  - Updated all relevant interfaces with service coverage fields
+
+- `frontend/src/components/compliance/TechniqueBreakdown.tsx` - Added `ServiceCoverageIndicator` component:
+  - Shows covered/uncovered services with colour-coded badges
+  - Displays service coverage percentage
+
+- `frontend/src/components/compliance/CoverageDetailModal.tsx` - Added service coverage display:
+  - Service coverage progress bar
+  - Missing services badges
+
+### How Service-Aware Coverage Works
+
+1. **Detection Scanning**: When detections are scanned, `target_services` is extracted from:
+   - EventBridge event patterns (via `extract_services_from_event_pattern()`)
+   - Config rule resource types (via `extract_services_from_resource_types()`)
+   - CloudWatch log group names (via `extract_services_from_log_groups()`)
+
+2. **Service Discovery**: `ServiceDiscoveryScanner` checks which services have resources in the account
+
+3. **Coverage Calculation**:
+   - For each control, `cloud_context.aws_services` defines required services
+   - `ServiceCoverageCalculator` intersects with discovered services to get in-scope services
+   - Coverage = services with detections / in-scope services
+
+4. **Status Adjustment**: Control status is adjusted based on combined technique + service coverage:
+   - `effective_coverage = (technique_coverage + service_coverage) / 2`
+   - Status thresholds: ≥80% = covered, ≥40% = partial, <40% = uncovered
+
+### Testing the Implementation
+
+1. Run the migration (if not already done):
+   ```bash
+   cd backend
+   alembic upgrade head
+   ```
+
+2. Re-run a scan to populate `target_services` on detections:
+   - This will extract services from EventBridge patterns, Config rules, and CloudWatch log groups
+
+3. Verify target_services is populated:
+   ```sql
+   SELECT name, target_services FROM detections WHERE target_services IS NOT NULL LIMIT 10;
+   ```
+
+4. Check compliance coverage API includes service metrics:
+   - The `cloud_metrics` object will include `service_coverage` when available
+
+### Plan File Reference
+Full implementation plan: `/Users/austinosuide/.claude/plans/delightful-gathering-platypus.md`

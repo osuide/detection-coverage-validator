@@ -7,6 +7,7 @@ from botocore.exceptions import ClientError
 
 from app.models.detection import DetectionType
 from app.scanners.base import BaseScanner, RawDetection
+from app.scanners.aws.service_mappings import extract_services_from_event_pattern
 
 
 class EventBridgeScanner(BaseScanner):
@@ -118,9 +119,12 @@ class EventBridgeScanner(BaseScanner):
 
         # Parse event pattern if present
         event_pattern = None
+        target_services = None
         if event_pattern_str:
             try:
                 event_pattern = json.loads(event_pattern_str)
+                # Extract target services from event pattern
+                target_services = extract_services_from_event_pattern(event_pattern)
             except json.JSONDecodeError:
                 event_pattern = {"raw": event_pattern_str}
 
@@ -140,6 +144,7 @@ class EventBridgeScanner(BaseScanner):
             },
             event_pattern=event_pattern,
             description=description or f"EventBridge rule: {name}",
+            target_services=target_services or None,
         )
 
     def extract_cloudtrail_events(

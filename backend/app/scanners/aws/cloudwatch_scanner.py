@@ -7,6 +7,7 @@ from botocore.exceptions import ClientError
 
 from app.models.detection import DetectionType
 from app.scanners.base import BaseScanner, RawDetection
+from app.scanners.aws.service_mappings import extract_services_from_log_groups
 
 
 def _serialize_for_json(obj: Any) -> Any:
@@ -107,6 +108,11 @@ class CloudWatchLogsInsightsScanner(BaseScanner):
         query_string = query_def.get("queryString", "")
         log_groups = query_def.get("logGroupNames", [])
 
+        # Extract target services from log group names
+        target_services = (
+            extract_services_from_log_groups(log_groups) if log_groups else None
+        )
+
         # Build ARN
         account_id = self._get_account_id()
         arn = f"arn:aws:logs:{region}:{account_id}:query-definition:{query_id}"
@@ -125,6 +131,7 @@ class CloudWatchLogsInsightsScanner(BaseScanner):
             query_pattern=query_string,
             log_groups=log_groups if log_groups else None,
             description=f"CloudWatch Logs Insights query: {name}",
+            target_services=target_services or None,
         )
 
     def _get_account_id(self) -> str:

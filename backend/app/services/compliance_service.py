@@ -154,12 +154,15 @@ class ComplianceService:
             return []
 
         # Calculate coverage for each framework
+        # Pass cloud_account_id for service-aware coverage calculation
         calculator = ComplianceCoverageCalculator(self.db)
         snapshots = []
 
         for framework in frameworks:
             try:
-                result = await calculator.calculate(framework.id, technique_coverage)
+                result = await calculator.calculate(
+                    framework.id, technique_coverage, cloud_account_id
+                )
 
                 # Build family coverage dict for storage
                 family_coverage = {
@@ -191,6 +194,15 @@ class ComplianceService:
                     "not_assessable_total": result.cloud_metrics.not_assessable_total,
                 }
 
+                # Add service metrics if available
+                if result.service_metrics:
+                    cloud_metrics["service_coverage"] = {
+                        "total_in_scope_services": result.service_metrics.total_in_scope_services,
+                        "total_covered_services": result.service_metrics.total_covered_services,
+                        "service_coverage_percent": result.service_metrics.service_coverage_percent,
+                        "uncovered_services": result.service_metrics.uncovered_services,
+                    }
+
                 # Build top gaps list for storage
                 top_gaps = [
                     {
@@ -202,6 +214,11 @@ class ComplianceService:
                         "missing_techniques": gap.missing_techniques,
                         "cloud_applicability": gap.cloud_applicability,
                         "cloud_context": gap.cloud_context,
+                        # Service coverage fields
+                        "service_coverage_percent": gap.service_coverage_percent,
+                        "in_scope_services": gap.in_scope_services,
+                        "covered_services": gap.covered_services,
+                        "uncovered_services": gap.uncovered_services,
                     }
                     for gap in result.top_gaps
                 ]

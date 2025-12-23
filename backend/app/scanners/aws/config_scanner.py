@@ -5,6 +5,7 @@ from botocore.exceptions import ClientError
 
 from app.models.detection import DetectionType
 from app.scanners.base import BaseScanner, RawDetection
+from app.scanners.aws.service_mappings import extract_services_from_resource_types
 
 
 class ConfigRulesScanner(BaseScanner):
@@ -91,6 +92,11 @@ class ConfigRulesScanner(BaseScanner):
         scope = rule.get("Scope", {})
         compliance_resource_types = scope.get("ComplianceResourceTypes", [])
 
+        # Extract target services from resource types
+        target_services = extract_services_from_resource_types(
+            compliance_resource_types
+        )
+
         # Get input parameters
         input_parameters = rule.get("InputParameters", "{}")
 
@@ -120,6 +126,7 @@ class ConfigRulesScanner(BaseScanner):
             },
             description=description,
             is_managed=is_managed,
+            target_services=target_services or None,
         )
 
     def _get_managed_rule_description(self, source_identifier: str) -> str:

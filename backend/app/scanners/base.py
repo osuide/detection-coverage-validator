@@ -27,6 +27,9 @@ class RawDetection:
     log_groups: Optional[list[str]] = None
     description: Optional[str] = None
 
+    # Service awareness - which cloud services this detection monitors
+    target_services: Optional[list[str]] = None  # e.g., ["S3", "RDS", "DynamoDB"]
+
     # Metadata
     is_managed: bool = False
     discovered_at: datetime = field(default_factory=datetime.utcnow)

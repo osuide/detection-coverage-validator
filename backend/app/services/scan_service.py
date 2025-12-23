@@ -600,6 +600,7 @@ class ScanService:
                 detection.event_pattern = _serialize_for_jsonb(raw.event_pattern)
                 detection.log_groups = raw.log_groups
                 detection.description = raw.description
+                detection.target_services = raw.target_services
                 detection.status = DetectionStatus.ACTIVE
                 detection.updated_at = datetime.now(timezone.utc)
                 stats["updated"] += 1
@@ -620,6 +621,7 @@ class ScanService:
                     description=raw.description,
                     is_managed=raw.is_managed,
                     discovered_at=raw.discovered_at,
+                    target_services=raw.target_services,
                 )
                 self.db.add(detection)
                 stats["new"] += 1
