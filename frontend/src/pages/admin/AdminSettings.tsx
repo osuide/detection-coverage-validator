@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import {
   Shield, Settings, CreditCard, Key, Eye, EyeOff,
   Save, AlertCircle, Check, ChevronLeft, RefreshCw,
-  Lock, Globe, ToggleLeft, ToggleRight
+  Lock, Globe, ToggleLeft, ToggleRight, Database
 } from 'lucide-react';
 import { useAdminAuthStore, adminApi } from '../../stores/adminAuthStore';
 
@@ -31,7 +31,8 @@ export default function AdminSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [activeTab, setActiveTab] = useState<'billing' | 'auth' | 'features' | 'general'>('billing');
+  const [activeTab, setActiveTab] = useState<'billing' | 'auth' | 'features' | 'general' | 'data'>('billing');
+  const [dataLoading, setDataLoading] = useState<string | null>(null);
 
   // Form state for Stripe
   const [stripeForm, setStripeForm] = useState({
@@ -129,6 +130,38 @@ export default function AdminSettings() {
     return settings.filter(s => s.category === category);
   };
 
+  const seedMitreData = async () => {
+    setDataLoading('mitre');
+    setMessage(null);
+    try {
+      const response = await adminApi.post('/settings/seed-mitre');
+      setMessage({
+        type: 'success',
+        text: `MITRE data seeded: ${response.data.tactics_added} tactics, ${response.data.techniques_added} techniques added`
+      });
+    } catch (error) {
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to seed MITRE data' });
+    } finally {
+      setDataLoading(null);
+    }
+  };
+
+  const seedComplianceData = async (forceReload: boolean = false) => {
+    setDataLoading('compliance');
+    setMessage(null);
+    try {
+      const response = await adminApi.post(`/settings/seed-compliance?force_reload=${forceReload}`);
+      setMessage({
+        type: 'success',
+        text: `Compliance data ${forceReload ? 'reloaded' : 'seeded'}: ${response.data.frameworks_loaded} frameworks loaded, ${response.data.total_controls} controls, ${response.data.total_mappings} mappings`
+      });
+    } catch (error) {
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to seed compliance data' });
+    } finally {
+      setDataLoading(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
@@ -170,12 +203,13 @@ export default function AdminSettings() {
         )}
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-6 border-b border-gray-700">
+        <div className="flex gap-2 mb-6 border-b border-gray-700 overflow-x-auto">
           {[
             { id: 'billing', label: 'Billing', icon: CreditCard },
             { id: 'auth', label: 'Authentication', icon: Key },
             { id: 'features', label: 'Features', icon: ToggleRight },
             { id: 'general', label: 'General', icon: Settings },
+            { id: 'data', label: 'Data', icon: Database },
           ].map(tab => (
             <button
               key={tab.id}
@@ -412,6 +446,69 @@ export default function AdminSettings() {
                   OAuth settings are managed through environment variables or AWS Cognito
                 </p>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Data Management Tab */}
+        {activeTab === 'data' && (
+          <div className="space-y-6">
+            {/* MITRE ATT&CK Data */}
+            <div className="bg-gray-800 rounded-xl border border-gray-700 p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <Database className="w-6 h-6 text-red-400" />
+                <div>
+                  <h2 className="text-lg font-semibold text-white">MITRE ATT&CK Data</h2>
+                  <p className="text-sm text-gray-400">Tactics and techniques from the MITRE ATT&CK framework</p>
+                </div>
+              </div>
+              <p className="text-gray-300 text-sm mb-4">
+                Seeds or updates MITRE ATT&CK tactics and techniques. New entries are added; existing entries are preserved.
+              </p>
+              <button
+                onClick={seedMitreData}
+                disabled={dataLoading !== null}
+                className="flex items-center gap-2 px-4 py-2.5 bg-gray-700 text-white rounded-lg font-medium hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {dataLoading === 'mitre' ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
+                Seed MITRE Data
+              </button>
+            </div>
+
+            {/* Compliance Frameworks Data */}
+            <div className="bg-gray-800 rounded-xl border border-gray-700 p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <Shield className="w-6 h-6 text-blue-400" />
+                <div>
+                  <h2 className="text-lg font-semibold text-white">Compliance Frameworks</h2>
+                  <p className="text-sm text-gray-400">CIS Controls v8 and NIST 800-53 mappings</p>
+                </div>
+              </div>
+              <p className="text-gray-300 text-sm mb-4">
+                Loads compliance framework controls and their mappings to MITRE ATT&CK techniques.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => seedComplianceData(false)}
+                  disabled={dataLoading !== null}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-gray-700 text-white rounded-lg font-medium hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {dataLoading === 'compliance' ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
+                  Seed Compliance Data
+                </button>
+                <button
+                  onClick={() => seedComplianceData(true)}
+                  disabled={dataLoading !== null}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {dataLoading === 'compliance' ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                  Force Reload
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-3">
+                <AlertCircle className="w-3 h-3 inline mr-1" />
+                Force Reload will clear all existing compliance data and reload from source files. Use after updating mappings.
+              </p>
             </div>
           </div>
         )}
