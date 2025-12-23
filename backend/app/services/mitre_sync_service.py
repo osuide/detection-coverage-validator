@@ -491,112 +491,201 @@ class MitreSyncService:
     async def _sync_relationships(
         self, attack_data: MitreAttackData, version: str
     ) -> SyncStats:
-        """Sync technique relationships from STIX data."""
+        """Sync technique relationships from STIX data.
+
+        Uses the correct mitreattack-python API:
+        - get_all_groups_using_all_techniques()
+        - get_all_campaigns_using_all_techniques()
+        - get_all_software_using_all_techniques()
+
+        These return dict[technique_stix_id, list[RelationshipEntry]] where
+        RelationshipEntry has 'object' and 'relationships' keys.
+        """
         stats = SyncStats()
 
-        # Build lookup caches for groups, campaigns, software
+        # Build lookup caches for our entities (STIX ID -> UUID)
         group_cache = await self._build_entity_cache(MitreThreatGroup)
         campaign_cache = await self._build_entity_cache(MitreCampaign)
         software_cache = await self._build_entity_cache(MitreSoftware)
 
-        # Clear existing relationships for this version
+        # Build technique STIX ID -> UUID cache
+        technique_stix_cache = self._build_technique_stix_cache(attack_data)
+
+        logger.info(
+            "relationship_caches_built",
+            groups=len(group_cache),
+            campaigns=len(campaign_cache),
+            software=len(software_cache),
+            techniques=len(technique_stix_cache),
+        )
+
+        # Clear existing relationships
         await self.db.execute(delete(MitreTechniqueRelationship))
         await self.db.flush()
 
-        # Get all relationships
-        relationships = attack_data.get_relationships()
+        # Process group relationships
+        groups_using_techniques = attack_data.get_all_groups_using_all_techniques()
+        stats = await self._process_relationship_map(
+            relationship_map=groups_using_techniques,
+            entity_cache=group_cache,
+            technique_cache=technique_stix_cache,
+            related_type=RelatedType.GROUP.value,
+            version=version,
+            stats=stats,
+        )
 
-        logger.info("syncing_relationships", count=len(relationships))
+        # Process campaign relationships
+        campaigns_using_techniques = (
+            attack_data.get_all_campaigns_using_all_techniques()
+        )
+        stats = await self._process_relationship_map(
+            relationship_map=campaigns_using_techniques,
+            entity_cache=campaign_cache,
+            technique_cache=technique_stix_cache,
+            related_type=RelatedType.CAMPAIGN.value,
+            version=version,
+            stats=stats,
+        )
 
-        for rel in relationships:
-            try:
-                # Only process "uses" relationships
-                if rel.relationship_type != "uses":
-                    continue
-
-                # Get source (group/campaign/software) and target (technique)
-                source_ref = rel.source_ref
-                target_ref = rel.target_ref
-
-                # Determine entity type and ID
-                related_type = None
-                related_id = None
-
-                if source_ref.startswith("intrusion-set"):
-                    related_type = RelatedType.GROUP.value
-                    related_id = group_cache.get(source_ref)
-                elif source_ref.startswith("campaign"):
-                    related_type = RelatedType.CAMPAIGN.value
-                    related_id = campaign_cache.get(source_ref)
-                elif source_ref.startswith("malware") or source_ref.startswith("tool"):
-                    related_type = RelatedType.SOFTWARE.value
-                    related_id = software_cache.get(source_ref)
-
-                if not related_type or not related_id:
-                    stats.skipped += 1
-                    continue
-
-                # Get technique ID from target
-                # Target should be an attack-pattern
-                if not target_ref.startswith("attack-pattern"):
-                    stats.skipped += 1
-                    continue
-
-                # Look up technique by STIX ID
-                technique_uuid = await self._get_technique_uuid_by_stix_id(target_ref)
-                if not technique_uuid:
-                    stats.skipped += 1
-                    continue
-
-                # Extract description and references
-                description = getattr(rel, "description", None)
-                external_refs = []
-                for ref in getattr(rel, "external_references", []):
-                    external_refs.append(
-                        {
-                            "source_name": ref.get("source_name"),
-                            "url": ref.get("url"),
-                            "description": ref.get("description"),
-                        }
-                    )
-
-                # Insert relationship
-                new_rel = MitreTechniqueRelationship(
-                    technique_id=technique_uuid,
-                    related_type=related_type,
-                    related_id=related_id,
-                    relationship_type=rel.relationship_type,
-                    description=description,
-                    external_references=external_refs,
-                    mitre_version=version,
-                )
-                self.db.add(new_rel)
-                stats.added += 1
-
-            except Exception as e:
-                logger.warning(
-                    "relationship_sync_error",
-                    rel_id=getattr(rel, "id", "unknown"),
-                    error=str(e),
-                )
-                stats.errors += 1
+        # Process software relationships
+        software_using_techniques = attack_data.get_all_software_using_all_techniques()
+        stats = await self._process_relationship_map(
+            relationship_map=software_using_techniques,
+            entity_cache=software_cache,
+            technique_cache=technique_stix_cache,
+            related_type=RelatedType.SOFTWARE.value,
+            version=version,
+            stats=stats,
+        )
 
         await self.db.flush()
+
+        logger.info(
+            "relationships_synced",
+            added=stats.added,
+            skipped=stats.skipped,
+            errors=stats.errors,
+        )
+
         return stats
+
+    async def _process_relationship_map(
+        self,
+        relationship_map: dict,
+        entity_cache: dict[str, uuid.UUID],
+        technique_cache: dict[str, uuid.UUID],
+        related_type: str,
+        version: str,
+        stats: SyncStats,
+    ) -> SyncStats:
+        """Process a relationship map from mitreattack-python.
+
+        The map structure is: {technique_stix_id: [RelationshipEntry, ...]}
+        where RelationshipEntry = {"object": entity, "relationships": [rel, ...]}
+        """
+        for technique_stix_id, entries in relationship_map.items():
+            # Look up our technique UUID
+            technique_uuid = technique_cache.get(technique_stix_id)
+            if not technique_uuid:
+                stats.skipped += len(entries)
+                continue
+
+            for entry in entries:
+                try:
+                    entity = entry.get("object")
+                    relationships = entry.get("relationships", [])
+
+                    if not entity:
+                        stats.skipped += 1
+                        continue
+
+                    # Get entity STIX ID and look up our UUID
+                    entity_stix_id = getattr(entity, "id", None)
+                    if not entity_stix_id:
+                        stats.skipped += 1
+                        continue
+
+                    related_id = entity_cache.get(entity_stix_id)
+                    if not related_id:
+                        stats.skipped += 1
+                        continue
+
+                    # Extract description from first relationship
+                    description = None
+                    external_refs = []
+                    if relationships:
+                        first_rel = relationships[0]
+                        description = getattr(first_rel, "description", None)
+                        for ref in getattr(first_rel, "external_references", []):
+                            external_refs.append(
+                                {
+                                    "source_name": ref.get("source_name"),
+                                    "url": ref.get("url"),
+                                    "description": ref.get("description"),
+                                }
+                            )
+
+                    # Insert relationship
+                    new_rel = MitreTechniqueRelationship(
+                        technique_id=technique_uuid,
+                        related_type=related_type,
+                        related_id=related_id,
+                        relationship_type="uses",
+                        description=description,
+                        external_references=external_refs,
+                        mitre_version=version,
+                    )
+                    self.db.add(new_rel)
+                    stats.added += 1
+
+                except Exception as e:
+                    logger.warning(
+                        "relationship_entry_error",
+                        technique_stix_id=technique_stix_id,
+                        related_type=related_type,
+                        error=str(e),
+                    )
+                    stats.errors += 1
+
+        return stats
+
+    def _build_technique_stix_cache(
+        self, attack_data: MitreAttackData
+    ) -> dict[str, uuid.UUID]:
+        """Build mapping of technique STIX ID -> our technique UUID.
+
+        MITRE data uses STIX IDs (attack-pattern--...), but our Technique
+        model uses technique_id (T####). We need to map between them.
+        """
+        # First, build STIX ID -> technique_id mapping from MITRE data
+        stix_to_technique_id: dict[str, str] = {}
+        techniques = attack_data.get_techniques(remove_revoked_deprecated=True)
+
+        for tech in techniques:
+            stix_id = getattr(tech, "id", None)
+            if not stix_id:
+                continue
+
+            # Extract technique_id from external_references
+            for ref in getattr(tech, "external_references", []):
+                if ref.get("source_name") == "mitre-attack":
+                    technique_id = ref.get("external_id")
+                    if technique_id:
+                        stix_to_technique_id[stix_id] = technique_id
+                    break
+
+        # Now combine with our technique_id -> UUID cache
+        stix_to_uuid: dict[str, uuid.UUID] = {}
+        for stix_id, technique_id in stix_to_technique_id.items():
+            if technique_id in self._technique_id_cache:
+                stix_to_uuid[stix_id] = self._technique_id_cache[technique_id]
+
+        return stix_to_uuid
 
     async def _build_entity_cache(self, model: type) -> dict[str, uuid.UUID]:
         """Build cache of STIX ID -> UUID for an entity type."""
         result = await self.db.execute(select(model.id, model.stix_id))
         return {row.stix_id: row.id for row in result.all()}
-
-    async def _get_technique_uuid_by_stix_id(self, stix_id: str) -> Optional[uuid.UUID]:
-        """Look up technique UUID by STIX ID."""
-        # For now, we need to map STIX ID to technique_id (T####)
-        # This requires parsing the STIX data to get the external reference
-        # For simplicity, we'll skip this in the initial implementation
-        # and focus on the core sync functionality
-        # TODO: Implement STIX ID to technique_id mapping
-        return None
 
     async def _update_data_version(
         self, sync_history: MitreSyncHistory, stats: FullSyncStats
