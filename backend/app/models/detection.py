@@ -69,6 +69,24 @@ class DetectionScope(str, enum.Enum):
     )
 
 
+class SecurityFunction(str, enum.Enum):
+    """NIST CSF security function classification.
+
+    Categorises detections by their security purpose:
+    - DETECT: Threat detection - maps to MITRE ATT&CK techniques
+    - PROTECT: Preventive controls - access controls, encryption, MFA
+    - IDENTIFY: Visibility controls - logging, monitoring, posture management
+    - RECOVER: Recovery controls - backup, DR, versioning
+    - OPERATIONAL: Non-security controls - tagging, cost, performance
+    """
+
+    DETECT = "detect"  # Threat detection - MITRE ATT&CK mapped
+    PROTECT = "protect"  # Preventive controls
+    IDENTIFY = "identify"  # Visibility/logging/posture
+    RECOVER = "recover"  # Backup/DR/resilience
+    OPERATIONAL = "operational"  # Non-security (tagging, cost)
+
+
 class Detection(Base):
     """Represents a discovered security detection."""
 
@@ -174,6 +192,19 @@ class Detection(Base):
         DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
     )
     is_managed: Mapped[bool] = mapped_column(default=False)  # GuardDuty, SCC, etc.
+
+    # NIST CSF security function classification
+    # Explains what security purpose this detection serves
+    security_function: Mapped[SecurityFunction] = mapped_column(
+        SQLEnum(
+            SecurityFunction,
+            values_callable=lambda x: [e.value for e in x],
+            name="security_function",
+        ),
+        default=SecurityFunction.OPERATIONAL,
+        nullable=False,
+        index=True,
+    )
 
     # Relationships
     cloud_account = relationship(
