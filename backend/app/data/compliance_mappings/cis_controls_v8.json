@@ -1124,7 +1124,7 @@
       "description": "CIS Safeguard 4.2: Establish and Maintain a Secure Configuration Process for Network Infrastructure (IG1)",
       "priority": "P1",
       "is_enhancement": true,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Config",
@@ -1139,16 +1139,7 @@
         ],
         "shared_responsibility": "customer"
       },
-      "technique_mappings": [
-        {
-          "technique_id": "T1190",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1021",
-          "mapping_type": "mitigates"
-        }
-      ]
+      "technique_mappings": []
     },
     {
       "control_id": "4.3",
@@ -3355,7 +3346,7 @@
       "description": "CIS Safeguard 11.4: Establish and Maintain an Isolated Instance of Recovery Data (IG1)",
       "priority": "P1",
       "is_enhancement": true,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "Backup",
@@ -3372,14 +3363,6 @@
         "shared_responsibility": "customer"
       },
       "technique_mappings": [
-        {
-          "technique_id": "T1490",
-          "mapping_type": "mitigates"
-        },
-        {
-          "technique_id": "T1486",
-          "mapping_type": "mitigates"
-        }
       ]
     },
     {
@@ -3688,7 +3671,7 @@
       "description": "CIS Safeguard 12.8: Establish and Maintain Dedicated Computing Resources for All Administrative Work (IG3)",
       "priority": "P3",
       "is_enhancement": true,
-      "cloud_applicability": "highly_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "VPC",
@@ -3704,12 +3687,7 @@
         ],
         "shared_responsibility": "customer"
       },
-      "technique_mappings": [
-        {
-          "technique_id": "T1078.004",
-          "mapping_type": "mitigates"
-        }
-      ]
+      "technique_mappings": []
     },
     {
       "control_id": "13",
@@ -4862,7 +4840,7 @@
       "description": "CIS Safeguard 16.13: Conduct Application Penetration Testing (IG3)",
       "priority": "P3",
       "is_enhancement": true,
-      "cloud_applicability": "moderately_relevant",
+      "cloud_applicability": "informational",
       "cloud_context": {
         "aws_services": [
           "CodePipeline",
@@ -4878,10 +4856,6 @@
         "shared_responsibility": "customer"
       },
       "technique_mappings": [
-        {
-          "technique_id": "T1190",
-          "mapping_type": "mitigates"
-        }
       ]
     },
     {
