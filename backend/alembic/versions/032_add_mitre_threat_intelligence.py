@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = "032_add_mitre_threat_intelligence"
+revision: str = "032_mitre_threat_intel"
 down_revision: Union[str, None] = "031_add_security_function"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
