@@ -20,10 +20,10 @@ import {
 } from 'lucide-react'
 import { TechniqueCoverage } from '../../services/api'
 
-// MITRE ATT&CK tactics in kill chain order
+// MITRE ATT&CK Cloud Matrix tactics in kill chain order
+// Based on official Cloud Matrix (11 tactics) + C2 (detectable via VPC Flow Logs, GuardDuty)
+// Excludes Reconnaissance and Resource Development as they are PRE-compromise (not cloud-detectable)
 const TACTIC_ORDER = [
-  'Reconnaissance',
-  'Resource Development',
   'Initial Access',
   'Execution',
   'Persistence',

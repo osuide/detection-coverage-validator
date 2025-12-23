@@ -1057,6 +1057,14 @@ def seed_mitre_sync():
                     if parent_row:
                         parent_id = parent_row[0]
 
+                # Assign platforms based on tactic
+                # Reconnaissance (TA0043) and Resource Development (TA0042) are PRE-compromise
+                # and not part of the MITRE ATT&CK Cloud Matrix
+                if tactic_id in ("TA0043", "TA0042"):
+                    platforms = ["PRE"]
+                else:
+                    platforms = ["AWS", "Azure", "GCP", "IaaS"]
+
                 conn.execute(
                     text(
                         """
@@ -1077,7 +1085,7 @@ def seed_mitre_sync():
                         "description": description,
                         "tactic_id": tactic_uuid,
                         "parent_id": parent_id,
-                        "platforms": json.dumps(["AWS", "Azure", "GCP", "IaaS"]),
+                        "platforms": json.dumps(platforms),
                         "mitre_version": "14.1",
                         "is_subtechnique": is_subtechnique,
                         "created_at": now,

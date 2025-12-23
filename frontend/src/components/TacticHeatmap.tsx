@@ -4,10 +4,10 @@ interface TacticHeatmapProps {
   tactics: TacticCoverage[]
 }
 
-// MITRE ATT&CK tactic order
+// MITRE ATT&CK Cloud Matrix tactic order
+// Based on official Cloud Matrix (11 tactics) + C2 (detectable via VPC Flow Logs, GuardDuty)
+// Excludes Reconnaissance (TA0043) and Resource Development (TA0042) as they are PRE-compromise
 const TACTIC_ORDER = [
-  'TA0043', // Reconnaissance
-  'TA0042', // Resource Development
   'TA0001', // Initial Access
   'TA0002', // Execution
   'TA0003', // Persistence

@@ -22,10 +22,10 @@ interface MitreHeatmapProps {
   onTechniqueClick?: (techniqueId: string) => void
 }
 
-// MITRE ATT&CK Tactics in kill chain order (all 14 Enterprise tactics)
+// MITRE ATT&CK Cloud Matrix tactics in kill chain order
+// Based on official Cloud Matrix (11 tactics) + C2 (detectable via VPC Flow Logs, GuardDuty)
+// Excludes Reconnaissance (TA0043) and Resource Development (TA0042) as they are PRE-compromise
 const TACTICS = [
-  { id: 'TA0043', name: 'Reconnaissance', short: 'Recon' },
-  { id: 'TA0042', name: 'Resource Development', short: 'Resource Dev' },
   { id: 'TA0001', name: 'Initial Access', short: 'Initial Access' },
   { id: 'TA0002', name: 'Execution', short: 'Execution' },
   { id: 'TA0003', name: 'Persistence', short: 'Persistence' },
