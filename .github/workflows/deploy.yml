@@ -31,7 +31,7 @@ jobs:
       ecs_security_group: ${{ steps.tf-outputs.outputs.ecs_security_group }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -92,7 +92,7 @@ jobs:
     environment: ${{ github.event.inputs.environment || 'staging' }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -184,7 +184,7 @@ jobs:
     environment: ${{ github.event.inputs.environment || 'staging' }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
