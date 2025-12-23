@@ -1,9 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle, ExternalLink, ChevronDown, ChevronUp, Filter, Search, Clock, Zap, Shield, Users, Check, Loader2, RotateCcw, CheckCircle, ShieldAlert } from 'lucide-react'
-import { accountsApi, coverageApi, gapsApi, Gap, RecommendedStrategy, AcknowledgedGap } from '../services/api'
+import { coverageApi, gapsApi, Gap, RecommendedStrategy, AcknowledgedGap } from '../services/api'
 import { useState } from 'react'
 import StrategyDetailModal from '../components/StrategyDetailModal'
 import toast from 'react-hot-toast'
+import { useSelectedAccount } from '../hooks/useSelectedAccount'
 
 const priorityStyles = {
   critical: 'bg-red-100 text-red-800 border-red-200',
@@ -22,34 +23,29 @@ export default function Gaps() {
   const [showLowPriority, setShowLowPriority] = useState(false)
   const [showAcknowledged, setShowAcknowledged] = useState(false)
 
-  const { data: accounts } = useQuery({
-    queryKey: ['accounts'],
-    queryFn: accountsApi.list,
-  })
-
-  const firstAccount = accounts?.[0]
+  const { selectedAccount } = useSelectedAccount()
 
   const { data: coverage, isLoading } = useQuery({
-    queryKey: ['coverage', firstAccount?.id],
-    queryFn: () => coverageApi.get(firstAccount!.id),
-    enabled: !!firstAccount,
+    queryKey: ['coverage', selectedAccount?.id],
+    queryFn: () => coverageApi.get(selectedAccount!.id),
+    enabled: !!selectedAccount,
   })
 
   // Fetch acknowledged gaps (both acknowledged and risk_accepted)
   const { data: acknowledgedGapsData } = useQuery({
-    queryKey: ['acknowledgedGaps', firstAccount?.id],
+    queryKey: ['acknowledgedGaps', selectedAccount?.id],
     queryFn: async () => {
-      if (!firstAccount?.id) return { gaps: [], total: 0 }
+      if (!selectedAccount?.id) return { gaps: [], total: 0 }
       const [acknowledged, riskAccepted] = await Promise.all([
-        gapsApi.list(firstAccount.id, 'acknowledged'),
-        gapsApi.list(firstAccount.id, 'risk_accepted'),
+        gapsApi.list(selectedAccount.id, 'acknowledged'),
+        gapsApi.list(selectedAccount.id, 'risk_accepted'),
       ])
       return {
         gaps: [...acknowledged.gaps, ...riskAccepted.gaps],
         total: acknowledged.total + riskAccepted.total,
       }
     },
-    enabled: !!firstAccount?.id,
+    enabled: !!selectedAccount?.id,
   })
 
   const acknowledgedGaps = acknowledgedGapsData?.gaps ?? []
@@ -278,7 +274,7 @@ export default function Gaps() {
               gap={gap}
               isExpanded={expandedGaps.has(gap.technique_id)}
               onToggle={() => toggleExpand(gap.technique_id)}
-              accountId={firstAccount?.id}
+              accountId={selectedAccount?.id}
             />
           ))}
         </div>
@@ -299,7 +295,7 @@ export default function Gaps() {
               <AcknowledgedGapCard
                 key={gap.id}
                 gap={gap}
-                accountId={firstAccount?.id}
+                accountId={selectedAccount?.id}
               />
             ))}
           </div>

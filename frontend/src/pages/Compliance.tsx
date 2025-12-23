@@ -5,21 +5,14 @@
  * URL params preserve modal state for proper back navigation.
  */
 
-import { useQuery } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import { BarChart3 } from 'lucide-react'
-import { accountsApi } from '../services/api'
 import { ComplianceCoverageContent } from '../components/compliance'
+import { useSelectedAccount } from '../hooks/useSelectedAccount'
 
 export default function Compliance() {
   const [searchParams] = useSearchParams()
-
-  const { data: accounts, isLoading: accountsLoading } = useQuery({
-    queryKey: ['accounts'],
-    queryFn: accountsApi.list,
-  })
-
-  const firstAccount = accounts?.[0]
+  const { selectedAccount, isLoading: accountsLoading } = useSelectedAccount()
 
   // Read modal state from URL params (for back navigation restoration)
   const initialModalState = {
@@ -36,7 +29,7 @@ export default function Compliance() {
     )
   }
 
-  if (!firstAccount) {
+  if (!selectedAccount) {
     return (
       <div className="text-center py-12 card">
         <BarChart3 className="mx-auto h-12 w-12 text-gray-400" />
@@ -51,7 +44,7 @@ export default function Compliance() {
   return (
     <div className="bg-gray-900 -mx-6 -mb-6 px-6 py-6 rounded-b-lg min-h-[600px]">
       <ComplianceCoverageContent
-        accountId={firstAccount.id}
+        accountId={selectedAccount.id}
         initialModalState={initialModalState}
       />
     </div>

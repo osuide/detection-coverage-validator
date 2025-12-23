@@ -24,6 +24,7 @@ import {
 import { clsx } from 'clsx'
 import { useAuth } from '../contexts/AuthContext'
 import A13ELogo from './A13ELogo'
+import AccountSelector from './AccountSelector'
 
 interface LayoutProps {
   children: ReactNode
@@ -81,6 +82,11 @@ export default function Layout({ children }: LayoutProps) {
             </div>
           </div>
         )}
+
+        {/* Cloud Account Selector */}
+        <div className="px-3 py-3 border-b border-slate-800">
+          <AccountSelector />
+        </div>
 
         {/* Main navigation */}
         <nav className="mt-4 px-3 flex-1">

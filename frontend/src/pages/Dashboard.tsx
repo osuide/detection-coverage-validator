@@ -9,10 +9,11 @@ import {
   Zap,
   Lock
 } from 'lucide-react'
-import { accountsApi, coverageApi, scansApi, detectionsApi, scanStatusApi } from '../services/api'
+import { coverageApi, scansApi, detectionsApi, scanStatusApi } from '../services/api'
 import { Link } from 'react-router-dom'
 import CoverageGauge from '../components/CoverageGauge'
 import TacticHeatmap from '../components/TacticHeatmap'
+import { useSelectedAccount } from '../hooks/useSelectedAccount'
 
 const detectionSourceConfig: Record<string, { label: string; icon: React.ElementType; color: string; bgColor: string }> = {
   'cloudwatch_logs_insights': {
@@ -48,17 +49,12 @@ const detectionSourceConfig: Record<string, { label: string; icon: React.Element
 }
 
 export default function Dashboard() {
-  const { data: accounts, isLoading: accountsLoading } = useQuery({
-    queryKey: ['accounts'],
-    queryFn: accountsApi.list,
-  })
-
-  const firstAccount = accounts?.[0]
+  const { selectedAccount, isLoading: accountsLoading, hasAccounts } = useSelectedAccount()
 
   const { data: coverage } = useQuery({
-    queryKey: ['coverage', firstAccount?.id],
-    queryFn: () => coverageApi.get(firstAccount!.id),
-    enabled: !!firstAccount,
+    queryKey: ['coverage', selectedAccount?.id],
+    queryFn: () => coverageApi.get(selectedAccount!.id),
+    enabled: !!selectedAccount,
   })
 
   // Scans query available for future use (e.g., showing latest scan info)
@@ -68,9 +64,9 @@ export default function Dashboard() {
   })
 
   const { data: detectionsData } = useQuery({
-    queryKey: ['detections', firstAccount?.id],
-    queryFn: () => detectionsApi.list({ cloud_account_id: firstAccount?.id, limit: 500 }),
-    enabled: !!firstAccount,
+    queryKey: ['detections', selectedAccount?.id],
+    queryFn: () => detectionsApi.list({ cloud_account_id: selectedAccount?.id, limit: 500 }),
+    enabled: !!selectedAccount,
   })
 
   const { data: scanStatus } = useQuery({
@@ -92,7 +88,7 @@ export default function Dashboard() {
     )
   }
 
-  if (!accounts?.length) {
+  if (!hasAccounts) {
     return (
       <div className="text-center py-12">
         <Cloud className="mx-auto h-12 w-12 text-gray-400" />

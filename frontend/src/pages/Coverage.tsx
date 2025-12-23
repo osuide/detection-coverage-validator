@@ -1,11 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
 import { BarChart3, RefreshCw, Grid3X3, List, CheckCircle, AlertTriangle, XCircle, Shield } from 'lucide-react'
 import { useState } from 'react'
-import { accountsApi, coverageApi } from '../services/api'
+import { coverageApi } from '../services/api'
 import TacticHeatmap from '../components/TacticHeatmap'
 import CoverageGauge from '../components/CoverageGauge'
 import MitreHeatmap from '../components/MitreHeatmap'
 import { TechniqueDetailModal } from '../components/coverage/TechniqueDetailModal'
+import { useSelectedAccount } from '../hooks/useSelectedAccount'
 
 type ViewMode = 'heatmap' | 'tactics'
 type ModalType = 'covered' | 'partial' | 'uncovered' | 'total' | null
@@ -14,23 +15,18 @@ export default function Coverage() {
   const [viewMode, setViewMode] = useState<ViewMode>('heatmap')
   const [activeModal, setActiveModal] = useState<ModalType>(null)
 
-  const { data: accounts } = useQuery({
-    queryKey: ['accounts'],
-    queryFn: accountsApi.list,
-  })
-
-  const firstAccount = accounts?.[0]
+  const { selectedAccount } = useSelectedAccount()
 
   const { data: coverage, isLoading, refetch } = useQuery({
-    queryKey: ['coverage', firstAccount?.id],
-    queryFn: () => coverageApi.get(firstAccount!.id),
-    enabled: !!firstAccount,
+    queryKey: ['coverage', selectedAccount?.id],
+    queryFn: () => coverageApi.get(selectedAccount!.id),
+    enabled: !!selectedAccount,
   })
 
   const { data: techniques, isLoading: techniquesLoading } = useQuery({
-    queryKey: ['techniques', firstAccount?.id],
-    queryFn: () => coverageApi.getTechniques(firstAccount!.id),
-    enabled: !!firstAccount,
+    queryKey: ['techniques', selectedAccount?.id],
+    queryFn: () => coverageApi.getTechniques(selectedAccount!.id),
+    enabled: !!selectedAccount,
   })
 
   if (isLoading) {
