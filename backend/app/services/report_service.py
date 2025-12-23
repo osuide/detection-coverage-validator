@@ -25,7 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.cloud_account import CloudAccount
 from app.models.coverage import CoverageSnapshot
-from app.models.detection import Detection, DetectionStatus
+from app.models.detection import Detection, DetectionStatus, SecurityFunction
 from app.models.mapping import DetectionMapping
 from app.models.mitre import Technique
 from app.core.config import get_settings
@@ -40,6 +40,37 @@ class ReportService:
     def __init__(self, db: AsyncSession):
         self.db = db
         self.logger = logger.bind(service="ReportService")
+
+    async def _get_security_function_counts(
+        self, cloud_account_id: UUID
+    ) -> dict[str, int]:
+        """Get detection counts by security function."""
+        result = await self.db.execute(
+            select(Detection).where(Detection.cloud_account_id == cloud_account_id)
+        )
+        detections = result.scalars().all()
+
+        counts = {
+            "detect": 0,
+            "protect": 0,
+            "identify": 0,
+            "recover": 0,
+            "operational": 0,
+        }
+
+        for det in detections:
+            if det.security_function == SecurityFunction.DETECT:
+                counts["detect"] += 1
+            elif det.security_function == SecurityFunction.PROTECT:
+                counts["protect"] += 1
+            elif det.security_function == SecurityFunction.IDENTIFY:
+                counts["identify"] += 1
+            elif det.security_function == SecurityFunction.RECOVER:
+                counts["recover"] += 1
+            else:
+                counts["operational"] += 1
+
+        return counts
 
     async def generate_csv_report(
         self,
@@ -140,7 +171,11 @@ class ReportService:
         story.append(Spacer(1, 20))
 
         if include_executive_summary and snapshot:
-            story.extend(self._build_executive_summary(snapshot, styles, heading_style))
+            story.extend(
+                await self._build_executive_summary(
+                    snapshot, cloud_account_id, styles, heading_style
+                )
+            )
 
         if include_gap_analysis and snapshot:
             story.append(PageBreak())
@@ -194,9 +229,10 @@ class ReportService:
         buffer.seek(0)
         return buffer.read()
 
-    def _build_executive_summary(
+    async def _build_executive_summary(
         self,
         snapshot: CoverageSnapshot,
+        cloud_account_id: UUID,
         styles: dict,
         heading_style: ParagraphStyle,
     ) -> list:
@@ -257,6 +293,54 @@ class ReportService:
                 styles["Normal"],
             )
         )
+        story.append(Spacer(1, 15))
+
+        # Security function breakdown (NIST CSF)
+        func_counts = await self._get_security_function_counts(cloud_account_id)
+        story.append(
+            Paragraph("Security Posture by Function (NIST CSF)", styles["Heading3"])
+        )
+        story.append(
+            Paragraph(
+                "Detections are classified by their security purpose:",
+                styles["Normal"],
+            )
+        )
+        story.append(Spacer(1, 5))
+
+        func_data = [
+            ["Function", "Count", "Description"],
+            ["Detect", str(func_counts["detect"]), "Threat detection (MITRE ATT&CK)"],
+            ["Protect", str(func_counts["protect"]), "Preventive controls"],
+            ["Identify", str(func_counts["identify"]), "Visibility/posture"],
+            ["Recover", str(func_counts["recover"]), "Backup/DR"],
+            [
+                "Operational",
+                str(func_counts["operational"]),
+                "Non-security (tagging, cost)",
+            ],
+        ]
+
+        func_table = Table(
+            func_data,
+            colWidths=[1.2 * inch, 0.8 * inch, 3 * inch],
+        )
+        func_table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                    ("ALIGN", (1, 0), (1, -1), "CENTER"),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, 0), 10),
+                    ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
+                    ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
+                    ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                    ("FONTSIZE", (0, 1), (-1, -1), 9),
+                ]
+            )
+        )
+        story.append(func_table)
         story.append(Spacer(1, 20))
 
         # Tactic coverage table
