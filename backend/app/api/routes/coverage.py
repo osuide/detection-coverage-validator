@@ -344,8 +344,9 @@ async def get_technique_coverage(
     detection_ids = [d[0] for d in detections_result.all()]
 
     # Get set of technique IDs that have remediation templates
+    # get_all_templates() returns Dict[str, RemediationTemplate] where keys are technique IDs
     available_templates = get_all_templates()
-    template_technique_ids = {t.technique_id for t in available_templates}
+    template_technique_ids = set(available_templates.keys())
 
     # Get mappings for these detections grouped by technique
     technique_coverage = []
