@@ -196,8 +196,12 @@ resource "aws_cognito_identity_provider" "google" {
   }
 
   # Prevent concurrent modifications to Cognito user pool
+  # Ignore provider_details drift - AWS auto-populates computed attributes
+  # (authorize_url, token_url, oidc_issuer, etc.) that cause perpetual drift.
+  # See: https://github.com/hashicorp/terraform-provider-aws/issues/4831
   lifecycle {
     create_before_destroy = true
+    ignore_changes        = [provider_details]
   }
 }
 

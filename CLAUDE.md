@@ -194,3 +194,35 @@ Control 3.5 "Securely Dispose of Data" showed 100% coverage with only S3 deletio
 
 ### Plan File Reference
 Full implementation plan: `/Users/austinosuide/.claude/plans/delightful-gathering-platypus.md`
+
+## Terraform Known Issues
+
+### Cognito Google Identity Provider Drift
+
+**Issue**: AWS Cognito auto-populates computed `provider_details` attributes (authorize_url, token_url, oidc_issuer, etc.) that cause perpetual terraform drift.
+
+**Symptoms**: `terraform plan` always shows changes to `aws_cognito_identity_provider.google` even when nothing has changed:
+```
+~ provider_details = {
+  - "attributes_url" = "..." -> null
+  - "authorize_url" = "..." -> null
+  - "oidc_issuer" = "..." -> null
+  - "token_url" = "..." -> null
+}
+```
+
+**Solution**: Use `ignore_changes` in the lifecycle block:
+```hcl
+resource "aws_cognito_identity_provider" "google" {
+  # ... config ...
+
+  lifecycle {
+    create_before_destroy = true
+    ignore_changes        = [provider_details]
+  }
+}
+```
+
+**Reference**: https://github.com/hashicorp/terraform-provider-aws/issues/4831
+
+**Location**: `infrastructure/terraform/modules/cognito/main.tf`
