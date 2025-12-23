@@ -69,30 +69,37 @@ export default function Accounts() {
   // Feedback message for scan status
   const [scanFeedback, setScanFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
-  const scanMutation = useMutation({
-    mutationFn: (accountId: string) => scansApi.create({ cloud_account_id: accountId }),
-    onMutate: (accountId) => {
-      // Immediate visual feedback
-      setScanningAccountId(accountId)
-      setScanFeedback(null) // Clear any previous feedback
-    },
-    onSuccess: () => {
+  // Direct async handler for responsive scan button (same pattern as MITRE sync)
+  const handleScan = async (accountId: string) => {
+    // Immediate visual feedback
+    setScanningAccountId(accountId)
+    setScanFeedback(null)
+
+    try {
+      await scansApi.create({ cloud_account_id: accountId })
+
+      // Invalidate queries to refresh data
       queryClient.invalidateQueries({ queryKey: ['scans'] })
       queryClient.invalidateQueries({ queryKey: ['scanStatus'] })
-      setScanFeedback({ type: 'success', message: 'Scan started successfully! Check the Coverage page for results.' })
+
+      setScanFeedback({
+        type: 'success',
+        message: 'Scan started successfully! Check the Coverage page for results.'
+      })
       // Auto-dismiss after 5 seconds
       setTimeout(() => setScanFeedback(null), 5000)
-    },
-    onError: (error: Error) => {
-      setScanFeedback({ type: 'error', message: error.message || 'Failed to start scan. Please try again.' })
+    } catch (error: unknown) {
+      const err = error as { message?: string; response?: { data?: { detail?: string } } }
+      setScanFeedback({
+        type: 'error',
+        message: err.response?.data?.detail || err.message || 'Failed to start scan. Please try again.'
+      })
       // Auto-dismiss after 5 seconds
       setTimeout(() => setScanFeedback(null), 5000)
-    },
-    onSettled: () => {
-      // Clear scanning state regardless of success/failure
+    } finally {
       setScanningAccountId(null)
-    },
-  })
+    }
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -265,7 +272,7 @@ export default function Accounts() {
               account={account}
               onConnect={() => setConnectingAccount(account)}
               onEdit={() => setEditingAccount(account)}
-              onScan={() => scanMutation.mutate(account.id)}
+              onScan={() => handleScan(account.id)}
               onDelete={() => deleteMutation.mutate(account.id)}
               isScanPending={scanningAccountId === account.id}
               isDeletePending={deleteMutation.isPending}
