@@ -13,6 +13,7 @@ import {
   Loader2,
   Network,
   BarChart3,
+  Lock,
 } from 'lucide-react'
 import {
   cloudOrganizationsApi,
@@ -23,10 +24,19 @@ export default function Organizations() {
   const queryClient = useQueryClient()
   const [showConnectModal, setShowConnectModal] = useState(false)
 
-  const { data: organizations, isLoading } = useQuery({
+  const { data: organizations, isLoading, error } = useQuery({
     queryKey: ['cloud-organizations'],
     queryFn: cloudOrganizationsApi.list,
+    retry: (failureCount, error: unknown) => {
+      // Don't retry on 403 (feature not available)
+      const axiosError = error as { response?: { status?: number } }
+      if (axiosError?.response?.status === 403) return false
+      return failureCount < 3
+    },
   })
+
+  // Check if this is a 403 feature-not-available error
+  const isFeatureRestricted = (error as { response?: { status?: number } })?.response?.status === 403
 
   const syncMutation = useMutation({
     mutationFn: cloudOrganizationsApi.sync,
@@ -46,6 +56,55 @@ export default function Organizations() {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      </div>
+    )
+  }
+
+  // Show upgrade message for users without org features
+  if (isFeatureRestricted) {
+    return (
+      <div>
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              Cloud Organisations
+            </h1>
+            <p className="text-gray-600">
+              Connect and manage your AWS and GCP organisations
+            </p>
+          </div>
+        </div>
+
+        <div className="text-center py-16 card">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-purple-100 mb-6">
+            <Lock className="h-8 w-8 text-purple-600" />
+          </div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">
+            Pro Feature
+          </h2>
+          <p className="text-gray-600 max-w-md mx-auto mb-6">
+            Cloud Organisations is a Pro feature that lets you manage entire AWS
+            Organisations or GCP Organisations from a single view.
+          </p>
+          <div className="bg-gray-50 rounded-lg p-4 max-w-md mx-auto mb-6">
+            <h3 className="font-medium text-gray-900 mb-2 flex items-center justify-center">
+              <Network className="h-5 w-5 mr-2 text-purple-600" />
+              What you get with Pro
+            </h3>
+            <ul className="text-sm text-gray-600 space-y-1 text-left ml-6">
+              <li>• Automatically discover all accounts in your organisation</li>
+              <li>• Aggregate coverage view across all accounts</li>
+              <li>• Detect organisation-level security controls</li>
+              <li>• Identify cross-account coverage gaps</li>
+            </ul>
+          </div>
+          <Link
+            to="/settings/billing"
+            className="inline-flex items-center px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium"
+          >
+            Upgrade to Pro
+          </Link>
+        </div>
       </div>
     )
   }
