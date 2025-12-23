@@ -15,7 +15,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
 from sqlalchemy.orm import selectinload
 
-from app.models.detection import Detection, DetectionStatus, DetectionScope
+from app.models.detection import (
+    Detection,
+    DetectionStatus,
+    DetectionScope,
+    SecurityFunction,
+)
 from app.models.mapping import DetectionMapping
 from app.models.mitre import Technique
 from app.models.cloud_account import CloudAccount
@@ -37,6 +42,35 @@ CLOUD_PLATFORMS = [
     "Google Workspace",
     "Office 365",
 ]
+
+
+@dataclass
+class SecurityFunctionBreakdown:
+    """Breakdown of detections by NIST CSF security function."""
+
+    detect: int = 0  # Threat detection - MITRE ATT&CK mapped
+    protect: int = 0  # Preventive controls
+    identify: int = 0  # Visibility/logging/posture
+    recover: int = 0  # Backup/DR/resilience
+    operational: int = 0  # Non-security (tagging, cost)
+
+    @property
+    def total(self) -> int:
+        """Total detections across all functions."""
+        return (
+            self.detect + self.protect + self.identify + self.recover + self.operational
+        )
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary for API response."""
+        return {
+            "detect": self.detect,
+            "protect": self.protect,
+            "identify": self.identify,
+            "recover": self.recover,
+            "operational": self.operational,
+            "total": self.total,
+        }
 
 
 @dataclass
@@ -91,6 +125,11 @@ class CoverageResult:
 
     # Breakdown for UI
     coverage_breakdown: dict = field(default_factory=dict)
+
+    # Security function breakdown (NIST CSF)
+    security_function_breakdown: SecurityFunctionBreakdown = field(
+        default_factory=SecurityFunctionBreakdown
+    )
 
 
 @dataclass
@@ -237,6 +276,9 @@ class CoverageCalculator:
             account_only_techniques=account_only_techniques,
             org_only_techniques=org_only_techniques,
             overlap_techniques=overlap_techniques,
+            security_function_breakdown=detection_counts.get(
+                "security_function_breakdown", SecurityFunctionBreakdown()
+            ),
             coverage_breakdown={
                 "account_only": account_only_techniques,
                 "org_only": org_only_techniques,
@@ -451,21 +493,32 @@ class CoverageCalculator:
     async def _get_detection_counts(
         self,
         cloud_account_id: UUID,
-    ) -> dict[str, int]:
-        """Get detection counts for the account."""
-        # Total detections
-        total_result = await self.db.execute(
+    ) -> dict:
+        """Get detection counts for the account including security function breakdown."""
+        # Get all detections for the account (for total and function breakdown)
+        all_result = await self.db.execute(
             select(Detection).where(Detection.cloud_account_id == cloud_account_id)
         )
-        total = len(total_result.scalars().all())
+        all_detections = list(all_result.scalars().all())
+        total = len(all_detections)
 
-        # Active detections
-        active_result = await self.db.execute(
-            select(Detection)
-            .where(Detection.cloud_account_id == cloud_account_id)
-            .where(Detection.status == DetectionStatus.ACTIVE)
-        )
-        active = len(active_result.scalars().all())
+        # Count by security function
+        function_breakdown = SecurityFunctionBreakdown()
+        active = 0
+        for det in all_detections:
+            if det.status == DetectionStatus.ACTIVE:
+                active += 1
+            # Count by security function
+            if det.security_function == SecurityFunction.DETECT:
+                function_breakdown.detect += 1
+            elif det.security_function == SecurityFunction.PROTECT:
+                function_breakdown.protect += 1
+            elif det.security_function == SecurityFunction.IDENTIFY:
+                function_breakdown.identify += 1
+            elif det.security_function == SecurityFunction.RECOVER:
+                function_breakdown.recover += 1
+            else:
+                function_breakdown.operational += 1
 
         # Mapped detections (with at least one mapping)
         mapped_result = await self.db.execute(
@@ -476,7 +529,12 @@ class CoverageCalculator:
         )
         mapped = len(mapped_result.scalars().unique().all())
 
-        return {"total": total, "active": active, "mapped": mapped}
+        return {
+            "total": total,
+            "active": active,
+            "mapped": mapped,
+            "security_function_breakdown": function_breakdown,
+        }
 
     def _build_technique_coverage(
         self,
