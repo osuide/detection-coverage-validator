@@ -3,6 +3,7 @@
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -533,12 +534,27 @@ async def seed_compliance_data(
             detail="Only super_admin can seed compliance data",
         )
 
+    from sqlalchemy import func
+
     from app.data.compliance_mappings.loader import ComplianceMappingLoader
+    from app.models.compliance import ComplianceCoverageSnapshot
+    from app.models.mitre import Technique
+
+    # Check if MITRE techniques exist - required for technique mappings
+    technique_count_result = await db.execute(select(func.count(Technique.id)))
+    technique_count = technique_count_result.scalar() or 0
+
+    if technique_count == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="MITRE data must be seeded first. Please seed MITRE data before loading compliance frameworks.",
+        )
 
     loader = ComplianceMappingLoader(db)
 
     if force_reload:
-        # Clear existing data first
+        # Clear existing data first, including orphaned compliance snapshots
+        await db.execute(ComplianceCoverageSnapshot.__table__.delete())
         await loader.clear_all()
         await db.commit()
 
@@ -553,4 +569,5 @@ async def seed_compliance_data(
         "frameworks_skipped": results["frameworks_skipped"],
         "total_controls": results["total_controls"],
         "total_mappings": results["total_mappings"],
+        "mitre_techniques_available": technique_count,
     }
