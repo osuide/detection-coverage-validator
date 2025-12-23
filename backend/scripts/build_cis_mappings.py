@@ -25,8 +25,9 @@ CIS_CONTROLS = [
             {
                 "id": "1.1",
                 "name": "Establish and Maintain Detailed Enterprise Asset Inventory",
-                "techniques": ["T1580", "T1526"],
+                "techniques": [],  # Administrative - inventory documentation
                 "ig": 1,
+                "cloud_applicability": "informational",
             },
             {
                 "id": "1.2",
@@ -72,8 +73,9 @@ CIS_CONTROLS = [
             {
                 "id": "2.1",
                 "name": "Establish and Maintain a Software Inventory",
-                "techniques": ["T1072", "T1505"],
+                "techniques": [],  # Administrative - inventory documentation
                 "ig": 1,
+                "cloud_applicability": "informational",
             },
             {
                 "id": "2.2",
@@ -323,8 +325,9 @@ CIS_CONTROLS = [
             {
                 "id": "5.1",
                 "name": "Establish and Maintain an Inventory of Accounts",
-                "techniques": ["T1078", "T1136"],
+                "techniques": [],  # Administrative - inventory documentation
                 "ig": 1,
+                "cloud_applicability": "informational",
             },
             {
                 "id": "5.2",
@@ -347,8 +350,9 @@ CIS_CONTROLS = [
             {
                 "id": "5.5",
                 "name": "Establish and Maintain an Inventory of Service Accounts",
-                "techniques": ["T1078.001", "T1136.001"],
+                "techniques": [],  # Administrative - inventory documentation
                 "ig": 2,
+                "cloud_applicability": "informational",
             },
             {
                 "id": "5.6",
@@ -372,14 +376,16 @@ CIS_CONTROLS = [
             {
                 "id": "6.1",
                 "name": "Establish an Access Granting Process",
-                "techniques": ["T1098", "T1078"],
+                "techniques": [],  # Administrative - process documentation
                 "ig": 1,
+                "cloud_applicability": "informational",
             },
             {
                 "id": "6.2",
                 "name": "Establish an Access Revoking Process",
-                "techniques": ["T1098", "T1078"],
+                "techniques": [],  # Administrative - process documentation
                 "ig": 1,
+                "cloud_applicability": "informational",
             },
             {
                 "id": "6.3",
@@ -402,8 +408,9 @@ CIS_CONTROLS = [
             {
                 "id": "6.6",
                 "name": "Establish and Maintain an Inventory of Authentication and Authorisation Systems",
-                "techniques": ["T1078", "T1556"],
+                "techniques": [],  # Administrative - inventory documentation
                 "ig": 2,
+                "cloud_applicability": "informational",
             },
             {
                 "id": "6.7",
@@ -414,8 +421,9 @@ CIS_CONTROLS = [
             {
                 "id": "6.8",
                 "name": "Define and Maintain Role-Based Access Control",
-                "techniques": ["T1078", "T1098"],
+                "techniques": [],  # Administrative - policy/process definition
                 "ig": 3,
+                "cloud_applicability": "informational",
             },
         ],
         "cloud_applicability": "highly_relevant",
@@ -433,14 +441,16 @@ CIS_CONTROLS = [
             {
                 "id": "7.1",
                 "name": "Establish and Maintain a Vulnerability Management Process",
-                "techniques": ["T1190", "T1203"],
+                "techniques": [],  # Administrative - process documentation
                 "ig": 1,
+                "cloud_applicability": "informational",
             },
             {
                 "id": "7.2",
                 "name": "Establish and Maintain a Remediation Process",
-                "techniques": ["T1190", "T1203"],
+                "techniques": [],  # Administrative - process documentation
                 "ig": 1,
+                "cloud_applicability": "informational",
             },
             {
                 "id": "7.3",
@@ -496,8 +506,9 @@ CIS_CONTROLS = [
             {
                 "id": "8.1",
                 "name": "Establish and Maintain an Audit Log Management Process",
-                "techniques": ["T1562.008", "T1070"],
+                "techniques": [],  # Administrative - process documentation
                 "ig": 1,
+                "cloud_applicability": "informational",
             },
             {
                 "id": "8.2",
@@ -556,8 +567,9 @@ CIS_CONTROLS = [
             {
                 "id": "8.11",
                 "name": "Conduct Audit Log Reviews",
-                "techniques": ["T1078", "T1110"],
+                "techniques": [],  # Administrative - review process
                 "ig": 2,
+                "cloud_applicability": "informational",
             },
             {
                 "id": "8.12",
@@ -702,8 +714,9 @@ CIS_CONTROLS = [
             {
                 "id": "11.1",
                 "name": "Establish and Maintain a Data Recovery Process",
-                "techniques": ["T1490", "T1485"],
+                "techniques": [],  # Administrative - process documentation
                 "ig": 1,
+                "cloud_applicability": "informational",
             },
             {
                 "id": "11.2",
@@ -726,8 +739,9 @@ CIS_CONTROLS = [
             {
                 "id": "11.5",
                 "name": "Test Data Recovery",
-                "techniques": ["T1490"],
+                "techniques": [],  # Administrative - testing process
                 "ig": 2,
+                "cloud_applicability": "informational",
             },
         ],
         "cloud_applicability": "highly_relevant",
@@ -761,8 +775,9 @@ CIS_CONTROLS = [
             {
                 "id": "12.2",
                 "name": "Establish and Maintain a Secure Network Architecture",
-                "techniques": ["T1046", "T1557"],
+                "techniques": [],  # Administrative - architecture documentation
                 "ig": 2,
+                "cloud_applicability": "informational",
             },
             {
                 "id": "12.3",
@@ -905,6 +920,7 @@ CIS_CONTROLS = [
         },
     },
     # Control 14: Security Awareness and Skills Training
+    # ALL training controls are administrative - cannot be validated via log detection
     {
         "control_id": "14",
         "name": "Security Awareness and Skills Training",
@@ -912,55 +928,55 @@ CIS_CONTROLS = [
             {
                 "id": "14.1",
                 "name": "Establish and Maintain a Security Awareness Programme",
-                "techniques": ["T1566", "T1204"],
+                "techniques": [],  # Training - validated via completion records
                 "ig": 1,
             },
             {
                 "id": "14.2",
                 "name": "Train Workforce Members to Recognise Social Engineering Attacks",
-                "techniques": ["T1566", "T1534"],
+                "techniques": [],  # Training - validated via completion records
                 "ig": 1,
             },
             {
                 "id": "14.3",
                 "name": "Train Workforce Members on Authentication Best Practices",
-                "techniques": ["T1078", "T1110"],
+                "techniques": [],  # Training - validated via completion records
                 "ig": 1,
             },
             {
                 "id": "14.4",
                 "name": "Train Workforce Members on Data Handling Best Practices",
-                "techniques": ["T1530", "T1567"],
+                "techniques": [],  # Training - validated via completion records
                 "ig": 1,
             },
             {
                 "id": "14.5",
                 "name": "Train Workforce Members on Causes of Unintentional Data Exposure",
-                "techniques": ["T1530", "T1537"],
+                "techniques": [],  # Training - validated via completion records
                 "ig": 1,
             },
             {
                 "id": "14.6",
                 "name": "Train Workforce Members on Recognising and Reporting Security Incidents",
-                "techniques": ["T1566"],
+                "techniques": [],  # Training - validated via completion records
                 "ig": 1,
             },
             {
                 "id": "14.7",
                 "name": "Train Workforce Members on How to Identify and Report if Their Enterprise Assets are Missing Security Updates",
-                "techniques": ["T1190"],
+                "techniques": [],  # Training - validated via completion records
                 "ig": 2,
             },
             {
                 "id": "14.8",
                 "name": "Train Workforce Members on the Dangers of Connecting to and Transmitting Enterprise Data Over Insecure Networks",
-                "techniques": ["T1557", "T1040"],
+                "techniques": [],  # Training - validated via completion records
                 "ig": 2,
             },
             {
                 "id": "14.9",
                 "name": "Conduct Role-Specific Security Awareness and Skills Training",
-                "techniques": ["T1566", "T1078"],
+                "techniques": [],  # Training - validated via completion records
                 "ig": 3,
             },
         ],
@@ -972,6 +988,7 @@ CIS_CONTROLS = [
         },
     },
     # Control 15: Service Provider Management
+    # ALL controls are administrative/process-based - cannot be validated via log detection
     {
         "control_id": "15",
         "name": "Service Provider Management",
@@ -979,47 +996,54 @@ CIS_CONTROLS = [
             {
                 "id": "15.1",
                 "name": "Establish and Maintain an Inventory of Service Providers",
-                "techniques": ["T1199", "T1195"],
+                "techniques": [],  # Administrative - inventory documentation
                 "ig": 1,
+                "cloud_applicability": "informational",
             },
             {
                 "id": "15.2",
                 "name": "Establish and Maintain a Service Provider Management Policy",
-                "techniques": ["T1199"],
+                "techniques": [],  # Administrative - policy documentation
                 "ig": 2,
+                "cloud_applicability": "informational",
             },
             {
                 "id": "15.3",
                 "name": "Classify Service Providers",
-                "techniques": ["T1199"],
+                "techniques": [],  # Administrative - classification process
                 "ig": 2,
+                "cloud_applicability": "informational",
             },
             {
                 "id": "15.4",
                 "name": "Ensure Service Provider Contracts Include Security Requirements",
-                "techniques": ["T1199"],
+                "techniques": [],  # Administrative/Legal - contract review
                 "ig": 2,
+                "cloud_applicability": "informational",
             },
             {
                 "id": "15.5",
                 "name": "Assess Service Providers",
-                "techniques": ["T1199", "T1195"],
+                "techniques": [],  # Administrative - assessment process
                 "ig": 3,
+                "cloud_applicability": "informational",
             },
             {
                 "id": "15.6",
                 "name": "Monitor Service Providers",
-                "techniques": ["T1199"],
+                "techniques": [],  # Administrative - monitoring process
                 "ig": 3,
+                "cloud_applicability": "informational",
             },
             {
                 "id": "15.7",
                 "name": "Securely Decommission Service Providers",
-                "techniques": ["T1199"],
+                "techniques": [],  # Administrative - decommission process
                 "ig": 3,
+                "cloud_applicability": "informational",
             },
         ],
-        "cloud_applicability": "moderately_relevant",
+        "cloud_applicability": "informational",
         "cloud_context": {
             "aws_services": ["Organizations", "Service Catalog", "Control Tower"],
             "gcp_services": ["Resource Manager", "Organization Policy"],
@@ -1034,14 +1058,16 @@ CIS_CONTROLS = [
             {
                 "id": "16.1",
                 "name": "Establish and Maintain a Secure Application Development Process",
-                "techniques": ["T1190", "T1059"],
+                "techniques": [],  # Administrative - process documentation
                 "ig": 1,
+                "cloud_applicability": "informational",
             },
             {
                 "id": "16.2",
                 "name": "Establish and Maintain a Process to Accept and Address Software Vulnerabilities",
-                "techniques": ["T1190"],
+                "techniques": [],  # Administrative - process documentation
                 "ig": 1,
+                "cloud_applicability": "informational",
             },
             {
                 "id": "16.3",
@@ -1053,8 +1079,9 @@ CIS_CONTROLS = [
             {
                 "id": "16.4",
                 "name": "Establish and Manage an Inventory of Third-Party Software Components",
-                "techniques": ["T1195.002"],
+                "techniques": [],  # Administrative - inventory documentation
                 "ig": 2,
+                "cloud_applicability": "informational",
             },
             {
                 "id": "16.5",
@@ -1129,6 +1156,7 @@ CIS_CONTROLS = [
         },
     },
     # Control 17: Incident Response Management
+    # ALL controls are administrative/process-based - cannot be validated via log detection
     {
         "control_id": "17",
         "name": "Incident Response Management",
@@ -1136,59 +1164,68 @@ CIS_CONTROLS = [
             {
                 "id": "17.1",
                 "name": "Designate Personnel to Manage Incident Handling",
-                "techniques": [],
+                "techniques": [],  # Administrative - personnel assignment
                 "ig": 1,
+                "cloud_applicability": "informational",
             },
             {
                 "id": "17.2",
                 "name": "Establish and Maintain Contact Information for Reporting Security Incidents",
-                "techniques": [],
+                "techniques": [],  # Administrative - documentation
                 "ig": 1,
+                "cloud_applicability": "informational",
             },
             {
                 "id": "17.3",
                 "name": "Establish and Maintain an Enterprise Process for Reporting Incidents",
-                "techniques": [],
+                "techniques": [],  # Administrative - process documentation
                 "ig": 1,
+                "cloud_applicability": "informational",
             },
             {
                 "id": "17.4",
                 "name": "Establish and Maintain an Incident Response Process",
-                "techniques": [],
+                "techniques": [],  # Administrative - process documentation
                 "ig": 2,
+                "cloud_applicability": "informational",
             },
             {
                 "id": "17.5",
                 "name": "Assign Key Roles and Responsibilities",
-                "techniques": [],
+                "techniques": [],  # Administrative - role assignment
                 "ig": 2,
+                "cloud_applicability": "informational",
             },
             {
                 "id": "17.6",
                 "name": "Define Mechanisms for Communicating During Incident Response",
-                "techniques": [],
+                "techniques": [],  # Administrative - process documentation
                 "ig": 2,
+                "cloud_applicability": "informational",
             },
             {
                 "id": "17.7",
                 "name": "Conduct Routine Incident Response Exercises",
-                "techniques": [],
+                "techniques": [],  # Administrative - exercise process
                 "ig": 2,
+                "cloud_applicability": "informational",
             },
             {
                 "id": "17.8",
                 "name": "Conduct Post-Incident Reviews",
-                "techniques": [],
+                "techniques": [],  # Administrative - review process
                 "ig": 2,
+                "cloud_applicability": "informational",
             },
             {
                 "id": "17.9",
                 "name": "Establish and Maintain Security Incident Thresholds",
-                "techniques": [],
+                "techniques": [],  # Administrative - threshold definition
                 "ig": 3,
+                "cloud_applicability": "informational",
             },
         ],
-        "cloud_applicability": "moderately_relevant",
+        "cloud_applicability": "informational",
         "cloud_context": {
             "aws_services": ["Security Hub", "Detective", "EventBridge", "Lambda"],
             "gcp_services": ["Security Command Center", "Cloud Functions", "Pub/Sub"],
@@ -1203,32 +1240,38 @@ CIS_CONTROLS = [
             {
                 "id": "18.1",
                 "name": "Establish and Maintain a Penetration Testing Programme",
-                "techniques": ["T1595"],
+                "techniques": [],  # Administrative - programme documentation
                 "ig": 2,
+                "cloud_applicability": "informational",
             },
             {
                 "id": "18.2",
                 "name": "Perform Periodic External Penetration Tests",
-                "techniques": ["T1595", "T1190"],
+                "techniques": [],  # Administrative - testing process
                 "ig": 2,
+                "cloud_applicability": "informational",
             },
             {
                 "id": "18.3",
                 "name": "Remediate Penetration Test Findings",
-                "techniques": ["T1190"],
+                "techniques": [
+                    "T1190"
+                ],  # Technical - actual remediation can be detected
                 "ig": 2,
             },
             {
                 "id": "18.4",
                 "name": "Validate Security Measures",
-                "techniques": ["T1190"],
+                "techniques": [],  # Administrative - validation process
                 "ig": 3,
+                "cloud_applicability": "informational",
             },
             {
                 "id": "18.5",
                 "name": "Perform Periodic Internal Penetration Tests",
-                "techniques": ["T1046"],
+                "techniques": [],  # Administrative - testing process
                 "ig": 3,
+                "cloud_applicability": "informational",
             },
         ],
         "cloud_applicability": "moderately_relevant",
