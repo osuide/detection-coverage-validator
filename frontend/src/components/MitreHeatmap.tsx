@@ -22,8 +22,10 @@ interface MitreHeatmapProps {
   onTechniqueClick?: (techniqueId: string) => void
 }
 
-// MITRE ATT&CK Tactics in order
+// MITRE ATT&CK Tactics in kill chain order (all 14 Enterprise tactics)
 const TACTICS = [
+  { id: 'TA0043', name: 'Reconnaissance', short: 'Recon' },
+  { id: 'TA0042', name: 'Resource Development', short: 'Resource Dev' },
   { id: 'TA0001', name: 'Initial Access', short: 'Initial Access' },
   { id: 'TA0002', name: 'Execution', short: 'Execution' },
   { id: 'TA0003', name: 'Persistence', short: 'Persistence' },
@@ -33,8 +35,8 @@ const TACTICS = [
   { id: 'TA0007', name: 'Discovery', short: 'Discovery' },
   { id: 'TA0008', name: 'Lateral Movement', short: 'Lateral Mov' },
   { id: 'TA0009', name: 'Collection', short: 'Collection' },
-  { id: 'TA0010', name: 'Exfiltration', short: 'Exfiltration' },
   { id: 'TA0011', name: 'Command and Control', short: 'C2' },
+  { id: 'TA0010', name: 'Exfiltration', short: 'Exfiltration' },
   { id: 'TA0040', name: 'Impact', short: 'Impact' },
 ]
 
