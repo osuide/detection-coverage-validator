@@ -18,6 +18,7 @@ from app.models.cloud_credential import (
     CredentialStatus,
 )
 from app.models.detection import Detection, DetectionStatus
+from app.analyzers.security_function_classifier import classify_detection
 from app.models.mapping import DetectionMapping, MappingSource
 from app.models.scan import Scan, ScanStatus
 from app.scanners.aws.cloudwatch_scanner import CloudWatchLogsInsightsScanner
@@ -747,6 +748,27 @@ class ScanService:
                         matched_indicators=mapping.matched_indicators,
                     )
                     self.db.add(dm)
+
+        await self.db.flush()
+
+        # Phase 5: Classify detections by security function (NIST CSF)
+        # This explains WHY unmapped detections don't have MITRE mappings
+        for detection, mappings in detection_mappings_list:
+            has_mitre_mappings = len(mappings) > 0
+            # Get source identifier from raw_config if available
+            source_identifier = None
+            if detection.raw_config:
+                source_identifier = detection.raw_config.get(
+                    "source_identifier"
+                ) or detection.raw_config.get("rule_id")
+
+            security_function = classify_detection(
+                detection_name=detection.name,
+                detection_description=detection.description,
+                has_mitre_mappings=has_mitre_mappings,
+                source_identifier=source_identifier,
+            )
+            detection.security_function = security_function
 
         await self.db.flush()
 
