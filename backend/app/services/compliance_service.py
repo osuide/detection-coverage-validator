@@ -170,9 +170,12 @@ class ComplianceService:
                         "partial": info.partial,
                         "uncovered": info.uncovered,
                         "not_assessable": info.not_assessable,
+                        "assessable": info.assessable,
                         "percent": info.percent,
                         "cloud_applicability": info.cloud_applicability,
                         "shared_responsibility": info.shared_responsibility,
+                        "applicability_breakdown": info.applicability_breakdown,
+                        "responsibility_breakdown": info.responsibility_breakdown,
                     }
                     for name, info in result.family_coverage.items()
                 }

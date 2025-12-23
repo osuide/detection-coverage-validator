@@ -91,9 +91,17 @@ class FamilyCoverageItem(BaseModel):
     partial: int
     uncovered: int
     not_assessable: int = 0  # Controls that cannot be assessed via cloud scanning
-    percent: float
-    cloud_applicability: Optional[str] = None  # "highly_relevant", etc.
-    shared_responsibility: Optional[str] = None  # "customer", "shared", "provider"
+    assessable: int = 0  # Controls that CAN be assessed via cloud scanning
+    percent: float  # Percent of ASSESSABLE controls that are covered
+    cloud_applicability: Optional[str] = None  # Dominant type or "mixed"
+    shared_responsibility: Optional[str] = None  # Dominant type or "mixed"
+    # Breakdown for mixed families - shows count by type
+    applicability_breakdown: Optional[dict] = (
+        None  # e.g., {"highly_relevant": 10, "informational": 2}
+    )
+    responsibility_breakdown: Optional[dict] = (
+        None  # e.g., {"customer": 8, "shared": 4}
+    )
 
 
 class MissingTechniqueDetail(BaseModel):

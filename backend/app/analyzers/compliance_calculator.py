@@ -52,9 +52,16 @@ class FamilyCoverageInfo:
     partial: int
     uncovered: int
     not_assessable: int  # Controls that cannot be assessed via cloud scanning
+    assessable: int  # Controls that CAN be assessed via cloud scanning
     percent: float
-    cloud_applicability: Optional[str] = None  # "highly_relevant", etc.
-    shared_responsibility: Optional[str] = None  # "customer", "shared", "provider"
+    cloud_applicability: Optional[str] = None  # Dominant type or "mixed"
+    shared_responsibility: Optional[str] = None  # Dominant type or "mixed"
+    applicability_breakdown: Optional[dict] = (
+        None  # e.g., {"highly_relevant": 10, "informational": 2}
+    )
+    responsibility_breakdown: Optional[dict] = (
+        None  # e.g., {"customer": 8, "shared": 4}
+    )
 
 
 @dataclass
@@ -226,28 +233,43 @@ class ComplianceCoverageCalculator:
             # Update family stats
             family = control.control_family
             if family not in family_stats:
-                # Get shared_responsibility from cloud_context if available
-                shared_resp = None
-                if control.cloud_context and isinstance(control.cloud_context, dict):
-                    shared_resp = control.cloud_context.get("shared_responsibility")
-
                 family_stats[family] = {
                     "total": 0,
                     "covered": 0,
                     "partial": 0,
                     "uncovered": 0,
                     "not_assessable": 0,
-                    "cloud_applicability": control.cloud_applicability,
-                    "shared_responsibility": shared_resp,
+                    "assessable": 0,  # Track assessable controls separately
+                    "applicability_counts": {},  # Track all applicability types
+                    "responsibility_counts": {},  # Track responsibility types
                 }
+
+            # Track cloud applicability distribution for this family
+            applicability = control.cloud_applicability or "highly_relevant"
+            family_stats[family]["applicability_counts"][applicability] = (
+                family_stats[family]["applicability_counts"].get(applicability, 0) + 1
+            )
+
+            # Track shared responsibility distribution
+            shared_resp = None
+            if control.cloud_context and isinstance(control.cloud_context, dict):
+                shared_resp = control.cloud_context.get("shared_responsibility")
+            if shared_resp:
+                family_stats[family]["responsibility_counts"][shared_resp] = (
+                    family_stats[family]["responsibility_counts"].get(shared_resp, 0)
+                    + 1
+                )
 
             family_stats[family]["total"] += 1
             if coverage_info.status == "covered":
                 family_stats[family]["covered"] += 1
+                family_stats[family]["assessable"] += 1
             elif coverage_info.status == "partial":
                 family_stats[family]["partial"] += 1
+                family_stats[family]["assessable"] += 1
             elif coverage_info.status == "uncovered":
                 family_stats[family]["uncovered"] += 1
+                family_stats[family]["assessable"] += 1
             elif coverage_info.status == "not_assessable":
                 family_stats[family]["not_assessable"] += 1
             # not_applicable doesn't count towards any bucket
@@ -258,8 +280,46 @@ class ComplianceCoverageCalculator:
             total = stats["total"]
             covered = stats["covered"]
             not_assessable = stats["not_assessable"]
+            assessable = stats["assessable"]
+
             # Calculate percent based on assessable controls only
             assessable_total = total - not_assessable
+
+            # Determine dominant cloud_applicability
+            # If family has multiple types, mark as "mixed"
+            app_counts = stats.get("applicability_counts", {})
+            if len(app_counts) == 0:
+                dominant_applicability = None
+            elif len(app_counts) == 1:
+                dominant_applicability = list(app_counts.keys())[0]
+            else:
+                # Multiple types - find dominant or mark as mixed
+                sorted_apps = sorted(
+                    app_counts.items(), key=lambda x: x[1], reverse=True
+                )
+                top_app, top_count = sorted_apps[0]
+                # If >80% are one type, use that; otherwise "mixed"
+                if top_count / total >= 0.8:
+                    dominant_applicability = top_app
+                else:
+                    dominant_applicability = "mixed"
+
+            # Determine dominant shared_responsibility
+            resp_counts = stats.get("responsibility_counts", {})
+            if len(resp_counts) == 0:
+                dominant_responsibility = None
+            elif len(resp_counts) == 1:
+                dominant_responsibility = list(resp_counts.keys())[0]
+            else:
+                sorted_resps = sorted(
+                    resp_counts.items(), key=lambda x: x[1], reverse=True
+                )
+                top_resp, top_count = sorted_resps[0]
+                if top_count / total >= 0.8:
+                    dominant_responsibility = top_resp
+                else:
+                    dominant_responsibility = "mixed"
+
             family_coverage[family] = FamilyCoverageInfo(
                 family=family,
                 total=total,
@@ -267,11 +327,14 @@ class ComplianceCoverageCalculator:
                 partial=stats["partial"],
                 uncovered=stats["uncovered"],
                 not_assessable=not_assessable,
+                assessable=assessable,
                 percent=(
                     (covered / assessable_total * 100) if assessable_total > 0 else 0
                 ),
-                cloud_applicability=stats.get("cloud_applicability"),
-                shared_responsibility=stats.get("shared_responsibility"),
+                cloud_applicability=dominant_applicability,
+                shared_responsibility=dominant_responsibility,
+                applicability_breakdown=app_counts if len(app_counts) > 1 else None,
+                responsibility_breakdown=resp_counts if len(resp_counts) > 1 else None,
             )
 
         # Calculate totals - exclude not_applicable AND not_assessable from main totals

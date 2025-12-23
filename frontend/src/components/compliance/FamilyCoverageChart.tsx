@@ -6,7 +6,7 @@
  */
 
 import { Cloud, Building, Users } from 'lucide-react'
-import { FamilyCoverageItem, CloudApplicability } from '../../services/complianceApi'
+import { FamilyCoverageItem } from '../../services/complianceApi'
 
 interface FamilyCoverageChartProps {
   coverage: FamilyCoverageItem[]
@@ -34,37 +34,50 @@ const responsibilityConfig: Record<
   },
 }
 
-// Cloud applicability styling
-const applicabilityStyles: Record<CloudApplicability, string> = {
+// Cloud applicability styling (including "mixed" for families with multiple types)
+const applicabilityStyles: Record<string, string> = {
   highly_relevant: 'border-l-4 border-l-green-500',
   moderately_relevant: 'border-l-4 border-l-yellow-500',
   informational: 'border-l-4 border-l-blue-500',
   provider_responsibility: 'border-l-4 border-l-purple-500',
+  mixed: 'border-l-4 border-l-gradient-to-b from-green-500 via-yellow-500 to-blue-500',
 }
 
 export function FamilyCoverageChart({ coverage }: FamilyCoverageChartProps) {
   // Sort by family name for consistent display
   const sortedCoverage = [...coverage].sort((a, b) => a.family.localeCompare(b.family))
 
+  // Helper to build tooltip for mixed families
+  const buildApplicabilityTooltip = (family: FamilyCoverageItem): string => {
+    if (family.cloud_applicability === 'mixed' && family.applicability_breakdown) {
+      const parts = Object.entries(family.applicability_breakdown)
+        .map(([type, count]) => `${count} ${type.replace('_', ' ')}`)
+        .join(', ')
+      return `Mixed applicability: ${parts}`
+    }
+    return family.cloud_applicability
+      ? `Cloud applicability: ${family.cloud_applicability.replace('_', ' ')}`
+      : ''
+  }
+
   return (
     <div className="space-y-3">
       {sortedCoverage.map((family) => {
         const borderStyle = family.cloud_applicability
-          ? applicabilityStyles[family.cloud_applicability]
+          ? applicabilityStyles[family.cloud_applicability] || 'border-l-4 border-l-gray-500'
           : ''
-        const responsibility = family.shared_responsibility
+        const responsibility = family.shared_responsibility && family.shared_responsibility !== 'mixed'
           ? responsibilityConfig[family.shared_responsibility]
           : null
+
+        // Calculate assessable count for display
+        const assessableCount = family.assessable || (family.total - family.not_assessable)
 
         return (
           <div
             key={family.family}
             className={`group pl-3 ${borderStyle}`}
-            title={
-              family.cloud_applicability
-                ? `Cloud applicability: ${family.cloud_applicability.replace('_', ' ')}`
-                : undefined
-            }
+            title={buildApplicabilityTooltip(family)}
           >
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-2 max-w-[50%]">
@@ -79,17 +92,33 @@ export function FamilyCoverageChart({ coverage }: FamilyCoverageChartProps) {
                     {responsibility.icon}
                   </span>
                 )}
+                {family.cloud_applicability === 'mixed' && (
+                  <span
+                    className="inline-flex items-center text-xs text-gray-400 bg-gray-700 px-1.5 py-0.5 rounded"
+                    title={buildApplicabilityTooltip(family)}
+                  >
+                    Mixed
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-4 text-xs">
                 <span className="text-green-400">{family.covered} covered</span>
                 <span className="text-yellow-400">{family.partial} partial</span>
                 <span className="text-red-400">{family.uncovered} uncovered</span>
                 {family.not_assessable > 0 && (
-                  <span className="text-gray-500" title="Cannot be assessed via cloud scanning">
+                  <span className="text-gray-500" title="Cannot be assessed via cloud scanning (administrative/process controls)">
                     {family.not_assessable} N/A
                   </span>
                 )}
-                <span className="text-gray-400 w-12 text-right">{family.percent.toFixed(0)}%</span>
+                <span
+                  className="text-gray-400 w-16 text-right"
+                  title={`${family.percent.toFixed(0)}% of ${assessableCount} assessable controls are covered`}
+                >
+                  {family.percent.toFixed(0)}%
+                  {family.not_assessable > 0 && (
+                    <span className="text-gray-600 text-[10px]"> ({assessableCount})</span>
+                  )}
+                </span>
               </div>
             </div>
 
@@ -177,6 +206,17 @@ export function FamilyCoverageChart({ coverage }: FamilyCoverageChartProps) {
           <div className="w-1 h-3 bg-purple-500 rounded" />
           <span className="text-xs text-gray-400">Provider Managed</span>
         </div>
+        <div className="flex items-center gap-1">
+          <div className="w-1 h-3 bg-gray-500 rounded" />
+          <span className="text-xs text-gray-400">Mixed</span>
+        </div>
+      </div>
+
+      {/* Explanatory note */}
+      <div className="text-center pt-2">
+        <p className="text-xs text-gray-500 italic">
+          Percentages show coverage of assessable controls only. N/A controls require manual review.
+        </p>
       </div>
 
       {/* Shared Responsibility Legend */}

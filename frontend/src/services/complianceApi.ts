@@ -76,9 +76,13 @@ export interface FamilyCoverageItem {
   partial: number
   uncovered: number
   not_assessable: number // Controls that cannot be assessed via cloud scanning
-  percent: number
-  cloud_applicability?: CloudApplicability
-  shared_responsibility?: 'customer' | 'shared' | 'provider'
+  assessable: number // Controls that CAN be assessed via cloud scanning
+  percent: number // Percent of ASSESSABLE controls that are covered
+  cloud_applicability?: CloudApplicability | 'mixed' // Can be "mixed" for families with multiple types
+  shared_responsibility?: 'customer' | 'shared' | 'provider' | 'mixed'
+  // Breakdown for mixed families
+  applicability_breakdown?: Record<string, number> // e.g., {"highly_relevant": 10, "informational": 2}
+  responsibility_breakdown?: Record<string, number> // e.g., {"customer": 8, "shared": 4}
 }
 
 export interface MissingTechniqueDetail {
