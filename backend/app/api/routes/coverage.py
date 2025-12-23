@@ -25,15 +25,46 @@ from app.schemas.coverage import (
     OrgCoverageResponse,
     OrgTacticCoverage,
     AccountCoverageSummary,
+    SecurityFunctionBreakdown,
 )
 from app.services.coverage_service import CoverageService
 from app.services.drift_detection_service import DriftDetectionService
 from app.models.mitre import Technique, Tactic
 from app.models.mapping import DetectionMapping
-from app.models.detection import Detection, DetectionStatus
+from app.models.detection import Detection, DetectionStatus, SecurityFunction
 from app.data.remediation_templates import get_all_templates
 
 router = APIRouter()
+
+
+async def _get_security_function_breakdown(
+    db: AsyncSession, cloud_account_id: UUID
+) -> SecurityFunctionBreakdown:
+    """Calculate security function breakdown for a cloud account."""
+    result = await db.execute(
+        select(Detection).where(Detection.cloud_account_id == cloud_account_id)
+    )
+    detections = result.scalars().all()
+
+    breakdown = SecurityFunctionBreakdown(
+        detect=0, protect=0, identify=0, recover=0, operational=0, total=0
+    )
+
+    for det in detections:
+        if det.security_function == SecurityFunction.DETECT:
+            breakdown.detect += 1
+        elif det.security_function == SecurityFunction.PROTECT:
+            breakdown.protect += 1
+        elif det.security_function == SecurityFunction.IDENTIFY:
+            breakdown.identify += 1
+        elif det.security_function == SecurityFunction.RECOVER:
+            breakdown.recover += 1
+        else:
+            breakdown.operational += 1
+
+    breakdown.total = len(detections)
+    return breakdown
+
 
 # Cloud-relevant platforms from MITRE ATT&CK Cloud Matrix
 # Used to filter techniques to only show cloud-relevant ones in the heatmap
@@ -210,6 +241,11 @@ async def get_coverage(
             ),
         )
 
+    # Calculate security function breakdown (NIST CSF)
+    security_function_breakdown = await _get_security_function_breakdown(
+        db, cloud_account_id
+    )
+
     return CoverageResponse(
         id=snapshot.id,
         cloud_account_id=snapshot.cloud_account_id,
@@ -233,6 +269,7 @@ async def get_coverage(
         org_only_techniques=snapshot.org_only_techniques or 0,
         overlap_techniques=snapshot.overlap_techniques or 0,
         coverage_breakdown=coverage_breakdown,
+        security_function_breakdown=security_function_breakdown,
     )
 
 
@@ -496,6 +533,11 @@ async def calculate_coverage(
             ),
         )
 
+    # Calculate security function breakdown (NIST CSF)
+    calc_security_function_breakdown = await _get_security_function_breakdown(
+        db, cloud_account_id
+    )
+
     return CoverageResponse(
         id=snapshot.id,
         cloud_account_id=snapshot.cloud_account_id,
@@ -519,6 +561,7 @@ async def calculate_coverage(
         org_only_techniques=snapshot.org_only_techniques or 0,
         overlap_techniques=snapshot.overlap_techniques or 0,
         coverage_breakdown=calc_coverage_breakdown,
+        security_function_breakdown=calc_security_function_breakdown,
     )
 
 

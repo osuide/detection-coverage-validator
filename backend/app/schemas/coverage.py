@@ -37,6 +37,25 @@ class CoverageBreakdown(BaseModel):
     )
 
 
+class SecurityFunctionBreakdown(BaseModel):
+    """Breakdown of detections by NIST CSF security function.
+
+    This explains what purpose each detection serves:
+    - detect: Threat detection - maps to MITRE ATT&CK techniques
+    - protect: Preventive controls - access controls, encryption, MFA
+    - identify: Visibility controls - logging, monitoring, posture
+    - recover: Recovery controls - backup, DR, versioning
+    - operational: Non-security controls - tagging, cost, performance
+    """
+
+    detect: int = Field(0, description="Threat detection (MITRE ATT&CK mapped)")
+    protect: int = Field(0, description="Preventive controls")
+    identify: int = Field(0, description="Visibility/logging/posture")
+    recover: int = Field(0, description="Recovery/DR/resilience")
+    operational: int = Field(0, description="Non-security (tagging, cost)")
+    total: int = Field(0, description="Total detections across all functions")
+
+
 class RecommendedStrategyItem(BaseModel):
     """A recommended detection strategy."""
 
@@ -106,6 +125,9 @@ class CoverageResponse(BaseModel):
     org_only_techniques: int = 0
     overlap_techniques: int = 0
     coverage_breakdown: Optional[CoverageBreakdown] = None
+
+    # Security function breakdown (NIST CSF)
+    security_function_breakdown: Optional[SecurityFunctionBreakdown] = None
 
     model_config = ConfigDict(from_attributes=True)
 
