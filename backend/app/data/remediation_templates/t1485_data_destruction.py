@@ -87,6 +87,13 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
+  # Dead Letter Queue for failed event deliveries
+  AlertDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: s3-destruction-alerts-dlq
+      MessageRetentionPeriod: 1209600  # 14 days
+
   S3DeleteRule:
     Type: AWS::Events::Rule
     Properties:
@@ -98,6 +105,11 @@ Resources:
       Targets:
         - Id: Alert
           Arn: !Ref AlertTopic
+          RetryPolicy:
+            MaximumRetryAttempts: 8
+            MaximumEventAge: 3600
+          DeadLetterConfig:
+            Arn: !GetAtt AlertDLQ.Arn
 
   TopicPolicy:
     Type: AWS::SNS::TopicPolicy
@@ -109,7 +121,20 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+
+  # Allow EventBridge to send failed events to DLQ
+  DLQPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues: [!Ref AlertDLQ]
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt AlertDLQ.Arn""",
                 terraform_template="""# Detect S3 data destruction
 
 variable "alert_email" { type = string }
@@ -124,6 +149,12 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
+# Dead Letter Queue for failed event deliveries
+resource "aws_sqs_queue" "dlq" {
+  name                      = "s3-destruction-alerts-dlq"
+  message_retention_seconds = 1209600  # 14 days
+}
+
 resource "aws_cloudwatch_event_rule" "s3_delete" {
   name = "s3-data-destruction"
   event_pattern = jsonencode({
@@ -136,6 +167,15 @@ resource "aws_cloudwatch_event_rule" "s3_delete" {
 resource "aws_cloudwatch_event_target" "sns" {
   rule = aws_cloudwatch_event_rule.s3_delete.name
   arn  = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_retry_attempts = 8
+    maximum_event_age      = 3600
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
 }
 
 resource "aws_sns_topic_policy" "allow_events" {
@@ -147,6 +187,20 @@ resource "aws_sns_topic_policy" "allow_events" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
+    }]
+  })
+}
+
+# Allow EventBridge to send failed events to DLQ
+resource "aws_sqs_queue_policy" "dlq" {
+  queue_url = aws_sqs_queue.dlq.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.dlq.arn
     }]
   })
 }""",
@@ -202,6 +256,12 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
+# Dead Letter Queue for failed event deliveries
+resource "aws_sqs_queue" "dlq" {
+  name                      = "rds-destruction-alerts-dlq"
+  message_retention_seconds = 1209600  # 14 days
+}
+
 resource "aws_cloudwatch_event_rule" "rds_delete" {
   name = "rds-data-destruction"
   event_pattern = jsonencode({
@@ -214,6 +274,15 @@ resource "aws_cloudwatch_event_rule" "rds_delete" {
 resource "aws_cloudwatch_event_target" "sns" {
   rule = aws_cloudwatch_event_rule.rds_delete.name
   arn  = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_retry_attempts = 8
+    maximum_event_age      = 3600
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
 }
 
 resource "aws_sns_topic_policy" "allow_events" {
@@ -225,6 +294,20 @@ resource "aws_sns_topic_policy" "allow_events" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
+    }]
+  })
+}
+
+# Allow EventBridge to send failed events to DLQ
+resource "aws_sqs_queue_policy" "dlq" {
+  queue_url = aws_sqs_queue.dlq.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.dlq.arn
     }]
   })
 }""",

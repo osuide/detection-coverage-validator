@@ -95,6 +95,12 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
+  # Dead letter queue for failed event deliveries
+  EventDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 1209600
+
   # Step 3: Route stealth/evasion findings to email
   StealthFindingsRule:
     Type: AWS::Events::Rule
@@ -108,6 +114,11 @@ Resources:
       Targets:
         - Id: Email
           Arn: !Ref AlertTopic
+          RetryPolicy:
+            MaximumRetryAttempts: 8
+            MaximumEventAge: 3600
+          DeadLetterConfig:
+            Arn: !GetAtt EventDLQ.Arn
 
   TopicPolicy:
     Type: AWS::SNS::TopicPolicy
@@ -142,6 +153,12 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
+# Dead letter queue for failed event deliveries
+resource "aws_sqs_queue" "event_dlq" {
+  name                      = "guardduty-stealth-dlq"
+  message_retention_seconds = 1209600
+}
+
 # Step 3: Route stealth/evasion findings to email
 resource "aws_cloudwatch_event_rule" "stealth_findings" {
   name = "guardduty-stealth-alerts"
@@ -159,6 +176,15 @@ resource "aws_cloudwatch_event_rule" "stealth_findings" {
 resource "aws_cloudwatch_event_target" "sns" {
   rule = aws_cloudwatch_event_rule.stealth_findings.name
   arn  = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_retry_attempts = 8
+    maximum_event_age      = 3600
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.event_dlq.arn
+  }
 }
 
 resource "aws_sns_topic_policy" "allow_eventbridge" {
@@ -235,6 +261,12 @@ Parameters:
     Type: String
 
 Resources:
+  # Dead letter queue for failed event deliveries
+  EventDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 1209600
+
   CloudTrailTamperingRule:
     Type: AWS::Events::Rule
     Properties:
@@ -256,7 +288,12 @@ Resources:
       State: ENABLED
       Targets:
         - Id: SNSAlert
-          Arn: !Ref SNSTopicArn""",
+          Arn: !Ref SNSTopicArn
+          RetryPolicy:
+            MaximumRetryAttempts: 8
+            MaximumEventAge: 3600
+          DeadLetterConfig:
+            Arn: !GetAtt EventDLQ.Arn""",
                 alert_severity="critical",
                 alert_title="CloudTrail Tampering Detected",
                 alert_description_template=(
@@ -320,6 +357,12 @@ Parameters:
     Type: String
 
 Resources:
+  # Dead letter queue for failed event deliveries
+  EventDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 1209600
+
   GuardDutyTamperingRule:
     Type: AWS::Events::Rule
     Properties:
@@ -342,7 +385,12 @@ Resources:
       State: ENABLED
       Targets:
         - Id: SNSAlert
-          Arn: !Ref SNSTopicArn""",
+          Arn: !Ref SNSTopicArn
+          RetryPolicy:
+            MaximumRetryAttempts: 8
+            MaximumEventAge: 3600
+          DeadLetterConfig:
+            Arn: !GetAtt EventDLQ.Arn""",
                 alert_severity="critical",
                 alert_title="GuardDuty Tampering Detected",
                 alert_description_template=(

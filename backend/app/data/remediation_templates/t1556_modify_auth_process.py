@@ -112,6 +112,13 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
+  # Dead Letter Queue for failed events
+  EventDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: T1556-IAMAuthPolicy-DLQ
+      MessageRetentionPeriod: 1209600  # 14 days
+
   # Step 2: EventBridge rule for IAM policy changes
   IAMPolicyChangeRule:
     Type: AWS::Events::Rule
@@ -136,6 +143,11 @@ Resources:
       Targets:
         - Id: Alert
           Arn: !Ref AlertTopic
+          RetryPolicy:
+            MaximumRetryAttempts: 8
+            MaximumEventAge: 3600
+          DeadLetterConfig:
+            Arn: !GetAtt EventDLQ.Arn
 
   # Step 3: Topic policy
   TopicPolicy:
@@ -166,6 +178,12 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
+# Dead Letter Queue for failed events
+resource "aws_sqs_queue" "event_dlq" {
+  name                      = "iam-auth-policy-dlq"
+  message_retention_seconds = 1209600  # 14 days
+}
+
 # Step 2: EventBridge rule for IAM policy changes
 resource "aws_cloudwatch_event_rule" "iam_policy_change" {
   name        = "iam-auth-policy-modifications"
@@ -193,6 +211,15 @@ resource "aws_cloudwatch_event_rule" "iam_policy_change" {
 resource "aws_cloudwatch_event_target" "sns" {
   rule = aws_cloudwatch_event_rule.iam_policy_change.name
   arn  = aws_sns_topic.iam_auth_policy_alerts.arn
+
+  retry_policy {
+    maximum_retry_attempts = 8
+    maximum_event_age      = 3600
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.event_dlq.arn
+  }
 }
 
 # Step 3: Topic policy
@@ -423,6 +450,13 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
+  # Dead Letter Queue for failed events
+  EventDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: T1556-IdentityProvider-DLQ
+      MessageRetentionPeriod: 1209600  # 14 days
+
   # Step 2: EventBridge rule for IdP changes
   IdPChangeRule:
     Type: AWS::Events::Rule
@@ -445,6 +479,11 @@ Resources:
       Targets:
         - Id: Alert
           Arn: !Ref AlertTopic
+          RetryPolicy:
+            MaximumRetryAttempts: 8
+            MaximumEventAge: 3600
+          DeadLetterConfig:
+            Arn: !GetAtt EventDLQ.Arn
 
   # Step 3: Topic policy
   TopicPolicy:
@@ -475,6 +514,12 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
+# Dead Letter Queue for failed events
+resource "aws_sqs_queue" "event_dlq" {
+  name                      = "identity-provider-dlq"
+  message_retention_seconds = 1209600  # 14 days
+}
+
 # Step 2: EventBridge rule for IdP changes
 resource "aws_cloudwatch_event_rule" "idp_change" {
   name        = "identity-provider-modifications"
@@ -500,6 +545,15 @@ resource "aws_cloudwatch_event_rule" "idp_change" {
 resource "aws_cloudwatch_event_target" "sns" {
   rule = aws_cloudwatch_event_rule.idp_change.name
   arn  = aws_sns_topic.idp_change_alerts.arn
+
+  retry_policy {
+    maximum_retry_attempts = 8
+    maximum_event_age      = 3600
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.event_dlq.arn
+  }
 }
 
 # Step 3: Topic policy

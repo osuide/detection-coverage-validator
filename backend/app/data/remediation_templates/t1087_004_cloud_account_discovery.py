@@ -214,6 +214,13 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
+  # Dead Letter Queue for failed events
+  EventDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: auth-details-dlq
+      MessageRetentionPeriod: 1209600  # 14 days
+
   # Step 2: EventBridge for GetAccountAuthorizationDetails
   AuthDetailsRule:
     Type: AWS::Events::Rule
@@ -226,6 +233,11 @@ Resources:
       Targets:
         - Id: Alert
           Arn: !Ref AlertTopic
+          RetryPolicy:
+            MaximumRetryAttempts: 8
+            MaximumEventAge: 3600
+          DeadLetterConfig:
+            Arn: !GetAtt EventDLQ.Arn
 
   TopicPolicy:
     Type: AWS::SNS::TopicPolicy
@@ -255,6 +267,12 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
+# Dead Letter Queue for failed events
+resource "aws_sqs_queue" "event_dlq" {
+  name                      = "auth-details-dlq"
+  message_retention_seconds = 1209600  # 14 days
+}
+
 # Step 2: EventBridge rule
 resource "aws_cloudwatch_event_rule" "auth_details" {
   name = "full-iam-enumeration"
@@ -270,6 +288,15 @@ resource "aws_cloudwatch_event_rule" "auth_details" {
 resource "aws_cloudwatch_event_target" "sns" {
   rule = aws_cloudwatch_event_rule.auth_details.name
   arn  = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_retry_attempts = 8
+    maximum_event_age      = 3600
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.event_dlq.arn
+  }
 }
 
 resource "aws_sns_topic_policy" "allow_events" {

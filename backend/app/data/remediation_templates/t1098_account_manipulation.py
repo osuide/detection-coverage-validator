@@ -94,7 +94,14 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
-  # Step 3: Route IAM findings to email
+  # Dead Letter Queue for failed alert deliveries
+  AlertDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: guardduty-iam-alerts-dlq
+      MessageRetentionPeriod: 1209600  # 14 days
+
+  # Step 3: Route IAM findings to email with retry/DLQ
   IAMFindingsRule:
     Type: AWS::Events::Rule
     Properties:
@@ -108,6 +115,11 @@ Resources:
       Targets:
         - Id: Email
           Arn: !Ref AlertTopic
+          RetryPolicy:
+            MaximumRetryAttempts: 8
+            MaximumEventAge: 3600
+          DeadLetterConfig:
+            Arn: !GetAtt AlertDLQ.Arn
 
   TopicPolicy:
     Type: AWS::SNS::TopicPolicy
@@ -142,7 +154,13 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
-# Step 3: Route IAM findings to email
+# Dead Letter Queue for failed alert deliveries
+resource "aws_sqs_queue" "alert_dlq" {
+  name                      = "guardduty-iam-alerts-dlq"
+  message_retention_seconds = 1209600  # 14 days
+}
+
+# Step 3: Route IAM findings to email with retry/DLQ
 resource "aws_cloudwatch_event_rule" "iam_findings" {
   name = "guardduty-iam-alerts"
   event_pattern = jsonencode({
@@ -160,6 +178,15 @@ resource "aws_cloudwatch_event_rule" "iam_findings" {
 resource "aws_cloudwatch_event_target" "sns" {
   rule = aws_cloudwatch_event_rule.iam_findings.name
   arn  = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_retry_attempts = 8
+    maximum_event_age      = 3600
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.alert_dlq.arn
+  }
 }
 
 resource "aws_sns_topic_policy" "allow_eventbridge" {
@@ -234,6 +261,13 @@ Parameters:
     Type: String
 
 Resources:
+  # Dead Letter Queue for failed alert deliveries
+  AccessKeyAlertDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: t1098-access-key-alerts-dlq
+      MessageRetentionPeriod: 1209600  # 14 days
+
   AccessKeyCreationRule:
     Type: AWS::Events::Rule
     Properties:
@@ -254,7 +288,56 @@ Resources:
       State: ENABLED
       Targets:
         - Id: SNSAlert
-          Arn: !Ref SNSTopicArn""",
+          Arn: !Ref SNSTopicArn
+          RetryPolicy:
+            MaximumRetryAttempts: 8
+            MaximumEventAge: 3600
+          DeadLetterConfig:
+            Arn: !GetAtt AccessKeyAlertDLQ.Arn""",
+                terraform_template="""# IAM access key creation monitoring
+
+variable "sns_topic_arn" {
+  type        = string
+  description = "ARN of SNS topic for alerts"
+}
+
+# Dead Letter Queue for failed alert deliveries
+resource "aws_sqs_queue" "access_key_alert_dlq" {
+  name                      = "t1098-access-key-alerts-dlq"
+  message_retention_seconds = 1209600  # 14 days
+}
+
+resource "aws_cloudwatch_event_rule" "access_key_creation" {
+  name        = "T1098-AccessKeyCreation"
+  description = "Detect IAM access key and credential creation"
+
+  event_pattern = jsonencode({
+    source = ["aws.iam"]
+    detail-type = ["AWS API Call via CloudTrail"]
+    detail = {
+      eventSource = ["iam.amazonaws.com"]
+      eventName = [
+        "CreateAccessKey",
+        "CreateLoginProfile",
+        "UpdateLoginProfile"
+      ]
+    }
+  })
+}
+
+resource "aws_cloudwatch_event_target" "access_key_sns" {
+  rule = aws_cloudwatch_event_rule.access_key_creation.name
+  arn  = var.sns_topic_arn
+
+  retry_policy {
+    maximum_retry_attempts = 8
+    maximum_event_age      = 3600
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.access_key_alert_dlq.arn
+  }
+}""",
                 alert_severity="high",
                 alert_title="IAM Credential Creation Detected",
                 alert_description_template=(
@@ -321,6 +404,13 @@ Parameters:
     Type: String
 
 Resources:
+  # Dead Letter Queue for failed alert deliveries
+  PermissionEscalationAlertDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: t1098-permission-escalation-dlq
+      MessageRetentionPeriod: 1209600  # 14 days
+
   PermissionEscalationRule:
     Type: AWS::Events::Rule
     Properties:
@@ -347,7 +437,62 @@ Resources:
       State: ENABLED
       Targets:
         - Id: SNSAlert
-          Arn: !Ref SNSTopicArn""",
+          Arn: !Ref SNSTopicArn
+          RetryPolicy:
+            MaximumRetryAttempts: 8
+            MaximumEventAge: 3600
+          DeadLetterConfig:
+            Arn: !GetAtt PermissionEscalationAlertDLQ.Arn""",
+                terraform_template="""# IAM permission escalation detection
+
+variable "sns_topic_arn" {
+  type        = string
+  description = "ARN of SNS topic for alerts"
+}
+
+# Dead Letter Queue for failed alert deliveries
+resource "aws_sqs_queue" "permission_escalation_dlq" {
+  name                      = "t1098-permission-escalation-dlq"
+  message_retention_seconds = 1209600  # 14 days
+}
+
+resource "aws_cloudwatch_event_rule" "permission_escalation" {
+  name        = "T1098-PermissionEscalation"
+  description = "Detect IAM permission changes"
+
+  event_pattern = jsonencode({
+    source = ["aws.iam"]
+    detail-type = ["AWS API Call via CloudTrail"]
+    detail = {
+      eventSource = ["iam.amazonaws.com"]
+      eventName = [
+        "AttachUserPolicy",
+        "AttachRolePolicy",
+        "AttachGroupPolicy",
+        "PutUserPolicy",
+        "PutRolePolicy",
+        "PutGroupPolicy",
+        "AddUserToGroup",
+        "CreatePolicyVersion",
+        "SetDefaultPolicyVersion"
+      ]
+    }
+  })
+}
+
+resource "aws_cloudwatch_event_target" "permission_escalation_sns" {
+  rule = aws_cloudwatch_event_rule.permission_escalation.name
+  arn  = var.sns_topic_arn
+
+  retry_policy {
+    maximum_retry_attempts = 8
+    maximum_event_age      = 3600
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.permission_escalation_dlq.arn
+  }
+}""",
                 alert_severity="high",
                 alert_title="IAM Permission Change Detected",
                 alert_description_template=(

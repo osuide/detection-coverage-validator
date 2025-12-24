@@ -714,14 +714,365 @@ resource "google_monitoring_alert_policy" "phone_change" {
             estimated_monthly_cost="$10-15",
             prerequisites=["Google Workspace", "Admin audit logs enabled"],
         ),
+        # Strategy 6: AWS MFA Fatigue Detection
+        DetectionStrategy(
+            strategy_id="t1111-aws-mfa-fatigue",
+            name="AWS MFA Fatigue/Bombing Detection",
+            description=(
+                "Detect MFA fatigue attacks where adversaries repeatedly trigger MFA push notifications "
+                "or challenges to exhaust users into approving a fraudulent request. Also known as "
+                "MFA bombing or push notification spam."
+            ),
+            detection_type=DetectionType.CLOUDWATCH_QUERY,
+            aws_service="cloudwatch",
+            cloud_provider=CloudProvider.AWS,
+            implementation=DetectionImplementation(
+                query="""fields @timestamp, eventName, userIdentity.userName, sourceIPAddress, errorCode
+| filter eventSource = "signin.amazonaws.com"
+| filter eventName = "ConsoleLogin"
+| filter additionalEventData.MFAUsed = "Yes"
+| stats count(*) as attempts,
+        sum(case errorCode when "FailedAuthentication" then 1 else 0 end) as failed,
+        sum(case errorCode when "Success" then 1 else 0 end) as success
+        by userIdentity.userName, bin(10m)
+| filter attempts > 5 AND failed > 3
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
+Description: Detect MFA fatigue attacks - multiple rapid MFA challenges
+
+Parameters:
+  AlertEmail:
+    Type: String
+    Description: Email for security alerts
+  MFAAttemptThreshold:
+    Type: Number
+    Default: 5
+    Description: Number of MFA attempts in 10 minutes to trigger alert
+
+Resources:
+  # Step 1: SNS topic with DLQ for reliability
+  AlertDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 1209600
+
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      Subscription:
+        - Protocol: email
+          Endpoint: !Ref AlertEmail
+
+  # Step 2: CloudWatch metric filter for MFA events
+  MFALogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/signin/mfa-fatigue
+      RetentionInDays: 30
+
+  MFAChallengeMetric:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref MFALogGroup
+      FilterPattern: '{ $.eventSource = "signin.amazonaws.com" && $.additionalEventData.MFAUsed = "Yes" }'
+      MetricTransformations:
+        - MetricName: MFAChallengeCount
+          MetricNamespace: Security/MFAFatigue
+          MetricValue: "1"
+          Dimensions:
+            - Key: UserName
+              Value: $.userIdentity.userName
+
+  # Step 3: Alarm for MFA fatigue pattern
+  MFAFatigueAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: T1111-MFA-Fatigue-Detected
+      AlarmDescription: Multiple MFA challenges detected - possible MFA fatigue attack
+      MetricName: MFAChallengeCount
+      Namespace: Security/MFAFatigue
+      Statistic: Sum
+      Period: 600
+      EvaluationPeriods: 1
+      Threshold: !Ref MFAAttemptThreshold
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref AlertTopic""",
+                terraform_template="""# AWS MFA Fatigue Detection for T1111
+
+variable "alert_email" {
+  type        = string
+  description = "Email for security alerts"
+}
+
+variable "mfa_attempt_threshold" {
+  type        = number
+  default     = 5
+  description = "MFA attempts in 10 min to trigger alert"
+}
+
+# Step 1: SNS with DLQ
+resource "aws_sqs_queue" "alert_dlq" {
+  name                      = "mfa-fatigue-alert-dlq"
+  message_retention_seconds = 1209600
+}
+
+resource "aws_sns_topic" "alerts" {
+  name = "mfa-fatigue-alerts"
+}
+
+resource "aws_sns_topic_subscription" "email" {
+  topic_arn = aws_sns_topic.alerts.arn
+  protocol  = "email"
+  endpoint  = var.alert_email
+}
+
+# Step 2: Log group for signin events
+resource "aws_cloudwatch_log_group" "mfa_signin" {
+  name              = "/aws/signin/mfa-fatigue"
+  retention_in_days = 30
+}
+
+# Step 3: Metric filter for MFA challenges
+resource "aws_cloudwatch_log_metric_filter" "mfa_challenges" {
+  name           = "mfa-challenge-count"
+  log_group_name = aws_cloudwatch_log_group.mfa_signin.name
+  pattern        = "{ $.eventSource = \\"signin.amazonaws.com\\" && $.additionalEventData.MFAUsed = \\"Yes\\" }"
+
+  metric_transformation {
+    name      = "MFAChallengeCount"
+    namespace = "Security/MFAFatigue"
+    value     = "1"
+    dimensions = {
+      UserName = "$.userIdentity.userName"
+    }
+  }
+}
+
+# Step 4: Alarm for MFA fatigue
+resource "aws_cloudwatch_metric_alarm" "mfa_fatigue" {
+  alarm_name          = "T1111-MFA-Fatigue-Detected"
+  alarm_description   = "Multiple MFA challenges detected - possible MFA fatigue attack"
+  metric_name         = "MFAChallengeCount"
+  namespace           = "Security/MFAFatigue"
+  statistic           = "Sum"
+  period              = 600
+  evaluation_periods  = 1
+  threshold           = var.mfa_attempt_threshold
+  comparison_operator = "GreaterThanThreshold"
+  alarm_actions       = [aws_sns_topic.alerts.arn]
+}""",
+                alert_severity="critical",
+                alert_title="MFA Fatigue Attack Detected",
+                alert_description_template=(
+                    "User {user} received {attempts} MFA challenges in 10 minutes. "
+                    "This pattern indicates a potential MFA fatigue/bombing attack where adversaries "
+                    "spam push notifications to exhaust the user into approving access."
+                ),
+                investigation_steps=[
+                    "Contact the user immediately via out-of-band channel (phone call)",
+                    "Verify if user approved any MFA prompts they did not initiate",
+                    "Check source IPs of MFA challenge requests",
+                    "Review CloudTrail for any successful logins",
+                    "Check if user's password was compromised (recent data breaches)",
+                    "Review phishing reports for targeted campaigns",
+                ],
+                containment_actions=[
+                    "Immediately suspend the user account",
+                    "Revoke all active sessions",
+                    "Reset password with out-of-band verification",
+                    "Disable SMS/push-based MFA temporarily",
+                    "Require hardware security key for re-enrolment",
+                    "Enable IAM Access Analyser for unusual access",
+                ],
+            ),
+            estimated_false_positive_rate=FalsePositiveRate.LOW,
+            false_positive_tuning="Threshold may need adjustment; exclude test accounts",
+            detection_coverage="90% - catches most MFA fatigue attacks",
+            evasion_considerations="Very slow attacks below threshold; using stolen session tokens instead",
+            implementation_effort=EffortLevel.MEDIUM,
+            implementation_time="1-2 hours",
+            estimated_monthly_cost="$5-10",
+            prerequisites=["CloudTrail enabled", "Signin events logging enabled"],
+        ),
+        # Strategy 7: GCP MFA Fatigue Detection
+        DetectionStrategy(
+            strategy_id="t1111-gcp-mfa-fatigue",
+            name="GCP 2-Step Verification Fatigue Detection",
+            description=(
+                "Detect 2-Step Verification fatigue attacks in Google Workspace/Cloud Identity "
+                "where adversaries trigger multiple verification prompts to exhaust users."
+            ),
+            detection_type=DetectionType.CLOUD_LOGGING_QUERY,
+            aws_service="n/a",
+            gcp_service="cloud_logging",
+            cloud_provider=CloudProvider.GCP,
+            implementation=DetectionImplementation(
+                gcp_logging_query="""-- GCP 2SV Fatigue Detection
+-- Detects multiple verification challenges for same user
+resource.type="login"
+AND protoPayload.methodName=~"2sv"
+AND protoPayload.@type="type.googleapis.com/google.cloud.audit.AuditLog"
+-- Group by user and check for high frequency""",
+                gcp_terraform_template="""# GCP: 2-Step Verification Fatigue Detection for T1111
+
+variable "project_id" {
+  type        = string
+  description = "GCP project ID"
+}
+
+variable "alert_email" {
+  type        = string
+  description = "Email for security alerts"
+}
+
+variable "verification_threshold" {
+  type        = number
+  default     = 5
+  description = "2SV attempts in 10 min to trigger alert"
+}
+
+# Step 1: Notification channel
+resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
+  display_name = "Security Alerts - MFA Fatigue"
+  type         = "email"
+  labels = {
+    email_address = var.alert_email
+  }
+}
+
+# Step 2: Log-based metric for 2SV challenges
+resource "google_logging_metric" "mfa_fatigue" {
+  project     = var.project_id
+  name        = "mfa-fatigue-2sv-challenges"
+  description = "Count of 2-Step Verification challenges"
+  filter      = <<-EOT
+    resource.type="login"
+    AND (protoPayload.methodName=~"LoginService.challenge"
+         OR protoPayload.methodName=~"LoginService.2sv")
+  EOT
+
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+    unit        = "1"
+    labels {
+      key         = "user"
+      value_type  = "STRING"
+      description = "User receiving 2SV challenges"
+    }
+  }
+
+  label_extractors = {
+    "user" = "EXTRACT(protoPayload.authenticationInfo.principalEmail)"
+  }
+}
+
+# Step 3: Alert policy for 2SV fatigue
+resource "google_monitoring_alert_policy" "mfa_fatigue" {
+  project      = var.project_id
+  display_name = "T1111 - 2SV Fatigue Attack Detected"
+  combiner     = "OR"
+  enabled      = true
+
+  conditions {
+    display_name = "High 2SV Challenge Rate"
+    condition_threshold {
+      filter          = "metric.type=\\"logging.googleapis.com/user/mfa-fatigue-2sv-challenges\\""
+      comparison      = "COMPARISON_GT"
+      threshold_value = var.verification_threshold
+      duration        = "600s"
+
+      aggregations {
+        alignment_period   = "600s"
+        per_series_aligner = "ALIGN_SUM"
+        group_by_fields    = ["metric.label.user"]
+      }
+
+      trigger {
+        count = 1
+      }
+    }
+  }
+
+  notification_channels = [google_monitoring_notification_channel.email.name]
+
+  documentation {
+    content   = <<-EOT
+      ## MFA Fatigue Attack Detected
+
+      Multiple 2-Step Verification challenges detected for the same user in a short time period.
+      This may indicate an MFA fatigue/bombing attack.
+
+      ### Immediate Actions
+      1. Contact user via phone call
+      2. Suspend account if compromise confirmed
+      3. Revoke all sessions
+    EOT
+    mime_type = "text/markdown"
+  }
+}
+
+# Step 4: Log sink for additional analysis
+resource "google_logging_project_sink" "mfa_events" {
+  project     = var.project_id
+  name        = "mfa-fatigue-events-sink"
+  destination = "bigquery.googleapis.com/projects/${var.project_id}/datasets/security_logs"
+  filter      = <<-EOT
+    resource.type="login"
+    AND (protoPayload.methodName=~"LoginService.challenge"
+         OR protoPayload.methodName=~"LoginService.2sv")
+  EOT
+
+  unique_writer_identity = true
+}""",
+                alert_severity="critical",
+                alert_title="GCP: 2-Step Verification Fatigue Attack",
+                alert_description_template=(
+                    "User {user} received {count} 2-Step Verification challenges in 10 minutes. "
+                    "This pattern indicates a potential MFA fatigue attack."
+                ),
+                investigation_steps=[
+                    "Contact user via phone call immediately",
+                    "Check if user approved any 2SV prompts they did not initiate",
+                    "Review Admin Console login audit logs",
+                    "Check source IPs of login attempts",
+                    "Verify user's password hasn't been compromised",
+                    "Check for phishing emails targeting the user",
+                ],
+                containment_actions=[
+                    "Suspend user account in Admin Console",
+                    "Sign out all sessions",
+                    "Reset password with verification",
+                    "Enrol security key (requires Advanced Protection)",
+                    "Review and revoke third-party app access",
+                    "Enable Context-Aware Access",
+                ],
+            ),
+            estimated_false_positive_rate=FalsePositiveRate.LOW,
+            false_positive_tuning="Adjust threshold based on organisation size; exclude test users",
+            detection_coverage="85% - catches most 2SV fatigue patterns",
+            evasion_considerations="Slow attacks; phishing without MFA challenge",
+            implementation_effort=EffortLevel.MEDIUM,
+            implementation_time="1-2 hours",
+            estimated_monthly_cost="$10-15",
+            prerequisites=[
+                "Google Workspace with audit logs",
+                "Cloud Logging API enabled",
+                "Cloud Monitoring API enabled",
+            ],
+        ),
     ],
     recommended_order=[
+        "t1111-aws-mfa-fatigue",
+        "t1111-gcp-mfa-fatigue",
         "t1111-aws-phone-change",
         "t1111-gcp-phone-change",
         "t1111-aws-sms-anomaly",
         "t1111-aws-cognito-sms",
         "t1111-gcp-sms-intercept",
     ],
-    total_effort_hours=4.0,
+    total_effort_hours=7.0,
     coverage_improvement="+12% improvement for Credential Access tactic",
 )

@@ -13,6 +13,7 @@ from .template_loader import (
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
+    CloudProvider,
 )
 
 TEMPLATE = RemediationTemplate(
@@ -439,13 +440,218 @@ resource "aws_cloudwatch_metric_alarm" "failed_logins" {
             estimated_monthly_cost="$10-20",
             prerequisites=["CloudTrail enabled", "All API events logged"],
         ),
+        # Strategy 5: GCP Failed Login Detection
+        DetectionStrategy(
+            strategy_id="t1110-gcp-failed-logins",
+            name="GCP Failed Authentication Detection",
+            description=(
+                "Detect brute force and credential stuffing attacks against GCP resources "
+                "by monitoring failed login attempts, failed API authentication, and "
+                "SSH brute force against Compute Engine VMs via Cloud Logging."
+            ),
+            detection_type=DetectionType.CLOUD_LOGGING_QUERY,
+            aws_service="n/a",
+            gcp_service="cloud_logging",
+            cloud_provider=CloudProvider.GCP,
+            implementation=DetectionImplementation(
+                gcp_logging_query="""-- GCP Brute Force Detection Query
+-- Detects multiple failed authentication attempts
+protoPayload.@type="type.googleapis.com/google.cloud.audit.AuditLog"
+AND (
+  -- Failed API authentication
+  protoPayload.status.code!=0
+  OR protoPayload.authorizationInfo.granted=false
+  -- SSH brute force (via serial console logs)
+  OR jsonPayload.message=~"Failed password"
+  OR jsonPayload.message=~"authentication failure"
+)""",
+                gcp_terraform_template="""# GCP: Brute Force Detection for T1110
+# Monitors failed authentication attempts across GCP services
+
+variable "project_id" {
+  type        = string
+  description = "GCP project ID"
+}
+
+variable "alert_email" {
+  type        = string
+  description = "Email for security alerts"
+}
+
+# Step 1: Notification channel for alerts
+resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
+  display_name = "Security Alerts - Brute Force"
+  type         = "email"
+  labels = {
+    email_address = var.alert_email
+  }
+}
+
+# Step 2: Log-based metric for failed authentications
+resource "google_logging_metric" "failed_auth" {
+  project     = var.project_id
+  name        = "brute-force-failed-auth"
+  description = "Count of failed authentication attempts"
+  filter      = <<-EOT
+    protoPayload.@type="type.googleapis.com/google.cloud.audit.AuditLog"
+    AND (protoPayload.status.code!=0 OR protoPayload.authorizationInfo.granted=false)
+  EOT
+
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+    unit        = "1"
+    labels {
+      key         = "principal"
+      value_type  = "STRING"
+      description = "Principal attempting authentication"
+    }
+  }
+
+  label_extractors = {
+    "principal" = "EXTRACT(protoPayload.authenticationInfo.principalEmail)"
+  }
+}
+
+# Step 3: Alert policy for brute force threshold
+resource "google_monitoring_alert_policy" "brute_force" {
+  project      = var.project_id
+  display_name = "T1110 - Brute Force Detected"
+  combiner     = "OR"
+  enabled      = true
+
+  conditions {
+    display_name = "High Failed Auth Rate"
+    condition_threshold {
+      filter          = "metric.type=\\"logging.googleapis.com/user/brute-force-failed-auth\\""
+      comparison      = "COMPARISON_GT"
+      threshold_value = 10
+      duration        = "300s"
+
+      aggregations {
+        alignment_period   = "300s"
+        per_series_aligner = "ALIGN_SUM"
+        group_by_fields    = ["metric.label.principal"]
+      }
+
+      trigger {
+        count = 1
+      }
+    }
+  }
+
+  notification_channels = [google_monitoring_notification_channel.email.name]
+
+  documentation {
+    content   = "Potential brute force attack detected. Multiple failed authentication attempts from the same principal."
+    mime_type = "text/markdown"
+  }
+}
+
+# Step 4: Log-based metric for SSH brute force
+resource "google_logging_metric" "ssh_brute_force" {
+  project     = var.project_id
+  name        = "brute-force-ssh-failed"
+  description = "Count of failed SSH login attempts"
+  filter      = <<-EOT
+    resource.type="gce_instance"
+    AND (jsonPayload.message=~"Failed password" OR jsonPayload.message=~"authentication failure")
+  EOT
+
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+    unit        = "1"
+    labels {
+      key         = "instance_id"
+      value_type  = "STRING"
+      description = "Compute Engine instance ID"
+    }
+  }
+
+  label_extractors = {
+    "instance_id" = "EXTRACT(resource.labels.instance_id)"
+  }
+}
+
+# Step 5: Alert for SSH brute force
+resource "google_monitoring_alert_policy" "ssh_brute_force" {
+  project      = var.project_id
+  display_name = "T1110 - SSH Brute Force Detected"
+  combiner     = "OR"
+  enabled      = true
+
+  conditions {
+    display_name = "High SSH Failed Login Rate"
+    condition_threshold {
+      filter          = "metric.type=\\"logging.googleapis.com/user/brute-force-ssh-failed\\""
+      comparison      = "COMPARISON_GT"
+      threshold_value = 20
+      duration        = "300s"
+
+      aggregations {
+        alignment_period   = "300s"
+        per_series_aligner = "ALIGN_SUM"
+        group_by_fields    = ["metric.label.instance_id"]
+      }
+
+      trigger {
+        count = 1
+      }
+    }
+  }
+
+  notification_channels = [google_monitoring_notification_channel.email.name]
+
+  documentation {
+    content   = "SSH brute force attack detected against Compute Engine instance."
+    mime_type = "text/markdown"
+  }
+}""",
+                alert_severity="high",
+                alert_title="GCP: Brute Force Attack Detected",
+                alert_description_template=(
+                    "Multiple failed authentication attempts detected from {principal}. "
+                    "This may indicate a brute force or credential stuffing attack against GCP resources."
+                ),
+                investigation_steps=[
+                    "Identify the source IP addresses of failed attempts",
+                    "Check if the targeted principal exists and is active",
+                    "Review Cloud Audit Logs for successful authentications from same IPs",
+                    "Check if any successful access occurred after failed attempts",
+                    "Correlate with organisation login events in Admin Console",
+                    "Review Security Command Centre for related findings",
+                ],
+                containment_actions=[
+                    "Block source IPs in Cloud Armour or VPC firewall",
+                    "Enable 2-Step Verification for targeted accounts",
+                    "Reset credentials for any potentially compromised accounts",
+                    "Review and revoke suspicious OAuth tokens",
+                    "Enable Context-Aware Access for additional protection",
+                ],
+            ),
+            estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
+            false_positive_tuning="Exclude known CI/CD service accounts; adjust threshold based on normal login patterns",
+            detection_coverage="60% - detects most brute force patterns",
+            evasion_considerations="Slow attacks below threshold, distributed attacks across IPs",
+            implementation_effort=EffortLevel.MEDIUM,
+            implementation_time="2-3 hours",
+            estimated_monthly_cost="$5-15 (Cloud Monitoring alerts)",
+            prerequisites=[
+                "Cloud Audit Logs enabled",
+                "Cloud Logging API enabled",
+                "Cloud Monitoring API enabled",
+            ],
+        ),
     ],
     recommended_order=[
         "t1110-guardduty",
         "t1110-failed-logins",
         "t1110-password-spray",
         "t1110-api-brute-force",
+        "t1110-gcp-failed-logins",
     ],
-    total_effort_hours=5.5,
+    total_effort_hours=8.0,
     coverage_improvement="+30% improvement for Credential Access tactic",
 )

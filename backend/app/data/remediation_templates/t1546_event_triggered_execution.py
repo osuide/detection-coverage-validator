@@ -101,6 +101,13 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
+  # Dead Letter Queue for failed event deliveries (14-day retention)
+  AlertDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: lambda-trigger-alert-dlq
+      MessageRetentionPeriod: 1209600
+
   # Step 2: EventBridge rule for Lambda trigger creation
   LambdaTriggerRule:
     Type: AWS::Events::Rule
@@ -116,6 +123,11 @@ Resources:
       Targets:
         - Id: Alert
           Arn: !Ref AlertTopic
+          RetryPolicy:
+            MaximumRetryAttempts: 8
+            MaximumEventAge: 3600
+          DeadLetterConfig:
+            Arn: !GetAtt AlertDLQ.Arn
 
   # Step 3: Allow EventBridge to publish to SNS
   TopicPolicy:
@@ -128,7 +140,20 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+
+  # Allow EventBridge to send failed events to DLQ
+  DLQPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues: [!Ref AlertDLQ]
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt AlertDLQ.Arn""",
                 terraform_template="""# Detect Lambda event trigger creation
 
 variable "alert_email" {
@@ -144,6 +169,12 @@ resource "aws_sns_topic_subscription" "email" {
   topic_arn = aws_sns_topic.alerts.arn
   protocol  = "email"
   endpoint  = var.alert_email
+}
+
+# Dead Letter Queue for failed event deliveries (14-day retention)
+resource "aws_sqs_queue" "alert_dlq" {
+  name                      = "lambda-trigger-alert-dlq"
+  message_retention_seconds = 1209600
 }
 
 # Step 2: EventBridge rule for Lambda trigger creation
@@ -165,6 +196,15 @@ resource "aws_cloudwatch_event_rule" "lambda_trigger" {
 resource "aws_cloudwatch_event_target" "sns" {
   rule = aws_cloudwatch_event_rule.lambda_trigger.name
   arn  = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_retry_attempts = 8
+    maximum_event_age      = 3600
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.alert_dlq.arn
+  }
 }
 
 # Step 3: Allow EventBridge to publish to SNS
@@ -177,6 +217,20 @@ resource "aws_sns_topic_policy" "allow_events" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
+    }]
+  })
+}
+
+# Allow EventBridge to send failed events to DLQ
+resource "aws_sqs_queue_policy" "dlq_policy" {
+  queue_url = aws_sqs_queue.alert_dlq.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.alert_dlq.arn
     }]
   })
 }""",
@@ -240,6 +294,13 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
+  # Dead Letter Queue for failed event deliveries (14-day retention)
+  AlertDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: eventbridge-rule-alert-dlq
+      MessageRetentionPeriod: 1209600
+
   # Step 2: EventBridge rule for rule creation
   EventBridgeModRule:
     Type: AWS::Events::Rule
@@ -255,6 +316,11 @@ Resources:
       Targets:
         - Id: Alert
           Arn: !Ref AlertTopic
+          RetryPolicy:
+            MaximumRetryAttempts: 8
+            MaximumEventAge: 3600
+          DeadLetterConfig:
+            Arn: !GetAtt AlertDLQ.Arn
 
   # Step 3: Allow EventBridge to publish to SNS
   TopicPolicy:
@@ -267,7 +333,20 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+
+  # Allow EventBridge to send failed events to DLQ
+  DLQPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues: [!Ref AlertDLQ]
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt AlertDLQ.Arn""",
                 terraform_template="""# Detect EventBridge rule creation
 
 variable "alert_email" {
@@ -283,6 +362,12 @@ resource "aws_sns_topic_subscription" "email" {
   topic_arn = aws_sns_topic.alerts.arn
   protocol  = "email"
   endpoint  = var.alert_email
+}
+
+# Dead Letter Queue for failed event deliveries (14-day retention)
+resource "aws_sqs_queue" "alert_dlq" {
+  name                      = "eventbridge-rule-alert-dlq"
+  message_retention_seconds = 1209600
 }
 
 # Step 2: EventBridge rule for rule creation
@@ -304,6 +389,15 @@ resource "aws_cloudwatch_event_rule" "eventbridge_mod" {
 resource "aws_cloudwatch_event_target" "sns" {
   rule = aws_cloudwatch_event_rule.eventbridge_mod.name
   arn  = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_retry_attempts = 8
+    maximum_event_age      = 3600
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.alert_dlq.arn
+  }
 }
 
 # Step 3: Allow EventBridge to publish to SNS
@@ -316,6 +410,20 @@ resource "aws_sns_topic_policy" "allow_events" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
+    }]
+  })
+}
+
+# Allow EventBridge to send failed events to DLQ
+resource "aws_sqs_queue_policy" "dlq_policy" {
+  queue_url = aws_sqs_queue.alert_dlq.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.alert_dlq.arn
     }]
   })
 }""",
@@ -377,6 +485,13 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
+  # Dead Letter Queue for failed event deliveries (14-day retention)
+  AlertDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: s3-event-notification-alert-dlq
+      MessageRetentionPeriod: 1209600
+
   # Step 2: EventBridge rule for S3 notification config
   S3NotificationRule:
     Type: AWS::Events::Rule
@@ -389,6 +504,11 @@ Resources:
       Targets:
         - Id: Alert
           Arn: !Ref AlertTopic
+          RetryPolicy:
+            MaximumRetryAttempts: 8
+            MaximumEventAge: 3600
+          DeadLetterConfig:
+            Arn: !GetAtt AlertDLQ.Arn
 
   # Step 3: Allow EventBridge to publish to SNS
   TopicPolicy:
@@ -401,7 +521,20 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+
+  # Allow EventBridge to send failed events to DLQ
+  DLQPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues: [!Ref AlertDLQ]
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt AlertDLQ.Arn""",
                 terraform_template="""# Detect S3 event notification configuration
 
 variable "alert_email" {
@@ -419,6 +552,12 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
+# Dead Letter Queue for failed event deliveries (14-day retention)
+resource "aws_sqs_queue" "alert_dlq" {
+  name                      = "s3-event-notification-alert-dlq"
+  message_retention_seconds = 1209600
+}
+
 # Step 2: EventBridge rule for S3 notification config
 resource "aws_cloudwatch_event_rule" "s3_notification" {
   name = "s3-event-notification-config"
@@ -434,6 +573,15 @@ resource "aws_cloudwatch_event_rule" "s3_notification" {
 resource "aws_cloudwatch_event_target" "sns" {
   rule = aws_cloudwatch_event_rule.s3_notification.name
   arn  = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_retry_attempts = 8
+    maximum_event_age      = 3600
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.alert_dlq.arn
+  }
 }
 
 # Step 3: Allow EventBridge to publish to SNS
@@ -446,6 +594,20 @@ resource "aws_sns_topic_policy" "allow_events" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
+    }]
+  })
+}
+
+# Allow EventBridge to send failed events to DLQ
+resource "aws_sqs_queue_policy" "dlq_policy" {
+  queue_url = aws_sqs_queue.alert_dlq.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.alert_dlq.arn
     }]
   })
 }""",
@@ -687,6 +849,13 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
+  # Dead Letter Queue for failed event deliveries (14-day retention)
+  AlertDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: logs-subscription-alert-dlq
+      MessageRetentionPeriod: 1209600
+
   # Step 2: EventBridge rule for subscription filter
   LogsSubscriptionRule:
     Type: AWS::Events::Rule
@@ -699,6 +868,11 @@ Resources:
       Targets:
         - Id: Alert
           Arn: !Ref AlertTopic
+          RetryPolicy:
+            MaximumRetryAttempts: 8
+            MaximumEventAge: 3600
+          DeadLetterConfig:
+            Arn: !GetAtt AlertDLQ.Arn
 
   # Step 3: Allow EventBridge to publish to SNS
   TopicPolicy:
@@ -711,7 +885,20 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+
+  # Allow EventBridge to send failed events to DLQ
+  DLQPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues: [!Ref AlertDLQ]
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt AlertDLQ.Arn""",
                 terraform_template="""# Detect CloudWatch Logs subscription filter creation
 
 variable "alert_email" {
@@ -729,6 +916,12 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
+# Dead Letter Queue for failed event deliveries (14-day retention)
+resource "aws_sqs_queue" "alert_dlq" {
+  name                      = "logs-subscription-alert-dlq"
+  message_retention_seconds = 1209600
+}
+
 # Step 2: EventBridge rule for subscription filter
 resource "aws_cloudwatch_event_rule" "logs_subscription" {
   name = "logs-subscription-filter-creation"
@@ -744,6 +937,15 @@ resource "aws_cloudwatch_event_rule" "logs_subscription" {
 resource "aws_cloudwatch_event_target" "sns" {
   rule = aws_cloudwatch_event_rule.logs_subscription.name
   arn  = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_retry_attempts = 8
+    maximum_event_age      = 3600
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.alert_dlq.arn
+  }
 }
 
 # Step 3: Allow EventBridge to publish to SNS
@@ -756,6 +958,20 @@ resource "aws_sns_topic_policy" "allow_events" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
+    }]
+  })
+}
+
+# Allow EventBridge to send failed events to DLQ
+resource "aws_sqs_queue_policy" "dlq_policy" {
+  queue_url = aws_sqs_queue.alert_dlq.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.alert_dlq.arn
     }]
   })
 }""",

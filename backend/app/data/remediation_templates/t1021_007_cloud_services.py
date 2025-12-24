@@ -134,8 +134,13 @@ resource "aws_cloudwatch_metric_alarm" "lateral_movement" {
         ),
         DetectionStrategy(
             strategy_id="t1021007-aws-federation",
-            name="AWS Federated Access Detection",
-            description="Detect federated identity access via SAML/OIDC.",
+            name="AWS Federated Access Detection with Impossible Travel",
+            description=(
+                "Detect federated identity access via SAML/OIDC with impossible travel detection. "
+                "Tracks federated sessions across multiple IPs and geographic locations to identify "
+                "credential compromise. Integrates with T1550.001 Golden SAML detection for comprehensive "
+                "federated authentication monitoring."
+            ),
             detection_type=DetectionType.EVENTBRIDGE_RULE,
             aws_service="eventbridge",
             cloud_provider=CloudProvider.AWS,
@@ -147,7 +152,9 @@ resource "aws_cloudwatch_metric_alarm" "lateral_movement" {
                         "eventName": ["AssumeRoleWithSAML", "AssumeRoleWithWebIdentity"]
                     },
                 },
-                terraform_template="""# Detect federated identity access
+                terraform_template="""# Detect federated identity access with impossible travel
+# NOTE: For comprehensive Golden SAML detection including impossible travel,
+# see T1550.001 template which includes DynamoDB tracking and geolocation analysis
 
 variable "alert_email" { type = string }
 
@@ -192,9 +199,13 @@ resource "aws_sns_topic_policy" "allow_events" {
                 alert_description_template="Federated access via {eventName} to role {requestParameters.roleArn}.",
                 investigation_steps=[
                     "Verify identity provider is trusted",
-                    "Check user identity in SAML assertion",
-                    "Review accessed resources",
-                    "Check for unusual timing",
+                    "Check user identity in SAML/OIDC assertion",
+                    "Review source IP for impossible travel - check if same principal used different IPs recently",
+                    "Check for MFA context in federated authentication",
+                    "Review accessed resources and API calls made with federated credentials",
+                    "Check for unusual timing or off-hours access",
+                    "Verify geolocation of source IP matches user's expected location",
+                    "Review assertion reuse patterns across multiple sessions",
                 ],
                 containment_actions=[
                     "Revoke federation trust if compromised",

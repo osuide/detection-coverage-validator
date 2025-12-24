@@ -86,7 +86,14 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
-  # Step 2: EventBridge for user creation
+  # Step 2: Dead Letter Queue for failed events
+  EventDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: iam-user-creation-dlq
+      MessageRetentionPeriod: 1209600  # 14 days
+
+  # Step 3: EventBridge for user creation
   UserCreateRule:
     Type: AWS::Events::Rule
     Properties:
@@ -98,6 +105,11 @@ Resources:
       Targets:
         - Id: Alert
           Arn: !Ref AlertTopic
+          RetryPolicy:
+            MaximumRetryAttempts: 8
+            MaximumEventAge: 3600
+          DeadLetterConfig:
+            Arn: !GetAtt EventDLQ.Arn
 
   TopicPolicy:
     Type: AWS::SNS::TopicPolicy
@@ -127,7 +139,13 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
-# Step 2: EventBridge rule
+# Step 2: Dead Letter Queue for failed events
+resource "aws_sqs_queue" "event_dlq" {
+  name                      = "iam-user-creation-dlq"
+  message_retention_seconds = 1209600  # 14 days
+}
+
+# Step 3: EventBridge rule
 resource "aws_cloudwatch_event_rule" "user_create" {
   name = "iam-user-creation"
   event_pattern = jsonencode({
@@ -142,6 +160,15 @@ resource "aws_cloudwatch_event_rule" "user_create" {
 resource "aws_cloudwatch_event_target" "sns" {
   rule = aws_cloudwatch_event_rule.user_create.name
   arn  = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_retry_attempts = 8
+    maximum_event_age      = 3600
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.event_dlq.arn
+  }
 }
 
 resource "aws_sns_topic_policy" "allow_events" {

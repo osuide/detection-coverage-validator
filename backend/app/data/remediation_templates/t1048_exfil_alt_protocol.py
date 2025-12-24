@@ -107,12 +107,52 @@ Resources:
           MetricValue: "1"
 
   # Step 3: Alert on threshold breach
+  # Dead Letter Queue for failed alert deliveries
+  AlertDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: dns-tunnel-alert-dlq
+      MessageRetentionPeriod: 1209600  # 14 days
+
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
+
+  # SQS subscription with DLQ for reliable alert delivery
+  AlertQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: dns-tunnel-alerts
+      MessageRetentionPeriod: 345600  # 4 days
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt AlertDLQ.Arn
+        maxReceiveCount: 3
+
+  AlertQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref AlertQueue
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: sns.amazonaws.com
+            Action: SQS:SendMessage
+            Resource: !GetAtt AlertQueue.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !Ref AlertTopic
+
+  AlertQueueSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: sqs
+      Endpoint: !GetAtt AlertQueue.Arn
+      TopicArn: !Ref AlertTopic
 
   DNSTunnelAlarm:
     Type: AWS::CloudWatch::Alarm
@@ -155,6 +195,12 @@ resource "aws_cloudwatch_log_metric_filter" "dns_tunnel" {
 }
 
 # Step 3: Alert on threshold breach
+# Dead Letter Queue for failed alert deliveries
+resource "aws_sqs_queue" "alert_dlq" {
+  name                      = "dns-tunnel-alert-dlq"
+  message_retention_seconds = 1209600  # 14 days
+}
+
 resource "aws_sns_topic" "alerts" {
   name = "dns-tunnel-alerts"
 }
@@ -163,6 +209,39 @@ resource "aws_sns_topic_subscription" "email" {
   topic_arn = aws_sns_topic.alerts.arn
   protocol  = "email"
   endpoint  = var.alert_email
+}
+
+# SQS subscription with DLQ for reliable alert delivery
+resource "aws_sqs_queue" "alerts" {
+  name                      = "dns-tunnel-alerts"
+  message_retention_seconds = 345600  # 4 days
+  redrive_policy = jsonencode({
+    deadLetterTargetArn = aws_sqs_queue.alert_dlq.arn
+    maxReceiveCount     = 3
+  })
+}
+
+resource "aws_sqs_queue_policy" "alerts" {
+  queue_url = aws_sqs_queue.alerts.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "sns.amazonaws.com" }
+      Action    = "SQS:SendMessage"
+      Resource  = aws_sqs_queue.alerts.arn
+      Condition = {
+        ArnEquals = { "aws:SourceArn" = aws_sns_topic.alerts.arn }
+      }
+    }]
+  })
+}
+
+resource "aws_sns_topic_subscription" "sqs" {
+  topic_arn = aws_sns_topic.alerts.arn
+  protocol  = "sqs"
+  endpoint  = aws_sqs_queue.alerts.arn
 }
 
 resource "aws_cloudwatch_metric_alarm" "dns_tunnel" {
@@ -225,13 +304,53 @@ Parameters:
     Type: String
 
 Resources:
-  # Step 1: Create SNS topic
+  # Step 1: Create SNS topic with DLQ
+  # Dead Letter Queue for failed alert deliveries
+  AlertDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: ftp-transfer-alert-dlq
+      MessageRetentionPeriod: 1209600  # 14 days
+
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
+
+  # SQS subscription with DLQ for reliable alert delivery
+  AlertQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: ftp-transfer-alerts
+      MessageRetentionPeriod: 345600  # 4 days
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt AlertDLQ.Arn
+        maxReceiveCount: 3
+
+  AlertQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref AlertQueue
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: sns.amazonaws.com
+            Action: SQS:SendMessage
+            Resource: !GetAtt AlertQueue.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !Ref AlertTopic
+
+  AlertQueueSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: sqs
+      Endpoint: !GetAtt AlertQueue.Arn
+      TopicArn: !Ref AlertTopic
 
   # Step 2: Filter for FTP/SFTP traffic
   FTPTransferFilter:
@@ -263,7 +382,13 @@ Resources:
 variable "alert_email" { type = string }
 variable "vpc_flow_log_group" { type = string }
 
-# Step 1: Create SNS topic
+# Step 1: Create SNS topic with DLQ
+# Dead Letter Queue for failed alert deliveries
+resource "aws_sqs_queue" "alert_dlq" {
+  name                      = "ftp-transfer-alert-dlq"
+  message_retention_seconds = 1209600  # 14 days
+}
+
 resource "aws_sns_topic" "alerts" {
   name = "ftp-transfer-alerts"
 }
@@ -272,6 +397,39 @@ resource "aws_sns_topic_subscription" "email" {
   topic_arn = aws_sns_topic.alerts.arn
   protocol  = "email"
   endpoint  = var.alert_email
+}
+
+# SQS subscription with DLQ for reliable alert delivery
+resource "aws_sqs_queue" "alerts" {
+  name                      = "ftp-transfer-alerts"
+  message_retention_seconds = 345600  # 4 days
+  redrive_policy = jsonencode({
+    deadLetterTargetArn = aws_sqs_queue.alert_dlq.arn
+    maxReceiveCount     = 3
+  })
+}
+
+resource "aws_sqs_queue_policy" "alerts" {
+  queue_url = aws_sqs_queue.alerts.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "sns.amazonaws.com" }
+      Action    = "SQS:SendMessage"
+      Resource  = aws_sqs_queue.alerts.arn
+      Condition = {
+        ArnEquals = { "aws:SourceArn" = aws_sns_topic.alerts.arn }
+      }
+    }]
+  })
+}
+
+resource "aws_sns_topic_subscription" "sqs" {
+  topic_arn = aws_sns_topic.alerts.arn
+  protocol  = "sqs"
+  endpoint  = aws_sqs_queue.alerts.arn
 }
 
 # Step 2: Filter for FTP/SFTP traffic
@@ -349,13 +507,53 @@ Parameters:
     Type: String
 
 Resources:
-  # Step 1: Create alert topic
+  # Step 1: Create alert topic with DLQ
+  # Dead Letter Queue for failed alert deliveries
+  AlertDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: smtp-activity-alert-dlq
+      MessageRetentionPeriod: 1209600  # 14 days
+
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
+
+  # SQS subscription with DLQ for reliable alert delivery
+  AlertQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: smtp-activity-alerts
+      MessageRetentionPeriod: 345600  # 4 days
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt AlertDLQ.Arn
+        maxReceiveCount: 3
+
+  AlertQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref AlertQueue
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: sns.amazonaws.com
+            Action: SQS:SendMessage
+            Resource: !GetAtt AlertQueue.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !Ref AlertTopic
+
+  AlertQueueSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: sqs
+      Endpoint: !GetAtt AlertQueue.Arn
+      TopicArn: !Ref AlertTopic
 
   # Step 2: Monitor SMTP connections
   SMTPFilter:
@@ -386,7 +584,13 @@ Resources:
 variable "alert_email" { type = string }
 variable "vpc_flow_log_group" { type = string }
 
-# Step 1: Create alert topic
+# Step 1: Create alert topic with DLQ
+# Dead Letter Queue for failed alert deliveries
+resource "aws_sqs_queue" "alert_dlq" {
+  name                      = "smtp-activity-alert-dlq"
+  message_retention_seconds = 1209600  # 14 days
+}
+
 resource "aws_sns_topic" "alerts" {
   name = "smtp-activity-alerts"
 }
@@ -395,6 +599,39 @@ resource "aws_sns_topic_subscription" "email" {
   topic_arn = aws_sns_topic.alerts.arn
   protocol  = "email"
   endpoint  = var.alert_email
+}
+
+# SQS subscription with DLQ for reliable alert delivery
+resource "aws_sqs_queue" "alerts" {
+  name                      = "smtp-activity-alerts"
+  message_retention_seconds = 345600  # 4 days
+  redrive_policy = jsonencode({
+    deadLetterTargetArn = aws_sqs_queue.alert_dlq.arn
+    maxReceiveCount     = 3
+  })
+}
+
+resource "aws_sqs_queue_policy" "alerts" {
+  queue_url = aws_sqs_queue.alerts.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "sns.amazonaws.com" }
+      Action    = "SQS:SendMessage"
+      Resource  = aws_sqs_queue.alerts.arn
+      Condition = {
+        ArnEquals = { "aws:SourceArn" = aws_sns_topic.alerts.arn }
+      }
+    }]
+  })
+}
+
+resource "aws_sns_topic_subscription" "sqs" {
+  topic_arn = aws_sns_topic.alerts.arn
+  protocol  = "sqs"
+  endpoint  = aws_sqs_queue.alerts.arn
 }
 
 # Step 2: Monitor SMTP connections

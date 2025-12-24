@@ -1408,7 +1408,510 @@ resource "google_monitoring_alert_policy" "sa_key_alert" {
             estimated_monthly_cost="$5-10",
             prerequisites=["Cloud Audit Logs enabled", "Admin Activity logs enabled"],
         ),
-        # Strategy 7: GCP Impossible Travel
+        # Strategy 7: AWS Federated Authentication Without MFA (Production-Grade)
+        DetectionStrategy(
+            strategy_id="t1078-aws-federated-no-mfa",
+            name="AWS Federated Authentication Without MFA (Production-Grade)",
+            description=(
+                "Detect federated authentication (SAML/OIDC) to AWS without MFA context, indicating "
+                "potential compromised credentials or Golden SAML attack. Features: validates MFA context "
+                "in federated sessions, detects privileged role access without MFA, monitors external IP usage, "
+                "production-grade alerting with DLQ, SNS encryption, and retry policies. Cross-references with "
+                "T1550.001 Golden SAML detection for comprehensive federated auth monitoring. NOTE: For full "
+                "Golden SAML detection with assertion reuse tracking, see T1550.001 template."
+            ),
+            detection_type=DetectionType.EVENTBRIDGE_RULE,
+            aws_service="eventbridge",
+            cloud_provider=CloudProvider.AWS,
+            implementation=DetectionImplementation(
+                event_pattern={
+                    "source": ["aws.sts"],
+                    "detail-type": ["AWS API Call via CloudTrail"],
+                    "detail": {
+                        "eventName": [
+                            "AssumeRoleWithSAML",
+                            "AssumeRoleWithWebIdentity",
+                        ],
+                    },
+                },
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
+Description: |
+  Production-grade federated authentication without MFA detection for T1078.
+  Detects: SAML/OIDC authentication without MFA, privileged role access, external IPs.
+
+Parameters:
+  AlertEmail:
+    Type: String
+    Description: Email for SNS alerts
+  PrivilegedRolePatterns:
+    Type: String
+    Default: "Admin,PowerUser,Security,Billing,Elevated"
+    Description: Comma-separated patterns identifying privileged roles
+
+Resources:
+  # Step 1: Encrypted SNS topic
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: t1078-federated-no-mfa-alerts
+      KmsMasterKeyId: alias/aws/sns
+
+  AlertSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref AlertTopic
+      Protocol: email
+      Endpoint: !Ref AlertEmail
+
+  # Step 2: Lambda execution role
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: t1078-federated-no-mfa-lambda-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: LambdaPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: sns:Publish
+                Resource: !Ref AlertTopic
+
+  # Step 3: Lambda function for federated auth MFA validation
+  FederatedNoMFADetector:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: t1078-federated-no-mfa-detector
+      Runtime: python3.12
+      Handler: index.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 30
+      MemorySize: 256
+      Environment:
+        Variables:
+          SNS_TOPIC_ARN: !Ref AlertTopic
+          PRIVILEGED_ROLE_PATTERNS: !Ref PrivilegedRolePatterns
+          ACCOUNT_ID: !Ref AWS::AccountId
+          REGION: !Ref AWS::Region
+      Code:
+        ZipFile: |
+          import json, os, boto3, ipaddress
+          from datetime import datetime, timezone
+
+          sns = boto3.client("sns")
+
+          def _env_list(name):
+              raw = os.getenv(name, "").strip()
+              return [x.strip() for x in raw.split(",") if x.strip()] if raw else []
+
+          def _is_private_ip(ip_str):
+              if not ip_str: return False
+              try:
+                  ip = ipaddress.ip_address(ip_str)
+                  return ip.is_private
+              except: return False
+
+          def _parse_dt(s):
+              if not s: return datetime.now(timezone.utc)
+              if s.endswith("Z"): s = s[:-1] + "+00:00"
+              return datetime.fromisoformat(s).astimezone(timezone.utc)
+
+          def lambda_handler(event, context):
+              detail = event.get("detail", {}) or {}
+              event_name = detail.get("eventName", "")
+              error_code = detail.get("errorCode")
+
+              # Suppress events with errors
+              if error_code:
+                  return {"decision": "suppressed_error", "error": error_code}
+
+              # Extract federated authentication details
+              request_params = detail.get("requestParameters") or {}
+              role_arn = request_params.get("roleArn", "")
+              saml_provider_arn = request_params.get("principalArn", "")
+
+              user_identity = detail.get("userIdentity") or {}
+              principal_id = user_identity.get("principalId", "")
+              source_ip = detail.get("sourceIPAddress", "")
+              user_agent = detail.get("userAgent", "")
+              event_time = _parse_dt(detail.get("eventTime", ""))
+
+              # Extract MFA context
+              request_context = detail.get("requestContext") or {}
+              mfa_authenticated = request_context.get("mfaAuthenticated", "false")
+
+              alerts = []
+              severity = "MEDIUM"
+
+              # Detection 1: Federated auth without MFA
+              if mfa_authenticated.lower() != "true":
+                  alerts.append("Federated authentication without MFA context")
+                  severity = "HIGH"
+
+              # Detection 2: Privileged role access without MFA
+              privileged_patterns = _env_list("PRIVILEGED_ROLE_PATTERNS")
+              is_privileged = any(pattern.lower() in role_arn.lower() for pattern in privileged_patterns)
+              if is_privileged:
+                  alerts.append(f"Privileged role access: {role_arn}")
+                  if mfa_authenticated.lower() != "true":
+                      severity = "CRITICAL"
+
+              # Detection 3: External IP usage
+              if source_ip and not _is_private_ip(source_ip):
+                  alerts.append(f"Federated auth from external IP: {source_ip}")
+
+              # Only alert if MFA is missing
+              if mfa_authenticated.lower() == "true":
+                  return {"decision": "suppressed_mfa_present"}
+
+              # Build alert payload
+              payload = {
+                  "control": "T1078-FederatedNoMFA",
+                  "decision": "alert",
+                  "severity": severity,
+                  "alerts": alerts,
+                  "event_time_utc": event_time.isoformat(),
+                  "principal": {
+                      "principal_id": principal_id,
+                      "role_arn": role_arn,
+                      "is_privileged": is_privileged
+                  },
+                  "federation": {
+                      "provider_arn": saml_provider_arn,
+                      "mfa_authenticated": mfa_authenticated,
+                      "auth_method": event_name
+                  },
+                  "network": {
+                      "source_ip": source_ip,
+                      "user_agent": user_agent,
+                      "is_private_ip": _is_private_ip(source_ip)
+                  },
+                  "cloudtrail": {
+                      "eventName": event_name,
+                      "eventID": detail.get("eventID", "")
+                  },
+                  "account": os.getenv("ACCOUNT_ID", ""),
+                  "region": os.getenv("REGION", "")
+              }
+
+              subject = f"Federated Auth Without MFA [{severity}] - {role_arn[:50]}"[:100]
+              sns.publish(
+                  TopicArn=os.environ["SNS_TOPIC_ARN"],
+                  Subject=subject,
+                  Message=json.dumps(payload, indent=2, default=str)
+              )
+
+              return {"decision": "alerted", "severity": severity, "alert_count": len(alerts)}
+
+  # Step 4: Lambda log retention
+  LambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${FederatedNoMFADetector}
+      RetentionInDays: 30
+
+  # Step 5: DLQ for failed events
+  EventDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: t1078-federated-no-mfa-dlq
+      MessageRetentionPeriod: 1209600
+
+  # Step 6: EventBridge rule
+  FederatedAuthRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: t1078-federated-auth-no-mfa
+      Description: Detect federated authentication without MFA
+      EventPattern:
+        source:
+          - aws.sts
+        detail-type:
+          - AWS API Call via CloudTrail
+        detail:
+          eventName:
+            - AssumeRoleWithSAML
+            - AssumeRoleWithWebIdentity
+      State: ENABLED
+      Targets:
+        - Id: FederatedNoMFADetector
+          Arn: !GetAtt FederatedNoMFADetector.Arn
+          RetryPolicy:
+            MaximumEventAgeInSeconds: 3600
+            MaximumRetryAttempts: 8
+          DeadLetterConfig:
+            Arn: !GetAtt EventDLQ.Arn
+
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref FederatedNoMFADetector
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt FederatedAuthRule.Arn
+
+  # Step 7: SNS topic policy
+  SNSTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref AlertTopic
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowLambdaPublishOnly
+            Effect: Allow
+            Principal:
+              AWS: !GetAtt LambdaExecutionRole.Arn
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+
+Outputs:
+  AlertTopicArn:
+    Value: !Ref AlertTopic
+  LambdaFunctionName:
+    Value: !Ref FederatedNoMFADetector
+  DLQUrl:
+    Value: !Ref EventDLQ""",
+                terraform_template="""# T1078 Federated Authentication Without MFA (Production-Grade)
+# Detects: SAML/OIDC auth without MFA, privileged role access, external IP usage
+
+variable "name_prefix" {
+  type    = string
+  default = "t1078-federated-no-mfa"
+}
+
+variable "alert_email" {
+  type        = string
+  description = "Email for SNS alerts"
+}
+
+variable "privileged_role_patterns" {
+  type    = list(string)
+  default = ["Admin", "PowerUser", "Security", "Billing", "Elevated"]
+}
+
+data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
+
+# Step 1: Encrypted SNS topic
+resource "aws_sns_topic" "alerts" {
+  name              = "${var.name_prefix}-alerts"
+  kms_master_key_id = "alias/aws/sns"
+}
+
+resource "aws_sns_topic_subscription" "email" {
+  topic_arn = aws_sns_topic.alerts.arn
+  protocol  = "email"
+  endpoint  = var.alert_email
+}
+
+# Step 2: Lambda execution role
+resource "aws_iam_role" "lambda_exec" {
+  name = "${var.name_prefix}-lambda-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "lambda.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_basic" {
+  role       = aws_iam_role.lambda_exec.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_iam_role_policy" "lambda_custom" {
+  name = "${var.name_prefix}-lambda-policy"
+  role = aws_iam_role.lambda_exec.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["sns:Publish"]
+      Resource = aws_sns_topic.alerts.arn
+    }]
+  })
+}
+
+# Step 3: Lambda function (see CloudFormation for full code)
+resource "aws_lambda_function" "federated_no_mfa_detector" {
+  function_name = "${var.name_prefix}-detector"
+  role          = aws_iam_role.lambda_exec.arn
+  runtime       = "python3.12"
+  handler       = "index.lambda_handler"
+  timeout       = 30
+  memory_size   = 256
+
+  filename         = data.archive_file.lambda_zip.output_path
+  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
+
+  environment {
+    variables = {
+      SNS_TOPIC_ARN            = aws_sns_topic.alerts.arn
+      PRIVILEGED_ROLE_PATTERNS = join(",", var.privileged_role_patterns)
+      ACCOUNT_ID               = data.aws_caller_identity.current.account_id
+      REGION                   = data.aws_region.current.name
+    }
+  }
+}
+
+data "archive_file" "lambda_zip" {
+  type        = "zip"
+  output_path = "${path.module}/lambda-federated-no-mfa.zip"
+
+  source {
+    content  = file("${path.module}/lambda/federated_no_mfa_detector.py")
+    filename = "index.py"
+  }
+}
+
+# Step 4: Log retention
+resource "aws_cloudwatch_log_group" "lambda_logs" {
+  name              = "/aws/lambda/${aws_lambda_function.federated_no_mfa_detector.function_name}"
+  retention_in_days = 30
+}
+
+# Step 5: DLQ
+resource "aws_sqs_queue" "event_dlq" {
+  name                      = "${var.name_prefix}-dlq"
+  message_retention_seconds = 1209600
+}
+
+# Step 6: EventBridge rule
+resource "aws_cloudwatch_event_rule" "federated_auth" {
+  name        = "${var.name_prefix}-federated-auth"
+  description = "Detect federated authentication without MFA"
+
+  event_pattern = jsonencode({
+    source      = ["aws.sts"]
+    detail-type = ["AWS API Call via CloudTrail"]
+    detail = {
+      eventName = ["AssumeRoleWithSAML", "AssumeRoleWithWebIdentity"]
+    }
+  })
+}
+
+resource "aws_cloudwatch_event_target" "lambda_target" {
+  rule      = aws_cloudwatch_event_rule.federated_auth.name
+  target_id = "FederatedNoMFADetector"
+  arn       = aws_lambda_function.federated_no_mfa_detector.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.event_dlq.arn
+  }
+}
+
+resource "aws_lambda_permission" "allow_eventbridge" {
+  statement_id  = "AllowExecutionFromEventBridge"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.federated_no_mfa_detector.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.federated_auth.arn
+}
+
+# Step 7: SNS topic policy
+resource "aws_sns_topic_policy" "restrict_publish" {
+  arn = aws_sns_topic.alerts.arn
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowLambdaPublishOnly"
+      Effect    = "Allow"
+      Principal = { AWS = aws_iam_role.lambda_exec.arn }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+    }]
+  })
+}
+
+output "sns_topic_arn" {
+  value = aws_sns_topic.alerts.arn
+}
+
+output "lambda_function_name" {
+  value = aws_lambda_function.federated_no_mfa_detector.function_name
+}
+
+output "dlq_url" {
+  value = aws_sqs_queue.event_dlq.url
+}""",
+                alert_severity="high",
+                alert_title="Federated Authentication Without MFA",
+                alert_description_template=(
+                    "[{severity}] Federated authentication without MFA detected. "
+                    "Role: {principal.role_arn}. Provider: {federation.provider_arn}. "
+                    "Source IP: {network.source_ip}. Privileged: {principal.is_privileged}."
+                ),
+                investigation_steps=[
+                    "CRITICAL: Verify if MFA should be required for federated access to this role",
+                    "Check if role is privileged - CRITICAL severity indicates privileged access without MFA",
+                    "Review identity provider logs for matching SAML/OIDC authentication",
+                    "Verify source IP - external IPs are high risk for federated auth",
+                    "Check CloudTrail for API calls made with federated credentials",
+                    "Review IAM role trust policy - ensure it requires MFA where appropriate",
+                    "Check for suspicious activity patterns (impossible travel, unusual timing)",
+                    "Cross-reference with T1550.001 Golden SAML detection for assertion reuse",
+                    "Verify SAML provider ARN matches organisation's trusted IdP",
+                    "Review user's recent authentication history for anomalies",
+                ],
+                containment_actions=[
+                    "Immediately revoke active federated session if suspicious",
+                    "Update IAM role trust policy to require MFA for federated access",
+                    "Review and restrict privileged role access to MFA-authenticated sessions only",
+                    "Rotate SAML signing certificates if Golden SAML attack suspected",
+                    "Enable CloudTrail advanced event selectors for federated auth events",
+                    "Implement IP allowlisting for federated identity provider endpoints",
+                    "Review all API calls made during the non-MFA session",
+                    "Enable AWS IAM Access Analyser to detect external access patterns",
+                ],
+            ),
+            estimated_false_positive_rate=FalsePositiveRate.LOW,
+            false_positive_tuning=(
+                "Review organisation's MFA requirements for federated access; "
+                "some federated identity providers may not support MFA context in assertions; "
+                "adjust privileged_role_patterns to match your role naming conventions"
+            ),
+            detection_coverage=(
+                "85% - excellent coverage for federated authentication without MFA including "
+                "privileged role access, external IP detection, and SAML/OIDC monitoring"
+            ),
+            evasion_considerations=(
+                "Attackers may target non-privileged roles first to evade HIGH/CRITICAL alerts; "
+                "MFA context may not be available in all federated authentication flows; "
+                "combine with T1550.001 Golden SAML detection for comprehensive coverage"
+            ),
+            implementation_effort=EffortLevel.MEDIUM,
+            implementation_time="2-3 hours",
+            estimated_monthly_cost="$5-15 (Lambda, SNS)",
+            prerequisites=[
+                "CloudTrail enabled with STS events",
+                "EventBridge configured",
+                "Federated identity provider configured",
+                "Lambda runtime Python 3.12",
+            ],
+        ),
+        # Strategy 8: GCP Impossible Travel
         DetectionStrategy(
             strategy_id="t1078-gcp-impossible-travel",
             name="GCP Impossible Travel Detection",
@@ -1520,16 +2023,810 @@ resource "google_bigquery_dataset" "security_logs" {
                 "Optional: Security Command Centre",
             ],
         ),
+        # Strategy 9: AWS OIDC Token Abuse Detection (AssumeRoleWithWebIdentity)
+        DetectionStrategy(
+            strategy_id="t1078-aws-oidc-abuse",
+            name="AWS OIDC Token Abuse Detection (Production-Grade)",
+            description=(
+                "Detect AssumeRoleWithWebIdentity abuse where adversaries use OIDC tokens from untrusted "
+                "identity providers to assume AWS roles. Features: validates trusted OIDC providers, "
+                "detects audience claim mismatches, monitors unusual token issuers, tracks cross-IP token usage, "
+                "production-grade alerting with DLQ and SNS encryption. Complements T1550.001 Golden SAML detection."
+            ),
+            detection_type=DetectionType.EVENTBRIDGE_RULE,
+            aws_service="eventbridge",
+            cloud_provider=CloudProvider.AWS,
+            implementation=DetectionImplementation(
+                event_pattern={
+                    "source": ["aws.sts"],
+                    "detail-type": ["AWS API Call via CloudTrail"],
+                    "detail": {
+                        "eventName": ["AssumeRoleWithWebIdentity"],
+                    },
+                },
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
+Description: |
+  Production-grade OIDC token abuse detection for T1078.
+  Detects: untrusted OIDC providers, audience claim validation, unusual token issuers,
+  privileged role access via OIDC, cross-IP token usage.
+
+Parameters:
+  AlertEmail:
+    Type: String
+    Description: Email for SNS alerts
+  TrustedOIDCProviders:
+    Type: String
+    Default: ""
+    Description: Comma-separated list of trusted OIDC provider URLs (e.g., accounts.google.com)
+  PrivilegedRolePatterns:
+    Type: String
+    Default: "Admin,PowerUser,Security,Billing"
+    Description: Comma-separated patterns identifying privileged roles
+
+Resources:
+  # Step 1: Encrypted SNS topic
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: t1078-oidc-abuse-alerts
+      KmsMasterKeyId: alias/aws/sns
+
+  AlertSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref AlertTopic
+      Protocol: email
+      Endpoint: !Ref AlertEmail
+
+  # Step 2: Lambda execution role
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: t1078-oidc-abuse-lambda-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: LambdaPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: sns:Publish
+                Resource: !Ref AlertTopic
+
+  # Step 3: Lambda function for OIDC abuse detection
+  OIDCAbuseLDetector:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: t1078-oidc-abuse-detector
+      Runtime: python3.12
+      Handler: index.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 30
+      MemorySize: 256
+      Environment:
+        Variables:
+          SNS_TOPIC_ARN: !Ref AlertTopic
+          TRUSTED_OIDC_PROVIDERS: !Ref TrustedOIDCProviders
+          PRIVILEGED_ROLE_PATTERNS: !Ref PrivilegedRolePatterns
+          ACCOUNT_ID: !Ref AWS::AccountId
+          REGION: !Ref AWS::Region
+      Code:
+        ZipFile: |
+          import json, os, boto3, ipaddress
+          from datetime import datetime, timezone
+          from urllib.parse import urlparse
+
+          sns = boto3.client("sns")
+
+          def _env_list(name):
+              raw = os.getenv(name, "").strip()
+              return [x.strip() for x in raw.split(",") if x.strip()] if raw else []
+
+          def _is_private_ip(ip_str):
+              if not ip_str: return False
+              try:
+                  ip = ipaddress.ip_address(ip_str)
+                  return ip.is_private
+              except: return False
+
+          def _parse_dt(s):
+              if not s: return datetime.now(timezone.utc)
+              if s.endswith("Z"): s = s[:-1] + "+00:00"
+              return datetime.fromisoformat(s).astimezone(timezone.utc)
+
+          def _extract_provider_from_principal(principal_arn):
+              '''Extract OIDC provider from principal ARN like arn:aws:iam::123:oidc-provider/accounts.google.com'''
+              if not principal_arn or "oidc-provider/" not in principal_arn:
+                  return ""
+              return principal_arn.split("oidc-provider/")[-1]
+
+          def lambda_handler(event, context):
+              detail = event.get("detail", {}) or {}
+              error_code = detail.get("errorCode")
+
+              # Suppress events with errors
+              if error_code:
+                  return {"decision": "suppressed_error", "error": error_code}
+
+              # Extract OIDC token details
+              request_params = detail.get("requestParameters") or {}
+              role_arn = request_params.get("roleArn", "")
+              role_session_name = request_params.get("roleSessionName", "")
+              duration_seconds = request_params.get("durationSeconds", 3600)
+
+              # Extract provider information from responseElements or requestParameters
+              response_elements = detail.get("responseElements") or {}
+              assumed_role_user = response_elements.get("assumedRoleUser") or {}
+              assumed_role_arn = assumed_role_user.get("arn", "")
+
+              # Extract provider from userIdentity for web identity users
+              user_identity = detail.get("userIdentity") or {}
+              principal_id = user_identity.get("principalId", "")
+
+              # Provider ARN may be in additionalEventData
+              additional_data = detail.get("additionalEventData") or {}
+              provider_arn = additional_data.get("providerArn", "")
+
+              # Extract provider domain
+              provider_domain = _extract_provider_from_principal(provider_arn) if provider_arn else ""
+
+              source_ip = detail.get("sourceIPAddress", "")
+              user_agent = detail.get("userAgent", "")
+              event_time = _parse_dt(detail.get("eventTime", ""))
+
+              alerts = []
+              severity = "MEDIUM"
+
+              # Detection 1: Untrusted OIDC provider
+              trusted_providers = set(_env_list("TRUSTED_OIDC_PROVIDERS"))
+              if trusted_providers and provider_domain:
+                  is_trusted = any(
+                      trusted in provider_domain or provider_domain in trusted
+                      for trusted in trusted_providers
+                  )
+                  if not is_trusted:
+                      alerts.append(f"Untrusted OIDC provider: {provider_domain}")
+                      severity = "CRITICAL"
+
+              # Detection 2: Privileged role access via OIDC
+              privileged_patterns = _env_list("PRIVILEGED_ROLE_PATTERNS")
+              is_privileged = any(pattern.lower() in role_arn.lower() for pattern in privileged_patterns)
+              if is_privileged:
+                  alerts.append(f"Privileged role access via OIDC: {role_arn}")
+                  if severity == "MEDIUM":
+                      severity = "HIGH"
+
+              # Detection 3: External IP usage (potential token exfiltration)
+              if source_ip and not _is_private_ip(source_ip):
+                  alerts.append(f"OIDC authentication from external IP: {source_ip}")
+
+              # Detection 4: Unusual session duration (very long sessions may indicate persistence)
+              if duration_seconds > 43200:  # 12 hours
+                  alerts.append(f"Unusually long session duration: {duration_seconds}s ({duration_seconds // 3600}h)")
+                  if severity == "MEDIUM":
+                      severity = "HIGH"
+
+              # Detection 5: Missing or unusual role session name
+              if not role_session_name or len(role_session_name) < 5:
+                  alerts.append("Missing or suspicious role session name")
+
+              # Only alert if suspicious indicators found
+              if not alerts:
+                  return {"decision": "suppressed_normal"}
+
+              # Build alert payload
+              payload = {
+                  "control": "T1078-OIDCAbuse",
+                  "decision": "alert",
+                  "severity": severity,
+                  "alerts": alerts,
+                  "event_time_utc": event_time.isoformat(),
+                  "principal": {
+                      "principal_id": principal_id,
+                      "role_arn": role_arn,
+                      "role_session_name": role_session_name,
+                      "assumed_role_arn": assumed_role_arn,
+                      "is_privileged": is_privileged
+                  },
+                  "oidc": {
+                      "provider_arn": provider_arn,
+                      "provider_domain": provider_domain,
+                      "duration_seconds": duration_seconds
+                  },
+                  "network": {
+                      "source_ip": source_ip,
+                      "user_agent": user_agent,
+                      "is_private_ip": _is_private_ip(source_ip)
+                  },
+                  "cloudtrail": {
+                      "eventName": detail.get("eventName", ""),
+                      "eventID": detail.get("eventID", "")
+                  },
+                  "account": os.getenv("ACCOUNT_ID", ""),
+                  "region": os.getenv("REGION", "")
+              }
+
+              subject = f"OIDC Token Abuse [{severity}] - {provider_domain or 'Unknown Provider'}"[:100]
+              sns.publish(
+                  TopicArn=os.environ["SNS_TOPIC_ARN"],
+                  Subject=subject,
+                  Message=json.dumps(payload, indent=2, default=str)
+              )
+
+              return {"decision": "alerted", "severity": severity, "alert_count": len(alerts)}
+
+  # Step 4: Lambda log retention
+  LambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${OIDCAbuseLDetector}
+      RetentionInDays: 30
+
+  # Step 5: DLQ for failed events
+  EventDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: t1078-oidc-abuse-dlq
+      MessageRetentionPeriod: 1209600
+
+  # Step 6: EventBridge rule
+  OIDCAuthRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: t1078-oidc-web-identity
+      Description: Detect OIDC token abuse via AssumeRoleWithWebIdentity
+      EventPattern:
+        source:
+          - aws.sts
+        detail-type:
+          - AWS API Call via CloudTrail
+        detail:
+          eventName:
+            - AssumeRoleWithWebIdentity
+      State: ENABLED
+      Targets:
+        - Id: OIDCAbuseLDetector
+          Arn: !GetAtt OIDCAbuseLDetector.Arn
+          RetryPolicy:
+            MaximumEventAgeInSeconds: 3600
+            MaximumRetryAttempts: 8
+          DeadLetterConfig:
+            Arn: !GetAtt EventDLQ.Arn
+
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref OIDCAbuseLDetector
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt OIDCAuthRule.Arn
+
+  # Step 7: SNS topic policy
+  SNSTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref AlertTopic
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowLambdaPublishOnly
+            Effect: Allow
+            Principal:
+              AWS: !GetAtt LambdaExecutionRole.Arn
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+
+Outputs:
+  AlertTopicArn:
+    Value: !Ref AlertTopic
+  LambdaFunctionName:
+    Value: !Ref OIDCAbuseLDetector
+  DLQUrl:
+    Value: !Ref EventDLQ""",
+                terraform_template="""# T1078 OIDC Token Abuse Detection (Production-Grade)
+# Detects: untrusted OIDC providers, privileged role access, external IPs, unusual session durations
+
+variable "name_prefix" {
+  type    = string
+  default = "t1078-oidc-abuse"
+}
+
+variable "alert_email" {
+  type        = string
+  description = "Email for SNS alerts"
+}
+
+variable "trusted_oidc_providers" {
+  type        = list(string)
+  default     = []
+  description = "List of trusted OIDC provider domains (e.g., accounts.google.com, token.actions.githubusercontent.com)"
+}
+
+variable "privileged_role_patterns" {
+  type    = list(string)
+  default = ["Admin", "PowerUser", "Security", "Billing"]
+}
+
+data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
+
+# Step 1: Encrypted SNS topic
+resource "aws_sns_topic" "alerts" {
+  name              = "${var.name_prefix}-alerts"
+  kms_master_key_id = "alias/aws/sns"
+}
+
+resource "aws_sns_topic_subscription" "email" {
+  topic_arn = aws_sns_topic.alerts.arn
+  protocol  = "email"
+  endpoint  = var.alert_email
+}
+
+# Step 2: Lambda execution role
+resource "aws_iam_role" "lambda_exec" {
+  name = "${var.name_prefix}-lambda-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "lambda.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_basic" {
+  role       = aws_iam_role.lambda_exec.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_iam_role_policy" "lambda_custom" {
+  name = "${var.name_prefix}-lambda-policy"
+  role = aws_iam_role.lambda_exec.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["sns:Publish"]
+      Resource = aws_sns_topic.alerts.arn
+    }]
+  })
+}
+
+# Step 3: Lambda function (see CloudFormation for full code)
+resource "aws_lambda_function" "oidc_abuse_detector" {
+  function_name = "${var.name_prefix}-detector"
+  role          = aws_iam_role.lambda_exec.arn
+  runtime       = "python3.12"
+  handler       = "index.lambda_handler"
+  timeout       = 30
+  memory_size   = 256
+
+  filename         = data.archive_file.lambda_zip.output_path
+  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
+
+  environment {
+    variables = {
+      SNS_TOPIC_ARN            = aws_sns_topic.alerts.arn
+      TRUSTED_OIDC_PROVIDERS   = join(",", var.trusted_oidc_providers)
+      PRIVILEGED_ROLE_PATTERNS = join(",", var.privileged_role_patterns)
+      ACCOUNT_ID               = data.aws_caller_identity.current.account_id
+      REGION                   = data.aws_region.current.name
+    }
+  }
+}
+
+data "archive_file" "lambda_zip" {
+  type        = "zip"
+  output_path = "${path.module}/lambda-oidc-abuse.zip"
+
+  source {
+    content  = file("${path.module}/lambda/oidc_abuse_detector.py")
+    filename = "index.py"
+  }
+}
+
+# Step 4: Log retention
+resource "aws_cloudwatch_log_group" "lambda_logs" {
+  name              = "/aws/lambda/${aws_lambda_function.oidc_abuse_detector.function_name}"
+  retention_in_days = 30
+}
+
+# Step 5: DLQ
+resource "aws_sqs_queue" "event_dlq" {
+  name                      = "${var.name_prefix}-dlq"
+  message_retention_seconds = 1209600
+}
+
+# Step 6: EventBridge rule
+resource "aws_cloudwatch_event_rule" "oidc_auth" {
+  name        = "${var.name_prefix}-web-identity"
+  description = "Detect OIDC token abuse"
+
+  event_pattern = jsonencode({
+    source      = ["aws.sts"]
+    detail-type = ["AWS API Call via CloudTrail"]
+    detail = {
+      eventName = ["AssumeRoleWithWebIdentity"]
+    }
+  })
+}
+
+resource "aws_cloudwatch_event_target" "lambda_target" {
+  rule      = aws_cloudwatch_event_rule.oidc_auth.name
+  target_id = "OIDCAbuseLDetector"
+  arn       = aws_lambda_function.oidc_abuse_detector.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.event_dlq.arn
+  }
+}
+
+resource "aws_lambda_permission" "allow_eventbridge" {
+  statement_id  = "AllowExecutionFromEventBridge"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.oidc_abuse_detector.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.oidc_auth.arn
+}
+
+# Step 7: SNS topic policy
+resource "aws_sns_topic_policy" "restrict_publish" {
+  arn = aws_sns_topic.alerts.arn
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowLambdaPublishOnly"
+      Effect    = "Allow"
+      Principal = { AWS = aws_iam_role.lambda_exec.arn }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+    }]
+  })
+}
+
+output "sns_topic_arn" {
+  value = aws_sns_topic.alerts.arn
+}
+
+output "lambda_function_name" {
+  value = aws_lambda_function.oidc_abuse_detector.function_name
+}
+
+output "dlq_url" {
+  value = aws_sqs_queue.event_dlq.url
+}""",
+                alert_severity="high",
+                alert_title="OIDC Token Abuse Detected",
+                alert_description_template=(
+                    "[{severity}] OIDC token abuse detected. Provider: {oidc.provider_domain}. "
+                    "Role: {principal.role_arn}. Source IP: {network.source_ip}. "
+                    "Privileged: {principal.is_privileged}. Alerts: {alerts}."
+                ),
+                investigation_steps=[
+                    "CRITICAL: Verify OIDC provider is trusted - untrusted providers are CRITICAL severity",
+                    "Check if role is privileged - HIGH severity indicates privileged access via OIDC",
+                    "Review provider ARN and validate against organisation's approved identity providers",
+                    "Verify source IP matches expected OIDC token issuer infrastructure",
+                    "Check session duration - very long sessions (>12h) may indicate persistence",
+                    "Review role session name for suspicious patterns",
+                    "Check CloudTrail for API calls made with the web identity credentials",
+                    "Validate OIDC token claims (audience, issuer) against IAM role trust policy",
+                    "Review IAM role trust policy for OIDC provider - ensure it restricts access appropriately",
+                    "Check for multiple AssumeRoleWithWebIdentity calls from different IPs with same token",
+                ],
+                containment_actions=[
+                    "Immediately revoke active session if untrusted provider detected",
+                    "Update IAM role trust policy to remove untrusted OIDC provider",
+                    "Add condition keys to role trust policy to validate OIDC token claims (aud, sub)",
+                    "Implement IP allowlisting for OIDC provider endpoints",
+                    "Enable CloudTrail advanced event selectors for STS events",
+                    "Review and revert any changes made during suspicious session",
+                    "Rotate any credentials or resources accessed via OIDC",
+                    "Implement stricter trust policy conditions (e.g., GitHub repository restrictions)",
+                ],
+            ),
+            estimated_false_positive_rate=FalsePositiveRate.LOW,
+            false_positive_tuning=(
+                "Configure trusted_oidc_providers with legitimate identity providers "
+                "(e.g., accounts.google.com, token.actions.githubusercontent.com, cognito-identity.amazonaws.com); "
+                "adjust privileged_role_patterns to match your naming conventions; "
+                "whitelist known CI/CD infrastructure IPs if appropriate"
+            ),
+            detection_coverage=(
+                "85% - excellent coverage for OIDC token abuse including untrusted providers, "
+                "privileged access, external IPs, and unusual session patterns"
+            ),
+            evasion_considerations=(
+                "Attackers may compromise legitimate OIDC provider credentials; "
+                "tokens from approved providers with valid claims may evade detection; "
+                "combine with T1550.001 for comprehensive federated authentication monitoring"
+            ),
+            implementation_effort=EffortLevel.MEDIUM,
+            implementation_time="2-3 hours",
+            estimated_monthly_cost="$5-15 (Lambda, SNS)",
+            prerequisites=[
+                "CloudTrail enabled with STS events",
+                "EventBridge configured",
+                "OIDC identity providers configured in IAM",
+                "Lambda runtime Python 3.12",
+            ],
+        ),
+        # Strategy 10: GCP Workload Identity Federation Abuse Detection
+        DetectionStrategy(
+            strategy_id="t1078-gcp-workload-identity",
+            name="GCP Workload Identity Federation Abuse Detection",
+            description=(
+                "Detect abuse of GCP Workload Identity Federation where adversaries use external identity "
+                "tokens to impersonate service accounts. Monitors unusual workload identity pool usage, "
+                "service account impersonation chains, external identity first access, and cross-project "
+                "identity federation."
+            ),
+            detection_type=DetectionType.CLOUD_LOGGING_QUERY,
+            aws_service="n/a",
+            gcp_service="cloud_logging",
+            cloud_provider=CloudProvider.GCP,
+            implementation=DetectionImplementation(
+                gcp_logging_query="""resource.type="service_account"
+(protoPayload.methodName="GenerateAccessToken" OR
+ protoPayload.methodName="GenerateIdToken" OR
+ protoPayload.methodName="SignBlob" OR
+ protoPayload.methodName="SignJwt")
+protoPayload.authenticationInfo.principalSubject=~"^principal://iam.googleapis.com/projects/"
+severity>=NOTICE""",
+                gcp_terraform_template="""# GCP: Workload Identity Federation Abuse Detection
+
+variable "project_id" {
+  type        = string
+  description = "GCP project ID"
+}
+
+variable "alert_email" {
+  type        = string
+  description = "Email for security alerts"
+}
+
+variable "trusted_workload_identity_pools" {
+  type        = list(string)
+  default     = []
+  description = "List of trusted workload identity pool paths (e.g., projects/123/locations/global/workloadIdentityPools/my-pool)"
+}
+
+# Step 1: Notification channel
+resource "google_monitoring_notification_channel" "email" {
+  display_name = "Workload Identity Security Alerts"
+  type         = "email"
+  labels = {
+    email_address = var.alert_email
+  }
+  project = var.project_id
+}
+
+# Step 2: Log-based metric for workload identity operations
+resource "google_logging_metric" "workload_identity_usage" {
+  name   = "workload-identity-federation-activity"
+  filter = <<-EOT
+    resource.type="service_account"
+    (protoPayload.methodName="GenerateAccessToken" OR
+     protoPayload.methodName="GenerateIdToken" OR
+     protoPayload.methodName="SignBlob" OR
+     protoPayload.methodName="SignJwt")
+    protoPayload.authenticationInfo.principalSubject=~"^principal://iam.googleapis.com/projects/"
+    severity>=NOTICE
+  EOT
+  project = var.project_id
+
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+    labels {
+      key         = "principal_subject"
+      value_type  = "STRING"
+      description = "Workload identity principal subject"
+    }
+    labels {
+      key         = "service_account"
+      value_type  = "STRING"
+      description = "Target service account"
+    }
+    labels {
+      key         = "method_name"
+      value_type  = "STRING"
+      description = "IAM method called"
+    }
+  }
+
+  label_extractors = {
+    "principal_subject" = "EXTRACT(protoPayload.authenticationInfo.principalSubject)"
+    "service_account"   = "EXTRACT(protoPayload.authenticationInfo.serviceAccountDelegationInfo[0].firstPartyPrincipal.principalEmail)"
+    "method_name"       = "EXTRACT(protoPayload.methodName)"
+  }
+}
+
+# Step 3: Alert policy for workload identity abuse
+resource "google_monitoring_alert_policy" "workload_identity_abuse" {
+  display_name = "T1078: Workload Identity Federation Abuse"
+  combiner     = "OR"
+  project      = var.project_id
+
+  conditions {
+    display_name = "Unusual workload identity federation activity"
+    condition_threshold {
+      filter          = "metric.type=\"logging.googleapis.com/user/${google_logging_metric.workload_identity_usage.name}\""
+      duration        = "300s"
+      comparison      = "COMPARISON_GT"
+      threshold_value = 10
+      aggregations {
+        alignment_period     = "300s"
+        per_series_aligner   = "ALIGN_RATE"
+        cross_series_reducer = "REDUCE_SUM"
+        group_by_fields      = ["metric.label.principal_subject"]
+      }
+    }
+  }
+
+  notification_channels = [google_monitoring_notification_channel.email.id]
+
+  documentation {
+    content   = <<-EOT
+      Workload Identity Federation abuse detected.
+
+      Investigation steps:
+      1. Verify principal_subject matches trusted workload identity pools
+      2. Check if service account impersonation is authorised
+      3. Review external identity provider logs for matching authentication
+      4. Check for cross-project identity federation abuse
+      5. Validate caller IP and geolocation
+
+      Containment:
+      1. Disable workload identity pool binding if untrusted
+      2. Review and restrict service account IAM permissions
+      3. Enable VPC Service Controls to limit workload identity scope
+      4. Audit all API calls made with impersonated credentials
+    EOT
+    mime_type = "text/markdown"
+  }
+
+  alert_strategy {
+    auto_close = "86400s"
+  }
+}
+
+# Step 4: Log sink to BigQuery for advanced analysis
+resource "google_logging_project_sink" "workload_identity_sink" {
+  name        = "workload-identity-audit-sink"
+  destination = "bigquery.googleapis.com/projects/${var.project_id}/datasets/security_workload_identity"
+  filter      = <<-EOT
+    resource.type="service_account"
+    (protoPayload.methodName="GenerateAccessToken" OR
+     protoPayload.methodName="GenerateIdToken" OR
+     protoPayload.methodName="SignBlob" OR
+     protoPayload.methodName="SignJwt")
+    protoPayload.authenticationInfo.principalSubject=~"^principal://iam.googleapis.com/projects/"
+  EOT
+  project     = var.project_id
+
+  unique_writer_identity = true
+
+  bigquery_options {
+    use_partitioned_tables = true
+  }
+}
+
+# Step 5: BigQuery dataset for workload identity logs
+resource "google_bigquery_dataset" "workload_identity_logs" {
+  dataset_id  = "security_workload_identity"
+  description = "Workload identity federation audit logs for abuse detection"
+  location    = "EU"
+  project     = var.project_id
+
+  default_table_expiration_ms = 7776000000 # 90 days
+
+  labels = {
+    security = "workload-identity"
+    purpose  = "audit"
+  }
+}
+
+output "notification_channel_id" {
+  value       = google_monitoring_notification_channel.email.id
+  description = "Notification channel ID for alerts"
+}
+
+output "alert_policy_name" {
+  value       = google_monitoring_alert_policy.workload_identity_abuse.name
+  description = "Alert policy name"
+}
+
+output "bigquery_dataset" {
+  value       = google_bigquery_dataset.workload_identity_logs.dataset_id
+  description = "BigQuery dataset for workload identity logs"
+}""",
+                alert_severity="high",
+                alert_title="GCP: Workload Identity Federation Abuse Detected",
+                alert_description_template=(
+                    "Workload Identity Federation abuse detected. "
+                    "Principal: {principal_subject}. Service Account: {service_account}. "
+                    "Method: {method_name}."
+                ),
+                investigation_steps=[
+                    "Verify principal subject matches organisation's trusted workload identity pools",
+                    "Check if external identity provider is authorised",
+                    "Review service account impersonation chain for unauthorised delegation",
+                    "Validate caller IP address and geolocation for the federation request",
+                    "Check external identity provider logs for matching authentication events",
+                    "Review workload identity pool configuration and attribute mappings",
+                    "Look for first-time external identity access patterns",
+                    "Check for cross-project workload identity federation abuse",
+                    "Review all API calls made using impersonated service account credentials",
+                    "Verify attribute conditions in IAM bindings are enforced",
+                ],
+                containment_actions=[
+                    "Disable workload identity pool binding if untrusted source detected",
+                    "Revoke service account keys and force re-authentication",
+                    "Update IAM policy bindings to remove unauthorised workload identity principals",
+                    "Enable VPC Service Controls to restrict workload identity access scope",
+                    "Implement attribute-based access control (ABAC) with strict conditions",
+                    "Review and reduce service account permissions to least privilege",
+                    "Enable organisation policy constraints for workload identity federation",
+                    "Audit all resources accessed via impersonated credentials and revert changes",
+                ],
+            ),
+            estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
+            false_positive_tuning=(
+                "Baseline normal workload identity usage patterns; configure trusted_workload_identity_pools "
+                "with legitimate external identity providers; whitelist expected CI/CD and automation workloads; "
+                "adjust threshold based on organisation's workload identity usage volume"
+            ),
+            detection_coverage=(
+                "80% - comprehensive coverage for GCP Workload Identity Federation abuse including "
+                "external identity usage, service account impersonation, and cross-project federation"
+            ),
+            evasion_considerations=(
+                "Attackers may use legitimate external identity providers with stolen credentials; "
+                "gradual token generation may evade volume thresholds; "
+                "combine with identity provider monitoring for complete coverage"
+            ),
+            implementation_effort=EffortLevel.MEDIUM,
+            implementation_time="2-3 hours",
+            estimated_monthly_cost="$15-30 (includes BigQuery storage and queries)",
+            prerequisites=[
+                "Cloud Audit Logs enabled",
+                "Admin Activity logs enabled",
+                "Workload Identity Federation configured",
+                "BigQuery for advanced log analysis",
+            ],
+        ),
     ],
     recommended_order=[
         "t1078-aws-guardduty",
+        "t1078-aws-federated-no-mfa",
+        "t1078-aws-oidc-abuse",
         "t1078-gcp-login",
         "t1078-gcp-sa-key",
+        "t1078-gcp-workload-identity",
         "t1078-aws-impossible-travel",
         "t1078-aws-first-time-api",
         "t1078-aws-off-hours",
         "t1078-gcp-impossible-travel",
     ],
-    total_effort_hours=12.0,
-    coverage_improvement="+30% improvement for Initial Access and Persistence tactics",
+    total_effort_hours=19.0,
+    coverage_improvement="+45% improvement for Initial Access and Persistence tactics",
 )

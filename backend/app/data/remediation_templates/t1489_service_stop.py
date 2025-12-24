@@ -92,6 +92,12 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
+# Dead Letter Queue for failed event deliveries
+resource "aws_sqs_queue" "dlq" {
+  name                      = "service-stop-dlq"
+  message_retention_seconds = 1209600  # 14 days
+}
+
 resource "aws_cloudwatch_event_rule" "service_stop" {
   name = "cloud-service-stop"
   event_pattern = jsonencode({
@@ -109,6 +115,17 @@ resource "aws_cloudwatch_event_rule" "service_stop" {
 resource "aws_cloudwatch_event_target" "sns" {
   rule = aws_cloudwatch_event_rule.service_stop.name
   arn  = aws_sns_topic.alerts.arn
+
+  # Retry policy: 8 attempts over 1 hour
+  retry_policy {
+    maximum_retry_attempts = 8
+    maximum_event_age      = 3600
+  }
+
+  # Dead letter queue for failed deliveries
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
 }
 
 resource "aws_sns_topic_policy" "allow_events" {
@@ -120,6 +137,20 @@ resource "aws_sns_topic_policy" "allow_events" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
+    }]
+  })
+}
+
+# Allow EventBridge to send failed events to DLQ
+resource "aws_sqs_queue_policy" "dlq" {
+  queue_url = aws_sqs_queue.dlq.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.dlq.arn
     }]
   })
 }""",

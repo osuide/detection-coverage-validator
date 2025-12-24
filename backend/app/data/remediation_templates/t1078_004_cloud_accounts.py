@@ -110,6 +110,18 @@ Resources:
       Targets:
         - Id: Email
           Arn: !Ref AlertTopic
+          RetryPolicy:
+            MaximumRetryAttempts: 8
+            MaximumEventAge: 3600
+          DeadLetterConfig:
+            Arn: !GetAtt CredentialFindingsDLQ.Arn
+
+  # DLQ for failed event deliveries
+  CredentialFindingsDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: guardduty-credential-findings-dlq
+      MessageRetentionPeriod: 1209600
 
   TopicPolicy:
     Type: AWS::SNS::TopicPolicy
@@ -159,9 +171,24 @@ resource "aws_cloudwatch_event_rule" "credential_findings" {
   })
 }
 
+# DLQ for failed event deliveries
+resource "aws_sqs_queue" "credential_findings_dlq" {
+  name                      = "guardduty-credential-findings-dlq"
+  message_retention_seconds = 1209600
+}
+
 resource "aws_cloudwatch_event_target" "sns" {
   rule = aws_cloudwatch_event_rule.credential_findings.name
   arn  = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_retry_attempts = 8
+    maximum_event_age      = 3600
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.credential_findings_dlq.arn
+  }
 }
 
 resource "aws_sns_topic_policy" "allow_eventbridge" {
@@ -340,6 +367,18 @@ Resources:
       Targets:
         - Id: SNSAlert
           Arn: !Ref SNSTopicArn
+          RetryPolicy:
+            MaximumRetryAttempts: 8
+            MaximumEventAge: 3600
+          DeadLetterConfig:
+            Arn: !GetAtt ConsoleLoginDLQ.Arn
+
+  # DLQ for failed event deliveries
+  ConsoleLoginDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: console-login-alert-dlq
+      MessageRetentionPeriod: 1209600
 
 Outputs:
   Note:
@@ -370,10 +409,25 @@ resource "aws_cloudwatch_event_rule" "console_login" {
   })
 }
 
+# DLQ for failed event deliveries
+resource "aws_sqs_queue" "console_login_dlq" {
+  name                      = "console-login-alert-dlq"
+  message_retention_seconds = 1209600
+}
+
 resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.console_login.name
   target_id = "SNSAlert"
   arn       = var.sns_topic_arn
+
+  retry_policy {
+    maximum_retry_attempts = 8
+    maximum_event_age      = 3600
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.console_login_dlq.arn
+  }
 }
 
 # NOTE: This is a basic implementation that alerts on ALL console logins.
