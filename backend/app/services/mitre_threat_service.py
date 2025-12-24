@@ -4,6 +4,7 @@ Provides methods to query threat groups, campaigns, and software
 related to specific techniques.
 """
 
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
@@ -138,11 +139,15 @@ class MitreThreatService:
                     external_id=group.external_id,
                     name=group.name,
                     aliases=group.aliases or [],
-                    description=self._truncate(group.description, 300),
+                    description=self._truncate(
+                        self._strip_markdown_links(group.description), 300
+                    ),
                     first_seen=group.first_seen,
                     last_seen=group.last_seen,
                     mitre_url=group.mitre_url,
-                    relationship_description=self._truncate(rel_description, 200),
+                    relationship_description=self._truncate(
+                        self._strip_markdown_links(rel_description), 200
+                    ),
                 )
             )
 
@@ -192,11 +197,15 @@ class MitreThreatService:
                     id=str(campaign.id),
                     external_id=campaign.external_id,
                     name=campaign.name,
-                    description=self._truncate(campaign.description, 300),
+                    description=self._truncate(
+                        self._strip_markdown_links(campaign.description), 300
+                    ),
                     first_seen=campaign.first_seen,
                     last_seen=campaign.last_seen,
                     mitre_url=campaign.mitre_url,
-                    relationship_description=self._truncate(rel_description, 200),
+                    relationship_description=self._truncate(
+                        self._strip_markdown_links(rel_description), 200
+                    ),
                 )
             )
 
@@ -248,10 +257,14 @@ class MitreThreatService:
                     name=sw.name,
                     software_type=sw.software_type,
                     aliases=sw.aliases or [],
-                    description=self._truncate(sw.description, 300),
+                    description=self._truncate(
+                        self._strip_markdown_links(sw.description), 300
+                    ),
                     platforms=sw.platforms or [],
                     mitre_url=sw.mitre_url,
-                    relationship_description=self._truncate(rel_description, 200),
+                    relationship_description=self._truncate(
+                        self._strip_markdown_links(rel_description), 200
+                    ),
                 )
             )
 
@@ -556,6 +569,16 @@ class MitreThreatService:
             )
         )
         return result.scalar() or 0
+
+    def _strip_markdown_links(self, text: Optional[str]) -> Optional[str]:
+        """Strip markdown links, keeping just the link text.
+
+        Converts [text](url) to just text.
+        """
+        if not text:
+            return None
+        # Pattern matches [link text](url)
+        return re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
 
     def _truncate(self, text: Optional[str], max_length: int) -> Optional[str]:
         """Truncate text to max length."""
