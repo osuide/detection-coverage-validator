@@ -741,9 +741,10 @@ class ComplianceService:
             ]
 
             # Determine if assessable via cloud scanning
-            is_not_assessable = control.cloud_applicability in (
-                "informational",
-                "provider_responsibility",
+            # Note: provider_responsibility is assessable but managed by provider
+            is_not_assessable = control.cloud_applicability == "informational"
+            is_provider_managed = (
+                control.cloud_applicability == "provider_responsibility"
             )
 
             # Get cloud context for shared responsibility
@@ -752,10 +753,14 @@ class ComplianceService:
 
             # Calculate coverage using same logic as compliance calculator
             # Only count techniques with "covered" status (confidence >= 0.6)
-            if is_not_assessable or not mapped_technique_uuids:
-                status = "not_assessable"
-                coverage_pct = 0.0
-                covered_count = 0
+            if is_not_assessable or is_provider_managed or not mapped_technique_uuids:
+                # Provider-managed controls show as "covered" (provider handles them)
+                # Not assessable controls show as "not_assessable"
+                status = "covered" if is_provider_managed else "not_assessable"
+                coverage_pct = 100.0 if is_provider_managed else 0.0
+                covered_count = (
+                    len(mapped_technique_uuids) if is_provider_managed else 0
+                )
             else:
                 covered_count = sum(
                     1
@@ -792,9 +797,11 @@ class ComplianceService:
             by_status[status].append(control_item)
 
             # Add to cloud category group
+            # Priority: not_assessable > provider_managed > customer/shared
             if is_not_assessable:
                 by_cloud["not_assessable"].append(control_item)
-            elif shared_resp == "provider":
+            elif is_provider_managed:
+                # Controls with cloud_applicability == "provider_responsibility"
                 by_cloud["provider_managed"].append(control_item)
             elif shared_resp == "customer":
                 by_cloud["customer_responsibility"].append(control_item)
