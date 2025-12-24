@@ -146,8 +146,8 @@ export default function APIKeys() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">API Keys</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-white">API Keys</h1>
+          <p className="mt-1 text-sm text-gray-400">
             Manage API keys for programmatic access to the platform
           </p>
         </div>
@@ -162,41 +162,41 @@ export default function APIKeys() {
 
       {/* Error message */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+        <div className="bg-red-900/30 border border-red-700 text-red-400 px-4 py-3 rounded-lg">
           {error}
         </div>
       )}
 
       {/* Newly created key alert */}
       {createdKey && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+        <div className="bg-yellow-900/30 border border-yellow-700 rounded-lg p-4">
           <div className="flex items-start">
-            <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5 mr-3 flex-shrink-0" />
+            <AlertTriangle className="h-5 w-5 text-yellow-400 mt-0.5 mr-3 flex-shrink-0" />
             <div className="flex-1">
-              <h3 className="text-sm font-medium text-yellow-800">
+              <h3 className="text-sm font-medium text-yellow-400">
                 Save your API key - you won't be able to see it again!
               </h3>
-              <p className="mt-1 text-sm text-yellow-700">
+              <p className="mt-1 text-sm text-yellow-400">
                 Make sure to copy your API key now. For security reasons, it won't be shown again.
               </p>
               <div className="mt-3 flex items-center space-x-2">
-                <code className="flex-1 px-3 py-2 bg-white border border-yellow-300 rounded font-mono text-sm break-all">
+                <code className="flex-1 px-3 py-2 bg-white border border-yellow-700 rounded font-mono text-sm break-all">
                   {createdKey.key}
                 </code>
                 <button
                   onClick={() => copyToClipboard(createdKey.key)}
-                  className="p-2 rounded-lg hover:bg-yellow-100"
+                  className="p-2 rounded-lg hover:bg-yellow-900/30"
                 >
                   {copied ? (
-                    <Check className="h-5 w-5 text-green-600" />
+                    <Check className="h-5 w-5 text-green-400" />
                   ) : (
-                    <Copy className="h-5 w-5 text-yellow-600" />
+                    <Copy className="h-5 w-5 text-yellow-400" />
                   )}
                 </button>
               </div>
               <button
                 onClick={() => setCreatedKey(null)}
-                className="mt-3 text-sm text-yellow-700 hover:text-yellow-800 underline"
+                className="mt-3 text-sm text-yellow-400 hover:text-yellow-300 underline"
               >
                 I've saved my key
               </button>
@@ -206,12 +206,12 @@ export default function APIKeys() {
       )}
 
       {/* API Keys list */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-700 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-700">
           <div className="flex items-center">
             <Key className="h-5 w-5 text-gray-400 mr-2" />
-            <h2 className="text-lg font-medium text-gray-900">Your API Keys</h2>
-            <span className="ml-2 px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-600 rounded-full">
+            <h2 className="text-lg font-medium text-white">Your API Keys</h2>
+            <span className="ml-2 px-2 py-0.5 text-xs font-medium bg-gray-700/30 text-gray-400 rounded-full">
               {keys.filter(k => k.is_active).length} active
             </span>
           </div>
@@ -219,40 +219,40 @@ export default function APIKeys() {
 
         {keys.length === 0 ? (
           <div className="p-12 text-center">
-            <Key className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-sm font-medium text-gray-900 mb-1">No API keys</h3>
-            <p className="text-sm text-gray-500">
+            <Key className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-sm font-medium text-white mb-1">No API keys</h3>
+            <p className="text-sm text-gray-400">
               Create an API key to access the platform programmatically
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-200">
+          <div className="divide-y divide-gray-700">
             {keys.map((key) => (
               <div
                 key={key.id}
                 className={clsx(
                   'px-6 py-4',
-                  !key.is_active && 'bg-gray-50 opacity-60'
+                  !key.is_active && 'bg-gray-700/30 opacity-60'
                 )}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
-                    <div className="h-10 w-10 rounded-lg bg-gray-100 flex items-center justify-center">
+                    <div className="h-10 w-10 rounded-lg bg-gray-700/30 flex items-center justify-center">
                       <Key className={clsx(
                         'h-5 w-5',
-                        key.is_active ? 'text-gray-500' : 'text-gray-400'
+                        key.is_active ? 'text-gray-400' : 'text-gray-400'
                       )} />
                     </div>
                     <div>
                       <div className="flex items-center space-x-2">
-                        <span className="text-sm font-medium text-gray-900">{key.name}</span>
+                        <span className="text-sm font-medium text-white">{key.name}</span>
                         {!key.is_active && (
-                          <span className="px-2 py-0.5 text-xs font-medium bg-red-100 text-red-700 rounded-full">
+                          <span className="px-2 py-0.5 text-xs font-medium bg-red-900/30 text-red-400 rounded-full">
                             Revoked
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center space-x-4 text-xs text-gray-500 mt-1">
+                      <div className="flex items-center space-x-4 text-xs text-gray-400 mt-1">
                         <span className="font-mono">{key.key_prefix}...</span>
                         {key.created_by_name && (
                           <span>Created by {key.created_by_name}</span>
@@ -264,30 +264,30 @@ export default function APIKeys() {
                   <div className="flex items-center space-x-6">
                     {/* Scopes */}
                     <div className="text-right">
-                      <div className="text-xs text-gray-500">Scopes</div>
-                      <div className="text-sm text-gray-900">
+                      <div className="text-xs text-gray-400">Scopes</div>
+                      <div className="text-sm text-white">
                         {key.scopes.length || 'All'}
                       </div>
                     </div>
 
                     {/* Last used */}
                     <div className="text-right">
-                      <div className="text-xs text-gray-500">Last used</div>
-                      <div className="text-sm text-gray-900">
+                      <div className="text-xs text-gray-400">Last used</div>
+                      <div className="text-sm text-white">
                         {key.last_used_at ? formatDate(key.last_used_at) : 'Never'}
                       </div>
                     </div>
 
                     {/* Usage */}
                     <div className="text-right">
-                      <div className="text-xs text-gray-500">Requests</div>
-                      <div className="text-sm text-gray-900">{key.usage_count.toLocaleString()}</div>
+                      <div className="text-xs text-gray-400">Requests</div>
+                      <div className="text-sm text-white">{key.usage_count.toLocaleString()}</div>
                     </div>
 
                     {/* Expires */}
                     <div className="text-right">
-                      <div className="text-xs text-gray-500">Expires</div>
-                      <div className="text-sm text-gray-900">
+                      <div className="text-xs text-gray-400">Expires</div>
+                      <div className="text-sm text-white">
                         {key.expires_at ? formatDate(key.expires_at) : 'Never'}
                       </div>
                     </div>
@@ -296,7 +296,7 @@ export default function APIKeys() {
                     {key.is_active && (
                       <button
                         onClick={() => handleRevoke(key.id, key.name)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                        className="p-2 text-red-400 hover:bg-red-900/30 rounded-lg"
                         title="Revoke API key"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -310,13 +310,13 @@ export default function APIKeys() {
                   {key.scopes.length > 0 && key.scopes.map((scope) => (
                     <span
                       key={scope}
-                      className="px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-600 rounded"
+                      className="px-2 py-0.5 text-xs font-medium bg-gray-700/30 text-gray-400 rounded"
                     >
                       {scope}
                     </span>
                   ))}
                   {key.ip_allowlist && key.ip_allowlist.length > 0 && (
-                    <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded inline-flex items-center">
+                    <span className="px-2 py-0.5 text-xs font-medium bg-blue-900/30 text-blue-400 rounded inline-flex items-center">
                       <Shield className="h-3 w-3 mr-1" />
                       {key.ip_allowlist.length} IP{key.ip_allowlist.length > 1 ? 's' : ''} allowed
                     </span>
@@ -332,11 +332,11 @@ export default function APIKeys() {
       {showCreateModal && scopesInfo && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-medium text-gray-900">Create API Key</h2>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
+              <h2 className="text-lg font-medium text-white">Create API Key</h2>
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="text-gray-400 hover:text-gray-500"
+                className="text-gray-400 hover:text-gray-400"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -359,14 +359,14 @@ export default function APIKeys() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-400 mb-2">
                   Permissions
                 </label>
-                <div className="space-y-2 max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-3">
+                <div className="space-y-2 max-h-48 overflow-y-auto border border-gray-700 rounded-lg p-3">
                   {scopesInfo.scopes.map((scope) => (
                     <label
                       key={scope}
-                      className="flex items-start cursor-pointer hover:bg-gray-50 p-1 rounded"
+                      className="flex items-start cursor-pointer hover:bg-gray-700 p-1 rounded"
                     >
                       <input
                         type="checkbox"
@@ -375,14 +375,14 @@ export default function APIKeys() {
                         className="h-4 w-4 mt-0.5 text-cyan-600 focus:ring-cyan-500 border-gray-300 rounded"
                       />
                       <div className="ml-2">
-                        <span className="text-sm font-medium text-gray-900">{scope}</span>
-                        <p className="text-xs text-gray-500">{scopesInfo.descriptions[scope]}</p>
+                        <span className="text-sm font-medium text-white">{scope}</span>
+                        <p className="text-xs text-gray-400">{scopesInfo.descriptions[scope]}</p>
                       </div>
                     </label>
                   ))}
                 </div>
                 {newKeyScopes.length === 0 && (
-                  <p className="mt-1 text-xs text-gray-500">
+                  <p className="mt-1 text-xs text-gray-400">
                     No scopes selected - key will have full access
                   </p>
                 )}
@@ -408,7 +408,7 @@ export default function APIKeys() {
               </div>
 
               {/* IP Allowlist */}
-              <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+              <div className="border border-gray-700 rounded-lg p-4 bg-gray-700/30">
                 <label className="flex items-center cursor-pointer">
                   <input
                     type="checkbox"
@@ -417,16 +417,16 @@ export default function APIKeys() {
                     className="h-4 w-4 text-cyan-600 focus:ring-cyan-500 border-gray-300 rounded"
                   />
                   <div className="ml-3 flex items-center">
-                    <Shield className="h-4 w-4 text-gray-500 mr-2" />
-                    <span className="text-sm font-medium text-gray-700">Restrict to specific IP addresses</span>
+                    <Shield className="h-4 w-4 text-gray-400 mr-2" />
+                    <span className="text-sm font-medium text-gray-400">Restrict to specific IP addresses</span>
                   </div>
                 </label>
 
                 {ipAllowlistEnabled && (
                   <div className="mt-3">
                     <div className="flex items-start space-x-2 mb-2">
-                      <Info className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                      <p className="text-xs text-gray-500">
+                      <Info className="h-4 w-4 text-blue-400 mt-0.5 flex-shrink-0" />
+                      <p className="text-xs text-gray-400">
                         Enter IP addresses or CIDR ranges, one per line or comma-separated.
                         The API key will only work from these addresses.
                       </p>
@@ -443,7 +443,7 @@ export default function APIKeys() {
               </div>
 
               {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-lg text-sm">
+                <div className="bg-red-900/30 border border-red-700 text-red-400 px-4 py-2 rounded-lg text-sm">
                   {error}
                 </div>
               )}
@@ -452,7 +452,7 @@ export default function APIKeys() {
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                  className="px-4 py-2 text-sm font-medium text-gray-400 bg-white border border-gray-700 rounded-lg hover:bg-gray-700"
                 >
                   Cancel
                 </button>

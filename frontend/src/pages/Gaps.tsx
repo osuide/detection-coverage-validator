@@ -7,10 +7,10 @@ import toast from 'react-hot-toast'
 import { useSelectedAccount } from '../hooks/useSelectedAccount'
 
 const priorityStyles = {
-  critical: 'bg-red-100 text-red-800 border-red-200',
-  high: 'bg-orange-100 text-orange-800 border-orange-200',
-  medium: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  low: 'bg-blue-100 text-blue-800 border-blue-200',
+  critical: 'bg-red-900/30 text-red-400 border-red-200',
+  high: 'bg-orange-900/30 text-orange-400 border-orange-200',
+  medium: 'bg-yellow-900/30 text-yellow-400 border-yellow-200',
+  low: 'bg-blue-900/30 text-blue-400 border-blue-200',
 }
 
 const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 }
@@ -117,8 +117,8 @@ export default function Gaps() {
     return (
       <div className="text-center py-12 card">
         <AlertTriangle className="mx-auto h-12 w-12 text-gray-400" />
-        <h3 className="mt-2 text-lg font-medium text-gray-900">No gaps identified</h3>
-        <p className="mt-1 text-sm text-gray-500">
+        <h3 className="mt-2 text-lg font-medium text-white">No gaps identified</h3>
+        <p className="mt-1 text-sm text-gray-400">
           Great job! Your coverage looks complete, or run a scan to identify gaps.
         </p>
       </div>
@@ -128,27 +128,27 @@ export default function Gaps() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Coverage Gaps</h1>
-        <p className="text-gray-600">Prioritized MITRE ATT&CK techniques lacking detection coverage</p>
+        <h1 className="text-2xl font-bold text-white">Coverage Gaps</h1>
+        <p className="text-gray-400">Prioritized MITRE ATT&CK techniques lacking detection coverage</p>
       </div>
 
       {/* Summary */}
       <div className="grid grid-cols-4 gap-4 mb-8">
         <div className="stat-card border-l-4 border-red-500">
-          <p className="text-2xl font-bold text-gray-900">{criticalGaps.length}</p>
-          <p className="text-sm text-gray-500">Critical</p>
+          <p className="text-2xl font-bold text-white">{criticalGaps.length}</p>
+          <p className="text-sm text-gray-400">Critical</p>
         </div>
         <div className="stat-card border-l-4 border-orange-500">
-          <p className="text-2xl font-bold text-gray-900">{highGaps.length}</p>
-          <p className="text-sm text-gray-500">High</p>
+          <p className="text-2xl font-bold text-white">{highGaps.length}</p>
+          <p className="text-sm text-gray-400">High</p>
         </div>
         <div className="stat-card border-l-4 border-yellow-500">
-          <p className="text-2xl font-bold text-gray-900">{mediumGaps.length}</p>
-          <p className="text-sm text-gray-500">Medium</p>
+          <p className="text-2xl font-bold text-white">{mediumGaps.length}</p>
+          <p className="text-sm text-gray-400">Medium</p>
         </div>
         <div className="stat-card border-l-4 border-blue-500">
-          <p className="text-2xl font-bold text-gray-900">{lowGaps.length}</p>
-          <p className="text-sm text-gray-500">Low</p>
+          <p className="text-2xl font-bold text-white">{lowGaps.length}</p>
+          <p className="text-sm text-gray-400">Low</p>
         </div>
       </div>
 
@@ -212,7 +212,7 @@ export default function Gaps() {
                 onChange={(e) => setShowLowPriority(e.target.checked)}
                 className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
               />
-              <span className="text-sm text-gray-600">
+              <span className="text-sm text-gray-400">
                 Show low priority ({lowGaps.length})
               </span>
             </label>
@@ -227,7 +227,7 @@ export default function Gaps() {
                 onChange={(e) => setShowAcknowledged(e.target.checked)}
                 className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
               />
-              <span className="text-sm text-gray-600">
+              <span className="text-sm text-gray-400">
                 Show acknowledged ({acknowledgedCount})
               </span>
             </label>
@@ -237,14 +237,14 @@ export default function Gaps() {
         <div className="flex items-center space-x-2 ml-auto">
           <button
             onClick={expandAll}
-            className="text-sm text-gray-600 hover:text-gray-900"
+            className="text-sm text-gray-400 hover:text-white"
           >
             Expand all
           </button>
           <span className="text-gray-300">|</span>
           <button
             onClick={collapseAll}
-            className="text-sm text-gray-600 hover:text-gray-900"
+            className="text-sm text-gray-400 hover:text-white"
           >
             Collapse all
           </button>
@@ -252,7 +252,7 @@ export default function Gaps() {
       </div>
 
       {/* Results count */}
-      <p className="text-sm text-gray-500 mb-4">
+      <p className="text-sm text-gray-400 mb-4">
         Showing {gaps.length} {!showLowPriority && !priorityFilter && lowGaps.length > 0 ? 'actionable' : ''} gaps
         {!showLowPriority && !priorityFilter && lowGaps.length > 0 && (
           <span className="text-gray-400"> ({lowGaps.length} low priority hidden)</span>
@@ -263,8 +263,8 @@ export default function Gaps() {
       {gaps.length === 0 ? (
         <div className="text-center py-12 card">
           <AlertTriangle className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-lg font-medium text-gray-900">No matching gaps</h3>
-          <p className="mt-1 text-sm text-gray-500">Try adjusting your filters.</p>
+          <h3 className="mt-2 text-lg font-medium text-white">No matching gaps</h3>
+          <p className="mt-1 text-sm text-gray-400">Try adjusting your filters.</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -283,11 +283,11 @@ export default function Gaps() {
       {/* Acknowledged Gaps Section */}
       {showAcknowledged && acknowledgedGaps.length > 0 && (
         <div className="mt-8">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+          <h2 className="text-lg font-semibold text-white mb-4 flex items-center">
             <CheckCircle className="h-5 w-5 text-purple-500 mr-2" />
             Acknowledged Gaps
           </h2>
-          <p className="text-sm text-gray-500 mb-4">
+          <p className="text-sm text-gray-400 mb-4">
             These gaps have been acknowledged or risk-accepted. They will not appear in future scans unless reopened.
           </p>
           <div className="space-y-3">
@@ -351,11 +351,11 @@ function GapCard({
             <span className={`px-2 py-1 text-xs font-medium rounded-full ${priorityStyles[gap.priority]}`}>
               {gap.priority}
             </span>
-            <h3 className="font-semibold text-gray-900">
+            <h3 className="font-semibold text-white">
               {gap.technique_id}: {gap.technique_name}
             </h3>
           </div>
-          <p className="mt-1 text-sm text-gray-500">{gap.tactic_name}</p>
+          <p className="mt-1 text-sm text-gray-400">{gap.tactic_name}</p>
         </div>
         <div className="flex items-center space-x-2">
           <a
@@ -385,30 +385,30 @@ function GapCard({
           {gap.has_template && (
             <div className="mb-4 grid grid-cols-2 md:grid-cols-4 gap-4">
               {gap.severity_score && (
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <div className="flex items-center text-gray-500 text-xs mb-1">
+                <div className="bg-gray-700/30 rounded-lg p-3">
+                  <div className="flex items-center text-gray-400 text-xs mb-1">
                     <Shield className="h-3 w-3 mr-1" />
                     Severity
                   </div>
-                  <p className="text-lg font-semibold text-gray-900">{gap.severity_score}/10</p>
+                  <p className="text-lg font-semibold text-white">{gap.severity_score}/10</p>
                 </div>
               )}
               {gap.total_effort_hours && (
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <div className="flex items-center text-gray-500 text-xs mb-1">
+                <div className="bg-gray-700/30 rounded-lg p-3">
+                  <div className="flex items-center text-gray-400 text-xs mb-1">
                     <Clock className="h-3 w-3 mr-1" />
                     Total Effort
                   </div>
-                  <p className="text-lg font-semibold text-gray-900">{gap.total_effort_hours}h</p>
+                  <p className="text-lg font-semibold text-white">{gap.total_effort_hours}h</p>
                 </div>
               )}
               {gap.threat_actors && gap.threat_actors.length > 0 && (
-                <div className="bg-gray-50 rounded-lg p-3 col-span-2">
-                  <div className="flex items-center text-gray-500 text-xs mb-1">
+                <div className="bg-gray-700/30 rounded-lg p-3 col-span-2">
+                  <div className="flex items-center text-gray-400 text-xs mb-1">
                     <Users className="h-3 w-3 mr-1" />
                     Known Threat Actors
                   </div>
-                  <p className="text-sm font-medium text-gray-900">{gap.threat_actors.slice(0, 3).join(', ')}</p>
+                  <p className="text-sm font-medium text-white">{gap.threat_actors.slice(0, 3).join(', ')}</p>
                 </div>
               )}
             </div>
@@ -416,8 +416,8 @@ function GapCard({
 
           {/* Reason */}
           <div className="mb-4">
-            <h4 className="text-sm font-medium text-gray-700 mb-2">Why this is a gap</h4>
-            <p className="text-sm text-gray-600 bg-gray-50 rounded-lg p-3">
+            <h4 className="text-sm font-medium text-gray-400 mb-2">Why this is a gap</h4>
+            <p className="text-sm text-gray-400 bg-gray-700/30 rounded-lg p-3">
               {gap.reason || 'No detections found covering this technique.'}
             </p>
           </div>
@@ -425,8 +425,8 @@ function GapCard({
           {/* Business Impact */}
           {gap.business_impact && gap.business_impact.length > 0 && (
             <div className="mb-4">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">Business Impact</h4>
-              <ul className="text-sm text-gray-600 bg-red-50 rounded-lg p-3 space-y-1">
+              <h4 className="text-sm font-medium text-gray-400 mb-2">Business Impact</h4>
+              <ul className="text-sm text-gray-400 bg-red-900/30 rounded-lg p-3 space-y-1">
                 {gap.business_impact.map((impact, idx) => (
                   <li key={idx} className="flex items-start">
                     <span className="text-red-500 mr-2">•</span>
@@ -440,12 +440,12 @@ function GapCard({
           {/* Data Sources */}
           {gap.data_sources && gap.data_sources.length > 0 && (
             <div className="mb-4">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">Recommended Data Sources</h4>
+              <h4 className="text-sm font-medium text-gray-400 mb-2">Recommended Data Sources</h4>
               <div className="flex flex-wrap gap-2">
                 {gap.data_sources.map((source) => (
                   <span
                     key={source}
-                    className="px-3 py-1 text-sm bg-blue-50 text-blue-700 rounded-lg"
+                    className="px-3 py-1 text-sm bg-blue-900/30 text-blue-400 rounded-lg"
                   >
                     {source}
                   </span>
@@ -457,10 +457,10 @@ function GapCard({
           {/* Recommended Strategies from Template */}
           {gap.recommended_strategies && gap.recommended_strategies.length > 0 ? (
             <div className="mb-4">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">
+              <h4 className="text-sm font-medium text-gray-400 mb-2">
                 Recommended Detection Strategies
                 {gap.quick_win_strategy && (
-                  <span className="ml-2 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                  <span className="ml-2 text-xs bg-green-900/30 text-green-400 px-2 py-0.5 rounded-full">
                     <Zap className="h-3 w-3 inline mr-1" />
                     Quick win available
                   </span>
@@ -480,9 +480,9 @@ function GapCard({
             </div>
           ) : gap.recommended_detections && gap.recommended_detections.length > 0 ? (
             <div className="mb-4">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">Remediation Suggestions</h4>
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <ul className="text-sm text-green-800 space-y-2">
+              <h4 className="text-sm font-medium text-gray-400 mb-2">Remediation Suggestions</h4>
+              <div className="bg-green-900/30 border border-green-200 rounded-lg p-4">
+                <ul className="text-sm text-green-400 space-y-2">
                   {gap.recommended_detections.map((detection, idx) => (
                     <li key={idx} className="flex items-start">
                       <span className="mr-2">{idx + 1}.</span>
@@ -494,9 +494,9 @@ function GapCard({
             </div>
           ) : (
             <div className="mb-4">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">Remediation Suggestions</h4>
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <ul className="text-sm text-green-800 space-y-2">
+              <h4 className="text-sm font-medium text-gray-400 mb-2">Remediation Suggestions</h4>
+              <div className="bg-green-900/30 border border-green-200 rounded-lg p-4">
+                <ul className="text-sm text-green-400 space-y-2">
                   <li className="flex items-start">
                     <span className="mr-2">1.</span>
                     <span>Create EventBridge rule monitoring relevant CloudTrail events</span>
@@ -581,30 +581,30 @@ function AcknowledgedGapCard({
   const isRiskAccepted = gap.status === 'risk_accepted'
 
   return (
-    <div className={`card border-l-4 ${isRiskAccepted ? 'border-purple-500' : 'border-gray-400'} bg-gray-50`}>
+    <div className={`card border-l-4 ${isRiskAccepted ? 'border-purple-500' : 'border-gray-400'} bg-gray-700/30`}>
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="flex items-center space-x-3">
             {isRiskAccepted ? (
-              <span className="px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-800 border border-purple-200 flex items-center">
+              <span className="px-2 py-1 text-xs font-medium rounded-full bg-purple-900/30 text-purple-400 border border-purple-200 flex items-center">
                 <ShieldAlert className="h-3 w-3 mr-1" />
                 Risk Accepted
               </span>
             ) : (
-              <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-200 text-gray-700 border border-gray-300 flex items-center">
+              <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-700/30 text-gray-400 border border-gray-300 flex items-center">
                 <CheckCircle className="h-3 w-3 mr-1" />
                 Acknowledged
               </span>
             )}
-            <h3 className="font-semibold text-gray-700">
+            <h3 className="font-semibold text-gray-400">
               {gap.technique_id}: {gap.technique_name || 'Unknown technique'}
             </h3>
           </div>
-          <p className="mt-1 text-sm text-gray-500">{gap.tactic_name || 'Unknown tactic'}</p>
+          <p className="mt-1 text-sm text-gray-400">{gap.tactic_name || 'Unknown tactic'}</p>
 
           {/* Show reason if available */}
           {(gap.risk_acceptance_reason || gap.remediation_notes) && (
-            <div className="mt-2 text-sm text-gray-600 bg-white rounded p-2 border border-gray-200">
+            <div className="mt-2 text-sm text-gray-400 bg-gray-700 rounded p-2 border border-gray-200">
               <span className="font-medium">Note: </span>
               {gap.risk_acceptance_reason || gap.remediation_notes}
             </div>
@@ -645,9 +645,9 @@ function AcknowledgedGapCard({
 }
 
 const effortColors: Record<string, string> = {
-  low: 'bg-green-100 text-green-700',
-  medium: 'bg-yellow-100 text-yellow-700',
-  high: 'bg-orange-100 text-orange-700',
+  low: 'bg-green-900/30 text-green-400',
+  medium: 'bg-yellow-900/30 text-yellow-400',
+  high: 'bg-orange-900/30 text-orange-400',
 }
 
 function StrategyCard({
@@ -667,23 +667,23 @@ function StrategyCard({
 
   return (
     <>
-      <div className={`border rounded-lg p-4 ${isQuickWin ? 'border-green-300 bg-green-50' : 'border-gray-200 bg-white'}`}>
+      <div className={`border rounded-lg p-4 ${isQuickWin ? 'border-green-300 bg-green-900/30' : 'border-gray-200 bg-gray-700/30'}`}>
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-gray-500">#{index}</span>
-              <h5 className="font-medium text-gray-900">{strategy.name}</h5>
+              <span className="text-sm font-medium text-gray-400">#{index}</span>
+              <h5 className="font-medium text-white">{strategy.name}</h5>
               {isQuickWin && (
-                <span className="text-xs bg-green-200 text-green-800 px-2 py-0.5 rounded-full flex items-center">
+                <span className="text-xs bg-green-900/30 text-green-400 px-2 py-0.5 rounded-full flex items-center">
                   <Zap className="h-3 w-3 mr-1" />
                   Quick Win
                 </span>
               )}
             </div>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-sm text-gray-400 mt-1">
               {strategy.detection_type} via {strategy.cloud_provider === 'gcp' ? strategy.gcp_service : strategy.aws_service}
               {strategy.cloud_provider && (
-                <span className={`ml-2 text-xs px-1.5 py-0.5 rounded ${strategy.cloud_provider === 'gcp' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
+                <span className={`ml-2 text-xs px-1.5 py-0.5 rounded ${strategy.cloud_provider === 'gcp' ? 'bg-blue-900/30 text-blue-400' : 'bg-orange-900/30 text-orange-400'}`}>
                   {strategy.cloud_provider.toUpperCase()}
                 </span>
               )}
@@ -692,14 +692,14 @@ function StrategyCard({
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-3 text-xs">
-          <span className={`px-2 py-1 rounded ${effortColors[strategy.implementation_effort] || 'bg-gray-100 text-gray-700'}`}>
+          <span className={`px-2 py-1 rounded ${effortColors[strategy.implementation_effort] || 'bg-gray-700/30 text-gray-400'}`}>
             {strategy.implementation_effort} effort
           </span>
-          <span className="text-gray-500 flex items-center">
+          <span className="text-gray-400 flex items-center">
             <Clock className="h-3 w-3 mr-1" />
             {strategy.estimated_time}
           </span>
-          <span className="text-gray-500">
+          <span className="text-gray-400">
             Coverage: {strategy.detection_coverage}
           </span>
         </div>
@@ -709,7 +709,7 @@ function StrategyCard({
           {strategy.has_query && (
             <button
               onClick={() => setShowModal(true)}
-              className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200 transition-colors cursor-pointer"
+              className="text-xs bg-blue-900/30 text-blue-400 px-2 py-1 rounded hover:bg-blue-900/50 transition-colors cursor-pointer"
             >
               Query Available
             </button>
@@ -717,7 +717,7 @@ function StrategyCard({
           {strategy.has_cloudformation && (
             <button
               onClick={() => setShowModal(true)}
-              className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded hover:bg-purple-200 transition-colors cursor-pointer"
+              className="text-xs bg-purple-900/30 text-purple-400 px-2 py-1 rounded hover:bg-purple-900/50 transition-colors cursor-pointer"
             >
               CloudFormation
             </button>
@@ -725,7 +725,7 @@ function StrategyCard({
           {strategy.has_terraform && (
             <button
               onClick={() => setShowModal(true)}
-              className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded hover:bg-indigo-200 transition-colors cursor-pointer"
+              className="text-xs bg-indigo-900/30 text-indigo-400 px-2 py-1 rounded hover:bg-indigo-900/50 transition-colors cursor-pointer"
             >
               AWS Terraform
             </button>
@@ -733,7 +733,7 @@ function StrategyCard({
           {strategy.has_gcp_query && (
             <button
               onClick={() => setShowModal(true)}
-              className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200 transition-colors cursor-pointer"
+              className="text-xs bg-blue-900/30 text-blue-400 px-2 py-1 rounded hover:bg-blue-900/50 transition-colors cursor-pointer"
             >
               GCP Query
             </button>
@@ -741,7 +741,7 @@ function StrategyCard({
           {strategy.has_gcp_terraform && (
             <button
               onClick={() => setShowModal(true)}
-              className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200 transition-colors cursor-pointer"
+              className="text-xs bg-blue-900/30 text-blue-400 px-2 py-1 rounded hover:bg-blue-900/50 transition-colors cursor-pointer"
             >
               GCP Terraform
             </button>
@@ -749,7 +749,7 @@ function StrategyCard({
           {hasArtefacts && (
             <button
               onClick={() => setShowModal(true)}
-              className="text-xs text-blue-600 hover:text-blue-800 underline ml-2"
+              className="text-xs text-blue-400 hover:text-blue-300 underline ml-2"
             >
               View Details
             </button>

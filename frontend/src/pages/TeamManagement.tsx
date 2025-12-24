@@ -181,8 +181,8 @@ export default function TeamManagement() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Team Management</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-white">Team Management</h1>
+          <p className="mt-1 text-sm text-gray-400">
             Manage your organization's team members and permissions
           </p>
         </div>
@@ -199,24 +199,24 @@ export default function TeamManagement() {
 
       {/* Error message */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+        <div className="bg-red-900/30 border border-red-700 text-red-400 px-4 py-3 rounded-lg">
           {error}
         </div>
       )}
 
       {/* Members list */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-700 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-700">
           <div className="flex items-center">
             <Users className="h-5 w-5 text-gray-400 mr-2" />
-            <h2 className="text-lg font-medium text-gray-900">Team Members</h2>
-            <span className="ml-2 px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-600 rounded-full">
+            <h2 className="text-lg font-medium text-white">Team Members</h2>
+            <span className="ml-2 px-2 py-0.5 text-xs font-medium bg-gray-700/30 text-gray-400 rounded-full">
               {members.length}
             </span>
           </div>
         </div>
 
-        <div className="divide-y divide-gray-200">
+        <div className="divide-y divide-gray-700">
           {members.map((member) => {
             const RoleIcon = roleConfig[member.role].icon
             const isCurrentUser = member.user_id === user?.id
@@ -224,9 +224,9 @@ export default function TeamManagement() {
               (isOwner || (currentUserRole === 'admin' && !['owner', 'admin'].includes(member.role)))
 
             return (
-              <div key={member.id} className="px-6 py-4 flex items-center justify-between hover:bg-gray-50">
+              <div key={member.id} className="px-6 py-4 flex items-center justify-between hover:bg-gray-700">
                 <div className="flex items-center">
-                  <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                  <div className="h-10 w-10 rounded-full bg-gray-700/30 flex items-center justify-center">
                     {member.avatar_url ? (
                       <img
                         src={member.avatar_url}
@@ -234,28 +234,28 @@ export default function TeamManagement() {
                         className="h-10 w-10 rounded-full"
                       />
                     ) : (
-                      <User className="h-5 w-5 text-gray-500" />
+                      <User className="h-5 w-5 text-gray-400" />
                     )}
                   </div>
                   <div className="ml-4">
                     <div className="flex items-center">
-                      <span className="text-sm font-medium text-gray-900">
+                      <span className="text-sm font-medium text-white">
                         {member.full_name}
                       </span>
                       {isCurrentUser && (
-                        <span className="ml-2 px-2 py-0.5 text-xs font-medium bg-cyan-100 text-cyan-700 rounded-full">
+                        <span className="ml-2 px-2 py-0.5 text-xs font-medium bg-cyan-900/30 text-cyan-400 rounded-full">
                           You
                         </span>
                       )}
                     </div>
-                    <span className="text-sm text-gray-500">{member.email}</span>
+                    <span className="text-sm text-gray-400">{member.email}</span>
                   </div>
                 </div>
 
                 <div className="flex items-center space-x-4">
                   <div className="flex items-center">
                     <RoleIcon className={clsx('h-4 w-4 mr-1', roleConfig[member.role].color)} />
-                    <span className="text-sm text-gray-600">{roleConfig[member.role].label}</span>
+                    <span className="text-sm text-gray-400">{roleConfig[member.role].label}</span>
                   </div>
 
                   <span className="text-xs text-gray-400">
@@ -266,14 +266,14 @@ export default function TeamManagement() {
                     <div className="relative">
                       <button
                         onClick={() => setOpenMenuId(openMenuId === member.id ? null : member.id)}
-                        className="p-1 rounded-md hover:bg-gray-100"
+                        className="p-1 rounded-md hover:bg-gray-700"
                       >
                         <MoreVertical className="h-4 w-4 text-gray-400" />
                       </button>
 
                       {openMenuId === member.id && (
-                        <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
-                          <div className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wide">
+                        <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-700 py-1 z-10">
+                          <div className="px-3 py-2 text-xs font-medium text-gray-400 uppercase tracking-wide">
                             Change Role
                           </div>
                           {(['admin', 'member', 'viewer'] as UserRole[]).map((role) => (
@@ -287,10 +287,10 @@ export default function TeamManagement() {
                               className={clsx(
                                 'w-full px-3 py-2 text-left text-sm flex items-center',
                                 role === member.role
-                                  ? 'bg-gray-50 text-gray-400 cursor-not-allowed'
+                                  ? 'bg-gray-700/30 text-gray-400 cursor-not-allowed'
                                   : (role === 'admin' && !isOwner)
                                     ? 'text-gray-300 cursor-not-allowed'
-                                    : 'hover:bg-gray-50 text-gray-700'
+                                    : 'hover:bg-gray-700 text-white'
                               )}
                             >
                               {roleConfig[role].label}
@@ -299,10 +299,10 @@ export default function TeamManagement() {
                               )}
                             </button>
                           ))}
-                          <div className="border-t border-gray-200 mt-1 pt-1">
+                          <div className="border-t border-gray-700 mt-1 pt-1">
                             <button
                               onClick={() => handleRemoveMember(member.id)}
-                              className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center"
+                              className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-red-900/30 flex items-center"
                             >
                               <Trash2 className="h-4 w-4 mr-2" />
                               Remove from team
@@ -321,30 +321,30 @@ export default function TeamManagement() {
 
       {/* Pending Invites */}
       {canManageTeam && invites.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-700 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-700">
             <div className="flex items-center">
               <Mail className="h-5 w-5 text-gray-400 mr-2" />
-              <h2 className="text-lg font-medium text-gray-900">Pending Invites</h2>
-              <span className="ml-2 px-2 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-700 rounded-full">
+              <h2 className="text-lg font-medium text-white">Pending Invites</h2>
+              <span className="ml-2 px-2 py-0.5 text-xs font-medium bg-yellow-900/30 text-yellow-400 rounded-full">
                 {invites.length}
               </span>
             </div>
           </div>
 
-          <div className="divide-y divide-gray-200">
+          <div className="divide-y divide-gray-700">
             {invites.map((invite) => {
               const RoleIcon = roleConfig[invite.role].icon
 
               return (
-                <div key={invite.id} className="px-6 py-4 flex items-center justify-between hover:bg-gray-50">
+                <div key={invite.id} className="px-6 py-4 flex items-center justify-between hover:bg-gray-700">
                   <div className="flex items-center">
-                    <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center">
+                    <div className="h-10 w-10 rounded-full bg-gray-700/30 flex items-center justify-center">
                       <Mail className="h-5 w-5 text-gray-400" />
                     </div>
                     <div className="ml-4">
-                      <span className="text-sm font-medium text-gray-900">{invite.email}</span>
-                      <div className="flex items-center text-xs text-gray-500">
+                      <span className="text-sm font-medium text-white">{invite.email}</span>
+                      <div className="flex items-center text-xs text-gray-400">
                         <span>Invited by {invite.invited_by_name}</span>
                         <span className="mx-1">-</span>
                         <Clock className="h-3 w-3 mr-1" />
@@ -356,12 +356,12 @@ export default function TeamManagement() {
                   <div className="flex items-center space-x-4">
                     <div className="flex items-center">
                       <RoleIcon className={clsx('h-4 w-4 mr-1', roleConfig[invite.role].color)} />
-                      <span className="text-sm text-gray-600">{roleConfig[invite.role].label}</span>
+                      <span className="text-sm text-gray-400">{roleConfig[invite.role].label}</span>
                     </div>
 
                     <button
                       onClick={() => handleCancelInvite(invite.id)}
-                      className="text-sm text-red-600 hover:text-red-700"
+                      className="text-sm text-red-400 hover:text-red-300"
                     >
                       Cancel
                     </button>
@@ -374,20 +374,20 @@ export default function TeamManagement() {
       )}
 
       {/* Role Reference */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-medium text-gray-900">Role Permissions</h2>
+      <div className="bg-white rounded-xl shadow-sm border border-gray-700 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-700">
+          <h2 className="text-lg font-medium text-white">Role Permissions</h2>
         </div>
         <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {(Object.entries(roleConfig) as [UserRole, typeof roleConfig[UserRole]][]).map(([role, config]) => {
             const Icon = config.icon
             return (
-              <div key={role} className="p-4 bg-gray-50 rounded-lg">
+              <div key={role} className="p-4 bg-gray-700/30 rounded-lg">
                 <div className="flex items-center mb-2">
                   <Icon className={clsx('h-5 w-5 mr-2', config.color)} />
-                  <span className="font-medium text-gray-900">{config.label}</span>
+                  <span className="font-medium text-white">{config.label}</span>
                 </div>
-                <p className="text-sm text-gray-500">{config.description}</p>
+                <p className="text-sm text-gray-400">{config.description}</p>
               </div>
             )
           })}
@@ -398,11 +398,11 @@ export default function TeamManagement() {
       {showInviteModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-medium text-gray-900">Invite Team Member</h2>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
+              <h2 className="text-lg font-medium text-white">Invite Team Member</h2>
               <button
                 onClick={() => setShowInviteModal(false)}
-                className="text-gray-400 hover:text-gray-500"
+                className="text-gray-400 hover:text-gray-400"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -455,7 +455,7 @@ export default function TeamManagement() {
               </div>
 
               {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-lg text-sm">
+                <div className="bg-red-900/30 border border-red-700 text-red-400 px-4 py-2 rounded-lg text-sm">
                   {error}
                 </div>
               )}
@@ -464,7 +464,7 @@ export default function TeamManagement() {
                 <button
                   type="button"
                   onClick={() => setShowInviteModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                  className="px-4 py-2 text-sm font-medium text-gray-400 bg-white border border-gray-700 rounded-lg hover:bg-gray-700"
                 >
                   Cancel
                 </button>

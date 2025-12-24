@@ -223,13 +223,13 @@ export default function AdminMitreData() {
 
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
-      completed: 'bg-green-100 text-green-800',
-      running: 'bg-blue-100 text-blue-800',
-      failed: 'bg-red-100 text-red-800',
-      pending: 'bg-yellow-100 text-yellow-800',
+      completed: 'bg-green-900/30 text-green-400',
+      running: 'bg-blue-900/30 text-blue-400',
+      failed: 'bg-red-900/30 text-red-400',
+      pending: 'bg-yellow-900/30 text-yellow-400',
     }
     return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${styles[status] || 'bg-gray-100 text-gray-800'}`}>
+      <span className={`px-2 py-1 rounded-full text-xs font-medium ${styles[status] || 'bg-gray-700/30 text-gray-400'}`}>
         {status}
       </span>
     )
@@ -237,29 +237,29 @@ export default function AdminMitreData() {
 
   if (!isInitialised || loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-900">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
+      <header className="bg-gray-800 shadow-sm border-b border-gray-700">
         <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <Link
                 to="/admin/dashboard"
-                className="text-gray-500 hover:text-gray-700 flex items-center"
+                className="text-gray-400 hover:text-white flex items-center"
               >
                 <ChevronLeft className="h-5 w-5 mr-1" />
                 Back
               </Link>
               <div className="flex items-center">
-                <Database className="h-6 w-6 text-indigo-600 mr-2" />
-                <h1 className="text-xl font-semibold text-gray-900">
+                <Database className="h-6 w-6 text-indigo-400 mr-2" />
+                <h1 className="text-xl font-semibold text-white">
                   MITRE ATT&CK Data
                 </h1>
               </div>
@@ -282,8 +282,8 @@ export default function AdminMitreData() {
           <div
             className={`mb-6 p-4 rounded-lg flex items-center ${
               message.type === 'success'
-                ? 'bg-green-50 text-green-800'
-                : 'bg-red-50 text-red-800'
+                ? 'bg-green-900/30 text-green-400'
+                : 'bg-red-900/30 text-red-400'
             }`}
           >
             {message.type === 'success' ? (
@@ -296,54 +296,54 @@ export default function AdminMitreData() {
         )}
 
         {/* Status Card */}
-        <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+        <div className="bg-gray-800 rounded-lg shadow-sm border border-gray-700 p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Sync Status</h2>
+            <h2 className="text-lg font-semibold text-white">Sync Status</h2>
             {status?.is_synced ? (
-              <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+              <span className="px-3 py-1 bg-green-900/30 text-green-400 rounded-full text-sm font-medium">
                 Data Synced
               </span>
             ) : (
-              <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium">
+              <span className="px-3 py-1 bg-yellow-900/30 text-yellow-400 rounded-full text-sm font-medium">
                 Not Synced
               </span>
             )}
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <div className="flex items-center text-gray-500 mb-1">
+            <div className="p-4 bg-gray-700/30 rounded-lg">
+              <div className="flex items-center text-gray-400 mb-1">
                 <Clock className="h-4 w-4 mr-1" />
                 <span className="text-sm">Last Sync</span>
               </div>
-              <p className="text-lg font-semibold text-gray-900">
+              <p className="text-lg font-semibold text-white">
                 {formatDate(status?.last_sync_at || null)}
               </p>
             </div>
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <div className="flex items-center text-gray-500 mb-1">
+            <div className="p-4 bg-gray-700/30 rounded-lg">
+              <div className="flex items-center text-gray-400 mb-1">
                 <Database className="h-4 w-4 mr-1" />
                 <span className="text-sm">MITRE Version</span>
               </div>
-              <p className="text-lg font-semibold text-gray-900">
+              <p className="text-lg font-semibold text-white">
                 {status?.mitre_version || 'N/A'}
               </p>
             </div>
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <div className="flex items-center text-gray-500 mb-1">
+            <div className="p-4 bg-gray-700/30 rounded-lg">
+              <div className="flex items-center text-gray-400 mb-1">
                 <Calendar className="h-4 w-4 mr-1" />
                 <span className="text-sm">STIX Version</span>
               </div>
-              <p className="text-lg font-semibold text-gray-900">
+              <p className="text-lg font-semibold text-white">
                 {status?.stix_version || 'N/A'}
               </p>
             </div>
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <div className="flex items-center text-gray-500 mb-1">
+            <div className="p-4 bg-gray-700/30 rounded-lg">
+              <div className="flex items-center text-gray-400 mb-1">
                 <RefreshCw className="h-4 w-4 mr-1" />
                 <span className="text-sm">Last Status</span>
               </div>
-              <p className="text-lg font-semibold text-gray-900">
+              <p className="text-lg font-semibold text-white">
                 {status?.last_sync_status || 'N/A'}
               </p>
             </div>
@@ -351,21 +351,21 @@ export default function AdminMitreData() {
         </div>
 
         {/* Schedule Configuration Card */}
-        <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Automatic Sync Schedule</h2>
+        <div className="bg-gray-800 rounded-lg shadow-sm border border-gray-700 p-6 mb-6">
+          <h2 className="text-lg font-semibold text-white mb-4">Automatic Sync Schedule</h2>
 
           <div className="space-y-4">
             {/* Enable Toggle */}
             <div className="flex items-center justify-between">
               <div>
-                <label className="text-sm font-medium text-gray-700">Enable automatic sync</label>
-                <p className="text-sm text-gray-500">Automatically sync MITRE data on a schedule</p>
+                <label className="text-sm font-medium text-white">Enable automatic sync</label>
+                <p className="text-sm text-gray-400">Automatically sync MITRE data on a schedule</p>
               </div>
               <button
                 type="button"
                 onClick={() => setScheduleEnabled(!scheduleEnabled)}
                 className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 ${
-                  scheduleEnabled ? 'bg-indigo-600' : 'bg-gray-200'
+                  scheduleEnabled ? 'bg-indigo-600' : 'bg-gray-600'
                 }`}
               >
                 <span
@@ -378,11 +378,11 @@ export default function AdminMitreData() {
 
             {/* Schedule Options (only shown when enabled) */}
             {scheduleEnabled && (
-              <div className="border-t pt-4 space-y-4">
+              <div className="border-t border-gray-700 pt-4 space-y-4">
                 {/* Frequency */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Frequency</label>
+                    <label className="block text-sm font-medium text-white mb-1">Frequency</label>
                     <select
                       value={scheduleFrequency}
                       onChange={(e) => {
@@ -391,7 +391,7 @@ export default function AdminMitreData() {
                         if (e.target.value === 'weekly') setScheduleDay(0)
                         else if (e.target.value === 'monthly') setScheduleDay(1)
                       }}
-                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     >
                       <option value="daily">Daily</option>
                       <option value="weekly">Weekly</option>
@@ -402,11 +402,11 @@ export default function AdminMitreData() {
                   {/* Day Selector (for weekly/monthly) */}
                   {scheduleFrequency === 'weekly' && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Day of Week</label>
+                      <label className="block text-sm font-medium text-white mb-1">Day of Week</label>
                       <select
                         value={scheduleDay}
                         onChange={(e) => setScheduleDay(parseInt(e.target.value))}
-                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                       >
                         <option value={0}>Sunday</option>
                         <option value={1}>Monday</option>
@@ -421,11 +421,11 @@ export default function AdminMitreData() {
 
                   {scheduleFrequency === 'monthly' && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Day of Month</label>
+                      <label className="block text-sm font-medium text-white mb-1">Day of Month</label>
                       <select
                         value={scheduleDay}
                         onChange={(e) => setScheduleDay(parseInt(e.target.value))}
-                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                       >
                         {Array.from({ length: 28 }, (_, i) => i + 1).map((day) => (
                           <option key={day} value={day}>{day}</option>
@@ -436,11 +436,11 @@ export default function AdminMitreData() {
 
                   {/* Time Selector */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Time (UTC)</label>
+                    <label className="block text-sm font-medium text-white mb-1">Time (UTC)</label>
                     <select
                       value={scheduleHour}
                       onChange={(e) => setScheduleHour(parseInt(e.target.value))}
-                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     >
                       {Array.from({ length: 24 }, (_, i) => i).map((hour) => (
                         <option key={hour} value={hour}>
@@ -453,8 +453,8 @@ export default function AdminMitreData() {
 
                 {/* Next Scheduled Sync */}
                 {schedule?.next_run_at && (
-                  <div className="flex items-center text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
-                    <Calendar className="h-4 w-4 mr-2 text-indigo-500" />
+                  <div className="flex items-center text-sm text-gray-400 bg-gray-700/30 p-3 rounded-lg">
+                    <Calendar className="h-4 w-4 mr-2 text-indigo-400" />
                     <span>
                       Next scheduled sync:{' '}
                       <strong>{new Date(schedule.next_run_at).toLocaleString()}</strong> UTC
@@ -486,55 +486,55 @@ export default function AdminMitreData() {
 
         {/* Statistics Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white rounded-lg shadow-sm border p-4">
+          <div className="bg-gray-800 rounded-lg shadow-sm border border-gray-700 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Threat Groups</p>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-sm text-gray-400">Threat Groups</p>
+                <p className="text-2xl font-bold text-white">
                   {status?.total_groups || 0}
                 </p>
               </div>
-              <Users className="h-8 w-8 text-indigo-500" />
+              <Users className="h-8 w-8 text-indigo-400" />
             </div>
           </div>
-          <div className="bg-white rounded-lg shadow-sm border p-4">
+          <div className="bg-gray-800 rounded-lg shadow-sm border border-gray-700 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Campaigns</p>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-sm text-gray-400">Campaigns</p>
+                <p className="text-2xl font-bold text-white">
                   {status?.total_campaigns || 0}
                 </p>
               </div>
-              <Target className="h-8 w-8 text-orange-500" />
+              <Target className="h-8 w-8 text-orange-400" />
             </div>
           </div>
-          <div className="bg-white rounded-lg shadow-sm border p-4">
+          <div className="bg-gray-800 rounded-lg shadow-sm border border-gray-700 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Software</p>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-sm text-gray-400">Software</p>
+                <p className="text-2xl font-bold text-white">
                   {status?.total_software || 0}
                 </p>
               </div>
-              <Package className="h-8 w-8 text-green-500" />
+              <Package className="h-8 w-8 text-green-400" />
             </div>
           </div>
-          <div className="bg-white rounded-lg shadow-sm border p-4">
+          <div className="bg-gray-800 rounded-lg shadow-sm border border-gray-700 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Relationships</p>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-sm text-gray-400">Relationships</p>
+                <p className="text-2xl font-bold text-white">
                   {status?.total_relationships || 0}
                 </p>
               </div>
-              <LinkIcon className="h-8 w-8 text-purple-500" />
+              <LinkIcon className="h-8 w-8 text-purple-400" />
             </div>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="bg-white rounded-lg shadow-sm border">
-          <div className="border-b">
+        <div className="bg-gray-800 rounded-lg shadow-sm border border-gray-700">
+          <div className="border-b border-gray-700">
             <nav className="flex -mb-px">
               {(['overview', 'groups', 'campaigns', 'history'] as TabType[]).map((tab) => (
                 <button
@@ -542,8 +542,8 @@ export default function AdminMitreData() {
                   onClick={() => setActiveTab(tab)}
                   className={`px-6 py-4 text-sm font-medium border-b-2 ${
                     activeTab === tab
-                      ? 'border-indigo-600 text-indigo-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                      ? 'border-indigo-600 text-indigo-400'
+                      : 'border-transparent text-gray-400 hover:text-white'
                   }`}
                 >
                   {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -554,9 +554,9 @@ export default function AdminMitreData() {
 
           <div className="p-6">
             {activeTab === 'overview' && (
-              <div className="text-center py-12 text-gray-500">
-                <Database className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
+              <div className="text-center py-12 text-gray-400">
+                <Database className="h-12 w-12 mx-auto mb-4 text-gray-600" />
+                <h3 className="text-lg font-medium text-white mb-2">
                   MITRE ATT&CK Threat Intelligence
                 </h3>
                 <p className="max-w-md mx-auto">
@@ -577,41 +577,41 @@ export default function AdminMitreData() {
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && fetchGroups()}
-                      className="pl-10 pr-4 py-2 w-full border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      className="pl-10 pr-4 py-2 w-full bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     />
                   </div>
                 </div>
 
                 {groups.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
+                  <div className="text-center py-8 text-gray-400">
                     No threat groups found. Click "Sync Now" to download data.
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
+                    <table className="min-w-full divide-y divide-gray-700">
+                      <thead className="bg-gray-700/30">
                         <tr>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Aliases</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Last Seen</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Link</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">ID</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Name</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Aliases</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Last Seen</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Link</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-200">
+                      <tbody className="divide-y divide-gray-700">
                         {groups.map((group) => (
-                          <tr key={group.id} className="hover:bg-gray-50">
-                            <td className="px-4 py-3 text-sm font-mono text-gray-900">
+                          <tr key={group.id} className="hover:bg-gray-700">
+                            <td className="px-4 py-3 text-sm font-mono text-white">
                               {group.external_id}
                             </td>
-                            <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                            <td className="px-4 py-3 text-sm font-medium text-white">
                               {group.name}
                             </td>
-                            <td className="px-4 py-3 text-sm text-gray-500">
+                            <td className="px-4 py-3 text-sm text-gray-400">
                               {group.aliases.slice(0, 3).join(', ')}
                               {group.aliases.length > 3 && ` +${group.aliases.length - 3} more`}
                             </td>
-                            <td className="px-4 py-3 text-sm text-gray-500">
+                            <td className="px-4 py-3 text-sm text-gray-400">
                               {group.last_seen ? new Date(group.last_seen).getFullYear() : '-'}
                             </td>
                             <td className="px-4 py-3">
@@ -619,7 +619,7 @@ export default function AdminMitreData() {
                                 href={group.mitre_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-indigo-600 hover:text-indigo-800"
+                                className="text-indigo-400 hover:text-indigo-300"
                               >
                                 <ExternalLink className="h-4 w-4" />
                               </a>
@@ -644,60 +644,60 @@ export default function AdminMitreData() {
                       value={campaignSearch}
                       onChange={(e) => setCampaignSearch(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && fetchCampaigns()}
-                      className="pl-10 pr-4 py-2 w-full border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      className="pl-10 pr-4 py-2 w-full bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     />
                   </div>
                 </div>
 
                 {campaigns.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
+                  <div className="text-center py-8 text-gray-400">
                     No campaigns found. {campaignSearch ? 'Try a different search term.' : 'Click "Sync Now" to download data.'}
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
+                    <table className="min-w-full divide-y divide-gray-700">
+                      <thead className="bg-gray-700/30">
                         <tr>
                           <th
                             onClick={() => handleCampaignSort('external_id')}
-                            className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                            className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:bg-gray-700"
                           >
                             ID <SortIcon field="external_id" />
                           </th>
                           <th
                             onClick={() => handleCampaignSort('name')}
-                            className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                            className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:bg-gray-700"
                           >
                             Name <SortIcon field="name" />
                           </th>
                           <th
                             onClick={() => handleCampaignSort('first_seen')}
-                            className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                            className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:bg-gray-700"
                           >
                             First Seen <SortIcon field="first_seen" />
                           </th>
                           <th
                             onClick={() => handleCampaignSort('last_seen')}
-                            className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                            className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:bg-gray-700"
                           >
                             Last Seen <SortIcon field="last_seen" />
                           </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Link</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Link</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-200">
+                      <tbody className="divide-y divide-gray-700">
                         {campaigns.map((campaign) => (
-                          <tr key={campaign.id} className="hover:bg-gray-50">
-                            <td className="px-4 py-3 text-sm font-mono text-gray-900">
+                          <tr key={campaign.id} className="hover:bg-gray-700">
+                            <td className="px-4 py-3 text-sm font-mono text-white">
                               {campaign.external_id}
                             </td>
-                            <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                            <td className="px-4 py-3 text-sm font-medium text-white">
                               {campaign.name}
                             </td>
-                            <td className="px-4 py-3 text-sm text-gray-500">
+                            <td className="px-4 py-3 text-sm text-gray-400">
                               {campaign.first_seen ? new Date(campaign.first_seen).getFullYear() : '-'}
                             </td>
-                            <td className="px-4 py-3 text-sm text-gray-500">
+                            <td className="px-4 py-3 text-sm text-gray-400">
                               {campaign.last_seen ? new Date(campaign.last_seen).getFullYear() : '-'}
                             </td>
                             <td className="px-4 py-3">
@@ -705,7 +705,7 @@ export default function AdminMitreData() {
                                 href={campaign.mitre_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-indigo-600 hover:text-indigo-800"
+                                className="text-indigo-400 hover:text-indigo-300"
                               >
                                 <ExternalLink className="h-4 w-4" />
                               </a>
@@ -722,45 +722,45 @@ export default function AdminMitreData() {
             {activeTab === 'history' && (
               <div>
                 {syncHistory.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
+                  <div className="text-center py-8 text-gray-400">
                     No sync history yet. Click "Sync Now" to start.
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
+                    <table className="min-w-full divide-y divide-gray-700">
+                      <thead className="bg-gray-700/30">
                         <tr>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Started</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Version</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Trigger</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Duration</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Groups</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Campaigns</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Started</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Status</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Version</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Trigger</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Duration</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Groups</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Campaigns</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-200">
+                      <tbody className="divide-y divide-gray-700">
                         {syncHistory.map((h) => (
-                          <tr key={h.id} className="hover:bg-gray-50">
-                            <td className="px-4 py-3 text-sm text-gray-900">
+                          <tr key={h.id} className="hover:bg-gray-700">
+                            <td className="px-4 py-3 text-sm text-white">
                               {formatDate(h.started_at)}
                             </td>
                             <td className="px-4 py-3">
                               {getStatusBadge(h.status)}
                             </td>
-                            <td className="px-4 py-3 text-sm text-gray-500">
+                            <td className="px-4 py-3 text-sm text-gray-400">
                               {h.mitre_version || '-'}
                             </td>
-                            <td className="px-4 py-3 text-sm text-gray-500 capitalize">
+                            <td className="px-4 py-3 text-sm text-gray-400 capitalize">
                               {h.trigger_type}
                             </td>
-                            <td className="px-4 py-3 text-sm text-gray-500">
+                            <td className="px-4 py-3 text-sm text-gray-400">
                               {formatDuration(h.duration_seconds)}
                             </td>
-                            <td className="px-4 py-3 text-sm text-gray-500">
+                            <td className="px-4 py-3 text-sm text-gray-400">
                               {h.stats?.groups_added ?? '-'}
                             </td>
-                            <td className="px-4 py-3 text-sm text-gray-500">
+                            <td className="px-4 py-3 text-sm text-gray-400">
                               {h.stats?.campaigns_added ?? '-'}
                             </td>
                           </tr>

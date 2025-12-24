@@ -162,8 +162,8 @@ export default function Reports() {
     <div>
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
-        <p className="text-gray-600">
+        <h1 className="text-2xl font-bold text-white">Reports</h1>
+        <p className="text-gray-400">
           Generate and download detection coverage reports
         </p>
       </div>
@@ -218,7 +218,7 @@ export default function Reports() {
             <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
           </div>
         ) : !accounts?.length ? (
-          <div className="text-center py-8 text-gray-500">
+          <div className="text-center py-8 text-gray-400">
             <Cloud className="h-12 w-12 mx-auto mb-3 text-gray-400" />
             <p>No cloud accounts found</p>
             <p className="text-sm mt-1">Connect a cloud account to generate reports</p>
@@ -231,8 +231,8 @@ export default function Reports() {
                 onClick={() => setSelectedAccountId(account.id)}
                 className={`p-4 border rounded-lg text-left transition-all ${
                   selectedAccountId === account.id
-                    ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
-                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                    ? 'border-blue-500 bg-blue-900/30 ring-2 ring-blue-700'
+                    : 'border-gray-700 hover:border-gray-300 hover:bg-gray-700'
                 }`}
               >
                 <div className="flex items-center justify-between">
@@ -247,10 +247,10 @@ export default function Reports() {
                     <span className="font-medium">{account.name}</span>
                   </div>
                   {selectedAccountId === account.id && (
-                    <Check className="h-5 w-5 text-blue-600" />
+                    <Check className="h-5 w-5 text-blue-400" />
                   )}
                 </div>
-                <div className="text-sm text-gray-500 mt-2">
+                <div className="text-sm text-gray-400 mt-2">
                   <span className="uppercase">{account.provider}</span>
                   <span className="mx-2">&middot;</span>
                   <span className="font-mono">{account.account_id}</span>
@@ -274,7 +274,7 @@ export default function Reports() {
         <h2 className="text-lg font-semibold mb-4">Available Reports</h2>
 
         {!selectedAccountId ? (
-          <div className="text-center py-8 text-gray-500">
+          <div className="text-center py-8 text-gray-400">
             <FileText className="h-12 w-12 mx-auto mb-3 text-gray-400" />
             <p>Select a cloud account to view available reports</p>
           </div>
@@ -283,7 +283,7 @@ export default function Reports() {
             {reportTypes.map((report) => (
               <div
                 key={report.id}
-                className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
+                className="flex items-center justify-between p-4 border border-gray-700 rounded-lg hover:bg-gray-700/30"
               >
                 <div className="flex items-start">
                   <div className={`p-2 rounded-lg ${report.colour} ${isFreeUser ? 'opacity-50' : ''}`}>
@@ -291,14 +291,14 @@ export default function Reports() {
                   </div>
                   <div className="ml-4">
                     <div className="flex items-center">
-                      <h3 className={`font-medium ${isFreeUser ? 'text-gray-500' : 'text-gray-900'}`}>
+                      <h3 className={`font-medium ${isFreeUser ? 'text-gray-400' : 'text-white'}`}>
                         {report.name}
                       </h3>
-                      <span className="ml-2 px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-600">
+                      <span className="ml-2 px-2 py-0.5 text-xs font-medium rounded-full bg-gray-700/30 text-gray-400">
                         {report.format}
                       </span>
                     </div>
-                    <p className={`text-sm mt-1 ${isFreeUser ? 'text-gray-400' : 'text-gray-500'}`}>
+                    <p className={`text-sm mt-1 ${isFreeUser ? 'text-gray-400' : 'text-gray-400'}`}>
                       {report.description}
                     </p>
                   </div>
@@ -307,7 +307,7 @@ export default function Reports() {
                 {isFreeUser ? (
                   <Link
                     to="/settings/billing"
-                    className="flex items-center px-4 py-2 rounded-lg font-medium bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors"
+                    className="flex items-center px-4 py-2 rounded-lg font-medium bg-gray-700/30 text-gray-400 hover:bg-gray-700 transition-colors"
                   >
                     <Lock className="h-4 w-4 mr-2" />
                     Upgrade
@@ -318,7 +318,7 @@ export default function Reports() {
                     disabled={downloading === report.id}
                     className={`flex items-center px-4 py-2 rounded-lg font-medium transition-colors ${
                       downloadSuccess === report.id
-                        ? 'bg-green-100 text-green-700'
+                        ? 'bg-green-900/30 text-green-400'
                         : 'bg-blue-600 text-white hover:bg-blue-700'
                     } disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
@@ -348,9 +348,9 @@ export default function Reports() {
 
       {/* Selected account info */}
       {selectedAccount && (
-        <div className="mt-6 text-sm text-gray-500">
+        <div className="mt-6 text-sm text-gray-400">
           Generating reports for:{' '}
-          <span className="font-medium text-gray-900">{selectedAccount.name}</span>
+          <span className="font-medium text-white">{selectedAccount.name}</span>
           <span className="mx-2">&middot;</span>
           <span className="font-mono">{selectedAccount.account_id}</span>
         </div>

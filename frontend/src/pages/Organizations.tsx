@@ -66,32 +66,32 @@ export default function Organizations() {
       <div>
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">
+            <h1 className="text-2xl font-bold text-white">
               Cloud Organisations
             </h1>
-            <p className="text-gray-600">
+            <p className="text-gray-400">
               Connect and manage your AWS and GCP organisations
             </p>
           </div>
         </div>
 
         <div className="text-center py-16 card">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-purple-100 mb-6">
-            <Lock className="h-8 w-8 text-purple-600" />
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-purple-900/30 mb-6">
+            <Lock className="h-8 w-8 text-purple-400" />
           </div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">
+          <h2 className="text-xl font-semibold text-white mb-2">
             Pro Feature
           </h2>
-          <p className="text-gray-600 max-w-md mx-auto mb-6">
+          <p className="text-gray-400 max-w-md mx-auto mb-6">
             Cloud Organisations is a Pro feature that lets you manage entire AWS
             Organisations or GCP Organisations from a single view.
           </p>
-          <div className="bg-gray-50 rounded-lg p-4 max-w-md mx-auto mb-6">
-            <h3 className="font-medium text-gray-900 mb-2 flex items-center justify-center">
-              <Network className="h-5 w-5 mr-2 text-purple-600" />
+          <div className="bg-gray-700/30 rounded-lg p-4 max-w-md mx-auto mb-6">
+            <h3 className="font-medium text-white mb-2 flex items-center justify-center">
+              <Network className="h-5 w-5 mr-2 text-purple-400" />
               What you get with Pro
             </h3>
-            <ul className="text-sm text-gray-600 space-y-1 text-left ml-6">
+            <ul className="text-sm text-gray-400 space-y-1 text-left ml-6">
               <li>• Automatically discover all accounts in your organisation</li>
               <li>• Aggregate coverage view across all accounts</li>
               <li>• Detect organisation-level security controls</li>
@@ -113,10 +113,10 @@ export default function Organizations() {
     <div>
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-white">
             Cloud Organisations
           </h1>
-          <p className="text-gray-600">
+          <p className="text-gray-400">
             Connect and manage your AWS and GCP organisations
           </p>
         </div>
@@ -131,12 +131,12 @@ export default function Organizations() {
 
       {/* Info banner for org benefits */}
       {!organizations?.length && (
-        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <h3 className="font-semibold text-blue-900 flex items-center">
+        <div className="mb-6 p-4 bg-blue-900/30 border border-blue-700 rounded-lg">
+          <h3 className="font-semibold text-blue-400 flex items-center">
             <Network className="h-5 w-5 mr-2" />
             Why connect an organisation?
           </h3>
-          <ul className="mt-2 text-sm text-blue-800 space-y-1 ml-7">
+          <ul className="mt-2 text-sm text-blue-400 space-y-1 ml-7">
             <li>
               Automatically discover all accounts/projects in your cloud
               organisation
@@ -157,10 +157,10 @@ export default function Organizations() {
       {!organizations?.length ? (
         <div className="text-center py-12 card">
           <Building2 className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-lg font-medium text-gray-900">
+          <h3 className="mt-2 text-lg font-medium text-white">
             No organisations connected
           </h3>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-gray-400">
             Connect your AWS or GCP organisation to get started.
           </p>
           <Link
@@ -205,16 +205,16 @@ export default function Organizations() {
             <div className="space-y-3">
               <Link
                 to="/organizations/connect?provider=aws"
-                className="flex items-center justify-between p-4 border rounded-lg hover:border-orange-500 hover:bg-orange-50"
+                className="flex items-center justify-between p-4 border rounded-lg hover:border-orange-500 hover:bg-gray-700"
                 onClick={() => setShowConnectModal(false)}
               >
                 <div className="flex items-center">
-                  <div className="p-2 bg-orange-100 rounded-lg mr-3">
-                    <Cloud className="h-6 w-6 text-orange-600" />
+                  <div className="p-2 bg-orange-900/30 rounded-lg mr-3">
+                    <Cloud className="h-6 w-6 text-orange-400" />
                   </div>
                   <div>
                     <div className="font-medium">AWS Organisation</div>
-                    <div className="text-sm text-gray-500">
+                    <div className="text-sm text-gray-400">
                       Connect via management account
                     </div>
                   </div>
@@ -223,16 +223,16 @@ export default function Organizations() {
               </Link>
               <Link
                 to="/organizations/connect?provider=gcp"
-                className="flex items-center justify-between p-4 border rounded-lg hover:border-blue-500 hover:bg-blue-50"
+                className="flex items-center justify-between p-4 border rounded-lg hover:border-blue-500 hover:bg-gray-700"
                 onClick={() => setShowConnectModal(false)}
               >
                 <div className="flex items-center">
-                  <div className="p-2 bg-blue-100 rounded-lg mr-3">
-                    <Cloud className="h-6 w-6 text-blue-600" />
+                  <div className="p-2 bg-blue-900/30 rounded-lg mr-3">
+                    <Cloud className="h-6 w-6 text-blue-400" />
                   </div>
                   <div>
                     <div className="font-medium">GCP Organisation</div>
-                    <div className="text-sm text-gray-500">
+                    <div className="text-sm text-gray-400">
                       Connect via service account
                     </div>
                   </div>
@@ -269,42 +269,42 @@ function OrganizationCard({
 }) {
   const providerColor =
     organization.provider === 'gcp'
-      ? 'bg-blue-100 text-blue-600'
-      : 'bg-orange-100 text-orange-600'
+      ? 'bg-blue-900/30 text-blue-400'
+      : 'bg-orange-900/30 text-orange-400'
 
   const getStatusBadge = () => {
     switch (organization.status) {
       case 'active':
         return (
-          <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800 flex items-center">
+          <span className="px-2 py-1 text-xs rounded-full bg-green-900/30 text-green-400 flex items-center">
             <CheckCircle2 className="w-3 h-3 mr-1" />
             Active
           </span>
         )
       case 'discovering':
         return (
-          <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800 flex items-center">
+          <span className="px-2 py-1 text-xs rounded-full bg-blue-900/30 text-blue-400 flex items-center">
             <Loader2 className="w-3 h-3 mr-1 animate-spin" />
             Discovering
           </span>
         )
       case 'partial':
         return (
-          <span className="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800 flex items-center">
+          <span className="px-2 py-1 text-xs rounded-full bg-yellow-900/30 text-yellow-400 flex items-center">
             <AlertTriangle className="w-3 h-3 mr-1" />
             Partial
           </span>
         )
       case 'error':
         return (
-          <span className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800 flex items-center">
+          <span className="px-2 py-1 text-xs rounded-full bg-red-900/30 text-red-400 flex items-center">
             <AlertTriangle className="w-3 h-3 mr-1" />
             Error
           </span>
         )
       default:
         return (
-          <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">
+          <span className="px-2 py-1 text-xs rounded-full bg-gray-700/30 text-gray-400">
             {organization.status}
           </span>
         )
@@ -322,13 +322,13 @@ function OrganizationCard({
             <div className="flex items-center space-x-2">
               <Link
                 to={`/organizations/${organization.id}`}
-                className="font-semibold text-gray-900 hover:text-blue-600"
+                className="font-semibold text-white hover:text-blue-400"
               >
                 {organization.name}
               </Link>
               {getStatusBadge()}
             </div>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-400">
               {organization.provider.toUpperCase()} Organisation{' '}
               {organization.cloud_org_id}
             </p>
@@ -337,16 +337,16 @@ function OrganizationCard({
         <div className="flex items-center space-x-2">
           {/* Account stats */}
           <div className="text-right mr-4">
-            <div className="text-lg font-semibold text-gray-900">
+            <div className="text-lg font-semibold text-white">
               {organization.total_accounts_connected}/
               {organization.total_accounts_discovered}
             </div>
-            <div className="text-xs text-gray-500">accounts connected</div>
+            <div className="text-xs text-gray-400">accounts connected</div>
           </div>
 
           <Link
             to={`/organizations/${organization.id}`}
-            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+            className="p-2 text-blue-400 hover:bg-gray-700 rounded-lg"
             title="View Dashboard"
           >
             <BarChart3 className="h-5 w-5" />
@@ -355,7 +355,7 @@ function OrganizationCard({
           <button
             onClick={onSync}
             disabled={isSyncing}
-            className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg"
+            className="p-2 text-gray-400 hover:bg-gray-700 rounded-lg"
             title="Sync Organisation"
           >
             <RefreshCw
@@ -375,7 +375,7 @@ function OrganizationCard({
       </div>
 
       {/* Additional info */}
-      <div className="mt-3 flex items-center justify-between text-sm text-gray-500">
+      <div className="mt-3 flex items-center justify-between text-sm text-gray-400">
         <div className="flex items-center space-x-4">
           {organization.last_sync_at && (
             <span>
@@ -386,7 +386,7 @@ function OrganizationCard({
         </div>
         <Link
           to={`/organizations/${organization.id}/members`}
-          className="text-blue-600 hover:underline text-sm"
+          className="text-blue-400 hover:underline text-sm"
         >
           Manage accounts &rarr;
         </Link>

@@ -103,7 +103,7 @@ export default function OrganizationMembers() {
     return (
       <div className="text-center py-12">
         <AlertTriangle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-        <h2 className="text-lg font-medium text-gray-900">
+        <h2 className="text-lg font-medium text-white">
           Organisation not found
         </h2>
       </div>
@@ -123,7 +123,7 @@ export default function OrganizationMembers() {
       <div className="mb-8">
         <Link
           to={`/organizations/${orgId}`}
-          className="text-gray-600 hover:text-gray-900 flex items-center mb-4"
+          className="text-gray-400 hover:text-white flex items-center mb-4"
         >
           <ChevronLeft className="h-4 w-4 mr-1" />
           Back to {organization.name}
@@ -131,10 +131,10 @@ export default function OrganizationMembers() {
 
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">
+            <h1 className="text-2xl font-bold text-white">
               Member Accounts
             </h1>
-            <p className="text-gray-600">
+            <p className="text-gray-400">
               {connectedCount} connected, {discoveredCount} available to connect
             </p>
           </div>
@@ -175,8 +175,8 @@ export default function OrganizationMembers() {
             <button onClick={selectAll} className="text-sm text-blue-600 hover:underline">
               Select all discovered
             </button>
-            <span className="text-gray-300">|</span>
-            <button onClick={selectNone} className="text-sm text-gray-600 hover:underline">
+            <span className="text-gray-700">|</span>
+            <button onClick={selectNone} className="text-sm text-gray-400 hover:underline">
               Clear selection
             </button>
           </div>
@@ -186,11 +186,11 @@ export default function OrganizationMembers() {
       {/* Members List */}
       <div className="card">
         {!members?.length ? (
-          <div className="text-center py-8 text-gray-500">
+          <div className="text-center py-8 text-gray-400">
             No accounts discovered
           </div>
         ) : (
-          <div className="divide-y">
+          <div className="divide-y divide-gray-700">
             {filteredMembers.map((member) => (
               <MemberRow
                 key={member.id}
@@ -220,41 +220,41 @@ function MemberRow({
     switch (member.status) {
       case 'connected':
         return (
-          <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800 flex items-center">
+          <span className="px-2 py-1 text-xs rounded-full bg-green-900/30 text-green-400 flex items-center">
             <CheckCircle2 className="w-3 h-3 mr-1" />
             Connected
           </span>
         )
       case 'connecting':
         return (
-          <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800 flex items-center">
+          <span className="px-2 py-1 text-xs rounded-full bg-blue-900/30 text-blue-400 flex items-center">
             <Loader2 className="w-3 h-3 mr-1 animate-spin" />
             Connecting
           </span>
         )
       case 'discovered':
         return (
-          <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">
+          <span className="px-2 py-1 text-xs rounded-full bg-gray-700/30 text-gray-400">
             Available
           </span>
         )
       case 'skipped':
         return (
-          <span className="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800 flex items-center">
+          <span className="px-2 py-1 text-xs rounded-full bg-yellow-900/30 text-yellow-400 flex items-center">
             <AlertTriangle className="w-3 h-3 mr-1" />
             Skipped
           </span>
         )
       case 'error':
         return (
-          <span className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800 flex items-center">
+          <span className="px-2 py-1 text-xs rounded-full bg-red-900/30 text-red-400 flex items-center">
             <XCircle className="w-3 h-3 mr-1" />
             Error
           </span>
         )
       case 'suspended':
         return (
-          <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-600">
+          <span className="px-2 py-1 text-xs rounded-full bg-gray-700/30 text-gray-400">
             Suspended
           </span>
         )
@@ -267,8 +267,8 @@ function MemberRow({
 
   return (
     <div
-      className={`flex items-center py-3 px-2 hover:bg-gray-50 ${
-        isSelected ? 'bg-blue-50' : ''
+      className={`flex items-center py-3 px-2 hover:bg-gray-700 ${
+        isSelected ? 'bg-blue-900/30' : ''
       }`}
     >
       {/* Checkbox */}
@@ -293,12 +293,12 @@ function MemberRow({
       <div className="flex-1 min-w-0">
         <div className="flex items-center space-x-2">
           <Cloud className="h-4 w-4 text-gray-400 flex-shrink-0" />
-          <span className="font-medium text-gray-900 truncate">
+          <span className="font-medium text-white truncate">
             {member.member_name}
           </span>
           {getStatusBadge()}
         </div>
-        <div className="flex items-center text-sm text-gray-500 mt-1">
+        <div className="flex items-center text-sm text-gray-400 mt-1">
           <span className="font-mono">{member.member_account_id}</span>
           <span className="mx-2">&middot;</span>
           <span className="truncate">{member.hierarchy_path}</span>

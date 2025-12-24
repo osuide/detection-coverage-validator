@@ -126,32 +126,32 @@ export default function Billing() {
   const getTierBadgeColor = (tier: string) => {
     switch (tier) {
       case 'individual':
-        return 'bg-blue-100 text-blue-800'
+        return 'bg-blue-900/30 text-blue-400'
       case 'pro':
-        return 'bg-cyan-100 text-cyan-800'
+        return 'bg-cyan-900/30 text-cyan-400'
       case 'enterprise':
-        return 'bg-purple-100 text-purple-800'
+        return 'bg-purple-900/30 text-purple-400'
       case 'free':
       case 'free_scan':
-        return 'bg-gray-100 text-gray-800'
+        return 'bg-gray-700/30 text-gray-400'
       // Legacy tier
       case 'subscriber':
-        return 'bg-blue-100 text-blue-800'
+        return 'bg-blue-900/30 text-blue-400'
       default:
-        return 'bg-gray-100 text-gray-800'
+        return 'bg-gray-700/30 text-gray-400'
     }
   }
 
   const getStatusBadgeColor = (status: string) => {
     switch (status) {
       case 'active':
-        return 'bg-green-100 text-green-800'
+        return 'bg-green-900/30 text-green-400'
       case 'past_due':
-        return 'bg-yellow-100 text-yellow-800'
+        return 'bg-yellow-900/30 text-yellow-400'
       case 'canceled':
-        return 'bg-red-100 text-red-800'
+        return 'bg-red-900/30 text-red-400'
       default:
-        return 'bg-gray-100 text-gray-800'
+        return 'bg-gray-700/30 text-gray-400'
     }
   }
 
@@ -182,8 +182,8 @@ export default function Billing() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Billing & Subscription</h1>
-        <p className="mt-1 text-sm text-gray-600">
+        <h1 className="text-2xl font-semibold text-white">Billing & Subscription</h1>
+        <p className="mt-1 text-sm text-gray-400">
           Manage your subscription and billing details
         </p>
       </div>
@@ -196,12 +196,12 @@ export default function Billing() {
 
       {/* Current Plan */}
       <div className="bg-white shadow rounded-lg p-6">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">Current Plan</h2>
+        <h2 className="text-lg font-medium text-white mb-4">Current Plan</h2>
 
         <div className="flex items-center justify-between mb-6">
           <div>
             <div className="flex items-center gap-3">
-              <span className="text-2xl font-bold text-gray-900">
+              <span className="text-2xl font-bold text-white">
                 {subscription ? getTierDisplayName(subscription.tier) : 'Free'}
               </span>
               <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTierBadgeColor(subscription?.tier || '')}`}>
@@ -212,7 +212,7 @@ export default function Billing() {
               </span>
             </div>
             {!isFreeTier && subscription?.current_period_end && (
-              <p className="text-sm text-gray-600 mt-1">
+              <p className="text-sm text-gray-400 mt-1">
                 {subscription.cancel_at_period_end
                   ? `Cancels on ${formatDate(subscription.current_period_end)}`
                   : `Renews on ${formatDate(subscription.current_period_end)}`}
@@ -232,18 +232,18 @@ export default function Billing() {
         </div>
 
         {/* Plan Details */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t pt-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-gray-700 pt-4">
           <div>
-            <p className="text-sm text-gray-500">Cloud Accounts</p>
-            <p className="text-lg font-medium text-gray-900">
+            <p className="text-sm text-gray-400">Cloud Accounts</p>
+            <p className="text-lg font-medium text-white">
               {subscription?.total_accounts_allowed === -1
                 ? 'Unlimited'
                 : subscription?.total_accounts_allowed}
             </p>
           </div>
           <div>
-            <p className="text-sm text-gray-500">Scans</p>
-            <p className="text-lg font-medium text-gray-900">
+            <p className="text-sm text-gray-400">Scans</p>
+            <p className="text-lg font-medium text-white">
               {isFreeTier
                 ? subscription?.free_scan_used
                   ? 'Used (1 free scan)'
@@ -252,8 +252,8 @@ export default function Billing() {
             </p>
           </div>
           <div>
-            <p className="text-sm text-gray-500">Data Retention</p>
-            <p className="text-lg font-medium text-gray-900">
+            <p className="text-sm text-gray-400">Data Retention</p>
+            <p className="text-lg font-medium text-white">
               {formatRetention(subscription?.history_retention_days)}
             </p>
           </div>
@@ -356,42 +356,42 @@ export default function Billing() {
       {/* Invoice History */}
       {invoices.length > 0 && (
         <div className="bg-white shadow rounded-lg p-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Invoice History</h2>
+          <h2 className="text-lg font-medium text-white mb-4">Invoice History</h2>
 
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-gray-700">
+              <thead className="bg-gray-700/30">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Period</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Date</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Amount</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Period</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white divide-y divide-gray-700">
                 {invoices.map((invoice) => (
                   <tr key={invoice.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
                       {formatDate(invoice.created_at)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
                       {formatCurrency(invoice.amount_cents)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
                         className={`px-2 py-1 rounded-full text-xs font-medium ${
                           invoice.status === 'paid'
-                            ? 'bg-green-100 text-green-800'
+                            ? 'bg-green-900/30 text-green-400'
                             : invoice.status === 'open'
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : 'bg-gray-100 text-gray-800'
+                            ? 'bg-yellow-900/30 text-yellow-400'
+                            : 'bg-gray-700/30 text-gray-400'
                         }`}
                       >
                         {invoice.status?.toUpperCase()}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
                       {invoice.period_start && invoice.period_end
                         ? `${formatDate(invoice.period_start)} - ${formatDate(invoice.period_end)}`
                         : '-'}
@@ -402,7 +402,7 @@ export default function Billing() {
                           href={invoice.invoice_pdf_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-800 mr-4"
+                          className="text-blue-400 hover:text-blue-300 mr-4"
                         >
                           PDF
                         </a>
@@ -412,7 +412,7 @@ export default function Billing() {
                           href={invoice.hosted_invoice_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-800"
+                          className="text-blue-400 hover:text-blue-300"
                         >
                           View
                         </a>
@@ -429,20 +429,20 @@ export default function Billing() {
       {/* Feature Comparison (for free tier) */}
       {isFreeTier && (
         <div className="bg-white shadow rounded-lg p-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Feature Comparison</h2>
+          <h2 className="text-lg font-medium text-white mb-4">Feature Comparison</h2>
 
           <div className="overflow-x-auto">
             <table className="min-w-full">
               <thead>
                 <tr>
-                  <th className="text-left text-sm font-medium text-gray-500 pb-4">Feature</th>
-                  <th className="text-center text-sm font-medium text-gray-500 pb-4">Free</th>
-                  <th className="text-center text-sm font-medium text-blue-600 pb-4">Individual</th>
-                  <th className="text-center text-sm font-medium text-cyan-600 pb-4">Pro</th>
-                  <th className="text-center text-sm font-medium text-purple-600 pb-4">Enterprise</th>
+                  <th className="text-left text-sm font-medium text-gray-400 pb-4">Feature</th>
+                  <th className="text-center text-sm font-medium text-gray-400 pb-4">Free</th>
+                  <th className="text-center text-sm font-medium text-blue-400 pb-4">Individual</th>
+                  <th className="text-center text-sm font-medium text-cyan-400 pb-4">Pro</th>
+                  <th className="text-center text-sm font-medium text-purple-400 pb-4">Enterprise</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-gray-700">
                 {[
                   {
                     feature: 'Cloud Accounts',
@@ -472,23 +472,23 @@ export default function Billing() {
                   { feature: 'Dedicated Support', free: false, individual: false, pro: false, enterprise: true },
                 ].map((row, idx) => (
                   <tr key={idx}>
-                    <td className="py-3 text-sm text-gray-900">{row.feature}</td>
+                    <td className="py-3 text-sm text-white">{row.feature}</td>
                     {['free', 'individual', 'pro', 'enterprise'].map((tier) => {
                       const value = row[tier as keyof typeof row]
                       return (
                         <td key={tier} className="py-3 text-center">
                           {typeof value === 'boolean' ? (
                             value ? (
-                              <svg className="h-5 w-5 text-green-500 mx-auto" fill="currentColor" viewBox="0 0 20 20">
+                              <svg className="h-5 w-5 text-green-400 mx-auto" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                               </svg>
                             ) : (
-                              <svg className="h-5 w-5 text-gray-300 mx-auto" fill="currentColor" viewBox="0 0 20 20">
+                              <svg className="h-5 w-5 text-gray-400 mx-auto" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
                               </svg>
                             )
                           ) : (
-                            <span className={`text-sm ${tier === 'free' ? 'text-gray-600' : 'text-gray-900 font-medium'}`}>{value}</span>
+                            <span className={`text-sm ${tier === 'free' ? 'text-gray-400' : 'text-white font-medium'}`}>{value}</span>
                           )}
                         </td>
                       )

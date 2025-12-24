@@ -21,18 +21,18 @@ import {
 
 // Action category colors
 const actionCategoryColors: Record<string, string> = {
-  user: 'bg-blue-100 text-blue-700',
-  member: 'bg-green-100 text-green-700',
-  org: 'bg-purple-100 text-purple-700',
-  api_key: 'bg-yellow-100 text-yellow-700',
-  account: 'bg-cyan-100 text-cyan-700',
-  scan: 'bg-orange-100 text-orange-700',
-  detection: 'bg-pink-100 text-pink-700',
+  user: 'bg-blue-900/30 text-blue-400',
+  member: 'bg-green-900/30 text-green-400',
+  org: 'bg-purple-900/30 text-purple-400',
+  api_key: 'bg-yellow-900/30 text-yellow-400',
+  account: 'bg-cyan-900/30 text-cyan-400',
+  scan: 'bg-orange-900/30 text-orange-400',
+  detection: 'bg-pink-900/30 text-pink-400',
 }
 
 function getActionColor(action: string): string {
   const category = action.split('.')[0]
-  return actionCategoryColors[category] || 'bg-gray-100 text-gray-700'
+  return actionCategoryColors[category] || 'bg-gray-700/30 text-gray-400'
 }
 
 export default function AuditLogs() {
@@ -145,15 +145,15 @@ export default function AuditLogs() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Audit Logs</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <h1 className="text-2xl font-bold text-white">Audit Logs</h1>
+        <p className="mt-1 text-sm text-gray-400">
           Track all activity and changes in your organization
         </p>
       </div>
 
       {/* Error message */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+        <div className="bg-red-900/30 border border-red-700 text-red-400 px-4 py-3 rounded-lg">
           {error}
         </div>
       )}
@@ -161,36 +161,36 @@ export default function AuditLogs() {
       {/* Stats */}
       {stats && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-700 p-4">
             <div className="flex items-center">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Activity className="h-5 w-5 text-blue-600" />
+              <div className="p-2 bg-blue-900/30 rounded-lg">
+                <Activity className="h-5 w-5 text-blue-400" />
               </div>
               <div className="ml-3">
-                <p className="text-sm text-gray-500">Total Events</p>
-                <p className="text-xl font-semibold text-gray-900">{stats.total_events.toLocaleString()}</p>
+                <p className="text-sm text-gray-400">Total Events</p>
+                <p className="text-xl font-semibold text-white">{stats.total_events.toLocaleString()}</p>
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-700 p-4">
             <div className="flex items-center">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <Clock className="h-5 w-5 text-green-600" />
+              <div className="p-2 bg-green-900/30 rounded-lg">
+                <Clock className="h-5 w-5 text-green-400" />
               </div>
               <div className="ml-3">
-                <p className="text-sm text-gray-500">Today</p>
-                <p className="text-xl font-semibold text-gray-900">{stats.events_today.toLocaleString()}</p>
+                <p className="text-sm text-gray-400">Today</p>
+                <p className="text-xl font-semibold text-white">{stats.events_today.toLocaleString()}</p>
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-700 p-4">
             <div className="flex items-center">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <FileText className="h-5 w-5 text-purple-600" />
+              <div className="p-2 bg-purple-900/30 rounded-lg">
+                <FileText className="h-5 w-5 text-purple-400" />
               </div>
               <div className="ml-3">
-                <p className="text-sm text-gray-500">This Week</p>
-                <p className="text-xl font-semibold text-gray-900">{stats.events_this_week.toLocaleString()}</p>
+                <p className="text-sm text-gray-400">This Week</p>
+                <p className="text-xl font-semibold text-white">{stats.events_this_week.toLocaleString()}</p>
               </div>
             </div>
           </div>
@@ -198,12 +198,12 @@ export default function AuditLogs() {
       )}
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-700 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-700 flex items-center justify-between">
           <div className="flex items-center">
             <FileText className="h-5 w-5 text-gray-400 mr-2" />
-            <h2 className="text-lg font-medium text-gray-900">Activity Log</h2>
-            <span className="ml-2 px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-600 rounded-full">
+            <h2 className="text-lg font-medium text-white">Activity Log</h2>
+            <span className="ml-2 px-2 py-0.5 text-xs font-medium bg-gray-700/30 text-gray-400 rounded-full">
               {total.toLocaleString()} events
             </span>
           </div>
@@ -212,8 +212,8 @@ export default function AuditLogs() {
             className={clsx(
               'flex items-center px-3 py-1.5 text-sm rounded-lg',
               showFilters || filterAction || filterStartDate || filterEndDate
-                ? 'bg-cyan-50 text-cyan-700'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                ? 'bg-cyan-900/30 text-cyan-400'
+                : 'bg-gray-700/30 text-gray-400 hover:bg-gray-700'
             )}
           >
             <Filter className="h-4 w-4 mr-1" />
@@ -227,10 +227,10 @@ export default function AuditLogs() {
         </div>
 
         {showFilters && (
-          <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+          <div className="px-6 py-4 bg-gray-700/30 border-b border-gray-700">
             <div className="flex flex-wrap items-center gap-4">
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Action Type</label>
+                <label className="block text-xs font-medium text-gray-400 mb-1">Action Type</label>
                 <select
                   value={filterAction}
                   onChange={(e) => {
@@ -248,7 +248,7 @@ export default function AuditLogs() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Start Date</label>
+                <label className="block text-xs font-medium text-gray-400 mb-1">Start Date</label>
                 <input
                   type="datetime-local"
                   value={filterStartDate}
@@ -260,7 +260,7 @@ export default function AuditLogs() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">End Date</label>
+                <label className="block text-xs font-medium text-gray-400 mb-1">End Date</label>
                 <input
                   type="datetime-local"
                   value={filterEndDate}
@@ -274,7 +274,7 @@ export default function AuditLogs() {
               {(filterAction || filterStartDate || filterEndDate) && (
                 <button
                   onClick={clearFilters}
-                  className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800"
+                  className="px-3 py-1.5 text-sm text-gray-400 hover:text-white"
                 >
                   Clear filters
                 </button>
@@ -285,30 +285,30 @@ export default function AuditLogs() {
 
         {/* Logs table */}
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-gray-700">
+            <thead className="bg-gray-700/30">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                   Timestamp
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                   Action
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                   Actor
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                   IP Address
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                   Status
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-gray-700">
               {logs.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={5} className="px-6 py-12 text-center text-gray-400">
                     No audit logs found
                   </td>
                 </tr>
@@ -317,9 +317,9 @@ export default function AuditLogs() {
                   <tr
                     key={log.id}
                     onClick={() => setSelectedLog(log)}
-                    className="hover:bg-gray-50 cursor-pointer"
+                    className="hover:bg-gray-700 cursor-pointer"
                   >
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
                       {formatDate(log.created_at)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -333,27 +333,27 @@ export default function AuditLogs() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       {log.actor ? (
                         <div className="flex items-center">
-                          <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
-                            <User className="h-4 w-4 text-gray-500" />
+                          <div className="h-8 w-8 rounded-full bg-gray-700/30 flex items-center justify-center">
+                            <User className="h-4 w-4 text-gray-400" />
                           </div>
                           <div className="ml-3">
-                            <div className="text-sm font-medium text-gray-900">{log.actor.full_name}</div>
-                            <div className="text-xs text-gray-500">{log.actor.email}</div>
+                            <div className="text-sm font-medium text-white">{log.actor.full_name}</div>
+                            <div className="text-xs text-gray-400">{log.actor.email}</div>
                           </div>
                         </div>
                       ) : (
                         <span className="text-sm text-gray-400">System</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 font-mono">
                       {log.ip_address || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={clsx(
                         'px-2 py-1 text-xs font-medium rounded-full',
                         log.success
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-red-100 text-red-700'
+                          ? 'bg-green-900/30 text-green-400'
+                          : 'bg-red-900/30 text-red-400'
                       )}>
                         {log.success ? 'Success' : 'Failed'}
                       </span>
@@ -367,22 +367,22 @@ export default function AuditLogs() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-            <div className="text-sm text-gray-500">
+          <div className="px-6 py-4 border-t border-gray-700 flex items-center justify-between">
+            <div className="text-sm text-gray-400">
               Page {page} of {totalPages}
             </div>
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => setPage(Math.max(1, page - 1))}
                 disabled={page === 1}
-                className="p-1 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-1 rounded-lg hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <ChevronLeft className="h-5 w-5" />
               </button>
               <button
                 onClick={() => setPage(Math.min(totalPages, page + 1))}
                 disabled={page === totalPages}
-                className="p-1 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-1 rounded-lg hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <ChevronRight className="h-5 w-5" />
               </button>
@@ -395,11 +395,11 @@ export default function AuditLogs() {
       {selectedLog && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-medium text-gray-900">Event Details</h2>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
+              <h2 className="text-lg font-medium text-white">Event Details</h2>
               <button
                 onClick={() => setSelectedLog(null)}
-                className="text-gray-400 hover:text-gray-500"
+                className="text-gray-400 hover:text-gray-400"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -407,7 +407,7 @@ export default function AuditLogs() {
 
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">Action</label>
+                <label className="block text-xs font-medium text-gray-400 uppercase tracking-wide">Action</label>
                 <span className={clsx(
                   'inline-block mt-1 px-2 py-1 text-sm font-medium rounded-full capitalize',
                   getActionColor(selectedLog.action)
@@ -417,42 +417,42 @@ export default function AuditLogs() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">Timestamp</label>
-                <p className="mt-1 text-sm text-gray-900">{formatDate(selectedLog.created_at)}</p>
+                <label className="block text-xs font-medium text-gray-400 uppercase tracking-wide">Timestamp</label>
+                <p className="mt-1 text-sm text-white">{formatDate(selectedLog.created_at)}</p>
               </div>
 
               {selectedLog.actor && (
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">Actor</label>
-                  <p className="mt-1 text-sm text-gray-900">{selectedLog.actor.full_name}</p>
-                  <p className="text-xs text-gray-500">{selectedLog.actor.email}</p>
+                  <label className="block text-xs font-medium text-gray-400 uppercase tracking-wide">Actor</label>
+                  <p className="mt-1 text-sm text-white">{selectedLog.actor.full_name}</p>
+                  <p className="text-xs text-gray-400">{selectedLog.actor.email}</p>
                 </div>
               )}
 
               <div>
-                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">IP Address</label>
-                <p className="mt-1 text-sm text-gray-900 font-mono">{selectedLog.ip_address || 'N/A'}</p>
+                <label className="block text-xs font-medium text-gray-400 uppercase tracking-wide">IP Address</label>
+                <p className="mt-1 text-sm text-white font-mono">{selectedLog.ip_address || 'N/A'}</p>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">Status</label>
+                <label className="block text-xs font-medium text-gray-400 uppercase tracking-wide">Status</label>
                 <span className={clsx(
                   'inline-block mt-1 px-2 py-1 text-xs font-medium rounded-full',
                   selectedLog.success
-                    ? 'bg-green-100 text-green-700'
-                    : 'bg-red-100 text-red-700'
+                    ? 'bg-green-900/30 text-green-400'
+                    : 'bg-red-900/30 text-red-400'
                 )}>
                   {selectedLog.success ? 'Success' : 'Failed'}
                 </span>
                 {selectedLog.error_message && (
-                  <p className="mt-1 text-sm text-red-600">{selectedLog.error_message}</p>
+                  <p className="mt-1 text-sm text-red-400">{selectedLog.error_message}</p>
                 )}
               </div>
 
               {selectedLog.resource_type && (
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">Resource</label>
-                  <p className="mt-1 text-sm text-gray-900">
+                  <label className="block text-xs font-medium text-gray-400 uppercase tracking-wide">Resource</label>
+                  <p className="mt-1 text-sm text-white">
                     {selectedLog.resource_type}: {selectedLog.resource_id}
                   </p>
                 </div>
@@ -460,8 +460,8 @@ export default function AuditLogs() {
 
               {selectedLog.details && Object.keys(selectedLog.details).length > 0 && (
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">Details</label>
-                  <pre className="mt-1 p-3 bg-gray-50 rounded-lg text-xs text-gray-700 overflow-x-auto">
+                  <label className="block text-xs font-medium text-gray-400 uppercase tracking-wide">Details</label>
+                  <pre className="mt-1 p-3 bg-gray-700/30 rounded-lg text-xs text-gray-400 overflow-x-auto">
                     {JSON.stringify(selectedLog.details, null, 2)}
                   </pre>
                 </div>

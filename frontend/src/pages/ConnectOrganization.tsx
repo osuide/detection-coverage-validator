@@ -103,15 +103,15 @@ export default function ConnectOrganization() {
       <div className="mb-8">
         <button
           onClick={() => navigate('/organizations')}
-          className="text-gray-600 hover:text-gray-900 flex items-center mb-4"
+          className="text-gray-400 hover:text-white flex items-center mb-4"
         >
           <ChevronLeft className="h-4 w-4 mr-1" />
           Back to Organisations
         </button>
-        <h1 className="text-2xl font-bold text-gray-900">
+        <h1 className="text-2xl font-bold text-white">
           Connect Cloud Organisation
         </h1>
-        <p className="text-gray-600">
+        <p className="text-gray-400">
           Connect your AWS or GCP organisation to discover all accounts
         </p>
       </div>
@@ -127,7 +127,7 @@ export default function ConnectOrganization() {
                     ? 'bg-blue-600 text-white'
                     : ['provider', 'credentials', 'discovering', 'complete'].indexOf(step) > idx
                     ? 'bg-green-600 text-white'
-                    : 'bg-gray-200 text-gray-600'
+                    : 'bg-gray-700 text-gray-400'
                 }`}
               >
                 {['provider', 'credentials', 'discovering', 'complete'].indexOf(step) > idx ? (
@@ -141,7 +141,7 @@ export default function ConnectOrganization() {
                   className={`w-16 h-1 ${
                     ['provider', 'credentials', 'discovering', 'complete'].indexOf(step) > idx
                       ? 'bg-green-600'
-                      : 'bg-gray-200'
+                      : 'bg-gray-700'
                   }`}
                 />
               )}
@@ -161,15 +161,15 @@ export default function ConnectOrganization() {
             <div className="space-y-3">
               <button
                 onClick={() => handleProviderSelect('aws')}
-                className="w-full flex items-center justify-between p-4 border rounded-lg hover:border-orange-500 hover:bg-orange-50"
+                className="w-full flex items-center justify-between p-4 border border-gray-700 rounded-lg hover:border-orange-500 hover:bg-orange-900/30"
               >
                 <div className="flex items-center">
-                  <div className="p-2 bg-orange-100 rounded-lg mr-3">
-                    <Cloud className="h-6 w-6 text-orange-600" />
+                  <div className="p-2 bg-orange-900/30 rounded-lg mr-3">
+                    <Cloud className="h-6 w-6 text-orange-400" />
                   </div>
                   <div className="text-left">
                     <div className="font-medium">AWS Organisation</div>
-                    <div className="text-sm text-gray-500">
+                    <div className="text-sm text-gray-400">
                       Connect via IAM role in management account
                     </div>
                   </div>
@@ -178,15 +178,15 @@ export default function ConnectOrganization() {
               </button>
               <button
                 onClick={() => handleProviderSelect('gcp')}
-                className="w-full flex items-center justify-between p-4 border rounded-lg hover:border-blue-500 hover:bg-blue-50"
+                className="w-full flex items-center justify-between p-4 border border-gray-700 rounded-lg hover:border-blue-500 hover:bg-blue-900/30"
               >
                 <div className="flex items-center">
-                  <div className="p-2 bg-blue-100 rounded-lg mr-3">
-                    <Cloud className="h-6 w-6 text-blue-600" />
+                  <div className="p-2 bg-blue-900/30 rounded-lg mr-3">
+                    <Cloud className="h-6 w-6 text-blue-400" />
                   </div>
                   <div className="text-left">
                     <div className="font-medium">GCP Organisation</div>
-                    <div className="text-sm text-gray-500">
+                    <div className="text-sm text-gray-400">
                       Connect via service account with org-level permissions
                     </div>
                   </div>
@@ -203,7 +203,7 @@ export default function ConnectOrganization() {
             <h2 className="text-lg font-semibold mb-4">
               AWS Organisation Credentials
             </h2>
-            <p className="text-gray-600 mb-6">
+            <p className="text-gray-400 mb-6">
               Provide an IAM role ARN from your AWS management account with
               organisation read permissions.
             </p>
@@ -216,18 +216,18 @@ export default function ConnectOrganization() {
             )}
 
             {/* Required Permissions */}
-            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-              <h3 className="font-medium text-sm text-gray-700 mb-2">
+            <div className="mb-6 p-4 bg-gray-700/30 rounded-lg">
+              <h3 className="font-medium text-sm text-gray-400 mb-2">
                 Required Permissions
               </h3>
-              <div className="text-sm text-gray-600 space-y-1">
-                <code className="block bg-gray-100 px-2 py-1 rounded text-xs">
+              <div className="text-sm text-gray-400 space-y-1">
+                <code className="block bg-gray-700 px-2 py-1 rounded text-xs">
                   organizations:Describe*
                 </code>
-                <code className="block bg-gray-100 px-2 py-1 rounded text-xs">
+                <code className="block bg-gray-700 px-2 py-1 rounded text-xs">
                   organizations:List*
                 </code>
-                <code className="block bg-gray-100 px-2 py-1 rounded text-xs">
+                <code className="block bg-gray-700 px-2 py-1 rounded text-xs">
                   sts:AssumeRole (for member accounts)
                 </code>
               </div>
@@ -244,14 +244,14 @@ export default function ConnectOrganization() {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-400 mb-1">
                   IAM Role ARN *
                 </label>
                 <input
                   type="text"
                   value={awsRoleArn}
                   onChange={(e) => setAwsRoleArn(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="arn:aws:iam::123456789012:role/OrgReadOnlyRole"
                 />
               </div>
@@ -285,7 +285,7 @@ export default function ConnectOrganization() {
             <h2 className="text-lg font-semibold mb-4">
               GCP Organisation Credentials
             </h2>
-            <p className="text-gray-600 mb-6">
+            <p className="text-gray-400 mb-6">
               Provide your GCP organisation ID and service account details.
             </p>
 
@@ -297,18 +297,18 @@ export default function ConnectOrganization() {
             )}
 
             {/* Required Permissions */}
-            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-              <h3 className="font-medium text-sm text-gray-700 mb-2">
+            <div className="mb-6 p-4 bg-gray-700/30 rounded-lg">
+              <h3 className="font-medium text-sm text-gray-400 mb-2">
                 Required Permissions
               </h3>
-              <div className="text-sm text-gray-600 space-y-1">
-                <code className="block bg-gray-100 px-2 py-1 rounded text-xs">
+              <div className="text-sm text-gray-400 space-y-1">
+                <code className="block bg-gray-700 px-2 py-1 rounded text-xs">
                   resourcemanager.organizations.get
                 </code>
-                <code className="block bg-gray-100 px-2 py-1 rounded text-xs">
+                <code className="block bg-gray-700 px-2 py-1 rounded text-xs">
                   resourcemanager.folders.list
                 </code>
-                <code className="block bg-gray-100 px-2 py-1 rounded text-xs">
+                <code className="block bg-gray-700 px-2 py-1 rounded text-xs">
                   resourcemanager.projects.list
                 </code>
               </div>
@@ -325,47 +325,47 @@ export default function ConnectOrganization() {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-400 mb-1">
                   Organisation ID *
                 </label>
                 <input
                   type="text"
                   value={gcpOrgId}
                   onChange={(e) => setGcpOrgId(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="123456789012"
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-gray-400 mt-1">
                   Numeric organisation ID (find in Cloud Console &gt;
                   IAM &gt; Settings)
                 </p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-400 mb-1">
                   Service Account Email
                 </label>
                 <input
                   type="text"
                   value={gcpServiceAccountEmail}
                   onChange={(e) => setGcpServiceAccountEmail(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="my-sa@my-project.iam.gserviceaccount.com"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-400 mb-1">
                   Project ID
                 </label>
                 <input
                   type="text"
                   value={gcpProjectId}
                   onChange={(e) => setGcpProjectId(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="my-project-id"
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-gray-400 mt-1">
                   Project where the service account resides
                 </p>
               </div>
@@ -401,7 +401,7 @@ export default function ConnectOrganization() {
             <h2 className="text-lg font-semibold mb-2">
               Discovering Organisation
             </h2>
-            <p className="text-gray-600">
+            <p className="text-gray-400">
               {provider === 'aws'
                 ? 'Listing AWS accounts and organisational units...'
                 : 'Listing GCP projects and folders...'}
@@ -412,21 +412,21 @@ export default function ConnectOrganization() {
         {/* Step 4: Complete */}
         {step === 'complete' && discoveryResult && (
           <div className="text-center py-8">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Check className="h-8 w-8 text-green-600" />
+            <div className="w-16 h-16 bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Check className="h-8 w-8 text-green-400" />
             </div>
             <h2 className="text-lg font-semibold mb-2">
               Organisation Discovered!
             </h2>
-            <p className="text-gray-600 mb-6">
+            <p className="text-gray-400 mb-6">
               Found {discoveryResult.total_accounts_discovered}{' '}
               {provider === 'aws' ? 'accounts' : 'projects'} in your
               organisation.
             </p>
 
-            <div className="bg-blue-50 p-4 rounded-lg text-left mb-6">
-              <h3 className="font-medium text-blue-900 mb-2">Next Steps</h3>
-              <ul className="text-sm text-blue-800 space-y-1">
+            <div className="bg-blue-900/30 p-4 rounded-lg text-left mb-6">
+              <h3 className="font-medium text-blue-400 mb-2">Next Steps</h3>
+              <ul className="text-sm text-blue-400 space-y-1">
                 <li>
                   1. Select which accounts to connect for scanning
                 </li>

@@ -114,13 +114,13 @@ export function DocsIndex() {
                   <h3 className="font-semibold text-white group-hover:text-blue-400 mb-2 transition-colors">
                     {doc.title}
                   </h3>
-                  <p className="text-sm text-white mb-3 line-clamp-2">{doc.description}</p>
-                  <span className="text-xs text-gray-500 flex items-center gap-1.5">
+                  <p className="text-sm text-gray-400 mb-3 line-clamp-2">{doc.description}</p>
+                  <span className="text-xs text-gray-400 flex items-center gap-1.5">
                     <Clock className="h-3 w-3" />
                     {doc.readTime} read
                   </span>
                 </div>
-                <ArrowRight className="h-5 w-5 text-gray-600 group-hover:text-blue-400 group-hover:translate-x-1 transition-all flex-shrink-0 mt-1" />
+                <ArrowRight className="h-5 w-5 text-gray-400 group-hover:text-blue-400 group-hover:translate-x-1 transition-all flex-shrink-0 mt-1" />
               </div>
             </Link>
           );
@@ -128,9 +128,9 @@ export function DocsIndex() {
       </div>
 
       {/* Support */}
-      <div className="mt-16 p-8 bg-slate-800/30 border border-slate-700 rounded-2xl text-center">
+      <div className="mt-16 p-8 bg-gray-700/30 border border-gray-700 rounded-2xl text-center">
         <h3 className="font-semibold text-white text-lg mb-2">Need help?</h3>
-        <p className="text-white mb-6">
+        <p className="text-gray-400 mb-6">
           Can't find what you're looking for? Our support team is here to help.
         </p>
         <a

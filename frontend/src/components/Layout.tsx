@@ -66,7 +66,7 @@ export default function Layout({ children }: LayoutProps) {
   const isSettingsActive = location.pathname.startsWith('/settings')
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-900">
       {/* Sidebar */}
       <div className="fixed inset-y-0 left-0 w-64 bg-slate-900 flex flex-col">
         <div className="flex h-16 items-center justify-center border-b border-slate-800">

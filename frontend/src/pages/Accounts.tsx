@@ -118,8 +118,8 @@ export default function Accounts() {
     <div>
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Cloud Accounts</h1>
-          <p className="text-gray-600">Manage your cloud accounts for scanning</p>
+          <h1 className="text-2xl font-bold text-white">Cloud Accounts</h1>
+          <p className="text-gray-400">Manage your cloud accounts for scanning</p>
         </div>
         <button
           onClick={() => setShowForm(true)}
@@ -135,8 +135,8 @@ export default function Accounts() {
         <div
           className={`mb-4 p-4 rounded-lg flex items-center justify-between ${
             scanFeedback.type === 'success'
-              ? 'bg-green-50 border border-green-200 text-green-800'
-              : 'bg-red-50 border border-red-200 text-red-800'
+              ? 'bg-green-900/30 border border-green-700 text-green-400'
+              : 'bg-red-900/30 border border-red-700 text-red-400'
           }`}
         >
           <div className="flex items-center">
@@ -149,7 +149,7 @@ export default function Accounts() {
           </div>
           <button
             onClick={() => setScanFeedback(null)}
-            className="text-gray-500 hover:text-gray-700"
+            className="text-gray-400 hover:text-gray-700"
           >
             &times;
           </button>
@@ -163,7 +163,7 @@ export default function Accounts() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-400 mb-1">
                   Account Name
                 </label>
                 <input
@@ -176,7 +176,7 @@ export default function Accounts() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-400 mb-1">
                   Provider
                 </label>
                 <select
@@ -190,7 +190,7 @@ export default function Accounts() {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-400 mb-1">
                 {formData.provider === 'gcp' ? 'Project ID' : 'Account ID'}
               </label>
               <input
@@ -236,22 +236,22 @@ export default function Accounts() {
       {!accounts?.length ? (
         <div className="text-center py-12 card">
           <Cloud className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-lg font-medium text-gray-900">No cloud accounts</h3>
-          <p className="mt-1 text-sm text-gray-500">Add your first cloud account to start scanning.</p>
+          <h3 className="mt-2 text-lg font-medium text-white">No cloud accounts</h3>
+          <p className="mt-1 text-sm text-gray-400">Add your first cloud account to start scanning.</p>
         </div>
       ) : (
         <div className="space-y-4">
           {/* Scan limit warning banner */}
           {scanStatus && !scanStatus.unlimited && !scanStatus.can_scan && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-center justify-between">
+            <div className="bg-yellow-900/30 border border-yellow-700 rounded-lg p-4 flex items-center justify-between">
               <div className="flex items-center">
-                <Clock className="h-5 w-5 text-yellow-600 mr-3" />
+                <Clock className="h-5 w-5 text-yellow-400 mr-3" />
                 <div>
-                  <p className="text-sm font-medium text-yellow-800">
+                  <p className="text-sm font-medium text-yellow-400">
                     Weekly scan limit reached ({scanStatus.scans_used}/{scanStatus.scans_allowed})
                   </p>
                   {scanStatus.week_resets_at && (
-                    <p className="text-xs text-yellow-600">
+                    <p className="text-xs text-yellow-400">
                       Resets on {new Date(scanStatus.week_resets_at).toLocaleDateString()}
                     </p>
                   )}
@@ -305,7 +305,7 @@ export default function Accounts() {
                 <h2 className="text-xl font-bold">Edit Account: {editingAccount.name}</h2>
                 <button
                   onClick={() => setEditingAccount(null)}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="text-gray-400 hover:text-gray-700"
                 >
                   &times;
                 </button>
@@ -389,7 +389,7 @@ function AccountCard({
   const getCredentialStatusBadge = () => {
     if (credentialLoading) {
       return (
-        <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-600">
+        <span className="px-2 py-1 text-xs rounded-full bg-gray-700/30 text-gray-400">
           Loading...
         </span>
       )
@@ -397,7 +397,7 @@ function AccountCard({
 
     if (!credential) {
       return (
-        <span className="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800 flex items-center">
+        <span className="px-2 py-1 text-xs rounded-full bg-yellow-900/30 text-yellow-400 flex items-center">
           <AlertTriangle className="w-3 h-3 mr-1" />
           Not Connected
         </span>
@@ -407,14 +407,14 @@ function AccountCard({
     switch (credential.status) {
       case 'valid':
         return (
-          <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800 flex items-center">
+          <span className="px-2 py-1 text-xs rounded-full bg-green-900/30 text-green-400 flex items-center">
             <CheckCircle2 className="w-3 h-3 mr-1" />
             Connected
           </span>
         )
       case 'pending':
         return (
-          <span className="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800 flex items-center">
+          <span className="px-2 py-1 text-xs rounded-full bg-yellow-900/30 text-yellow-400 flex items-center">
             <AlertTriangle className="w-3 h-3 mr-1" />
             Pending Validation
           </span>
@@ -423,7 +423,7 @@ function AccountCard({
       case 'expired':
       case 'permission_error':
         return (
-          <span className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800 flex items-center">
+          <span className="px-2 py-1 text-xs rounded-full bg-red-900/30 text-red-400 flex items-center">
             <AlertTriangle className="w-3 h-3 mr-1" />
             {credential.status === 'expired' ? 'Expired' : 'Connection Error'}
           </span>
@@ -434,8 +434,8 @@ function AccountCard({
   }
 
   const providerColor = account.provider === 'gcp'
-    ? 'bg-blue-100 text-blue-600'
-    : 'bg-orange-100 text-orange-600'
+    ? 'bg-blue-900/30 text-blue-400'
+    : 'bg-orange-900/30 text-orange-400'
 
   return (
     <div className="card">
@@ -446,10 +446,10 @@ function AccountCard({
           </div>
           <div className="ml-4">
             <div className="flex items-center space-x-2">
-              <h3 className="font-semibold text-gray-900">{account.name}</h3>
+              <h3 className="font-semibold text-white">{account.name}</h3>
               {getCredentialStatusBadge()}
             </div>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-400">
               {account.provider.toUpperCase()} • {account.account_id}
             </p>
           </div>
@@ -457,8 +457,8 @@ function AccountCard({
         <div className="flex items-center space-x-2">
           <span className={`px-2 py-1 text-xs rounded-full ${
             account.is_active
-              ? 'bg-green-100 text-green-800'
-              : 'bg-gray-100 text-gray-800'
+              ? 'bg-green-900/30 text-green-400'
+              : 'bg-gray-700/30 text-gray-400'
           }`}>
             {account.is_active ? 'Active' : 'Inactive'}
           </span>
@@ -466,7 +466,7 @@ function AccountCard({
           {/* Edit Regions Button */}
           <button
             onClick={onEdit}
-            className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg"
+            className="p-2 text-gray-400 hover:bg-gray-700 rounded-lg"
             title="Edit Regions"
           >
             <MapPin className="h-5 w-5" />
@@ -484,7 +484,7 @@ function AccountCard({
           ) : (
             <button
               onClick={onConnect}
-              className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg"
+              className="p-2 text-gray-400 hover:bg-gray-700 rounded-lg"
               title="Configure Connection"
             >
               <Settings className="h-5 w-5" />
@@ -532,7 +532,7 @@ function AccountCard({
       </div>
 
       {/* Additional info row */}
-      <div className="mt-3 flex items-center justify-between text-sm text-gray-500">
+      <div className="mt-3 flex items-center justify-between text-sm text-gray-400">
         <div className="flex items-center space-x-4">
           {/* Region info */}
           <div className="flex items-center text-xs">
@@ -548,14 +548,14 @@ function AccountCard({
             ) : account.regions?.length ? (
               <span>{account.regions.length} region{account.regions.length !== 1 ? 's' : ''}</span>
             ) : (
-              <span className="text-yellow-600">No regions configured</span>
+              <span className="text-yellow-400">No regions configured</span>
             )}
           </div>
           {account.last_scan_at && (
             <span>Last scanned: {new Date(account.last_scan_at).toLocaleString()}</span>
           )}
           {credential?.credential_type && (
-            <span className="text-xs bg-gray-100 px-2 py-0.5 rounded">
+            <span className="text-xs bg-gray-700/30 px-2 py-0.5 rounded">
               {credential.credential_type === 'aws_iam_role' ? 'IAM Role' :
                credential.credential_type === 'gcp_workload_identity' ? 'Workload Identity' :
                'Service Account Key'}
@@ -571,8 +571,8 @@ function AccountCard({
 
       {/* Warning for missing permissions */}
       {credential?.missing_permissions && credential.missing_permissions.length > 0 && (
-        <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <p className="text-sm text-yellow-800">
+        <div className="mt-3 p-2 bg-yellow-900/30 border border-yellow-700 rounded-lg">
+          <p className="text-sm text-yellow-400">
             <AlertTriangle className="w-4 h-4 inline mr-1" />
             Missing {credential.missing_permissions.length} permission(s).
             <button onClick={onConnect} className="underline ml-1">Update credentials</button>

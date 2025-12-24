@@ -42,8 +42,8 @@ export default function Coverage() {
     return (
       <div className="text-center py-12 card">
         <BarChart3 className="mx-auto h-12 w-12 text-gray-400" />
-        <h3 className="mt-2 text-lg font-medium text-gray-900">No coverage data</h3>
-        <p className="mt-1 text-sm text-gray-500">
+        <h3 className="mt-2 text-lg font-medium text-white">No coverage data</h3>
+        <p className="mt-1 text-sm text-gray-400">
           Run a scan on your cloud accounts to calculate coverage.
         </p>
       </div>
@@ -54,20 +54,20 @@ export default function Coverage() {
     <div>
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">MITRE ATT&CK Coverage</h1>
-          <p className="text-gray-600">
+          <h1 className="text-2xl font-bold text-white">MITRE ATT&CK Coverage</h1>
+          <p className="text-gray-400">
             Version {coverage.mitre_version} - Last updated {new Date(coverage.created_at).toLocaleString()}
           </p>
         </div>
         <div className="flex items-center space-x-2">
           {/* View Mode Toggle */}
-          <div className="flex bg-gray-100 rounded-lg p-1">
+          <div className="flex bg-gray-700 rounded-lg p-1">
             <button
               onClick={() => setViewMode('heatmap')}
               className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                 viewMode === 'heatmap'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-gray-700 text-gray-900 shadow-sm'
+                  : 'text-gray-400 hover:text-gray-900'
               }`}
             >
               <Grid3X3 className="h-4 w-4 mr-1.5" />
@@ -77,8 +77,8 @@ export default function Coverage() {
               onClick={() => setViewMode('tactics')}
               className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                 viewMode === 'tactics'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-gray-700 text-gray-900 shadow-sm'
+                  : 'text-gray-400 hover:text-gray-900'
               }`}
             >
               <List className="h-4 w-4 mr-1.5" />
@@ -105,7 +105,7 @@ export default function Coverage() {
             <CheckCircle className="w-5 h-5 text-green-500" />
           </div>
           <p className="text-3xl font-bold text-green-600">{coverage.covered_techniques}</p>
-          <p className="text-sm text-gray-500">Covered</p>
+          <p className="text-sm text-gray-400">Covered</p>
           <p className="text-xs text-gray-400 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">Click for details</p>
         </button>
         <button
@@ -116,7 +116,7 @@ export default function Coverage() {
             <AlertTriangle className="w-5 h-5 text-yellow-500" />
           </div>
           <p className="text-3xl font-bold text-yellow-600">{coverage.partial_techniques}</p>
-          <p className="text-sm text-gray-500">Partial</p>
+          <p className="text-sm text-gray-400">Partial</p>
           <p className="text-xs text-gray-400 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">Click for details</p>
         </button>
         <button
@@ -127,7 +127,7 @@ export default function Coverage() {
             <XCircle className="w-5 h-5 text-gray-400" />
           </div>
           <p className="text-3xl font-bold text-gray-400">{coverage.uncovered_techniques}</p>
-          <p className="text-sm text-gray-500">Uncovered</p>
+          <p className="text-sm text-gray-400">Uncovered</p>
           <p className="text-xs text-gray-400 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">Click for details</p>
         </button>
         <button
@@ -135,10 +135,10 @@ export default function Coverage() {
           className="stat-card text-center hover:bg-gray-50 hover:shadow-md transition-all cursor-pointer group"
         >
           <div className="flex items-center justify-center gap-2 mb-1">
-            <Shield className="w-5 h-5 text-blue-500" />
+            <Shield className="w-5 h-5 text-blue-400" />
           </div>
           <p className="text-3xl font-bold text-blue-600">{coverage.total_techniques}</p>
-          <p className="text-sm text-gray-500">Total Techniques</p>
+          <p className="text-sm text-gray-400">Total Techniques</p>
           <p className="text-xs text-gray-400 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">Click for details</p>
         </button>
       </div>
@@ -146,19 +146,19 @@ export default function Coverage() {
       {/* Main Coverage View */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <div className="card">
-          <h3 className="text-lg font-semibold text-gray-900 mb-6">Overall Score</h3>
+          <h3 className="text-lg font-semibold text-white mb-6">Overall Score</h3>
           <CoverageGauge
             percent={coverage.coverage_percent}
             confidence={coverage.average_confidence}
           />
           <div className="mt-6 grid grid-cols-2 gap-4 text-center">
-            <div className="p-3 bg-gray-50 rounded-lg">
-              <p className="text-xl font-bold text-gray-900">{coverage.total_detections}</p>
-              <p className="text-xs text-gray-500">Total Detections</p>
+            <div className="p-3 bg-gray-700 rounded-lg">
+              <p className="text-xl font-bold text-white">{coverage.total_detections}</p>
+              <p className="text-xs text-gray-400">Total Detections</p>
             </div>
-            <div className="p-3 bg-gray-50 rounded-lg">
-              <p className="text-xl font-bold text-gray-900">{coverage.mapped_detections}</p>
-              <p className="text-xs text-gray-500">Mapped</p>
+            <div className="p-3 bg-gray-700 rounded-lg">
+              <p className="text-xl font-bold text-white">{coverage.mapped_detections}</p>
+              <p className="text-xs text-gray-400">Mapped</p>
             </div>
           </div>
 
@@ -174,8 +174,8 @@ export default function Coverage() {
           {viewMode === 'heatmap' ? (
             <>
               <div className="mb-6">
-                <h3 className="text-lg font-semibold text-gray-900">MITRE ATT&CK Cloud Technique Heatmap</h3>
-                <p className="text-sm text-gray-500 mt-1">Coverage across 168 cloud-applicable techniques (IaaS, AWS, GCP)</p>
+                <h3 className="text-lg font-semibold text-white">MITRE ATT&CK Cloud Technique Heatmap</h3>
+                <p className="text-sm text-gray-400 mt-1">Coverage across 168 cloud-applicable techniques (IaaS, AWS, GCP)</p>
               </div>
               {techniquesLoading ? (
                 <div className="flex items-center justify-center h-64">
@@ -184,14 +184,14 @@ export default function Coverage() {
               ) : techniques && techniques.length > 0 ? (
                 <MitreHeatmap techniques={techniques} />
               ) : (
-                <div className="text-center py-8 text-gray-500">
+                <div className="text-center py-8 text-gray-400">
                   No technique data available
                 </div>
               )}
             </>
           ) : (
             <>
-              <h3 className="text-lg font-semibold text-gray-900 mb-6">Coverage by Tactic</h3>
+              <h3 className="text-lg font-semibold text-white mb-6">Coverage by Tactic</h3>
               <TacticHeatmap tactics={coverage.tactic_coverage} />
             </>
           )}
@@ -200,19 +200,19 @@ export default function Coverage() {
 
       {/* Legend */}
       <div className="mt-6 card">
-        <h4 className="text-sm font-medium text-gray-700 mb-3">Coverage Legend</h4>
+        <h4 className="text-sm font-medium text-white mb-3">Coverage Legend</h4>
         <div className="flex flex-wrap gap-6">
           <div className="flex items-center">
             <div className="w-4 h-4 bg-green-500 rounded mr-2"></div>
-            <span className="text-sm text-gray-600">Covered (&ge;60% confidence)</span>
+            <span className="text-sm text-gray-400">Covered (&ge;60% confidence)</span>
           </div>
           <div className="flex items-center">
             <div className="w-4 h-4 bg-yellow-500 rounded mr-2"></div>
-            <span className="text-sm text-gray-600">Partial (40-60% confidence)</span>
+            <span className="text-sm text-gray-400">Partial (40-60% confidence)</span>
           </div>
           <div className="flex items-center">
             <div className="w-4 h-4 bg-gray-300 rounded mr-2"></div>
-            <span className="text-sm text-gray-600">Uncovered (&lt;40% confidence)</span>
+            <span className="text-sm text-gray-400">Uncovered (&lt;40% confidence)</span>
           </div>
         </div>
       </div>

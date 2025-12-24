@@ -11,32 +11,32 @@ const detectionTypeConfig: Record<string, { label: string; icon: React.ElementTy
   'cloudwatch_logs_insights': {
     label: 'CloudWatch Logs',
     icon: Activity,
-    color: 'text-orange-700',
-    bgColor: 'bg-orange-100'
+    color: 'text-orange-400',
+    bgColor: 'bg-orange-900/30'
   },
   'eventbridge_rule': {
     label: 'EventBridge',
     icon: Zap,
-    color: 'text-purple-700',
-    bgColor: 'bg-purple-100'
+    color: 'text-purple-400',
+    bgColor: 'bg-purple-900/30'
   },
   'guardduty_finding': {
     label: 'GuardDuty',
     icon: Shield,
-    color: 'text-red-700',
-    bgColor: 'bg-red-100'
+    color: 'text-red-400',
+    bgColor: 'bg-red-900/30'
   },
   'config_rule': {
     label: 'Config Rule',
     icon: CheckCircle,
-    color: 'text-green-700',
-    bgColor: 'bg-green-100'
+    color: 'text-green-400',
+    bgColor: 'bg-green-900/30'
   },
   'security_hub': {
     label: 'Security Hub',
     icon: Lock,
-    color: 'text-blue-700',
-    bgColor: 'bg-blue-100'
+    color: 'text-blue-400',
+    bgColor: 'bg-blue-900/30'
   }
 }
 
@@ -44,8 +44,8 @@ function DetectionTypeBadge({ type }: { type: string }) {
   const config = detectionTypeConfig[type] || {
     label: type.replace(/_/g, ' '),
     icon: AlertTriangle,
-    color: 'text-gray-700',
-    bgColor: 'bg-gray-100'
+    color: 'text-gray-400',
+    bgColor: 'bg-gray-700/30'
   }
   const Icon = config.icon
 
@@ -122,7 +122,7 @@ export default function Detections() {
 
   const SortHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
     <th
-      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+      className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-700"
       onClick={() => handleSort(field)}
     >
       <div className="flex items-center space-x-1">
@@ -145,8 +145,8 @@ export default function Detections() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Detections</h1>
-        <p className="text-gray-600">Security detections discovered in your cloud accounts</p>
+        <h1 className="text-2xl font-bold text-white">Detections</h1>
+        <p className="text-gray-400">Security detections discovered in your cloud accounts</p>
       </div>
 
       {/* Search and Filters */}
@@ -204,7 +204,7 @@ export default function Detections() {
       </div>
 
       {/* Results count */}
-      <p className="text-sm text-gray-500 mb-4">
+      <p className="text-sm text-gray-400 mb-4">
         Showing {filteredDetections.length} of {detections.length} detections
       </p>
 
@@ -212,8 +212,8 @@ export default function Detections() {
       {!filteredDetections.length ? (
         <div className="text-center py-12 card">
           <Shield className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-lg font-medium text-gray-900">No detections found</h3>
-          <p className="mt-1 text-sm text-gray-500">
+          <h3 className="mt-2 text-lg font-medium text-white">No detections found</h3>
+          <p className="mt-1 text-sm text-gray-400">
             {search || typeFilter || statusFilter
               ? 'Try adjusting your filters.'
               : 'Run a scan on your cloud accounts to discover detections.'}
@@ -222,8 +222,8 @@ export default function Detections() {
       ) : (
         <div className="card overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-gray-700">
+              <thead className="bg-gray-700/30">
                 <tr>
                   <SortHeader field="name">Detection</SortHeader>
                   <SortHeader field="detection_type">Type</SortHeader>
@@ -231,34 +231,34 @@ export default function Detections() {
                   <SortHeader field="status">Status</SortHeader>
                   <SortHeader field="mapping_count">Mappings</SortHeader>
                   <SortHeader field="discovered_at">Discovered</SortHeader>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white divide-y divide-gray-700">
                 {filteredDetections.map((detection) => (
                   <tr
                     key={detection.id}
-                    className="hover:bg-gray-50 cursor-pointer"
+                    className="hover:bg-gray-700 cursor-pointer"
                     onClick={() => setSelectedDetection(detection)}
                   >
                     <td className="px-6 py-4">
-                      <div className="font-medium text-gray-900">{detection.name}</div>
+                      <div className="font-medium text-white">{detection.name}</div>
                     </td>
                     <td className="px-6 py-4">
                       <DetectionTypeBadge type={detection.detection_type} />
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
+                    <td className="px-6 py-4 text-sm text-gray-400">
                       {detection.region}
                     </td>
                     <td className="px-6 py-4">
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                         detection.status === 'active'
-                          ? 'bg-green-100 text-green-800'
+                          ? 'bg-green-900/30 text-green-400'
                           : detection.status === 'disabled'
-                          ? 'bg-gray-100 text-gray-800'
-                          : 'bg-red-100 text-red-800'
+                          ? 'bg-gray-700/30 text-gray-400'
+                          : 'bg-red-900/30 text-red-400'
                       }`}>
                         {detection.status}
                       </span>
@@ -266,13 +266,13 @@ export default function Detections() {
                     <td className="px-6 py-4">
                       <span className={`text-sm ${
                         detection.mapping_count > 0
-                          ? 'text-green-600 font-medium'
+                          ? 'text-green-400 font-medium'
                           : 'text-gray-400'
                       }`}>
                         {detection.mapping_count} technique{detection.mapping_count !== 1 ? 's' : ''}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
+                    <td className="px-6 py-4 text-sm text-gray-400">
                       {new Date(detection.discovered_at).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4 text-right">
@@ -281,7 +281,7 @@ export default function Detections() {
                           e.stopPropagation()
                           setSelectedDetection(detection)
                         }}
-                        className="p-2 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-gray-100"
+                        className="p-2 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-gray-700"
                         title="View details"
                       >
                         <Eye className="h-4 w-4" />

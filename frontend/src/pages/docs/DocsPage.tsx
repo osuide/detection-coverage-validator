@@ -62,12 +62,12 @@ export function DocsPage() {
   return (
     <DocsLayout>
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-sm text-gray-400 mb-8 pb-6 border-b border-slate-800">
+      <nav className="flex items-center gap-2 text-sm text-gray-400 mb-8 pb-6 border-b border-gray-700">
         <Link to="/docs" className="hover:text-blue-400 transition-colors flex items-center gap-1.5">
           <BookOpen className="h-4 w-4" />
           Documentation
         </Link>
-        <ChevronRight className="h-3 w-3 text-gray-600" />
+        <ChevronRight className="h-3 w-3 text-gray-400" />
         <span className="text-white font-medium">{doc.title}</span>
       </nav>
 
@@ -76,8 +76,8 @@ export function DocsPage() {
         {/* Header */}
         <header className="mb-14">
           <h1 className="text-4xl font-bold text-white mb-6">{doc.title}</h1>
-          <p className="text-xl text-white leading-relaxed mb-6">{doc.description}</p>
-          <div className="flex items-center gap-4 text-sm text-gray-300">
+          <p className="text-xl text-gray-400 leading-relaxed mb-6">{doc.description}</p>
+          <div className="flex items-center gap-4 text-sm text-gray-400">
             <span className="flex items-center gap-1.5">
               <Clock className="h-4 w-4" />
               {doc.readTime} read
@@ -91,35 +91,35 @@ export function DocsPage() {
             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500" />
           </div>
         ) : error ? (
-          <div className="p-6 bg-red-900/20 border border-red-500/30 text-red-400 rounded-xl">
+          <div className="p-6 bg-red-900/30 border border-red-700 text-red-400 rounded-xl">
             <p className="font-medium">Error loading document</p>
-            <p className="text-sm mt-1 text-red-300">{error}</p>
+            <p className="text-sm mt-1 text-red-400">{error}</p>
           </div>
         ) : (
           <article className="prose prose-lg max-w-none
             prose-headings:scroll-mt-24
             prose-headings:font-bold
-            prose-h1:text-3xl prose-h1:mb-10 prose-h1:pb-5 prose-h1:border-b prose-h1:border-slate-600 prose-h1:!text-white
+            prose-h1:text-3xl prose-h1:mb-10 prose-h1:pb-5 prose-h1:border-b prose-h1:border-gray-700 prose-h1:!text-white
             prose-h2:text-2xl prose-h2:mt-16 prose-h2:mb-8 prose-h2:!text-white prose-h2:font-semibold prose-h2:pt-4
             prose-h3:text-xl prose-h3:mt-12 prose-h3:mb-6 prose-h3:!text-white prose-h3:font-semibold
             prose-h4:text-lg prose-h4:mt-10 prose-h4:mb-5 prose-h4:!text-white
-            prose-p:!text-white prose-p:leading-[1.9] prose-p:text-[17px] prose-p:mb-7
-            prose-a:!text-cyan-300 prose-a:underline prose-a:decoration-cyan-400/60 prose-a:underline-offset-4 prose-a:font-medium prose-a:transition-colors hover:prose-a:!text-cyan-200 hover:prose-a:decoration-cyan-300
+            prose-p:!text-gray-400 prose-p:leading-[1.9] prose-p:text-[17px] prose-p:mb-7
+            prose-a:!text-cyan-400 prose-a:underline prose-a:decoration-cyan-400/60 prose-a:underline-offset-4 prose-a:font-medium prose-a:transition-colors hover:prose-a:!text-cyan-300 hover:prose-a:decoration-cyan-400
             prose-strong:!text-white prose-strong:font-semibold
-            prose-code:!text-amber-300 prose-code:bg-slate-800 prose-code:px-2 prose-code:py-1 prose-code:rounded-md prose-code:font-mono prose-code:text-[15px] prose-code:border prose-code:border-slate-600
+            prose-code:!text-amber-400 prose-code:bg-gray-800 prose-code:px-2 prose-code:py-1 prose-code:rounded-md prose-code:font-mono prose-code:text-[15px] prose-code:border prose-code:border-gray-700
             prose-code:before:content-none prose-code:after:content-none
             prose-pre:bg-transparent prose-pre:p-0 prose-pre:m-0
-            prose-ul:!text-white prose-ol:!text-white prose-ul:my-7 prose-ol:my-7 prose-ul:space-y-3 prose-ol:space-y-3
-            prose-li:marker:!text-cyan-400 prose-li:!text-white prose-li:mb-4 prose-li:leading-[1.9] prose-li:pl-2
-            prose-blockquote:border-l-4 prose-blockquote:border-cyan-400 prose-blockquote:bg-slate-800/70 prose-blockquote:py-5 prose-blockquote:px-7 prose-blockquote:rounded-r-xl prose-blockquote:!text-white prose-blockquote:not-italic prose-blockquote:my-10 prose-blockquote:shadow-lg
-            prose-hr:border-slate-600 prose-hr:my-12
-            prose-img:rounded-xl prose-img:shadow-lg prose-img:border prose-img:border-slate-600
+            prose-ul:!text-gray-400 prose-ol:!text-gray-400 prose-ul:my-7 prose-ol:my-7 prose-ul:space-y-3 prose-ol:space-y-3
+            prose-li:marker:!text-cyan-400 prose-li:!text-gray-400 prose-li:mb-4 prose-li:leading-[1.9] prose-li:pl-2
+            prose-blockquote:border-l-4 prose-blockquote:border-cyan-400 prose-blockquote:bg-gray-800 prose-blockquote:py-5 prose-blockquote:px-7 prose-blockquote:rounded-r-xl prose-blockquote:!text-gray-400 prose-blockquote:not-italic prose-blockquote:my-10 prose-blockquote:shadow-lg
+            prose-hr:border-gray-700 prose-hr:my-12
+            prose-img:rounded-xl prose-img:shadow-lg prose-img:border prose-img:border-gray-700
             prose-table:text-base prose-table:w-full prose-table:my-10
-            prose-thead:bg-slate-700 prose-thead:!text-white
+            prose-thead:bg-gray-700/30 prose-thead:!text-white
             prose-th:p-5 prose-th:text-left prose-th:font-semibold prose-th:!text-white
-            prose-tbody:!text-white
-            prose-tr:border-b prose-tr:border-slate-600
-            prose-td:p-5 prose-td:leading-relaxed prose-td:!text-white
+            prose-tbody:!text-gray-400
+            prose-tr:border-b prose-tr:border-gray-700
+            prose-td:p-5 prose-td:leading-relaxed prose-td:!text-gray-400
           ">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm, remarkBreaks]}
@@ -229,7 +229,7 @@ export function DocsPage() {
                   },
                   // Enhanced table wrapper
                   table: ({ children, ...props }) => (
-                    <div className="overflow-x-auto rounded-xl border border-slate-700 my-6">
+                    <div className="overflow-x-auto rounded-xl border border-gray-700 my-6">
                       <table className="w-full" {...props}>
                         {children}
                       </table>
@@ -243,15 +243,15 @@ export function DocsPage() {
           )}
 
         {/* Navigation */}
-        <div className="flex justify-between items-center mt-16 pt-8 border-t border-slate-700">
+        <div className="flex justify-between items-center mt-16 pt-8 border-t border-gray-700">
           {prevDoc ? (
             <Link
               to={`/docs/${prevDoc.slug}`}
-              className="flex items-center gap-3 text-gray-300 hover:text-white transition-colors group"
+              className="flex items-center gap-3 text-gray-400 hover:text-white transition-colors group"
             >
               <ArrowLeft className="h-5 w-5 group-hover:-translate-x-1 transition-transform" />
               <div>
-                <div className="text-xs text-gray-500 mb-1">Previous</div>
+                <div className="text-xs text-gray-400 mb-1">Previous</div>
                 <div className="font-medium">{prevDoc.title}</div>
               </div>
             </Link>
@@ -261,10 +261,10 @@ export function DocsPage() {
           {nextDoc ? (
             <Link
               to={`/docs/${nextDoc.slug}`}
-              className="flex items-center gap-3 text-gray-300 hover:text-white transition-colors text-right group"
+              className="flex items-center gap-3 text-gray-400 hover:text-white transition-colors text-right group"
             >
               <div>
-                <div className="text-xs text-gray-500 mb-1">Next</div>
+                <div className="text-xs text-gray-400 mb-1">Next</div>
                 <div className="font-medium">{nextDoc.title}</div>
               </div>
               <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />

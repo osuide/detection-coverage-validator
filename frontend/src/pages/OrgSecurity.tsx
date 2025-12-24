@@ -174,8 +174,8 @@ export default function OrgSecurity() {
   return (
     <div className="max-w-4xl">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Security Settings</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <h1 className="text-2xl font-bold text-white">Security Settings</h1>
+        <p className="mt-1 text-sm text-gray-400">
           Configure security policies for your organization
         </p>
       </div>
@@ -184,8 +184,8 @@ export default function OrgSecurity() {
         <div
           className={`mb-6 p-4 rounded-lg flex items-center ${
             message.type === 'success'
-              ? 'bg-green-50 text-green-800 border border-green-200'
-              : 'bg-red-50 text-red-800 border border-red-200'
+              ? 'bg-green-900/30 text-green-400 border border-green-700'
+              : 'bg-red-900/30 text-red-400 border border-red-700'
           }`}
         >
           {message.type === 'success' ? (
@@ -198,8 +198,8 @@ export default function OrgSecurity() {
       )}
 
       {/* MFA Settings */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-700 p-6 mb-6">
+        <h2 className="text-lg font-semibold text-white mb-4 flex items-center">
           <Shield className="h-5 w-5 mr-2 text-gray-400" />
           Multi-Factor Authentication
         </h2>
@@ -207,8 +207,8 @@ export default function OrgSecurity() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <label className="font-medium text-gray-700">Require MFA for all members</label>
-              <p className="text-sm text-gray-500">Members must enable MFA to access the organization</p>
+              <label className="font-medium text-gray-400">Require MFA for all members</label>
+              <p className="text-sm text-gray-400">Members must enable MFA to access the organization</p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -224,7 +224,7 @@ export default function OrgSecurity() {
 
           {formData.require_mfa && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-400 mb-1">
                 Grace period for existing members (days)
               </label>
               <input
@@ -242,15 +242,15 @@ export default function OrgSecurity() {
       </div>
 
       {/* Session Settings */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-700 p-6 mb-6">
+        <h2 className="text-lg font-semibold text-white mb-4 flex items-center">
           <Clock className="h-5 w-5 mr-2 text-gray-400" />
           Session Settings
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-400 mb-1">
               Session timeout (minutes)
             </label>
             <select
@@ -269,7 +269,7 @@ export default function OrgSecurity() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-400 mb-1">
               Idle timeout (minutes)
             </label>
             <select
@@ -289,15 +289,15 @@ export default function OrgSecurity() {
       </div>
 
       {/* Password Policy */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-700 p-6 mb-6">
+        <h2 className="text-lg font-semibold text-white mb-4 flex items-center">
           <Key className="h-5 w-5 mr-2 text-gray-400" />
           Password Policy
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-400 mb-1">
               Minimum password length
             </label>
             <input
@@ -312,7 +312,7 @@ export default function OrgSecurity() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-400 mb-1">
               Max failed login attempts
             </label>
             <input
@@ -327,7 +327,7 @@ export default function OrgSecurity() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-400 mb-1">
               Lockout duration (minutes)
             </label>
             <input
@@ -358,9 +358,9 @@ export default function OrgSecurity() {
       )}
 
       {/* Verified Domains */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-700 p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+          <h2 className="text-lg font-semibold text-white flex items-center">
             <Globe className="h-5 w-5 mr-2 text-gray-400" />
             Verified Domains
           </h2>
@@ -375,13 +375,13 @@ export default function OrgSecurity() {
           )}
         </div>
 
-        <p className="text-sm text-gray-500 mb-4">
+        <p className="text-sm text-gray-400 mb-4">
           Verify your email domains to enable auto-join and SSO enforcement.
         </p>
 
         {domains.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            <Globe className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+          <div className="text-center py-8 text-gray-400">
+            <Globe className="h-12 w-12 mx-auto mb-3 text-gray-400" />
             <p>No domains configured</p>
           </div>
         ) : (
@@ -389,17 +389,17 @@ export default function OrgSecurity() {
             {domains.map((domain) => (
               <div
                 key={domain.id}
-                className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+                className="flex items-center justify-between p-4 bg-gray-700/30 rounded-lg"
               >
                 <div className="flex items-center">
                   {domain.verified_at ? (
-                    <CheckCircle className="h-5 w-5 text-green-500 mr-3" />
+                    <CheckCircle className="h-5 w-5 text-green-400 mr-3" />
                   ) : (
-                    <AlertCircle className="h-5 w-5 text-yellow-500 mr-3" />
+                    <AlertCircle className="h-5 w-5 text-yellow-400 mr-3" />
                   )}
                   <div>
-                    <div className="font-medium text-gray-900">{domain.domain}</div>
-                    <div className="text-sm text-gray-500">
+                    <div className="font-medium text-white">{domain.domain}</div>
+                    <div className="text-sm text-gray-400">
                       {domain.verified_at
                         ? `Verified ${new Date(domain.verified_at).toLocaleDateString()}`
                         : 'Pending verification'}
@@ -410,7 +410,7 @@ export default function OrgSecurity() {
                   {!domain.verified_at && isOwner && (
                     <button
                       onClick={() => handleVerifyDomain(domain)}
-                      className="text-sm text-blue-600 hover:text-blue-800"
+                      className="text-sm text-blue-400 hover:text-blue-300"
                     >
                       Verify
                     </button>
@@ -418,7 +418,7 @@ export default function OrgSecurity() {
                   {isOwner && (
                     <button
                       onClick={() => handleRemoveDomain(domain)}
-                      className="p-1 text-gray-400 hover:text-red-600"
+                      className="p-1 text-gray-400 hover:text-red-400"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -434,9 +434,9 @@ export default function OrgSecurity() {
       {showAddDomain && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Add Domain</h3>
+            <h3 className="text-lg font-semibold text-white mb-4">Add Domain</h3>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-400 mb-1">
                 Domain name
               </label>
               <input
@@ -450,7 +450,7 @@ export default function OrgSecurity() {
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setShowAddDomain(false)}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                className="px-4 py-2 text-gray-400 hover:text-white"
               >
                 Cancel
               </button>
@@ -470,48 +470,48 @@ export default function OrgSecurity() {
       {verifyingDomain && verificationInfo && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-xl max-w-lg w-full mx-4 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            <h3 className="text-lg font-semibold text-white mb-4">
               Verify {verifyingDomain.domain}
             </h3>
 
             {verificationInfo.verified ? (
               <div className="text-center py-4">
-                <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-3" />
-                <p className="text-green-700">{verificationInfo.message}</p>
+                <CheckCircle className="h-12 w-12 text-green-400 mx-auto mb-3" />
+                <p className="text-green-400">{verificationInfo.message}</p>
               </div>
             ) : (
               <>
-                <p className="text-sm text-gray-600 mb-4">{verificationInfo.instructions}</p>
+                <p className="text-sm text-gray-400 mb-4">{verificationInfo.instructions}</p>
 
                 {verificationInfo.record_name && (
-                  <div className="bg-gray-50 rounded-lg p-4 mb-4 space-y-3">
+                  <div className="bg-gray-700/30 rounded-lg p-4 mb-4 space-y-3">
                     <div>
-                      <span className="text-xs font-medium text-gray-500">Record Type</span>
-                      <div className="font-mono text-sm">{verificationInfo.record_type}</div>
+                      <span className="text-xs font-medium text-gray-400">Record Type</span>
+                      <div className="font-mono text-sm text-white">{verificationInfo.record_type}</div>
                     </div>
                     <div>
-                      <span className="text-xs font-medium text-gray-500">Name/Host</span>
+                      <span className="text-xs font-medium text-gray-400">Name/Host</span>
                       <div className="flex items-center gap-2">
-                        <code className="flex-1 text-sm bg-white px-2 py-1 rounded border">
+                        <code className="flex-1 text-sm bg-white px-2 py-1 rounded border border-gray-700">
                           {verificationInfo.record_name}
                         </code>
                         <button
                           onClick={() => copyToClipboard(verificationInfo.record_name!)}
-                          className="p-1 text-gray-400 hover:text-gray-600"
+                          className="p-1 text-gray-400 hover:text-gray-400"
                         >
                           <Copy className="h-4 w-4" />
                         </button>
                       </div>
                     </div>
                     <div>
-                      <span className="text-xs font-medium text-gray-500">Value</span>
+                      <span className="text-xs font-medium text-gray-400">Value</span>
                       <div className="flex items-center gap-2">
-                        <code className="flex-1 text-sm bg-white px-2 py-1 rounded border break-all">
+                        <code className="flex-1 text-sm bg-white px-2 py-1 rounded border border-gray-700 break-all">
                           {verificationInfo.record_value}
                         </code>
                         <button
                           onClick={() => copyToClipboard(verificationInfo.record_value!)}
-                          className="p-1 text-gray-400 hover:text-gray-600"
+                          className="p-1 text-gray-400 hover:text-gray-400"
                         >
                           <Copy className="h-4 w-4" />
                         </button>
@@ -528,7 +528,7 @@ export default function OrgSecurity() {
                   setVerifyingDomain(null)
                   setVerificationInfo(null)
                 }}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                className="px-4 py-2 text-gray-400 hover:text-white"
               >
                 Close
               </button>

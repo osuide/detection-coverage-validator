@@ -87,23 +87,23 @@ export default function Profile() {
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
       case 'owner':
-        return 'bg-purple-100 text-purple-800'
+        return 'bg-purple-900/30 text-purple-400'
       case 'admin':
-        return 'bg-blue-100 text-blue-800'
+        return 'bg-blue-900/30 text-blue-400'
       case 'member':
-        return 'bg-green-100 text-green-800'
+        return 'bg-green-900/30 text-green-400'
       case 'viewer':
-        return 'bg-gray-100 text-gray-800'
+        return 'bg-gray-700/30 text-gray-400'
       default:
-        return 'bg-gray-100 text-gray-800'
+        return 'bg-gray-700/30 text-gray-400'
     }
   }
 
   return (
     <div className="max-w-4xl">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Profile Settings</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <h1 className="text-2xl font-bold text-white">Profile Settings</h1>
+        <p className="mt-1 text-sm text-gray-400">
           Manage your account information and security settings
         </p>
       </div>
@@ -121,41 +121,41 @@ export default function Profile() {
       )}
 
       {/* Account Overview */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-700 p-6 mb-6">
+        <h2 className="text-lg font-semibold text-white mb-4 flex items-center">
           <User className="h-5 w-5 mr-2 text-gray-400" />
           Account Overview
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="flex items-center p-4 bg-gray-50 rounded-lg">
+          <div className="flex items-center p-4 bg-gray-700/30 rounded-lg">
             <Mail className="h-5 w-5 text-gray-400 mr-3" />
             <div>
-              <p className="text-xs text-gray-500">Email</p>
-              <p className="font-medium text-gray-900">{user?.email}</p>
+              <p className="text-xs text-gray-400">Email</p>
+              <p className="font-medium text-white">{user?.email}</p>
             </div>
           </div>
-          <div className="flex items-center p-4 bg-gray-50 rounded-lg">
+          <div className="flex items-center p-4 bg-gray-700/30 rounded-lg">
             <Building className="h-5 w-5 text-gray-400 mr-3" />
             <div>
-              <p className="text-xs text-gray-500">Organization</p>
-              <p className="font-medium text-gray-900">{organization?.name}</p>
+              <p className="text-xs text-gray-400">Organization</p>
+              <p className="font-medium text-white">{organization?.name}</p>
             </div>
           </div>
-          <div className="flex items-center p-4 bg-gray-50 rounded-lg">
+          <div className="flex items-center p-4 bg-gray-700/30 rounded-lg">
             <Shield className="h-5 w-5 text-gray-400 mr-3" />
             <div>
-              <p className="text-xs text-gray-500">Role</p>
+              <p className="text-xs text-gray-400">Role</p>
               <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getRoleBadgeColor(user?.role || '')}`}>
                 {user?.role?.charAt(0).toUpperCase()}{user?.role?.slice(1)}
               </span>
             </div>
           </div>
-          <div className="flex items-center p-4 bg-gray-50 rounded-lg">
+          <div className="flex items-center p-4 bg-gray-700/30 rounded-lg">
             <Smartphone className="h-5 w-5 text-gray-400 mr-3" />
             <div>
-              <p className="text-xs text-gray-500">MFA Status</p>
+              <p className="text-xs text-gray-400">MFA Status</p>
               <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                user?.mfa_enabled ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                user?.mfa_enabled ? 'bg-green-900/30 text-green-400' : 'bg-yellow-900/30 text-yellow-400'
               }`}>
                 {user?.mfa_enabled ? 'Enabled' : 'Not Enabled'}
               </span>
@@ -165,14 +165,14 @@ export default function Profile() {
       </div>
 
       {/* Update Profile */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-700 p-6 mb-6">
+        <h2 className="text-lg font-semibold text-white mb-4 flex items-center">
           <User className="h-5 w-5 mr-2 text-gray-400" />
           Update Profile
         </h2>
         <form onSubmit={handleUpdateProfile}>
           <div className="mb-4">
-            <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="fullName" className="block text-sm font-medium text-gray-400 mb-1">
               Full Name
             </label>
             <input
@@ -196,15 +196,15 @@ export default function Profile() {
       </div>
 
       {/* Change Password */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-700 p-6">
+        <h2 className="text-lg font-semibold text-white mb-4 flex items-center">
           <Key className="h-5 w-5 mr-2 text-gray-400" />
           Change Password
         </h2>
         <form onSubmit={handleChangePassword}>
           <div className="space-y-4">
             <div>
-              <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-400 mb-1">
                 Current Password
               </label>
               <input
@@ -218,7 +218,7 @@ export default function Profile() {
               />
             </div>
             <div>
-              <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="newPassword" className="block text-sm font-medium text-gray-400 mb-1">
                 New Password
               </label>
               <input
@@ -233,7 +233,7 @@ export default function Profile() {
               />
             </div>
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-400 mb-1">
                 Confirm New Password
               </label>
               <input
