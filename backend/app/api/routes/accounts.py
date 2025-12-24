@@ -38,7 +38,9 @@ from app.schemas.cloud_account import (
 from app.core.service_registry import get_all_regions, get_default_regions
 from app.services.region_discovery_service import region_discovery_service
 from app.services.aws_credential_service import aws_credential_service
+from app.services.cloud_account_fraud_service import CloudAccountFraudService
 from app.models.cloud_credential import CredentialStatus, CredentialType
+from app.models.billing import AccountTier
 from datetime import datetime, timezone
 
 logger = structlog.get_logger()
@@ -132,14 +134,52 @@ async def create_account(
             detail=f"Account with ID {account_in.account_id} already exists in your organisation",
         )
 
+    # Fraud prevention: Check cloud account uniqueness and email binding
+    fraud_service = CloudAccountFraudService(db)
+    allowed, block_reason = await fraud_service.check_cloud_account_allowed(
+        provider=account_in.provider,
+        account_id=account_in.account_id,
+        organization_id=auth.organization_id,
+        user_email=auth.user.email,
+    )
+    if not allowed:
+        logger.warning(
+            "cloud_account_creation_blocked_fraud",
+            account_id=account_in.account_id,
+            provider=account_in.provider.value,
+            organization_id=str(auth.organization_id),
+            reason=block_reason,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=block_reason,
+        )
+
+    # Compute the global account hash for fraud prevention tracking
+    global_account_hash = CloudAccount.compute_account_hash(
+        account_in.provider, account_in.account_id
+    )
+
     # Use mode="json" to serialize region_config properly for JSONB storage
     account_data = account_in.model_dump(mode="json")
     account = CloudAccount(
         **account_data,
         organization_id=auth.organization_id,
+        global_account_hash=global_account_hash,
     )
     db.add(account)
     await db.flush()
+
+    # Register in global fraud prevention registry
+    is_free_tier = subscription.tier == AccountTier.FREE
+    await fraud_service.register_cloud_account(
+        provider=account_in.provider,
+        account_id=account_in.account_id,
+        organization_id=auth.organization_id,
+        user_email=auth.user.email,
+        is_free_tier=is_free_tier,
+    )
+
     await db.refresh(account)
     return account
 
@@ -260,6 +300,14 @@ async def delete_account(
         )
 
     try:
+        # Release cloud account from fraud prevention registry
+        fraud_service = CloudAccountFraudService(db)
+        await fraud_service.release_cloud_account(
+            provider=account.provider,
+            account_id=account.account_id,
+            organization_id=auth.organization_id,
+        )
+
         # Delete related records that don't have CASCADE delete
         # Order matters due to foreign key dependencies
         await db.execute(

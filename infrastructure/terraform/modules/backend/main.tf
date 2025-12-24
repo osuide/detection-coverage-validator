@@ -753,6 +753,65 @@ resource "aws_wafv2_web_acl" "api" {
     }
   }
 
+  # Rule 5: Block Anonymous IPs (VPN, Proxy, Tor, Hosting) for Signup Only
+  # Fraud prevention: Blocks registration attempts from VPNs, proxies, Tor, and datacentres
+  # NOTE: Only applies to POST /api/v1/auth/signup, NOT to:
+  # - /auth/accept-invite (invitee may be joining paid org)
+  # - OAuth callbacks (can't distinguish login from registration)
+  rule {
+    name     = "BlockAnonymousIPsForSignup"
+    priority = 5
+
+    override_action {
+      none {} # Use the rule group's block action
+    }
+
+    statement {
+      managed_rule_group_statement {
+        name        = "AWSManagedRulesAnonymousIpList"
+        vendor_name = "AWS"
+
+        # Scope: Only apply to POST /api/v1/auth/signup
+        scope_down_statement {
+          and_statement {
+            statement {
+              byte_match_statement {
+                positional_constraint = "EXACTLY"
+                search_string         = "/api/v1/auth/signup"
+                field_to_match {
+                  uri_path {}
+                }
+                text_transformation {
+                  priority = 0
+                  type     = "LOWERCASE"
+                }
+              }
+            }
+            statement {
+              byte_match_statement {
+                positional_constraint = "EXACTLY"
+                search_string         = "post"
+                field_to_match {
+                  method {}
+                }
+                text_transformation {
+                  priority = 0
+                  type     = "LOWERCASE"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "a13e-${var.environment}-anonymous-ip-signup-block"
+      sampled_requests_enabled   = true
+    }
+  }
+
   visibility_config {
     cloudwatch_metrics_enabled = true
     metric_name                = "a13e-${var.environment}-api-waf"

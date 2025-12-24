@@ -13,8 +13,10 @@ from app.models.user import User
 
 logger = structlog.get_logger()
 
-# Rate limiting constants
-MAX_REGISTRATIONS_PER_FINGERPRINT_PER_DAY = 3
+# Rate limiting constants - tightened for fraud prevention
+# Free tier: 1 registration per device per 30 days (was 3 per 24 hours)
+MAX_REGISTRATIONS_PER_FINGERPRINT = 1
+REGISTRATION_WINDOW_DAYS = 30
 ABUSE_SCORE_THRESHOLD = 50  # Score above which to flag for review
 
 
@@ -151,7 +153,7 @@ class FingerprintService:
         """Check if registration is allowed from this device.
 
         Rate limits registrations to prevent abuse:
-        - Max 3 registrations per fingerprint per 24 hours
+        - Max 1 registration per fingerprint per 30 days
         - Flagged fingerprints are allowed but logged
 
         Args:
@@ -167,8 +169,8 @@ class FingerprintService:
             # New fingerprint, always allowed
             return True, None
 
-        # Check registrations in last 24 hours from this fingerprint
-        cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+        # Check registrations in the last 30 days from this fingerprint
+        cutoff = datetime.now(timezone.utc) - timedelta(days=REGISTRATION_WINDOW_DAYS)
 
         result = await self.db.execute(
             select(func.count(DeviceFingerprintAssociation.id)).where(
@@ -178,16 +180,17 @@ class FingerprintService:
         )
         recent_registrations = result.scalar() or 0
 
-        if recent_registrations >= MAX_REGISTRATIONS_PER_FINGERPRINT_PER_DAY:
+        if recent_registrations >= MAX_REGISTRATIONS_PER_FINGERPRINT:
             logger.warning(
                 "registration_rate_limited",
                 fingerprint_id=str(fingerprint.id),
                 recent_count=recent_registrations,
+                window_days=REGISTRATION_WINDOW_DAYS,
                 ip_address=ip_address,
             )
             return (
                 False,
-                "Too many account registrations from this device. Please try again later.",
+                "Registration limit reached for this device. Please try again later.",
             )
 
         # Allow but log if fingerprint is flagged

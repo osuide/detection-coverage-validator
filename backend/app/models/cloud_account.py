@@ -1,5 +1,6 @@
 """Cloud account model."""
 
+import hashlib
 import uuid
 from datetime import datetime
 from typing import Optional
@@ -72,6 +73,12 @@ class CloudAccount(Base):
     # Account ID is unique per organisation, not globally
     # (multiple orgs can scan the same AWS/GCP account)
     account_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+
+    # Global hash for fraud prevention - SHA-256 of "{provider}:{account_id}"
+    # Used to detect duplicate free-tier registrations across organisations
+    global_account_hash: Mapped[str] = mapped_column(
+        String(64), nullable=False, index=True
+    )
     regions: Mapped[dict] = mapped_column(JSONB, default=list)
     # Multi-region scanning configuration
     # Structure: {mode, regions, excluded_regions, discovered_regions, auto_discovered_at}
@@ -126,6 +133,22 @@ class CloudAccount(Base):
 
     def __repr__(self) -> str:
         return f"<CloudAccount {self.name} ({self.provider.value}:{self.account_id})>"
+
+    @staticmethod
+    def compute_account_hash(provider: "CloudProvider", account_id: str) -> str:
+        """Compute globally unique SHA-256 hash for a cloud account.
+
+        Used for fraud prevention to detect duplicate free-tier registrations.
+
+        Args:
+            provider: The cloud provider (aws or gcp)
+            account_id: The cloud account identifier
+
+        Returns:
+            64-character hex string (SHA-256 hash)
+        """
+        provider_value = provider.value if hasattr(provider, "value") else str(provider)
+        return hashlib.sha256(f"{provider_value}:{account_id}".encode()).hexdigest()
 
     def get_region_scan_mode(self) -> RegionScanMode:
         """Get the current region scanning mode."""

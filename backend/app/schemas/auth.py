@@ -7,6 +7,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict
 
+from app.schemas.validators import ValidatedEmail
+
 
 # Password validation
 PASSWORD_PATTERN = re.compile(
@@ -69,7 +71,7 @@ class CookieRefreshResponse(BaseModel):
 class SignupRequest(BaseModel):
     """Signup request."""
 
-    email: EmailStr
+    email: ValidatedEmail  # Blocks disposable email domains
     password: str = Field(..., min_length=12)
     full_name: str = Field(..., min_length=2, max_length=255)
     organization_name: str = Field(..., min_length=2, max_length=255)
@@ -238,7 +240,7 @@ class OrganizationMemberResponse(BaseModel):
 class InviteMemberRequest(BaseModel):
     """Invite member request."""
 
-    email: EmailStr
+    email: ValidatedEmail  # Blocks disposable email domains
     role: str = Field(default="member", pattern=r"^(admin|member|viewer)$")
     cloud_account_ids: Optional[List[UUID]] = None
     message: Optional[str] = None

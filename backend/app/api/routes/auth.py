@@ -45,6 +45,7 @@ from app.schemas.auth import (
     SessionResponse,
 )
 from app.services.auth_service import AuthService
+from app.services.email_quality_service import get_email_quality_service
 from app.services.fingerprint_service import FingerprintService
 from app.services.hibp_service import check_password_breached
 
@@ -488,6 +489,24 @@ async def signup(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail=reason or "Too many registrations from this device",
             )
+
+    # Validate email quality (async MX check - Pydantic already blocked disposable domains)
+    email_service = get_email_quality_service()
+    is_valid, email_error = await email_service.validate_email_quality(
+        body.email,
+        check_mx=settings.fraud_prevention_enabled,
+    )
+    if not is_valid:
+        logger.warning(
+            "signup_blocked_email_quality",
+            email_domain=body.email.split("@")[1] if "@" in body.email else "unknown",
+            error=email_error,
+            ip_address=ip_address,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=email_error,
+        )
 
     # Check if email already exists
     # M10: Return generic message to prevent email enumeration

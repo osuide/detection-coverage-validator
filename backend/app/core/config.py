@@ -50,6 +50,12 @@ class Settings(BaseSettings):
     # If False, allow password when API fails (fail-open, less secure but more available)
     hibp_fail_closed: bool = False  # Set to True in production for maximum security
 
+    # Fraud Prevention
+    # Controls email quality validation (disposable email blocking, MX record check)
+    # Note: Cloud account uniqueness and email binding checks are always enabled
+    # Note: IP blocking is handled by AWS WAF at the edge, not application code
+    fraud_prevention_enabled: bool = True
+
     @staticmethod
     def _calculate_entropy(s: str) -> float:
         """Calculate Shannon entropy of a string (bits per character)."""
