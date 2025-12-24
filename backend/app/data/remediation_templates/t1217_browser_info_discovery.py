@@ -51,7 +51,7 @@ TEMPLATE = RemediationTemplate(
                 name="OilRig Juicy Mix Campaign",
                 year=2023,
                 description="Deployed specialised tools (CDumper for Chrome, EDumper for Edge, MKG) to harvest cookies, history, and credentials from browsers",
-                reference_url="https://attack.mitre.org/groups/G0049/",
+                reference_url="https://attack.mitre.org/campaigns/C0044/",
             ),
             Campaign(
                 name="Volt Typhoon Infrastructure Reconnaissance",
