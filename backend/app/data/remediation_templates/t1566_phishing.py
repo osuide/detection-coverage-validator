@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,26 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Thread hijacking increases legitimacy",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="LAPSUS$ Credential Phishing",
-                year=2022,
-                description="Phishing campaigns targeting Microsoft, Nvidia, and Samsung employees to steal credentials",
-                reference_url="https://www.microsoft.com/security/blog/2022/03/22/dev-0537-criminal-actor-targeting-organizations-for-data-exfiltration/",
-            ),
-            Campaign(
-                name="Scattered Spider Callback Phishing",
-                year=2024,
-                description="Callback phishing directing victims to call numbers that led to credential harvesting and MFA bypass",
-                reference_url="https://attack.mitre.org/groups/G1015/",
-            ),
-            Campaign(
-                name="APT29 COVID-19 Phishing",
-                year=2020,
-                description="Spearphishing campaigns targeting healthcare organisations during pandemic using malicious attachments",
-                reference_url="https://attack.mitre.org/groups/G0016/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=9,

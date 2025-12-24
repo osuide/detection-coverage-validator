@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -36,14 +35,7 @@ TEMPLATE = RemediationTemplate(
             "Logs may be overlooked",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="APT29 Azure Run Command",
-                year=2024,
-                description="Utilised Azure Run Command to execute code on virtual machines",
-                reference_url="https://attack.mitre.org/groups/G0016/",
-            )
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="increasing",
         severity_score=8,

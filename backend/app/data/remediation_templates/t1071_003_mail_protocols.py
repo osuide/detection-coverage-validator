@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -39,20 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Enables data exfiltration and command receipt",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="APT28 IMAP C2",
-                year=2020,
-                description="Utilised IMAP, POP3, and SMTP via self-registered Google Mail accounts for C2",
-                reference_url="https://attack.mitre.org/groups/G0007/",
-            ),
-            Campaign(
-                name="Turla ComRAT Email C2",
-                year=2020,
-                description="Deployed backdoors communicating via email attachments for command and control",
-                reference_url="https://attack.mitre.org/software/S0126/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="stable",
         severity_score=7,

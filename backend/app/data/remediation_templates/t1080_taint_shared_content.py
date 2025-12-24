@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -39,26 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Modified binaries or documents may be trusted by users and security tools",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="BRONZE BUTLER Network Drive Compromise",
-                year=2023,
-                description="Deployed malware disguised as legitimate documents on shared drives to spread across enterprise networks",
-                reference_url="https://attack.mitre.org/groups/G0060/",
-            ),
-            Campaign(
-                name="Cinnamon Tempest Ransomware",
-                year=2023,
-                description="Deployed ransomware via batch files placed in shared network locations",
-                reference_url="https://attack.mitre.org/groups/G1021/",
-            ),
-            Campaign(
-                name="Gamaredon Macro Injection",
-                year=2022,
-                description="Injected malicious macros into Word and Excel files stored on shared drives",
-                reference_url="https://attack.mitre.org/groups/G0047/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="increasing",
         severity_score=7,

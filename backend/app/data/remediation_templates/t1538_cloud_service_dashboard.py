@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -37,14 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Browser-based access blends in",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Scattered Spider AWS Dashboard Recon",
-                year=2024,
-                description="Abused AWS Systems Manager Inventory to identify targets prior to lateral movement",
-                reference_url="https://attack.mitre.org/groups/G1015/",
-            )
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="stable",
         severity_score=5,

@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -39,26 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Can blend staging activities with normal user behaviour",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Volt Typhoon Espionage",
-                year=2023,
-                description="Staged sensitive data in temporary directories on compromised systems before exfiltration",
-                reference_url="https://www.microsoft.com/en-us/security/blog/2023/05/24/volt-typhoon-targets-us-critical-infrastructure-with-living-off-the-land-techniques/",
-            ),
-            Campaign(
-                name="Scattered Spider MGM Attack",
-                year=2023,
-                description="Staged data from cloud environments into centralised locations before exfiltration and extortion",
-                reference_url="https://www.microsoft.com/en-us/security/blog/2023/10/25/octo-tempest-crosses-boundaries-to-facilitate-extortion-encryption-and-destruction/",
-            ),
-            Campaign(
-                name="Turla QUIETCANARY",
-                year=2024,
-                description="Used staging techniques to consolidate data from ESXi environments into password-protected archives",
-                reference_url="https://www.mandiant.com/resources/blog/turla-galaxy-opportunity",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=7,

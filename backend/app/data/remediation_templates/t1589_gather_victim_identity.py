@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,20 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Bypasses generic security awareness training",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Operation Dream Job",
-                year=2024,
-                description="Lazarus Group conducted extensive reconnaissance on targets before deploying malware",
-                reference_url="https://attack.mitre.org/campaigns/C0022/",
-            ),
-            Campaign(
-                name="Operation Wocao",
-                year=2021,
-                description="Targeted individuals based on organisational roles and privileges through identity research",
-                reference_url="https://attack.mitre.org/campaigns/C0014/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=6,

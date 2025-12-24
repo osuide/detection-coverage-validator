@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,20 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Enables automated C2 rotation",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="QakBot DGA Operations",
-                year=2024,
-                description="QakBot malware using time-based DGAs for monthly C2 server rotation",
-                reference_url="https://attack.mitre.org/software/S0650/",
-            ),
-            Campaign(
-                name="Conficker Worm DGA",
-                year=2024,
-                description="Conficker using current date as seed variable to generate unique domains",
-                reference_url="https://attack.mitre.org/software/S0608/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="stable",
         severity_score=7,

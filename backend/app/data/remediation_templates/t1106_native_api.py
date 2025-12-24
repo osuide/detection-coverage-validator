@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -44,32 +43,7 @@ TEMPLATE = RemediationTemplate(
             "Enables execution without cmd.exe or PowerShell",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Operation Dream Job",
-                year=2020,
-                description="Lazarus Group used native APIs including HttpOpenRequestA and InternetReadFile for C2 communications and VirtualAlloc/WriteProcessMemory for process injection",
-                reference_url="https://attack.mitre.org/campaigns/C0022/",
-            ),
-            Campaign(
-                name="Conti Ransomware Operations",
-                year=2021,
-                description="Conti ransomware leveraged native Windows APIs for service discovery, process creation, and defence evasion during enterprise-wide encryption campaigns",
-                reference_url="https://attack.mitre.org/software/S0575/",
-            ),
-            Campaign(
-                name="Emotet Botnet Resurgence",
-                year=2020,
-                description="Emotet malware used CreateProcess() API for process creation and native networking APIs for command and control without PowerShell or cmd.exe",
-                reference_url="https://attack.mitre.org/software/S0367/",
-            ),
-            Campaign(
-                name="Black Basta Discovery Operations",
-                year=2022,
-                description="Black Basta ransomware employed native APIs for system and network discovery whilst evading traditional command-line monitoring",
-                reference_url="https://attack.mitre.org/software/S1070/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="very_common",
         trend="increasing",
         severity_score=8,

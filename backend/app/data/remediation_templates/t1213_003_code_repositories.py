@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -39,26 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Facilitates lateral movement via stolen credentials",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="SolarWinds Compromise",
-                year=2020,
-                description="APT29 downloaded source code from victim code repositories during the SolarWinds supply chain attack",
-                reference_url="https://attack.mitre.org/campaigns/C0024/",
-            ),
-            Campaign(
-                name="LAPSUS$ Credential Harvesting",
-                year=2022,
-                description="Searched victim networks for GitLab and GitHub instances to discover high-privilege account credentials",
-                reference_url="https://attack.mitre.org/groups/G1004/",
-            ),
-            Campaign(
-                name="APT41 Repository Cloning",
-                year=2021,
-                description="Cloned victim Git repositories during intrusions to exfiltrate proprietary source code",
-                reference_url="https://attack.mitre.org/groups/G0096/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="increasing",
         severity_score=8,

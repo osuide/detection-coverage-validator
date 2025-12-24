@@ -12,7 +12,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,20 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Commonly used by post-exploitation frameworks",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="FIN7 .NET Assembly Loading",
-                year=2021,
-                description="Loaded .NET assemblies via Reflection.Assembly::Load to execute payloads in-memory",
-                reference_url="https://attack.mitre.org/groups/G0046/",
-            ),
-            Campaign(
-                name="Lazarus Group DLL Overwriting",
-                year=2020,
-                description="Overwrote in-memory DLL function code with shellcode for execution",
-                reference_url="https://attack.mitre.org/campaigns/C0022/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=7,

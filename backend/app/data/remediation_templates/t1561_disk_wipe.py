@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -40,26 +39,7 @@ TEMPLATE = RemediationTemplate(
             "May prevent system recovery",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Shamoon 3",
-                year=2018,
-                description="Iranian group deployed Shamoon wiper targeting Oil and Gas organisations, overwriting disk structures",
-                reference_url="https://attack.mitre.org/software/S0140/",
-            ),
-            Campaign(
-                name="Operation Blockbuster",
-                year=2014,
-                description="North Korean destructive wiper attack on Sony Pictures Entertainment attributed to Lazarus Group",
-                reference_url="https://attack.mitre.org/groups/G0032/",
-            ),
-            Campaign(
-                name="APT38 Financial Wipers",
-                year=2018,
-                description="North Korean APT38 deployed destructive wipers during bank attacks, including KillDisk variants",
-                reference_url="https://attack.mitre.org/groups/G0082/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="low",
         trend="stable",
         severity_score=10,

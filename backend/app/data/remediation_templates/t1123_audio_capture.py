@@ -32,7 +32,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -63,26 +62,7 @@ TEMPLATE = RemediationTemplate(
             "Difficult to detect as legitimate applications use microphones",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="APT37 SOUNDWAVE Operations",
-                year=2024,
-                description="APT37 deployed SOUNDWAVE utility specifically designed for microphone input capture targeting diplomatic and government entities",
-                reference_url="https://attack.mitre.org/groups/G0067/",
-            ),
-            Campaign(
-                name="Evasive Panda MgBot Campaign",
-                year=2023,
-                description="MgBot malware captured both input and output audio streams from compromised systems in targeted espionage operations",
-                reference_url="https://attack.mitre.org/groups/G1011/",
-            ),
-            Campaign(
-                name="DarkComet Surveillance Operations",
-                year=2022,
-                description="DarkComet RAT used microphone listening functionality in sustained surveillance campaigns against corporate targets",
-                reference_url="https://attack.mitre.org/software/S0334/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="increasing",
         severity_score=7,

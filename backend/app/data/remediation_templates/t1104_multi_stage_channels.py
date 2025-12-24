@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,32 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Provides fallback channels if primary C2 detected",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="APT41 BEACON Multi-Stage Deployment",
-                year=2024,
-                description="Deployed storescyncsvc.dll BEACON to download secondary backdoors from separate C2 infrastructure",
-                reference_url="https://attack.mitre.org/groups/G0096/",
-            ),
-            Campaign(
-                name="Latrodectus Two-Tier C2",
-                year=2024,
-                description="Operated a two-tiered C2 configuration with tier one nodes connecting to victims and tier two nodes to backend infrastructure",
-                reference_url="https://attack.mitre.org/software/S1160/",
-            ),
-            Campaign(
-                name="RedPenguin Separate Channels",
-                year=2023,
-                description="Used malware with separate channels for task requests and execution, obfuscating C2 relationships",
-                reference_url="https://attack.mitre.org/campaigns/C0056/",
-            ),
-            Campaign(
-                name="APT3 SOCKS5 Intermediaries",
-                year=2023,
-                description="Established SOCKS5 connections through intermediate servers before final C2 contact",
-                reference_url="https://attack.mitre.org/groups/G0022/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=8,

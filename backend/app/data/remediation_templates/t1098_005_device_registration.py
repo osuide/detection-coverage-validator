@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -38,26 +37,7 @@ TEMPLATE = RemediationTemplate(
             "Allows device-based authentication from attacker-controlled systems",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="SolarWinds Compromise (C0024)",
-                year=2020,
-                description="APT29 registered devices to enable mailbox synchronisation via administrative commands",
-                reference_url="https://attack.mitre.org/campaigns/C0024/",
-            ),
-            Campaign(
-                name="Scattered Spider MFA Bypass (C0027)",
-                year=2023,
-                description="Scattered Spider registered MFA devices to maintain VPN persistence during operations",
-                reference_url="https://attack.mitre.org/campaigns/C0027/",
-            ),
-            Campaign(
-                name="Azure AD Device Registration",
-                year=2024,
-                description="APT29 enrolled devices in compromised Azure AD environments, targeting dormant accounts",
-                reference_url="https://attack.mitre.org/groups/G0016/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="increasing",
         severity_score=8,

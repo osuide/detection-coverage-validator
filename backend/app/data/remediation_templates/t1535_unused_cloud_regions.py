@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -37,14 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Enables cryptomining without detection",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Unused Region Cryptomining",
-                year=2024,
-                description="Attackers leveraged unused AWS regions for cryptocurrency mining",
-                reference_url="https://attack.mitre.org/techniques/T1535/",
-            )
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="stable",
         severity_score=6,

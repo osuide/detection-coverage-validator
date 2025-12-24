@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -37,14 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Maps administrative boundaries",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Group Enumeration Attacks",
-                year=2024,
-                description="Systematic group enumeration to find privilege escalation paths",
-                reference_url="https://www.datadoghq.com/state-of-cloud-security/",
-            )
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="stable",
         severity_score=4,

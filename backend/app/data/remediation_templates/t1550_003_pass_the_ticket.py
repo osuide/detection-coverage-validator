@@ -12,7 +12,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -44,26 +43,7 @@ TEMPLATE = RemediationTemplate(
             "Enables lateral movement to cloud-connected resources and hybrid environments",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="APT29 Kerberos Abuse",
-                year=2023,
-                description="APT29 used Kerberos ticket attacks for lateral movement across hybrid cloud environments",
-                reference_url="https://attack.mitre.org/groups/G0016/",
-            ),
-            Campaign(
-                name="BRONZE BUTLER Forged Tickets",
-                year=2022,
-                description="Created forged TGT and TGS tickets for administrative persistence in enterprise networks",
-                reference_url="https://attack.mitre.org/groups/G0060/",
-            ),
-            Campaign(
-                name="APT32 Remote Access",
-                year=2021,
-                description="Successfully gained remote access to cloud-connected systems via pass the ticket attacks",
-                reference_url="https://attack.mitre.org/groups/G0050/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="increasing",
         severity_score=8,

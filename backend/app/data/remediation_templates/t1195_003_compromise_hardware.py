@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -39,14 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Bypasses software security controls",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Hardware Supply Chain Interdiction",
-                year=2024,
-                description="Nation-state actors compromising hardware during shipping or manufacturing",
-                reference_url="https://attack.mitre.org/techniques/T1195/003/",
-            )
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="rare",
         trend="stable",
         severity_score=10,

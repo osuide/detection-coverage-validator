@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -39,32 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Bypasses traditional content-based detection",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="APT28 OWA HTTPS Exfiltration",
-                year=2021,
-                description="Exfiltrated archives of collected data previously staged on a target's OWA server via HTTPS",
-                reference_url="https://attack.mitre.org/groups/G0007/",
-            ),
-            Campaign(
-                name="APT29 SolarWinds Campaign",
-                year=2020,
-                description="Exfiltrated collected data over a simple HTTPS request to a password-protected archive staged on compromised infrastructure",
-                reference_url="https://attack.mitre.org/campaigns/C0024/",
-            ),
-            Campaign(
-                name="Storm-1811 SCP Credential Theft",
-                year=2024,
-                description="Exfiltrated user credentials via Secure Copy Protocol (SCP) to attacker-controlled servers",
-                reference_url="https://attack.mitre.org/groups/G1046/",
-            ),
-            Campaign(
-                name="CURIUM SMTPS Exfiltration",
-                year=2023,
-                description="Used SMTPS for exfiltrating collected data over encrypted email channels",
-                reference_url="https://attack.mitre.org/groups/G1012/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=9,

@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -38,26 +37,7 @@ TEMPLATE = RemediationTemplate(
             "Protects malware intellectual property from analysis",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Operation Dream Job",
-                year=2024,
-                description="Lazarus Group campaign using debugger detection in custom malware to evade analysis",
-                reference_url="https://attack.mitre.org/campaigns/C0022/",
-            ),
-            Campaign(
-                name="Black Basta Ransomware",
-                year=2023,
-                description="Ransomware employing anti-debugging techniques to avoid sandbox detection and analysis",
-                reference_url="https://attack.mitre.org/software/S1070/",
-            ),
-            Campaign(
-                name="DarkGate Malware",
-                year=2023,
-                description="Malware using IsDebuggerPresent() and exception handling to detect debugging attempts",
-                reference_url="https://attack.mitre.org/software/S1111/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=6,

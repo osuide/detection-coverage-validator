@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -42,32 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Difficult to detect without dynamic analysis",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Lazarus Operation Dream Job",
-                year=2024,
-                description="Used DOCX files to retrieve malicious DOTM templates targeting cryptocurrency and technology sectors",
-                reference_url="https://attack.mitre.org/campaigns/C0022/",
-            ),
-            Campaign(
-                name="Gamaredon Template Injection Campaign",
-                year=2024,
-                description="Extensively used DOCX and RTF template injection with malicious macros injected into existing documents",
-                reference_url="https://attack.mitre.org/groups/G0047/",
-            ),
-            Campaign(
-                name="APT28 Weaponised Documents",
-                year=2023,
-                description="Used weaponised Word documents abusing remote template functions for espionage operations",
-                reference_url="https://attack.mitre.org/groups/G0007/",
-            ),
-            Campaign(
-                name="DarkHydrus Credential Harvesting",
-                year=2023,
-                description="Deployed Phishery tool to inject malicious URLs into documents for credential harvesting",
-                reference_url="https://attack.mitre.org/groups/G0079/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="increasing",
         severity_score=8,

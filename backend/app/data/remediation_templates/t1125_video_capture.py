@@ -32,7 +32,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -63,26 +62,7 @@ TEMPLATE = RemediationTemplate(
             "Video conferencing API access provides covert recording capability",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="FIN7 Video Surveillance Operations",
-                year=2023,
-                description="FIN7 deployed custom video recording malware to monitor bank environments and employee activities for intelligence gathering",
-                reference_url="https://attack.mitre.org/groups/G0046/",
-            ),
-            Campaign(
-                name="Silence Banking Surveillance",
-                year=2022,
-                description="Silence APT group made videos of bank employees' activities to understand security procedures and workflows for targeted attacks",
-                reference_url="https://attack.mitre.org/groups/G0091/",
-            ),
-            Campaign(
-                name="Ember Bear IP Camera Exfiltration",
-                year=2023,
-                description="Ember Bear (UAC-0056) exfiltrated images and video from compromised IP cameras during Eastern European operations",
-                reference_url="https://attack.mitre.org/groups/G1003/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="rare",
         trend="stable",
         severity_score=7,

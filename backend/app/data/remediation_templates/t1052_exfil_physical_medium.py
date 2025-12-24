@@ -30,7 +30,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -59,26 +58,7 @@ TEMPLATE = RemediationTemplate(
             "Leaves minimal network forensic evidence",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Agent.BTZ USB Propagation",
-                year=2008,
-                description="Notable malware that spread via USB drives and was used to breach classified networks",
-                reference_url="https://attack.mitre.org/techniques/T1052/",
-            ),
-            Campaign(
-                name="Stuxnet USB Infiltration",
-                year=2010,
-                description="Used USB drives to infiltrate air-gapped industrial control systems",
-                reference_url="https://attack.mitre.org/techniques/T1052/",
-            ),
-            Campaign(
-                name="Industrial Espionage via USB",
-                year=2023,
-                description="Multiple incidents of insider threats using USB drives to exfiltrate intellectual property",
-                reference_url="https://attack.mitre.org/techniques/T1052/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="stable",
         severity_score=8,

@@ -25,7 +25,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -55,14 +54,7 @@ TEMPLATE = RemediationTemplate(
             "Low-cost devices provide advanced capabilities",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="DarkVishnya Banking Attacks",
-                year=2018,
-                description="Physically connected Bash Bunny, Raspberry Pi, netbooks, and inexpensive laptops to target organisation's environment to access company's local network, specifically targeting banking institutions",
-                reference_url="https://attack.mitre.org/groups/G0105/",
-            )
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="rare",
         trend="stable",
         severity_score=8,

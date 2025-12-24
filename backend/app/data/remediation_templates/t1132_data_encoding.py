@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -42,32 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Compression reduces network footprint and improves stealth",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Velvet Ant F5 BIG-IP Compromise",
-                year=2024,
-                description="Velvet Ant sent commands to compromised F5 BIG-IP devices in an encoded format requiring a passkey before interpretation",
-                reference_url="https://attack.mitre.org/groups/G1047/",
-            ),
-            Campaign(
-                name="BADNEWS Base64 Encoding",
-                year=2023,
-                description="BADNEWS malware converts encrypted C2 data to hexadecimal format, then encodes it as base64 for transmission",
-                reference_url="https://attack.mitre.org/software/S0128/",
-            ),
-            Campaign(
-                name="H1N1 Modified Base64",
-                year=2023,
-                description="H1N1 malware uses altered base64 obfuscation for C2 traffic to evade detection",
-                reference_url="https://attack.mitre.org/software/S0132/",
-            ),
-            Campaign(
-                name="Ursnif URL Encoding",
-                year=2022,
-                description="Ursnif banking trojan employs encoded data in HTTP URLs for command and control communications",
-                reference_url="https://attack.mitre.org/software/S0386/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=7,

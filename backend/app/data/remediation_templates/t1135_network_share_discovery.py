@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -40,26 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Establish persistence via shared folders",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Operation CuckooBees",
-                year=2022,
-                description="Threat actors used 'net share' command for network reconnaissance",
-                reference_url="https://attack.mitre.org/campaigns/C0012/",
-            ),
-            Campaign(
-                name="Leviathan Australian Intrusions",
-                year=2019,
-                description="Remote share enumeration in victim environments for data discovery",
-                reference_url="https://attack.mitre.org/campaigns/C0049/",
-            ),
-            Campaign(
-                name="C0015 Bazar Campaign",
-                year=2021,
-                description="PowerView ShareFinder module execution for share discovery",
-                reference_url="https://attack.mitre.org/campaigns/C0015/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="stable",
         severity_score=6,

@@ -146,6 +146,35 @@ async def get_technique_detail(
     )
     known_threat_actors = [f"{g.name} ({g.external_id})" for g in threat_groups]
 
+    # Fetch campaigns from authoritative MITRE data (not hardcoded)
+    mitre_campaigns = await threat_service.get_campaigns_for_technique(
+        technique_id, limit=10
+    )
+
+    # Map CampaignInfo to CampaignResponse
+    recent_campaigns = []
+    for c in mitre_campaigns:
+        # Extract year from last_seen or first_seen
+        year = None
+        if c.last_seen:
+            year = c.last_seen.year
+        elif c.first_seen:
+            year = c.first_seen.year
+
+        # Use relationship_description (how campaign uses technique) if available,
+        # otherwise fall back to campaign description
+        description = c.relationship_description or c.description or ""
+
+        if year:  # Only include campaigns with a known year
+            recent_campaigns.append(
+                CampaignResponse(
+                    name=c.name,
+                    year=year,
+                    description=description,
+                    reference_url=c.mitre_url,
+                )
+            )
+
     # Build response
     return TechniqueDetailResponse(
         technique_id=template.technique_id,
@@ -158,20 +187,7 @@ async def get_technique_detail(
             attacker_goal=template.threat_context.attacker_goal,
             why_technique=template.threat_context.why_technique,
             known_threat_actors=known_threat_actors,  # From MITRE sync data
-            recent_campaigns=[
-                CampaignResponse(
-                    name=c.name,
-                    year=c.year,
-                    description=c.description,
-                    reference_url=c.reference_url,
-                )
-                # Sort by year descending (most recent first)
-                for c in sorted(
-                    template.threat_context.recent_campaigns,
-                    key=lambda x: x.year,
-                    reverse=True,
-                )
-            ],
+            recent_campaigns=recent_campaigns,  # From MITRE sync data
             prevalence=template.threat_context.prevalence,
             trend=template.threat_context.trend,
             severity_score=template.threat_context.severity_score,

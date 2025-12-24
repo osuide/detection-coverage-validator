@@ -26,7 +26,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -57,32 +56,7 @@ TEMPLATE = RemediationTemplate(
             "Works across network boundaries",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="FIN7 USB Ransomware Campaign",
-                year=2021,
-                description="FIN7 mailed USB drives containing ransomware to retail and hospitality companies, disguised as COVID-19 safety guidelines or customer complaints",
-                reference_url="https://attack.mitre.org/groups/G0046/",
-            ),
-            Campaign(
-                name="Raspberry Robin Worm",
-                year=2022,
-                description="Widespread worm spreading via USB drives and external drives, observed deploying additional malware including IcedID and Bumblebee",
-                reference_url="https://attack.mitre.org/software/S1040/",
-            ),
-            Campaign(
-                name="Gamaredon USB Spreading",
-                year=2023,
-                description="Gamaredon Group used USB-spreading malware to compromise Ukrainian government networks and spread laterally across air-gapped systems",
-                reference_url="https://attack.mitre.org/groups/G0047/",
-            ),
-            Campaign(
-                name="Agent.btz Pentagon Breach",
-                year=2008,
-                description="Nation-state malware spread via infected USB drive into classified US military networks, leading to creation of US Cyber Command",
-                reference_url="https://attack.mitre.org/techniques/T1091/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="stable",
         severity_score=8,

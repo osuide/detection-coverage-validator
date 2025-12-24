@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -36,26 +35,7 @@ TEMPLATE = RemediationTemplate(
             "Can escalate privileges if account has excessive permissions",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="SolarWinds/SUNBURST",
-                year=2020,
-                description="APT29 used compromised cloud credentials to access victim environments",
-                reference_url="https://attack.mitre.org/campaigns/C0024/",
-            ),
-            Campaign(
-                name="Lapsus$ Attacks",
-                year=2022,
-                description="Purchased credentials from initial access brokers to compromise Microsoft, Nvidia, Samsung",
-                reference_url="https://www.microsoft.com/security/blog/2022/03/22/dev-0537-criminal-actor-targeting-organizations-for-data-exfiltration/",
-            ),
-            Campaign(
-                name="Scattered Spider",
-                year=2023,
-                description="Social engineering and SIM swapping to obtain cloud credentials for ransomware deployment",
-                reference_url="https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-320a",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=9,

@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,32 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Separate exfiltration channel reduces C2 detection risk",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="APT32 DNS Subdomain Encoding",
-                year=2024,
-                description="APT32 exfiltrated data via DNS lookups by encoding and prepending it as subdomains",
-                reference_url="https://attack.mitre.org/groups/G0050/",
-            ),
-            Campaign(
-                name="C0017 DNS Exfiltration",
-                year=2024,
-                description="Campaign C0017 involved exfiltrating victim data via DNS lookups using subdomain encoding",
-                reference_url="https://attack.mitre.org/campaigns/C0017/",
-            ),
-            Campaign(
-                name="Agent Tesla Multi-Protocol Exfil",
-                year=2023,
-                description="Agent Tesla used SMTP, FTP, and HTTP exfiltration routines to steal credentials and system information",
-                reference_url="https://attack.mitre.org/software/S0331/",
-            ),
-            Campaign(
-                name="Thrip WinSCP Transfers",
-                year=2023,
-                description="Thrip group used WinSCP for FTP-based file transfers to exfiltrate data from compromised networks",
-                reference_url="https://attack.mitre.org/groups/G0076/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=9,

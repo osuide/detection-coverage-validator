@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -42,26 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Discovers role trust relationships",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="SolarWinds Compromise (C0024)",
-                year=2020,
-                description=(
-                    "APT29 used PowerShell's Get-ManagementRoleAssignment cmdlet to "
-                    "enumerate Exchange management role assignments during the SolarWinds campaign."
-                ),
-                reference_url="https://attack.mitre.org/campaigns/C0024/",
-            ),
-            Campaign(
-                name="Cloud Group Enumeration Attacks",
-                year=2024,
-                description=(
-                    "Systematic enumeration of cloud IAM groups and roles to identify "
-                    "privilege escalation paths in compromised cloud environments."
-                ),
-                reference_url="https://www.datadoghq.com/state-of-cloud-security/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=5,

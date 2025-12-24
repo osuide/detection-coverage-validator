@@ -34,7 +34,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -64,20 +63,7 @@ TEMPLATE = RemediationTemplate(
             "Enable follow-on attacks like session hijacking",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Cleaver ARP Poisoning Operations",
-                year=2015,
-                description="Iranian threat group Cleaver deployed custom tools to facilitate ARP cache poisoning attacks against targeted organisations",
-                reference_url="https://attack.mitre.org/groups/G0003/",
-            ),
-            Campaign(
-                name="LuminousMoth ARP Spoofing Campaign",
-                year=2021,
-                description="Chinese APT group LuminousMoth employed ARP spoofing to redirect compromised systems toward attacker-controlled websites for data collection",
-                reference_url="https://attack.mitre.org/groups/G1014/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="stable",
         severity_score=7,

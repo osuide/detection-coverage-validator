@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -43,26 +42,7 @@ TEMPLATE = RemediationTemplate(
             "Enables persistent access without detection",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="BlackByte Kernel Notify Routine Removal",
-                year=2024,
-                description="Removed Kernel Notify Routines to bypass endpoint detection and response systems",
-                reference_url="https://attack.mitre.org/groups/G1043/",
-            ),
-            Campaign(
-                name="Magic Hound LSA Protection Bypass",
-                year=2024,
-                description="Disabled LSA protection using registry modifications to weaken Windows security controls and enable credential theft",
-                reference_url="https://attack.mitre.org/groups/G0059/",
-            ),
-            Campaign(
-                name="Cloud Defence Evasion Campaign",
-                year=2024,
-                description="Multiple threat actors observed disabling CloudTrail, GuardDuty, and Security Hub immediately after initial compromise",
-                reference_url="https://www.datadoghq.com/state-of-cloud-security/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=9,

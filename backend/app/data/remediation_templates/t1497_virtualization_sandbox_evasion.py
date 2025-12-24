@@ -9,7 +9,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -37,26 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Enables attackers to avoid triggering alerts in test environments",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Contagious Interview",
-                year=2024,
-                description="Social engineering campaign that requested victims disable Docker containers to evade detection",
-                reference_url="https://attack.mitre.org/groups/G1052/",
-            ),
-            Campaign(
-                name="Raspberry Robin Worm",
-                year=2022,
-                description="USB worm that checks for virtualised environments and only delivers real payload outside VMs",
-                reference_url="https://www.microsoft.com/security/blog/2022/10/27/raspberry-robin-worm-part-of-larger-ecosystem/",
-            ),
-            Campaign(
-                name="Darkhotel APT",
-                year=2020,
-                description="APT group using anti-VM checks to avoid sandbox detection in targeted hotel Wi-Fi attacks",
-                reference_url="https://attack.mitre.org/groups/G0012/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=6,

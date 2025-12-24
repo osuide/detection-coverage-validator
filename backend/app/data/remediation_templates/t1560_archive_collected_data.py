@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,26 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Cloud instances often have archiving tools pre-installed",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="APT28 DNC Compromise",
-                year=2016,
-                description="Used publicly available compression tools to gather and compress documents from Democratic National Committee networks",
-                reference_url="https://attack.mitre.org/groups/G0007/",
-            ),
-            Campaign(
-                name="Lazarus RomeoDelta",
-                year=2020,
-                description="Deployed RAR compression and RomeoDelta malware for archiving and encryption workflows before exfiltration",
-                reference_url="https://attack.mitre.org/campaigns/C0022/",
-            ),
-            Campaign(
-                name="Agent Tesla Exfiltration",
-                year=2021,
-                description="Implemented 3DES encryption before command-and-control transmission of stolen credentials and data",
-                reference_url="https://attack.mitre.org/software/S0331/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=7,

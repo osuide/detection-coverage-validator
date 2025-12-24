@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -40,20 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Legitimate tools evade detection better",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="BackdoorDiplomacy EternalBlue",
-                year=2021,
-                description="Obtained and used leaked NSA malware including DoublePulsar and EternalBlue",
-                reference_url="https://attack.mitre.org/groups/G0135/",
-            ),
-            Campaign(
-                name="Scattered Spider Tool Acquisition",
-                year=2023,
-                description="Obtained malware and remote access tools for multi-stage operations",
-                reference_url="https://attack.mitre.org/groups/G1015/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="very_common",
         trend="increasing",
         severity_score=6,

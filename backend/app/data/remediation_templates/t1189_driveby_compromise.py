@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -42,32 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Malvertising reaches wide audiences via legitimate ad networks",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="3CX Supply Chain Attack (AppleJeus)",
-                year=2023,
-                description="Compromised tradingtechnologies.com with malicious iFrame to exploit visitors before distributing compromised X_TRADER software",
-                reference_url="https://attack.mitre.org/campaigns/C0057/",
-            ),
-            Campaign(
-                name="Operation Dust Storm",
-                year=2014,
-                description="Exploited zero-day Internet Explorer vulnerability (CVE-2014-0322) via watering hole on software reseller site",
-                reference_url="https://attack.mitre.org/campaigns/C0016/",
-            ),
-            Campaign(
-                name="RICECURRY Watering Holes",
-                year=2017,
-                description="APT37 compromised South Korean websites, deploying RICECURRY profiler to deliver customised malicious code to targets",
-                reference_url="https://attack.mitre.org/groups/G0067/",
-            ),
-            Campaign(
-                name="BRONZE BUTLER Flash Exploits",
-                year=2016,
-                description="Conducted watering hole attacks against Japanese websites using Flash exploits to compromise visitors",
-                reference_url="https://attack.mitre.org/groups/G0060/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="stable",
         severity_score=8,

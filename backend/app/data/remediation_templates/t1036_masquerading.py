@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -39,32 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Commonly used alongside other defence evasion techniques",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="APT28 WinRAR Masquerading",
-                year=2024,
-                description="APT28 renamed WinRAR utility to avoid detection during reconnaissance operations",
-                reference_url="https://attack.mitre.org/groups/G0007/",
-            ),
-            Campaign(
-                name="APT32 Cobalt Strike Disguise",
-                year=2023,
-                description="APT32 disguised Cobalt Strike beacon as Flash Installer to trick users and security tools",
-                reference_url="https://attack.mitre.org/groups/G0050/",
-            ),
-            Campaign(
-                name="Lazarus Group Fake Recruitment",
-                year=2024,
-                description="Used masqueraded files in fake recruitment campaigns, hiding malware as legitimate documents",
-                reference_url="https://attack.mitre.org/campaigns/C0022/",
-            ),
-            Campaign(
-                name="FIN13 Certutil Abuse",
-                year=2023,
-                description="Used certutil to generate fake Base64-encoded certificates to disguise malicious activity",
-                reference_url="https://attack.mitre.org/groups/G1016/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=7,

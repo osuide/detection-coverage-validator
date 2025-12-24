@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -39,14 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Exploits gap in detection coverage",
         ],
         known_threat_actors=[],  # No documented threat actors from MITRE
-        recent_campaigns=[
-            Campaign(
-                name="Container Image Build Evasion",
-                year=2024,
-                description="Adversaries building malicious images on-host to evade detection",
-                reference_url="https://attack.mitre.org/techniques/T1612/",
-            )
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="increasing",
         severity_score=7,

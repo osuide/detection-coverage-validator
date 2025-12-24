@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -36,14 +35,7 @@ TEMPLATE = RemediationTemplate(
             "Required for targeted attacks",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Service Enumeration Attacks",
-                year=2024,
-                description="Systematic enumeration of cloud services for cryptomining and data theft",
-                reference_url="https://unit42.paloaltonetworks.com/2025-cloud-security-alert-trends/",
-            )
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="stable",
         severity_score=5,

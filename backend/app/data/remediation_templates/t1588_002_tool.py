@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -42,26 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Cracked versions bypass licence restrictions",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="C0027 - Scattered Spider Operations",
-                year=2023,
-                description="Acquired LINpeas, aws_consoler, Level RMM, and RustScan for cloud infrastructure compromise",
-                reference_url="https://attack.mitre.org/campaigns/C0027/",
-            ),
-            Campaign(
-                name="C0010 - UNC3890 Operations",
-                year=2022,
-                description="Obtained Metasploit, Unicorn, and NorthStar C2 for advanced persistent access",
-                reference_url="https://attack.mitre.org/campaigns/C0010/",
-            ),
-            Campaign(
-                name="Operation Wocao",
-                year=2020,
-                description="Used JexBoss, KeeThief, and BloodHound for network reconnaissance and credential theft",
-                reference_url="https://attack.mitre.org/campaigns/C0014/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=7,

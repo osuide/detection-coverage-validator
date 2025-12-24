@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -38,26 +37,7 @@ TEMPLATE = RemediationTemplate(
             "Can pivot across containers",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="TeamTNT Hildegard Campaign",
-                year=2024,
-                description="Executed Hildegard malware through kubelet API run commands",
-                reference_url="https://attack.mitre.org/software/S0601/",
-            ),
-            Campaign(
-                name="Siloscape Cluster Compromise",
-                year=2024,
-                description="Transmitted kubectl commands via IRC to compromise Kubernetes clusters",
-                reference_url="https://attack.mitre.org/software/S0623/",
-            ),
-            Campaign(
-                name="Kinsing Container Deployment",
-                year=2024,
-                description="Deployed via Ubuntu container entry points running shell scripts",
-                reference_url="https://attack.mitre.org/software/S0599/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="increasing",
         severity_score=8,

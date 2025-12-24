@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,26 +40,7 @@ TEMPLATE = RemediationTemplate(
             "May reveal credentials in repositories",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Kimsuky LLM-Powered Research",
-                year=2024,
-                description="Used large language models to identify think tanks and government organisations with relevant information",
-                reference_url="https://attack.mitre.org/groups/G0094/",
-            ),
-            Campaign(
-                name="Sandworm Ukrainian EDRPOU Research",
-                year=2023,
-                description="Researched Ukrainian EDRPOU identifiers and third-party sites to create credible spear-phishing campaigns",
-                reference_url="https://attack.mitre.org/groups/G0034/",
-            ),
-            Campaign(
-                name="Contagious Interview IOC Research",
-                year=2024,
-                description="Reviewed IOC repositories including VirusTotal and MalTrail for reconnaissance",
-                reference_url="https://attack.mitre.org/groups/G1052/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="very_common",
         trend="increasing",
         severity_score=4,

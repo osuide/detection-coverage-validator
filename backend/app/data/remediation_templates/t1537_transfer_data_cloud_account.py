@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -37,20 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Can exfiltrate large volumes quickly",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Snowflake Data Exfiltration",
-                year=2024,
-                description="UNC5537 exfiltrated data to attacker-controlled storage accounts",
-                reference_url="https://cloud.google.com/blog/topics/threat-intelligence/unc5537-snowflake-data-theft-extortion",
-            ),
-            Campaign(
-                name="AWS Snapshot Exfiltration",
-                year=2024,
-                description="45% increase in snapshot-based exfiltration observed in late 2024",
-                reference_url="https://unit42.paloaltonetworks.com/2025-cloud-security-alert-trends/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=9,

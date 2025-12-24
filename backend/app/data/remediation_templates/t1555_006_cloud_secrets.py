@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -37,20 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Lateral movement enabler",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="HAFNIUM Azure Key Vault",
-                year=2024,
-                description="Moved laterally from on-premises to steal passwords from Azure Key Vaults",
-                reference_url="https://attack.mitre.org/groups/G0125/",
-            ),
-            Campaign(
-                name="Storm-0501 Key Vault Access",
-                year=2024,
-                description="Used Azure Key Vault operations to access encryption keys",
-                reference_url="https://attack.mitre.org/groups/G1053/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=9,

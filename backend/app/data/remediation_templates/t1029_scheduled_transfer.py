@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -43,26 +42,7 @@ TEMPLATE = RemediationTemplate(
             "Maintains persistent access for ongoing data collection",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Higaisa Scheduled Beaconing",
-                year=2020,
-                description="Higaisa group configured malware to send victim identifiers to C2 every 10 minutes at scheduled intervals",
-                reference_url="https://attack.mitre.org/groups/G0126/",
-            ),
-            Campaign(
-                name="ComRAT Business Hours Exfiltration",
-                year=2020,
-                description="ComRAT malware programmed to operate only during business hours (9-5, Monday-Friday) to evade detection",
-                reference_url="https://attack.mitre.org/software/S0126/",
-            ),
-            Campaign(
-                name="LightNeuron Time-Based Operations",
-                year=2019,
-                description="LightNeuron backdoor configured for nighttime or business-hours exfiltration based on operator preference",
-                reference_url="https://attack.mitre.org/software/S0395/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=8,

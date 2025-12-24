@@ -12,7 +12,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -39,14 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Precedes data theft (T1530)",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="S3 Bucket Enumeration",
-                year=2024,
-                description="305% increase in suspicious storage downloads reported by Unit 42",
-                reference_url="https://unit42.paloaltonetworks.com/2025-cloud-security-alert-trends/",
-            )
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=6,

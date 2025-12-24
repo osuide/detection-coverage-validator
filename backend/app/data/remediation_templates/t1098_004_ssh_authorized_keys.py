@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -40,26 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Often overlooked in incident response procedures",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Earth Lusca SSH Backdoor Campaign",
-                year=2024,
-                description="Dropped SSH authorised keys in /root/.ssh to maintain persistent access to compromised servers",
-                reference_url="https://attack.mitre.org/groups/G1006/",
-            ),
-            Campaign(
-                name="Salt Typhoon Network Device Compromise",
-                year=2024,
-                description="Added SSH authorised_keys under root or other users on compromised network devices and systems",
-                reference_url="https://attack.mitre.org/groups/G1041/",
-            ),
-            Campaign(
-                name="TeamTNT Container Cryptomining",
-                year=2023,
-                description="Added RSA keys in authorised_keys files to maintain access to compromised container hosts and cloud instances",
-                reference_url="https://attack.mitre.org/groups/G0139/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=7,

@@ -13,7 +13,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -47,26 +46,7 @@ TEMPLATE = RemediationTemplate(
             "Executes under svchost.exe context, appearing legitimate",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Egregor Ransomware BITS Persistence",
-                year=2024,
-                description="Egregor ransomware used BITS jobs to download additional payloads and maintain persistence on compromised networks",
-                reference_url="https://attack.mitre.org/software/S0554/",
-            ),
-            Campaign(
-                name="Bazar Backdoor BITS Downloads",
-                year=2024,
-                description="Bazar malware extensively used BITS for downloading second-stage payloads while evading detection",
-                reference_url="https://attack.mitre.org/campaigns/C0015/",
-            ),
-            Campaign(
-                name="APT41 BITS Job Abuse",
-                year=2023,
-                description="APT41 created BITS jobs on Windows instances to download tools and establish persistence mechanisms",
-                reference_url="https://attack.mitre.org/groups/G0096/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=7,

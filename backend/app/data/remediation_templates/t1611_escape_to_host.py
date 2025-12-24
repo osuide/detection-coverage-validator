@@ -13,7 +13,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -42,20 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Pivot to other systems via host network",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="TeamTNT Container Escapes",
-                year=2024,
-                description="TeamTNT deployed privileged containers mounting victim host filesystems for cryptomining and credential theft",
-                reference_url="https://attack.mitre.org/groups/G0139/",
-            ),
-            Campaign(
-                name="Doki and Hildegard Malware",
-                year=2024,
-                description="Doki and Hildegard malware used bind mounts and BOtB tool for container breakouts",
-                reference_url="https://attack.mitre.org/software/S0600/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="increasing",
         severity_score=9,

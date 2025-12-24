@@ -12,7 +12,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -43,26 +42,7 @@ TEMPLATE = RemediationTemplate(
             "Cloud storage enumeration reveals attached EBS/persistent disks",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="SolarWinds Compromise",
-                year=2020,
-                description="APT29 used fsutil to check free space on systems during reconnaissance",
-                reference_url="https://attack.mitre.org/campaigns/C0024/",
-            ),
-            Campaign(
-                name="Operation Wocao",
-                year=2019,
-                description="Discovered disk hardware information as part of broader reconnaissance",
-                reference_url="https://attack.mitre.org/campaigns/C0014/",
-            ),
-            Campaign(
-                name="APT41 Volume Enumeration",
-                year=2022,
-                description="Used ping commands to find volume serial numbers for persistence",
-                reference_url="https://attack.mitre.org/campaigns/C0017/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="stable",
         severity_score=5,

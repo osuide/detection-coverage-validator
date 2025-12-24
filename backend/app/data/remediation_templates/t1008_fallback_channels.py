@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -40,26 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Can switch protocols to evade signature-based detection",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="APT41 Steam Community C2",
-                year=2024,
-                description="APT41 used the Steam community page as a fallback mechanism for command and control",
-                reference_url="https://attack.mitre.org/groups/G0096/",
-            ),
-            Campaign(
-                name="Lazarus Group Multi-Server Failover",
-                year=2024,
-                description="Employed randomised C2 server selection with failover logic across multiple backup servers",
-                reference_url="https://attack.mitre.org/campaigns/C0022/",
-            ),
-            Campaign(
-                name="OilRig DNS Tunnelling Fallback",
-                year=2023,
-                description="Implemented DNS tunnelling as fallback when HTTP communication channels were blocked",
-                reference_url="https://attack.mitre.org/groups/G0049/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=8,

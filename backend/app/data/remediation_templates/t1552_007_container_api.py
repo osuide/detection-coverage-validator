@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -39,14 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Cloud container services expose native APIs",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Peirates Kubernetes Exploitation",
-                year=2021,
-                description="Tool queries Kubernetes API for secrets to extract credentials from cluster environments",
-                reference_url="https://attack.mitre.org/software/S0683/",
-            )
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="uncommon",
         trend="increasing",
         severity_score=8,

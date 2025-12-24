@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -39,26 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Multiple relay layers provide redundancy",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Operation Wocao",
-                year=2020,
-                description="Used Tor exit nodes for command execution to obscure C2 origins",
-                reference_url="https://attack.mitre.org/campaigns/C0014/",
-            ),
-            Campaign(
-                name="FLORAHOX Activity",
-                year=2021,
-                description="Deployed customised Tor relay network infrastructure for C2 communications",
-                reference_url="https://attack.mitre.org/campaigns/C0053/",
-            ),
-            Campaign(
-                name="SPACEHOP & Quad7 Activity",
-                year=2024,
-                description="Chained compromised network devices for multi-hop proxy attacks",
-                reference_url="https://attack.mitre.org/campaigns/C0052/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="increasing",
         severity_score=7,

@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -40,26 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Database connection strings in memory contain sensitive credentials",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Storm-0501 Hybrid Cloud Attacks",
-                year=2024,
-                description="Extracted credentials from compromised cloud VMs to move laterally across hybrid environments",
-                reference_url="https://www.microsoft.com/en-us/security/blog/2024/09/26/storm-0501-ransomware-attacks-expanding-to-hybrid-cloud-environments/",
-            ),
-            Campaign(
-                name="BlackByte Ransomware",
-                year=2023,
-                description="Used credential dumping to escalate privileges and deploy ransomware in cloud infrastructure",
-                reference_url="https://attack.mitre.org/groups/G1043/",
-            ),
-            Campaign(
-                name="TeamTNT Container Attacks",
-                year=2022,
-                description="Dumped credentials from compromised containers to access cloud resources and cryptomining infrastructure",
-                reference_url="https://attack.mitre.org/groups/G0139/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=8,

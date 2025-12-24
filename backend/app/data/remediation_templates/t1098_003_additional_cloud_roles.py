@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -37,20 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Can enable privilege escalation chains",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Cross-Account Trust Abuse",
-                year=2024,
-                description="Attackers modified role trust policies to allow access from external accounts",
-                reference_url="https://www.datadoghq.com/state-of-cloud-security/",
-            ),
-            Campaign(
-                name="IAM Privilege Escalation",
-                year=2024,
-                description="Attackers attached admin policies to compromised roles",
-                reference_url="https://unit42.paloaltonetworks.com/2025-cloud-security-alert-trends/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="stable",
         severity_score=9,

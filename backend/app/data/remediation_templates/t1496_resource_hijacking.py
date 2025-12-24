@@ -12,7 +12,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,14 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Low risk compared to data theft",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="LABRAT Cryptojacking",
-                year=2023,
-                description="Stealthy cryptojacking and proxyjacking campaign targeting GitLab instances",
-                reference_url="https://attack.mitre.org/techniques/T1496/",
-            )
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=6,

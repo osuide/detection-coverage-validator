@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -37,26 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Effective against distracted users",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Scattered Spider MFA Bombing",
-                year=2024,
-                description="Continuously sent MFA messages until victims accepted",
-                reference_url="https://attack.mitre.org/groups/G1015/",
-            ),
-            Campaign(
-                name="LAPSUS$ MFA Fatigue",
-                year=2022,
-                description="Spammed targets with MFA prompts hoping users would approve",
-                reference_url="https://attack.mitre.org/groups/G1004/",
-            ),
-            Campaign(
-                name="APT29 MFA Abuse",
-                year=2024,
-                description="Repeated MFA requests to gain access to victim accounts",
-                reference_url="https://attack.mitre.org/groups/G0016/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=8,

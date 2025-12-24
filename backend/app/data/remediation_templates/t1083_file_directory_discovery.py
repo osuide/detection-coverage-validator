@@ -12,7 +12,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,20 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Required for targeted data theft",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Cloud Instance File Enumeration",
-                year=2024,
-                description="Attackers enumerate EC2/GCE instances for sensitive files after initial access",
-                reference_url="https://www.datadoghq.com/state-of-cloud-security/",
-            ),
-            Campaign(
-                name="Container File Discovery",
-                year=2024,
-                description="Adversaries search container filesystems for secrets and credentials",
-                reference_url="https://unit42.paloaltonetworks.com/2025-cloud-security-alert-trends/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="stable",
         severity_score=5,

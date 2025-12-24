@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,26 +40,7 @@ TEMPLATE = RemediationTemplate(
             "SSH keys and certificates enable lateral movement",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Volt Typhoon Infrastructure Espionage",
-                year=2023,
-                description="Extracted logs, configuration files, and credentials from compromised systems using native tools",
-                reference_url="https://www.microsoft.com/en-us/security/blog/2023/05/24/volt-typhoon-targets-us-critical-infrastructure-with-living-off-the-land-techniques/",
-            ),
-            Campaign(
-                name="Dark Caracal Mobile and Desktop Surveillance",
-                year=2023,
-                description="Collected complete Pictures folder contents and systematically harvested documents from Windows systems",
-                reference_url="https://www.eff.org/deeplinks/2018/01/dark-caracal-good-news-and-bad-news",
-            ),
-            Campaign(
-                name="APT28 Document Collection",
-                year=2022,
-                description="Used Forfiles utility to stage documents with specific extensions before exfiltration",
-                reference_url="https://www.microsoft.com/security/blog/threat-intelligence/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=8,

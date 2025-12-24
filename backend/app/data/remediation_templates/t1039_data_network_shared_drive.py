@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -39,26 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Cloud file systems may lack detailed access monitoring",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="APT28 Network Share Collection",
-                year=2023,
-                description="APT28 systematically collected files from network shared drives during espionage operations targeting government and military organisations",
-                reference_url="https://attack.mitre.org/groups/G0007/",
-            ),
-            Campaign(
-                name="menuPass Robocopy Operations",
-                year=2022,
-                description="menuPass used 'net use' commands to mount network shares and Robocopy utility for bulk file collection from shared drives",
-                reference_url="https://attack.mitre.org/groups/G0045/",
-            ),
-            Campaign(
-                name="Gamaredon Document Theft",
-                year=2023,
-                description="Gamaredon Group collected Microsoft Office documents (.docx, .xlsx, .pptx) from mapped network drives in targeted Ukrainian organisations",
-                reference_url="https://attack.mitre.org/groups/G0047/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="steady",
         severity_score=7,

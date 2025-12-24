@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -39,26 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Complicates traffic analysis and detection efforts",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="C0018 RDP on Non-Standard Ports",
-                year=2023,
-                description="Attackers used Remote Desktop Protocol on ports 28035 and 32467 instead of standard port 3389 to evade detection",
-                reference_url="https://attack.mitre.org/campaigns/C0018/",
-            ),
-            Campaign(
-                name="C0032 Multi-Port C2 Infrastructure",
-                year=2023,
-                description="Adversaries established command and control using ports 4444 and 8531 for HTTP communications",
-                reference_url="https://attack.mitre.org/campaigns/C0032/",
-            ),
-            Campaign(
-                name="C0043 TCP Port 8080 C2",
-                year=2024,
-                description="Malicious actors leveraged TCP port 8080 for command and control traffic to blend with legitimate web services",
-                reference_url="https://attack.mitre.org/campaigns/C0043/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=8,

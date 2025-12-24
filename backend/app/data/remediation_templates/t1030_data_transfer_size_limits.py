@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,26 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Reduces likelihood of connection timeouts",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="APT28 Archive Chunking",
-                year=2024,
-                description="APT28 split RAR archives into chunks smaller than 1MB to evade detection during exfiltration",
-                reference_url="https://attack.mitre.org/groups/G0007/",
-            ),
-            Campaign(
-                name="LuminousMoth File Fragmentation",
-                year=2023,
-                description="LuminousMoth fragmented stolen files into chunks to bypass 5MB file transfer limits",
-                reference_url="https://attack.mitre.org/groups/G0133/",
-            ),
-            Campaign(
-                name="Play Ransomware Data Theft",
-                year=2023,
-                description="Play ransomware group split victim files into uniform chunks before exfiltration",
-                reference_url="https://attack.mitre.org/software/S1062/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=8,

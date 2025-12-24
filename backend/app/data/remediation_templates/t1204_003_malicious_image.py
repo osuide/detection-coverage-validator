@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -36,14 +35,7 @@ TEMPLATE = RemediationTemplate(
             "Bypasses perimeter defenses",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="TeamTNT Docker Images",
-                year=2024,
-                description="Relied on users to download and execute malicious Docker images",
-                reference_url="https://attack.mitre.org/groups/G0139/",
-            )
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="increasing",
         severity_score=7,

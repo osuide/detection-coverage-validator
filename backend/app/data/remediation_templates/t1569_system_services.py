@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -37,26 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Service creation may bypass application controls",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="APT41 Cobalt Strike Service Execution",
-                year=2024,
-                description="Used svchost.exe and Net to launch Cobalt Strike BEACON loaders via Windows services",
-                reference_url="https://attack.mitre.org/groups/G0096/",
-            ),
-            Campaign(
-                name="FIN7 Encoded PowerShell Services",
-                year=2024,
-                description="Created Windows services executing encoded PowerShell commands for malware deployment",
-                reference_url="https://attack.mitre.org/groups/G0046/",
-            ),
-            Campaign(
-                name="Wizard Spider Ransomware Services",
-                year=2024,
-                description="Leveraged services.exe for lateral movement and ransomware deployment",
-                reference_url="https://attack.mitre.org/groups/G0102/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="high",
         trend="stable",
         severity_score=8,

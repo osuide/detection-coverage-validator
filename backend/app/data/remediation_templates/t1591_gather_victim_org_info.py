@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,32 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Publicly available information reduces risk",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="APT28 Satellite Intelligence Gathering",
-                year=2024,
-                description="Leveraged large language models to gather satellite capability information",
-                reference_url="https://attack.mitre.org/groups/G0007/",
-            ),
-            Campaign(
-                name="Kimsuky Organisational Reconnaissance",
-                year=2024,
-                description="Collected organisational hierarchy, functions, and press releases using LLMs",
-                reference_url="https://attack.mitre.org/groups/G0094/",
-            ),
-            Campaign(
-                name="FIN7 ZoomInfo Target List Compilation",
-                year=2023,
-                description="Used ZoomInfo to compile victim lists filtered by company revenue",
-                reference_url="https://attack.mitre.org/groups/G0046/",
-            ),
-            Campaign(
-                name="Volt Typhoon Pre-Compromise Reconnaissance",
-                year=2023,
-                description="Conducted extensive pre-compromise reconnaissance on target organisations",
-                reference_url="https://attack.mitre.org/groups/G1017/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="very_common",
         trend="increasing",
         severity_score=6,

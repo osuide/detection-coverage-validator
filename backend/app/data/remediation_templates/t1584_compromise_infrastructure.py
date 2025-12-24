@@ -12,7 +12,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,20 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Lower operational costs versus purchasing infrastructure",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Nearest Neighbor",
-                year=2023,
-                description="APT28 compromised third-party infrastructure in physical proximity to targets for follow-on activities",
-                reference_url="https://attack.mitre.org/campaigns/C0051/",
-            ),
-            Campaign(
-                name="Indian Critical Infrastructure",
-                year=2023,
-                description="Chinese state-sponsored actors utilised compromised DVR and IP camera devices for ShadowPad C2 against Indian power grid",
-                reference_url="https://attack.mitre.org/campaigns/C0043/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=8,

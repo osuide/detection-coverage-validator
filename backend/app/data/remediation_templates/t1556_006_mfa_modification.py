@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -38,26 +37,7 @@ TEMPLATE = RemediationTemplate(
             "Allows access from any location without additional challenges",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Scattered Spider MFA Bypass",
-                year=2024,
-                description="Registered attacker-controlled MFA tokens after compromising user accounts",
-                reference_url="https://attack.mitre.org/groups/G1015/",
-            ),
-            Campaign(
-                name="APT42 MFA Modification",
-                year=2024,
-                description="Leveraged MFA modification tactics to maintain persistent access",
-                reference_url="https://www.mandiant.com/resources/apt42",
-            ),
-            Campaign(
-                name="AADInternals MFA Disable",
-                year=2023,
-                description="Use of AADInternals tool to disable MFA on Azure AD accounts",
-                reference_url="https://attack.mitre.org/software/S0677/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="increasing",
         severity_score=9,

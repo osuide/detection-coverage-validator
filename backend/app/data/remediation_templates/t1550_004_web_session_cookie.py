@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,20 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Difficult to detect without behaviour analysis",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="SolarWinds Compromise - Cookie Forgery",
-                year=2020,
-                description="APT29 stole session cookies and forged duo-sid cookies to bypass MFA on cloud resources",
-                reference_url="https://attack.mitre.org/campaigns/C0024/",
-            ),
-            Campaign(
-                name="Star Blizzard MFA Bypass",
-                year=2023,
-                description="Star Blizzard used EvilGinx-stolen session cookies to bypass multi-factor authentication",
-                reference_url="https://attack.mitre.org/groups/G1033/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=8,

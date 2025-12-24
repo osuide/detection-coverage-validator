@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -39,32 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Partner accounts persist longer than employee accounts",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="SolarWinds/SUNBURST",
-                year=2020,
-                description="APT29 exploited compromised cloud partner accounts and fraudulent Mimecast certificates",
-                reference_url="https://attack.mitre.org/campaigns/C0024/",
-            ),
-            Campaign(
-                name="Operation Cloud Hopper",
-                year=2017,
-                description="menuPass abused legitimate MSP access to target downstream customers across multiple industries",
-                reference_url="https://attack.mitre.org/groups/G0045/",
-            ),
-            Campaign(
-                name="HAFNIUM Partner Abuse",
-                year=2021,
-                description="Utilised stolen API keys from privilege access management and cloud app providers",
-                reference_url="https://attack.mitre.org/groups/G0125/",
-            ),
-            Campaign(
-                name="Sea Turtle DNS Compromise",
-                year=2019,
-                description="Targeted DNS registrars, telecommunications companies, and ISPs with trusted relationships",
-                reference_url="https://attack.mitre.org/groups/G1041/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="uncommon",
         trend="increasing",
         severity_score=9,

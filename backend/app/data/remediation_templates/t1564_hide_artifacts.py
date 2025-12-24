@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -39,26 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Enables long-term persistence by avoiding cleanup efforts",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Cloud Resource Hiding",
-                year=2024,
-                description="Multiple threat actors observed creating resources in unusual regions and using misleading tags to hide cryptomining operations",
-                reference_url="https://www.cadosecurity.com/blog/how-threat-actors-are-using-aws-to-hide-malicious-infrastructure",
-            ),
-            Campaign(
-                name="Serverless Backdoors",
-                year=2024,
-                description="Attackers deploying Lambda functions and Cloud Run services with obscure names and minimal logging to maintain persistence",
-                reference_url="https://www.datadog.com/state-of-serverless/",
-            ),
-            Campaign(
-                name="Container Hiding Techniques",
-                year=2023,
-                description="Threat actors creating privileged containers and using process hiding to evade detection in Kubernetes environments",
-                reference_url="https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-278a",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=7,

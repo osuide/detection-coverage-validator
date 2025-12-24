@@ -12,7 +12,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -42,14 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Facilitates distributed attack infrastructure",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Mustang Panda Tracking Pixel Validation",
-                year=2024,
-                description="Used controlled servers to validate tracking pixels targeting phishing victims",
-                reference_url="https://attack.mitre.org/groups/G0129/",
-            )
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=6,

@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,26 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Often allowed through firewalls for operational reasons",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="UNC3886 VMCI Exploitation",
-                year=2024,
-                description="UNC3886 exploited VMware ESXi environments using VMCI for C2 communications invisible to network monitoring tools",
-                reference_url="https://attack.mitre.org/groups/G1040/",
-            ),
-            Campaign(
-                name="APT29 ICMP Tunnelling",
-                year=2023,
-                description="APT29 deployed COATHANGER malware using ICMP for C2 and PingPull for ICMP/TCP variant communications",
-                reference_url="https://attack.mitre.org/groups/G0016/",
-            ),
-            Campaign(
-                name="Gamaredon ICMP C2",
-                year=2023,
-                description="Gamaredon Group used custom malware with ICMP-based command and control infrastructure for operations targeting Ukraine",
-                reference_url="https://attack.mitre.org/groups/G0047/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=8,

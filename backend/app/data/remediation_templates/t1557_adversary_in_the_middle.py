@@ -37,7 +37,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -66,26 +65,7 @@ TEMPLATE = RemediationTemplate(
             "Intercept API requests and cloud service traffic",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="ArcaneDoor Campaign",
-                year=2024,
-                description="Intercepted HTTP traffic on perimeter network devices to monitor and manipulate communications",
-                reference_url="https://attack.mitre.org/campaigns/C0046/",
-            ),
-            Campaign(
-                name="Sea Turtle DNS Hijacking",
-                year=2019,
-                description="Modified DNS records at service providers to redirect legitimate traffic through attacker infrastructure",
-                reference_url="https://attack.mitre.org/groups/G1041/",
-            ),
-            Campaign(
-                name="Kimsuky PHProxy Deployment",
-                year=2022,
-                description="Deployed modified PHProxy to examine web traffic between victims and websites",
-                reference_url="https://attack.mitre.org/groups/G0094/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="stable",
         severity_score=8,

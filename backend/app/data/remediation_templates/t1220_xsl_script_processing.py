@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,32 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Enables fileless execution through WMI-based script processing",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Cobalt Group AppLocker Bypass",
-                year=2018,
-                description="Used msxsl.exe to bypass AppLocker controls and execute embedded JScript code for banking fraud operations",
-                reference_url="https://attack.mitre.org/groups/G0080/",
-            ),
-            Campaign(
-                name="Lazarus Operation Dream Job",
-                year=2020,
-                description="Deployed remote XSL scripts in targeted attacks against aerospace and defence contractors",
-                reference_url="https://attack.mitre.org/campaigns/C0022/",
-            ),
-            Campaign(
-                name="Astaroth Banking Malware",
-                year=2019,
-                description="Executed embedded scripts from remote XSL stylesheets to steal banking credentials in Brazil",
-                reference_url="https://attack.mitre.org/software/S0373/",
-            ),
-            Campaign(
-                name="Higaisa VBScript Deployment",
-                year=2020,
-                description="Used XSL files running VBScript code to establish persistence in government and trade organisations",
-                reference_url="https://attack.mitre.org/groups/G0126/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="uncommon",
         trend="stable",
         severity_score=6,

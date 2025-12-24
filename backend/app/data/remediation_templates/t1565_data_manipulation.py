@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,14 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Difficult to detect without integrity monitoring",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="FIN13 Fraudulent Transactions",
-                year=2024,
-                description="FIN13 injected fraudulent transactions into compromised networks that mimic legitimate behaviour to siphon off incremental amounts of money",
-                reference_url="https://attack.mitre.org/groups/G1016/",
-            )
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="low_to_moderate",
         trend="stable",
         severity_score=8,

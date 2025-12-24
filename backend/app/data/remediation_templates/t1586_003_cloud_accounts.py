@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -40,20 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Provides storage for exfiltrated data",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="APT29 Azure VM Proxies",
-                year=2024,
-                description="Utilised compromised Azure Virtual Machines as residential proxies to obfuscate access to victim environments",
-                reference_url="https://attack.mitre.org/groups/G0016/",
-            ),
-            Campaign(
-                name="APT41 DUST Google Workspace C2",
-                year=2024,
-                description="Employed compromised Google Workspace accounts for command and control operations",
-                reference_url="https://attack.mitre.org/campaigns/C0040/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=8,

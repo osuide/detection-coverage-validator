@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,32 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Enables persistent covert communications",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="APT29 Multi-Layer Encryption",
-                year=2024,
-                description="APT29 deployed multiple layers of encryption within malware to protect C2 communications, making detection extremely challenging",
-                reference_url="https://attack.mitre.org/groups/G0016/",
-            ),
-            Campaign(
-                name="Emotet TLS C2 Infrastructure",
-                year=2024,
-                description="Emotet malware utilised TLS-encrypted channels for C2 communications, blending with legitimate HTTPS traffic",
-                reference_url="https://attack.mitre.org/software/S0367/",
-            ),
-            Campaign(
-                name="BITTER Encrypted Communications",
-                year=2023,
-                description="BITTER APT group employed encrypted C2 channels in targeted espionage operations",
-                reference_url="https://attack.mitre.org/groups/G1002/",
-            ),
-            Campaign(
-                name="Magic Hound Custom Encryption",
-                year=2023,
-                description="Magic Hound deployed custom encryption schemes for C2 traffic in attacks against critical infrastructure",
-                reference_url="https://attack.mitre.org/groups/G0059/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="very_common",
         trend="increasing",
         severity_score=8,

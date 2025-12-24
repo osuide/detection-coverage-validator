@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -40,26 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Maintains access even if initial compromise method is closed",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="UNC3886 VPN Appliance Backdoors",
-                year=2023,
-                description="UNC3886 replaced /usr/bin/tac_plus daemon with credential-logging variant and trojanised Fortinet firmware binaries",
-                reference_url="https://attack.mitre.org/groups/G1043/",
-            ),
-            Campaign(
-                name="APT5 Pulse Secure Compromise",
-                year=2021,
-                description="APT5 modified legitimate Pulse Secure VPN binaries including DSUpgrade.pm to maintain persistent access",
-                reference_url="https://attack.mitre.org/groups/G0004/",
-            ),
-            Campaign(
-                name="Sandworm Ukraine Power Grid",
-                year=2016,
-                description="Sandworm Team deployed trojanised Windows Notepad during the Ukraine power grid attack for persistence",
-                reference_url="https://attack.mitre.org/groups/G0034/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="rare",
         trend="stable",
         severity_score=9,

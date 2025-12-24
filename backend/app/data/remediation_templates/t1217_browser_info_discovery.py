@@ -13,7 +13,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -46,26 +45,7 @@ TEMPLATE = RemediationTemplate(
             "Uncovers cloud service accounts and portals",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="OilRig Juicy Mix Campaign",
-                year=2023,
-                description="Deployed specialised tools (CDumper for Chrome, EDumper for Edge, MKG) to harvest cookies, history, and credentials from browsers",
-                reference_url="https://attack.mitre.org/campaigns/C0044/",
-            ),
-            Campaign(
-                name="Volt Typhoon Infrastructure Reconnaissance",
-                year=2024,
-                description="Targeted network administrators' browsing histories to map critical infrastructure and internal systems",
-                reference_url="https://attack.mitre.org/groups/G1017/",
-            ),
-            Campaign(
-                name="Scattered Spider Infostealer Campaign",
-                year=2024,
-                description="Utilised infostealer malware like Raccoon Stealer to extract browser histories and credentials from compromised endpoints",
-                reference_url="https://attack.mitre.org/groups/G1015/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=6,

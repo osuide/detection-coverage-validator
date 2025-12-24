@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -39,26 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Malicious images can download malware at runtime",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="TeamTNT Container Deployments",
-                year=2024,
-                description="Deployed multiple container types for execution; transferred cryptocurrency mining software to Kubernetes clusters",
-                reference_url="https://attack.mitre.org/groups/G0139/",
-            ),
-            Campaign(
-                name="Kinsing Ubuntu Containers",
-                year=2024,
-                description="Deployed via Ubuntu container to target container environments for cryptomining",
-                reference_url="https://attack.mitre.org/software/S0599/",
-            ),
-            Campaign(
-                name="Doki Container Malware",
-                year=2024,
-                description="Malware executed through deployed containers in cloud environments",
-                reference_url="https://attack.mitre.org/software/S0600/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=8,

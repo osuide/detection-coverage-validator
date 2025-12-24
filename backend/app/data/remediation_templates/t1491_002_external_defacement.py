@@ -12,7 +12,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -42,20 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Frequently used in geopolitical conflicts",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Ember Bear Ukrainian Defacement",
-                year=2022,
-                description="Defaced Ukrainian organisation websites during Russian invasion",
-                reference_url="https://attack.mitre.org/groups/G1003/",
-            ),
-            Campaign(
-                name="Sandworm Georgian Website Defacement",
-                year=2019,
-                description="Defaced approximately 15,000 Georgian government and private sector websites",
-                reference_url="https://attack.mitre.org/groups/G0034/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="stable",
         severity_score=7,

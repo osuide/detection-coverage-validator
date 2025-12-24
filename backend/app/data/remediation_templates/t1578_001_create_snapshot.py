@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -37,14 +36,7 @@ TEMPLATE = RemediationTemplate(
             "45% increase in attacks in late 2024",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Snapshot Exfiltration Wave",
-                year=2024,
-                description="45% increase in snapshot-based exfiltration observed",
-                reference_url="https://unit42.paloaltonetworks.com/2025-cloud-security-alert-trends/",
-            )
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=8,

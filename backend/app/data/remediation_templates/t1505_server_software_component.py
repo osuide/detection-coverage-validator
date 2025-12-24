@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -40,26 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Difficult to detect without file integrity monitoring",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="APT41 US State Government Compromises",
-                year=2022,
-                description="APT41 used China Chopper web shell to compromise six US state government networks",
-                reference_url="https://www.fortiguard.com/threat-signal-report/4449",
-            ),
-            Campaign(
-                name="Silk Typhoon IT Supply Chain",
-                year=2025,
-                description="Chinese threat actor deployed web shells targeting IT supply chain organizations",
-                reference_url="https://attack.mitre.org/techniques/T1505/003/",
-            ),
-            Campaign(
-                name="APT40 Belt and Road Initiative Targeting",
-                year=2024,
-                description="APT40 deployed server components targeting engineering and defence organizations",
-                reference_url="https://attack.mitre.org/groups/G0065/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="stable",
         severity_score=8,

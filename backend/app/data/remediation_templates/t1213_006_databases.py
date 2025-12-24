@@ -12,7 +12,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -42,20 +41,7 @@ TEMPLATE = RemediationTemplate(
             "SaaS platforms offer bulk export features",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="APT41 DUST Database Collection",
-                year=2024,
-                description="Collected Oracle database data using SQLULDR2 tool",
-                reference_url="https://attack.mitre.org/campaigns/C0040/",
-            ),
-            Campaign(
-                name="Sandworm Adminer Exploitation",
-                year=2024,
-                description="Exfiltrated enterprise database content via Adminer web-based database tool",
-                reference_url="https://attack.mitre.org/groups/G0034/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=8,

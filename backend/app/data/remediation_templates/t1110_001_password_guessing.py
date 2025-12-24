@@ -12,7 +12,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,20 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Distributed attacks avoid rate limits",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="APT28 Kubernetes Password Attacks",
-                year=2024,
-                description="Leveraged Kubernetes clusters for distributed password guessing sending over 300 authentication attempts per hour per targeted account",
-                reference_url="https://attack.mitre.org/groups/G0007/",
-            ),
-            Campaign(
-                name="APT29 Mailbox Targeting",
-                year=2024,
-                description="Successfully conducted password guessing attacks targeting mailbox lists",
-                reference_url="https://attack.mitre.org/groups/G0016/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="very_common",
         trend="increasing",
         severity_score=8,

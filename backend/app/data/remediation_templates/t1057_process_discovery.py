@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -40,20 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Required before process injection attacks",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Volt Typhoon Infrastructure Reconnaissance",
-                year=2024,
-                description="Used tasklist utility to enumerate processes on compromised cloud instances",
-                reference_url="https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-144a",
-            ),
-            Campaign(
-                name="Cloud Container Reconnaissance",
-                year=2024,
-                description="Attackers enumerate processes in Kubernetes pods to identify security controls",
-                reference_url="https://unit42.paloaltonetworks.com/2025-cloud-security-alert-trends/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="stable",
         severity_score=4,

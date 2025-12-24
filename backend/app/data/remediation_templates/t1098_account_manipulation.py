@@ -9,7 +9,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -35,26 +34,7 @@ TEMPLATE = RemediationTemplate(
             "Changes may persist through normal password rotations",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="SolarWinds/SUNBURST",
-                year=2020,
-                description="APT29 added credentials to OAuth applications and service principals for persistent access",
-                reference_url="https://attack.mitre.org/campaigns/C0024/",
-            ),
-            Campaign(
-                name="Scattered Spider",
-                year=2023,
-                description="Created additional IAM users and access keys after initial compromise for persistence",
-                reference_url="https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-320a",
-            ),
-            Campaign(
-                name="APT41 Cloud Attacks",
-                year=2022,
-                description="Modified IAM policies and added users to admin groups for lateral movement",
-                reference_url="https://www.mandiant.com/resources/apt41-dual-espionage-and-cyber-crime-operation",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=8,

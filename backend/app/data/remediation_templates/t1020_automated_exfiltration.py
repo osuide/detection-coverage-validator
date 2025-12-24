@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,26 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Circumvents manual monitoring controls",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Salesforce Data Exfiltration (C0059)",
-                year=2024,
-                description="Threat actors used automated API queries for large-scale data theft from Salesforce environments",
-                reference_url="https://attack.mitre.org/campaigns/C0059/",
-            ),
-            Campaign(
-                name="ArcaneDoor",
-                year=2024,
-                description="Campaign included scripted exfiltration mechanisms for automated data theft from compromised network devices",
-                reference_url="https://attack.mitre.org/campaigns/C0046/",
-            ),
-            Campaign(
-                name="Winter Vivern Document Exfiltration",
-                year=2023,
-                description="Delivered PowerShell scripts that recursively scanned for documents before automatically exfiltrating via HTTP",
-                reference_url="https://attack.mitre.org/groups/G1033/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=9,

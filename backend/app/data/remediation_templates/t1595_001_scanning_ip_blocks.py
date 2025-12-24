@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -40,20 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Discover initial access points",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Ember Bear Government Targeting",
-                year=2024,
-                description="Targeted IP ranges for vulnerability scanning related to government and critical infrastructure organisations",
-                reference_url="https://attack.mitre.org/groups/G1003/",
-            ),
-            Campaign(
-                name="TeamTNT IP Scanning Operations",
-                year=2023,
-                description="Conducted scanning operations of specific lists of target IP addresses",
-                reference_url="https://attack.mitre.org/groups/G0139/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="stable",
         severity_score=6,

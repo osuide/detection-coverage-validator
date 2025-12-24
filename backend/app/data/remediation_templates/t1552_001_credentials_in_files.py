@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -37,20 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Automated scanning makes large-scale discovery trivial",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="AWS .env File Attack",
-                year=2024,
-                description="Attackers scanned 230M+ AWS environments for exposed .env files, stealing credentials and deploying malicious Lambda functions",
-                reference_url="https://unit42.paloaltonetworks.com/large-scale-cloud-extortion-operation/",
-            ),
-            Campaign(
-                name="TeamTNT Cloud Credential Campaign",
-                year=2024,
-                description="Multi-cloud credential theft targeting AWS, GCP, and Azure via exposed config files",
-                reference_url="https://www.darkreading.com/cloud-security/aws-cloud-credential-stealing-campaign-spreads-azure-google",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=9,

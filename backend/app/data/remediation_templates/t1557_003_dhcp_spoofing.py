@@ -35,7 +35,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -64,20 +63,7 @@ TEMPLATE = RemediationTemplate(
             "Perform denial-of-service via DHCP exhaustion",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="APT28 Wi-Fi Pineapple Operations",
-                year=2023,
-                description="APT28 deployed Wi-Fi pineapple devices and Responder tool for NetBIOS poisoning to capture network credentials, including DHCP manipulation capabilities",
-                reference_url="https://attack.mitre.org/groups/G0007/",
-            ),
-            Campaign(
-                name="Kimsuky PHProxy Deployment",
-                year=2022,
-                description="Deployed modified PHProxy to examine web traffic, including network-level traffic redirection techniques",
-                reference_url="https://attack.mitre.org/groups/G0094/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="low",
         trend="stable",
         severity_score=8,

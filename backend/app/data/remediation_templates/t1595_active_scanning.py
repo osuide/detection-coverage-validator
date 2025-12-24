@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -40,14 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Identify software versions and configurations",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Triton Safety Instrumented System Attack",
-                year=2017,
-                description="TEMP.Veles conducted network reconnaissance during critical infrastructure attack",
-                reference_url="https://attack.mitre.org/campaigns/C0030/",
-            )
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=6,

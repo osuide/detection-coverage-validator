@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -38,20 +37,7 @@ TEMPLATE = RemediationTemplate(
             "Token reuse from multiple locations is common",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Snowflake Customer Breaches",
-                year=2024,
-                description="UNC5537 used stolen OAuth tokens to access 165+ Snowflake customer accounts",
-                reference_url="https://cloud.google.com/blog/topics/threat-intelligence/unc5537-snowflake-data-theft-extortion",
-            ),
-            Campaign(
-                name="Microsoft OAuth Token Theft",
-                year=2024,
-                description="APT29 compromised OAuth apps to maintain persistent access to Microsoft 365",
-                reference_url="https://www.microsoft.com/en-us/security/blog/2024/01/25/midnight-blizzard-guidance/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=9,

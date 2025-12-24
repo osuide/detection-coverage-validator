@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,26 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Cloud services provide cross-environment access",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Aquatic Panda Remote Scheduled Tasks",
-                year=2024,
-                description="Deployed malicious software via remote scheduled tasks using valid credentials",
-                reference_url="https://attack.mitre.org/groups/G0143/",
-            ),
-            Campaign(
-                name="Ember Bear Impacket Lateral Movement",
-                year=2024,
-                description="Harvested credentials to move laterally using the Impacket framework via SMB and WMI",
-                reference_url="https://attack.mitre.org/groups/G1003/",
-            ),
-            Campaign(
-                name="Wizard Spider Ryuk Deployment",
-                year=2023,
-                description="Executed Ryuk ransomware payloads through WebDAV protocol on network shares",
-                reference_url="https://attack.mitre.org/groups/G0102/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="stable",
         severity_score=8,

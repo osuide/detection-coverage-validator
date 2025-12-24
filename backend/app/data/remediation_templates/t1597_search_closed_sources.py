@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -39,14 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Occurs outside defender visibility",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="EXOTIC LILY RocketReach Campaign",
-                year=2022,
-                description="Searched for information on targeted individuals using business databases including RocketReach and CrunchBase",
-                reference_url="https://attack.mitre.org/groups/G1011/",
-            )
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="uncommon",
         trend="stable",
         severity_score=4,

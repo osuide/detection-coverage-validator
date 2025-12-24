@@ -12,7 +12,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -47,32 +46,7 @@ TEMPLATE = RemediationTemplate(
             "Multiple DNS record types available for data encoding",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="SUNBURST SolarWinds Supply Chain",
-                year=2020,
-                description="SUNBURST malware mimicked legitimate SolarWinds API communications via DNS, using DNS queries to communicate with C2 infrastructure whilst evading detection",
-                reference_url="https://attack.mitre.org/campaigns/C0024/",
-            ),
-            Campaign(
-                name="Cobalt Strike DNS Beaconing",
-                year=2024,
-                description="Cobalt Strike framework deployed with DNS beaconing profiles, encapsulating C2 communications in DNS traffic using custom protocols",
-                reference_url="https://attack.mitre.org/software/S0154/",
-            ),
-            Campaign(
-                name="APT39 DNS Tunnelling Operations",
-                year=2023,
-                description="APT39 utilised DNS tunnelling techniques for covert C2 communications in targeted intelligence gathering operations",
-                reference_url="https://attack.mitre.org/groups/G0087/",
-            ),
-            Campaign(
-                name="OilRig DNS C2 Infrastructure",
-                year=2022,
-                description="OilRig APT group deployed DNS-based C2 infrastructure for persistent access in Middle Eastern targets",
-                reference_url="https://attack.mitre.org/groups/G0049/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=8,

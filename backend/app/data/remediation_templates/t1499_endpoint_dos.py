@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -42,14 +41,7 @@ TEMPLATE = RemediationTemplate(
             "May mask other attack activities",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Sandworm Georgian Website Attacks",
-                year=2019,
-                description="Disrupted over 2,000 Georgian government and private sector websites through DoS attacks",
-                reference_url="https://attack.mitre.org/groups/G0034/",
-            )
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="stable",
         severity_score=8,

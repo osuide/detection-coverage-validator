@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -42,14 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Valid tickets appear as legitimate authentication",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Akira Ransomware Credential Theft",
-                year=2024,
-                description="Akira ransomware group used scripts to extract Kerberos authentication credentials from compromised systems",
-                reference_url="https://attack.mitre.org/groups/G1024/",
-            )
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="stable",
         severity_score=9,

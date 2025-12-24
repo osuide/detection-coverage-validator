@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -39,14 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Temporary tokens harder to trace",
         ],
         known_threat_actors=[],  # No specific threat actors documented in MITRE
-        recent_campaigns=[
-            Campaign(
-                name="StellarParticle Privilege Escalation",
-                year=2023,
-                description="CrowdStrike analysis documented use of temporary privilege escalation techniques",
-                reference_url="https://attack.mitre.org/techniques/T1548/005/",
-            )
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="uncommon",
         trend="increasing",
         severity_score=8,

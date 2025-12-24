@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -43,32 +42,7 @@ TEMPLATE = RemediationTemplate(
             "Wide availability of tools supporting HTTP-based C2",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="3CX Supply Chain Attack",
-                year=2023,
-                description="Sophisticated supply chain compromise using HTTP-based C2 communications to control infected endpoints via legitimate-looking web traffic",
-                reference_url="https://attack.mitre.org/campaigns/C0057/",
-            ),
-            Campaign(
-                name="Operation Dream Job",
-                year=2023,
-                description="Lazarus Group campaign using HTTPS-based C2 infrastructure to manage implants and exfiltrate data from targeted organisations",
-                reference_url="https://attack.mitre.org/campaigns/C0022/",
-            ),
-            Campaign(
-                name="ArcaneDoor",
-                year=2024,
-                description="State-sponsored campaign exploiting network devices with custom HTTP-based backdoors for persistent C2 access",
-                reference_url="https://attack.mitre.org/campaigns/C0046/",
-            ),
-            Campaign(
-                name="2015 Ukraine Electric Power Attack",
-                year=2015,
-                description="BlackEnergy malware used HTTP protocols for command and control in critical infrastructure attack",
-                reference_url="https://attack.mitre.org/campaigns/C0028/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="very common",
         trend="stable",
         severity_score=8,

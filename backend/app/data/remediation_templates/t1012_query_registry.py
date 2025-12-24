@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -42,26 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Obtains MachineGuid and unique system identifiers",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="SUNBURST Supply Chain Attack",
-                year=2020,
-                description="SUNBURST malware queried MachineGuid from HKLM\\SOFTWARE\\Microsoft\\Cryptography to uniquely identify compromised hosts",
-                reference_url="https://attack.mitre.org/campaigns/C0024/",
-            ),
-            Campaign(
-                name="Volt Typhoon Infrastructure Reconnaissance",
-                year=2023,
-                description="Searched Registry for PuTTY sessions to identify network infrastructure and pivot points for lateral movement",
-                reference_url="https://attack.mitre.org/groups/G1017/",
-            ),
-            Campaign(
-                name="Lazarus Cryptocurrency Theft",
-                year=2023,
-                description="Queried Registry keys to detect cryptocurrency wallets and remote access tools on compromised Windows cloud instances",
-                reference_url="https://attack.mitre.org/campaigns/C0022/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="very_common",
         trend="stable",
         severity_score=5,

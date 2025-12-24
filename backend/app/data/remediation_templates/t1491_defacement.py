@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -40,26 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Cloud storage easily modified if credentials compromised",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Cyber Army of Russia Website Defacement",
-                year=2024,
-                description="Defaced websites with pro-Russian messages during geopolitical crises",
-                reference_url="https://attack.mitre.org/groups/G0034/",
-            ),
-            Campaign(
-                name="CyberToufan Destructive Operations",
-                year=2024,
-                description="Conducted destructive operations including defacement against Israeli organisations",
-                reference_url="https://www.welivesecurity.com/en/eset-research/eset-apt-activity-report-q4-2024-q1-2025/",
-            ),
-            Campaign(
-                name="Anonymous Russia Defacement Protest",
-                year=2022,
-                description="Defaced Russian government sites to protest web-blocking",
-                reference_url="https://attack.mitre.org/techniques/T1491/002/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="stable",
         severity_score=7,

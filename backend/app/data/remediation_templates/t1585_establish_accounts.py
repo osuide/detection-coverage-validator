@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -39,14 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Establish communication channels for ransomware",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Salesforce Data Exfiltration",
-                year=2023,
-                description="Threat actors registered trial Salesforce accounts to deploy malicious applications",
-                reference_url="https://attack.mitre.org/campaigns/C0059/",
-            )
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=6,

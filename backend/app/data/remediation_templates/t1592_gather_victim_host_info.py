@@ -12,7 +12,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,14 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Plan evasion techniques based on defences",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Volt Typhoon Infrastructure Targeting",
-                year=2023,
-                description="Conducted pre-compromise reconnaissance targeting critical infrastructure victim host information",
-                reference_url="https://attack.mitre.org/groups/G1017/",
-            )
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="stable",
         severity_score=4,

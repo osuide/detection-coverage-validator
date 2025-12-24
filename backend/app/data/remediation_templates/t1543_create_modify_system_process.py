@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,26 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Enables long-term access to compromised environments",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Exaramel Linux Daemon Persistence",
-                year=2024,
-                description="Exaramel for Linux achieves persistence via Upstart or System V when running as root, creating system services for backdoor execution",
-                reference_url="https://attack.mitre.org/software/S0401/",
-            ),
-            Campaign(
-                name="LITTLELAMB.WOOLTEA Daemon Operations",
-                year=2024,
-                description="LITTLELAMB.WOOLTEA initialises as a daemon for persistent background operation in compromised environments",
-                reference_url="https://attack.mitre.org/software/S1084/",
-            ),
-            Campaign(
-                name="Container Service Persistence",
-                year=2024,
-                description="Adversaries modify container restart policies and service definitions to maintain persistence across container restarts",
-                reference_url="https://attack.mitre.org/techniques/T1543/005/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=8,

@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -39,26 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Verify system uptime for persistence planning",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Operation CuckooBees (C0012)",
-                year=2022,
-                description="Used 'net time' command during reconnaissance phase of long-term espionage campaign",
-                reference_url="https://attack.mitre.org/campaigns/C0012/",
-            ),
-            Campaign(
-                name="Operation Wocao (C0014)",
-                year=2019,
-                description="Employed 'time' command on compromised Linux systems to gather temporal context",
-                reference_url="https://attack.mitre.org/campaigns/C0014/",
-            ),
-            Campaign(
-                name="C0015",
-                year=2023,
-                description="Used 'net view /all time' to gather local time across networked systems",
-                reference_url="https://attack.mitre.org/campaigns/C0015/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="stable",
         severity_score=4,

@@ -12,7 +12,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -44,26 +43,7 @@ TEMPLATE = RemediationTemplate(
             "Can deliver various payload types (ISO, ZIP, executables)",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="APT29 ISO Embedding",
-                year=2021,
-                description="Embedded ISO file within HTML attachment with JavaScript code to initiate malware execution",
-                reference_url="https://attack.mitre.org/groups/G0016/",
-            ),
-            Campaign(
-                name="EnvyScout HTML Smuggling",
-                year=2021,
-                description="Used JavaScript to extract encoded blobs from HTML bodies for malware delivery",
-                reference_url="https://attack.mitre.org/software/S0634/",
-            ),
-            Campaign(
-                name="QakBot HTML Delivery",
-                year=2021,
-                description="Delivered ZIP files through HTML smuggling techniques",
-                reference_url="https://attack.mitre.org/software/S0650/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="increasing",
         severity_score=7,

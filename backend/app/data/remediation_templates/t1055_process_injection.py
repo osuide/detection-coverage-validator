@@ -29,7 +29,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -61,32 +60,7 @@ TEMPLATE = RemediationTemplate(
             "Difficult to detect without advanced monitoring",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="2015 Ukraine Electric Power Attack",
-                year=2015,
-                description="Sandworm Team loaded BlackEnergy into svchost.exe for command and control operations",
-                reference_url="https://attack.mitre.org/campaigns/C0028/",
-            ),
-            Campaign(
-                name="3CX Supply Chain Attack",
-                year=2023,
-                description="AppleJeus injected C2 modules into Chrome, Firefox, and Edge browser processes",
-                reference_url="https://attack.mitre.org/campaigns/C0057/",
-            ),
-            Campaign(
-                name="ArcaneDoor",
-                year=2024,
-                description="Injected malicious code into AAA and Crash Dump processes on Cisco ASA devices",
-                reference_url="https://attack.mitre.org/campaigns/C0046/",
-            ),
-            Campaign(
-                name="Operation Wocao",
-                year=2019,
-                description="Process injection used for code execution and privilege escalation",
-                reference_url="https://attack.mitre.org/campaigns/C0014/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=9,

@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,26 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Single channel reduces operational complexity",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Lazarus C2 Data Theft",
-                year=2024,
-                description="Lazarus Group exfiltrated data across various tools and malware using established C2 channels",
-                reference_url="https://attack.mitre.org/campaigns/C0022/",
-            ),
-            Campaign(
-                name="APT39 C2 Communications",
-                year=2024,
-                description="APT39 used C2 communications for stolen data transmission in targeted operations",
-                reference_url="https://attack.mitre.org/groups/G0087/",
-            ),
-            Campaign(
-                name="Kimsuky Data Exfiltration",
-                year=2023,
-                description="Kimsuky employed C2 channels for systematic data theft operations",
-                reference_url="https://attack.mitre.org/groups/G0094/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="very_common",
         trend="increasing",
         severity_score=9,

@@ -9,7 +9,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -35,26 +34,7 @@ TEMPLATE = RemediationTemplate(
             "Can be done quickly with appropriate IAM permissions",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="SolarWinds/SUNBURST",
-                year=2020,
-                description="APT29 disabled security logging and monitoring to maintain stealth during the campaign",
-                reference_url="https://attack.mitre.org/campaigns/C0024/",
-            ),
-            Campaign(
-                name="TeamTNT Cloud Attacks",
-                year=2021,
-                description="Cryptomining group routinely disabled CloudWatch and CloudTrail as first step",
-                reference_url="https://www.trendmicro.com/en_us/research/21/f/teamtnt-now-deploying-decrypted-vulnerable-kerberos-authentication.html",
-            ),
-            Campaign(
-                name="Scattered Spider",
-                year=2023,
-                description="Disabled endpoint detection tools and cloud security controls before ransomware deployment",
-                reference_url="https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-320a",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=9,

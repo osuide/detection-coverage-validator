@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -38,26 +37,7 @@ TEMPLATE = RemediationTemplate(
             "Encrypted protocols hide data content",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Play WinSCP Exfiltration",
-                year=2024,
-                description="Play group used WinSCP for data exfiltration to attacker-controlled accounts",
-                reference_url="https://attack.mitre.org/groups/G1040/",
-            ),
-            Campaign(
-                name="TeamTNT cURL Transfer",
-                year=2023,
-                description="Staged files with collected credentials sent to C2 servers using cURL",
-                reference_url="https://attack.mitre.org/groups/G0139/",
-            ),
-            Campaign(
-                name="FIN6 DNS Tunnelling",
-                year=2023,
-                description="FrameworkPOS malware leveraged DNS tunnelling for credit card data theft",
-                reference_url="https://attack.mitre.org/groups/G0037/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=9,

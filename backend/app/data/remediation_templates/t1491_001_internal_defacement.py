@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,26 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Can disrupt business operations",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Black Basta Ransomware",
-                year=2024,
-                description="Sets desktop wallpapers to ransom notes demanding payment",
-                reference_url="https://attack.mitre.org/software/S1070/",
-            ),
-            Campaign(
-                name="BlackCat (ALPHV) Campaigns",
-                year=2024,
-                description="Changes desktop wallpapers on compromised hosts to display ransom demands",
-                reference_url="https://attack.mitre.org/software/S1068/",
-            ),
-            Campaign(
-                name="Lazarus Group Operations",
-                year=2024,
-                description="Replaced wallpapers after rendering systems unbootable in destructive attacks",
-                reference_url="https://attack.mitre.org/campaigns/C0022/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="increasing",
         severity_score=7,

@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -38,26 +37,7 @@ TEMPLATE = RemediationTemplate(
             "Can reveal network topology and service architecture",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Salt Typhoon Network Surveillance",
-                year=2024,
-                description="Chinese state-sponsored group used packet capture tools for extensive network surveillance in telecommunications infrastructure",
-                reference_url="https://attack.mitre.org/groups/G1041/",
-            ),
-            Campaign(
-                name="APT28 Wi-Fi Pineapple Operations",
-                year=2023,
-                description="APT28 deployed Wi-Fi pineapple devices and Responder tool for NetBIOS poisoning to capture network credentials",
-                reference_url="https://attack.mitre.org/groups/G0007/",
-            ),
-            Campaign(
-                name="Ukraine Power Grid Attack",
-                year=2015,
-                description="Sandworm Team used BlackEnergy malware with network sniffer module during attacks on Ukrainian critical infrastructure",
-                reference_url="https://attack.mitre.org/groups/G0034/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="increasing",
         severity_score=8,

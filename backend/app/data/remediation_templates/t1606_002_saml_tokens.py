@@ -12,7 +12,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -42,14 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Long-lived tokens enable persistence",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="SolarWinds Compromise",
-                year=2020,
-                description="APT29 created tokens using compromised SAML signing certificates",
-                reference_url="https://attack.mitre.org/campaigns/C0024/",
-            )
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="rare",
         trend="increasing",
         severity_score=9,

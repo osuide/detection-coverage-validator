@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,32 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Automated deployment systems propagate malicious code",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="CCleaner Supply Chain Attack",
-                year=2017,
-                description="Malicious code injected into legitimate CCleaner software distribution, affecting millions of users",
-                reference_url="https://attack.mitre.org/techniques/T1195/",
-            ),
-            Campaign(
-                name="SolarWinds SUNBURST",
-                year=2020,
-                description="Sophisticated supply chain compromise injecting backdoor into SolarWinds Orion platform updates",
-                reference_url="https://attack.mitre.org/campaigns/C0024/",
-            ),
-            Campaign(
-                name="3CX Desktop Application",
-                year=2023,
-                description="Double supply chain compromise leveraging initial access to insert malware in VoIP application",
-                reference_url="https://attack.mitre.org/campaigns/C0057/",
-            ),
-            Campaign(
-                name="Node.js Package Attack",
-                year=2024,
-                description="Compromised open-source dependencies targeting Bitcoin wallet users",
-                reference_url="https://attack.mitre.org/techniques/T1195/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="uncommon",
         trend="increasing",
         severity_score=9,

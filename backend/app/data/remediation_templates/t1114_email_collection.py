@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -40,26 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Provides reconnaissance for lateral movement",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Scattered Spider Exchange Reconnaissance",
-                year=2023,
-                description="Searched Exchange servers for emails about intrusions and incident response to understand detection capabilities",
-                reference_url="https://attack.mitre.org/groups/G1015/",
-            ),
-            Campaign(
-                name="Silent Librarian Mailbox Exfiltration",
-                year=2022,
-                description="Exfiltrated entire mailboxes from compromised academic accounts to collect research data and credentials",
-                reference_url="https://attack.mitre.org/groups/G0122/",
-            ),
-            Campaign(
-                name="Magic Hound Credential Theft",
-                year=2021,
-                description="Compromised email credentials to steal sensitive communications and intellectual property",
-                reference_url="https://attack.mitre.org/groups/G0059/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="stable",
         severity_score=8,

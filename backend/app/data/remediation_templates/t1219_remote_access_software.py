@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -42,32 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Enables interactive GUI access to compromised systems",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Night Dragon Remote Administration",
-                year=2011,
-                description="Deployed several remote administration tools as persistent infiltration channels",
-                reference_url="https://attack.mitre.org/campaigns/C0002/",
-            ),
-            Campaign(
-                name="Medusa Group Multi-RMM Campaign",
-                year=2024,
-                description="Utilised AnyDesk, Atera, ConnectWise, eHorus, N-Able, PDQ Deploy, and SimpleHelp",
-                reference_url="https://attack.mitre.org/techniques/T1219/",
-            ),
-            Campaign(
-                name="MuddyWater RMM Deployment",
-                year=2024,
-                description="Deployed ScreenConnect, AteraAgent, and SimpleHelp on compromised cloud infrastructure",
-                reference_url="https://attack.mitre.org/groups/G0069/",
-            ),
-            Campaign(
-                name="FIN7 Atera Tool Abuse",
-                year=2023,
-                description="Leveraged Atera remote management tool for persistent access to cloud environments",
-                reference_url="https://attack.mitre.org/groups/G0046/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=8,

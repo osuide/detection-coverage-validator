@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -37,20 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Can use large instance types for compute abuse",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Scattered Spider EC2 Creation",
-                year=2024,
-                description="Created EC2 instances and Azure VMs following credential compromise",
-                reference_url="https://attack.mitre.org/groups/G1015/",
-            ),
-            Campaign(
-                name="LAPSUS$ VM Provisioning",
-                year=2022,
-                description="Provisioned new VMs in target cloud environments after credential theft",
-                reference_url="https://attack.mitre.org/groups/G1004/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="stable",
         severity_score=7,

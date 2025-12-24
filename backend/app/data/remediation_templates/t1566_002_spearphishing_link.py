@@ -12,7 +12,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,20 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Scalable to many targets",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Lazarus Group Operation Dream Job",
-                year=2024,
-                description="Distributed malware via OneDrive links in spearphishing emails",
-                reference_url="https://attack.mitre.org/campaigns/C0022/",
-            ),
-            Campaign(
-                name="APT29 Spearphishing",
-                year=2024,
-                description="State-sponsored spearphishing targeting government and defence sectors",
-                reference_url="https://attack.mitre.org/groups/G0016/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="very_common",
         trend="increasing",
         severity_score=8,

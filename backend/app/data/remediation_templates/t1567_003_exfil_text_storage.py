@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -39,20 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Widely accessible from corporate networks",
         ],
         known_threat_actors=[],  # MITRE page did not identify specific actors
-        recent_campaigns=[
-            Campaign(
-                name="PowerShell Pastebin Exfiltration",
-                year=2024,
-                description="PowerShell scripts uploading sensitive data to Pastebin via HTTPS POST",
-                reference_url="https://attack.mitre.org/techniques/T1567/003/",
-            ),
-            Campaign(
-                name="ESXi Hastebin Upload",
-                year=2024,
-                description="Compromised ESXi hosts generating outbound traffic to Hastebin for data exfiltration",
-                reference_url="https://attack.mitre.org/techniques/T1567/003/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="stable",
         severity_score=7,

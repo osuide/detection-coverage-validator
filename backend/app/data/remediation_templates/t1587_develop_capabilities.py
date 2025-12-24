@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -40,20 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Provides exclusive capabilities",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Contagious Interview NPM Packages",
-                year=2024,
-                description="North Korean threat actors developed malicious NPM packages for delivery to or retrieval by victims",
-                reference_url="https://attack.mitre.org/groups/G1052/",
-            ),
-            Campaign(
-                name="Kimsuky Spearphishing Toolkit",
-                year=2024,
-                description="Created and deployed a mailing toolkit for use in spearphishing attacks",
-                reference_url="https://attack.mitre.org/groups/G0094/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="increasing",
         severity_score=7,

@@ -12,7 +12,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,14 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Valid sessions appear legitimate to security tools",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="SolarWinds Supply Chain Attack",
-                year=2020,
-                description="APT29 generated cookie values from stolen secret keys to bypass MFA on Outlook Web Access",
-                reference_url="https://attack.mitre.org/campaigns/C0024/",
-            )
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="rare",
         trend="increasing",
         severity_score=8,

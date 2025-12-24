@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -42,20 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Popular platforms (Discord, Slack) provide easy setup",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Discord Webhook Exfiltration",
-                year=2024,
-                description="Adversaries leveraged Discord webhooks for automated credential and data exfiltration",
-                reference_url="https://attack.mitre.org/techniques/T1567/004/",
-            ),
-            Campaign(
-                name="Slack Webhook Data Theft",
-                year=2024,
-                description="Threat actors configured Slack webhooks to exfiltrate sensitive corporate data",
-                reference_url="https://attack.mitre.org/techniques/T1567/004/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=8,

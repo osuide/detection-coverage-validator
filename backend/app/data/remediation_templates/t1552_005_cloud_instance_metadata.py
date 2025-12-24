@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -37,20 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Credentials valid for hours after theft",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Capital One Breach",
-                year=2019,
-                description="SSRF exploit used to access IMDS and steal IAM credentials, exfiltrating 100M+ records",
-                reference_url="https://krebsonsecurity.com/2019/08/what-we-can-learn-from-the-capital-one-hack/",
-            ),
-            Campaign(
-                name="TeamTNT IMDS Attacks",
-                year=2024,
-                description="Cryptomining group targeting misconfigured IMDS to steal credentials across cloud providers",
-                reference_url="https://www.cadosecurity.com/blog/teamtnt-reemerges-with-new-aggressive-cloud-campaign",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="stable",
         severity_score=8,

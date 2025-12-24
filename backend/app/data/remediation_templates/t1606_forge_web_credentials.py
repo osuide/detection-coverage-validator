@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -39,14 +38,7 @@ TEMPLATE = RemediationTemplate(
             "SAML tokens grant access across multiple services",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="SolarWinds Compromise (C0024)",
-                year=2021,
-                description="APT29 forged cookies using stolen secret keys to bypass MFA on Outlook Web Access accounts and created SAML tokens using compromised AD FS signing certificates",
-                reference_url="https://attack.mitre.org/campaigns/C0024/",
-            )
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="uncommon",
         trend="increasing",
         severity_score=9,

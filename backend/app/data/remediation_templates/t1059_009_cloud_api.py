@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -37,20 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Hard to distinguish from legitimate admin",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="APT29 Microsoft Graph API",
-                year=2024,
-                description="Leveraged Microsoft Graph API across Azure and M365 environments",
-                reference_url="https://attack.mitre.org/groups/G0016/",
-            ),
-            Campaign(
-                name="TeamTNT AWS CLI Enumeration",
-                year=2024,
-                description="Employed AWS CLI to enumerate cloud environments with stolen credentials",
-                reference_url="https://attack.mitre.org/groups/G0139/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=8,

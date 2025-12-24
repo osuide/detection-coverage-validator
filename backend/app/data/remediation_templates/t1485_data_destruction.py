@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -38,20 +37,7 @@ TEMPLATE = RemediationTemplate(
             "May affect backups if not protected",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="LAPSUS$ Cloud Destruction",
-                year=2024,
-                description="Deleted on-premises and cloud-based systems and resources",
-                reference_url="https://attack.mitre.org/groups/G1004/",
-            ),
-            Campaign(
-                name="Sandworm CaddyWiper",
-                year=2022,
-                description="Deployed CaddyWiper to wipe OT-related files during Ukraine attacks",
-                reference_url="https://attack.mitre.org/groups/G0034/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="stable",
         severity_score=10,

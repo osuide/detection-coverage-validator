@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -39,26 +38,7 @@ TEMPLATE = RemediationTemplate(
             "May go unnoticed without proper monitoring controls",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Scattered Spider Cloud Log Tampering",
-                year=2024,
-                description="Adversaries deleted CloudTrail logs and modified audit configurations after initial compromise to hide their tracks",
-                reference_url="https://attack.mitre.org/groups/G1015/",
-            ),
-            Campaign(
-                name="APT29 Log Deletion",
-                year=2024,
-                description="APT29 restored original files after payload execution and cleared system logs to evade detection",
-                reference_url="https://attack.mitre.org/groups/G0016/",
-            ),
-            Campaign(
-                name="TeamTNT Container Log Evasion",
-                year=2023,
-                description="Cryptomining group cleared container logs and bash history on compromised Kubernetes clusters",
-                reference_url="https://attack.mitre.org/groups/G0139/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=9,

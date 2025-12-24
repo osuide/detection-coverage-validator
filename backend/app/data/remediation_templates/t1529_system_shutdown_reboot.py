@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -43,26 +42,7 @@ TEMPLATE = RemediationTemplate(
             "Prevents recovery by interrupting backup or restoration processes",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="WhisperGate Ukraine Attacks",
-                year=2022,
-                description="Deployed wiper malware that corrupted master boot records and triggered system shutdowns to prevent recovery",
-                reference_url="https://attack.mitre.org/software/S0689/",
-            ),
-            Campaign(
-                name="HermeticWiper Russian Invasion",
-                year=2022,
-                description="Wiped data on Ukrainian systems and forced shutdowns to maximise disruption during military operations",
-                reference_url="https://attack.mitre.org/software/S0697/",
-            ),
-            Campaign(
-                name="Black Basta Ransomware",
-                year=2023,
-                description="Forced system reboots after encrypting files to prevent incident response and ensure ransom demands were visible",
-                reference_url="https://attack.mitre.org/software/S1070/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="uncommon",
         trend="stable",
         severity_score=7,

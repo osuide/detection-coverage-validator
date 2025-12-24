@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -40,32 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Protocol tunnelling enables multi-stage attacks",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="TeamTNT IRC Botnet Operations",
-                year=2024,
-                description="TeamTNT deployed IRC-based botnets for C2 communications in cloud container environments, blending with legitimate container orchestration traffic",
-                reference_url="https://attack.mitre.org/groups/G0139/",
-            ),
-            Campaign(
-                name="Raspberry Robin TOR Network",
-                year=2024,
-                description="Raspberry Robin malware used TOR network protocols to establish covert C2 channels, making detection challenging through protocol obfuscation",
-                reference_url="https://attack.mitre.org/software/S1130/",
-            ),
-            Campaign(
-                name="Magic Hound IRC C2",
-                year=2023,
-                description="Magic Hound APT group utilised IRC protocols for command and control communications in targeted attacks",
-                reference_url="https://attack.mitre.org/groups/G0059/",
-            ),
-            Campaign(
-                name="Siloscape IRC Server",
-                year=2021,
-                description="Siloscape deployed IRC servers within compromised Kubernetes clusters for C2, leveraging container networking",
-                reference_url="https://attack.mitre.org/software/S0623/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=8,

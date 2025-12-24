@@ -12,7 +12,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -43,14 +42,7 @@ TEMPLATE = RemediationTemplate(
             "Often overlooked during incident response",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="APT29 AD FS Compromise",
-                year=2024,
-                description="Modified AD FS configuration files to load malicious DLLs, enabling persistent access to federated services",
-                reference_url="https://attack.mitre.org/groups/G0016/",
-            )
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="rare",
         trend="increasing",
         severity_score=10,

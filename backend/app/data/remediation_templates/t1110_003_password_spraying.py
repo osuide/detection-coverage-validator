@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -40,26 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Automation tools widely available",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="APT28 Nearest Neighbor Campaign",
-                year=2024,
-                description="Performed password-spray attacks against public services",
-                reference_url="https://attack.mitre.org/campaigns/C0051/",
-            ),
-            Campaign(
-                name="APT28 Kubernetes-Based Attacks",
-                year=2023,
-                description="Used Kubernetes infrastructure for distributed password spraying (~4 attempts/hour over weeks)",
-                reference_url="https://attack.mitre.org/groups/G0007/",
-            ),
-            Campaign(
-                name="Quad7 Throttled Password Spraying",
-                year=2024,
-                description="Used extremely throttled variant with single attempts per 24-hour period",
-                reference_url="https://attack.mitre.org/campaigns/C0055/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=8,

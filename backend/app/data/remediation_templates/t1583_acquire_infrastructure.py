@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -39,20 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Blends with legitimate traffic patterns",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Star Blizzard Phishing Infrastructure",
-                year=2024,
-                description="Utilised HubSpot and MailerLite platforms to obscure phishing email origins",
-                reference_url="https://attack.mitre.org/groups/G1033/",
-            ),
-            Campaign(
-                name="Kimsuky Cryptocurrency-Funded Infrastructure",
-                year=2023,
-                description="Funded infrastructure acquisition using stolen cryptocurrency",
-                reference_url="https://attack.mitre.org/groups/G0094/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=6,

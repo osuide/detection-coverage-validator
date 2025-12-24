@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -42,20 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Multiple sub-techniques provide redundancy",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="APT32 VbaProject.OTM Backdoor",
-                year=2022,
-                description="APT32 replaced Microsoft Outlook's VbaProject.OTM file with malicious macros to establish persistent backdoor access",
-                reference_url="https://attack.mitre.org/groups/G0050/",
-            ),
-            Campaign(
-                name="Gamaredon Application.Startup Persistence",
-                year=2023,
-                description="Gamaredon Group inserted malicious macros into documents and leveraged /altvba option with Microsoft Outlook Application.Startup events",
-                reference_url="https://attack.mitre.org/groups/G0047/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="stable",
         severity_score=7,

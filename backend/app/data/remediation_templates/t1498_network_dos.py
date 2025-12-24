@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -39,20 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Easy to execute with available tools",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="APT28 WADA DDoS Attack",
-                year=2016,
-                description="APT28 conducted DDoS attack against World Anti-Doping Agency",
-                reference_url="https://attack.mitre.org/groups/G0007/",
-            ),
-            Campaign(
-                name="Lucifer Malware",
-                year=2020,
-                description="Malware capable of TCP, UDP, and HTTP denial of service attacks",
-                reference_url="https://attack.mitre.org/software/S0532/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="stable",
         severity_score=8,

@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -39,20 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Difficult to prevent with technical controls alone",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Operation Dream Job",
-                year=2024,
-                description="Lazarus Group targeted employees with fake job offers via malicious LinkedIn links",
-                reference_url="https://attack.mitre.org/campaigns/C0022/",
-            ),
-            Campaign(
-                name="Night Dragon",
-                year=2011,
-                description="Energy sector targeting via spearphishing emails with malicious hyperlinks",
-                reference_url="https://attack.mitre.org/campaigns/C0002/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="very_common",
         trend="increasing",
         severity_score=8,

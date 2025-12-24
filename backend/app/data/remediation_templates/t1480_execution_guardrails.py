@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -40,26 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Protects malware from analysis in security sandboxes",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Contagious Interview",
-                year=2024,
-                description="C2 endpoints review IP geolocation and victim environment details before payload delivery",
-                reference_url="https://attack.mitre.org/campaigns/C0039/",
-            ),
-            Campaign(
-                name="RedDelta PlugX Distribution",
-                year=2023,
-                description="Used Cloudflare geofencing during PlugX distribution to target specific regions",
-                reference_url="https://attack.mitre.org/groups/G0088/",
-            ),
-            Campaign(
-                name="Gamaredon Geofencing",
-                year=2022,
-                description="Geofencing limiting malware downloads to specific geographical regions",
-                reference_url="https://attack.mitre.org/groups/G0047/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=7,

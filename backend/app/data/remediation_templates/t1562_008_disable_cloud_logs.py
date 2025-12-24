@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -37,20 +36,7 @@ TEMPLATE = RemediationTemplate(
             "May go unnoticed without monitoring",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="CloudTrail Deletion Attacks",
-                year=2024,
-                description="Multiple threat actors observed deleting CloudTrail trails as first action after compromise",
-                reference_url="https://www.datadoghq.com/state-of-cloud-security/",
-            ),
-            Campaign(
-                name="TeamTNT Log Evasion",
-                year=2024,
-                description="Cryptomining group disabling CloudWatch agent and audit logging on compromised instances",
-                reference_url="https://www.cadosecurity.com/blog/teamtnt-reemerges-with-new-aggressive-cloud-campaign",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="stable",
         severity_score=9,

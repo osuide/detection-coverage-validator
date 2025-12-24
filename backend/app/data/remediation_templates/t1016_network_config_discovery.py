@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,20 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Identifies VPC peering and interconnections",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Volt Typhoon Network Reconnaissance",
-                year=2024,
-                description="Extensive network configuration discovery including routing tables and network interfaces to identify critical infrastructure targets",
-                reference_url="https://attack.mitre.org/groups/G1017/",
-            ),
-            Campaign(
-                name="APT41 Cloud Infrastructure Mapping",
-                year=2023,
-                description="Systematic enumeration of cloud network configurations including VPCs, subnets, and routing tables during post-compromise reconnaissance",
-                reference_url="https://attack.mitre.org/groups/G0096/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="very_common",
         trend="increasing",
         severity_score=4,

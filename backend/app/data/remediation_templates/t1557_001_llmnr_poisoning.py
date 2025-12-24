@@ -33,7 +33,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -65,26 +64,7 @@ TEMPLATE = RemediationTemplate(
             "Can be combined with downgrade attacks to force weaker authentication",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Lazarus Group Responder Deployment",
-                year=2023,
-                description="Lazarus Group executed Responder tool for lateral movement and credential harvesting in enterprise networks",
-                reference_url="https://attack.mitre.org/campaigns/C0022/",
-            ),
-            Campaign(
-                name="Wizard Spider Invoke-Inveigh Operations",
-                year=2022,
-                description="Wizard Spider used Invoke-Inveigh PowerShell cmdlets for LLMNR/NBT-NS poisoning during Ryuk ransomware campaigns",
-                reference_url="https://attack.mitre.org/groups/G0102/",
-            ),
-            Campaign(
-                name="APT28 Wi-Fi Pineapple and Responder",
-                year=2023,
-                description="APT28 deployed Wi-Fi pineapple devices with Responder for NetBIOS poisoning to capture network credentials",
-                reference_url="https://attack.mitre.org/groups/G0007/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="high",
         trend="stable",
         severity_score=8,

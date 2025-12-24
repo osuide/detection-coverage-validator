@@ -13,7 +13,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -44,20 +43,7 @@ TEMPLATE = RemediationTemplate(
             "Cloud logs contain API activity and credentials",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Volt Typhoon Living-off-the-Land",
-                year=2024,
-                description="Used wevtutil.exe and PowerShell to search for successful logons in Security Event Logs",
-                reference_url="https://attack.mitre.org/groups/G1017/",
-            ),
-            Campaign(
-                name="Mustang Panda Log Collection",
-                year=2023,
-                description="Employed Wevtutil for Windows Security Event Log gathering",
-                reference_url="https://attack.mitre.org/groups/G0129/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=6,

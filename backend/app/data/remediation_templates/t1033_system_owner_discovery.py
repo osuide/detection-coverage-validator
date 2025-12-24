@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,26 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Required for planning privilege escalation paths",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Volt Typhoon Cloud Discovery",
-                year=2024,
-                description="Chinese state-sponsored group used PowerShell event log queries and cloud API calls to enumerate active users and sessions",
-                reference_url="https://attack.mitre.org/groups/G1017/",
-            ),
-            Campaign(
-                name="APT41 User Reconnaissance",
-                year=2024,
-                description="APT41 systematically enumerated system users to identify administrative accounts for credential harvesting",
-                reference_url="https://attack.mitre.org/groups/G0096/",
-            ),
-            Campaign(
-                name="Operation Wocao",
-                year=2019,
-                description="Extensive user discovery operations to map high-value targets in telecommunications and managed service providers",
-                reference_url="https://attack.mitre.org/campaigns/C0014/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="stable",
         severity_score=4,

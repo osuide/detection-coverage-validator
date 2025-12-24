@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -40,38 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Users assume MFA provides complete security",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="APT42 SMS Interception",
-                year=2024,
-                description="Intercepted SMS-based one-time passwords using fake websites capturing MFA tokens",
-                reference_url="https://attack.mitre.org/groups/G1042/",
-            ),
-            Campaign(
-                name="Chimera Phone Number Registration",
-                year=2023,
-                description="Registered alternate phone numbers for compromised users to intercept SMS 2FA codes",
-                reference_url="https://attack.mitre.org/groups/G0114/",
-            ),
-            Campaign(
-                name="Kimsuky Custom Interception Tools",
-                year=2024,
-                description="Deployed proprietary tools to intercept two-factor authentication one-time passwords",
-                reference_url="https://attack.mitre.org/groups/G0094/",
-            ),
-            Campaign(
-                name="LAPSUS$ Session Token Replay",
-                year=2022,
-                description="Replayed stolen session tokens attempting to trigger user approval for MFA prompts",
-                reference_url="https://attack.mitre.org/groups/G1004/",
-            ),
-            Campaign(
-                name="Leviathan MFA Token Collection",
-                year=2023,
-                description="Abused appliance access to collect MFA token values during authentication",
-                reference_url="https://attack.mitre.org/groups/G0065/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="increasing",
         severity_score=8,

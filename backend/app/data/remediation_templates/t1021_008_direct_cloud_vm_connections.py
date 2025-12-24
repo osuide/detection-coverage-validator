@@ -12,7 +12,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,14 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Can evade endpoint detection solutions",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Scattered Spider Cloud-Based Attacks",
-                year=2023,
-                description="Conducted sophisticated cloud-based attacks leveraging direct VM connection methods",
-                reference_url="https://attack.mitre.org/techniques/T1021/008/",
-            )
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="uncommon",
         trend="increasing",
         severity_score=8,

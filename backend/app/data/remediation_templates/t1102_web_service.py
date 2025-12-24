@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -43,32 +42,7 @@ TEMPLATE = RemediationTemplate(
             "Multi-platform support (web, mobile, desktop)",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="APT32 Cloud Storage C2",
-                year=2024,
-                description="Abused Dropbox, Amazon S3, and Google Drive for malware hosting and command and control",
-                reference_url="https://attack.mitre.org/groups/G0050/",
-            ),
-            Campaign(
-                name="APT41 Google Workspace Compromise",
-                year=2024,
-                description="Used compromised Google Workspace accounts for bidirectional C2 communications",
-                reference_url="https://attack.mitre.org/groups/G0096/",
-            ),
-            Campaign(
-                name="Turla Multi-Service C2",
-                year=2023,
-                description="Leveraged Pastebin, Dropbox, and GitHub for command and control infrastructure",
-                reference_url="https://attack.mitre.org/groups/G0010/",
-            ),
-            Campaign(
-                name="TeamTNT Data Exfiltration",
-                year=2023,
-                description="Employed iplogger.org and file-sharing services for data exfiltration from cloud environments",
-                reference_url="https://attack.mitre.org/groups/G0139/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=8,

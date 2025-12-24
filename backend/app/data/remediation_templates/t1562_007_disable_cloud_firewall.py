@@ -12,7 +12,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -42,14 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Open access for persistent backdoors",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Pacu Framework Usage",
-                year=2024,
-                description="Pacu security testing tool can allowlist IP addresses in AWS GuardDuty and modify security group configurations",
-                reference_url="https://attack.mitre.org/software/S1091/",
-            )
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="uncommon",
         trend="increasing",
         severity_score=8,

@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -40,26 +39,7 @@ TEMPLATE = RemediationTemplate(
             "86% of cloud incidents involved business disruption",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Scattered Spider Cloud Campaign",
-                year=2024,
-                description="29% of all cloud-based intrusions in 2024, targeting insurance and financial sectors",
-                reference_url="https://www.picussecurity.com/resource/blog/scattered-lapsus-hunters-2025s-most-dangerous-cybercrime-supergroup",
-            ),
-            Campaign(
-                name="LAPSUS$ Cloud Attacks",
-                year=2024,
-                description="Cloud tenant infiltration with privilege escalation and lateral movement",
-                reference_url="https://www.cisa.gov/sites/default/files/2023-08/CSRB_Lapsus$_508c.pdf",
-            ),
-            Campaign(
-                name="Unit 42 Cloud Hijacking",
-                year=2024,
-                description="Threat actors hijacked cloud resources, scanning 230M+ targets for sensitive data",
-                reference_url="https://www.paloaltonetworks.com/resources/research/unit-42-incident-response-report",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=8,

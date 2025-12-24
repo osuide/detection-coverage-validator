@@ -12,7 +12,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -45,32 +44,7 @@ TEMPLATE = RemediationTemplate(
             "Weakens organisation-wide security posture",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="ArcaneDoor Authentication Bypass",
-                year=2024,
-                description="Modified AAA authentication process on network devices to bypass authentication controls",
-                reference_url="https://attack.mitre.org/campaigns/C0046/",
-            ),
-            Campaign(
-                name="FIN13 KeePass Trojan",
-                year=2024,
-                description="Replaced legitimate KeePass binaries with trojaned versions to harvest passwords",
-                reference_url="https://attack.mitre.org/groups/G1016/",
-            ),
-            Campaign(
-                name="APT42 MFA Modification",
-                year=2024,
-                description="Leveraged authentication modification tactics to maintain persistent access to cloud environments",
-                reference_url="https://www.mandiant.com/resources/apt42",
-            ),
-            Campaign(
-                name="Scattered Spider Hybrid Identity",
-                year=2023,
-                description="Manipulated hybrid identity synchronisation to bypass authentication controls",
-                reference_url="https://attack.mitre.org/groups/G1015/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="increasing",
         severity_score=9,

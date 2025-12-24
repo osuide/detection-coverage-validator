@@ -9,7 +9,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -35,26 +34,7 @@ TEMPLATE = RemediationTemplate(
             "Logs and configuration files can reveal additional attack vectors",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Capital One Breach",
-                year=2019,
-                description="Attacker exploited SSRF to access S3 buckets containing 100M+ customer records",
-                reference_url="https://www.capitalone.com/digital/facts2019/",
-            ),
-            Campaign(
-                name="Twitch Source Code Leak",
-                year=2021,
-                description="Complete source code and internal data exfiltrated from misconfigured cloud storage",
-                reference_url="https://blog.twitch.tv/en/2021/10/06/updates-on-the-twitch-security-incident/",
-            ),
-            Campaign(
-                name="LAPSUS$ Data Theft",
-                year=2022,
-                description="Accessed and exfiltrated source code and data from major tech companies' cloud storage",
-                reference_url="https://www.microsoft.com/security/blog/2022/03/22/dev-0537-criminal-actor-targeting-organizations-for-data-exfiltration/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=8,

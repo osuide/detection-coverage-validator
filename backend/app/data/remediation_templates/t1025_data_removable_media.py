@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -39,26 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Automated scripts can quickly enumerate and exfiltrate data from attached media",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Turla USB Collection",
-                year=2023,
-                description="Advanced USB data collection and exfiltration from air-gapped networks using removable media",
-                reference_url="https://www.mandiant.com/resources/blog/turla-galaxy-opportunity",
-            ),
-            Campaign(
-                name="Gamaredon USB Reconnaissance",
-                year=2022,
-                description="Targeted collection of files from USB devices connected to compromised Ukrainian government systems",
-                reference_url="https://www.microsoft.com/security/blog/2022/02/04/actinium-targets-ukrainian-organizations/",
-            ),
-            Campaign(
-                name="Ramsay Framework",
-                year=2020,
-                description="Specialised malware designed to collect and exfiltrate sensitive documents from air-gapped networks via removable media",
-                reference_url="https://www.welivesecurity.com/2020/05/13/ramsay-cyberespionage-toolkit-airgapped-networks/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="uncommon",
         trend="stable",
         severity_score=6,

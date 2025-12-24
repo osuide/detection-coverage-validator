@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -38,14 +37,7 @@ TEMPLATE = RemediationTemplate(
             "Hard to detect among legitimate functions",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Pacu Lambda Abuse",
-                year=2024,
-                description="Pacu can create malicious Lambda functions within AWS environments",
-                reference_url="https://attack.mitre.org/software/S1091/",
-            )
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="increasing",
         severity_score=7,

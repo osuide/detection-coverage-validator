@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -40,32 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Inactive accounts provide covert access channels",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="SolarWinds/SUNBURST",
-                year=2020,
-                description="APT29 used compromised credentials to access victim cloud environments and establish persistence",
-                reference_url="https://attack.mitre.org/campaigns/C0024/",
-            ),
-            Campaign(
-                name="LAPSUS$ Attacks",
-                year=2022,
-                description="Purchased credentials from initial access brokers to compromise Microsoft, Nvidia, Samsung, and other major organisations",
-                reference_url="https://www.microsoft.com/security/blog/2022/03/22/dev-0537-criminal-actor-targeting-organizations-for-data-exfiltration/",
-            ),
-            Campaign(
-                name="Scattered Spider MGM Attack",
-                year=2023,
-                description="Social engineering and SIM swapping to obtain valid credentials for ransomware deployment at MGM Resorts",
-                reference_url="https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-320a",
-            ),
-            Campaign(
-                name="Volt Typhoon Infrastructure Targeting",
-                year=2023,
-                description="Long-term compromise of critical infrastructure using valid credentials for living-off-the-land persistence",
-                reference_url="https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-144a",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="very_common",
         trend="increasing",
         severity_score=9,

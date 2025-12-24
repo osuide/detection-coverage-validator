@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -39,20 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Informs evasion and anti-analysis tactics",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="SUNBURST Security Tool Reconnaissance",
-                year=2020,
-                description="SolarWinds attackers checked for multiple antivirus and endpoint detection agents before proceeding with malicious operations",
-                reference_url="https://attack.mitre.org/campaigns/C0024/",
-            ),
-            Campaign(
-                name="IcedID Security Software Enumeration",
-                year=2024,
-                description="Banking trojan uses WMIC to query Windows Security Centre for installed antivirus products via SecurityCenter2 namespace",
-                reference_url="https://attack.mitre.org/software/S0483/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="very_common",
         trend="increasing",
         severity_score=5,

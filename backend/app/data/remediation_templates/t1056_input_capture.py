@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -40,26 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Input capture is difficult to detect without behavioural analysis",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="North Korean Job Seeker Campaign",
-                year=2023,
-                description="North Korean actors deployed InvisibleFerret malware with keylogging capabilities targeting job seekers",
-                reference_url="https://www.mandiant.com/resources/blog/north-korea-invisible-ferret",
-            ),
-            Campaign(
-                name="Scattered Spider Credential Phishing",
-                year=2023,
-                description="Used fake single sign-on portals to capture cloud credentials from MGM and Caesars employees",
-                reference_url="https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-320a",
-            ),
-            Campaign(
-                name="APT39 Chaes Banking Trojan",
-                year=2022,
-                description="Brazilian banking trojan with keylogging capabilities targeting financial institutions",
-                reference_url="https://www.welivesecurity.com/2022/11/15/shining-light-chaes-malware-ecosystem/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=8,

@@ -12,7 +12,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -42,14 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Low technical barrier to execution",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Storm-1811 Black Basta Campaign",
-                year=2025,
-                description="Email bombing followed by vishing calls to deploy Black Basta ransomware",
-                reference_url="https://attack.mitre.org/groups/G1046/",
-            )
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=7,

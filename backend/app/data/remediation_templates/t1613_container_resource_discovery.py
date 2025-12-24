@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -39,20 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Required for targeted container attacks",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Hildegard Container Discovery",
-                year=2024,
-                description="TeamTNT-associated malware using masscan to search for kubelets and enumerate running containers via Docker/Kubernetes APIs",
-                reference_url="https://attack.mitre.org/techniques/T1613/",
-            ),
-            Campaign(
-                name="Container Enumeration Campaigns",
-                year=2024,
-                description="Cloud-focused threat actors systematically enumerating container resources via kubectl and docker ps commands",
-                reference_url="https://unit42.paloaltonetworks.com/2025-cloud-security-alert-trends/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=6,

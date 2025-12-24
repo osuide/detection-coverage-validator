@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,20 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Maintains persistence after initial compromise",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Scattered Spider Azure AD Manipulation",
-                year=2024,
-                description="Added trusted locations to Azure AD conditional access policies to maintain unauthorised access",
-                reference_url="https://attack.mitre.org/groups/G1015/",
-            ),
-            Campaign(
-                name="Storm-0501 Hybrid Environment Compromise",
-                year=2024,
-                description="Registered their own MFA method and leveraged hybrid-joined server to circumvent conditional access policies",
-                reference_url="https://attack.mitre.org/groups/G1053/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="increasing",
         severity_score=8,

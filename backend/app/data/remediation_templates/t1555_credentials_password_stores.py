@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,32 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Less likely to trigger alerts compared to brute force attacks",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="APT29 SolarWinds Compromise",
-                year=2020,
-                description="APT29 attempted to access Group Managed Service Account (gMSA) passwords during the SolarWinds breach to enable lateral movement across enterprise environments",
-                reference_url="https://attack.mitre.org/campaigns/C0024/",
-            ),
-            Campaign(
-                name="Volt Typhoon Credential Harvesting",
-                year=2023,
-                description="Volt Typhoon attempted to obtain credentials from OpenSSH, RealVNC, and PuTTY password stores on compromised systems to maintain persistent access",
-                reference_url="https://attack.mitre.org/groups/G1017/",
-            ),
-            Campaign(
-                name="APT33 LaZagne Deployment",
-                year=2024,
-                description="APT33 utilised publicly available tools like LaZagne to gather credentials from password stores on compromised cloud infrastructure",
-                reference_url="https://attack.mitre.org/groups/G0064/",
-            ),
-            Campaign(
-                name="APT39 FTP Credential Theft",
-                year=2024,
-                description="APT39 deployed SmartFTP Password Decryptor to extract FTP passwords from compromised systems enabling access to file transfer infrastructure",
-                reference_url="https://attack.mitre.org/groups/G0087/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=9,

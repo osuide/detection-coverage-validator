@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -38,20 +37,7 @@ TEMPLATE = RemediationTemplate(
             "Enables temporary attack infrastructure",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="LAPSUS$ Resource Deletion",
-                year=2022,
-                description="Deleted target's systems and resources in the cloud to trigger incident response",
-                reference_url="https://attack.mitre.org/groups/G1004/",
-            ),
-            Campaign(
-                name="Storm-0501 Mass Deletion",
-                year=2024,
-                description="Conducted mass deletion of cloud data stores and resources from Azure subscriptions",
-                reference_url="https://attack.mitre.org/groups/G1053/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="stable",
         severity_score=8,

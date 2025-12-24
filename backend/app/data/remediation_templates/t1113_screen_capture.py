@@ -32,7 +32,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -61,26 +60,7 @@ TEMPLATE = RemediationTemplate(
             "Reveals business processes, communications, and proprietary information",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Volt Typhoon Infrastructure Espionage",
-                year=2023,
-                description="Volt Typhoon obtained screenshots using gdi32.dll and gdiplus.dll libraries during long-term espionage operations targeting critical infrastructure",
-                reference_url="https://attack.mitre.org/groups/G1017/",
-            ),
-            Campaign(
-                name="Gamaredon Automated Screenshot Capture",
-                year=2022,
-                description="Gamaredon Group malware captured screenshots of compromised computers every minute for continuous surveillance",
-                reference_url="https://attack.mitre.org/groups/G0047/",
-            ),
-            Campaign(
-                name="APT28 Credential Harvesting",
-                year=2021,
-                description="APT28 deployed tools with screenshot capabilities to capture credentials and sensitive information from compromised systems",
-                reference_url="https://attack.mitre.org/groups/G0007/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="stable",
         severity_score=7,

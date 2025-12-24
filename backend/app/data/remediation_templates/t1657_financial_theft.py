@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -42,32 +41,7 @@ TEMPLATE = RemediationTemplate(
             "SaaS financial applications easy to manipulate",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Akira Double-Extortion Ransomware",
-                year=2024,
-                description="Deploys ransomware with data theft threats for financial extortion",
-                reference_url="https://attack.mitre.org/groups/G1024/",
-            ),
-            Campaign(
-                name="Scattered Spider Ransomware Operations",
-                year=2024,
-                description="Deploys ransomware and threatens data leaks for financial gain",
-                reference_url="https://attack.mitre.org/groups/G1015/",
-            ),
-            Campaign(
-                name="SilverTerrier BEC Campaigns",
-                year=2024,
-                description="Conducts business email compromise targeting technology and manufacturing sectors",
-                reference_url="https://attack.mitre.org/groups/G0083/",
-            ),
-            Campaign(
-                name="FIN13 Fraudulent Transactions",
-                year=2024,
-                description="Studies victim financial processes before executing fraudulent transactions",
-                reference_url="https://attack.mitre.org/groups/G1016/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=10,

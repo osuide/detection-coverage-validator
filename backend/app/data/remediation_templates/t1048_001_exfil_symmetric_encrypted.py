@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,26 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Blends with legitimate encrypted traffic",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="OilRig Custom Encryption",
-                year=2023,
-                description="OilRig leveraged custom encryption implementations for data exfiltration",
-                reference_url="https://attack.mitre.org/groups/G0049/",
-            ),
-            Campaign(
-                name="FIN6 FrameworkPOS Exfil",
-                year=2023,
-                description="FrameworkPOS malware used custom encryption for credit card data theft",
-                reference_url="https://attack.mitre.org/software/S0503/",
-            ),
-            Campaign(
-                name="APT41 State Government Targeting",
-                year=2024,
-                description="APT41 employed encrypted channels for data exfiltration from U.S. state systems",
-                reference_url="https://attack.mitre.org/groups/G0096/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="increasing",
         severity_score=9,

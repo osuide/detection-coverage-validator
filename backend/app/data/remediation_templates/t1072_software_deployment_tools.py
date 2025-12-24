@@ -12,7 +12,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -42,32 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Enables rapid malware distribution across infrastructure",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="APT32 McAfee ePO Compromise",
-                year=2024,
-                description="Compromised McAfee ePO servers to distribute malware via deployment tasks",
-                reference_url="https://attack.mitre.org/groups/G0050/",
-            ),
-            Campaign(
-                name="C0018 AvosLocker Ransomware",
-                year=2024,
-                description="Used PDQ Deploy to distribute AvosLocker ransomware across enterprise networks",
-                reference_url="https://attack.mitre.org/campaigns/C0018/",
-            ),
-            Campaign(
-                name="Medusa Group BigFix Exploitation",
-                year=2024,
-                description="Deployed ransomware encryption payloads via BigFix and PDQ Deploy tools",
-                reference_url="https://attack.mitre.org/groups/G1036/",
-            ),
-            Campaign(
-                name="Sandworm RemoteExec Deployment",
-                year=2024,
-                description="Deployed RemoteExec for agentless remote code execution across infrastructure",
-                reference_url="https://attack.mitre.org/groups/G0034/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="increasing",
         severity_score=8,

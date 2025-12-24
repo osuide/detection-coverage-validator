@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -36,20 +35,7 @@ TEMPLATE = RemediationTemplate(
             "Cloud services often lack account lockout by default",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="SolarWinds Password Spraying",
-                year=2020,
-                description="APT29 conducted password spraying against cloud services prior to supply chain compromise",
-                reference_url="https://attack.mitre.org/campaigns/C0024/",
-            ),
-            Campaign(
-                name="MuddyWater Campaigns",
-                year=2022,
-                description="Iranian APT conducted password spraying against government and telecommunications targets",
-                reference_url="https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-055a",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="stable",
         severity_score=7,

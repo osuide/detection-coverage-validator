@@ -12,7 +12,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -42,26 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Often has generous bandwidth/storage",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Operation Dream Job",
-                year=2022,
-                description="Lazarus Group used Dropbox and OneDrive for C2 and data exfiltration",
-                reference_url="https://attack.mitre.org/campaigns/C0022/",
-            ),
-            Campaign(
-                name="Operation Sharpshooter",
-                year=2018,
-                description="Threat actors hosted lure documents on Dropbox to distribute malware",
-                reference_url="https://attack.mitre.org/campaigns/C0013/",
-            ),
-            Campaign(
-                name="ArcaneDoor",
-                year=2024,
-                description="Used OpenConnect VPN Server instances as web service infrastructure",
-                reference_url="https://attack.mitre.org/campaigns/C0046/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=7,

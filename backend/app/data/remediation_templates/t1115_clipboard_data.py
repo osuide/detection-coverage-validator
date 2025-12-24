@@ -30,7 +30,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -62,26 +61,7 @@ TEMPLATE = RemediationTemplate(
             "Cryptocurrency wallet addresses provide high-value theft opportunity",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Operation Wocao",
-                year=2019,
-                description="Threat actors extracted clipboard data in plaintext during targeting of government and industrial organisations",
-                reference_url="https://attack.mitre.org/campaigns/C0014/",
-            ),
-            Campaign(
-                name="Cryptocurrency Clipboard Hijacking",
-                year=2022,
-                description="Multiple malware families including DarkGate and XLoader targeted cryptocurrency users by monitoring and replacing wallet addresses in clipboard",
-                reference_url="https://attack.mitre.org/software/S0674/",
-            ),
-            Campaign(
-                name="TajMahal APT Framework",
-                year=2019,
-                description="Sophisticated APT framework included clipboard monitoring module to capture sensitive data from diplomatic targets",
-                reference_url="https://attack.mitre.org/software/S0467/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=6,

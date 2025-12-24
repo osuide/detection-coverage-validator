@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -40,26 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Automated backup policies can be disabled",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Scattered Spider Ransomware",
-                year=2024,
-                description="Used cloud access to delete backups and snapshots before deploying ransomware",
-                reference_url="https://attack.mitre.org/groups/G1015/",
-            ),
-            Campaign(
-                name="Sandworm Destructive Attacks",
-                year=2022,
-                description="Deployed wipers that deleted backups and system recovery points",
-                reference_url="https://attack.mitre.org/groups/G0034/",
-            ),
-            Campaign(
-                name="LockBit Ransomware Operations",
-                year=2024,
-                description="Systematically deleted shadow copies and cloud backups before encryption",
-                reference_url="https://attack.mitre.org/software/S1070/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="high",
         trend="increasing",
         severity_score=9,

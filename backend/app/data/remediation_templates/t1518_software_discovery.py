@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -37,20 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Detects monitoring and backup solutions",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Software Inventory Reconnaissance",
-                year=2024,
-                description="Threat actors systematically enumerate installed software to identify security tools and vulnerable applications before launching attacks",
-                reference_url="https://attack.mitre.org/techniques/T1518/",
-            ),
-            Campaign(
-                name="Cloud Environment Profiling",
-                year=2024,
-                description="Enumeration of cloud-based software inventories via Systems Manager and metadata services to identify attack surface",
-                reference_url="https://unit42.paloaltonetworks.com/2025-cloud-security-alert-trends/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="stable",
         severity_score=4,

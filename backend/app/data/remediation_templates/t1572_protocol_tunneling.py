@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,38 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Common tools (SSH, ngrok, chisel) readily available",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="2022 Ukraine Electric Power Attack",
-                year=2022,
-                description="Sandworm Team deployed GOGETTER malware using Yamux protocol over TLS for tunnelled command-and-control communications",
-                reference_url="https://attack.mitre.org/campaigns/C0034/",
-            ),
-            Campaign(
-                name="Scattered Spider Teleport Operations",
-                year=2023,
-                description="Scattered Spider utilised Teleport.sh, Chisel, ngrok, and Pinggy for protocol tunnelling to maintain persistent access",
-                reference_url="https://attack.mitre.org/techniques/T1572/",
-            ),
-            Campaign(
-                name="FIN7 Plink SSH Tunnelling",
-                year=2023,
-                description="FIN7, FIN6, and FIN13 leveraged Plink utility for SSH tunnelling to bypass network controls and maintain C2 channels",
-                reference_url="https://attack.mitre.org/groups/G0046/",
-            ),
-            Campaign(
-                name="Salt Typhoon GRE Tunnels",
-                year=2024,
-                description="Salt Typhoon employed Generic Routing Encapsulation (GRE) tunnels for covert communications in telecommunications infrastructure",
-                reference_url="https://attack.mitre.org/groups/G1041/",
-            ),
-            Campaign(
-                name="Cutting Edge Iodine Campaign",
-                year=2021,
-                description="Threat actors used Iodine to tunnel IPv4 traffic over DNS, bypassing network egress filtering",
-                reference_url="https://attack.mitre.org/campaigns/C0029/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=8,

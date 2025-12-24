@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -42,26 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Reveals system naming conventions and architecture patterns",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="SolarWinds Compromise (C0024)",
-                year=2020,
-                description="APT29 used AdFind to enumerate remote systems and Active Directory computers, identifying targets for lateral movement across compromised networks",
-                reference_url="https://attack.mitre.org/campaigns/C0024/",
-            ),
-            Campaign(
-                name="2015 Ukraine Electric Power Attack (C0028)",
-                year=2015,
-                description="Sandworm Team discovered OT systems visible from IT networks using network enumeration tools, enabling targeted attacks on critical infrastructure",
-                reference_url="https://attack.mitre.org/campaigns/C0028/",
-            ),
-            Campaign(
-                name="Operation Wocao (C0014)",
-                year=2019,
-                description="Threat actors used nbtscan and ping commands to systematically discover remote systems during multi-stage attacks on managed service providers",
-                reference_url="https://attack.mitre.org/campaigns/C0014/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="very_common",
         trend="increasing",
         severity_score=5,

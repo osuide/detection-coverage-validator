@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -43,26 +42,7 @@ TEMPLATE = RemediationTemplate(
             "Essential for credential stuffing attacks",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="SolarWinds Compromise",
-                year=2020,
-                description="APT29 used Get-ManagementRoleAssignment to enumerate Exchange user roles and permissions",
-                reference_url="https://attack.mitre.org/campaigns/C0024/",
-            ),
-            Campaign(
-                name="vSphere Infrastructure Reconnaissance",
-                year=2024,
-                description="Scattered Spider identified vSphere administrator accounts during infrastructure compromise",
-                reference_url="https://attack.mitre.org/groups/G1015/",
-            ),
-            Campaign(
-                name="Cloud Account Enumeration Attacks",
-                year=2024,
-                description="Systematic enumeration of cloud IAM to identify privilege escalation paths and high-value targets",
-                reference_url="https://www.datadoghq.com/state-of-cloud-security/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="very_common",
         trend="increasing",
         severity_score=5,

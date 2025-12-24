@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -40,26 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Multiple protocols available (VPN, RDP, SSH)",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="APT29 VPN & Citrix Compromise",
-                year=2024,
-                description="Used compromised identities to access networks via VPNs and Citrix",
-                reference_url="https://attack.mitre.org/groups/G0016/",
-            ),
-            Campaign(
-                name="Scattered Spider VPN Persistence",
-                year=2024,
-                description="Leveraged Citrix and VPNs to persist in compromised environments",
-                reference_url="https://attack.mitre.org/groups/G1015/",
-            ),
-            Campaign(
-                name="TeamTNT Container API Attacks",
-                year=2023,
-                description="Targeted exposed Docker API ports and exposed kubelets for Kubernetes",
-                reference_url="https://attack.mitre.org/groups/G0139/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=8,

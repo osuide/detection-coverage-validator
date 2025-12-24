@@ -12,7 +12,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -43,26 +42,7 @@ TEMPLATE = RemediationTemplate(
             "Manipulate backups to ensure persistence",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="APT38 DYEPACK SWIFT Manipulation",
-                year=2024,
-                description="Used DYEPACK malware to create, delete, and alter records in SWIFT transaction databases to facilitate financial theft",
-                reference_url="https://attack.mitre.org/software/S0554/",
-            ),
-            Campaign(
-                name="SUNSPOT Supply Chain Attack",
-                year=2020,
-                description="Manipulated SolarWinds Orion source files during build process by creating backups and replacing original files with malicious code",
-                reference_url="https://attack.mitre.org/software/S0562/",
-            ),
-            Campaign(
-                name="MultiLayer Wiper",
-                year=2024,
-                description="Changed deleted file path information in file system metadata to prevent recovery of deleted files",
-                reference_url="https://attack.mitre.org/software/S1129/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="increasing",
         severity_score=9,

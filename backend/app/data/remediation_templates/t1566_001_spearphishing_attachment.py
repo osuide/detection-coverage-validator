@@ -12,7 +12,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,26 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Effective against both technical and non-technical users",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="2015 Ukraine Electric Power Attack",
-                year=2015,
-                description="Sandworm Team used Microsoft Office attachments via phishing to compromise IT systems",
-                reference_url="https://attack.mitre.org/campaigns/C0028/",
-            ),
-            Campaign(
-                name="Operation Dream Job",
-                year=2020,
-                description="Lazarus Group sent weaponised email attachments targeting job seekers",
-                reference_url="https://attack.mitre.org/campaigns/C0022/",
-            ),
-            Campaign(
-                name="Operation Dust Storm",
-                year=2016,
-                description="Threat actors distributed malicious Word documents via spearphishing emails",
-                reference_url="https://attack.mitre.org/campaigns/C0016/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="very_common",
         trend="stable",
         severity_score=8,

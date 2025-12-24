@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,20 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Informs follow-on data collection activities",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Lazarus Group Financial Targeting",
-                year=2024,
-                description="Malware reported window titles to command servers to identify cryptocurrency wallets and financial applications",
-                reference_url="https://attack.mitre.org/campaigns/C0022/",
-            ),
-            Campaign(
-                name="Volt Typhoon Infrastructure Compromise",
-                year=2024,
-                description="Collected window title information from compromised infrastructure to map running applications",
-                reference_url="https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-144a",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="stable",
         severity_score=5,

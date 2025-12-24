@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -39,20 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Public repositories provide easy adversary access",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Empire GitHub Exfiltration",
-                year=2024,
-                description="Empire malware framework documented capability to use GitHub for data exfiltration",
-                reference_url="https://attack.mitre.org/software/S0363/",
-            ),
-            Campaign(
-                name="GitHub API Abuse",
-                year=2024,
-                description="Increased abuse of GitHub/GitLab APIs for exfiltration following sensitive file access",
-                reference_url="https://attack.mitre.org/techniques/T1567/001/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="increasing",
         severity_score=8,

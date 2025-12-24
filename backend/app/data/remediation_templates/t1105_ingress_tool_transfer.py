@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -39,26 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Blends with legitimate software downloads",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="APT29 Second-Stage Implants",
-                year=2024,
-                description="Downloaded post-exploitation frameworks and tools onto compromised cloud infrastructure",
-                reference_url="https://attack.mitre.org/groups/G0016/",
-            ),
-            Campaign(
-                name="Lazarus Group Malware Transfers",
-                year=2024,
-                description="Extensively transferred malware and tools onto compromised hosts using cloud storage",
-                reference_url="https://attack.mitre.org/campaigns/C0022/",
-            ),
-            Campaign(
-                name="FIN7 Remote Payload Retrieval",
-                year=2023,
-                description="Executed remote code to retrieve follow-on payloads from C2 infrastructure",
-                reference_url="https://attack.mitre.org/groups/G0046/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=8,

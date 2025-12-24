@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -40,26 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Appears as normal administrative activity",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Sandworm Team Wiper Deployment",
-                year=2024,
-                description="Used `move` command and GPO to deploy CaddyWiper and Prestige ransomware via network shares",
-                reference_url="https://attack.mitre.org/groups/G0034/",
-            ),
-            Campaign(
-                name="BlackCat/ALPHV Ransomware Distribution",
-                year=2024,
-                description="Leveraged SMB shares and PsExec to distribute ransomware payloads across networks",
-                reference_url="https://attack.mitre.org/software/S1068/",
-            ),
-            Campaign(
-                name="Volt Typhoon Web Shell Propagation",
-                year=2023,
-                description="Copied web shells between servers using internal file transfers",
-                reference_url="https://attack.mitre.org/groups/G1017/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=8,

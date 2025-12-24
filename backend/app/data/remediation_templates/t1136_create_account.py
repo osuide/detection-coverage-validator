@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,26 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Domain accounts enable lateral movement across networks",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Sandworm Ukraine Power Grid Attack",
-                year=2016,
-                description="Sandworm Team added SQL Server logins during the Ukraine power infrastructure compromise",
-                reference_url="https://attack.mitre.org/groups/G0034/",
-            ),
-            Campaign(
-                name="Scattered Spider Shadow Admins",
-                year=2023,
-                description="Created new user identities within compromised organisations for persistent access and data theft",
-                reference_url="https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-320a",
-            ),
-            Campaign(
-                name="Indrik Spider Persistence",
-                year=2024,
-                description="Used wmic.exe to add local system users for maintaining access during ransomware operations",
-                reference_url="https://attack.mitre.org/groups/G0119/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=8,

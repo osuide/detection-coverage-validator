@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -40,20 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Can be extracted from multiple sources (disk, memory, network)",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="SolarWinds Compromise (C0024)",
-                year=2020,
-                description="APT29 copied Chrome profile directories containing session cookies during widespread infrastructure compromise",
-                reference_url="https://attack.mitre.org/campaigns/C0024/",
-            ),
-            Campaign(
-                name="Star Blizzard EvilGinx Phishing",
-                year=2023,
-                description="Star Blizzard used EvilGinx phishing proxy to intercept session cookies and bypass MFA",
-                reference_url="https://attack.mitre.org/groups/G1033/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=8,

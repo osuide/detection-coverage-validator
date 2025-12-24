@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -42,32 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Supports both local and remote system management",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Volt Typhoon Living-off-the-Land Campaign",
-                year=2024,
-                description="Chinese APT targeted critical infrastructure using WMI for discovery and execution whilst evading detection through native Windows tools",
-                reference_url="https://attack.mitre.org/groups/G1017/",
-            ),
-            Campaign(
-                name="BlackCat Ransomware Shadow Copy Deletion",
-                year=2023,
-                description="Used 'wmic.exe Shadowcopy Delete' to inhibit system recovery before encryption, targeting cloud-connected Windows environments",
-                reference_url="https://attack.mitre.org/software/S1068/",
-            ),
-            Campaign(
-                name="APT29 SolarWinds Compromise",
-                year=2020,
-                description="Leveraged WMI for credential theft, backdoor execution, and lateral movement across hybrid cloud infrastructure",
-                reference_url="https://attack.mitre.org/campaigns/C0024/",
-            ),
-            Campaign(
-                name="Ukraine Electric Power Attack",
-                year=2016,
-                description="Used WMI for remote execution and system discovery during critical infrastructure compromise",
-                reference_url="https://attack.mitre.org/techniques/T1047/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=8,

@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -38,26 +37,7 @@ TEMPLATE = RemediationTemplate(
             "Service account tokens frequently have elevated permissions",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="APT28 Gmail OAuth Abuse",
-                year=2022,
-                description="APT28 deployed malicious OAuth applications targeting Gmail and Yahoo Mail accounts for intelligence collection",
-                reference_url="https://attack.mitre.org/groups/G0007/",
-            ),
-            Campaign(
-                name="HAFNIUM Exchange Server Attacks",
-                year=2021,
-                description="HAFNIUM abused compromised service principals with administrative permissions for data theft from Exchange servers",
-                reference_url="https://www.microsoft.com/security/blog/2021/03/02/hafnium-targeting-exchange-servers/",
-            ),
-            Campaign(
-                name="SolarWinds Supply Chain Attack",
-                year=2020,
-                description="APT29 used compromised service principals during the SolarWinds breach to modify Office 365 configurations",
-                reference_url="https://attack.mitre.org/campaigns/C0024/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=8,

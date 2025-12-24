@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -40,26 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Hard to distinguish from normal scripting usage",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="APT32 PowerShell Backdoors",
-                year=2024,
-                description="Leveraged PowerShell and JavaScript to deploy backdoors across compromised networks",
-                reference_url="https://attack.mitre.org/groups/G0050/",
-            ),
-            Campaign(
-                name="FIN7 JSSLoader",
-                year=2023,
-                description="Used JavaScript-based loader to execute commands and deploy additional payloads",
-                reference_url="https://attack.mitre.org/groups/G0046/",
-            ),
-            Campaign(
-                name="Mustang Panda PlugX",
-                year=2024,
-                description="Employed scripting interpreters for initial execution and persistence mechanisms",
-                reference_url="https://attack.mitre.org/groups/G0129/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=8,

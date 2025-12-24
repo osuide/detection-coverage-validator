@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,32 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Enables long-term persistent access",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="MoonBounce UEFI Implant",
-                year=2022,
-                description="APT41 deployed advanced UEFI firmware implant for espionage",
-                reference_url="https://securelist.com/moonbounce-the-dark-side-of-uefi-firmware/105468/",
-            ),
-            Campaign(
-                name="BlackLotus UEFI Bootkit",
-                year=2023,
-                description="First public bootkit bypassing UEFI Secure Boot on Windows 11",
-                reference_url="https://www.bleepingcomputer.com/news/security/blacklotus-bootkit-bypasses-uefi-secure-boot-on-patched-windows-11/",
-            ),
-            Campaign(
-                name="LoJax UEFI Rootkit",
-                year=2018,
-                description="APT28 deployed first discovered UEFI rootkit targeting government institutions",
-                reference_url="https://www.welivesecurity.com/2018/09/27/lojax-first-uefi-rootkit-found-wild-courtesy-sednit-group/",
-            ),
-            Campaign(
-                name="Bootkitty Linux UEFI Bootkit",
-                year=2024,
-                description="First UEFI bootkit targeting Linux systems (proof-of-concept)",
-                reference_url="https://www.welivesecurity.com/en/eset-research/bootkitty-analyzing-first-uefi-bootkit-linux/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="rare",
         trend="increasing",
         severity_score=10,

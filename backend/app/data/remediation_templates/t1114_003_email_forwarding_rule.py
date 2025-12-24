@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -37,20 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Captures MFA codes and alerts",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="LAPSUS$ Tenant Rules",
-                year=2022,
-                description="Created Office 365 tenant-level mail transport rule to capture all traffic",
-                reference_url="https://attack.mitre.org/groups/G1004/",
-            ),
-            Campaign(
-                name="Scattered Spider Email Redirect",
-                year=2024,
-                description="Redirected emails notifying users of suspicious account activity",
-                reference_url="https://attack.mitre.org/groups/G1015/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="stable",
         severity_score=8,

@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -39,20 +38,7 @@ TEMPLATE = RemediationTemplate(
             "High pressure on victims",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="LockBit 3.0 Cloud Ransomware",
-                year=2024,
-                description="Uses AES-256 and ChaCha20 for encrypting victim data",
-                reference_url="https://attack.mitre.org/software/S1070/",
-            ),
-            Campaign(
-                name="Cloud Ransomware Trend",
-                year=2024,
-                description="Increasing use of cloud-native encryption for ransomware attacks",
-                reference_url="https://unit42.paloaltonetworks.com/2025-cloud-security-alert-trends/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="increasing",
         severity_score=10,

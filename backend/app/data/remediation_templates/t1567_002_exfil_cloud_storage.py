@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,32 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Hard to distinguish from legitimate cloud service use",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Scattered Spider Rclone Exfiltration",
-                year=2024,
-                description="Scattered Spider and Storm-0501 utilised Rclone for bulk exfiltration to cloud storage",
-                reference_url="https://attack.mitre.org/techniques/T1567/002/",
-            ),
-            Campaign(
-                name="Lazarus Group Dropbox dbxcli",
-                year=2024,
-                description="Lazarus Group employed custom dbxcli builds targeting Dropbox for data exfiltration",
-                reference_url="https://attack.mitre.org/campaigns/C0022/",
-            ),
-            Campaign(
-                name="APT41 DUST OneDrive",
-                year=2024,
-                description="APT41 exfiltrated data through OneDrive during the DUST campaign",
-                reference_url="https://attack.mitre.org/campaigns/C0040/",
-            ),
-            Campaign(
-                name="OilRig Microsoft Graph API",
-                year=2024,
-                description="OilRig developed specialised tools (ODAgent, OilBooster) leveraging Microsoft Graph API for OneDrive access",
-                reference_url="https://attack.mitre.org/groups/G0049/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=9,

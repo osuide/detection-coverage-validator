@@ -9,7 +9,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -39,26 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Particularly effective in environments with developer tools installed",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Frankenstein Campaign",
-                year=2020,
-                description="Threat actors cobbled together open-source pieces to leverage MSBuild for code execution",
-                reference_url="https://attack.mitre.org/campaigns/C0001/",
-            ),
-            Campaign(
-                name="Paranoid PlugX",
-                year=2017,
-                description="MSBuild used as part of sophisticated malware deployment and execution chain",
-                reference_url="https://www.anomali.com/blog/threat-actors-use-msbuild-to-deliver-rats-filelessly",
-            ),
-            Campaign(
-                name="Fileless RAT Delivery",
-                year=2023,
-                description="Threat actors used MSBuild to filelessly deliver Remcos RAT and RedLine Stealer",
-                reference_url="https://www.anomali.com/blog/threat-actors-use-msbuild-to-deliver-rats-filelessly",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="stable",
         severity_score=7,

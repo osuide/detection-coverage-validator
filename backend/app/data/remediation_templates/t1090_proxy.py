@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -43,32 +42,7 @@ TEMPLATE = RemediationTemplate(
             "Facilitates domain fronting to bypass domain-based filtering",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="APT41 Cloudflare CDN Proxying",
-                year=2024,
-                description="APT41 leveraged Cloudflare CDN infrastructure during the C0017 campaign to proxy C2 traffic, deploying CLASSFON for covert communications",
-                reference_url="https://attack.mitre.org/campaigns/C0017/",
-            ),
-            Campaign(
-                name="Volt Typhoon Critical Infrastructure",
-                year=2024,
-                description="Volt Typhoon utilised compromised devices with customised versions of open-source tools including FRP (Fast Reverse Proxy), Earthworm, and Impacket to route network traffic whilst targeting critical infrastructure",
-                reference_url="https://attack.mitre.org/groups/G1017/",
-            ),
-            Campaign(
-                name="Scattered Spider ESXi Compromise",
-                year=2023,
-                description="Scattered Spider installed rsocx reverse proxy tool on targeted ESXi appliances during the C0027 intrusion campaign",
-                reference_url="https://attack.mitre.org/campaigns/C0027/",
-            ),
-            Campaign(
-                name="Gamaredon Cloudflare Tunnel",
-                year=2023,
-                description="Gamaredon Group deployed Cloudflare Tunnel client to proxy C2 communications in Eastern European operations",
-                reference_url="https://attack.mitre.org/groups/G0047/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=9,

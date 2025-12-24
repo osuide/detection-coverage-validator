@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -37,20 +36,7 @@ TEMPLATE = RemediationTemplate(
             "May be final attack stage",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="LAPSUS$ Account Deletion",
-                year=2022,
-                description="Removed global admin accounts to lock organisations out",
-                reference_url="https://attack.mitre.org/groups/G1004/",
-            ),
-            Campaign(
-                name="Akira Admin Deletion",
-                year=2024,
-                description="Deletes administrator accounts before encryption",
-                reference_url="https://attack.mitre.org/groups/G1024/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="increasing",
         severity_score=9,

@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -40,26 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Helps identify high-value targets on the network",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Volt Typhoon Infrastructure Reconnaissance",
-                year=2024,
-                description="Chinese state-sponsored group used netstat and network enumeration commands to map critical infrastructure networks",
-                reference_url="https://attack.mitre.org/groups/G1017/",
-            ),
-            Campaign(
-                name="TeamTNT Cloud Reconnaissance",
-                year=2024,
-                description="TeamTNT used network discovery commands on compromised cloud instances to identify lateral movement opportunities",
-                reference_url="https://attack.mitre.org/groups/G0139/",
-            ),
-            Campaign(
-                name="APT41 Network Mapping",
-                year=2023,
-                description="APT41 systematically enumerated network connections using netstat and Get-NetTCPConnection during post-compromise reconnaissance",
-                reference_url="https://attack.mitre.org/groups/G0096/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="very_common",
         trend="stable",
         severity_score=4,

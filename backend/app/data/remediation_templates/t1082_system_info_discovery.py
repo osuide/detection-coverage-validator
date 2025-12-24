@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -40,20 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Essential for targeted exploitation",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Cloud Instance Profiling",
-                year=2024,
-                description="Adversaries enumerate EC2/GCE metadata and system information to select appropriate malware variants",
-                reference_url="https://unit42.paloaltonetworks.com/2025-cloud-security-alert-trends/",
-            ),
-            Campaign(
-                name="Container Environment Fingerprinting",
-                year=2024,
-                description="Attackers probe container environments to identify escape opportunities and host system details",
-                reference_url="https://www.datadoghq.com/state-of-cloud-security/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="very_common",
         trend="stable",
         severity_score=4,

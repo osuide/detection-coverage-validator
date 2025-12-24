@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -42,26 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Automated scanning tools make discovery at scale trivial",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Leviathan Australian Intrusions",
-                year=2023,
-                description="Leviathan gathered hardcoded credentials from binaries during intrusions targeting Australian organisations",
-                reference_url="https://attack.mitre.org/campaigns/C0049/",
-            ),
-            Campaign(
-                name="AWS .env File Attack",
-                year=2024,
-                description="Attackers scanned 230M+ AWS environments for exposed .env files containing credentials, deploying Lambda functions for extortion",
-                reference_url="https://unit42.paloaltonetworks.com/large-scale-cloud-extortion-operation/",
-            ),
-            Campaign(
-                name="TeamTNT Cloud Credential Campaign",
-                year=2024,
-                description="Multi-cloud credential theft targeting AWS, GCP, and Azure via exposed configuration files and container secrets",
-                reference_url="https://www.darkreading.com/cloud-security/aws-cloud-credential-stealing-campaign-spreads-azure-google",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=9,

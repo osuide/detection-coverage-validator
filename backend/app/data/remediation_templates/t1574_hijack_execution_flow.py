@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -40,26 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Survives reboots and system updates",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="APT41 Library Manipulation",
-                year=2024,
-                description="APT41 established persistence via malicious library modifications to Import Address Tables",
-                reference_url="https://attack.mitre.org/groups/G0096/",
-            ),
-            Campaign(
-                name="Saint Bot ntdll.dll Hijacking",
-                year=2024,
-                description="Saint Bot loaded alternate ntdll.dll files to evade endpoint detection",
-                reference_url="https://attack.mitre.org/software/S1018/",
-            ),
-            Campaign(
-                name="Container Image Supply Chain Attacks",
-                year=2024,
-                description="Multiple threat actors poisoning container images with malicious libraries in shared registries",
-                reference_url="https://www.aquasec.com/cloud-native-academy/supply-chain-security/container-security-best-practices/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=8,

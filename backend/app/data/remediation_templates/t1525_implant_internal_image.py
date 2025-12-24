@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -38,14 +37,7 @@ TEMPLATE = RemediationTemplate(
             "CI/CD may pull latest automatically",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Container Image Backdoors",
-                year=2024,
-                description="Attackers backdooring ECR/GCR images for persistence",
-                reference_url="https://attack.mitre.org/techniques/T1525/",
-            )
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="increasing",
         severity_score=8,

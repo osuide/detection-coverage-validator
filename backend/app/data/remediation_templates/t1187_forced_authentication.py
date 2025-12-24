@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,26 +40,7 @@ TEMPLATE = RemediationTemplate(
             "In cloud environments, can abuse OAuth flows and metadata services",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="DarkHydrus Template Injection",
-                year=2019,
-                description="DarkHydrus used template injection in phishing documents to launch authentication windows for credential harvesting",
-                reference_url="https://attack.mitre.org/groups/G0079/",
-            ),
-            Campaign(
-                name="Dragonfly SMB Hash Capture",
-                year=2018,
-                description="Dragonfly gathered hashed user credentials via spearphishing attachments with modified .LNK icon resources pointing to external SMB shares",
-                reference_url="https://attack.mitre.org/groups/G0035/",
-            ),
-            Campaign(
-                name="EnvyScout NTLM Coercion",
-                year=2021,
-                description="EnvyScout malware deployed protocol handlers to coerce NTLMv2 authentication responses to attacker-controlled infrastructure",
-                reference_url="https://attack.mitre.org/software/S0634/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="stable",
         severity_score=7,

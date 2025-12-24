@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -37,20 +36,7 @@ TEMPLATE = RemediationTemplate(
             "OAuth tokens persist after password change",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="APT29 Office 365 Lateral Movement",
-                year=2024,
-                description="Leveraged compromised high-privileged on-premises accounts synced to Office 365",
-                reference_url="https://attack.mitre.org/groups/G0016/",
-            ),
-            Campaign(
-                name="Scattered Spider Cloud Access",
-                year=2024,
-                description="Used compromised Azure credentials and leveraged pre-existing AWS EC2 instances",
-                reference_url="https://attack.mitre.org/groups/G1015/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=8,

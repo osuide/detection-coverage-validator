@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -42,26 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Assesses hardware for exploitation opportunities",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Operation CuckooBees",
-                year=2023,
-                description="APT groups used command-line reconnaissance including peripheral device enumeration to identify removable media for data exfiltration",
-                reference_url="https://attack.mitre.org/campaigns/C0012/",
-            ),
-            Campaign(
-                name="Ransomware Peripheral Targeting",
-                year=2024,
-                description="LockBit and other ransomware variants enumerate external storage devices and network printers before encryption campaigns",
-                reference_url="https://attack.mitre.org/techniques/T1120/",
-            ),
-            Campaign(
-                name="USB Mass Storage Monitoring",
-                year=2023,
-                description="APT28 deployed modules triggering notifications whenever USB mass storage devices were inserted into compromised systems",
-                reference_url="https://attack.mitre.org/techniques/T1120/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="stable",
         severity_score=5,

@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -40,32 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Enables long-term persistence without detection",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Gamaredon VBScript Obfuscation",
-                year=2024,
-                description="Gamaredon Group used obfuscated VBScripts with randomised variable names to hide C2 communications",
-                reference_url="https://attack.mitre.org/groups/G0047/",
-            ),
-            Campaign(
-                name="APT34 Fake Webpage Embedding",
-                year=2023,
-                description="APT34 embedded C2 responses within fake webpages to appear as legitimate HTTP traffic",
-                reference_url="https://attack.mitre.org/groups/G0057/",
-            ),
-            Campaign(
-                name="OilRig DNS Subdomain Encoding",
-                year=2023,
-                description="OilRig utilised encoded data within DNS subdomains as ciphertext for C2 communications",
-                reference_url="https://attack.mitre.org/groups/G0049/",
-            ),
-            Campaign(
-                name="Operation Wocao RC4 Encryption",
-                year=2022,
-                description="Threat actors in Operation Wocao encrypted proxy IP addresses with RC4 to hide C2 infrastructure",
-                reference_url="https://attack.mitre.org/campaigns/C0014/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=8,

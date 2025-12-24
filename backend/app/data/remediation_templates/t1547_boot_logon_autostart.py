@@ -12,7 +12,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -42,32 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Enables long-term access to cloud resources",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="APT42 Registry Persistence",
-                year=2024,
-                description="APT42 modified Registry keys to establish persistence, enabling automatic execution of malicious payloads on system startup",
-                reference_url="https://attack.mitre.org/groups/G1004/",
-            ),
-            Campaign(
-                name="BoxCaon Startup Key Modification",
-                year=2024,
-                description="BoxCaon set registry keys pointing to malware executables for automatic execution during system boot",
-                reference_url="https://attack.mitre.org/software/S0651/",
-            ),
-            Campaign(
-                name="Dtrack Persistent File Creation",
-                year=2024,
-                description="Dtrack created persistent files configured for automatic execution on system startup",
-                reference_url="https://attack.mitre.org/software/S0567/",
-            ),
-            Campaign(
-                name="Container Restart Persistence",
-                year=2024,
-                description="Adversaries modify container restart policies and entrypoints to maintain persistence across container lifecycle events",
-                reference_url="https://attack.mitre.org/techniques/T1547/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=8,

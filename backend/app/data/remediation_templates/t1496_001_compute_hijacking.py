@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -37,20 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Containers and serverless also targeted",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="TeamTNT Kubernetes Mining",
-                year=2024,
-                description="Deploys XMRig Docker images and infects Kubernetes clusters",
-                reference_url="https://attack.mitre.org/software/S0683/",
-            ),
-            Campaign(
-                name="Kinsing Container Attacks",
-                year=2024,
-                description="Creates and runs Bitcoin cryptocurrency miners in containers",
-                reference_url="https://attack.mitre.org/software/S1014/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="stable",
         severity_score=7,

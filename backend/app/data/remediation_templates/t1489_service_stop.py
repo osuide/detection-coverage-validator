@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -37,20 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Disables security tools",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="LockBit 3.0 Service Termination",
-                year=2024,
-                description="Terminates services related to security, backup, and databases before encryption",
-                reference_url="https://attack.mitre.org/software/S1070/",
-            ),
-            Campaign(
-                name="Conti Service Stops",
-                year=2022,
-                description="Disables up to 146 Windows services through net stop commands",
-                reference_url="https://attack.mitre.org/software/S0575/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="stable",
         severity_score=9,

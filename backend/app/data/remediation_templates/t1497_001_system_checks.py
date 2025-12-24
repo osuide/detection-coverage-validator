@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -38,26 +37,7 @@ TEMPLATE = RemediationTemplate(
             "Enables conditional payload deployment",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="SUNBURST",
-                year=2020,
-                description="APT29's SUNBURST verified host domain names to confirm real environments before activating",
-                reference_url="https://attack.mitre.org/campaigns/C0024/",
-            ),
-            Campaign(
-                name="Black Basta Ransomware",
-                year=2023,
-                description="Detected code emulation through system flags and API timing analysis before encryption",
-                reference_url="https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-165a",
-            ),
-            Campaign(
-                name="Volt Typhoon Infrastructure Reconnaissance",
-                year=2024,
-                description="Systematic system profiling to avoid detection in cloud environments",
-                reference_url="https://www.cisa.gov/news-events/cybersecurity-advisories/aa24-038a",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=6,

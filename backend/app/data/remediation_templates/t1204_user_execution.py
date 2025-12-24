@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -42,47 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Can leverage trusted relationships and impersonation",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="LAPSUS$ Employee Recruitment",
-                year=2022,
-                description=(
-                    "LAPSUS$ recruited target organisation employees or contractors who provided "
-                    "credentials and approved MFA prompts, or installed remote management software "
-                    "onto corporate workstations enabling initial access."
-                ),
-                reference_url="https://attack.mitre.org/groups/G1004/",
-            ),
-            Campaign(
-                name="Scattered Spider IT Impersonation",
-                year=2023,
-                description=(
-                    "Scattered Spider impersonated IT and helpdesk staff to instruct victims to "
-                    "execute commercial remote access tools, gaining initial access to corporate "
-                    "environments through social engineering."
-                ),
-                reference_url="https://attack.mitre.org/groups/G1015/",
-            ),
-            Campaign(
-                name="Lumma Stealer Fake CAPTCHA",
-                year=2024,
-                description=(
-                    "Lumma Stealer distributed via fake CAPTCHA pages presenting instructions to "
-                    "open Windows Run window and paste clipboard contents to execute Base64-encoded "
-                    "PowerShell, stealing credentials and session tokens."
-                ),
-                reference_url="https://attack.mitre.org/software/S1213/",
-            ),
-            Campaign(
-                name="Pikabot Malicious Attachments",
-                year=2024,
-                description=(
-                    "Campaign C0037 required users to interact with malicious email attachments "
-                    "to start installation of Pikabot malware, leading to ransomware deployment."
-                ),
-                reference_url="https://attack.mitre.org/campaigns/C0037/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=8,

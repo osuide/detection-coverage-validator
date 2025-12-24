@@ -12,7 +12,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -42,20 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Enables tailored phishing campaigns",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="EXOTIC LILY Contact Form Abuse",
-                year=2022,
-                description="Utilised contact forms on victim websites to generate phishing emails",
-                reference_url="https://attack.mitre.org/groups/G1011/",
-            ),
-            Campaign(
-                name="Silent Librarian Phishing Infrastructure",
-                year=2018,
-                description="Scraped source code, branding, and contact information from victim websites for phishing pages",
-                reference_url="https://attack.mitre.org/groups/G0122/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="stable",
         severity_score=5,

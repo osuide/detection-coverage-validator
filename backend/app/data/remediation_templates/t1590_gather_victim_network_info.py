@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,20 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Often performed from outside organisational visibility",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="HAFNIUM Exchange Targeting",
-                year=2021,
-                description="Gathered fully qualified domain names of targeted Exchange servers",
-                reference_url="https://attack.mitre.org/groups/G0125/",
-            ),
-            Campaign(
-                name="Indrik Spider Infrastructure Reconnaissance",
-                year=2020,
-                description="Downloaded reconnaissance tools and accessed VMware infrastructure details",
-                reference_url="https://attack.mitre.org/groups/G0119/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=6,

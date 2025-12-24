@@ -13,7 +13,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -45,26 +44,7 @@ TEMPLATE = RemediationTemplate(
             "Difficult to distinguish from normal operations",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="3CX Supply Chain Attack",
-                year=2023,
-                description="AppleJeus malware created Windows named pipes for inter-module messaging during the 3CX supply chain compromise",
-                reference_url="https://attack.mitre.org/campaigns/C0057/",
-            ),
-            Campaign(
-                name="Operation MidnightEclipse",
-                year=2024,
-                description="Unknown actors piped stdout to bash for execution in sophisticated cloud environment compromise",
-                reference_url="https://attack.mitre.org/campaigns/C0048/",
-            ),
-            Campaign(
-                name="Cyclops Blink Campaign",
-                year=2022,
-                description="Cyclops Blink malware created pipes enabling inter-process communication for modular malware execution",
-                reference_url="https://attack.mitre.org/software/S0687/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="increasing",
         severity_score=7,

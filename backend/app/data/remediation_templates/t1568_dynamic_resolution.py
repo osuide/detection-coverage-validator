@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -42,32 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Facilitates long-term persistent access",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="SolarWinds Compromise (C0024)",
-                year=2020,
-                description="APT29 deployed SUNBURST malware which used dynamic DNS resolution to construct and resolve randomly-generated subdomains for C2 communications",
-                reference_url="https://attack.mitre.org/campaigns/C0024/",
-            ),
-            Campaign(
-                name="Operation Spalax",
-                year=2024,
-                description="Gamaredon Group leveraged dynamic DNS services including Duck DNS and DNS Exit for malicious infrastructure operations",
-                reference_url="https://attack.mitre.org/campaigns/C0005/",
-            ),
-            Campaign(
-                name="Operation Dust Storm",
-                year=2023,
-                description="Transparent Tribe utilised multiple free dynamic DNS providers including No-IP, Oray, and 3322 for C2 communications",
-                reference_url="https://attack.mitre.org/campaigns/C0016/",
-            ),
-            Campaign(
-                name="BITTER Dynamic DNS Campaign",
-                year=2023,
-                description="BITTER APT group employed dynamic DNS services for command and control infrastructure across targeted operations",
-                reference_url="https://attack.mitre.org/groups/G1002/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=8,

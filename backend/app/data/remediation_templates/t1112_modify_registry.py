@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -44,32 +43,7 @@ TEMPLATE = RemediationTemplate(
             "Changes persist after system restart without file system modifications",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="APT41 Registry Persistence",
-                year=2024,
-                description="APT41 created registry Run keys and modified Windows Defender settings to maintain persistence on compromised cloud instances",
-                reference_url="https://attack.mitre.org/groups/G0096/",
-            ),
-            Campaign(
-                name="Wizard Spider Registry Manipulation",
-                year=2023,
-                description="Wizard Spider modified registry to disable security tools and enable WDigest for credential theft before ransomware deployment",
-                reference_url="https://attack.mitre.org/groups/G0102/",
-            ),
-            Campaign(
-                name="Volt Typhoon UAC Bypass",
-                year=2023,
-                description="Volt Typhoon used registry modifications to bypass UAC and disable Windows security features on compromised infrastructure",
-                reference_url="https://www.microsoft.com/en-us/security/blog/2023/05/24/volt-typhoon-targets-us-critical-infrastructure-with-living-off-the-land-techniques/",
-            ),
-            Campaign(
-                name="Turla Registry Stealth",
-                year=2022,
-                description="Turla modified registry keys to hide malicious drivers and disable security logging on Windows servers",
-                reference_url="https://attack.mitre.org/groups/G0010/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="stable",
         severity_score=7,

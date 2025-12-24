@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -43,32 +42,7 @@ TEMPLATE = RemediationTemplate(
             "Provides both persistence and privilege escalation",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="KV Botnet Event Management",
-                year=2024,
-                description="KV Botnet used libevent to manage events on victim systems, executing callbacks to terminate processes matching specific criteria",
-                reference_url="https://attack.mitre.org/campaigns/C0035/",
-            ),
-            Campaign(
-                name="Pacu Lambda Event Triggers",
-                year=2024,
-                description="Pacu configures S3 bucket notifications triggering malicious Lambda functions on CloudFormation uploads and creates Lambda functions responding to IAM events",
-                reference_url="https://attack.mitre.org/software/S1091/",
-            ),
-            Campaign(
-                name="UPSTYLE Python Hooks",
-                year=2024,
-                description="UPSTYLE creates .pth files beginning with 'import' so code executes whenever processes reference modified items",
-                reference_url="https://attack.mitre.org/software/S1164/",
-            ),
-            Campaign(
-                name="XCSSET Xcode Build Rules",
-                year=2024,
-                description="XCSSET embeds encoded payloads into build rules and target configurations in Xcode projects for execution during builds",
-                reference_url="https://attack.mitre.org/software/S0658/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="increasing",
         severity_score=8,

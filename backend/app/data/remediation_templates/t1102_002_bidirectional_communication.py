@@ -12,7 +12,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -44,20 +43,7 @@ TEMPLATE = RemediationTemplate(
             "Often bypasses traditional network controls",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Operation Ghost",
-                year=2024,
-                description="APT29 used social media platforms to hide communications to C2 servers",
-                reference_url="https://attack.mitre.org/campaigns/C0023/",
-            ),
-            Campaign(
-                name="Lazarus GitHub C2",
-                year=2024,
-                description="Lazarus Group used GitHub as C2, pulling hosted image payloads then committing command execution output to files",
-                reference_url="https://attack.mitre.org/campaigns/C0022/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=8,

@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -39,14 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Effective against cloud and SaaS platforms",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Chimera Credential Stuffing",
-                year=2021,
-                description="Used credential stuffing against victim's remote services to obtain valid accounts",
-                reference_url="https://attack.mitre.org/groups/G0114/",
-            )
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=7,

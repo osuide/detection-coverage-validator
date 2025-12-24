@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -43,26 +42,7 @@ TEMPLATE = RemediationTemplate(
             "Often combined with account impersonation",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Gamaredon Outlook VBA Modules",
-                year=2021,
-                description="Deployed Outlook VBA modules to send internal phishing emails with malicious attachments to expand compromise",
-                reference_url="https://attack.mitre.org/groups/G0047/",
-            ),
-            Campaign(
-                name="HEXANE Executive Targeting",
-                year=2022,
-                description="Conducted internal spearphishing targeting executives, HR personnel, and IT staff after initial compromise",
-                reference_url="https://attack.mitre.org/groups/G1001/",
-            ),
-            Campaign(
-                name="Lazarus Operation Dream Job",
-                year=2023,
-                description="Executed internal spearphishing campaigns within compromised environments as part of Operation Dream Job",
-                reference_url="https://attack.mitre.org/campaigns/C0022/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=8,

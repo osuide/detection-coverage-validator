@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -39,26 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Enables targeted exploitation based on discovered services",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Operation C0027 - RustScan ESXi Scanning",
-                year=2023,
-                description="Attackers used RustScan to rapidly scan ESXi appliances for vulnerable services, enabling targeted exploitation of virtualisation infrastructure",
-                reference_url="https://attack.mitre.org/campaigns/C0027/",
-            ),
-            Campaign(
-                name="Operation C0018 - SoftPerfect Network Scanner",
-                year=2022,
-                description="Threat actors employed SoftPerfect Network Scanner to enumerate network services and identify targets for ransomware deployment",
-                reference_url="https://attack.mitre.org/campaigns/C0018/",
-            ),
-            Campaign(
-                name="Operation Wocao",
-                year=2019,
-                description="Chinese APT group scanned for open ports using nbtscan and custom tools during targeted attacks on managed service providers",
-                reference_url="https://attack.mitre.org/campaigns/C0014/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="very_high",
         trend="increasing",
         severity_score=7,

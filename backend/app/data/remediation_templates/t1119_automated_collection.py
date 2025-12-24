@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -40,26 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Compressing and staging data enables efficient exfiltration",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="DNC Breach",
-                year=2016,
-                description="APT28 used public tools to gather and compress multiple documents on the DCCC and DNC networks",
-                reference_url="https://www.justice.gov/file/1080281/download",
-            ),
-            Campaign(
-                name="Agrius Database Extraction",
-                year=2021,
-                description="Agrius deployed custom SQL tools to extract personally identifiable information from databases",
-                reference_url="https://www.sentinelone.com/labs/from-wiper-to-ransomware-the-evolution-of-agrius/",
-            ),
-            Campaign(
-                name="Gamaredon Document Collection",
-                year=2022,
-                description="Gamaredon Group deployed scripts that automatically scan for interesting documents",
-                reference_url="https://unit42.paloaltonetworks.com/gamaredon-primitive-bear-ukraine-update-2021/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=7,

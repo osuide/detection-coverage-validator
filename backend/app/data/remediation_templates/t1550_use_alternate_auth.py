@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -37,20 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Hard to distinguish from legitimate use",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="APT29 SolarWinds SAML Forging",
-                year=2021,
-                description="Deployed forged SAML tokens to bypass MFA and access cloud applications",
-                reference_url="https://attack.mitre.org/campaigns/C0024/",
-            ),
-            Campaign(
-                name="FoggyWeb Token Theft",
-                year=2021,
-                description="Exploited compromised AD FS servers' SAML tokens for unauthorised access",
-                reference_url="https://attack.mitre.org/software/S0661/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=9,

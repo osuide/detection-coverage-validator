@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -37,20 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Multiple accounts complicate forensics",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Shadow Admin Accounts",
-                year=2024,
-                description="Attackers created hidden admin accounts during compromises for persistent access",
-                reference_url="https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-320a",
-            ),
-            Campaign(
-                name="Service Account Backdoors",
-                year=2024,
-                description="Attackers created service accounts named similarly to legitimate automation",
-                reference_url="https://unit42.paloaltonetworks.com/2025-cloud-security-alert-trends/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="stable",
         severity_score=8,

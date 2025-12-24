@@ -12,7 +12,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -42,26 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Helps evade detection by identifying security services",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Operation CuckooBees",
-                year=2022,
-                description="APT41 campaign using service discovery for reconnaissance",
-                reference_url="https://attack.mitre.org/campaigns/C0012/",
-            ),
-            Campaign(
-                name="Operation Wocao",
-                year=2020,
-                description="Chinese APT using service enumeration for lateral movement",
-                reference_url="https://attack.mitre.org/campaigns/C0014/",
-            ),
-            Campaign(
-                name="Black Basta Ransomware",
-                year=2024,
-                description="Service discovery used to identify security tools before encryption",
-                reference_url="https://attack.mitre.org/software/S1070/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="stable",
         severity_score=4,

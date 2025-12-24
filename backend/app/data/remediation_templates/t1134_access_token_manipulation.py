@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -42,32 +41,7 @@ TEMPLATE = RemediationTemplate(
             "SID-History injection can grant access to cross-forest resources in hybrid environments",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="APT41 BADPOTATO Exploitation",
-                year=2024,
-                description="APT41 used BADPOTATO exploit for token manipulation to escalate privileges on compromised Windows servers",
-                reference_url="https://attack.mitre.org/groups/G0096/",
-            ),
-            Campaign(
-                name="Blue Mockingbird JuicyPotato Attacks",
-                year=2023,
-                description="Leveraged JuicyPotato token manipulation exploit to escalate privileges on cloud instances for cryptomining",
-                reference_url="https://attack.mitre.org/groups/G0108/",
-            ),
-            Campaign(
-                name="FIN6 Named-Pipe Impersonation",
-                year=2023,
-                description="Used named-pipe impersonation for token theft to move laterally across Windows infrastructure",
-                reference_url="https://attack.mitre.org/groups/G0037/",
-            ),
-            Campaign(
-                name="BlackCat Ransomware Token Abuse",
-                year=2022,
-                description="BlackCat ransomware employed token manipulation with SeDebugPrivilege to evade security controls",
-                reference_url="https://attack.mitre.org/software/S1068/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="stable",
         severity_score=8,

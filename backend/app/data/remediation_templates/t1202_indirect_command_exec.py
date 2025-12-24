@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -44,26 +43,7 @@ TEMPLATE = RemediationTemplate(
             "WSL provides alternative Linux environment for executing malicious code",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Lazarus Group forfiles.exe Persistence",
-                year=2024,
-                description="Used forfiles.exe to execute .htm files for persistence, bypassing application control policies",
-                reference_url="https://attack.mitre.org/campaigns/C0022/",
-            ),
-            Campaign(
-                name="RedCurl pcalua.exe Obfuscation",
-                year=2024,
-                description="Employed pcalua.exe to obfuscate binary execution during corporate espionage operations",
-                reference_url="https://attack.mitre.org/groups/G1039/",
-            ),
-            Campaign(
-                name="Revenge RAT Forfiles Execution",
-                year=2023,
-                description="Revenge RAT malware used Forfiles utility for command execution to subvert controls",
-                reference_url="https://attack.mitre.org/software/S0379/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="moderate",
         trend="increasing",
         severity_score=6,

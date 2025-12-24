@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,32 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Access to cloud console credentials and session tokens",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Kimsuky Chrome Extension Campaign",
-                year=2024,
-                description="Kimsuky deployed Chrome extensions to steal passwords and cookies from compromised systems",
-                reference_url="https://attack.mitre.org/groups/G0094/",
-            ),
-            Campaign(
-                name="TA413 FriarFox Extension",
-                year=2023,
-                description="TA413 used FriarFox browser extension specifically targeting Gmail accounts for credential theft",
-                reference_url="https://attack.mitre.org/groups/G0125/",
-            ),
-            Campaign(
-                name="Malicious VSCode Extensions",
-                year=2024,
-                description="Malicious VSCode extensions with over 45,000 downloads exposed PII and enabled backdoors",
-                reference_url="https://attack.mitre.org/techniques/T1176/",
-            ),
-            Campaign(
-                name="Stantinko Botnet Extensions",
-                year=2023,
-                description="Massive adware campaign using persistent backdoor through malicious Chrome extensions for C2",
-                reference_url="https://attack.mitre.org/software/S0393/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=7,

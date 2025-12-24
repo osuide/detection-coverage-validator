@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -44,26 +43,7 @@ TEMPLATE = RemediationTemplate(
             "Enables covert data transfer in high-security environments",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Turla Satellite Exfiltration",
-                year=2023,
-                description="Turla group used satellite internet connections to exfiltrate data from air-gapped networks, bypassing traditional network monitoring",
-                reference_url="https://attack.mitre.org/groups/G0010/",
-            ),
-            Campaign(
-                name="APT Air-Gap Jumping",
-                year=2023,
-                description="Advanced persistent threat actors employed Bluetooth and WiFi connections to exfiltrate data from isolated networks",
-                reference_url="https://attack.mitre.org/techniques/T1011/",
-            ),
-            Campaign(
-                name="Cellular Modem Exfiltration",
-                year=2024,
-                description="Nation-state actors installed cellular modems on compromised servers to create covert exfiltration channels",
-                reference_url="https://attack.mitre.org/techniques/T1011/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="rare",
         trend="stable",
         severity_score=8,

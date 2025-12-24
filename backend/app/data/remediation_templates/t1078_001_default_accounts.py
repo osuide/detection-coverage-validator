@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -39,32 +38,7 @@ TEMPLATE = RemediationTemplate(
             "No malware deployment required, reducing detection surface",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Ember Bear IP Camera Exploitation",
-                year=2022,
-                description="Ember Bear exploited default credentials on internet-facing IP cameras to gain initial access",
-                reference_url="https://attack.mitre.org/groups/G1003/",
-            ),
-            Campaign(
-                name="FIN13 Default Credential Abuse",
-                year=2023,
-                description="FIN13 leveraged default credentials for myWebMethods and QLogic interfaces during targeted intrusions",
-                reference_url="https://attack.mitre.org/groups/G1016/",
-            ),
-            Campaign(
-                name="Magic Hound Exchange Server Compromise",
-                year=2021,
-                description="Magic Hound activated DefaultAccount to gain RDP access to Exchange servers",
-                reference_url="https://attack.mitre.org/groups/G0059/",
-            ),
-            Campaign(
-                name="UNC3886 vCenter Exploitation",
-                year=2023,
-                description="UNC3886 harvested default vCenter Server service account credentials for persistent access",
-                reference_url="https://attack.mitre.org/groups/G1040/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="stable",
         severity_score=8,

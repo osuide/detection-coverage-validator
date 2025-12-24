@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -40,20 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Reveals organisation structure",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Volatile Cedar Web Discovery",
-                year=2024,
-                description="Deployed DirBuster and GoBuster for web directory and DNS subdomain enumeration",
-                reference_url="https://attack.mitre.org/techniques/T1595/003/",
-            ),
-            Campaign(
-                name="APT41 Web Server Scanning",
-                year=2024,
-                description="Used various brute-force tools against web servers for reconnaissance",
-                reference_url="https://attack.mitre.org/groups/G0096/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=6,

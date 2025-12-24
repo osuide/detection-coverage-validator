@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,26 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Facilitates payload reassembly from fragmented binary components",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="SolarWinds Compromise (C0024)",
-                year=2020,
-                description="APT29 used 7-Zip decompression to extract Raindrop malware components during the SolarWinds supply chain attack",
-                reference_url="https://attack.mitre.org/campaigns/C0024/",
-            ),
-            Campaign(
-                name="APT28 Nearest Neighbour Campaign",
-                year=2023,
-                description="APT28 used certutil -decode to decode base64-encoded payloads and WinRAR GUI for data extraction",
-                reference_url="https://attack.mitre.org/groups/G0007/",
-            ),
-            Campaign(
-                name="Operation Dust Storm",
-                year=2016,
-                description="VBS code decoded and executed malicious payloads to establish persistence and exfiltrate data",
-                reference_url="https://attack.mitre.org/campaigns/C0016/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="very_common",
         trend="increasing",
         severity_score=8,

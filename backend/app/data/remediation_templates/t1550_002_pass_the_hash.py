@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -43,26 +42,7 @@ TEMPLATE = RemediationTemplate(
             "Can be combined with credential dumping for broad access",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="APT41 Global Intrusion Campaign",
-                year=2023,
-                description="Used pass-the-hash techniques to move laterally across Windows domains in cloud-connected environments",
-                reference_url="https://attack.mitre.org/groups/G0096/",
-            ),
-            Campaign(
-                name="Wizard Spider Ransomware Operations",
-                year=2022,
-                description="Leveraged stolen NTLM hashes to deploy ransomware across Windows networks including hybrid cloud deployments",
-                reference_url="https://attack.mitre.org/groups/G0102/",
-            ),
-            Campaign(
-                name="APT28 Credential Harvesting",
-                year=2021,
-                description="Employed pass-the-hash after dumping credentials from compromised domain controllers",
-                reference_url="https://attack.mitre.org/groups/G0007/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="stable",
         severity_score=8,

@@ -10,7 +10,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -40,26 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Facilitates multi-stage attacks by hiding subsequent payloads",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Sandworm Industroyer Attacks",
-                year=2016,
-                description="Deployed heavily obfuscated code in Windows Notepad backdoor during Ukrainian infrastructure attacks",
-                reference_url="https://attack.mitre.org/groups/G0034/",
-            ),
-            Campaign(
-                name="APT41 VMProtected Binaries",
-                year=2023,
-                description="Used VMProtected binaries and fragmented executables (DEADEYE, KEYPLUG) to evade detection systems",
-                reference_url="https://attack.mitre.org/groups/G0096/",
-            ),
-            Campaign(
-                name="Conti Ransomware Operations",
-                year=2021,
-                description="Applied compiler-based obfuscation, encrypted DLL files, and concealed Windows API calls",
-                reference_url="https://attack.mitre.org/software/S0575/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=7,

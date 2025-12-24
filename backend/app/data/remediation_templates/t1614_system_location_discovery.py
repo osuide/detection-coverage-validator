@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -41,26 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Determine cloud region for resource targeting",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Volt Typhoon Infrastructure Campaign",
-                year=2023,
-                description="Chinese state-sponsored group obtained victim system location during critical infrastructure compromise",
-                reference_url="https://attack.mitre.org/groups/G1017/",
-            ),
-            Campaign(
-                name="SideCopy APT Operations",
-                year=2023,
-                description="Identified country location of compromised hosts to target specific regions",
-                reference_url="https://attack.mitre.org/groups/G0121/",
-            ),
-            Campaign(
-                name="Ragnar Locker Ransomware",
-                year=2020,
-                description="Checked system locale to avoid encrypting systems in CIS countries",
-                reference_url="https://attack.mitre.org/software/S0481/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="common",
         trend="increasing",
         severity_score=5,

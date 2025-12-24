@@ -11,7 +11,6 @@ from .template_loader import (
     ThreatContext,
     DetectionStrategy,
     DetectionImplementation,
-    Campaign,
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
@@ -39,20 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Facilitates credential theft and account takeover",
         ],
         known_threat_actors=[],
-        recent_campaigns=[
-            Campaign(
-                name="Scattered Spider Credential Phishing",
-                year=2024,
-                description="Combined credential phishing with social engineering to capture OTP codes",
-                reference_url="https://attack.mitre.org/groups/G1015/",
-            ),
-            Campaign(
-                name="ZIRCONIUM Political Campaign Targeting",
-                year=2024,
-                description="Targeted political campaign staffers with credential phishing attacks",
-                reference_url="https://attack.mitre.org/groups/G0128/",
-            ),
-        ],
+        recent_campaigns=[],  # Populated dynamically from MITRE sync data
         prevalence="very_common",
         trend="increasing",
         severity_score=7,
