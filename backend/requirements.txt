@@ -68,7 +68,7 @@ weasyprint==60.2
 pytest==8.3.4
 pytest-asyncio==0.24.0
 pytest-cov==6.0.0
-moto[s3,ec2,iam,logs,events,config,secretsmanager,guardduty,securityhub]==5.0.26
+moto[s3,ec2,iam,logs,events,config,secretsmanager,guardduty,securityhub,cloudtrail,lambda,sts,ses,cloudwatch,efs,rds,dynamodb,redshift,elasticache,ecr]==5.0.26
 factory-boy==3.3.1
 
 # Code Quality
