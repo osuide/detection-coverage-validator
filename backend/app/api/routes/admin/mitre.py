@@ -21,7 +21,10 @@ from app.schemas.mitre_admin import (
 )
 from app.services.mitre_sync_service import MitreSyncService
 from app.services.mitre_threat_service import MitreThreatService
+from app.services.platform_settings_service import PlatformSettingsService
+from app.services.scheduler_service import scheduler_service
 from app.models.mitre_threat import SyncStatus, SyncTriggerType
+from app.models.platform_settings import SettingKeys
 
 router = APIRouter(prefix="/mitre", tags=["Admin MITRE"])
 
@@ -151,11 +154,29 @@ async def get_sync_schedule(
     """
     Get current MITRE sync schedule configuration.
     """
-    # TODO: Implement scheduler integration with platform_settings
+    settings_service = PlatformSettingsService(db)
+
+    # Read schedule settings
+    enabled_str = await settings_service.get_setting_value(
+        SettingKeys.MITRE_SYNC_ENABLED
+    )
+    cron_expression = await settings_service.get_setting_value(
+        SettingKeys.MITRE_SYNC_CRON
+    )
+
+    enabled = enabled_str is not None and enabled_str.lower() in ("true", "1", "yes")
+
+    # Get next run time from scheduler if enabled
+    next_run_at = None
+    if enabled:
+        job_status = scheduler_service.get_mitre_sync_job_status()
+        if job_status and job_status.get("next_run_time"):
+            next_run_at = job_status["next_run_time"]
+
     return MitreScheduleResponse(
-        enabled=False,
-        cron_expression=None,
-        next_run_at=None,
+        enabled=enabled,
+        cron_expression=cron_expression,
+        next_run_at=next_run_at,
         timezone="UTC",
     )
 
@@ -180,12 +201,48 @@ async def update_sync_schedule(
             detail="cron_expression is required when enabling schedule",
         )
 
-    # TODO: Implement scheduler integration
-    # For now, just return the request as if saved
+    # Validate cron expression format
+    if body.cron_expression:
+        parts = body.cron_expression.split()
+        if len(parts) != 5:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid cron expression. Expected 5 parts: minute hour day month day_of_week",
+            )
+
+    settings_service = PlatformSettingsService(db)
+
+    # Save schedule settings
+    await settings_service.set_setting(
+        key=SettingKeys.MITRE_SYNC_ENABLED,
+        value="true" if body.enabled else "false",
+        admin=admin,
+        category="general",
+        description="Enable automatic MITRE ATT&CK data sync",
+    )
+
+    if body.cron_expression:
+        await settings_service.set_setting(
+            key=SettingKeys.MITRE_SYNC_CRON,
+            value=body.cron_expression,
+            admin=admin,
+            category="general",
+            description="Cron expression for MITRE sync schedule",
+        )
+
+    # Update scheduler job
+    next_run_at = None
+    if body.enabled and body.cron_expression:
+        next_run_at = await scheduler_service.update_mitre_sync_schedule(
+            body.cron_expression
+        )
+    else:
+        await scheduler_service.remove_mitre_sync_schedule()
+
     return MitreScheduleResponse(
         enabled=body.enabled,
         cron_expression=body.cron_expression,
-        next_run_at=None,  # Would be calculated from cron
+        next_run_at=next_run_at,
         timezone="UTC",
     )
 

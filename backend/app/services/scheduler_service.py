@@ -62,6 +62,9 @@ class SchedulerService:
         # Load all active schedules from database
         await self._load_schedules()
 
+        # Load MITRE sync schedule from platform settings
+        await self._load_mitre_schedule()
+
         # Start the scheduler
         self._scheduler.start()
         self.logger.info("scheduler_started")
@@ -218,6 +221,131 @@ class SchedulerService:
         """Get the status of a scheduled job."""
         job_id = f"scan_schedule_{schedule_id}"
         job = self._scheduler.get_job(job_id)
+        if job:
+            return {
+                "job_id": job.id,
+                "name": job.name,
+                "next_run_time": job.next_run_time,
+                "pending": job.pending,
+            }
+        return None
+
+    # ============ MITRE Sync Scheduling ============
+
+    MITRE_SYNC_JOB_ID = "mitre_sync_scheduled"
+
+    async def _load_mitre_schedule(self) -> None:
+        """Load MITRE sync schedule from platform settings."""
+        from app.models.platform_settings import SettingKeys
+
+        async with self._session_factory() as session:
+            from app.services.platform_settings_service import PlatformSettingsService
+
+            settings_service = PlatformSettingsService(session)
+
+            enabled_str = await settings_service.get_setting_value(
+                SettingKeys.MITRE_SYNC_ENABLED
+            )
+            cron_expression = await settings_service.get_setting_value(
+                SettingKeys.MITRE_SYNC_CRON
+            )
+
+            enabled = enabled_str is not None and enabled_str.lower() in (
+                "true",
+                "1",
+                "yes",
+            )
+
+            if enabled and cron_expression:
+                await self.update_mitre_sync_schedule(cron_expression)
+                self.logger.info(
+                    "mitre_sync_schedule_loaded",
+                    cron_expression=cron_expression,
+                )
+
+    async def _execute_mitre_sync(self) -> None:
+        """Execute a scheduled MITRE sync."""
+        self.logger.info("executing_scheduled_mitre_sync")
+
+        async with self._session_factory() as session:
+            from app.services.mitre_sync_service import MitreSyncService
+            from app.models.mitre_threat import SyncTriggerType
+
+            sync_service = MitreSyncService(session)
+
+            try:
+                await sync_service.sync_all(
+                    admin_id=None,  # Scheduled sync, no admin
+                    trigger_type=SyncTriggerType.SCHEDULED.value,
+                )
+                self.logger.info("scheduled_mitre_sync_complete")
+            except Exception as e:
+                self.logger.exception(
+                    "scheduled_mitre_sync_failed",
+                    error=str(e),
+                )
+
+    async def update_mitre_sync_schedule(
+        self, cron_expression: str
+    ) -> Optional[datetime]:
+        """Update or create the MITRE sync schedule.
+
+        Args:
+            cron_expression: Cron expression (minute hour day month day_of_week)
+
+        Returns:
+            Next scheduled run time, or None if invalid
+        """
+        # Remove existing job if present
+        if self._scheduler.get_job(self.MITRE_SYNC_JOB_ID):
+            self._scheduler.remove_job(self.MITRE_SYNC_JOB_ID)
+
+        # Parse cron expression
+        parts = cron_expression.split()
+        if len(parts) != 5:
+            self.logger.error(
+                "invalid_mitre_sync_cron",
+                cron_expression=cron_expression,
+            )
+            return None
+
+        trigger = CronTrigger(
+            minute=parts[0],
+            hour=parts[1],
+            day=parts[2],
+            month=parts[3],
+            day_of_week=parts[4],
+            timezone="UTC",
+        )
+
+        # Add job
+        self._scheduler.add_job(
+            self._execute_mitre_sync,
+            trigger=trigger,
+            id=self.MITRE_SYNC_JOB_ID,
+            name="Scheduled MITRE ATT&CK Sync",
+        )
+
+        job = self._scheduler.get_job(self.MITRE_SYNC_JOB_ID)
+        next_run = job.next_run_time if job else None
+
+        self.logger.info(
+            "mitre_sync_schedule_updated",
+            cron_expression=cron_expression,
+            next_run=str(next_run) if next_run else None,
+        )
+
+        return next_run
+
+    async def remove_mitre_sync_schedule(self) -> None:
+        """Remove the MITRE sync schedule."""
+        if self._scheduler.get_job(self.MITRE_SYNC_JOB_ID):
+            self._scheduler.remove_job(self.MITRE_SYNC_JOB_ID)
+            self.logger.info("mitre_sync_schedule_removed")
+
+    def get_mitre_sync_job_status(self) -> Optional[dict]:
+        """Get the status of the MITRE sync scheduled job."""
+        job = self._scheduler.get_job(self.MITRE_SYNC_JOB_ID)
         if job:
             return {
                 "job_id": job.id,

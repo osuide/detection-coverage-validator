@@ -147,6 +147,12 @@ class SettingKeys:
     PLATFORM_MAINTENANCE_MODE = "platform_maintenance_mode"
     PLATFORM_SIGNUP_ENABLED = "platform_signup_enabled"
 
+    # MITRE Sync Schedule
+    MITRE_SYNC_ENABLED = "mitre_sync_enabled"
+    MITRE_SYNC_CRON = (
+        "mitre_sync_cron"  # Cron expression (e.g., "0 0 * * 0" for weekly Sunday)
+    )
+
 
 # Default settings to seed
 DEFAULT_SETTINGS = [

@@ -12,6 +12,7 @@ import {
   MitreSyncHistory,
   ThreatGroupSummary,
   CampaignSummary,
+  MitreSchedule,
 } from '../../services/adminMitreApi'
 
 type TabType = 'overview' | 'groups' | 'campaigns' | 'history'
@@ -33,6 +34,14 @@ export default function AdminMitreData() {
   const [campaignSortBy, setCampaignSortBy] = useState<string>('last_seen')
   const [campaignSortOrder, setCampaignSortOrder] = useState<'asc' | 'desc'>('desc')
 
+  // Schedule state
+  const [schedule, setSchedule] = useState<MitreSchedule | null>(null)
+  const [scheduleEnabled, setScheduleEnabled] = useState(false)
+  const [scheduleFrequency, setScheduleFrequency] = useState<'daily' | 'weekly' | 'monthly'>('weekly')
+  const [scheduleDay, setScheduleDay] = useState(0) // 0 = Sunday
+  const [scheduleHour, setScheduleHour] = useState(0)
+  const [savingSchedule, setSavingSchedule] = useState(false)
+
   // Redirect if not authenticated
   useEffect(() => {
     if (isInitialised && !isAuthenticated) {
@@ -48,16 +57,76 @@ export default function AdminMitreData() {
 
   const fetchData = async () => {
     try {
-      const [statusData, historyData] = await Promise.all([
+      const [statusData, historyData, scheduleData] = await Promise.all([
         mitreApi.getStatus(),
         mitreApi.getSyncHistory(10),
+        mitreApi.getSchedule(),
       ])
       setStatus(statusData)
       setSyncHistory(historyData)
+      setSchedule(scheduleData)
+      setScheduleEnabled(scheduleData.enabled)
+
+      // Parse cron expression to set form values
+      if (scheduleData.cron_expression) {
+        const parts = scheduleData.cron_expression.split(' ')
+        if (parts.length === 5) {
+          setScheduleHour(parseInt(parts[1]) || 0)
+          // Detect frequency from cron
+          if (parts[2] === '*' && parts[4] === '*') {
+            setScheduleFrequency('daily')
+          } else if (parts[2] !== '*') {
+            setScheduleFrequency('monthly')
+            setScheduleDay(parseInt(parts[2]) || 1)
+          } else if (parts[4] !== '*') {
+            setScheduleFrequency('weekly')
+            setScheduleDay(parseInt(parts[4]) || 0)
+          }
+        }
+      }
     } catch (error) {
       console.error('Failed to fetch MITRE data:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const buildCronExpression = (): string => {
+    // minute hour day month day_of_week
+    switch (scheduleFrequency) {
+      case 'daily':
+        return `0 ${scheduleHour} * * *`
+      case 'weekly':
+        return `0 ${scheduleHour} * * ${scheduleDay}`
+      case 'monthly':
+        return `0 ${scheduleHour} ${scheduleDay || 1} * *`
+      default:
+        return `0 ${scheduleHour} * * ${scheduleDay}`
+    }
+  }
+
+  const handleSaveSchedule = async () => {
+    setSavingSchedule(true)
+    setMessage(null)
+
+    try {
+      const cronExpression = scheduleEnabled ? buildCronExpression() : undefined
+      const result = await mitreApi.updateSchedule(scheduleEnabled, cronExpression)
+      setSchedule(result)
+      setMessage({
+        type: 'success',
+        text: scheduleEnabled
+          ? `Schedule saved. Next sync: ${result.next_run_at ? new Date(result.next_run_at).toLocaleString() : 'calculating...'}`
+          : 'Automatic sync disabled',
+      })
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { detail?: string } } }
+      setMessage({
+        type: 'error',
+        text: err.response?.data?.detail || 'Failed to save schedule',
+      })
+    } finally {
+      setSavingSchedule(false)
     }
   }
 
@@ -277,6 +346,140 @@ export default function AdminMitreData() {
               <p className="text-lg font-semibold text-gray-900">
                 {status?.last_sync_status || 'N/A'}
               </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Schedule Configuration Card */}
+        <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Automatic Sync Schedule</h2>
+
+          <div className="space-y-4">
+            {/* Enable Toggle */}
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="text-sm font-medium text-gray-700">Enable automatic sync</label>
+                <p className="text-sm text-gray-500">Automatically sync MITRE data on a schedule</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setScheduleEnabled(!scheduleEnabled)}
+                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 ${
+                  scheduleEnabled ? 'bg-indigo-600' : 'bg-gray-200'
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    scheduleEnabled ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Schedule Options (only shown when enabled) */}
+            {scheduleEnabled && (
+              <div className="border-t pt-4 space-y-4">
+                {/* Frequency */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Frequency</label>
+                    <select
+                      value={scheduleFrequency}
+                      onChange={(e) => {
+                        setScheduleFrequency(e.target.value as 'daily' | 'weekly' | 'monthly')
+                        // Reset day to sensible default
+                        if (e.target.value === 'weekly') setScheduleDay(0)
+                        else if (e.target.value === 'monthly') setScheduleDay(1)
+                      }}
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    >
+                      <option value="daily">Daily</option>
+                      <option value="weekly">Weekly</option>
+                      <option value="monthly">Monthly</option>
+                    </select>
+                  </div>
+
+                  {/* Day Selector (for weekly/monthly) */}
+                  {scheduleFrequency === 'weekly' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Day of Week</label>
+                      <select
+                        value={scheduleDay}
+                        onChange={(e) => setScheduleDay(parseInt(e.target.value))}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      >
+                        <option value={0}>Sunday</option>
+                        <option value={1}>Monday</option>
+                        <option value={2}>Tuesday</option>
+                        <option value={3}>Wednesday</option>
+                        <option value={4}>Thursday</option>
+                        <option value={5}>Friday</option>
+                        <option value={6}>Saturday</option>
+                      </select>
+                    </div>
+                  )}
+
+                  {scheduleFrequency === 'monthly' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Day of Month</label>
+                      <select
+                        value={scheduleDay}
+                        onChange={(e) => setScheduleDay(parseInt(e.target.value))}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      >
+                        {Array.from({ length: 28 }, (_, i) => i + 1).map((day) => (
+                          <option key={day} value={day}>{day}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Time Selector */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Time (UTC)</label>
+                    <select
+                      value={scheduleHour}
+                      onChange={(e) => setScheduleHour(parseInt(e.target.value))}
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    >
+                      {Array.from({ length: 24 }, (_, i) => i).map((hour) => (
+                        <option key={hour} value={hour}>
+                          {hour.toString().padStart(2, '0')}:00
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Next Scheduled Sync */}
+                {schedule?.next_run_at && (
+                  <div className="flex items-center text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+                    <Calendar className="h-4 w-4 mr-2 text-indigo-500" />
+                    <span>
+                      Next scheduled sync:{' '}
+                      <strong>{new Date(schedule.next_run_at).toLocaleString()}</strong> UTC
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Save Button */}
+            <div className="flex justify-end pt-2">
+              <button
+                onClick={handleSaveSchedule}
+                disabled={savingSchedule}
+                className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+              >
+                {savingSchedule ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  'Save Schedule'
+                )}
+              </button>
             </div>
           </div>
         </div>
