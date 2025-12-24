@@ -30,11 +30,18 @@ import {
 import api from '../services/api'
 
 // API types
+interface AttributedGroup {
+  external_id: string
+  name: string
+  mitre_url: string
+}
+
 interface Campaign {
   name: string
   year: number
   description: string
   reference_url?: string
+  attributed_groups?: AttributedGroup[]
 }
 
 interface ThreatContext {
@@ -655,6 +662,25 @@ export default function TechniqueDetail() {
                     <span className="text-xs text-gray-400">{campaign.year}</span>
                   </div>
                   <p className="text-sm text-gray-400">{campaign.description}</p>
+                  {campaign.attributed_groups && campaign.attributed_groups.length > 0 && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="text-xs text-gray-500">Attributed to:</span>
+                      <div className="flex flex-wrap gap-1">
+                        {campaign.attributed_groups.map((group) => (
+                          <a
+                            key={group.external_id}
+                            href={group.mitre_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-900/30 text-red-400 text-xs rounded-full hover:bg-red-900/50"
+                          >
+                            {group.name}
+                            <span className="text-red-500/70">({group.external_id})</span>
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {campaign.reference_url && (
                     <a
                       href={campaign.reference_url}
