@@ -20,6 +20,7 @@ from app.models.mitre_threat import (
     MitreCampaign,
     MitreSoftware,
     MitreTechniqueRelationship,
+    MitreCampaignAttribution,
     MitreDataVersion,
     RelatedType,
 )
@@ -43,6 +44,15 @@ class ThreatGroupInfo:
 
 
 @dataclass
+class AttributedGroupSummary:
+    """Brief summary of a threat group attributed to a campaign."""
+
+    external_id: str
+    name: str
+    mitre_url: str
+
+
+@dataclass
 class CampaignInfo:
     """Summary info for a campaign."""
 
@@ -54,6 +64,11 @@ class CampaignInfo:
     last_seen: Optional[datetime]
     mitre_url: str
     relationship_description: Optional[str] = None
+    attributed_groups: list[AttributedGroupSummary] = None  # type: ignore
+
+    def __post_init__(self):
+        if self.attributed_groups is None:
+            self.attributed_groups = []
 
 
 @dataclass
@@ -192,6 +207,10 @@ class MitreThreatService:
         for row in result.all():
             campaign = row[0]
             rel_description = row[1]
+
+            # Fetch attributed groups for this campaign
+            attributed_groups = await self._get_attributed_groups(campaign.id)
+
             campaigns.append(
                 CampaignInfo(
                     id=str(campaign.id),
@@ -206,6 +225,7 @@ class MitreThreatService:
                     relationship_description=self._truncate(
                         self._strip_markdown_links(rel_description), 200
                     ),
+                    attributed_groups=attributed_groups,
                 )
             )
 
@@ -569,6 +589,33 @@ class MitreThreatService:
             )
         )
         return result.scalar() or 0
+
+    async def _get_attributed_groups(
+        self, campaign_uuid: uuid.UUID
+    ) -> list[AttributedGroupSummary]:
+        """Get threat groups attributed to a campaign."""
+        result = await self.db.execute(
+            select(MitreThreatGroup)
+            .join(
+                MitreCampaignAttribution,
+                MitreThreatGroup.id == MitreCampaignAttribution.group_id,
+            )
+            .where(
+                MitreCampaignAttribution.campaign_id == campaign_uuid,
+                MitreThreatGroup.is_revoked == False,  # noqa: E712
+                MitreThreatGroup.is_deprecated == False,  # noqa: E712
+            )
+            .order_by(MitreThreatGroup.name)
+        )
+
+        return [
+            AttributedGroupSummary(
+                external_id=group.external_id,
+                name=group.name,
+                mitre_url=group.mitre_url,
+            )
+            for group in result.scalars().all()
+        ]
 
     def _strip_markdown_links(self, text: Optional[str]) -> Optional[str]:
         """Strip markdown links, keeping just the link text.

@@ -18,6 +18,14 @@ router = APIRouter(prefix="/techniques", tags=["techniques"])
 
 
 # Response schemas
+class AttributedGroupResponse(BaseModel):
+    """Threat group attributed to a campaign."""
+
+    external_id: str
+    name: str
+    mitre_url: str
+
+
 class CampaignResponse(BaseModel):
     """Known campaign using this technique."""
 
@@ -25,6 +33,7 @@ class CampaignResponse(BaseModel):
     year: int
     description: str
     reference_url: Optional[str] = None
+    attributed_groups: list[AttributedGroupResponse] = []
 
 
 class ThreatContextResponse(BaseModel):
@@ -171,12 +180,23 @@ async def get_technique_detail(
         description = c.relationship_description or c.description or ""
 
         if year:  # Only include campaigns with a known year
+            # Map attributed groups
+            attributed_groups = [
+                AttributedGroupResponse(
+                    external_id=g.external_id,
+                    name=g.name,
+                    mitre_url=g.mitre_url,
+                )
+                for g in c.attributed_groups
+            ]
+
             recent_campaigns.append(
                 CampaignResponse(
                     name=c.name,
                     year=year,
                     description=description,
                     reference_url=c.mitre_url,
+                    attributed_groups=attributed_groups,
                 )
             )
 

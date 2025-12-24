@@ -213,6 +213,45 @@ class MitreTechniqueRelationship(Base):
         return f"<MitreTechniqueRelationship {self.technique_id} -> {self.related_type}:{self.related_id}>"
 
 
+class MitreCampaignAttribution(Base):
+    """Attribution relationship between a campaign and a threat group.
+
+    Represents MITRE's 'attributed-to' relationship: a campaign is
+    attributed to (conducted by) a threat group.
+    """
+
+    __tablename__ = "mitre_campaign_attributions"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    campaign_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("mitre_campaigns.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    group_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("mitre_threat_groups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    external_references: Mapped[list] = mapped_column(JSONB, default=list)
+    mitre_version: Mapped[str] = mapped_column(String(16), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    # Relationships
+    campaign = relationship("MitreCampaign", backref="attributions")
+    group = relationship("MitreThreatGroup", backref="campaign_attributions")
+
+    def __repr__(self) -> str:
+        return f"<MitreCampaignAttribution campaign={self.campaign_id} -> group={self.group_id}>"
+
+
 class MitreSyncHistory(Base):
     """History of MITRE data sync operations."""
 

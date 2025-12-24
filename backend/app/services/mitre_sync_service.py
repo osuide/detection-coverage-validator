@@ -23,6 +23,7 @@ from app.models.mitre_threat import (
     MitreCampaign,
     MitreSoftware,
     MitreTechniqueRelationship,
+    MitreCampaignAttribution,
     MitreSyncHistory,
     MitreDataVersion,
     SyncStatus,
@@ -57,6 +58,7 @@ class FullSyncStats:
     campaigns: SyncStats = field(default_factory=SyncStats)
     software: SyncStats = field(default_factory=SyncStats)
     relationships: SyncStats = field(default_factory=SyncStats)
+    attributions: SyncStats = field(default_factory=SyncStats)
 
     def to_dict(self) -> dict:
         """Convert to dictionary for JSON storage."""
@@ -77,6 +79,9 @@ class FullSyncStats:
             "relationships_updated": self.relationships.updated,
             "relationships_skipped": self.relationships.skipped,
             "relationships_errors": self.relationships.errors,
+            "attributions_added": self.attributions.added,
+            "attributions_skipped": self.attributions.skipped,
+            "attributions_errors": self.attributions.errors,
         }
 
 
@@ -138,6 +143,9 @@ class MitreSyncService:
             stats.campaigns = await self._sync_campaigns(attack_data, mitre_version)
             stats.software = await self._sync_software(attack_data, mitre_version)
             stats.relationships = await self._sync_relationships(
+                attack_data, mitre_version
+            )
+            stats.attributions = await self._sync_campaign_attributions(
                 attack_data, mitre_version
             )
 
@@ -580,6 +588,121 @@ class MitreSyncService:
 
         logger.info(
             "relationships_synced",
+            added=stats.added,
+            skipped=stats.skipped,
+            errors=stats.errors,
+        )
+
+        return stats
+
+    async def _sync_campaign_attributions(
+        self, attack_data: MitreAttackData, version: str
+    ) -> SyncStats:
+        """Sync campaign-to-group attribution relationships.
+
+        Uses the mitreattack-python API to get which threat groups are
+        attributed to which campaigns.
+        """
+        stats = SyncStats()
+
+        # Build lookup caches (STIX ID -> UUID)
+        campaign_cache = await self._build_entity_cache(MitreCampaign)
+        group_cache = await self._build_entity_cache(MitreThreatGroup)
+
+        logger.info(
+            "syncing_campaign_attributions",
+            campaigns=len(campaign_cache),
+            groups=len(group_cache),
+        )
+
+        # Clear existing attributions (full refresh)
+        await self.db.execute(delete(MitreCampaignAttribution))
+        await self.db.flush()
+
+        # Get all campaigns
+        campaigns = attack_data.get_campaigns()
+
+        for campaign in campaigns:
+            try:
+                campaign_stix_id = getattr(campaign, "id", None)
+                if not campaign_stix_id:
+                    continue
+
+                campaign_uuid = campaign_cache.get(campaign_stix_id)
+                if not campaign_uuid:
+                    stats.skipped += 1
+                    continue
+
+                # Get groups attributed to this campaign
+                attributed = attack_data.get_groups_attributed_to_campaign(
+                    campaign_stix_id
+                )
+
+                for entry in attributed:
+                    try:
+                        group = entry.get("object")
+                        relationships = entry.get("relationships", [])
+
+                        if not group:
+                            stats.skipped += 1
+                            continue
+
+                        group_stix_id = getattr(group, "id", None)
+                        if not group_stix_id:
+                            stats.skipped += 1
+                            continue
+
+                        group_uuid = group_cache.get(group_stix_id)
+                        if not group_uuid:
+                            stats.skipped += 1
+                            continue
+
+                        # Extract description and references from relationship
+                        description = None
+                        external_refs = []
+                        if relationships:
+                            first_rel = relationships[0]
+                            description = getattr(first_rel, "description", None)
+                            for ref in getattr(first_rel, "external_references", []):
+                                external_refs.append(
+                                    {
+                                        "source_name": ref.get("source_name"),
+                                        "url": ref.get("url"),
+                                        "description": ref.get("description"),
+                                    }
+                                )
+
+                        # Create attribution
+                        attribution = MitreCampaignAttribution(
+                            campaign_id=campaign_uuid,
+                            group_id=group_uuid,
+                            description=description,
+                            external_references=external_refs,
+                            mitre_version=version,
+                        )
+                        self.db.add(attribution)
+                        stats.added += 1
+
+                    except Exception as e:
+                        logger.warning(
+                            "attribution_entry_error",
+                            campaign_stix_id=campaign_stix_id,
+                            error=str(e),
+                        )
+                        stats.errors += 1
+
+            except Exception as e:
+                logger.warning(
+                    "campaign_attribution_error",
+                    campaign_id=getattr(campaign, "id", "unknown"),
+                    error=str(e),
+                )
+                stats.errors += 1
+
+        await self.db.flush()
+
+        logger.info(
+            "campaign_attributions_synced",
             added=stats.added,
             skipped=stats.skipped,
             errors=stats.errors,
