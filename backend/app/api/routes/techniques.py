@@ -147,8 +147,9 @@ async def get_technique_detail(
     known_threat_actors = [f"{g.name} ({g.external_id})" for g in threat_groups]
 
     # Fetch campaigns from authoritative MITRE data (not hardcoded)
+    # Limit to 4 most recent campaigns
     mitre_campaigns = await threat_service.get_campaigns_for_technique(
-        technique_id, limit=10
+        technique_id, limit=4
     )
 
     # Map CampaignInfo to CampaignResponse
