@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Optional
 
 import httpx
+import stix2
 import structlog
 from mitreattack.stix20 import MitreAttackData
 from sqlalchemy import select, delete
@@ -216,17 +217,35 @@ class MitreSyncService:
             return Path(temp_file.name)
 
     def _extract_version(self, attack_data: MitreAttackData) -> str:
-        """Extract MITRE ATT&CK version from STIX data."""
-        # The version is typically in the x-mitre-collection object
+        """Extract MITRE ATT&CK version from STIX data.
+
+        The ATT&CK version is stored in the x-mitre-collection object,
+        not in individual technique x_mitre_version attributes.
+        """
         try:
-            # Try to get version from any object's x_mitre_version
-            techniques = attack_data.get_techniques()
-            if techniques:
-                for tech in techniques:
-                    if hasattr(tech, "x_mitre_version"):
-                        return tech.x_mitre_version
+            # Access the underlying STIX memory store to find collection objects
+            if hasattr(attack_data, "src"):
+                # Query for x-mitre-collection objects
+                collections = attack_data.src.query(
+                    [stix2.Filter("type", "=", "x-mitre-collection")]
+                )
+                if collections:
+                    for collection in collections:
+                        if hasattr(collection, "x_mitre_version"):
+                            return collection.x_mitre_version
+
+            # Fallback: Try to get version from identity object's x_mitre_attack_spec_version
+            if hasattr(attack_data, "src"):
+                identities = attack_data.src.query(
+                    [stix2.Filter("type", "=", "identity")]
+                )
+                for identity in identities:
+                    if hasattr(identity, "x_mitre_attack_spec_version"):
+                        return identity.x_mitre_attack_spec_version
+
             return "unknown"
-        except Exception:
+        except Exception as e:
+            logger.warning("version_extraction_failed", error=str(e))
             return "unknown"
 
     async def _build_technique_cache(self) -> None:
