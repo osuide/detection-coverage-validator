@@ -643,7 +643,8 @@ class MitreSyncService:
                     continue
 
                 # Get groups attributed to this campaign
-                attributed = attack_data.get_groups_attributed_to_campaign(
+                # Note: method is "attributing" not "attributed"
+                attributed = attack_data.get_groups_attributing_to_campaign(
                     campaign_stix_id
                 )
 
