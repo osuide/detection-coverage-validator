@@ -145,9 +145,18 @@ class MitreSyncService:
             stats.relationships = await self._sync_relationships(
                 attack_data, mitre_version
             )
-            stats.attributions = await self._sync_campaign_attributions(
-                attack_data, mitre_version
-            )
+
+            # Attribution sync is optional - don't fail entire sync if it errors
+            try:
+                stats.attributions = await self._sync_campaign_attributions(
+                    attack_data, mitre_version
+                )
+            except Exception as e:
+                logger.warning(
+                    "campaign_attribution_sync_failed",
+                    error=str(e),
+                )
+                stats.attributions = SyncStats(errors=1)
 
             # Update sync history
             sync_history.status = SyncStatus.COMPLETED.value
