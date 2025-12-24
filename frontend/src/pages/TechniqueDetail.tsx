@@ -645,10 +645,10 @@ export default function TechniqueDetail() {
       {/* Detection Strategies */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-white flex items-center gap-2">
-            <FileCode className="w-5 h-5 text-green-400" />
+          <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+            <FileCode className="w-5 h-5 text-green-600" />
             Detection Strategies
-            <span className="text-sm font-normal text-gray-400">
+            <span className="text-sm font-normal text-gray-500">
               ({filteredStrategies.length} of {technique.detection_strategies.length})
             </span>
           </h2>
@@ -659,8 +659,8 @@ export default function TechniqueDetail() {
               onClick={() => setCloudFilter('all')}
               className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
                 cloudFilter === 'all'
-                  ? 'bg-gray-600 text-white'
-                  : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                  ? 'bg-gray-700 text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
             >
               All ({technique.detection_strategies.length})
@@ -670,7 +670,7 @@ export default function TechniqueDetail() {
               className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
                 cloudFilter === 'aws'
                   ? 'bg-orange-600 text-white'
-                  : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
             >
               AWS ({awsCount})
@@ -680,7 +680,7 @@ export default function TechniqueDetail() {
               className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
                 cloudFilter === 'gcp'
                   ? 'bg-blue-600 text-white'
-                  : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
             >
               GCP ({gcpCount})
@@ -699,13 +699,13 @@ export default function TechniqueDetail() {
         </div>
 
         {filteredStrategies.length === 0 && (
-          <div className="bg-gray-800 rounded-lg p-8 text-center">
-            <p className="text-gray-400">
+          <div className="bg-white border border-gray-200 rounded-lg p-8 text-center shadow-sm">
+            <p className="text-gray-600">
               No {cloudFilter.toUpperCase()} strategies available for this technique.
             </p>
             <button
               onClick={() => setCloudFilter('all')}
-              className="mt-2 text-blue-400 hover:text-blue-300"
+              className="mt-2 text-blue-600 hover:text-blue-700"
             >
               Show all strategies
             </button>
