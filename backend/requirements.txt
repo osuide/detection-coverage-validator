@@ -51,7 +51,7 @@ stripe==11.6.0
 
 # Utilities
 python-dotenv==1.1.0
-structlog==25.4.0
+structlog==25.5.0
 
 # Scheduling
 apscheduler==3.11.0
