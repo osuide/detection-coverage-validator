@@ -281,42 +281,55 @@ Resources:
                 "CloudTrail logs sent to CloudWatch Logs",
             ],
         ),
-        # Strategy 3: Off-Hours Access
+        # Strategy 3: Off-Hours Access (Cross-Reference to T1078)
         DetectionStrategy(
             strategy_id="t1078004-off-hours",
             name="Off-Hours Console Access Detection",
             description=(
-                "Alert when users access the AWS console outside of normal business hours."
+                "Alert when users access the AWS console outside of normal business hours. "
+                "CROSS-REFERENCE: For production-grade implementation with timezone-aware filtering, "
+                "allowlisting (on-call personnel, corporate VPN IPs), dynamic severity (HIGH for Root/no-MFA), "
+                "DLQ resilience, and SNS encryption, use the comprehensive implementation in T1078 "
+                "(t1078-aws-off-hours strategy). This simplified version provides basic EventBridge → SNS "
+                "routing without business hours filtering."
             ),
             detection_type=DetectionType.EVENTBRIDGE_RULE,
             aws_service="eventbridge",
             implementation=DetectionImplementation(
                 event_pattern={
                     "source": ["aws.signin"],
-                    "detail-type": ["AWS Console Sign In via CloudTrail"],
+                    "detail-type": [{"wildcard": "AWS Console Sign* via CloudTrail"}],
                     "detail": {
                         "eventName": ["ConsoleLogin"],
                         "responseElements": {"ConsoleLogin": ["Success"]},
                     },
                 },
                 cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
-Description: Off-hours console access detection
+Description: |
+  Basic off-hours console access detection (EventBridge to SNS only).
+  For production-grade implementation with timezone-aware Lambda filtering,
+  allowlisting, and dynamic severity, see T1078 template (t1078-aws-off-hours).
 
 Parameters:
   SNSTopicArn:
     Type: String
+    Description: SNS topic for alerts
 
 Resources:
+  # Basic EventBridge rule - alerts on ALL console logins
+  # For business hours filtering, use T1078 production template with Lambda
   OffHoursLoginRule:
     Type: AWS::Events::Rule
     Properties:
-      Name: T1078-OffHoursConsoleAccess
-      Description: Detect console logins outside business hours
+      Name: T1078004-ConsoleLoginAlert
+      Description: |
+        Alert on all console logins. For business hours filtering,
+        use T1078 production template with Lambda.
       EventPattern:
         source:
           - aws.signin
         detail-type:
-          - "AWS Console Sign In via CloudTrail"
+          - wildcard: "AWS Console Sign* via CloudTrail"
         detail:
           eventName:
             - ConsoleLogin
@@ -326,14 +339,59 @@ Resources:
       State: ENABLED
       Targets:
         - Id: SNSAlert
-          Arn: !Ref SNSTopicArn""",
+          Arn: !Ref SNSTopicArn
+
+Outputs:
+  Note:
+    Value: "For production use, deploy T1078 off-hours detection with Lambda filtering"
+""",
+                terraform_template="""# Basic console login alerting (no business hours filtering)
+# For production-grade implementation with timezone-aware Lambda,
+# allowlisting, and dynamic severity, see T1078 template.
+
+variable "sns_topic_arn" {
+  type        = string
+  description = "SNS topic ARN for alerts"
+}
+
+resource "aws_cloudwatch_event_rule" "console_login" {
+  name        = "T1078004-ConsoleLoginAlert"
+  description = "Alert on console logins. For business hours filtering, use T1078 template."
+
+  event_pattern = jsonencode({
+    source      = ["aws.signin"]
+    detail-type = [{ wildcard = "AWS Console Sign* via CloudTrail" }]
+    detail = {
+      eventName = ["ConsoleLogin"]
+      responseElements = {
+        ConsoleLogin = ["Success"]
+      }
+    }
+  })
+}
+
+resource "aws_cloudwatch_event_target" "sns" {
+  rule      = aws_cloudwatch_event_rule.console_login.name
+  target_id = "SNSAlert"
+  arn       = var.sns_topic_arn
+}
+
+# NOTE: This is a basic implementation that alerts on ALL console logins.
+# For production use with business hours filtering, use T1078 template which includes:
+# - Timezone-aware Lambda filtering
+# - Allowlisting for on-call personnel and VPN IPs
+# - Dynamic severity (HIGH for Root/no-MFA)
+# - DLQ for resilience
+# - SNS encryption""",
                 alert_severity="medium",
-                alert_title="Off-Hours Console Login",
+                alert_title="Console Login Detected",
                 alert_description_template=(
-                    "User {user} logged into AWS console at {timestamp}, "
-                    "which is outside normal business hours. Source IP: {source_ip}."
+                    "User {user} logged into AWS console at {timestamp}. "
+                    "Source IP: {source_ip}. For off-hours detection with timezone filtering, "
+                    "deploy T1078 production template."
                 ),
                 investigation_steps=[
+                    "NOTE: This basic detection alerts on ALL logins - use T1078 for off-hours filtering",
                     "Verify if the user has a legitimate reason to work outside hours",
                     "Check if the user is in a different timezone",
                     "Review all actions taken during the session",
@@ -342,16 +400,21 @@ Resources:
                 containment_actions=[
                     "Contact the user immediately via out-of-band communication",
                     "If unverified, disable the user's access",
+                    "Consider deploying T1078 off-hours detection for reduced false positives",
                 ],
             ),
-            estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
-            false_positive_tuning="Create exceptions for on-call personnel and users in different timezones",
-            detection_coverage="30% - catches credential use from different time zones",
-            evasion_considerations="Attackers aware of business hours may time their access accordingly",
-            implementation_effort=EffortLevel.MEDIUM,
-            implementation_time="1-2 hours",
-            estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled", "EventBridge configured"],
+            estimated_false_positive_rate=FalsePositiveRate.HIGH,
+            false_positive_tuning="This basic version alerts on ALL logins. For reduced false positives, deploy T1078 production template with allowlisting and business hours filtering.",
+            detection_coverage="20% - alerts on all logins without filtering. Use T1078 for 70% coverage with timezone awareness.",
+            evasion_considerations="Attackers aware of business hours may time their access accordingly. T1078 template includes defence-in-depth recommendations.",
+            implementation_effort=EffortLevel.LOW,
+            implementation_time="30 minutes",
+            estimated_monthly_cost="$1-3",
+            prerequisites=[
+                "CloudTrail enabled",
+                "EventBridge configured",
+                "For production, use T1078 template",
+            ],
         ),
         # Strategy 4: First-Time API Caller
         DetectionStrategy(

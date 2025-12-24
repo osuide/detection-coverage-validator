@@ -377,13 +377,17 @@ resource "aws_cloudwatch_metric_alarm" "impossible_travel" {
                 "CloudTrail logs sent to CloudWatch Logs",
             ],
         ),
-        # Strategy 3: AWS Off-Hours Access
+        # Strategy 3: AWS Off-Hours Access (Production-Grade)
         DetectionStrategy(
             strategy_id="t1078-aws-off-hours",
-            name="Off-Hours Access Detection",
+            name="Off-Hours Console Access Detection (Production-Grade)",
             description=(
-                "Alert when users access AWS console or make sensitive API calls outside of "
-                "normal business hours, which may indicate compromised credentials."
+                "Detect AWS console logins outside configurable business hours using timezone-aware "
+                "Lambda filtering. Features: configurable business hours and timezone (default Europe/London), "
+                "allowlisting for on-call personnel and corporate VPN IPs, dynamic severity (HIGH for Root "
+                "or no-MFA, MEDIUM otherwise), structured JSON alerts with full context, DLQ for resilience, "
+                "and SNS encryption. IMPORTANT: Deploy in us-east-1 plus any regional sign-in endpoints, as "
+                "ConsoleLogin events may appear in different regions. Requires CloudTrail management events enabled."
             ),
             detection_type=DetectionType.EVENTBRIDGE_RULE,
             aws_service="eventbridge",
@@ -391,32 +395,212 @@ resource "aws_cloudwatch_metric_alarm" "impossible_travel" {
             implementation=DetectionImplementation(
                 event_pattern={
                     "source": ["aws.signin"],
-                    "detail-type": ["AWS Console Sign In via CloudTrail"],
+                    "detail-type": [{"wildcard": "AWS Console Sign* via CloudTrail"}],
                     "detail": {
                         "eventName": ["ConsoleLogin"],
                         "responseElements": {"ConsoleLogin": ["Success"]},
                     },
                 },
                 cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
-Description: Off-hours console access detection for T1078
+Description: |
+  Production-grade off-hours console access detection for T1078.
+  Features: timezone-aware filtering, allowlisting, dynamic severity, DLQ, SNS encryption.
+  IMPORTANT: Deploy in us-east-1 plus regional sign-in endpoints for full coverage.
 
 Parameters:
-  SNSTopicArn:
+  AlertEmail:
     Type: String
-    Description: SNS topic for alerts
+    Description: Email for SNS alerts (requires subscription confirmation)
+  Timezone:
+    Type: String
+    Default: Europe/London
+    Description: IANA timezone for business hours evaluation
+  BusinessStartHour:
+    Type: Number
+    Default: 8
+    Description: Business start hour (0-23) in configured timezone
+  BusinessEndHour:
+    Type: Number
+    Default: 18
+    Description: Business end hour (0-23) in configured timezone
+  BusinessDays:
+    Type: String
+    Default: "0,1,2,3,4"
+    Description: Business days as Python weekday numbers (Mon=0...Sun=6)
+  AllowlistedPrincipalArns:
+    Type: String
+    Default: ""
+    Description: Comma-separated principal ARNs to suppress (e.g., break-glass admin)
+  AllowlistedSourceCidrs:
+    Type: String
+    Default: ""
+    Description: Comma-separated source IP CIDRs to suppress (e.g., corporate VPN)
 
 Resources:
-  # Step 1: EventBridge rule for console logins
-  OffHoursLoginRule:
+  # Step 1: Encrypted SNS topic for alerts
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: t1078-offhours-alerts
+      KmsMasterKeyId: alias/aws/sns
+
+  AlertSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref AlertTopic
+      Protocol: email
+      Endpoint: !Ref AlertEmail
+
+  # Step 2: Lambda execution role with least privilege
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: t1078-offhours-lambda-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: LambdaPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: '*'
+              - Effect: Allow
+                Action: sns:Publish
+                Resource: !Ref AlertTopic
+
+  # Step 3: Lambda function for timezone-aware filtering
+  OffHoursFilterFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: t1078-offhours-filter
+      Runtime: python3.12
+      Handler: index.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 10
+      MemorySize: 256
+      Environment:
+        Variables:
+          SNS_TOPIC_ARN: !Ref AlertTopic
+          TZ: !Ref Timezone
+          BUSINESS_START_HOUR: !Ref BusinessStartHour
+          BUSINESS_END_HOUR: !Ref BusinessEndHour
+          BUSINESS_DAYS: !Ref BusinessDays
+          ALLOWLIST_ARNS: !Ref AllowlistedPrincipalArns
+          ALLOWLIST_SOURCE_CIDRS: !Ref AllowlistedSourceCidrs
+          ACCOUNT_ID: !Ref AWS::AccountId
+          DEPLOY_REGION: !Ref AWS::Region
+      Code:
+        ZipFile: |
+          import json, os, ipaddress, boto3
+          from datetime import datetime, timezone
+          from zoneinfo import ZoneInfo
+
+          sns = boto3.client("sns")
+
+          def _env_list(name):
+              raw = os.getenv(name, "").strip()
+              return [x.strip() for x in raw.split(",") if x.strip()] if raw else []
+
+          def _parse_int(name, default):
+              try: return int(os.getenv(name, str(default)))
+              except: return default
+
+          def _parse_dt(s):
+              if not s: return datetime.now(timezone.utc)
+              if s.endswith("Z"): s = s[:-1] + "+00:00"
+              return datetime.fromisoformat(s).astimezone(timezone.utc)
+
+          def _ip_in_allowlist(ip_str, cidrs):
+              if not ip_str or not cidrs: return False
+              try: ip = ipaddress.ip_address(ip_str)
+              except: return False
+              for cidr in cidrs:
+                  try:
+                      if ip in ipaddress.ip_network(cidr, strict=False): return True
+                  except: continue
+              return False
+
+          def lambda_handler(event, context):
+              tz = ZoneInfo(os.getenv("TZ", "Europe/London"))
+              start_hour = _parse_int("BUSINESS_START_HOUR", 8)
+              end_hour = _parse_int("BUSINESS_END_HOUR", 18)
+              business_days = set(int(x) for x in _env_list("BUSINESS_DAYS") or ["0","1","2","3","4"])
+              allow_arns = set(_env_list("ALLOWLIST_ARNS"))
+              allow_cidrs = _env_list("ALLOWLIST_SOURCE_CIDRS")
+
+              detail = event.get("detail", {}) or {}
+              principal_arn = (detail.get("userIdentity") or {}).get("arn", "")
+              principal_type = (detail.get("userIdentity") or {}).get("type", "")
+              username = (detail.get("userIdentity") or {}).get("userName", "") or principal_arn or "unknown"
+              source_ip = detail.get("sourceIPAddress", "")
+              user_agent = detail.get("userAgent", "")
+              mfa_used = (detail.get("additionalEventData") or {}).get("MFAUsed", "Unknown")
+
+              event_time_utc = _parse_dt(detail.get("eventTime") or event.get("time") or "")
+              event_time_local = event_time_utc.astimezone(tz)
+              weekday = event_time_local.weekday()
+              in_business_day = weekday in business_days
+              in_business_hours = (start_hour <= event_time_local.hour < end_hour)
+
+              # Suppress allowlisted principals/IPs
+              if principal_arn and principal_arn in allow_arns:
+                  return {"decision": "suppressed_allowlist_principal"}
+              if _ip_in_allowlist(source_ip, allow_cidrs):
+                  return {"decision": "suppressed_allowlist_ip"}
+              if in_business_day and in_business_hours:
+                  return {"decision": "suppressed_in_hours"}
+
+              reason = "weekend" if not in_business_day else "outside_business_hours"
+              severity = "HIGH" if (principal_type == "Root" or str(mfa_used).lower() == "no") else "MEDIUM"
+
+              payload = {
+                  "control": "T1078-OffHoursConsoleAccess", "decision": "alert", "severity": severity,
+                  "reason": reason, "timezone": str(tz),
+                  "event_time_utc": event_time_utc.isoformat(), "event_time_local": event_time_local.isoformat(),
+                  "principal": {"arn": principal_arn, "type": principal_type, "username": username, "mfa_used": mfa_used},
+                  "network": {"source_ip": source_ip, "user_agent": user_agent},
+                  "cloudtrail": {"eventName": detail.get("eventName",""), "eventID": detail.get("eventID","")},
+                  "account": os.getenv("ACCOUNT_ID",""), "deploy_region": os.getenv("DEPLOY_REGION","")
+              }
+              subject = f"Off-hours AWS Console login [{severity}] - {username[:40]}"[:100]
+              sns.publish(TopicArn=os.environ["SNS_TOPIC_ARN"], Subject=subject, Message=json.dumps(payload, indent=2))
+              return {"decision": "alerted", "severity": severity}
+
+  # Step 4: Log retention
+  LambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${OffHoursFilterFunction}
+      RetentionInDays: 30
+
+  # Step 5: DLQ for failed events
+  EventDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: t1078-offhours-dlq
+      MessageRetentionPeriod: 1209600
+
+  # Step 6: EventBridge rule
+  ConsoleLoginRule:
     Type: AWS::Events::Rule
     Properties:
-      Name: T1078-OffHoursConsoleAccess
-      Description: Detect console logins outside business hours
+      Name: t1078-offhours-console-login
+      Description: Route ConsoleLogin success events to Lambda for off-hours filtering
       EventPattern:
         source:
           - aws.signin
         detail-type:
-          - "AWS Console Sign In via CloudTrail"
+          - wildcard: "AWS Console Sign* via CloudTrail"
         detail:
           eventName:
             - ConsoleLogin
@@ -425,74 +609,304 @@ Resources:
               - Success
       State: ENABLED
       Targets:
-        - Id: SNSAlert
-          Arn: !Ref SNSTopicArn
+        - Id: OffHoursFilterLambda
+          Arn: !GetAtt OffHoursFilterFunction.Arn
+          RetryPolicy:
+            MaximumEventAgeInSeconds: 3600
+            MaximumRetryAttempts: 8
+          DeadLetterConfig:
+            Arn: !GetAtt EventDLQ.Arn
 
-  # Step 2: Lambda function to check if login is outside business hours
-  OffHoursCheckFunction:
-    Type: AWS::Lambda::Function
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
     Properties:
-      Runtime: python3.11
-      Handler: index.handler
-      Role: !GetAtt OffHoursCheckRole.Arn
-      Code:
-        ZipFile: |
-          import json
-          import boto3
-          from datetime import datetime
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref OffHoursFilterFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt ConsoleLoginRule.Arn
 
-          def handler(event, context):
-              # Parse login time (customize hours for your organisation)
-              login_time = datetime.fromisoformat(event['detail']['eventTime'].replace('Z', '+00:00'))
-              hour = login_time.hour
-              day_of_week = login_time.weekday()
-
-              # Check if outside business hours (M-F 8am-6pm UTC)
-              if day_of_week >= 5 or hour < 8 or hour >= 18:
-                  sns = boto3.client('sns')
-                  sns.publish(
-                      TopicArn=event['detail']['responseElements']['ConsoleLogin'],
-                      Subject='Off-Hours AWS Login',
-                      Message=f"User {event['detail']['userIdentity']['arn']} logged in at {login_time}"
-                  )
-
-              return {'statusCode': 200}
-
-  OffHoursCheckRole:
-    Type: AWS::IAM::Role
+  # Step 7: SNS topic policy (least privilege)
+  SNSTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
     Properties:
-      AssumeRolePolicyDocument:
+      Topics:
+        - !Ref AlertTopic
+      PolicyDocument:
         Version: '2012-10-17'
         Statement:
-          - Effect: Allow
+          - Sid: AllowLambdaPublishOnly
+            Effect: Allow
             Principal:
-              Service: lambda.amazonaws.com
-            Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-      Policies:
-        - PolicyName: SNSPublish
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action: sns:Publish
-                Resource: !Ref SNSTopicArn""",
-                terraform_template="""# AWS Off-hours access detection for T1078
+              AWS: !GetAtt LambdaExecutionRole.Arn
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
 
-variable "sns_topic_arn" {
+Outputs:
+  AlertTopicArn:
+    Value: !Ref AlertTopic
+  LambdaFunctionName:
+    Value: !Ref OffHoursFilterFunction
+  DLQUrl:
+    Value: !Ref EventDLQ
+  OperationalNotes:
+    Value: |
+      1. Deploy in us-east-1 plus regional sign-in endpoints for full coverage
+      2. Ensure CloudTrail logs management events
+      3. This covers console sign-ins; add separate controls for programmatic access
+""",
+                terraform_template="""# T1078 Off-Hours Console Access Detection (Production-Grade)
+# Features: timezone-aware filtering, allowlisting, dynamic severity, DLQ, SNS encryption
+# IMPORTANT: Deploy in us-east-1 plus regional sign-in endpoints for full coverage
+
+variable "name_prefix" {
   type        = string
-  description = "SNS topic ARN for alerts"
+  default     = "t1078-offhours"
+  description = "Prefix for resource names"
 }
 
-# Step 1: EventBridge rule for console logins
-resource "aws_cloudwatch_event_rule" "off_hours_login" {
-  name        = "T1078-OffHoursConsoleAccess"
-  description = "Detect console logins outside business hours"
+variable "alert_email" {
+  type        = string
+  description = "Email for SNS alerts (requires subscription confirmation)"
+}
+
+variable "timezone" {
+  type        = string
+  default     = "Europe/London"
+  description = "IANA timezone for business-hours evaluation"
+}
+
+variable "business_start_hour" {
+  type        = number
+  default     = 8
+  description = "Business start hour (0-23) in configured timezone"
+}
+
+variable "business_end_hour" {
+  type        = number
+  default     = 18
+  description = "Business end hour (0-23) in configured timezone"
+}
+
+variable "business_days" {
+  type        = list(number)
+  default     = [0, 1, 2, 3, 4]
+  description = "Business days as Python weekday numbers (Mon=0...Sun=6)"
+}
+
+variable "allowlisted_principal_arns" {
+  type        = list(string)
+  default     = []
+  description = "Principal ARNs to suppress (e.g., break-glass admin role)"
+}
+
+variable "allowlisted_source_cidrs" {
+  type        = list(string)
+  default     = []
+  description = "Source IP CIDRs to suppress (e.g., corporate VPN egress)"
+}
+
+variable "sns_kms_key_id" {
+  type        = string
+  default     = "alias/aws/sns"
+  description = "KMS key for SNS topic encryption"
+}
+
+variable "lambda_log_retention_days" {
+  type    = number
+  default = 30
+}
+
+data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
+
+# Step 1: Encrypted SNS topic for alerts
+resource "aws_sns_topic" "alerts" {
+  name              = "${var.name_prefix}-alerts"
+  kms_master_key_id = var.sns_kms_key_id
+}
+
+resource "aws_sns_topic_subscription" "email" {
+  topic_arn = aws_sns_topic.alerts.arn
+  protocol  = "email"
+  endpoint  = var.alert_email
+}
+
+# Step 2: Lambda execution role with least privilege
+resource "aws_iam_role" "lambda_exec" {
+  name = "${var.name_prefix}-lambda-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "lambda.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_policy" "lambda_policy" {
+  name = "${var.name_prefix}-lambda-policy"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
+        Resource = "*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["sns:Publish"]
+        Resource = aws_sns_topic.alerts.arn
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_attach" {
+  role       = aws_iam_role.lambda_exec.name
+  policy_arn = aws_iam_policy.lambda_policy.arn
+}
+
+# Step 3: Lambda function for timezone-aware filtering
+# NOTE: In production, use aws_lambda_function with filename and source_code_hash
+# pointing to a zipped handler.py file. This inline example is for demonstration.
+resource "aws_lambda_function" "offhours_filter" {
+  function_name = "${var.name_prefix}-filter"
+  role          = aws_iam_role.lambda_exec.arn
+  runtime       = "python3.12"
+  handler       = "index.lambda_handler"
+  timeout       = 10
+  memory_size   = 256
+
+  # For production, use: filename = "lambda.zip", source_code_hash = filebase64sha256("lambda.zip")
+  # and deploy handler.py separately. This inline code is for template illustration.
+  filename         = data.archive_file.lambda_zip.output_path
+  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
+
+  environment {
+    variables = {
+      SNS_TOPIC_ARN          = aws_sns_topic.alerts.arn
+      TZ                     = var.timezone
+      BUSINESS_START_HOUR    = tostring(var.business_start_hour)
+      BUSINESS_END_HOUR      = tostring(var.business_end_hour)
+      BUSINESS_DAYS          = join(",", [for d in var.business_days : tostring(d)])
+      ALLOWLIST_ARNS         = join(",", var.allowlisted_principal_arns)
+      ALLOWLIST_SOURCE_CIDRS = join(",", var.allowlisted_source_cidrs)
+      ACCOUNT_ID             = data.aws_caller_identity.current.account_id
+      DEPLOY_REGION          = data.aws_region.current.name
+    }
+  }
+}
+
+# Lambda code - create lambda/handler.py with the following content:
+# (See CloudFormation template above for full Lambda code)
+data "archive_file" "lambda_zip" {
+  type        = "zip"
+  output_path = "${path.module}/lambda.zip"
+
+  source {
+    content  = <<-PYTHON
+import json, os, ipaddress, boto3
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
+
+sns = boto3.client("sns")
+
+def _env_list(name):
+    raw = os.getenv(name, "").strip()
+    return [x.strip() for x in raw.split(",") if x.strip()] if raw else []
+
+def _parse_int(name, default):
+    try: return int(os.getenv(name, str(default)))
+    except: return default
+
+def _parse_dt(s):
+    if not s: return datetime.now(timezone.utc)
+    if s.endswith("Z"): s = s[:-1] + "+00:00"
+    return datetime.fromisoformat(s).astimezone(timezone.utc)
+
+def _ip_in_allowlist(ip_str, cidrs):
+    if not ip_str or not cidrs: return False
+    try: ip = ipaddress.ip_address(ip_str)
+    except: return False
+    for cidr in cidrs:
+        try:
+            if ip in ipaddress.ip_network(cidr, strict=False): return True
+        except: continue
+    return False
+
+def lambda_handler(event, context):
+    tz = ZoneInfo(os.getenv("TZ", "Europe/London"))
+    start_hour = _parse_int("BUSINESS_START_HOUR", 8)
+    end_hour = _parse_int("BUSINESS_END_HOUR", 18)
+    business_days = set(int(x) for x in _env_list("BUSINESS_DAYS") or ["0","1","2","3","4"])
+    allow_arns = set(_env_list("ALLOWLIST_ARNS"))
+    allow_cidrs = _env_list("ALLOWLIST_SOURCE_CIDRS")
+
+    detail = event.get("detail", {}) or {}
+    principal_arn = (detail.get("userIdentity") or {}).get("arn", "")
+    principal_type = (detail.get("userIdentity") or {}).get("type", "")
+    username = (detail.get("userIdentity") or {}).get("userName", "") or principal_arn or "unknown"
+    source_ip = detail.get("sourceIPAddress", "")
+    user_agent = detail.get("userAgent", "")
+    mfa_used = (detail.get("additionalEventData") or {}).get("MFAUsed", "Unknown")
+
+    event_time_utc = _parse_dt(detail.get("eventTime") or event.get("time") or "")
+    event_time_local = event_time_utc.astimezone(tz)
+    weekday = event_time_local.weekday()
+    in_business_day = weekday in business_days
+    in_business_hours = (start_hour <= event_time_local.hour < end_hour)
+
+    if principal_arn and principal_arn in allow_arns:
+        return {"decision": "suppressed_allowlist_principal"}
+    if _ip_in_allowlist(source_ip, allow_cidrs):
+        return {"decision": "suppressed_allowlist_ip"}
+    if in_business_day and in_business_hours:
+        return {"decision": "suppressed_in_hours"}
+
+    reason = "weekend" if not in_business_day else "outside_business_hours"
+    severity = "HIGH" if (principal_type == "Root" or str(mfa_used).lower() == "no") else "MEDIUM"
+
+    payload = {
+        "control": "T1078-OffHoursConsoleAccess", "decision": "alert", "severity": severity,
+        "reason": reason, "timezone": str(tz),
+        "event_time_utc": event_time_utc.isoformat(), "event_time_local": event_time_local.isoformat(),
+        "principal": {"arn": principal_arn, "type": principal_type, "username": username, "mfa_used": mfa_used},
+        "network": {"source_ip": source_ip, "user_agent": user_agent},
+        "cloudtrail": {"eventName": detail.get("eventName",""), "eventID": detail.get("eventID","")},
+        "account": os.getenv("ACCOUNT_ID",""), "deploy_region": os.getenv("DEPLOY_REGION","")
+    }
+    subject = f"Off-hours AWS Console login [{severity}] - {username[:40]}"[:100]
+    sns.publish(TopicArn=os.environ["SNS_TOPIC_ARN"], Subject=subject, Message=json.dumps(payload, indent=2))
+    return {"decision": "alerted", "severity": severity}
+PYTHON
+    filename = "index.py"
+  }
+}
+
+# Step 4: Log retention
+resource "aws_cloudwatch_log_group" "lambda_logs" {
+  name              = "/aws/lambda/${aws_lambda_function.offhours_filter.function_name}"
+  retention_in_days = var.lambda_log_retention_days
+}
+
+# Step 5: DLQ for failed events
+resource "aws_sqs_queue" "event_dlq" {
+  name                      = "${var.name_prefix}-dlq"
+  message_retention_seconds = 1209600 # 14 days
+}
+
+# Step 6: EventBridge rule
+resource "aws_cloudwatch_event_rule" "console_login_success" {
+  name        = "${var.name_prefix}-console-login-success"
+  description = "Route ConsoleLogin success to Lambda for off-hours filtering"
 
   event_pattern = jsonencode({
     source      = ["aws.signin"]
-    detail-type = ["AWS Console Sign In via CloudTrail"]
+    detail-type = [{ wildcard = "AWS Console Sign* via CloudTrail" }]
     detail = {
       eventName = ["ConsoleLogin"]
       responseElements = {
@@ -502,42 +916,107 @@ resource "aws_cloudwatch_event_rule" "off_hours_login" {
   })
 }
 
-# Step 2: Route to SNS (note: add Lambda for time filtering in production)
-resource "aws_cloudwatch_event_target" "sns" {
-  rule      = aws_cloudwatch_event_rule.off_hours_login.name
-  target_id = "SNSAlert"
-  arn       = var.sns_topic_arn
-}""",
+resource "aws_cloudwatch_event_target" "lambda_target" {
+  rule      = aws_cloudwatch_event_rule.console_login_success.name
+  target_id = "OffHoursFilterLambda"
+  arn       = aws_lambda_function.offhours_filter.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.event_dlq.arn
+  }
+}
+
+resource "aws_lambda_permission" "allow_eventbridge_invoke" {
+  statement_id  = "AllowExecutionFromEventBridge"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.offhours_filter.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.console_login_success.arn
+}
+
+# Step 7: SNS topic policy (least privilege)
+resource "aws_sns_topic_policy" "restrict_publish" {
+  arn = aws_sns_topic.alerts.arn
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowLambdaPublishOnly"
+      Effect    = "Allow"
+      Principal = { AWS = aws_iam_role.lambda_exec.arn }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+    }]
+  })
+}
+
+output "sns_topic_arn" {
+  value = aws_sns_topic.alerts.arn
+}
+
+output "event_rule_name" {
+  value = aws_cloudwatch_event_rule.console_login_success.name
+}
+
+output "lambda_function_name" {
+  value = aws_lambda_function.offhours_filter.function_name
+}
+
+output "dlq_url" {
+  value = aws_sqs_queue.event_dlq.url
+}
+
+# OPERATIONAL NOTES:
+# 1. Deploy in us-east-1 plus regional sign-in endpoints for full coverage
+# 2. CloudTrail must log management events for EventBridge to receive sign-in events
+# 3. This covers console sign-ins; add separate controls for programmatic access
+#    (AssumeRole, GetFederationToken, access key usage anomalies)""",
                 alert_severity="medium",
-                alert_title="Off-Hours Console Login",
+                alert_title="Off-Hours Console Login (Production Detection)",
                 alert_description_template=(
-                    "User {user} logged into AWS console at {timestamp}, "
-                    "which is outside normal business hours. Source IP: {source_ip}. "
-                    "User agent: {user_agent}."
+                    "[{severity}] User {principal.username} logged into AWS console at {event_time_local} "
+                    "({reason}). Source IP: {network.source_ip}. MFA used: {principal.mfa_used}. "
+                    "Account: {account}. Region: {deploy_region}."
                 ),
                 investigation_steps=[
-                    "Verify if the user has a legitimate reason to work outside hours (on-call, different timezone)",
-                    "Check if the user is in a different geographical location",
-                    "Review all actions taken during the session",
-                    "Compare with user's historical login patterns",
+                    "Check the severity level - HIGH indicates Root account or no MFA was used",
+                    "Verify if the user is allowlisted (on-call personnel, different timezone)",
+                    "Review the source IP - check if it's from a known corporate network",
+                    "Check MFA status - no MFA significantly increases compromise likelihood",
+                    "Review all actions taken during the session via CloudTrail",
+                    "Compare with user's historical login patterns and time-of-day behaviour",
                     "Check for sensitive API calls during the off-hours session",
-                    "Verify MFA was used for authentication",
+                    "For Root logins, immediately verify with account owner",
+                    "Check DLQ for any failed event processing that may indicate issues",
                 ],
                 containment_actions=[
-                    "Contact the user immediately via out-of-band communication (phone, corporate messaging)",
+                    "For HIGH severity (Root/no-MFA): Immediately disable access and investigate",
+                    "Contact the user via out-of-band communication (phone, corporate messaging)",
                     "If unverified, disable the user's access and invalidate sessions",
                     "Review and revert any changes made during the session",
-                    "Implement time-based access controls via IAM policies",
+                    "Add legitimate users to allowlist to reduce future false positives",
+                    "For persistent issues, implement time-based IAM policies",
+                    "Review corporate VPN egress IPs and add to allowlist if appropriate",
                 ],
             ),
-            estimated_false_positive_rate=FalsePositiveRate.HIGH,
-            false_positive_tuning="Create exceptions for on-call personnel, users in different timezones, and during incident response; adjust business hours definition",
-            detection_coverage="35% - catches credential use from different timezones but misses same-timezone attacks",
-            evasion_considerations="Attackers aware of business hours may time their access accordingly; VPNs can mask timezone indicators",
+            estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
+            false_positive_tuning="Configure allowlisted_principal_arns for on-call personnel and break-glass admins; add corporate VPN CIDRs to allowlisted_source_cidrs; adjust timezone and business hours to match your organisation",
+            detection_coverage="70% - catches off-hours credential use with timezone awareness; allowlisting reduces false positives; dynamic severity prioritises high-risk logins",
+            evasion_considerations="Attackers may time access to business hours in target timezone; use VPNs from allowlisted CIDRs; or compromise allowlisted accounts. Combine with impossible travel and first-time API detection for defence in depth.",
             implementation_effort=EffortLevel.MEDIUM,
-            implementation_time="1-2 hours",
-            estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled", "EventBridge configured"],
+            implementation_time="2-3 hours",
+            estimated_monthly_cost="$5-15",
+            prerequisites=[
+                "CloudTrail enabled with management events",
+                "EventBridge configured",
+                "Deploy in us-east-1 plus any regional sign-in endpoints",
+                "Lambda runtime Python 3.12 with zoneinfo support",
+            ],
         ),
         # Strategy 4: AWS First-Time API Caller
         DetectionStrategy(
