@@ -5,8 +5,8 @@ import hashlib
 import base64
 import secrets
 from typing import Optional, Dict, Any, Tuple
-from datetime import datetime, timezone
-from jose import jwt, jwk, JWTError
+import jwt
+from jwt import PyJWKClient, ExpiredSignatureError, InvalidTokenError
 import structlog
 
 from app.core.config import get_settings
@@ -41,8 +41,7 @@ class CognitoService:
         self.user_pool_id = settings.cognito_user_pool_id
         self.client_id = settings.cognito_client_id
         self.domain = settings.cognito_domain
-        self._jwks: Optional[Dict] = None
-        self._jwks_fetched_at: Optional[datetime] = None
+        self._jwk_client: Optional[PyJWKClient] = None
 
     @property
     def issuer(self) -> str:
@@ -77,35 +76,14 @@ class CognitoService:
         """Get the userinfo URL."""
         return f"{self.base_url}/oauth2/userInfo"
 
-    async def get_jwks(self) -> Dict:
-        """Fetch and cache JWKS from Cognito."""
-        # Cache JWKS for 1 hour
-        if self._jwks and self._jwks_fetched_at:
-            age = (datetime.now(timezone.utc) - self._jwks_fetched_at).total_seconds()
-            if age < 3600:
-                return self._jwks
-
-        async with httpx.AsyncClient() as client:
-            response = await client.get(self.jwks_url)
-            response.raise_for_status()
-            self._jwks = response.json()
-            self._jwks_fetched_at = datetime.now(timezone.utc)
-            logger.info("jwks_fetched", url=self.jwks_url)
-            return self._jwks
-
-    def _get_signing_key(self, token: str, jwks: Dict) -> Optional[str]:
-        """Get the signing key for a token from JWKS."""
-        try:
-            headers = jwt.get_unverified_headers(token)
-            kid = headers.get("kid")
-
-            for key in jwks.get("keys", []):
-                if key.get("kid") == kid:
-                    return jwk.construct(key)
-            return None
-        except Exception as e:
-            logger.error("get_signing_key_failed", error=str(e))
-            return None
+    def _get_jwk_client(self) -> PyJWKClient:
+        """Get or create the PyJWKClient with caching."""
+        if self._jwk_client is None:
+            self._jwk_client = PyJWKClient(
+                self.jwks_url, cache_keys=True, lifespan=3600
+            )
+            logger.info("jwk_client_initialised", url=self.jwks_url)
+        return self._jwk_client
 
     async def verify_token(
         self, token: str, access_token: Optional[str] = None
@@ -114,37 +92,29 @@ class CognitoService:
 
         Args:
             token: The ID token to verify
-            access_token: Optional access token for at_hash validation
+            access_token: Optional access token (not used with PyJWT, kept for API compatibility)
         """
         try:
-            jwks = await self.get_jwks()
-            signing_key = self._get_signing_key(token, jwks)
+            # Get the signing key from JWKS
+            jwk_client = self._get_jwk_client()
+            signing_key = jwk_client.get_signing_key_from_jwt(token)
 
-            if not signing_key:
-                logger.warning("signing_key_not_found")
-                return None
-
-            # Verify the token - pass access_token for at_hash validation
+            # Verify and decode the token
             claims = jwt.decode(
                 token,
-                signing_key,
+                signing_key.key,
                 algorithms=["RS256"],
                 audience=self.client_id,
                 issuer=self.issuer,
-                access_token=access_token,
+                options={"require": ["exp", "iss", "aud"]},
             )
-
-            # Check token expiration
-            exp = claims.get("exp")
-            if exp and datetime.fromtimestamp(exp, tz=timezone.utc) < datetime.now(
-                timezone.utc
-            ):
-                logger.warning("token_expired")
-                return None
 
             return claims
 
-        except JWTError as e:
+        except ExpiredSignatureError:
+            logger.warning("token_expired")
+            return None
+        except InvalidTokenError as e:
             logger.warning("jwt_verification_failed", error=str(e))
             return None
         except Exception as e:
