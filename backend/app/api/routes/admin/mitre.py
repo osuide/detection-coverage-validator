@@ -156,22 +156,31 @@ async def get_sync_schedule(
     """
     settings_service = PlatformSettingsService(db)
 
-    # Read schedule settings
-    enabled_str = await settings_service.get_setting_value(
-        SettingKeys.MITRE_SYNC_ENABLED
-    )
-    cron_expression = await settings_service.get_setting_value(
-        SettingKeys.MITRE_SYNC_CRON
-    )
+    # Read schedule settings with error handling
+    try:
+        enabled_str = await settings_service.get_setting_value(
+            SettingKeys.MITRE_SYNC_ENABLED
+        )
+        cron_expression = await settings_service.get_setting_value(
+            SettingKeys.MITRE_SYNC_CRON
+        )
+    except Exception:
+        # Settings don't exist yet, return defaults
+        enabled_str = None
+        cron_expression = None
 
     enabled = enabled_str is not None and enabled_str.lower() in ("true", "1", "yes")
 
     # Get next run time from scheduler if enabled
     next_run_at = None
     if enabled:
-        job_status = scheduler_service.get_mitre_sync_job_status()
-        if job_status and job_status.get("next_run_time"):
-            next_run_at = job_status["next_run_time"]
+        try:
+            job_status = scheduler_service.get_mitre_sync_job_status()
+            if job_status and job_status.get("next_run_time"):
+                next_run_at = job_status["next_run_time"]
+        except Exception:
+            # Scheduler might not be running, ignore
+            pass
 
     return MitreScheduleResponse(
         enabled=enabled,
@@ -230,14 +239,18 @@ async def update_sync_schedule(
             description="Cron expression for MITRE sync schedule",
         )
 
-    # Update scheduler job
+    # Update scheduler job (best effort - scheduler might not be running)
     next_run_at = None
-    if body.enabled and body.cron_expression:
-        next_run_at = await scheduler_service.update_mitre_sync_schedule(
-            body.cron_expression
-        )
-    else:
-        await scheduler_service.remove_mitre_sync_schedule()
+    try:
+        if body.enabled and body.cron_expression:
+            next_run_at = await scheduler_service.update_mitre_sync_schedule(
+                body.cron_expression
+            )
+        else:
+            await scheduler_service.remove_mitre_sync_schedule()
+    except Exception:
+        # Scheduler might not be running in all environments
+        pass
 
     return MitreScheduleResponse(
         enabled=body.enabled,
