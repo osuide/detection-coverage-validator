@@ -1,7 +1,7 @@
 """Add fraud prevention tables and fields.
 
 Revision ID: 033_fraud_prevention
-Revises: 032_add_mitre_threat_intelligence
+Revises: 032_mitre_threat_intel
 Create Date: 2025-12-24
 
 Adds fraud prevention infrastructure:
@@ -20,7 +20,7 @@ from sqlalchemy.dialects.postgresql import UUID as PGUUID
 
 # revision identifiers, used by Alembic.
 revision = "033_fraud_prevention"
-down_revision = "032_add_mitre_threat_intelligence"
+down_revision = "032_mitre_threat_intel"
 branch_labels = None
 depends_on = None
 
