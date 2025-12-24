@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import Optional
 
 import httpx
-import stix2
 import structlog
 from mitreattack.stix20 import MitreAttackData
 from sqlalchemy import select, delete
@@ -126,8 +125,8 @@ class MitreSyncService:
             # Parse with mitreattack-python
             attack_data = MitreAttackData(str(stix_path))
 
-            # Get version info
-            mitre_version = self._extract_version(attack_data)
+            # Get version info from raw JSON (more reliable)
+            mitre_version = self._extract_version_from_file(stix_path)
 
             # Build technique ID cache for relationship mapping
             await self._build_technique_cache()
@@ -216,33 +215,33 @@ class MitreSyncService:
 
             return Path(temp_file.name)
 
-    def _extract_version(self, attack_data: MitreAttackData) -> str:
-        """Extract MITRE ATT&CK version from STIX data.
+    def _extract_version_from_file(self, stix_path: Path) -> str:
+        """Extract MITRE ATT&CK version from STIX JSON file.
 
-        The ATT&CK version is stored in the x-mitre-collection object,
-        not in individual technique x_mitre_version attributes.
+        Parses the raw JSON to find the x-mitre-collection object
+        which contains the correct ATT&CK version (e.g., "18.1").
         """
+        import json
+
         try:
-            # Access the underlying STIX memory store to find collection objects
-            if hasattr(attack_data, "src"):
-                # Query for x-mitre-collection objects
-                collections = attack_data.src.query(
-                    [stix2.Filter("type", "=", "x-mitre-collection")]
-                )
-                if collections:
-                    for collection in collections:
-                        if hasattr(collection, "x_mitre_version"):
-                            return collection.x_mitre_version
+            with open(stix_path, "r") as f:
+                data = json.load(f)
 
-            # Fallback: Try to get version from identity object's x_mitre_attack_spec_version
-            if hasattr(attack_data, "src"):
-                identities = attack_data.src.query(
-                    [stix2.Filter("type", "=", "identity")]
-                )
-                for identity in identities:
-                    if hasattr(identity, "x_mitre_attack_spec_version"):
-                        return identity.x_mitre_attack_spec_version
+            # Find the x-mitre-collection object
+            for obj in data.get("objects", []):
+                if obj.get("type") == "x-mitre-collection":
+                    version = obj.get("x_mitre_version")
+                    if version:
+                        logger.info(
+                            "mitre_version_extracted",
+                            version=version,
+                            collection_name=obj.get("name"),
+                        )
+                        return version
 
+            logger.warning(
+                "mitre_version_not_found", message="No x-mitre-collection found"
+            )
             return "unknown"
         except Exception as e:
             logger.warning("version_extraction_failed", error=str(e))
