@@ -242,11 +242,14 @@ class TestDetectionAccuracyClaims:
 
     def test_no_fabricated_event_types(self):
         """Verify templates don't reference non-existent AWS/GCP event types."""
+        # These are fabricated AWS/GCP event source names that don't exist
+        # We use word boundaries to avoid matching custom metric names like
+        # "ExfiltrationDeviceConnected" which are user-defined, not fabricated events
         fabricated_events = [
-            "DeviceConnected",  # Not a real CloudTrail/EventBridge event
-            "usb_mount",  # Not a real CloudWatch event type
-            "usb_device",  # Not a real CloudWatch event type
-            "USBConnected",  # Not real
+            r"\bDeviceConnected\b",  # Not a real CloudTrail/EventBridge event
+            r"\busb_mount\b",  # Not a real CloudWatch event type
+            r"\busb_device\b",  # Not a real CloudWatch event type
+            r"\bUSBConnected\b",  # Not real
         ]
 
         templates_with_fabricated_events = []
@@ -262,11 +265,11 @@ class TestDetectionAccuracyClaims:
                 ]
 
                 for text in texts_to_check:
-                    for event in fabricated_events:
-                        if event in text:
+                    for event_pattern in fabricated_events:
+                        if re.search(event_pattern, text):
                             templates_with_fabricated_events.append(
                                 f"{technique_id}/{strategy.strategy_id}: "
-                                f"References fabricated event type '{event}'"
+                                f"References fabricated event type '{event_pattern}'"
                             )
                             break
 

@@ -257,7 +257,7 @@ output "alert_topic_arn" {
         ),
         DetectionStrategy(
             strategy_id="t1200-aws-realtime-block-device",
-            name="AWS Real-Time Block Device Monitoring via udev + SSM (Recommended)",
+            name="AWS Real-Time Block Device Monitoring (Endpoint Agent via SSM)",
             description=(
                 "Deploy real-time block device detection using Linux udev rules and systemd services. "
                 "This approach provides SUB-SECOND alerting when new block devices (USB drives, external "

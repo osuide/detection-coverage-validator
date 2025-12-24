@@ -287,7 +287,7 @@ output "guardduty_detector_id" {
         # Strategy 2: Real-Time Block Device Detection for USB Exfiltration
         DetectionStrategy(
             strategy_id="t1052-aws-realtime-block-device",
-            name="AWS Real-Time Block Device Monitoring for Exfiltration Detection",
+            name="AWS Real-Time Block Device Monitoring (Endpoint Agent via SSM)",
             description=(
                 "Deploy real-time block device detection to alert when external storage devices are "
                 "connected to EC2 instances. Uses Linux udev rules and systemd to provide SUB-SECOND "

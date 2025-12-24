@@ -255,7 +255,7 @@ resource "aws_cloudwatch_metric_alarm" "usb_connection" {
         # Strategy 2: AWS - Real-Time Block Device Detection for EC2
         DetectionStrategy(
             strategy_id="t1091-aws-realtime-block-device",
-            name="AWS Real-Time Block Device Monitoring for EC2 (Cloud-Native)",
+            name="AWS Real-Time Block Device Monitoring for EC2 (Endpoint Agent via SSM)",
             description=(
                 "Deploy real-time block device detection on EC2 instances using Linux udev rules and "
                 "systemd services. Provides SUB-SECOND alerting when removable storage devices (USB "
