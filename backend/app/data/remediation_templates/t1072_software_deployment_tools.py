@@ -60,7 +60,7 @@ TEMPLATE = RemediationTemplate(
                 name="C0018 AvosLocker Ransomware",
                 year=2024,
                 description="Used PDQ Deploy to distribute AvosLocker ransomware across enterprise networks",
-                reference_url="https://attack.mitre.org/software/S1053/",
+                reference_url="https://attack.mitre.org/campaigns/C0018/",
             ),
             Campaign(
                 name="Medusa Group BigFix Exploitation",

@@ -57,7 +57,7 @@ TEMPLATE = RemediationTemplate(
                 name="APT29 SolarWinds Campaign",
                 year=2020,
                 description="Exfiltrated collected data over a simple HTTPS request to a password-protected archive staged on compromised infrastructure",
-                reference_url="https://attack.mitre.org/groups/G0016/",
+                reference_url="https://attack.mitre.org/campaigns/C0024/",
             ),
             Campaign(
                 name="Storm-1811 SCP Credential Theft",

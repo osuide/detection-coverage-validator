@@ -60,7 +60,7 @@ TEMPLATE = RemediationTemplate(
                 name="Lazarus Group Malware Transfers",
                 year=2024,
                 description="Extensively transferred malware and tools onto compromised hosts using cloud storage",
-                reference_url="https://attack.mitre.org/groups/G0032/",
+                reference_url="https://attack.mitre.org/campaigns/C0022/",
             ),
             Campaign(
                 name="FIN7 Remote Payload Retrieval",

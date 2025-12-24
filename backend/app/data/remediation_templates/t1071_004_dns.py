@@ -65,7 +65,7 @@ TEMPLATE = RemediationTemplate(
                 name="SUNBURST SolarWinds Supply Chain",
                 year=2020,
                 description="SUNBURST malware mimicked legitimate SolarWinds API communications via DNS, using DNS queries to communicate with C2 infrastructure whilst evading detection",
-                reference_url="https://attack.mitre.org/software/S0559/",
+                reference_url="https://attack.mitre.org/campaigns/C0024/",
             ),
             Campaign(
                 name="Cobalt Strike DNS Beaconing",

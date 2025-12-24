@@ -43,7 +43,7 @@ TEMPLATE = RemediationTemplate(
                 name="Operation Dream Job",
                 year=2024,
                 description="Lazarus Group campaign using debugger detection in custom malware to evade analysis",
-                reference_url="https://attack.mitre.org/groups/G0032/",
+                reference_url="https://attack.mitre.org/campaigns/C0022/",
             ),
             Campaign(
                 name="Black Basta Ransomware",

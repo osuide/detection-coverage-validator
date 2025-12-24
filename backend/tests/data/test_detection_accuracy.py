@@ -72,12 +72,21 @@ def extract_coverage_percentage(coverage_str: str) -> int:
 
 def has_limitation_acknowledgement(template) -> bool:
     """Check if template acknowledges OS/hardware detection limitations."""
-    # Check module docstring
-    module = __import__(
-        f"app.data.remediation_templates.{template.technique_id.lower().replace('.', '_')}",
-        fromlist=[""],
-    )
-    docstring = module.__doc__ or ""
+    # Check module docstring - find the module in sys.modules by technique_id prefix
+    import sys
+
+    technique_prefix = template.technique_id.lower().replace(".", "_")
+    docstring = ""
+
+    # Search for the module that contains this technique
+    for mod_name, mod in sys.modules.items():
+        if (
+            mod_name.startswith("app.data.remediation_templates.")
+            and technique_prefix in mod_name.lower()
+            and mod.__doc__
+        ):
+            docstring = mod.__doc__
+            break
 
     # Also check strategy descriptions
     strategy_text = ""

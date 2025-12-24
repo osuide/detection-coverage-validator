@@ -56,7 +56,7 @@ TEMPLATE = RemediationTemplate(
                 name="Lazarus Operation Dream Job",
                 year=2024,
                 description="Used DOCX files to retrieve malicious DOTM templates targeting cryptocurrency and technology sectors",
-                reference_url="https://attack.mitre.org/groups/G0032/",
+                reference_url="https://attack.mitre.org/campaigns/C0022/",
             ),
             Campaign(
                 name="Gamaredon Template Injection Campaign",

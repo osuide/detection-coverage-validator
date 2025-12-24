@@ -46,7 +46,7 @@ TEMPLATE = RemediationTemplate(
                 name="SolarWinds Compromise - Cookie Forgery",
                 year=2020,
                 description="APT29 stole session cookies and forged duo-sid cookies to bypass MFA on cloud resources",
-                reference_url="https://www.microsoft.com/security/blog/2021/01/20/deep-dive-into-the-solorigate-second-stage-activation-from-sunburst-to-teardrop-and-raindrop/",
+                reference_url="https://attack.mitre.org/campaigns/C0024/",
             ),
             Campaign(
                 name="Star Blizzard MFA Bypass",

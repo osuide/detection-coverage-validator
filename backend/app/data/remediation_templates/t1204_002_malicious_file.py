@@ -52,7 +52,7 @@ TEMPLATE = RemediationTemplate(
                 name="Operation Dream Job",
                 year=2021,
                 description="Lazarus Group distributed documents with compelling job descriptions from defence and aerospace sectors",
-                reference_url="https://attack.mitre.org/groups/G0032/",
+                reference_url="https://attack.mitre.org/campaigns/C0022/",
             ),
             Campaign(
                 name="Ukraine Electric Power Attack",

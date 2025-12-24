@@ -57,7 +57,7 @@ TEMPLATE = RemediationTemplate(
                 name="SUNBURST Supply Chain Attack",
                 year=2020,
                 description="SUNBURST malware queried MachineGuid from HKLM\\SOFTWARE\\Microsoft\\Cryptography to uniquely identify compromised hosts",
-                reference_url="https://attack.mitre.org/software/S0559/",
+                reference_url="https://attack.mitre.org/campaigns/C0024/",
             ),
             Campaign(
                 name="Volt Typhoon Infrastructure Reconnaissance",
@@ -69,7 +69,7 @@ TEMPLATE = RemediationTemplate(
                 name="Lazarus Cryptocurrency Theft",
                 year=2023,
                 description="Queried Registry keys to detect cryptocurrency wallets and remote access tools on compromised Windows cloud instances",
-                reference_url="https://attack.mitre.org/groups/G0032/",
+                reference_url="https://attack.mitre.org/campaigns/C0022/",
             ),
         ],
         prevalence="very_common",

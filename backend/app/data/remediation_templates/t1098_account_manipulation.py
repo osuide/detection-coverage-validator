@@ -46,7 +46,7 @@ TEMPLATE = RemediationTemplate(
                 name="SolarWinds/SUNBURST",
                 year=2020,
                 description="APT29 added credentials to OAuth applications and service principals for persistent access",
-                reference_url="https://www.mandiant.com/resources/sunburst-additional-technical-details",
+                reference_url="https://attack.mitre.org/campaigns/C0024/",
             ),
             Campaign(
                 name="Scattered Spider",

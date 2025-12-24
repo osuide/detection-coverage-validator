@@ -67,7 +67,7 @@ TEMPLATE = RemediationTemplate(
                 name="Lazarus Group Fake Recruitment",
                 year=2024,
                 description="Used masqueraded files in fake recruitment campaigns, hiding malware as legitimate documents",
-                reference_url="https://attack.mitre.org/groups/G0032/",
+                reference_url="https://attack.mitre.org/campaigns/C0022/",
             ),
             Campaign(
                 name="FIN13 Certutil Abuse",

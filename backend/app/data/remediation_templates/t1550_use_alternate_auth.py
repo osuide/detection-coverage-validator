@@ -42,7 +42,7 @@ TEMPLATE = RemediationTemplate(
                 name="APT29 SolarWinds SAML Forging",
                 year=2021,
                 description="Deployed forged SAML tokens to bypass MFA and access cloud applications",
-                reference_url="https://attack.mitre.org/groups/G0016/",
+                reference_url="https://attack.mitre.org/campaigns/C0024/",
             ),
             Campaign(
                 name="FoggyWeb Token Theft",

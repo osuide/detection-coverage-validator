@@ -82,7 +82,7 @@ TEMPLATE = RemediationTemplate(
                 name="2015 Ukraine Electric Power Attack",
                 year=2015,
                 description="BlackEnergy malware used HTTP protocols for command and control in critical infrastructure attack",
-                reference_url="https://attack.mitre.org/software/S0089/",
+                reference_url="https://attack.mitre.org/campaigns/C0028/",
             ),
         ],
         prevalence="very common",

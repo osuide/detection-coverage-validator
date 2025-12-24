@@ -54,7 +54,7 @@ TEMPLATE = RemediationTemplate(
                 name="APT41 DUST Database Collection",
                 year=2024,
                 description="Collected Oracle database data using SQLULDR2 tool",
-                reference_url="https://attack.mitre.org/groups/G0096/",
+                reference_url="https://attack.mitre.org/campaigns/C0040/",
             ),
             Campaign(
                 name="Sandworm Adminer Exploitation",

@@ -55,7 +55,7 @@ TEMPLATE = RemediationTemplate(
                 name="SolarWinds Supply Chain Attack",
                 year=2020,
                 description="APT29 used compromised service principals during the SolarWinds breach to modify Office 365 configurations",
-                reference_url="https://www.microsoft.com/security/blog/2020/12/18/analyzing-solorigate-the-compromised-dll-file-that-started-a-sophisticated-cyberattack-and-how-microsoft-defender-helps-protect/",
+                reference_url="https://attack.mitre.org/campaigns/C0024/",
             ),
         ],
         prevalence="common",

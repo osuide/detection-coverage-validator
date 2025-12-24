@@ -49,7 +49,7 @@ TEMPLATE = RemediationTemplate(
                 name="Lazarus Group forfiles.exe Persistence",
                 year=2024,
                 description="Used forfiles.exe to execute .htm files for persistence, bypassing application control policies",
-                reference_url="https://attack.mitre.org/groups/G0032/",
+                reference_url="https://attack.mitre.org/campaigns/C0022/",
             ),
             Campaign(
                 name="RedCurl pcalua.exe Obfuscation",

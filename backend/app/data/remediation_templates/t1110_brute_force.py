@@ -46,7 +46,7 @@ TEMPLATE = RemediationTemplate(
                 name="SolarWinds Password Spraying",
                 year=2020,
                 description="APT29 conducted password spraying against cloud services prior to supply chain compromise",
-                reference_url="https://www.microsoft.com/security/blog/2020/12/21/advice-for-incident-responders-on-recovery-from-systemic-identity-compromises/",
+                reference_url="https://attack.mitre.org/campaigns/C0024/",
             ),
             Campaign(
                 name="MuddyWater Campaigns",

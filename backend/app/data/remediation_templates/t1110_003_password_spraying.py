@@ -57,7 +57,7 @@ TEMPLATE = RemediationTemplate(
                 name="APT28 Nearest Neighbor Campaign",
                 year=2024,
                 description="Performed password-spray attacks against public services",
-                reference_url="https://attack.mitre.org/groups/G0007/",
+                reference_url="https://attack.mitre.org/campaigns/C0051/",
             ),
             Campaign(
                 name="APT28 Kubernetes-Based Attacks",

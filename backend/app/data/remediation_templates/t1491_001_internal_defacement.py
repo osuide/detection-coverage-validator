@@ -67,7 +67,7 @@ TEMPLATE = RemediationTemplate(
                 name="Lazarus Group Operations",
                 year=2024,
                 description="Replaced wallpapers after rendering systems unbootable in destructive attacks",
-                reference_url="https://attack.mitre.org/groups/G0032/",
+                reference_url="https://attack.mitre.org/campaigns/C0022/",
             ),
         ],
         prevalence="moderate",

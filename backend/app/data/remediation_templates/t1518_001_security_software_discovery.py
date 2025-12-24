@@ -51,7 +51,7 @@ TEMPLATE = RemediationTemplate(
                 name="SUNBURST Security Tool Reconnaissance",
                 year=2020,
                 description="SolarWinds attackers checked for multiple antivirus and endpoint detection agents before proceeding with malicious operations",
-                reference_url="https://attack.mitre.org/software/S0559/",
+                reference_url="https://attack.mitre.org/campaigns/C0024/",
             ),
             Campaign(
                 name="IcedID Security Software Enumeration",

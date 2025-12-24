@@ -46,7 +46,7 @@ TEMPLATE = RemediationTemplate(
                 name="SolarWinds/SUNBURST",
                 year=2020,
                 description="APT29 disabled security logging and monitoring to maintain stealth during the campaign",
-                reference_url="https://www.mandiant.com/resources/sunburst-additional-technical-details",
+                reference_url="https://attack.mitre.org/campaigns/C0024/",
             ),
             Campaign(
                 name="TeamTNT Cloud Attacks",

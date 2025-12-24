@@ -49,7 +49,7 @@ TEMPLATE = RemediationTemplate(
                 name="SUNBURST",
                 year=2020,
                 description="APT29's SUNBURST verified host domain names to confirm real environments before activating",
-                reference_url="https://www.mandiant.com/resources/sunburst-additional-technical-details",
+                reference_url="https://attack.mitre.org/campaigns/C0024/",
             ),
             Campaign(
                 name="Black Basta Ransomware",

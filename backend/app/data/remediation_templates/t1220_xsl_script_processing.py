@@ -58,7 +58,7 @@ TEMPLATE = RemediationTemplate(
                 name="Lazarus Operation Dream Job",
                 year=2020,
                 description="Deployed remote XSL scripts in targeted attacks against aerospace and defence contractors",
-                reference_url="https://attack.mitre.org/groups/G0032/",
+                reference_url="https://attack.mitre.org/campaigns/C0022/",
             ),
             Campaign(
                 name="Astaroth Banking Malware",

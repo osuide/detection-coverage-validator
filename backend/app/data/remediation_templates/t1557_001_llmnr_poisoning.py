@@ -70,7 +70,7 @@ TEMPLATE = RemediationTemplate(
                 name="Lazarus Group Responder Deployment",
                 year=2023,
                 description="Lazarus Group executed Responder tool for lateral movement and credential harvesting in enterprise networks",
-                reference_url="https://attack.mitre.org/groups/G0032/",
+                reference_url="https://attack.mitre.org/campaigns/C0022/",
             ),
             Campaign(
                 name="Wizard Spider Invoke-Inveigh Operations",

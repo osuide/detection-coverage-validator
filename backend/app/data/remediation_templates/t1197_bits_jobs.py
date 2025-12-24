@@ -64,7 +64,7 @@ TEMPLATE = RemediationTemplate(
                 name="Bazar Backdoor BITS Downloads",
                 year=2024,
                 description="Bazar malware extensively used BITS for downloading second-stage payloads while evading detection",
-                reference_url="https://attack.mitre.org/software/S0534/",
+                reference_url="https://attack.mitre.org/campaigns/C0015/",
             ),
             Campaign(
                 name="APT41 BITS Job Abuse",

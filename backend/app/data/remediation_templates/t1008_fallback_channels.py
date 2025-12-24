@@ -51,7 +51,7 @@ TEMPLATE = RemediationTemplate(
                 name="Lazarus Group Multi-Server Failover",
                 year=2024,
                 description="Employed randomised C2 server selection with failover logic across multiple backup servers",
-                reference_url="https://attack.mitre.org/groups/G0032/",
+                reference_url="https://attack.mitre.org/campaigns/C0022/",
             ),
             Campaign(
                 name="OilRig DNS Tunnelling Fallback",

@@ -59,7 +59,7 @@ TEMPLATE = RemediationTemplate(
                 name="2022 Ukraine Electric Power Attack",
                 year=2022,
                 description="Sandworm Team deployed GOGETTER malware using Yamux protocol over TLS for tunnelled command-and-control communications",
-                reference_url="https://attack.mitre.org/groups/G0034/",
+                reference_url="https://attack.mitre.org/campaigns/C0034/",
             ),
             Campaign(
                 name="Scattered Spider Teleport Operations",
@@ -83,7 +83,7 @@ TEMPLATE = RemediationTemplate(
                 name="Cutting Edge Iodine Campaign",
                 year=2021,
                 description="Threat actors used Iodine to tunnel IPv4 traffic over DNS, bypassing network egress filtering",
-                reference_url="https://attack.mitre.org/techniques/T1572/",
+                reference_url="https://attack.mitre.org/campaigns/C0029/",
             ),
         ],
         prevalence="common",

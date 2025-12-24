@@ -63,7 +63,7 @@ TEMPLATE = RemediationTemplate(
                 name="Lazarus RomeoDelta",
                 year=2020,
                 description="Deployed RAR compression and RomeoDelta malware for archiving and encryption workflows before exfiltration",
-                reference_url="https://attack.mitre.org/groups/G0032/",
+                reference_url="https://attack.mitre.org/campaigns/C0022/",
             ),
             Campaign(
                 name="Agent Tesla Exfiltration",

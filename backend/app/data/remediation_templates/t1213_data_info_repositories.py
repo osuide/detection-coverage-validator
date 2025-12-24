@@ -45,7 +45,7 @@ TEMPLATE = RemediationTemplate(
                 name="SolarWinds Compromise",
                 year=2020,
                 description="APT29 accessed internal knowledge repositories during the SolarWinds supply chain attack",
-                reference_url="https://www.microsoft.com/security/blog/2020/12/18/analyzing-solorigate-the-compromised-dll-file-that-started-a-sophisticated-cyberattack-and-how-microsoft-defender-helps-protect/",
+                reference_url="https://attack.mitre.org/campaigns/C0024/",
             ),
             Campaign(
                 name="APT28 Repository Collection",

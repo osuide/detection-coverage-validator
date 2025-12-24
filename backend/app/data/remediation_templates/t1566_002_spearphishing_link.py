@@ -59,7 +59,7 @@ TEMPLATE = RemediationTemplate(
                 name="Lazarus Group Operation Dream Job",
                 year=2024,
                 description="Distributed malware via OneDrive links in spearphishing emails",
-                reference_url="https://attack.mitre.org/groups/G0032/",
+                reference_url="https://attack.mitre.org/campaigns/C0022/",
             ),
             Campaign(
                 name="APT29 Spearphishing",

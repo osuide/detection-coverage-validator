@@ -44,7 +44,7 @@ TEMPLATE = RemediationTemplate(
                 name="SolarWinds Compromise",
                 year=2020,
                 description="APT29 downloaded source code from victim code repositories during the SolarWinds supply chain attack",
-                reference_url="https://attack.mitre.org/groups/G0016/",
+                reference_url="https://attack.mitre.org/campaigns/C0024/",
             ),
             Campaign(
                 name="LAPSUS$ Credential Harvesting",

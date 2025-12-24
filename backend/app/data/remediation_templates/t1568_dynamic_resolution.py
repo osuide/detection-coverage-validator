@@ -59,13 +59,13 @@ TEMPLATE = RemediationTemplate(
                 name="Operation Spalax",
                 year=2024,
                 description="Gamaredon Group leveraged dynamic DNS services including Duck DNS and DNS Exit for malicious infrastructure operations",
-                reference_url="https://attack.mitre.org/groups/G0047/",
+                reference_url="https://attack.mitre.org/campaigns/C0005/",
             ),
             Campaign(
                 name="Operation Dust Storm",
                 year=2023,
                 description="Transparent Tribe utilised multiple free dynamic DNS providers including No-IP, Oray, and 3322 for C2 communications",
-                reference_url="https://attack.mitre.org/groups/G0134/",
+                reference_url="https://attack.mitre.org/campaigns/C0016/",
             ),
             Campaign(
                 name="BITTER Dynamic DNS Campaign",

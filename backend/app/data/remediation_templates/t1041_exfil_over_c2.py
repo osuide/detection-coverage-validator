@@ -53,7 +53,7 @@ TEMPLATE = RemediationTemplate(
                 name="Lazarus C2 Data Theft",
                 year=2024,
                 description="Lazarus Group exfiltrated data across various tools and malware using established C2 channels",
-                reference_url="https://attack.mitre.org/groups/G0032/",
+                reference_url="https://attack.mitre.org/campaigns/C0022/",
             ),
             Campaign(
                 name="APT39 C2 Communications",

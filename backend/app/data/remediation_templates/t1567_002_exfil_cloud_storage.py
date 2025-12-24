@@ -59,13 +59,13 @@ TEMPLATE = RemediationTemplate(
                 name="Lazarus Group Dropbox dbxcli",
                 year=2024,
                 description="Lazarus Group employed custom dbxcli builds targeting Dropbox for data exfiltration",
-                reference_url="https://attack.mitre.org/groups/G0032/",
+                reference_url="https://attack.mitre.org/campaigns/C0022/",
             ),
             Campaign(
                 name="APT41 DUST OneDrive",
                 year=2024,
                 description="APT41 exfiltrated data through OneDrive during the DUST campaign",
-                reference_url="https://attack.mitre.org/groups/G0096/",
+                reference_url="https://attack.mitre.org/campaigns/C0040/",
             ),
             Campaign(
                 name="OilRig Microsoft Graph API",

@@ -46,7 +46,7 @@ TEMPLATE = RemediationTemplate(
                 name="Lazarus Group Financial Targeting",
                 year=2024,
                 description="Malware reported window titles to command servers to identify cryptocurrency wallets and financial applications",
-                reference_url="https://attack.mitre.org/groups/G0032/",
+                reference_url="https://attack.mitre.org/campaigns/C0022/",
             ),
             Campaign(
                 name="Volt Typhoon Infrastructure Compromise",

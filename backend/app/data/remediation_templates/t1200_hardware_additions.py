@@ -840,7 +840,7 @@ output "guardduty_detector_id" {
 # RECOMMENDED: For comprehensive hardware security, also deploy:
 # - USB device control policies via Group Policy or MDM
 # - Third-party EDR with USB monitoring capabilities
-# - Host-based auditd rules: auditctl -w /dev -p wa -k usb_devices""",
+# - Host-based auditd rules: auditctl -w /dev -p wa -k peripheral_devices""",
                 alert_severity="high",
                 alert_title="Runtime Security Alert - Suspicious Execution",
                 alert_description_template="GuardDuty Runtime Monitoring detected suspicious execution that may indicate compromise from hardware addition.",

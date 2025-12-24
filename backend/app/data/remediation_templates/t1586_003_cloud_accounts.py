@@ -51,7 +51,7 @@ TEMPLATE = RemediationTemplate(
                 name="APT41 DUST Google Workspace C2",
                 year=2024,
                 description="Employed compromised Google Workspace accounts for command and control operations",
-                reference_url="https://attack.mitre.org/groups/G0096/",
+                reference_url="https://attack.mitre.org/campaigns/C0040/",
             ),
         ],
         prevalence="common",

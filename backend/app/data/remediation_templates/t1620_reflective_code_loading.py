@@ -52,7 +52,7 @@ TEMPLATE = RemediationTemplate(
                 name="Lazarus Group DLL Overwriting",
                 year=2020,
                 description="Overwrote in-memory DLL function code with shellcode for execution",
-                reference_url="https://attack.mitre.org/groups/G0032/",
+                reference_url="https://attack.mitre.org/campaigns/C0022/",
             ),
         ],
         prevalence="common",

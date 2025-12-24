@@ -60,7 +60,7 @@ TEMPLATE = RemediationTemplate(
                 name="APT29 SolarWinds Compromise",
                 year=2020,
                 description="APT29 attempted to access Group Managed Service Account (gMSA) passwords during the SolarWinds breach to enable lateral movement across enterprise environments",
-                reference_url="https://attack.mitre.org/groups/G0016/",
+                reference_url="https://attack.mitre.org/campaigns/C0024/",
             ),
             Campaign(
                 name="Volt Typhoon Credential Harvesting",

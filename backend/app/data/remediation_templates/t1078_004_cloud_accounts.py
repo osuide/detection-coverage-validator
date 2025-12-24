@@ -47,7 +47,7 @@ TEMPLATE = RemediationTemplate(
                 name="SolarWinds/SUNBURST",
                 year=2020,
                 description="APT29 used compromised cloud credentials to access victim environments",
-                reference_url="https://www.mandiant.com/resources/sunburst-additional-technical-details",
+                reference_url="https://attack.mitre.org/campaigns/C0024/",
             ),
             Campaign(
                 name="Lapsus$ Attacks",

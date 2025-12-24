@@ -66,7 +66,7 @@ TEMPLATE = RemediationTemplate(
                 name="Lazarus Operation Dream Job",
                 year=2023,
                 description="Executed internal spearphishing campaigns within compromised environments as part of Operation Dream Job",
-                reference_url="https://attack.mitre.org/groups/G0032/",
+                reference_url="https://attack.mitre.org/campaigns/C0022/",
             ),
         ],
         prevalence="common",

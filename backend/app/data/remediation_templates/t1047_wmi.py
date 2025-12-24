@@ -75,7 +75,7 @@ TEMPLATE = RemediationTemplate(
                 name="APT29 SolarWinds Compromise",
                 year=2020,
                 description="Leveraged WMI for credential theft, backdoor execution, and lateral movement across hybrid cloud infrastructure",
-                reference_url="https://attack.mitre.org/groups/G0016/",
+                reference_url="https://attack.mitre.org/campaigns/C0024/",
             ),
             Campaign(
                 name="Ukraine Electric Power Attack",

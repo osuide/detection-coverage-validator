@@ -60,7 +60,7 @@ TEMPLATE = RemediationTemplate(
                 name="Operation Dream Job",
                 year=2020,
                 description="Lazarus Group used native APIs including HttpOpenRequestA and InternetReadFile for C2 communications and VirtualAlloc/WriteProcessMemory for process injection",
-                reference_url="https://attack.mitre.org/groups/G0032/",
+                reference_url="https://attack.mitre.org/campaigns/C0022/",
             ),
             Campaign(
                 name="Conti Ransomware Operations",

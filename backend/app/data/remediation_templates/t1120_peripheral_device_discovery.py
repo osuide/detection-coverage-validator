@@ -58,7 +58,7 @@ TEMPLATE = RemediationTemplate(
                 name="Operation CuckooBees",
                 year=2023,
                 description="APT groups used command-line reconnaissance including peripheral device enumeration to identify removable media for data exfiltration",
-                reference_url="https://attack.mitre.org/techniques/T1120/",
+                reference_url="https://attack.mitre.org/campaigns/C0012/",
             ),
             Campaign(
                 name="Ransomware Peripheral Targeting",

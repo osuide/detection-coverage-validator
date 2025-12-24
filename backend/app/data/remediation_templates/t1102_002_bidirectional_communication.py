@@ -71,7 +71,7 @@ TEMPLATE = RemediationTemplate(
                 name="Lazarus GitHub C2",
                 year=2024,
                 description="Lazarus Group used GitHub as C2, pulling hosted image payloads then committing command execution output to files",
-                reference_url="https://attack.mitre.org/groups/G0032/",
+                reference_url="https://attack.mitre.org/campaigns/C0022/",
             ),
         ],
         prevalence="common",
