@@ -149,7 +149,7 @@ export default function Accounts() {
           </div>
           <button
             onClick={() => setScanFeedback(null)}
-            className="text-gray-400 hover:text-gray-700"
+            className="text-gray-400 hover:text-gray-300"
           >
             &times;
           </button>
@@ -170,7 +170,7 @@ export default function Accounts() {
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-600 bg-gray-800 text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder={formData.provider === 'gcp' ? 'My GCP Project' : 'My AWS Account'}
                   required
                 />
@@ -182,7 +182,7 @@ export default function Accounts() {
                 <select
                   value={formData.provider}
                   onChange={(e) => setFormData({ ...formData, provider: e.target.value as 'aws' | 'gcp' })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-600 bg-gray-800 text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="aws">AWS</option>
                   <option value="gcp">GCP</option>
@@ -197,7 +197,7 @@ export default function Accounts() {
                 type="text"
                 value={formData.account_id}
                 onChange={(e) => setFormData({ ...formData, account_id: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-600 bg-gray-800 text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder={formData.provider === 'gcp' ? 'my-gcp-project-id' : '123456789012'}
                 required
               />
@@ -259,7 +259,7 @@ export default function Accounts() {
               </div>
               <RouterLink
                 to="/settings/billing"
-                className="text-sm font-medium text-blue-600 hover:text-blue-700"
+                className="text-sm font-medium text-blue-400 hover:text-blue-300"
               >
                 Upgrade for unlimited scans →
               </RouterLink>
@@ -299,13 +299,13 @@ export default function Accounts() {
       {/* Edit Account Modal */}
       {editingAccount && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+          <div className="bg-gray-800 rounded-xl border border-gray-700 shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold">Edit Account: {editingAccount.name}</h2>
+                <h2 className="text-xl font-bold text-white">Edit Account: {editingAccount.name}</h2>
                 <button
                   onClick={() => setEditingAccount(null)}
-                  className="text-gray-400 hover:text-gray-700"
+                  className="text-gray-400 hover:text-gray-300"
                 >
                   &times;
                 </button>
@@ -476,7 +476,7 @@ function AccountCard({
           {!credential || credential.status !== 'valid' ? (
             <button
               onClick={onConnect}
-              className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg"
+              className="p-2 text-purple-400 hover:bg-gray-700 rounded-lg"
               title="Connect Account"
             >
               <Link className="h-5 w-5" />
@@ -500,9 +500,9 @@ function AccountCard({
             disabled={isScanPending || !credential || credential.status !== 'valid' || scanLimitReached}
             className={`p-2 rounded-lg transition-all duration-150 ${
               credential?.status === 'valid' && !scanLimitReached
-                ? 'text-blue-600 hover:bg-blue-50 hover:scale-110 active:scale-95 active:bg-blue-100'
+                ? 'text-blue-400 hover:bg-gray-700 hover:scale-110 active:scale-95 active:bg-gray-600'
                 : 'text-gray-400 cursor-not-allowed'
-            } ${isScanPending ? 'bg-blue-50' : ''}`}
+            } ${isScanPending ? 'bg-gray-700' : ''}`}
             title={
               isScanPending
                 ? 'Scan in progress...'
@@ -514,7 +514,7 @@ function AccountCard({
             }
           >
             {isScanPending ? (
-              <RefreshCw className="h-5 w-5 animate-spin text-blue-600" />
+              <RefreshCw className="h-5 w-5 animate-spin text-blue-400" />
             ) : (
               <Play className="h-5 w-5" />
             )}
@@ -523,7 +523,7 @@ function AccountCard({
           <button
             onClick={onDelete}
             disabled={isDeletePending}
-            className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+            className="p-2 text-red-400 hover:bg-gray-700 rounded-lg"
             title="Delete"
           >
             <Trash2 className="h-5 w-5" />

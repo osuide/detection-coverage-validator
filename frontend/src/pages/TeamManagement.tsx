@@ -205,7 +205,7 @@ export default function TeamManagement() {
       )}
 
       {/* Members list */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-700 overflow-hidden">
+      <div className="bg-gray-800 rounded-xl shadow-sm border border-gray-700 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-700">
           <div className="flex items-center">
             <Users className="h-5 w-5 text-gray-400 mr-2" />
@@ -272,7 +272,7 @@ export default function TeamManagement() {
                       </button>
 
                       {openMenuId === member.id && (
-                        <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-700 py-1 z-10">
+                        <div className="absolute right-0 mt-1 w-48 bg-gray-800 rounded-lg shadow-lg border border-gray-700 py-1 z-10">
                           <div className="px-3 py-2 text-xs font-medium text-gray-400 uppercase tracking-wide">
                             Change Role
                           </div>
@@ -321,7 +321,7 @@ export default function TeamManagement() {
 
       {/* Pending Invites */}
       {canManageTeam && invites.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-700 overflow-hidden">
+        <div className="bg-gray-800 rounded-xl shadow-sm border border-gray-700 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-700">
             <div className="flex items-center">
               <Mail className="h-5 w-5 text-gray-400 mr-2" />
@@ -374,7 +374,7 @@ export default function TeamManagement() {
       )}
 
       {/* Role Reference */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-700 overflow-hidden">
+      <div className="bg-gray-800 rounded-xl shadow-sm border border-gray-700 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-700">
           <h2 className="text-lg font-medium text-white">Role Permissions</h2>
         </div>
@@ -397,7 +397,7 @@ export default function TeamManagement() {
       {/* Invite Modal */}
       {showInviteModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
+          <div className="bg-gray-800 rounded-xl shadow-xl max-w-md w-full mx-4 border border-gray-700">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
               <h2 className="text-lg font-medium text-white">Invite Team Member</h2>
               <button
@@ -410,7 +410,7 @@ export default function TeamManagement() {
 
             <form onSubmit={handleInvite} className="p-6 space-y-4">
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="email" className="block text-sm font-medium text-gray-300">
                   Email address
                 </label>
                 <input
@@ -419,20 +419,20 @@ export default function TeamManagement() {
                   required
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-600 bg-gray-800 text-gray-100 rounded-lg shadow-sm focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm"
                   placeholder="colleague@company.com"
                 />
               </div>
 
               <div>
-                <label htmlFor="role" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="role" className="block text-sm font-medium text-gray-300">
                   Role
                 </label>
                 <select
                   id="role"
                   value={inviteRole}
                   onChange={(e) => setInviteRole(e.target.value as UserRole)}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-600 bg-gray-800 text-gray-100 rounded-lg shadow-sm focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm"
                 >
                   <option value="viewer">Viewer - Read-only access</option>
                   <option value="member">Member - Can view and edit</option>
@@ -441,7 +441,7 @@ export default function TeamManagement() {
               </div>
 
               <div>
-                <label htmlFor="message" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="message" className="block text-sm font-medium text-gray-300">
                   Personal message (optional)
                 </label>
                 <textarea
@@ -449,7 +449,7 @@ export default function TeamManagement() {
                   rows={3}
                   value={inviteMessage}
                   onChange={(e) => setInviteMessage(e.target.value)}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-600 bg-gray-800 text-gray-100 rounded-lg shadow-sm focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm"
                   placeholder="Add a personal note to your invitation..."
                 />
               </div>
@@ -464,7 +464,7 @@ export default function TeamManagement() {
                 <button
                   type="button"
                   onClick={() => setShowInviteModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-400 bg-white border border-gray-700 rounded-lg hover:bg-gray-700"
+                  className="px-4 py-2 text-sm font-medium text-gray-300 bg-gray-800 border border-gray-600 rounded-lg hover:bg-gray-700"
                 >
                   Cancel
                 </button>

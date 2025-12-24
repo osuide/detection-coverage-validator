@@ -180,7 +180,7 @@ export default function APIKeys() {
                 Make sure to copy your API key now. For security reasons, it won't be shown again.
               </p>
               <div className="mt-3 flex items-center space-x-2">
-                <code className="flex-1 px-3 py-2 bg-white border border-yellow-700 rounded font-mono text-sm break-all">
+                <code className="flex-1 px-3 py-2 bg-gray-900 border border-yellow-700 rounded font-mono text-sm break-all">
                   {createdKey.key}
                 </code>
                 <button
@@ -206,7 +206,7 @@ export default function APIKeys() {
       )}
 
       {/* API Keys list */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-700 overflow-hidden">
+      <div className="bg-gray-800 rounded-xl shadow-sm border border-gray-700 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-700">
           <div className="flex items-center">
             <Key className="h-5 w-5 text-gray-400 mr-2" />
@@ -310,7 +310,7 @@ export default function APIKeys() {
                   {key.scopes.length > 0 && key.scopes.map((scope) => (
                     <span
                       key={scope}
-                      className="px-2 py-0.5 text-xs font-medium bg-gray-700/30 text-gray-400 rounded"
+                      className="px-2 py-0.5 text-xs font-medium bg-gray-700/30 text-gray-400 border border-gray-600 rounded"
                     >
                       {scope}
                     </span>
@@ -331,7 +331,7 @@ export default function APIKeys() {
       {/* Create Modal */}
       {showCreateModal && scopesInfo && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
+          <div className="bg-gray-800 rounded-xl border border-gray-700 shadow-xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
               <h2 className="text-lg font-medium text-white">Create API Key</h2>
               <button
@@ -344,7 +344,7 @@ export default function APIKeys() {
 
             <form onSubmit={handleCreate} className="p-6 space-y-4">
               <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="name" className="block text-sm font-medium text-gray-400">
                   Name
                 </label>
                 <input
@@ -353,7 +353,7 @@ export default function APIKeys() {
                   required
                   value={newKeyName}
                   onChange={(e) => setNewKeyName(e.target.value)}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-600 bg-gray-800 text-gray-100 rounded-lg shadow-sm focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm"
                   placeholder="e.g., CI/CD Pipeline, Monitoring Service"
                 />
               </div>
@@ -389,14 +389,14 @@ export default function APIKeys() {
               </div>
 
               <div>
-                <label htmlFor="expires" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="expires" className="block text-sm font-medium text-gray-400">
                   Expiration (optional)
                 </label>
                 <select
                   id="expires"
                   value={newKeyExpires}
                   onChange={(e) => setNewKeyExpires(e.target.value)}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-600 bg-gray-800 text-gray-100 rounded-lg shadow-sm focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm"
                 >
                   <option value="">Never expires</option>
                   <option value="30">30 days</option>
@@ -436,7 +436,7 @@ export default function APIKeys() {
                       onChange={(e) => setNewKeyIpAllowlist(e.target.value)}
                       placeholder="e.g., 192.168.1.100&#10;10.0.0.0/24&#10;203.0.113.50"
                       rows={3}
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm font-mono"
+                      className="block w-full px-3 py-2 border border-gray-600 bg-gray-800 text-gray-100 rounded-lg shadow-sm focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm font-mono"
                     />
                   </div>
                 )}
@@ -452,7 +452,7 @@ export default function APIKeys() {
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-400 bg-white border border-gray-700 rounded-lg hover:bg-gray-700"
+                  className="px-4 py-2 text-sm font-medium text-gray-300 bg-gray-800 border border-gray-700 rounded-lg hover:bg-gray-700"
                 >
                   Cancel
                 </button>

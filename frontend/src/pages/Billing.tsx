@@ -195,7 +195,7 @@ export default function Billing() {
       )}
 
       {/* Current Plan */}
-      <div className="bg-white shadow rounded-lg p-6">
+      <div className="bg-gray-800 shadow-sm rounded-lg border border-gray-700 p-6">
         <h2 className="text-lg font-medium text-white mb-4">Current Plan</h2>
 
         <div className="flex items-center justify-between mb-6">
@@ -224,7 +224,7 @@ export default function Billing() {
             <button
               onClick={handleManageBilling}
               disabled={portalLoading}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+              className="px-4 py-2 text-sm font-medium border border-gray-600 bg-gray-800 text-gray-100 rounded-md hover:bg-gray-700 disabled:opacity-50"
             >
               {portalLoading ? 'Loading...' : 'Manage Billing'}
             </button>
@@ -336,7 +336,7 @@ export default function Billing() {
           <button
             onClick={handleSubscribe}
             disabled={checkoutLoading}
-            className="mt-6 w-full md:w-auto px-6 py-3 bg-white text-blue-600 font-medium rounded-md hover:bg-blue-50 disabled:opacity-50"
+            className="mt-6 w-full md:w-auto px-6 py-3 bg-white text-blue-600 font-medium rounded-md hover:bg-blue-900/30 disabled:opacity-50"
           >
             {checkoutLoading ? 'Redirecting to checkout...' : 'Upgrade to Individual'}
           </button>
@@ -355,7 +355,7 @@ export default function Billing() {
 
       {/* Invoice History */}
       {invoices.length > 0 && (
-        <div className="bg-white shadow rounded-lg p-6">
+        <div className="bg-gray-800 shadow-sm rounded-lg border border-gray-700 p-6">
           <h2 className="text-lg font-medium text-white mb-4">Invoice History</h2>
 
           <div className="overflow-x-auto">
@@ -369,7 +369,7 @@ export default function Billing() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-700">
+              <tbody className="bg-gray-800 divide-y divide-gray-700">
                 {invoices.map((invoice) => (
                   <tr key={invoice.id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
@@ -391,7 +391,7 @@ export default function Billing() {
                         {invoice.status?.toUpperCase()}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
                       {invoice.period_start && invoice.period_end
                         ? `${formatDate(invoice.period_start)} - ${formatDate(invoice.period_end)}`
                         : '-'}
@@ -428,7 +428,7 @@ export default function Billing() {
 
       {/* Feature Comparison (for free tier) */}
       {isFreeTier && (
-        <div className="bg-white shadow rounded-lg p-6">
+        <div className="bg-gray-800 shadow-sm rounded-lg border border-gray-700 p-6">
           <h2 className="text-lg font-medium text-white mb-4">Feature Comparison</h2>
 
           <div className="overflow-x-auto">

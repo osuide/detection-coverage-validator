@@ -158,7 +158,7 @@ export default function Detections() {
             placeholder="Search detections..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full pl-10 pr-4 py-2 border border-gray-600 bg-gray-800 text-gray-100 placeholder-gray-500 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
 
@@ -167,7 +167,7 @@ export default function Detections() {
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+            className="border border-gray-600 bg-gray-800 text-gray-100 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
           >
             <option value="">All Types</option>
             {detectionTypes.map(type => (
@@ -180,7 +180,7 @@ export default function Detections() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+            className="border border-gray-600 bg-gray-800 text-gray-100 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
           >
             <option value="">All Statuses</option>
             {statuses.map(status => (
@@ -195,7 +195,7 @@ export default function Detections() {
                 setTypeFilter('')
                 setStatusFilter('')
               }}
-              className="text-sm text-blue-600 hover:text-blue-700"
+              className="text-sm text-blue-400 hover:text-blue-300"
             >
               Clear filters
             </button>
@@ -236,7 +236,7 @@ export default function Detections() {
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-700">
+              <tbody className="bg-gray-800 divide-y divide-gray-700">
                 {filteredDetections.map((detection) => (
                   <tr
                     key={detection.id}
@@ -281,7 +281,7 @@ export default function Detections() {
                           e.stopPropagation()
                           setSelectedDetection(detection)
                         }}
-                        className="p-2 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-gray-700"
+                        className="p-2 text-gray-400 hover:text-blue-400 rounded-lg hover:bg-gray-700"
                         title="View details"
                       >
                         <Eye className="h-4 w-4" />

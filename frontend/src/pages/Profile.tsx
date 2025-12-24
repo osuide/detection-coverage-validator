@@ -121,7 +121,7 @@ export default function Profile() {
       )}
 
       {/* Account Overview */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-700 p-6 mb-6">
+      <div className="bg-gray-800 rounded-xl shadow-sm border border-gray-700 p-6 mb-6">
         <h2 className="text-lg font-semibold text-white mb-4 flex items-center">
           <User className="h-5 w-5 mr-2 text-gray-400" />
           Account Overview
@@ -165,14 +165,14 @@ export default function Profile() {
       </div>
 
       {/* Update Profile */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-700 p-6 mb-6">
+      <div className="bg-gray-800 rounded-xl shadow-sm border border-gray-700 p-6 mb-6">
         <h2 className="text-lg font-semibold text-white mb-4 flex items-center">
           <User className="h-5 w-5 mr-2 text-gray-400" />
           Update Profile
         </h2>
         <form onSubmit={handleUpdateProfile}>
           <div className="mb-4">
-            <label htmlFor="fullName" className="block text-sm font-medium text-gray-400 mb-1">
+            <label htmlFor="fullName" className="block text-sm font-medium text-gray-300 mb-1">
               Full Name
             </label>
             <input
@@ -180,7 +180,7 @@ export default function Profile() {
               id="fullName"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-2 border border-gray-600 bg-gray-800 text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="Enter your full name"
             />
           </div>
@@ -196,7 +196,7 @@ export default function Profile() {
       </div>
 
       {/* Change Password */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-700 p-6">
+      <div className="bg-gray-800 rounded-xl shadow-sm border border-gray-700 p-6">
         <h2 className="text-lg font-semibold text-white mb-4 flex items-center">
           <Key className="h-5 w-5 mr-2 text-gray-400" />
           Change Password
@@ -204,7 +204,7 @@ export default function Profile() {
         <form onSubmit={handleChangePassword}>
           <div className="space-y-4">
             <div>
-              <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-400 mb-1">
+              <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-300 mb-1">
                 Current Password
               </label>
               <input
@@ -212,13 +212,13 @@ export default function Profile() {
                 id="currentPassword"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-2 border border-gray-600 bg-gray-800 text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Enter current password"
                 required
               />
             </div>
             <div>
-              <label htmlFor="newPassword" className="block text-sm font-medium text-gray-400 mb-1">
+              <label htmlFor="newPassword" className="block text-sm font-medium text-gray-300 mb-1">
                 New Password
               </label>
               <input
@@ -226,14 +226,14 @@ export default function Profile() {
                 id="newPassword"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-2 border border-gray-600 bg-gray-800 text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Enter new password"
                 required
                 minLength={8}
               />
             </div>
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-400 mb-1">
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-300 mb-1">
                 Confirm New Password
               </label>
               <input
@@ -241,7 +241,7 @@ export default function Profile() {
                 id="confirmPassword"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-2 border border-gray-600 bg-gray-800 text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Confirm new password"
                 required
                 minLength={8}

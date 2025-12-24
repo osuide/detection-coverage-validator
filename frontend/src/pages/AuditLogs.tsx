@@ -161,7 +161,7 @@ export default function AuditLogs() {
       {/* Stats */}
       {stats && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-700 p-4">
+          <div className="bg-gray-800 rounded-xl shadow-sm border border-gray-700 p-4">
             <div className="flex items-center">
               <div className="p-2 bg-blue-900/30 rounded-lg">
                 <Activity className="h-5 w-5 text-blue-400" />
@@ -172,7 +172,7 @@ export default function AuditLogs() {
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-700 p-4">
+          <div className="bg-gray-800 rounded-xl shadow-sm border border-gray-700 p-4">
             <div className="flex items-center">
               <div className="p-2 bg-green-900/30 rounded-lg">
                 <Clock className="h-5 w-5 text-green-400" />
@@ -183,7 +183,7 @@ export default function AuditLogs() {
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-700 p-4">
+          <div className="bg-gray-800 rounded-xl shadow-sm border border-gray-700 p-4">
             <div className="flex items-center">
               <div className="p-2 bg-purple-900/30 rounded-lg">
                 <FileText className="h-5 w-5 text-purple-400" />
@@ -198,7 +198,7 @@ export default function AuditLogs() {
       )}
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-700 overflow-hidden">
+      <div className="bg-gray-800 rounded-xl shadow-sm border border-gray-700 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-700 flex items-center justify-between">
           <div className="flex items-center">
             <FileText className="h-5 w-5 text-gray-400 mr-2" />
@@ -237,7 +237,7 @@ export default function AuditLogs() {
                     setFilterAction(e.target.value)
                     setPage(1)
                   }}
-                  className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-cyan-500 focus:border-cyan-500"
+                  className="px-3 py-1.5 border border-gray-600 bg-gray-800 text-gray-100 rounded-lg text-sm focus:ring-cyan-500 focus:border-cyan-500"
                 >
                   <option value="">All actions</option>
                   {actionTypes.map((action) => (
@@ -256,7 +256,7 @@ export default function AuditLogs() {
                     setFilterStartDate(e.target.value)
                     setPage(1)
                   }}
-                  className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-cyan-500 focus:border-cyan-500"
+                  className="px-3 py-1.5 border border-gray-600 bg-gray-800 text-gray-100 rounded-lg text-sm focus:ring-cyan-500 focus:border-cyan-500"
                 />
               </div>
               <div>
@@ -268,7 +268,7 @@ export default function AuditLogs() {
                     setFilterEndDate(e.target.value)
                     setPage(1)
                   }}
-                  className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-cyan-500 focus:border-cyan-500"
+                  className="px-3 py-1.5 border border-gray-600 bg-gray-800 text-gray-100 rounded-lg text-sm focus:ring-cyan-500 focus:border-cyan-500"
                 />
               </div>
               {(filterAction || filterStartDate || filterEndDate) && (
@@ -305,7 +305,7 @@ export default function AuditLogs() {
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-700">
+            <tbody className="bg-gray-800 divide-y divide-gray-700">
               {logs.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-6 py-12 text-center text-gray-400">
@@ -394,7 +394,7 @@ export default function AuditLogs() {
       {/* Detail Modal */}
       {selectedLog && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
+          <div className="bg-gray-800 rounded-xl shadow-xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
               <h2 className="text-lg font-medium text-white">Event Details</h2>
               <button
