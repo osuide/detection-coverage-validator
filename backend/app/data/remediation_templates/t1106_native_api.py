@@ -43,18 +43,7 @@ TEMPLATE = RemediationTemplate(
             "Commonly used by advanced malware and APT groups",
             "Enables execution without cmd.exe or PowerShell",
         ],
-        known_threat_actors=[
-            "APT37",
-            "APT38",
-            "Lazarus Group",
-            "Cobalt Strike",
-            "Emotet",
-            "Conti",
-            "REvil",
-            "Black Basta",
-            "FIN7",
-            "TA505",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Operation Dream Job",

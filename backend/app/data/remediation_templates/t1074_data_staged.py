@@ -38,14 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Facilitates organised theft of large data volumes",
             "Can blend staging activities with normal user behaviour",
         ],
-        known_threat_actors=[
-            "INC Ransom",
-            "Scattered Spider",
-            "Volt Typhoon",
-            "Wizard Spider",
-            "Turla",
-            "Siamesekitten",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Volt Typhoon Espionage",

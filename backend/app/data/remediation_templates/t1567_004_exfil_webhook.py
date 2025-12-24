@@ -41,7 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Enables automated exfiltration from SaaS applications",
             "Popular platforms (Discord, Slack) provide easy setup",
         ],
-        known_threat_actors=["Various threat actors"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Discord Webhook Exfiltration",

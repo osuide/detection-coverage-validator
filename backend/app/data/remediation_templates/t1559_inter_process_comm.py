@@ -44,14 +44,7 @@ TEMPLATE = RemediationTemplate(
             "Allows execution in the context of trusted processes",
             "Difficult to distinguish from normal operations",
         ],
-        known_threat_actors=[
-            "AppleJeus",
-            "Cyclops Blink",
-            "Havoc",
-            "TONESHELL",
-            "Medusa Ransomware",
-            "RotaJakiro",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="3CX Supply Chain Attack",

@@ -36,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Avoids detection on monitored systems",
             "Can use large instance types for compute abuse",
         ],
-        known_threat_actors=["Scattered Spider", "LAPSUS$"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Scattered Spider EC2 Creation",

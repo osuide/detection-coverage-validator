@@ -62,16 +62,7 @@ TEMPLATE = RemediationTemplate(
             "Collect personally identifiable information from voice interactions",
             "Difficult to detect as legitimate applications use microphones",
         ],
-        known_threat_actors=[
-            "APT37",
-            "Evasive Panda",
-            "OilRig",
-            "FIN7",
-            "Darkhotel",
-            "Lazarus Group",
-            "Turla",
-            "Equation Group",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="APT37 SOUNDWAVE Operations",

@@ -39,7 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Hardware tokens vulnerable to proximity attacks",
             "Users assume MFA provides complete security",
         ],
-        known_threat_actors=["APT42", "Chimera", "Kimsuky", "LAPSUS$", "Leviathan"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="APT42 SMS Interception",

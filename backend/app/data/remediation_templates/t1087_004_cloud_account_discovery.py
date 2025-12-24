@@ -36,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Identifies inactive or orphaned accounts",
             "Required for targeted attacks",
         ],
-        known_threat_actors=["APT29", "Scattered Spider", "TeamTNT"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="IAM Enumeration Attacks",

@@ -40,14 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Cloud accounts can be restricted to specific services to minimise detection",
             "Domain accounts enable lateral movement across networks",
         ],
-        known_threat_actors=[
-            "Indrik Spider",
-            "Sandworm Team",
-            "Salt Typhoon",
-            "Scattered Spider",
-            "APT29",
-            "LockBit",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Sandworm Ukraine Power Grid Attack",

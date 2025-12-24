@@ -40,21 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Evade detection by not executing in researcher locations",
             "Determine cloud region for resource targeting",
         ],
-        known_threat_actors=[
-            "Volt Typhoon (G1017)",
-            "SideCopy (G0121)",
-            "Amadey malware",
-            "Crimson malware",
-            "DarkGate malware",
-            "Ragnar Locker (S0481)",
-            "RedLine Stealer (S0697)",
-            "QuasarRAT (S0262)",
-            "Agent Tesla (S0331)",
-            "Qakbot (S0650)",
-            "Lokibot (S0447)",
-            "TrickBot (S0266)",
-            "Emotet (S0367)",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Volt Typhoon Infrastructure Campaign",

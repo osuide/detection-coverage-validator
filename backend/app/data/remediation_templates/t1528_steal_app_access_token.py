@@ -37,7 +37,7 @@ TEMPLATE = RemediationTemplate(
             "Applications often store tokens insecurely",
             "Token reuse from multiple locations is common",
         ],
-        known_threat_actors=["UNC5537", "APT29", "Lapsus$"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Snowflake Customer Breaches",

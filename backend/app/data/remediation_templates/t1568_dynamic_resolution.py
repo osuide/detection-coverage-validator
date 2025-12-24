@@ -41,13 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Bypasses signature-based network security controls",
             "Facilitates long-term persistent access",
         ],
-        known_threat_actors=[
-            "APT29",
-            "Gamaredon Group",
-            "Transparent Tribe",
-            "BITTER",
-            "RedEcho",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="SolarWinds Compromise (C0024)",

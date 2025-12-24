@@ -39,16 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Difficult to distinguish from normal application behaviour",
             "Protocol tunnelling enables multi-stage attacks",
         ],
-        known_threat_actors=[
-            "Magic Hound",
-            "TeamTNT",
-            "Hildegard",
-            "Velvet Ant",
-            "Rocke",
-            "Siloscape",
-            "Raspberry Robin",
-            "INC Ransom",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="TeamTNT IRC Botnet Operations",

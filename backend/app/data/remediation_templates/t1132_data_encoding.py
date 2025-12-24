@@ -41,7 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Allows commands to pass through security controls",
             "Compression reduces network footprint and improves stealth",
         ],
-        known_threat_actors=["Velvet Ant", "APT groups using encoded C2"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Velvet Ant F5 BIG-IP Compromise",

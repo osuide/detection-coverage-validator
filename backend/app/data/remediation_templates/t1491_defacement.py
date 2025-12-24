@@ -39,13 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Intimidate victims or stakeholders",
             "Cloud storage easily modified if credentials compromised",
         ],
-        known_threat_actors=[
-            "Sandworm",
-            "Cyber Army of Russia",
-            "CyberToufan",
-            "Cadet Blizzard",
-            "NoName057(16)",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Cyber Army of Russia Website Defacement",

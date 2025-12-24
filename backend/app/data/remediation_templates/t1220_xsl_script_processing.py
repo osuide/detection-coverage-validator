@@ -40,13 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Allows arbitrary file extensions to disguise malicious XSL files",
             "Enables fileless execution through WMI-based script processing",
         ],
-        known_threat_actors=[
-            "Cobalt Group",
-            "Lazarus Group",
-            "Higaisa",
-            "APT32",
-            "Kimsuky",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Cobalt Group AppLocker Bypass",

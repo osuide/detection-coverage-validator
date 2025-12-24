@@ -39,21 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Instance metadata credentials can be cached in memory",
             "Database connection strings in memory contain sensitive credentials",
         ],
-        known_threat_actors=[
-            "APT28",
-            "APT32",
-            "APT39",
-            "Axiom",
-            "BlackByte",
-            "Ember Bear",
-            "Leviathan",
-            "Mustang Panda",
-            "Poseidon Group",
-            "Sowbug",
-            "Suckfly",
-            "Storm-0501",
-            "Tonto Team",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Storm-0501 Hybrid Cloud Attacks",

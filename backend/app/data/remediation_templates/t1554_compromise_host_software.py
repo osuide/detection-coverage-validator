@@ -39,7 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Bypasses application-layer security controls",
             "Maintains access even if initial compromise method is closed",
         ],
-        known_threat_actors=["UNC3886", "APT5", "Sandworm Team", "Ebury operators"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="UNC3886 VPN Appliance Backdoors",

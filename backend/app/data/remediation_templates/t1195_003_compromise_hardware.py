@@ -38,7 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Affects all cloud instances using hardware",
             "Bypasses software security controls",
         ],
-        known_threat_actors=["Nation-state actors", "Advanced persistent threats"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Hardware Supply Chain Interdiction",

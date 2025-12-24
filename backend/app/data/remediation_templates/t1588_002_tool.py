@@ -41,19 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Can blend with legitimate admin tools",
             "Cracked versions bypass licence restrictions",
         ],
-        known_threat_actors=[
-            "APT29",
-            "APT32",
-            "APT41",
-            "Lazarus Group",
-            "FIN7",
-            "Wizard Spider",
-            "Aquatic Panda",
-            "Play",
-            "Medusa Group",
-            "Scattered Spider",
-            "UNC3890",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="C0027 - Scattered Spider Operations",

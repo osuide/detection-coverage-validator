@@ -40,21 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Difficult to distinguish from legitimate protocol usage",
             "Often allowed through firewalls for operational reasons",
         ],
-        known_threat_actors=[
-            "APT3",
-            "APT29",
-            "APT30",
-            "APT32",
-            "APT41",
-            "BITTER",
-            "PLATINUM",
-            "Gamaredon Group",
-            "Mustang Panda",
-            "UNC3886",
-            "ToddyCat",
-            "Metador",
-            "Ember Bear",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="UNC3886 VMCI Exploitation",

@@ -40,7 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Can be disguised as legitimate system services",
             "Enables long-term access to compromised environments",
         ],
-        known_threat_actors=["TeamTNT", "Kinsing"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Exaramel Linux Daemon Persistence",

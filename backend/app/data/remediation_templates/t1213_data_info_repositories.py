@@ -39,7 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Automated tools can rapidly scrape repository contents",
             "Data from repositories enables lateral movement and privilege escalation",
         ],
-        known_threat_actors=["APT28 (Fancy Bear)", "APT29 (Cozy Bear)"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="SolarWinds Compromise",

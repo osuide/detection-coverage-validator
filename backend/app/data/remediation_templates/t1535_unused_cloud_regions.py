@@ -36,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Billing alerts may not be region-specific",
             "Enables cryptomining without detection",
         ],
-        known_threat_actors=["Cryptomining groups", "TeamTNT"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Unused Region Cryptomining",

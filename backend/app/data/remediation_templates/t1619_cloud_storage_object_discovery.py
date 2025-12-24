@@ -38,7 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Can reveal sensitive file types",
             "Precedes data theft (T1530)",
         ],
-        known_threat_actors=["Pacu users", "Peirates operators"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="S3 Bucket Enumeration",

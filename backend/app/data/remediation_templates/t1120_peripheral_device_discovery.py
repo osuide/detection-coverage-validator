@@ -41,18 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Maps Bluetooth devices for covert channels",
             "Assesses hardware for exploitation opportunities",
         ],
-        known_threat_actors=[
-            "APT28",
-            "Turla",
-            "Gamaredon",
-            "BackdoorDiplomacy",
-            "LockBit",
-            "WannaCry",
-            "Equation Group",
-            "TEMP.Veles",
-            "Threat Group-3390",
-            "Frankenstein",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Operation CuckooBees",

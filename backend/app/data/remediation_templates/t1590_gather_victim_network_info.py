@@ -40,7 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Identifies trust relationships to exploit",
             "Often performed from outside organisational visibility",
         ],
-        known_threat_actors=["HAFNIUM", "Indrik Spider", "Volt Typhoon"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="HAFNIUM Exchange Targeting",

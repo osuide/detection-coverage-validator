@@ -51,7 +51,7 @@ class ThreatContext:
     description: str
     attacker_goal: str
     why_technique: List[str]
-    known_threat_actors: List[str]
+    known_threat_actors: List[str]  # Legacy field - API populates from MITRE sync data
     recent_campaigns: List[Campaign]
     prevalence: str  # common, moderate, rare
     trend: str  # increasing, stable, decreasing

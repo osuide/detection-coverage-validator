@@ -39,7 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Common in containerised environments and bastion hosts",
             "Often overlooked in incident response procedures",
         ],
-        known_threat_actors=["Earth Lusca", "Salt Typhoon", "TeamTNT"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Earth Lusca SSH Backdoor Campaign",

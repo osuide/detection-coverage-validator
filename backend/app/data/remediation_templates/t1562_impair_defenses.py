@@ -42,14 +42,7 @@ TEMPLATE = RemediationTemplate(
             "Makes incident investigation difficult",
             "Enables persistent access without detection",
         ],
-        known_threat_actors=[
-            "BlackByte",
-            "Magic Hound",
-            "APT29",
-            "Scattered Spider",
-            "TeamTNT",
-            "BOLDMOVE",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="BlackByte Kernel Notify Routine Removal",

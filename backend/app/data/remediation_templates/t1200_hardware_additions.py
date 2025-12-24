@@ -54,7 +54,7 @@ TEMPLATE = RemediationTemplate(
             "Difficult to detect without physical inspection",
             "Low-cost devices provide advanced capabilities",
         ],
-        known_threat_actors=["DarkVishnya"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="DarkVishnya Banking Attacks",

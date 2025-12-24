@@ -39,7 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Creates snapshots for data exfiltration",
             "86% of cloud incidents involved business disruption",
         ],
-        known_threat_actors=["LAPSUS$", "Scattered Spider", "DEV-0537", "UNC3944"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Scattered Spider Cloud Campaign",

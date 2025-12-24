@@ -36,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "SSRF vulnerabilities make exploitation easy",
             "Credentials valid for hours after theft",
         ],
-        known_threat_actors=["Capital One attacker", "TeamTNT", "Kinsing"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Capital One Breach",

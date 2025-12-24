@@ -36,17 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Remote service execution enables lateral movement",
             "Service creation may bypass application controls",
         ],
-        known_threat_actors=[
-            "APT32",
-            "APT38",
-            "APT39",
-            "APT41",
-            "FIN6",
-            "FIN7",
-            "Wizard Spider",
-            "Chimera",
-            "Blue Mockingbird",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="APT41 Cobalt Strike Service Execution",

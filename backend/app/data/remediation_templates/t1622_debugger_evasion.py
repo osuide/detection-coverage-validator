@@ -37,7 +37,7 @@ TEMPLATE = RemediationTemplate(
             "Reduces likelihood of detection signatures being created",
             "Protects malware intellectual property from analysis",
         ],
-        known_threat_actors=["Lazarus Group", "Mustang Panda", "APT28"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Operation Dream Job",

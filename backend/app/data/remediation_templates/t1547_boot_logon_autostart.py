@@ -41,16 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Persists across container restarts and deployments",
             "Enables long-term access to cloud resources",
         ],
-        known_threat_actors=[
-            "APT42",
-            "BoxCaon",
-            "Dtrack",
-            "Mis-Type",
-            "Misdat",
-            "xCaon",
-            "TeamTNT",
-            "Kinsing",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="APT42 Registry Persistence",

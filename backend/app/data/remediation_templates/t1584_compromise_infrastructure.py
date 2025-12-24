@@ -40,7 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Enable proximity-based attacks via compromised networks",
             "Lower operational costs versus purchasing infrastructure",
         ],
-        known_threat_actors=["APT28", "Chinese state-sponsored groups"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Nearest Neighbor",

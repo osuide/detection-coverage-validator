@@ -35,13 +35,7 @@ TEMPLATE = RemediationTemplate(
             "Access often persists until password rotation",
             "Can escalate privileges if account has excessive permissions",
         ],
-        known_threat_actors=[
-            "APT29 (Cozy Bear)",
-            "APT33 (Elfin)",
-            "Scattered Spider",
-            "Lapsus$",
-            "UNC2452",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="SolarWinds/SUNBURST",

@@ -41,22 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Supports lateral movement planning",
             "Helps evade detection by identifying security services",
         ],
-        known_threat_actors=[
-            "APT1",
-            "admin@338",
-            "Aquatic Panda",
-            "BRONZE BUTLER",
-            "Chimera",
-            "Earth Lusca",
-            "Indrik Spider",
-            "Ke3chang",
-            "Kimsuky",
-            "OilRig",
-            "Poseidon Group",
-            "TeamTNT",
-            "Turla",
-            "Volt Typhoon",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Operation CuckooBees",

@@ -40,11 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Difficult for users to distinguish malicious from legitimate authentication prompts",
             "In cloud environments, can abuse OAuth flows and metadata services",
         ],
-        known_threat_actors=[
-            "DarkHydrus (G0079)",
-            "Dragonfly (G0035)",
-            "EnvyScout (S0634)",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="DarkHydrus Template Injection",

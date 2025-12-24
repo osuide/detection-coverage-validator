@@ -36,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Creates chaos for defenders",
             "May be final attack stage",
         ],
-        known_threat_actors=["LAPSUS$", "Akira", "LockerGoga"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="LAPSUS$ Account Deletion",

@@ -36,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "CLI tools provide broad access",
             "OAuth tokens persist after password change",
         ],
-        known_threat_actors=["APT29", "Scattered Spider", "Storm-0501"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="APT29 Office 365 Lateral Movement",

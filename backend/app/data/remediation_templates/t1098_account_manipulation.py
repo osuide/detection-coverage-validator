@@ -34,13 +34,7 @@ TEMPLATE = RemediationTemplate(
             "Access keys can be used externally without console access",
             "Changes may persist through normal password rotations",
         ],
-        known_threat_actors=[
-            "APT29",
-            "APT41",
-            "Lazarus Group",
-            "Scattered Spider",
-            "FIN7",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="SolarWinds/SUNBURST",

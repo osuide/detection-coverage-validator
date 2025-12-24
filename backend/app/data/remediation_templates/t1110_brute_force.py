@@ -35,12 +35,7 @@ TEMPLATE = RemediationTemplate(
             "Password reuse across services increases success rate",
             "Cloud services often lack account lockout by default",
         ],
-        known_threat_actors=[
-            "APT28 (Fancy Bear)",
-            "APT29",
-            "Iranian threat actors",
-            "Lazarus Group",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="SolarWinds Password Spraying",

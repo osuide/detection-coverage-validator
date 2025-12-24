@@ -37,7 +37,7 @@ TEMPLATE = RemediationTemplate(
             "Cloud resources easily deleted",
             "May affect backups if not protected",
         ],
-        known_threat_actors=["LAPSUS$", "Sandworm Team", "Lazarus Group"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="LAPSUS$ Cloud Destruction",

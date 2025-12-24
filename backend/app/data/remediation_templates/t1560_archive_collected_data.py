@@ -40,18 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Single archive file easier to exfiltrate than multiple files",
             "Cloud instances often have archiving tools pre-installed",
         ],
-        known_threat_actors=[
-            "APT28",
-            "APT32",
-            "Lazarus Group",
-            "Dragonfly",
-            "FIN6",
-            "Patchwork",
-            "Axiom",
-            "Ke3chang",
-            "menuPass",
-            "Leviathan",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="APT28 DNC Compromise",

@@ -40,7 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Enables lateral movement across cloud infrastructure",
             "Can evade endpoint detection solutions",
         ],
-        known_threat_actors=["Scattered Spider"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Scattered Spider Cloud-Based Attacks",

@@ -37,13 +37,7 @@ TEMPLATE = RemediationTemplate(
             "TLS termination at load balancers exposes cleartext traffic",
             "Can reveal network topology and service architecture",
         ],
-        known_threat_actors=[
-            "APT28",
-            "Sandworm Team",
-            "Salt Typhoon",
-            "UNC3886",
-            "Kimsuky",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Salt Typhoon Network Surveillance",

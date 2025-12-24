@@ -40,7 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Bypasses file system monitoring solutions",
             "Commonly used by post-exploitation frameworks",
         ],
-        known_threat_actors=["FIN7", "Lazarus Group"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="FIN7 .NET Assembly Loading",

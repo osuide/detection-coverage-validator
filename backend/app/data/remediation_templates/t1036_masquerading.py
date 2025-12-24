@@ -38,18 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Simple to implement with high effectiveness",
             "Commonly used alongside other defence evasion techniques",
         ],
-        known_threat_actors=[
-            "APT28",
-            "APT32",
-            "Lazarus Group",
-            "FIN13",
-            "Sandworm Team",
-            "ZIRCONIUM",
-            "APT29",
-            "APT41",
-            "TeamTNT",
-            "Kimsuky",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="APT28 WinRAR Masquerading",

@@ -46,13 +46,7 @@ TEMPLATE = RemediationTemplate(
             "Supports authenticated downloads using stored credentials",
             "Executes under svchost.exe context, appearing legitimate",
         ],
-        known_threat_actors=[
-            "APT39",
-            "APT41",
-            "Leviathan",
-            "Patchwork",
-            "Wizard Spider",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Egregor Ransomware BITS Persistence",

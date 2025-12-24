@@ -40,15 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Effective against multi-factor authentication",
             "Thread hijacking increases legitimacy",
         ],
-        known_threat_actors=[
-            "APT29 (Cozy Bear)",
-            "Kimsuky",
-            "LAPSUS$",
-            "Scattered Spider",
-            "GOLD SOUTHFIELD",
-            "Sea Turtle",
-            "INC Ransom",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="LAPSUS$ Credential Phishing",

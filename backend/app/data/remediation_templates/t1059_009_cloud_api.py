@@ -36,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Enables automated attacks",
             "Hard to distinguish from legitimate admin",
         ],
-        known_threat_actors=["APT29", "Storm-0501", "TeamTNT"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="APT29 Microsoft Graph API",

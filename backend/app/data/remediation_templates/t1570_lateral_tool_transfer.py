@@ -39,18 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Cloud instances can share files via storage services",
             "Appears as normal administrative activity",
         ],
-        known_threat_actors=[
-            "Sandworm Team",
-            "APT41",
-            "APT32",
-            "Wizard Spider",
-            "BlackByte",
-            "BlackCat",
-            "FIN10",
-            "GALLIUM",
-            "Magic Hound",
-            "Volt Typhoon",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Sandworm Team Wiper Deployment",

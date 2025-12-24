@@ -38,7 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Standard system tools can be used, avoiding custom malware detection",
             "Cloud file systems may lack detailed access monitoring",
         ],
-        known_threat_actors=["APT28", "menuPass", "Gamaredon Group", "CosmicDuke"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="APT28 Network Share Collection",

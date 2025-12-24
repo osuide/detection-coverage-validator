@@ -42,13 +42,7 @@ TEMPLATE = RemediationTemplate(
             "Can access restricted internal resources",
             "Often combined with account impersonation",
         ],
-        known_threat_actors=[
-            "Gamaredon Group (G0047)",
-            "HEXANE (G1001)",
-            "Kimsuky (G0094)",
-            "Leviathan (G0065)",
-            "Lazarus Group (G0032)",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Gamaredon Outlook VBA Modules",

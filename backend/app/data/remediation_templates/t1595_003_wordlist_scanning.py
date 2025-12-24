@@ -39,7 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Low-cost automated discovery",
             "Reveals organisation structure",
         ],
-        known_threat_actors=["APT41", "Volatile Cedar"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Volatile Cedar Web Discovery",

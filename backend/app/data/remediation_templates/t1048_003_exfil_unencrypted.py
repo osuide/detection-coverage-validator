@@ -40,18 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Uses readily available tools (curl, wget, FTP clients)",
             "Separate exfiltration channel reduces C2 detection risk",
         ],
-        known_threat_actors=[
-            "APT32",
-            "APT33",
-            "APT41",
-            "Lazarus Group",
-            "FIN6",
-            "FIN8",
-            "OilRig",
-            "Mustang Panda",
-            "Salt Typhoon",
-            "Wizard Spider",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="APT32 DNS Subdomain Encoding",

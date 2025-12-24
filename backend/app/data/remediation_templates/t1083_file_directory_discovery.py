@@ -40,18 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Maps out exfiltration targets",
             "Required for targeted data theft",
         ],
-        known_threat_actors=[
-            "APT28",
-            "APT32",
-            "APT38",
-            "APT39",
-            "APT41",
-            "Lazarus Group",
-            "Kimsuky",
-            "Dragonfly",
-            "MuddyWater",
-            "Scattered Spider",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Cloud Instance File Enumeration",

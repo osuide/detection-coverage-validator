@@ -35,7 +35,7 @@ TEMPLATE = RemediationTemplate(
             "Finds misconfigured services",
             "Required for targeted attacks",
         ],
-        known_threat_actors=["APT29", "TeamTNT", "Scattered Spider"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Service Enumeration Attacks",

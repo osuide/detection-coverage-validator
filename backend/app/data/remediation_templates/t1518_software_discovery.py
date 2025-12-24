@@ -36,14 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Informs exploitation strategy",
             "Detects monitoring and backup solutions",
         ],
-        known_threat_actors=[
-            "APT35",
-            "Volt Typhoon",
-            "Lazarus Group",
-            "MuddyWater",
-            "Mustang Panda",
-            "OilRig",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Software Inventory Reconnaissance",

@@ -34,7 +34,7 @@ TEMPLATE = RemediationTemplate(
             "Backups in S3 may contain database dumps with credentials",
             "Logs and configuration files can reveal additional attack vectors",
         ],
-        known_threat_actors=["APT29", "APT41", "FIN7", "Lazarus Group", "LAPSUS$"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Capital One Breach",

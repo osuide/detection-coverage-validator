@@ -42,12 +42,7 @@ TEMPLATE = RemediationTemplate(
             "Exploits reduced monitoring during specific time windows",
             "Maintains persistent access for ongoing data collection",
         ],
-        known_threat_actors=[
-            "Higaisa",
-            "ComRAT operators",
-            "Turla",
-            "LightNeuron operators",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Higaisa Scheduled Beaconing",

@@ -39,19 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Can leverage cloud SSO and federated auth",
             "Automation tools widely available",
         ],
-        known_threat_actors=[
-            "APT28",
-            "APT29",
-            "APT33",
-            "HAFNIUM",
-            "Lazarus Group",
-            "Chimera",
-            "Ember Bear",
-            "HEXANE",
-            "Leafminer",
-            "Agrius",
-            "Silent Librarian",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="APT28 Nearest Neighbor Campaign",

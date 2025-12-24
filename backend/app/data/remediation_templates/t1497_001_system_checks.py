@@ -37,13 +37,7 @@ TEMPLATE = RemediationTemplate(
             "Helps identify security research environments",
             "Enables conditional payload deployment",
         ],
-        known_threat_actors=[
-            "Darkhotel",
-            "Evilnum",
-            "Gamaredon Group",
-            "OilRig",
-            "Volt Typhoon",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="SUNBURST",

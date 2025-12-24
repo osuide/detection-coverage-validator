@@ -41,14 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Credential reuse enables database access",
             "SaaS platforms offer bulk export features",
         ],
-        known_threat_actors=[
-            "APT41",
-            "FIN6",
-            "Leviathan",
-            "Sandworm Team",
-            "Sea Turtle",
-            "Turla",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="APT41 DUST Database Collection",

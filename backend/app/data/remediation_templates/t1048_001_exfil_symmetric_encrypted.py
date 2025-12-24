@@ -40,7 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Separate from C2 avoids correlation",
             "Blends with legitimate encrypted traffic",
         ],
-        known_threat_actors=["OilRig", "APT41", "FIN6", "Turla", "APT37"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="OilRig Custom Encryption",

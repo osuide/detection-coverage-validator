@@ -37,7 +37,7 @@ TEMPLATE = RemediationTemplate(
             "Affects all deployments using image",
             "CI/CD may pull latest automatically",
         ],
-        known_threat_actors=["TeamTNT", "Container-focused attackers"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Container Image Backdoors",

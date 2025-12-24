@@ -42,12 +42,7 @@ TEMPLATE = RemediationTemplate(
             "Can be triggered by routine cloud operations",
             "Provides both persistence and privilege escalation",
         ],
-        known_threat_actors=[
-            "KV Botnet operators",
-            "Pacu operators",
-            "UPSTYLE operators",
-            "XCSSET operators",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="KV Botnet Event Management",

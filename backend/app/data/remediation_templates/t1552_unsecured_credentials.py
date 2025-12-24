@@ -41,13 +41,7 @@ TEMPLATE = RemediationTemplate(
             "No authentication required if files are world-readable or exposed",
             "Automated scanning tools make discovery at scale trivial",
         ],
-        known_threat_actors=[
-            "Volt Typhoon",
-            "Leviathan",
-            "TeamTNT",
-            "ShinyHunters",
-            "Scattered Spider",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Leviathan Australian Intrusions",

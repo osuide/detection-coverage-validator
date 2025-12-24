@@ -42,20 +42,7 @@ TEMPLATE = RemediationTemplate(
             "Effective against systems with shared local administrator passwords",
             "Can be combined with credential dumping for broad access",
         ],
-        known_threat_actors=[
-            "APT1",
-            "APT28",
-            "APT32",
-            "APT41",
-            "Wizard Spider",
-            "Lazarus Group",
-            "Carbanak",
-            "FIN6",
-            "FIN7",
-            "Turla",
-            "OilRig",
-            "Threat Group-3390",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="APT41 Global Intrusion Campaign",

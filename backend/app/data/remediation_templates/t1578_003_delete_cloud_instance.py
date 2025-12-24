@@ -37,7 +37,7 @@ TEMPLATE = RemediationTemplate(
             "Can trigger organisation incident response",
             "Enables temporary attack infrastructure",
         ],
-        known_threat_actors=["LAPSUS$", "Storm-0501"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="LAPSUS$ Resource Deletion",

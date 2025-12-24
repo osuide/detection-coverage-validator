@@ -45,7 +45,7 @@ TEMPLATE = RemediationTemplate(
             "Maps user interests and behaviour patterns",
             "Uncovers cloud service accounts and portals",
         ],
-        known_threat_actors=["APT38", "Volt Typhoon", "OilRig", "Scattered Spider"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="OilRig Juicy Mix Campaign",

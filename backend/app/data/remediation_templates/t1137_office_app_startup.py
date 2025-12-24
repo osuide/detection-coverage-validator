@@ -41,7 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Can execute without triggering traditional malware signatures",
             "Multiple sub-techniques provide redundancy",
         ],
-        known_threat_actors=["APT32", "Gamaredon Group"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="APT32 VbaProject.OTM Backdoor",

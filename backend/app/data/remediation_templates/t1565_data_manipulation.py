@@ -40,7 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Cloud storage and databases easily modified via API",
             "Difficult to detect without integrity monitoring",
         ],
-        known_threat_actors=["FIN13"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="FIN13 Fraudulent Transactions",

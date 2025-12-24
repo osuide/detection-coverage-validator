@@ -39,17 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Evades detection by not creating suspicious files",
             "Survives reboots and system updates",
         ],
-        known_threat_actors=[
-            "APT41",
-            "DarkGate",
-            "Denis",
-            "Dtrack",
-            "Nightdoor",
-            "Pikabot",
-            "Raspberry Robin",
-            "Saint Bot",
-            "ShimRat",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="APT41 Library Manipulation",

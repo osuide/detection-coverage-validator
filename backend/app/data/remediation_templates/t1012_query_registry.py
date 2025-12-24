@@ -41,17 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Identifies vulnerable software versions for exploitation",
             "Obtains MachineGuid and unique system identifiers",
         ],
-        known_threat_actors=[
-            "APT32",
-            "APT39",
-            "APT41",
-            "Lazarus Group",
-            "Volt Typhoon",
-            "Turla",
-            "OilRig",
-            "Kimsuky",
-            "MuddyWater",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="SUNBURST Supply Chain Attack",

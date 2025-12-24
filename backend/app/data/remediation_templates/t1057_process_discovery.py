@@ -39,17 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Maps system privileges and capabilities",
             "Required before process injection attacks",
         ],
-        known_threat_actors=[
-            "APT1",
-            "APT28",
-            "APT29",
-            "Lazarus Group",
-            "Kimsuky",
-            "OilRig",
-            "Turla",
-            "FIN7",
-            "Volt Typhoon",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Volt Typhoon Infrastructure Reconnaissance",

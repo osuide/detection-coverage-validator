@@ -36,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Often overlooked in monitoring",
             "45% increase in attacks in late 2024",
         ],
-        known_threat_actors=["APT29", "UNC5537", "Scattered Spider"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Snapshot Exfiltration Wave",

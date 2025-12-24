@@ -38,14 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Allows protocol tunnelling over unexpected ports",
             "Complicates traffic analysis and detection efforts",
         ],
-        known_threat_actors=[
-            "APT32",
-            "APT33",
-            "FIN7",
-            "Lazarus Group",
-            "Emotet",
-            "TrickBot",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="C0018 RDP on Non-Standard Ports",

@@ -39,12 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Complicates network forensics and investigation",
             "Enables long-term persistence without detection",
         ],
-        known_threat_actors=[
-            "Gamaredon Group (G0047)",
-            "APT34 (G0057)",
-            "OilRig (G0049)",
-            "Operation Wocao",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Gamaredon VBScript Obfuscation",

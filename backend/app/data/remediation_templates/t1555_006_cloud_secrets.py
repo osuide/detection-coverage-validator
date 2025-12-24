@@ -36,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Single access can yield many secrets",
             "Lateral movement enabler",
         ],
-        known_threat_actors=["HAFNIUM", "Storm-0501"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="HAFNIUM Azure Key Vault",

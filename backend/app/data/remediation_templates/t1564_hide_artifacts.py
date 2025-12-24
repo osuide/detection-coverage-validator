@@ -38,13 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Reduces likelihood of investigation during incident response",
             "Enables long-term persistence by avoiding cleanup efforts",
         ],
-        known_threat_actors=[
-            "Bundlore",
-            "DarkTortilla",
-            "OSX/Shlayer",
-            "Tarrask",
-            "WarzoneRAT",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Cloud Resource Hiding",

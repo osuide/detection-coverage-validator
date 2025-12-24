@@ -40,16 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Forces acknowledgement of breach",
             "Can disrupt business operations",
         ],
-        known_threat_actors=[
-            "Black Basta",
-            "BlackByte",
-            "BlackCat",
-            "Lazarus Group",
-            "Gamaredon Group",
-            "INC Ransomware",
-            "Qilin",
-            "RansomHub",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Black Basta Ransomware",

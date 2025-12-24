@@ -39,7 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Reduces attribution risk",
             "Provides exclusive capabilities",
         ],
-        known_threat_actors=["Contagious Interview", "Kimsuky", "Moonstone Sleet"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Contagious Interview NPM Packages",

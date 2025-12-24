@@ -43,13 +43,7 @@ TEMPLATE = RemediationTemplate(
             "Enables log deletion to evade detection",
             "Cloud logs contain API activity and credentials",
         ],
-        known_threat_actors=[
-            "APT5",
-            "Aquatic Panda",
-            "Ember Bear",
-            "Mustang Panda",
-            "Volt Typhoon",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Volt Typhoon Living-off-the-Land",

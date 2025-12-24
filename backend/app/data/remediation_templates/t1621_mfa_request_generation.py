@@ -36,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "No technical bypass needed",
             "Effective against distracted users",
         ],
-        known_threat_actors=["APT29", "Scattered Spider", "LAPSUS$"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Scattered Spider MFA Bombing",

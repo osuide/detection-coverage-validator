@@ -63,7 +63,7 @@ TEMPLATE = RemediationTemplate(
             "Bypass network-layer security controls via Layer 2 manipulation",
             "Enable follow-on attacks like session hijacking",
         ],
-        known_threat_actors=["Cleaver", "LuminousMoth"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Cleaver ARP Poisoning Operations",

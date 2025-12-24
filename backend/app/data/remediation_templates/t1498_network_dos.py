@@ -38,7 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Distraction during other attacks",
             "Easy to execute with available tools",
         ],
-        known_threat_actors=["APT28", "Lucifer", "NKAbuse"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="APT28 WADA DDoS Attack",

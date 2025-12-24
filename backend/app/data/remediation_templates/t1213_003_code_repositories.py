@@ -38,7 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Enables development of targeted exploits",
             "Facilitates lateral movement via stolen credentials",
         ],
-        known_threat_actors=["APT41", "APT29", "LAPSUS$", "Scattered Spider"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="SolarWinds Compromise",

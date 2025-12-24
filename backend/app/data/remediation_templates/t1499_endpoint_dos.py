@@ -41,7 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Can trigger auto-scaling costs in cloud",
             "May mask other attack activities",
         ],
-        known_threat_actors=["Sandworm Team"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Sandworm Georgian Website Attacks",

@@ -40,7 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Allows access from previously blocked regions",
             "Maintains persistence after initial compromise",
         ],
-        known_threat_actors=["Scattered Spider", "Storm-0501"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Scattered Spider Azure AD Manipulation",

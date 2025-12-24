@@ -40,17 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Assesses system value based on user activity",
             "Required for planning privilege escalation paths",
         ],
-        known_threat_actors=[
-            "APT32",
-            "APT37",
-            "APT41",
-            "FIN7",
-            "FIN8",
-            "Lazarus Group",
-            "OilRig",
-            "Wizard Spider",
-            "Volt Typhoon",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Volt Typhoon Cloud Discovery",

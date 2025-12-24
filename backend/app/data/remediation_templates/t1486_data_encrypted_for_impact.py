@@ -38,7 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Backups may also be encrypted",
             "High pressure on victims",
         ],
-        known_threat_actors=["LockBit", "Conti", "REvil", "Black Basta"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="LockBit 3.0 Cloud Ransomware",

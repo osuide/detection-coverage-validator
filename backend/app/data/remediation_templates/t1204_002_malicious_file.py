@@ -40,13 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Users often trust familiar file types",
             "Effective initial access vector",
         ],
-        known_threat_actors=[
-            "APT28",
-            "APT29",
-            "Lazarus Group",
-            "FIN7",
-            "Sandworm Team",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Operation Dream Job",

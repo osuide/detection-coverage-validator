@@ -60,18 +60,7 @@ TEMPLATE = RemediationTemplate(
             "Effective against virtual desktop infrastructure and remote sessions",
             "Reveals business processes, communications, and proprietary information",
         ],
-        known_threat_actors=[
-            "APT28 (Fancy Bear)",
-            "APT37",
-            "APT39",
-            "APT42",
-            "FIN7",
-            "FIN8",
-            "Gamaredon Group",
-            "MuddyWater",
-            "OilRig",
-            "Volt Typhoon",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Volt Typhoon Infrastructure Espionage",

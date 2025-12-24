@@ -43,7 +43,7 @@ TEMPLATE = RemediationTemplate(
             "SSH configuration file abuse enables command execution on connection",
             "WSL provides alternative Linux environment for executing malicious code",
         ],
-        known_threat_actors=["Lazarus Group", "RedCurl"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Lazarus Group forfiles.exe Persistence",

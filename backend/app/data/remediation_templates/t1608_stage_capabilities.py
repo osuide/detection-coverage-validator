@@ -41,7 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Reduces detection during initial staging",
             "Facilitates distributed attack infrastructure",
         ],
-        known_threat_actors=["Mustang Panda"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Mustang Panda Tracking Pixel Validation",

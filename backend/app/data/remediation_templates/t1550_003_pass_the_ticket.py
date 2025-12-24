@@ -43,7 +43,7 @@ TEMPLATE = RemediationTemplate(
             "Tickets can be injected into processes without triggering typical authentication logs",
             "Enables lateral movement to cloud-connected resources and hybrid environments",
         ],
-        known_threat_actors=["APT29 (Cozy Bear)", "APT32", "BRONZE BUTLER"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="APT29 Kerberos Abuse",

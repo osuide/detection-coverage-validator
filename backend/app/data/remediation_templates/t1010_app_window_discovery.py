@@ -40,7 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Reveals analysis and sandbox environments",
             "Informs follow-on data collection activities",
         ],
-        known_threat_actors=["Lazarus Group", "Volt Typhoon", "HEXANE"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Lazarus Group Financial Targeting",

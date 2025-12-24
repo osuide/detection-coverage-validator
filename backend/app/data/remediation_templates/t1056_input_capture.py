@@ -39,14 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Captured credentials often remain valid until rotation",
             "Input capture is difficult to detect without behavioural analysis",
         ],
-        known_threat_actors=[
-            "APT39",
-            "APT42",
-            "Storm-1811",
-            "Leviathan (APT40)",
-            "TA505",
-            "Scattered Spider",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="North Korean Job Seeker Campaign",

@@ -39,13 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Difficult to distinguish from normal use",
             "Multiple protocols available (VPN, RDP, SSH)",
         ],
-        known_threat_actors=[
-            "APT29",
-            "Scattered Spider",
-            "Wizard Spider",
-            "TeamTNT",
-            "FIN5",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="APT29 VPN & Citrix Compromise",

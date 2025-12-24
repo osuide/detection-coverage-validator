@@ -38,18 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Discovers misconfigured services and exposed management interfaces",
             "Enables targeted exploitation based on discovered services",
         ],
-        known_threat_actors=[
-            "APT32",
-            "APT39",
-            "APT41",
-            "Lazarus Group",
-            "Volt Typhoon",
-            "TeamTNT",
-            "FIN6",
-            "FIN13",
-            "BlackTech",
-            "Cobalt Group",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Operation C0027 - RustScan ESXi Scanning",

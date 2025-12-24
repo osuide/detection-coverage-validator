@@ -43,12 +43,7 @@ TEMPLATE = RemediationTemplate(
             "Wireless connections may be less monitored than wired",
             "Enables covert data transfer in high-security environments",
         ],
-        known_threat_actors=[
-            "APT28 (Fancy Bear)",
-            "Turla",
-            "Equation Group",
-            "APT29 (Cozy Bear)",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Turla Satellite Exfiltration",

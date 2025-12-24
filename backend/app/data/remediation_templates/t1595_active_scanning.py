@@ -39,15 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Enumerate cloud resources",
             "Identify software versions and configurations",
         ],
-        known_threat_actors=[
-            "TEMP.Veles",
-            "APT28",
-            "APT41",
-            "Magic Hound",
-            "Ember Bear",
-            "TeamTNT",
-            "Winter Vivern",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Triton Safety Instrumented System Attack",

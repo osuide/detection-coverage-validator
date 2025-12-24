@@ -36,13 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Stops backup services",
             "Disables security tools",
         ],
-        known_threat_actors=[
-            "Wizard Spider",
-            "Conti",
-            "LockBit",
-            "RobbinHood",
-            "Lazarus Group",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="LockBit 3.0 Service Termination",

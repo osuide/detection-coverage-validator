@@ -38,17 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Cloud instances often have unrestricted outbound access",
             "Blends with legitimate software downloads",
         ],
-        known_threat_actors=[
-            "APT28",
-            "APT29",
-            "APT41",
-            "Lazarus Group",
-            "FIN7",
-            "FIN8",
-            "Kimsuky",
-            "OilRig",
-            "APT37",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="APT29 Second-Stage Implants",

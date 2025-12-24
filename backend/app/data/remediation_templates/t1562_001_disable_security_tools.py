@@ -34,13 +34,7 @@ TEMPLATE = RemediationTemplate(
             "Often automated as first step after gaining access",
             "Can be done quickly with appropriate IAM permissions",
         ],
-        known_threat_actors=[
-            "APT29",
-            "APT41",
-            "Lazarus Group",
-            "TeamTNT",
-            "Scattered Spider",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="SolarWinds/SUNBURST",

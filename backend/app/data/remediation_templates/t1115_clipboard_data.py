@@ -61,15 +61,7 @@ TEMPLATE = RemediationTemplate(
             "Clipboard often contains configuration and secret data during deployments",
             "Cryptocurrency wallet addresses provide high-value theft opportunity",
         ],
-        known_threat_actors=[
-            "APT38",
-            "APT39",
-            "OilRig",
-            "Agent Tesla malware",
-            "DarkComet",
-            "Remcos",
-            "TajMahal",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Operation Wocao",

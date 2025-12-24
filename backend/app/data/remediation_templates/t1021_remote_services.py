@@ -40,13 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Enables rapid lateral movement",
             "Cloud services provide cross-environment access",
         ],
-        known_threat_actors=[
-            "Aquatic Panda",
-            "Ember Bear",
-            "Wizard Spider",
-            "APT29",
-            "Scattered Spider",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Aquatic Panda Remote Scheduled Tasks",

@@ -36,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Cloud storage has high capacity",
             "Hard to distinguish from legitimate use",
         ],
-        known_threat_actors=["APT28", "BlackByte", "OilRig", "Magic Hound"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="APT28 Google Drive Exfil",

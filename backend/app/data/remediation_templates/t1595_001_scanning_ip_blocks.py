@@ -39,7 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Establish operational infrastructure understanding",
             "Discover initial access points",
         ],
-        known_threat_actors=["Ember Bear", "TeamTNT"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Ember Bear Government Targeting",

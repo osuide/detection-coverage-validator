@@ -37,7 +37,7 @@ TEMPLATE = RemediationTemplate(
             "Can be done subtly to avoid detection",
             "Allows access from any location without additional challenges",
         ],
-        known_threat_actors=["Scattered Spider", "APT42"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Scattered Spider MFA Bypass",

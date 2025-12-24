@@ -37,7 +37,7 @@ TEMPLATE = RemediationTemplate(
             "DNS and SMTP rarely blocked outbound",
             "Encrypted protocols hide data content",
         ],
-        known_threat_actors=["Play (G1040)", "TeamTNT (G0139)", "FIN6", "OilRig"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Play WinSCP Exfiltration",

@@ -39,18 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Facilitates bulk exfiltration",
             "Exploits normal file transfer features",
         ],
-        known_threat_actors=[
-            "APT28",
-            "Chimera",
-            "FIN6",
-            "FIN8",
-            "Leviathan",
-            "menuPass",
-            "MoustachedBouncer",
-            "Sea Turtle",
-            "Threat Group-3390",
-            "ToddyCat",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="SolarWinds Compromise",

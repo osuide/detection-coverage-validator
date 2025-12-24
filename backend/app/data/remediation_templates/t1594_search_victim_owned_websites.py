@@ -41,16 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Reveals organisational structure and personnel",
             "Enables tailored phishing campaigns",
         ],
-        known_threat_actors=[
-            "APT41",
-            "Kimsuky",
-            "Leviathan",
-            "Sandworm Team",
-            "Silent Librarian",
-            "EXOTIC LILY",
-            "TA578",
-            "Volt Typhoon",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="EXOTIC LILY Contact Form Abuse",

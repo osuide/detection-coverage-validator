@@ -38,7 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Finds exposed dashboards and APIs",
             "Required for targeted container attacks",
         ],
-        known_threat_actors=["TeamTNT", "Hildegard", "Kinsing"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Hildegard Container Discovery",

@@ -37,13 +37,7 @@ TEMPLATE = RemediationTemplate(
             "Direct access to running workloads",
             "Can pivot across containers",
         ],
-        known_threat_actors=[
-            "TeamTNT",
-            "Siloscape",
-            "Kinsing",
-            "Peirates",
-            "Hildegard",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="TeamTNT Hildegard Campaign",

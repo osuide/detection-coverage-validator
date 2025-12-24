@@ -39,13 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Automated collection is harder to detect than manual browsing",
             "Compressing and staging data enables efficient exfiltration",
         ],
-        known_threat_actors=[
-            "APT28 (Fancy Bear)",
-            "Agrius",
-            "FIN5",
-            "Gamaredon Group",
-            "Ember Bear",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="DNC Breach",

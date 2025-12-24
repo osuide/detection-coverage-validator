@@ -38,7 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Legitimate account usage bypasses many security controls",
             "No malware deployment required, reducing detection surface",
         ],
-        known_threat_actors=["Ember Bear", "FIN13", "Magic Hound", "UNC3886"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Ember Bear IP Camera Exploitation",

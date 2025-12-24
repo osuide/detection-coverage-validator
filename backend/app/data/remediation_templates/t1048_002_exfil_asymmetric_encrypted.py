@@ -38,14 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Multiple protocol options provide flexibility",
             "Bypasses traditional content-based detection",
         ],
-        known_threat_actors=[
-            "APT28",
-            "APT29",
-            "CURIUM (G1012)",
-            "IcedID",
-            "Storm-1811 (G1046)",
-            "Rclone",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="APT28 OWA HTTPS Exfiltration",

@@ -39,19 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Often bypasses traditional security tools",
             "Difficult to detect without file integrity monitoring",
         ],
-        known_threat_actors=[
-            "APT28",
-            "APT29",
-            "APT40",
-            "APT41",
-            "Silk Typhoon",
-            "Emissary Panda",
-            "Stately Taurus",
-            "Threat Group-3390",
-            "Winnti",
-            "Earth Simnavaz",
-            "BackdoorDiplomacy",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="APT41 US State Government Compromises",

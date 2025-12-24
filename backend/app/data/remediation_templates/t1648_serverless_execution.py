@@ -37,7 +37,7 @@ TEMPLATE = RemediationTemplate(
             "Abuse automation for lateral movement",
             "Hard to detect among legitimate functions",
         ],
-        known_threat_actors=["Pacu operators"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Pacu Lambda Abuse",

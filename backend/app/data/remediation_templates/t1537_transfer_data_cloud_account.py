@@ -36,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Maintains cloud-native format",
             "Can exfiltrate large volumes quickly",
         ],
-        known_threat_actors=["APT29", "UNC5537", "Scattered Spider"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Snowflake Data Exfiltration",

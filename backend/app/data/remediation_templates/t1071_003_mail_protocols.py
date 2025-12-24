@@ -38,7 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Multiple protocols available (SMTP, POP3, IMAP)",
             "Enables data exfiltration and command receipt",
         ],
-        known_threat_actors=["APT28", "APT32", "Turla", "Kimsuky", "OilRig"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="APT28 IMAP C2",

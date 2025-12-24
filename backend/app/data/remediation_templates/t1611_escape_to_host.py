@@ -41,7 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Steal secrets and credentials from host",
             "Pivot to other systems via host network",
         ],
-        known_threat_actors=["TeamTNT"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="TeamTNT Container Escapes",

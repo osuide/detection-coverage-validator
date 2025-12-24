@@ -40,14 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Occurs outside enterprise defences",
             "Publicly available information reduces risk",
         ],
-        known_threat_actors=[
-            "APT28",
-            "FIN7",
-            "Kimsuky",
-            "Lazarus Group",
-            "Moonstone Sleet",
-            "Volt Typhoon",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="APT28 Satellite Intelligence Gathering",

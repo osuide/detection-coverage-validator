@@ -63,7 +63,7 @@ TEMPLATE = RemediationTemplate(
             "Intercept API requests and cloud service traffic",
             "Perform denial-of-service via DHCP exhaustion",
         ],
-        known_threat_actors=["APT28", "Kimsuky"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="APT28 Wi-Fi Pineapple Operations",

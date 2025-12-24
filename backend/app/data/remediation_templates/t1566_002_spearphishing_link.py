@@ -40,20 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Domain spoofing evades detection",
             "Scalable to many targets",
         ],
-        known_threat_actors=[
-            "APT29",
-            "APT32",
-            "APT33",
-            "APT39",
-            "APT42",
-            "Lazarus Group",
-            "FIN4",
-            "FIN7",
-            "FIN8",
-            "Mustang Panda",
-            "Earth Lusca",
-            "MuddyWater",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Lazarus Group Operation Dream Job",

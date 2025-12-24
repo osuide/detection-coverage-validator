@@ -36,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Federated users may bypass MFA",
             "Multiple accounts complicate forensics",
         ],
-        known_threat_actors=["APT29", "Scattered Spider", "Lapsus$"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Shadow Admin Accounts",

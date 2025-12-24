@@ -38,7 +38,7 @@ TEMPLATE = RemediationTemplate(
             "API access simplifies automated exfiltration",
             "Public repositories provide easy adversary access",
         ],
-        known_threat_actors=["Empire", "APT29", "Scattered Spider"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Empire GitHub Exfiltration",

@@ -41,7 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Difficult to detect without proper logging",
             "Valid tickets appear as legitimate authentication",
         ],
-        known_threat_actors=["Akira"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Akira Ransomware Credential Theft",

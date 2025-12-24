@@ -41,13 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Double-extortion increases pressure on victims",
             "SaaS financial applications easy to manipulate",
         ],
-        known_threat_actors=[
-            "Akira",
-            "Scattered Spider",
-            "SilverTerrier",
-            "FIN13",
-            "Kimsuky",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Akira Double-Extortion Ransomware",

@@ -36,13 +36,7 @@ TEMPLATE = RemediationTemplate(
             "XMRig and similar tools readily available",
             "Containers and serverless also targeted",
         ],
-        known_threat_actors=[
-            "TeamTNT",
-            "Kinsing",
-            "APT41",
-            "Blue Mockingbird",
-            "Rocke",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="TeamTNT Kubernetes Mining",

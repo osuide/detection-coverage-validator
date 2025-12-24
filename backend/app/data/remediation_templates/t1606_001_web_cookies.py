@@ -40,7 +40,7 @@ TEMPLATE = RemediationTemplate(
             "No additional authentication prompts required",
             "Valid sessions appear legitimate to security tools",
         ],
-        known_threat_actors=["APT29"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="SolarWinds Supply Chain Attack",

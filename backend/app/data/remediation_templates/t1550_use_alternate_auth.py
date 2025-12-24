@@ -36,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Session cookies avoid re-authentication",
             "Hard to distinguish from legitimate use",
         ],
-        known_threat_actors=["APT29", "FoggyWeb"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="APT29 SolarWinds SAML Forging",

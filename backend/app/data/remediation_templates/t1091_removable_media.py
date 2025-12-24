@@ -56,17 +56,7 @@ TEMPLATE = RemediationTemplate(
             "Difficult to prevent in environments requiring USB access",
             "Works across network boundaries",
         ],
-        known_threat_actors=[
-            "APT28",
-            "APT30",
-            "Aoqin Dragon",
-            "Darkhotel",
-            "FIN7",
-            "Gamaredon Group",
-            "LuminousMoth",
-            "Mustang Panda",
-            "Tropic Trooper",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="FIN7 USB Ransomware Campaign",

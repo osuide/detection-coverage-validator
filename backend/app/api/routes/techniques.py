@@ -12,6 +12,7 @@ from app.core.security import AuthContext, require_role
 from app.models.user import UserRole
 from app.models.mitre import Tactic
 from app.data.remediation_templates.template_loader import get_template
+from app.services.mitre_threat_service import MitreThreatService
 
 router = APIRouter(prefix="/techniques", tags=["techniques"])
 
@@ -138,6 +139,13 @@ async def get_technique_detail(
         if tactic:
             tactic_names.append(tactic.name)
 
+    # Fetch threat actors from authoritative MITRE data (not hardcoded)
+    threat_service = MitreThreatService(db)
+    threat_groups = await threat_service.get_groups_for_technique(
+        technique_id, limit=20
+    )
+    known_threat_actors = [f"{g.name} ({g.external_id})" for g in threat_groups]
+
     # Build response
     return TechniqueDetailResponse(
         technique_id=template.technique_id,
@@ -149,7 +157,7 @@ async def get_technique_detail(
             description=template.threat_context.description,
             attacker_goal=template.threat_context.attacker_goal,
             why_technique=template.threat_context.why_technique,
-            known_threat_actors=template.threat_context.known_threat_actors,
+            known_threat_actors=known_threat_actors,  # From MITRE sync data
             recent_campaigns=[
                 CampaignResponse(
                     name=c.name,

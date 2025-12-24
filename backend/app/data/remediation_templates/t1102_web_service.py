@@ -42,18 +42,7 @@ TEMPLATE = RemediationTemplate(
             "Built-in reliability and uptime",
             "Multi-platform support (web, mobile, desktop)",
         ],
-        known_threat_actors=[
-            "APT32",
-            "APT41",
-            "APT42",
-            "Turla",
-            "FIN6",
-            "FIN8",
-            "Gamaredon Group",
-            "TeamTNT",
-            "APT29",
-            "Lazarus Group",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="APT32 Cloud Storage C2",

@@ -36,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Enables targeted privilege escalation",
             "Maps administrative boundaries",
         ],
-        known_threat_actors=["APT29", "Scattered Spider", "TeamTNT"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Group Enumeration Attacks",

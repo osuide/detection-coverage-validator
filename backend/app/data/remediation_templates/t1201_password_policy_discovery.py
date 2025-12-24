@@ -38,7 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Available via native commands on all platforms",
             "Low detection risk for reconnaissance",
         ],
-        known_threat_actors=["Chimera", "OilRig", "Turla"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Operation CuckooBees",

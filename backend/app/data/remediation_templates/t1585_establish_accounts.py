@@ -38,13 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Create personas on code repositories",
             "Establish communication channels for ransomware",
         ],
-        known_threat_actors=[
-            "APT17",
-            "Kimsuky",
-            "Ember Bear",
-            "Fox Kitten",
-            "Contagious Interview",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Salesforce Data Exfiltration",

@@ -43,7 +43,7 @@ TEMPLATE = RemediationTemplate(
             "Difficult to detect in transit",
             "Can deliver various payload types (ISO, ZIP, executables)",
         ],
-        known_threat_actors=["APT29"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="APT29 ISO Embedding",

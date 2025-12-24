@@ -36,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "No authentication required if files are publicly accessible",
             "Automated scanning makes large-scale discovery trivial",
         ],
-        known_threat_actors=["ShinyHunters", "Nemesis", "TeamTNT", "Scattered Spider"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="AWS .env File Attack",

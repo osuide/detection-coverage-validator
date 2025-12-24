@@ -58,12 +58,7 @@ TEMPLATE = RemediationTemplate(
             "High data transfer capacity",
             "Leaves minimal network forensic evidence",
         ],
-        known_threat_actors=[
-            "APT28 (Fancy Bear)",
-            "Equation Group",
-            "Agent.BTZ",
-            "USB-based malware campaigns",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Agent.BTZ USB Propagation",

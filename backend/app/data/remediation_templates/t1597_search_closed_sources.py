@@ -38,7 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Vulnerability intelligence from threat feeds",
             "Occurs outside defender visibility",
         ],
-        known_threat_actors=["EXOTIC LILY"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="EXOTIC LILY RocketReach Campaign",

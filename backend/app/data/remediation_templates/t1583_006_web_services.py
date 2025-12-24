@@ -41,16 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Provides plausible deniability",
             "Often has generous bandwidth/storage",
         ],
-        known_threat_actors=[
-            "APT17",
-            "APT28",
-            "APT29",
-            "APT32",
-            "Lazarus Group",
-            "Kimsuky",
-            "MuddyWater",
-            "Contagious Interview",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Operation Dream Job",

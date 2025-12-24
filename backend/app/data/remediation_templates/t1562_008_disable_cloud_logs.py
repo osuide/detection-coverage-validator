@@ -36,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Single API call can disable logging",
             "May go unnoticed without monitoring",
         ],
-        known_threat_actors=["Scattered Spider", "TeamTNT", "APT29"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="CloudTrail Deletion Attacks",

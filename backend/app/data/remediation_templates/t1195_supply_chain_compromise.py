@@ -40,7 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Provides persistent access across deployments",
             "Automated deployment systems propagate malicious code",
         ],
-        known_threat_actors=["Ember Bear", "OilRig", "Sandworm Team"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="CCleaner Supply Chain Attack",

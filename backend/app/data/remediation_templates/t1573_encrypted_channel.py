@@ -40,16 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Protects C2 infrastructure from identification",
             "Enables persistent covert communications",
         ],
-        known_threat_actors=[
-            "APT29",
-            "BITTER",
-            "Magic Hound",
-            "Tropic Trooper",
-            "Kimsuky",
-            "Lazarus Group",
-            "FIN7",
-            "Turla",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="APT29 Multi-Layer Encryption",

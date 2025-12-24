@@ -40,13 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Can maintain persistence over extended periods",
             "Reduces likelihood of connection timeouts",
         ],
-        known_threat_actors=[
-            "APT28",
-            "APT41",
-            "LuminousMoth",
-            "Play",
-            "Threat Group-3390",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="APT28 Archive Chunking",

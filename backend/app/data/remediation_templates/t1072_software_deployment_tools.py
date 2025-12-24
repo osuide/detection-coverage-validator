@@ -41,14 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Can target cloud, on-premises, and hybrid environments",
             "Enables rapid malware distribution across infrastructure",
         ],
-        known_threat_actors=[
-            "APT32",
-            "Sandworm Team",
-            "Mustang Panda",
-            "Threat Group-1314",
-            "Silence Group",
-            "Medusa Group",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="APT32 McAfee ePO Compromise",

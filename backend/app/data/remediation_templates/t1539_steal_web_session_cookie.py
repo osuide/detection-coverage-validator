@@ -39,14 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Works across cloud services and SaaS applications",
             "Can be extracted from multiple sources (disk, memory, network)",
         ],
-        known_threat_actors=[
-            "APT29",
-            "APT42",
-            "Kimsuky",
-            "Scattered Spider",
-            "Star Blizzard",
-            "Sandworm Team",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="SolarWinds Compromise (C0024)",

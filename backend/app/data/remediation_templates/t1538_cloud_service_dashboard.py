@@ -36,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Easy navigation of services",
             "Browser-based access blends in",
         ],
-        known_threat_actors=["Scattered Spider"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Scattered Spider AWS Dashboard Recon",

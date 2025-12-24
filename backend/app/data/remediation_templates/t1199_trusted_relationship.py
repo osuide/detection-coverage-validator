@@ -38,14 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Trusted relationships may lack MFA requirements",
             "Partner accounts persist longer than employee accounts",
         ],
-        known_threat_actors=[
-            "APT28",
-            "APT29",
-            "menuPass",
-            "HAFNIUM",
-            "LAPSUS$",
-            "Sea Turtle",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="SolarWinds/SUNBURST",

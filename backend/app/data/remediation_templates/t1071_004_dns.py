@@ -46,20 +46,7 @@ TEMPLATE = RemediationTemplate(
             "Difficult to distinguish from normal application behaviour",
             "Multiple DNS record types available for data encoding",
         ],
-        known_threat_actors=[
-            "APT18",
-            "APT39",
-            "APT41",
-            "OilRig",
-            "FIN7",
-            "Cobalt Group",
-            "Chimera",
-            "Ember Bear",
-            "Ke3chang",
-            "Tropic Trooper",
-            "LazyScripter",
-            "Lyceum",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="SUNBURST SolarWinds Supply Chain",

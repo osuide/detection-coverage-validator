@@ -35,7 +35,7 @@ TEMPLATE = RemediationTemplate(
             "Deceptive naming tricks users",
             "Bypasses perimeter defenses",
         ],
-        known_threat_actors=["TeamTNT"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="TeamTNT Docker Images",

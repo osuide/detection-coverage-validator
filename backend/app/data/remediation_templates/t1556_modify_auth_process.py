@@ -44,13 +44,7 @@ TEMPLATE = RemediationTemplate(
             "Can reveal credentials for lateral movement",
             "Weakens organisation-wide security posture",
         ],
-        known_threat_actors=[
-            "ArcaneDoor",
-            "FIN13",
-            "APT29",
-            "APT42",
-            "Scattered Spider",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="ArcaneDoor Authentication Bypass",

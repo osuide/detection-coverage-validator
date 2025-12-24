@@ -41,7 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Facilitate brute force and DoS attacks",
             "Open access for persistent backdoors",
         ],
-        known_threat_actors=["Pacu"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Pacu Framework Usage",

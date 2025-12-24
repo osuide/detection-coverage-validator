@@ -39,12 +39,7 @@ TEMPLATE = RemediationTemplate(
             "May contain MFA codes and authentication tokens",
             "Provides reconnaissance for lateral movement",
         ],
-        known_threat_actors=[
-            "Ember Bear",
-            "Magic Hound",
-            "Scattered Spider",
-            "Silent Librarian",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Scattered Spider Exchange Reconnaissance",

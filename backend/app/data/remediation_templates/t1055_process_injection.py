@@ -60,22 +60,7 @@ TEMPLATE = RemediationTemplate(
             "Enables credential theft from process memory",
             "Difficult to detect without advanced monitoring",
         ],
-        known_threat_actors=[
-            "APT32",
-            "APT37",
-            "APT38",
-            "APT41",
-            "Cobalt Group",
-            "Gamaredon Group",
-            "Kimsuky",
-            "Lazarus Group",
-            "PLATINUM",
-            "Silence",
-            "BlackByte",
-            "REvil",
-            "Ryuk",
-            "Sandworm Team",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="2015 Ukraine Electric Power Attack",

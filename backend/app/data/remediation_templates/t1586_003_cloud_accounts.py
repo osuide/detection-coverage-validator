@@ -39,7 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Facilitates command and control operations",
             "Provides storage for exfiltrated data",
         ],
-        known_threat_actors=["APT29", "APT41"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="APT29 Azure VM Proxies",

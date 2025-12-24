@@ -37,7 +37,7 @@ TEMPLATE = RemediationTemplate(
             "API access negates effectiveness of second authentication factors",
             "Service account tokens frequently have elevated permissions",
         ],
-        known_threat_actors=["APT28", "APT29", "HAFNIUM"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="APT28 Gmail OAuth Abuse",

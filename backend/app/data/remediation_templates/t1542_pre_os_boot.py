@@ -40,13 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Bypasses host-based security defences",
             "Enables long-term persistent access",
         ],
-        known_threat_actors=[
-            "APT28 (Fancy Bear)",
-            "APT41 (Winnti/Double Dragon)",
-            "Winnti Umbrella Groups",
-            "MosaicRegressor operators",
-            "Nation-state actors",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="MoonBounce UEFI Implant",

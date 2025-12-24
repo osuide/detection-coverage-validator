@@ -15,6 +15,7 @@ from app.models.coverage import CoverageSnapshot
 from app.services.remediation_service import (
     remediation_service,
 )
+from app.services.mitre_threat_service import MitreThreatService
 
 router = APIRouter()
 
@@ -145,6 +146,7 @@ async def list_available_techniques(
 @router.get("/techniques/{technique_id}", response_model=TechniqueRemediationResponse)
 async def get_technique_remediation(
     technique_id: str,
+    db: AsyncSession = Depends(get_db),
     auth: AuthContext = Depends(get_auth_context),
 ):
     """
@@ -159,6 +161,13 @@ async def get_technique_remediation(
             status_code=404,
             detail=f"No remediation template found for technique {technique_id}",
         )
+
+    # Fetch threat actors from authoritative MITRE data (not hardcoded)
+    threat_service = MitreThreatService(db)
+    threat_groups = await threat_service.get_groups_for_technique(
+        technique_id.upper(), limit=20
+    )
+    known_threat_actors = [f"{g.name} ({g.external_id})" for g in threat_groups]
 
     # Convert dataclass to response model
     strategies = [
@@ -184,7 +193,7 @@ async def get_technique_remediation(
         threat_description=remediation.threat_description,
         attacker_goal=remediation.attacker_goal,
         why_technique=remediation.why_technique,
-        known_threat_actors=remediation.known_threat_actors,
+        known_threat_actors=known_threat_actors,  # From MITRE sync data
         severity_score=remediation.severity_score,
         severity_reasoning=remediation.severity_reasoning,
         business_impact=remediation.business_impact,

@@ -38,14 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Cloud providers offer free trials reducing costs",
             "Blends with legitimate traffic patterns",
         ],
-        known_threat_actors=[
-            "Kimsuky",
-            "Sandworm Team",
-            "Ember Bear",
-            "Indrik Spider",
-            "Sea Turtle",
-            "Star Blizzard",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Star Blizzard Phishing Infrastructure",

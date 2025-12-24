@@ -40,7 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Extensions can serve as command and control channels",
             "Access to cloud console credentials and session tokens",
         ],
-        known_threat_actors=["Kimsuky", "TA413", "Stantinko", "TeamTNT"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Kimsuky Chrome Extension Campaign",

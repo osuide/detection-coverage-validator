@@ -41,13 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Difficult to detect as behaviour appears legitimate",
             "Can leverage trusted relationships and impersonation",
         ],
-        known_threat_actors=[
-            "LAPSUS$ (G1004)",
-            "Scattered Spider (G1015)",
-            "Lumma Stealer",
-            "Raspberry Robin",
-            "Pikabot",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="LAPSUS$ Employee Recruitment",

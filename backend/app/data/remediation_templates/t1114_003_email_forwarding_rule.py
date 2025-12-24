@@ -36,12 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Hidden rules evade detection",
             "Captures MFA codes and alerts",
         ],
-        known_threat_actors=[
-            "LAPSUS$",
-            "Scattered Spider",
-            "Kimsuky",
-            "Silent Librarian",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="LAPSUS$ Tenant Rules",

@@ -44,7 +44,7 @@ TEMPLATE = RemediationTemplate(
             "Difficult to detect among numerous legitimate jobs",
             "Provides automated recurring execution",
         ],
-        known_threat_actors=["APT32", "APT29", "BRONZE BUTLER", "FIN7"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Lokibot Scheduled Execution",

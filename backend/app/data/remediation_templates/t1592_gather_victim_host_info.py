@@ -40,7 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Identify high-value targets",
             "Plan evasion techniques based on defences",
         ],
-        known_threat_actors=["Volt Typhoon"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Volt Typhoon Infrastructure Targeting",

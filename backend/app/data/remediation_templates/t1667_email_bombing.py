@@ -41,7 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Precursor to vishing and ransomware attacks",
             "Low technical barrier to execution",
         ],
-        known_threat_actors=["Storm-1811"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Storm-1811 Black Basta Campaign",

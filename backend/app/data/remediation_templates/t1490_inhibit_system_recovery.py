@@ -39,13 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Cloud backups easily deleted via API",
             "Automated backup policies can be disabled",
         ],
-        known_threat_actors=[
-            "Sandworm Team",
-            "Wizard Spider",
-            "Scattered Spider",
-            "Storm-0501",
-            "Medusa Group",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Scattered Spider Ransomware",

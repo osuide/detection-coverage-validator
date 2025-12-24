@@ -39,22 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Find backup locations and archives",
             "Establish persistence via shared folders",
         ],
-        known_threat_actors=[
-            "APT1",
-            "APT32",
-            "APT38",
-            "APT39",
-            "APT41",
-            "Chimera",
-            "Dragonfly",
-            "FIN8",
-            "FIN13",
-            "Sowbug",
-            "Tropic Trooper",
-            "Wizard Spider",
-            "Tonto Team",
-            "Medusa Group",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Operation CuckooBees",

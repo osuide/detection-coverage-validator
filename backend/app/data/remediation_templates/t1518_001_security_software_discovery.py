@@ -38,14 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Detects backup and recovery tools",
             "Informs evasion and anti-analysis tactics",
         ],
-        known_threat_actors=[
-            "Kimsuky",
-            "SUNBURST",
-            "IcedID",
-            "Action RAT",
-            "Bumblebee",
-            "Raspberry Robin",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="SUNBURST Security Tool Reconnaissance",

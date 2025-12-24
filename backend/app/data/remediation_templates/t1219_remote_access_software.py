@@ -41,19 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Often whitelisted by security tools",
             "Enables interactive GUI access to compromised systems",
         ],
-        known_threat_actors=[
-            "Akira",
-            "BlackByte",
-            "Carbanak",
-            "Cobalt Group",
-            "DarkVishnya",
-            "FIN7",
-            "MuddyWater",
-            "OilRig",
-            "Sandworm Team",
-            "TeamTNT",
-            "Medusa Group",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Night Dragon Remote Administration",

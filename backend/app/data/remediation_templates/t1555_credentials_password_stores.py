@@ -40,21 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Successful credential extraction provides immediate access to multiple systems",
             "Less likely to trigger alerts compared to brute force attacks",
         ],
-        known_threat_actors=[
-            "APT29",
-            "APT33",
-            "APT34",
-            "APT39",
-            "APT41",
-            "Evilnum",
-            "FIN6",
-            "HEXANE",
-            "Leafminer",
-            "MuddyWater",
-            "Stealth Falcon",
-            "Volt Typhoon",
-            "Malteiro",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="APT29 SolarWinds Compromise",

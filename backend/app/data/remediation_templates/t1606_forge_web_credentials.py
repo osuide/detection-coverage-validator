@@ -38,7 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Forged tokens avoid detection mechanisms",
             "SAML tokens grant access across multiple services",
         ],
-        known_threat_actors=["APT29"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="SolarWinds Compromise (C0024)",

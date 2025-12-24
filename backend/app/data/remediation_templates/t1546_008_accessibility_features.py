@@ -41,14 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Can be triggered from login screen",
             "Bypasses standard authentication controls",
         ],
-        known_threat_actors=[
-            "APT29",
-            "APT3",
-            "APT41",
-            "Axiom",
-            "Deep Panda",
-            "Fox Kitten",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="APT29 Sticky Keys Persistence",

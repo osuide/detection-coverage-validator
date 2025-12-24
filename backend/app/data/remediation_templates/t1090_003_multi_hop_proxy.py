@@ -38,13 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Defeats traditional IP-based blocking",
             "Multiple relay layers provide redundancy",
         ],
-        known_threat_actors=[
-            "APT28",
-            "APT29",
-            "Inception",
-            "Leviathan",
-            "Volt Typhoon",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Operation Wocao",

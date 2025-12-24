@@ -39,22 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Enables automation of multi-stage attacks",
             "Hard to distinguish from normal scripting usage",
         ],
-        known_threat_actors=[
-            "APT19",
-            "APT32",
-            "APT37",
-            "APT39",
-            "FIN5",
-            "FIN6",
-            "FIN7",
-            "OilRig",
-            "Dragonfly",
-            "Fox Kitten",
-            "Mustang Panda",
-            "Winter Vivern",
-            "Stealth Falcon",
-            "Whitefly",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="APT32 PowerShell Backdoors",

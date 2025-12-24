@@ -36,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Reduces likelihood of malware samples being analysed",
             "Enables attackers to avoid triggering alerts in test environments",
         ],
-        known_threat_actors=["Darkhotel", "Saint Bear", "Contagious Interview"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Contagious Interview",

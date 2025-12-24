@@ -40,7 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Enables staged capability deployment",
             "Provides fallback channels if primary C2 detected",
         ],
-        known_threat_actors=["APT3", "APT41", "Lazarus Group", "MuddyWater", "UNC3886"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="APT41 BEACON Multi-Stage Deployment",

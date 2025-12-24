@@ -65,7 +65,7 @@ TEMPLATE = RemediationTemplate(
             "Bypass encryption via TLS downgrade attacks",
             "Intercept API requests and cloud service traffic",
         ],
-        known_threat_actors=["Sea Turtle", "Kimsuky", "Mustang Panda"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="ArcaneDoor Campaign",

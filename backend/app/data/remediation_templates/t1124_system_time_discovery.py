@@ -38,21 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Synchronise command and control communications",
             "Verify system uptime for persistence planning",
         ],
-        known_threat_actors=[
-            "BRONZE BUTLER (G0060)",
-            "FIN7 (G0046)",
-            "Lazarus Group (G0032)",
-            "The White Company (G0089)",
-            "Turla (G0010)",
-            "Darkhotel (G0012)",
-            "Chimera (G0114)",
-            "Higaisa (G0126)",
-            "CURIUM (G1012)",
-            "Volt Typhoon (G1017)",
-            "UNC3886 (G1048)",
-            "Sidewinder (G0121)",
-            "ZIRCONIUM (G0128)",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Operation CuckooBees (C0012)",

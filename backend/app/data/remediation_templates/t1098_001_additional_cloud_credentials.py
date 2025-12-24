@@ -36,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Keys persist after password reset",
             "Often overlooked in incident response",
         ],
-        known_threat_actors=["APT29", "Scattered Spider", "UNC5537"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Scattered Spider Persistence",

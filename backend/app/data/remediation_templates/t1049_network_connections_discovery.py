@@ -39,18 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Essential for planning lateral movement",
             "Helps identify high-value targets on the network",
         ],
-        known_threat_actors=[
-            "APT1",
-            "APT3",
-            "APT32",
-            "APT41",
-            "Lazarus Group",
-            "Turla",
-            "FIN7",
-            "OilRig",
-            "Volt Typhoon",
-            "TeamTNT",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Volt Typhoon Infrastructure Reconnaissance",

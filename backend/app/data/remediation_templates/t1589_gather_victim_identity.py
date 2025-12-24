@@ -40,15 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Discovers valid usernames for credential attacks",
             "Bypasses generic security awareness training",
         ],
-        known_threat_actors=[
-            "APT32",
-            "FIN13",
-            "LAPSUS$",
-            "Magic Hound",
-            "Scattered Spider",
-            "Star Blizzard",
-            "Volt Typhoon",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Operation Dream Job",

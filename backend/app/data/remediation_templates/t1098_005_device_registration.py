@@ -37,7 +37,7 @@ TEMPLATE = RemediationTemplate(
             "Provides persistent access even after password resets",
             "Allows device-based authentication from attacker-controlled systems",
         ],
-        known_threat_actors=["APT29", "Scattered Spider", "DEV-0537"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="SolarWinds Compromise (C0024)",

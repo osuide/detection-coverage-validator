@@ -38,7 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Bypasses traditional security controls",
             "Malicious images can download malware at runtime",
         ],
-        known_threat_actors=["TeamTNT", "Kinsing"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="TeamTNT Container Deployments",

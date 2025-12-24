@@ -42,16 +42,7 @@ TEMPLATE = RemediationTemplate(
             "Reduces direct connections to adversary infrastructure",
             "Facilitates domain fronting to bypass domain-based filtering",
         ],
-        known_threat_actors=[
-            "APT41",
-            "Volt Typhoon",
-            "Scattered Spider",
-            "Gamaredon Group",
-            "APT29",
-            "Turla",
-            "FIN7",
-            "Lazarus Group",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="APT41 Cloudflare CDN Proxying",

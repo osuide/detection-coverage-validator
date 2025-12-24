@@ -42,14 +42,7 @@ TEMPLATE = RemediationTemplate(
             "Identifies inactive or orphaned accounts for takeover",
             "Essential for credential stuffing attacks",
         ],
-        known_threat_actors=[
-            "APT29",
-            "Aquatic Panda",
-            "FIN13",
-            "Scattered Spider",
-            "Havoc",
-            "XCSSET",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="SolarWinds Compromise",

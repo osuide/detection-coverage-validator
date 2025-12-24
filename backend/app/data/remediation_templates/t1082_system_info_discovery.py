@@ -39,18 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Informs privilege escalation tactics",
             "Essential for targeted exploitation",
         ],
-        known_threat_actors=[
-            "admin@338",
-            "APT3",
-            "APT18",
-            "APT32",
-            "APT37",
-            "Kimsuky",
-            "Lazarus Group",
-            "MuddyWater",
-            "Mustang Panda",
-            "OilRig",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Cloud Instance Profiling",

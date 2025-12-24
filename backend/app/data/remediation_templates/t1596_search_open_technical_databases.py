@@ -40,7 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Identifies potential vulnerabilities",
             "Maps external attack surface",
         ],
-        known_threat_actors=["APT28", "Kimsuky"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="APT28 LLM-Enhanced Reconnaissance",

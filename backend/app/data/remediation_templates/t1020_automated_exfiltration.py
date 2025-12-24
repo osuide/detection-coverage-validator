@@ -40,13 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Leverages legitimate cloud services for exfiltration",
             "Circumvents manual monitoring controls",
         ],
-        known_threat_actors=[
-            "Gamaredon Group",
-            "Tropic Trooper",
-            "Winter Vivern",
-            "RedCurl",
-            "Sidewinder",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Salesforce Data Exfiltration (C0059)",

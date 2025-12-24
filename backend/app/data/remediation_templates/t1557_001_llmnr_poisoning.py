@@ -64,7 +64,7 @@ TEMPLATE = RemediationTemplate(
             "Works against legacy Windows systems and misconfigured networks",
             "Can be combined with downgrade attacks to force weaker authentication",
         ],
-        known_threat_actors=["Lazarus Group", "Wizard Spider", "APT28", "FIN6"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Lazarus Group Responder Deployment",

@@ -42,7 +42,7 @@ TEMPLATE = RemediationTemplate(
             "Prevent forensic investigation",
             "Manipulate backups to ensure persistence",
         ],
-        known_threat_actors=["APT38", "SUNSPOT operators", "DYEPACK users"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="APT38 DYEPACK SWIFT Manipulation",

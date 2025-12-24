@@ -38,13 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Can bypass technical security controls",
             "Facilitates credential theft and account takeover",
         ],
-        known_threat_actors=[
-            "APT28",
-            "Kimsuky",
-            "Moonstone Sleet",
-            "Scattered Spider",
-            "ZIRCONIUM",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Scattered Spider Credential Phishing",

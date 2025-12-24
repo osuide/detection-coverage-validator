@@ -39,13 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Cloud volumes easily deleted",
             "May prevent system recovery",
         ],
-        known_threat_actors=[
-            "APT37",
-            "APT38",
-            "Lazarus Group",
-            "Shamoon operators",
-            "Sandworm Team",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Shamoon 3",

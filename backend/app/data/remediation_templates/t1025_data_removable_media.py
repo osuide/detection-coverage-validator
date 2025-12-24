@@ -38,15 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Imported disk images and snapshots may contain historical sensitive data",
             "Automated scripts can quickly enumerate and exfiltrate data from attached media",
         ],
-        known_threat_actors=[
-            "APT28",
-            "Gamaredon Group",
-            "OilRig",
-            "Turla",
-            "Prikormka",
-            "Ramsay",
-            "USBStealer",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Turla USB Collection",

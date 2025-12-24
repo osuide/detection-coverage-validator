@@ -39,16 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Prevents analysis of malicious tools and scripts",
             "Facilitates multi-stage attacks by hiding subsequent payloads",
         ],
-        known_threat_actors=[
-            "Sandworm Team",
-            "APT37",
-            "APT41",
-            "Kimsuky",
-            "Cobalt Strike operators",
-            "Conti ransomware",
-            "Emotet operators",
-            "TrickBot operators",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Sandworm Industroyer Attacks",

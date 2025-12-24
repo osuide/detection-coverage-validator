@@ -38,7 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Can enable cross-account privilege escalation",
             "Exploits misconfigured trust relationships",
         ],
-        known_threat_actors=["Scattered Spider", "UNC3886"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="IAM Role Assumption Abuse",

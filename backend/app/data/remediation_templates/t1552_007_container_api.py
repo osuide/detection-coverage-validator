@@ -38,7 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Unsecured APIs accessible without authentication",
             "Cloud container services expose native APIs",
         ],
-        known_threat_actors=["Peirates"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Peirates Kubernetes Exploitation",

@@ -40,7 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Can maintain persistent access until cookie expiry",
             "Difficult to detect without behaviour analysis",
         ],
-        known_threat_actors=["APT29", "Star Blizzard"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="SolarWinds Compromise - Cookie Forgery",

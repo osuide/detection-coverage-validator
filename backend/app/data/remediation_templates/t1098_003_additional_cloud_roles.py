@@ -36,7 +36,7 @@ TEMPLATE = RemediationTemplate(
             "Provides flexible persistent access",
             "Can enable privilege escalation chains",
         ],
-        known_threat_actors=["APT29", "Scattered Spider", "UNC5537"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Cross-Account Trust Abuse",

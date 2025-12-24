@@ -38,14 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Cloud storage services often have broad access permissions",
             "Modified binaries or documents may be trusted by users and security tools",
         ],
-        known_threat_actors=[
-            "BRONZE BUTLER",
-            "Cinnamon Tempest",
-            "Gamaredon Group",
-            "Darkhotel",
-            "Conti",
-            "Miner-C",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="BRONZE BUTLER Network Drive Compromise",

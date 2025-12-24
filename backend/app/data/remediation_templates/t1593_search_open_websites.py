@@ -40,14 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Enables targeted phishing campaigns",
             "May reveal credentials in repositories",
         ],
-        known_threat_actors=[
-            "Kimsuky",
-            "Mustang Panda",
-            "Sandworm Team",
-            "Star Blizzard",
-            "Volt Typhoon",
-            "Contagious Interview",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Kimsuky LLM-Powered Research",

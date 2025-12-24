@@ -40,18 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Allows manual DLL mapping and shellcode decryption at runtime",
             "Facilitates payload reassembly from fragmented binary components",
         ],
-        known_threat_actors=[
-            "APT28",
-            "APT29",
-            "Lazarus Group",
-            "OilRig",
-            "Kimsuky",
-            "FIN7",
-            "Volt Typhoon",
-            "Conti operators",
-            "REvil operators",
-            "LockBit operators",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="SolarWinds Compromise (C0024)",

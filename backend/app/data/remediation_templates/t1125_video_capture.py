@@ -62,14 +62,7 @@ TEMPLATE = RemediationTemplate(
             "Often goes undetected as legitimate camera usage",
             "Video conferencing API access provides covert recording capability",
         ],
-        known_threat_actors=[
-            "FIN7",
-            "Silence",
-            "Ember Bear",
-            "APT group Patchwork",
-            "Static Kitten",
-            "TA505",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="FIN7 Video Surveillance Operations",

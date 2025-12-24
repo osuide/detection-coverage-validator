@@ -40,7 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Complicates network forensics and tracking",
             "Enables automated C2 rotation",
         ],
-        known_threat_actors=["APT41", "TA551"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="QakBot DGA Operations",

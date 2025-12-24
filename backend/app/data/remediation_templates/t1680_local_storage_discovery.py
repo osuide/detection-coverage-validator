@@ -42,18 +42,7 @@ TEMPLATE = RemediationTemplate(
             "Enables direct volume access bypassing file system",
             "Cloud storage enumeration reveals attached EBS/persistent disks",
         ],
-        known_threat_actors=[
-            "APT29",
-            "APT41",
-            "Chimera",
-            "Confucius",
-            "Higaisa",
-            "Kimsuky",
-            "Lazarus Group",
-            "Patchwork",
-            "Tropic Trooper",
-            "Volt Typhoon",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="SolarWinds Compromise",

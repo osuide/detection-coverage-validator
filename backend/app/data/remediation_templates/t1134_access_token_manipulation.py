@@ -41,7 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Creates process trees that appear legitimate to security tools",
             "SID-History injection can grant access to cross-forest resources in hybrid environments",
         ],
-        known_threat_actors=["APT41", "Blue Mockingbird", "FIN6", "Lotus Blossom"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="APT41 BADPOTATO Exploitation",

@@ -41,7 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Web shells can be deployed during defacement",
             "Frequently used in geopolitical conflicts",
         ],
-        known_threat_actors=["Ember Bear", "Sandworm Team"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Ember Bear Ukrainian Defacement",

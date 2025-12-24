@@ -42,7 +42,7 @@ TEMPLATE = RemediationTemplate(
             "Provides access to both cloud and on-premises resources",
             "Often overlooked during incident response",
         ],
-        known_threat_actors=["APT29"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="APT29 AD FS Compromise",

@@ -38,7 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Difficult to distinguish from legitimate logins",
             "Effective against cloud and SaaS platforms",
         ],
-        known_threat_actors=["Chimera"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Chimera Credential Stuffing",

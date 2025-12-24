@@ -38,13 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Often performed before exfiltration or destructive actions",
             "May go unnoticed without proper monitoring controls",
         ],
-        known_threat_actors=[
-            "APT42",
-            "APT5",
-            "APT29",
-            "Lazarus Group",
-            "Mustang Panda",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Scattered Spider Cloud Log Tampering",

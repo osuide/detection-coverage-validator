@@ -40,7 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Weak passwords remain common",
             "Distributed attacks avoid rate limits",
         ],
-        known_threat_actors=["APT28", "APT29"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="APT28 Kubernetes Password Attacks",

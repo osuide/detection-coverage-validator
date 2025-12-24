@@ -40,14 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Encrypted protocols hide data content",
             "Single channel reduces operational complexity",
         ],
-        known_threat_actors=[
-            "Lazarus Group",
-            "APT39",
-            "Kimsuky",
-            "Emotet",
-            "TrickBot",
-            "Cobalt Strike",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Lazarus C2 Data Theft",

@@ -40,20 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Difficult to detect without deep packet inspection",
             "Common tools (SSH, ngrok, chisel) readily available",
         ],
-        known_threat_actors=[
-            "Sandworm Team (G0034)",
-            "Scattered Spider",
-            "FIN7",
-            "FIN6",
-            "FIN13",
-            "OilRig",
-            "Cobalt Group",
-            "Salt Typhoon",
-            "Magic Hound",
-            "Fox Kitten",
-            "Leviathan",
-            "Mustang Panda",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="2022 Ukraine Electric Power Attack",

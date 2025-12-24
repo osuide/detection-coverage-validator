@@ -39,7 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Multiple fallback options increase operation longevity",
             "Can switch protocols to evade signature-based detection",
         ],
-        known_threat_actors=["APT41", "Lazarus Group", "OilRig", "FIN7"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="APT41 Steam Community C2",

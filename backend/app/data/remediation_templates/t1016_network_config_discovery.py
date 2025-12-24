@@ -40,20 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Enables lateral movement planning",
             "Identifies VPC peering and interconnections",
         ],
-        known_threat_actors=[
-            "APT1",
-            "APT3",
-            "APT19",
-            "APT32",
-            "APT41",
-            "Lazarus Group",
-            "Turla",
-            "OilRig",
-            "Wizard Spider",
-            "Kimsuky",
-            "MuddyWater",
-            "Volt Typhoon",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Volt Typhoon Network Reconnaissance",

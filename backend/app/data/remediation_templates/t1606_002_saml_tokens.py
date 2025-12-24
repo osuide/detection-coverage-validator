@@ -41,7 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Works across cloud and SaaS platforms",
             "Long-lived tokens enable persistence",
         ],
-        known_threat_actors=["APT29"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="SolarWinds Compromise",

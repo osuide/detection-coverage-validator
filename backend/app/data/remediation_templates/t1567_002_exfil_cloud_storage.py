@@ -40,14 +40,7 @@ TEMPLATE = RemediationTemplate(
             "Tools like rclone enable automated bulk exfiltration",
             "Hard to distinguish from legitimate cloud service use",
         ],
-        known_threat_actors=[
-            "Scattered Spider",
-            "Lazarus Group",
-            "APT41",
-            "OilRig",
-            "Indrik Spider",
-            "Storm-0501",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Scattered Spider Rclone Exfiltration",

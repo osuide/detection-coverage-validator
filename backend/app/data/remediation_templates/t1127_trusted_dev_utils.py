@@ -38,7 +38,7 @@ TEMPLATE = RemediationTemplate(
             "Can be used to establish persistence or execute additional payloads",
             "Particularly effective in environments with developer tools installed",
         ],
-        known_threat_actors=["APT29", "APT28", "Turla", "Multiple cybercrime groups"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Frankenstein Campaign",

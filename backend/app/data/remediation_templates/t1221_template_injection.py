@@ -41,16 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Appears as legitimate document template",
             "Difficult to detect without dynamic analysis",
         ],
-        known_threat_actors=[
-            "APT28 (Fancy Bear)",
-            "Gamaredon Group",
-            "DarkHydrus",
-            "Dragonfly",
-            "Lazarus Group",
-            "Inception",
-            "Confucius",
-            "Tropic Trooper",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Lazarus Operation Dream Job",

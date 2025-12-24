@@ -39,7 +39,7 @@ TEMPLATE = RemediationTemplate(
             "Validates environment before executing malicious actions",
             "Protects malware from analysis in security sandboxes",
         ],
-        known_threat_actors=["Gamaredon Group", "Mustang Panda", "RedDelta"],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="Contagious Interview",

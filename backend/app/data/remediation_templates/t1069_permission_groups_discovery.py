@@ -41,16 +41,7 @@ TEMPLATE = RemediationTemplate(
             "Informs lateral movement planning",
             "Discovers role trust relationships",
         ],
-        known_threat_actors=[
-            "APT3",
-            "APT29",
-            "APT41",
-            "TA505",
-            "Scattered Spider",
-            "Volt Typhoon",
-            "FIN13",
-            "TeamTNT",
-        ],
+        known_threat_actors=[],
         recent_campaigns=[
             Campaign(
                 name="SolarWinds Compromise (C0024)",
