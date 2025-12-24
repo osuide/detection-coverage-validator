@@ -96,6 +96,20 @@ async def create_account(
 
     Requires admin or owner role.
     """
+    # Check for duplicate account_id within the same organization FIRST
+    # This takes precedence over quota limits (can't create what already exists)
+    existing = await db.execute(
+        select(CloudAccount).where(
+            CloudAccount.account_id == account_in.account_id,
+            CloudAccount.organization_id == auth.organization_id,
+        )
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(
+            status_code=400,
+            detail=f"Account with ID {account_in.account_id} already exists in your organisation",
+        )
+
     # H4: Check subscription account limits before creating
     subscription_result = await db.execute(
         select(Subscription).where(Subscription.organization_id == auth.organization_id)
@@ -120,19 +134,6 @@ async def create_account(
                     detail=f"Cloud account limit reached ({max_accounts}). "
                     "Please upgrade your subscription to add more accounts.",
                 )
-
-    # Check for duplicate account_id within the same organization
-    existing = await db.execute(
-        select(CloudAccount).where(
-            CloudAccount.account_id == account_in.account_id,
-            CloudAccount.organization_id == auth.organization_id,
-        )
-    )
-    if existing.scalar_one_or_none():
-        raise HTTPException(
-            status_code=400,
-            detail=f"Account with ID {account_in.account_id} already exists in your organisation",
-        )
 
     # Fraud prevention: Check cloud account uniqueness and email binding
     fraud_service = CloudAccountFraudService(db)
