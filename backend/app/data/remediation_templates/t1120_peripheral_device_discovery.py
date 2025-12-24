@@ -4,6 +4,12 @@ T1120 - Peripheral Device Discovery
 Adversaries gather information about attached peripheral devices and components
 connected to a computer system, including removable storage, input/output devices,
 and specialized hardware to inform exfiltration and lateral movement strategies.
+
+CROSS-REFERENCE: For real-time block device/USB connection detection on EC2 instances,
+see T1200 (Hardware Additions) which provides udev + systemd based real-time alerting.
+Peripheral device discovery often precedes T1091 (Removable Media replication) and
+T1052 (Exfiltration Over Physical Medium) - real-time device detection can alert before
+adversaries can exploit discovered devices.
 """
 
 from .template_loader import (

@@ -252,7 +252,219 @@ resource "aws_cloudwatch_metric_alarm" "usb_connection" {
                 "CloudWatch Logs enabled",
             ],
         ),
-        # Strategy 2: AWS/GCP - Endpoint Agent for Real USB Detection (Recommended)
+        # Strategy 2: AWS - Real-Time Block Device Detection for EC2
+        DetectionStrategy(
+            strategy_id="t1091-aws-realtime-block-device",
+            name="AWS Real-Time Block Device Monitoring for EC2 (Cloud-Native)",
+            description=(
+                "Deploy real-time block device detection on EC2 instances using Linux udev rules and "
+                "systemd services. Provides SUB-SECOND alerting when removable storage devices (USB "
+                "drives, external disks) are connected. Events are logged as structured JSON and "
+                "shipped to CloudWatch Logs for metric filtering and alerting. This is the BEST "
+                "cloud-native approach for detecting removable media on EC2 without third-party EDR. "
+                "See T1200 (Hardware Additions) for full implementation details."
+            ),
+            detection_type=DetectionType.CLOUDWATCH_QUERY,
+            aws_service="cloudwatch",
+            cloud_provider=CloudProvider.AWS,
+            implementation=DetectionImplementation(
+                query="""fields @timestamp, ts, host, event, devkernel, devpath
+| filter event = "block_device_add"
+| stats count(*) as device_adds by host, bin(1h)
+| filter device_adds > 0
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
+Description: |
+  Real-time removable media detection using udev + systemd.
+  Alerts when USB drives or external storage are connected to EC2.
+  See T1200 template for full SSM Document implementation.
+
+Parameters:
+  AlertEmail:
+    Type: String
+    Description: Email for security alerts
+  LogGroupName:
+    Type: String
+    Default: /security/block-device-monitor
+  MonitorTagKey:
+    Type: String
+    Default: BlockDeviceMonitor
+  MonitorTagValue:
+    Type: String
+    Default: 'true'
+
+Resources:
+  # Step 1: SNS topic for alerts
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: Removable Media Alerts
+      Subscription:
+        - Protocol: email
+          Endpoint: !Ref AlertEmail
+
+  SNSTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: [!Ref AlertTopic]
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+
+  # Step 2: CloudWatch Log Group
+  BlockDeviceLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Ref LogGroupName
+      RetentionInDays: 30
+
+  # Step 3: Metric filter for block device add events
+  BlockDeviceAddMetric:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref BlockDeviceLogGroup
+      FilterPattern: '{ $.event = "block_device_add" }'
+      MetricTransformations:
+        - MetricName: RemovableMediaConnected
+          MetricNamespace: Security/RemovableMedia
+          MetricValue: "1"
+
+  # Step 4: CloudWatch alarm
+  RemovableMediaAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: T1091-RemovableMediaDetected
+      AlarmDescription: Removable storage device connected - potential malware vector
+      MetricName: RemovableMediaConnected
+      Namespace: Security/RemovableMedia
+      Statistic: Sum
+      Period: 60
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: 1
+      AlarmActions:
+        - !Ref AlertTopic
+      TreatMissingData: notBreaching
+
+Outputs:
+  Note:
+    Description: Implementation note
+    Value: "Deploy the SSM Document from T1200 template to instances tagged with BlockDeviceMonitor=true"
+""",
+                terraform_template="""# Real-time removable media detection via udev + systemd
+# See T1200 template for full SSM Document implementation.
+
+variable "alert_email" {
+  type        = string
+  description = "Email for security alerts"
+}
+
+variable "log_group_name" {
+  type    = string
+  default = "/security/block-device-monitor"
+}
+
+# Step 1: SNS Topic
+resource "aws_sns_topic" "alerts" {
+  name         = "removable-media-alerts"
+  display_name = "Removable Media Alerts"
+}
+
+resource "aws_sns_topic_subscription" "email" {
+  topic_arn = aws_sns_topic.alerts.arn
+  protocol  = "email"
+  endpoint  = var.alert_email
+}
+
+resource "aws_sns_topic_policy" "alerts_policy" {
+  arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+    }]
+  })
+}
+
+# Step 2: CloudWatch Log Group + Metric Filter + Alarm
+resource "aws_cloudwatch_log_group" "block_device_monitor" {
+  name              = var.log_group_name
+  retention_in_days = 30
+}
+
+resource "aws_cloudwatch_log_metric_filter" "removable_media" {
+  name           = "removable-media-connected"
+  log_group_name = aws_cloudwatch_log_group.block_device_monitor.name
+  pattern        = "{ $.event = \"block_device_add\" }"
+
+  metric_transformation {
+    name      = "RemovableMediaConnected"
+    namespace = "Security/RemovableMedia"
+    value     = "1"
+  }
+}
+
+resource "aws_cloudwatch_metric_alarm" "removable_media" {
+  alarm_name          = "T1091-removable-media-detected"
+  alarm_description   = "Removable storage device connected - potential malware vector"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = 1
+  threshold           = 1
+  period              = 60
+  statistic           = "Sum"
+  namespace           = "Security/RemovableMedia"
+  metric_name         = "RemovableMediaConnected"
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.alerts.arn]
+}
+
+# NOTE: Deploy the SSM Document from T1200 template to enable detection
+# Tag instances with BlockDeviceMonitor=true to receive the SSM association""",
+                alert_severity="high",
+                alert_title="Removable Media Connected (Real-Time Detection)",
+                alert_description_template="Removable storage device {devkernel} connected to host {host}. This may indicate malware introduction via USB or data exfiltration preparation.",
+                investigation_steps=[
+                    "Review the CloudWatch Log event for device details",
+                    "Identify the EC2 instance from the log stream name",
+                    "Check if USB access is authorised for this instance",
+                    "Examine the device type (USB, external disk) from lsblk output",
+                    "Look for autorun.inf or suspicious executable files",
+                    "Check for file copy operations after device connection",
+                    "Review user authentication around connection time",
+                    "Scan for malware indicators on mounted file systems",
+                ],
+                containment_actions=[
+                    "Isolate the affected instance via security groups",
+                    "Do NOT mount the device if malware is suspected",
+                    "Run antimalware scan on the instance",
+                    "If mounted, unmount immediately and capture disk image",
+                    "Block USB storage via udev rules for prevention",
+                    "Rotate credentials accessible from the instance",
+                    "Review and update USB access policies organisation-wide",
+                ],
+            ),
+            estimated_false_positive_rate=FalsePositiveRate.LOW,
+            false_positive_tuning="Root device automatically suppressed. Add regex patterns for known cloud-attached volumes (e.g., ^xvd for EBS).",
+            detection_coverage="85% - real-time kernel-level detection on EC2. Best cloud-native approach without third-party EDR.",
+            evasion_considerations="Sophisticated attackers may disable udev rules. Combine with file integrity monitoring on /etc/udev/rules.d/.",
+            implementation_effort=EffortLevel.MEDIUM,
+            implementation_time="1.5 hours",
+            estimated_monthly_cost="$10-20",
+            prerequisites=[
+                "SSM agent installed on instances",
+                "CloudWatch Agent installed for log shipping",
+                "Deploy SSM Document from T1200 template",
+                "Tag instances with BlockDeviceMonitor=true",
+            ],
+        ),
+        # Strategy 3: AWS/GCP - Endpoint Agent for Real USB Detection (Recommended)
         DetectionStrategy(
             strategy_id="t1091-endpoint-agent",
             name="Endpoint Agent Deployment for Real-Time USB Detection (Recommended)",
@@ -785,6 +997,7 @@ resource "aws_sns_topic_policy" "allow_events" {
     ],
     recommended_order=[
         "t1091-endpoint-agent",
+        "t1091-aws-realtime-block-device",  # Best cloud-native for EC2 Linux
         "t1091-aws-workspaces-usb",
         "t1091-gcp-usb-os-logging",
         "t1091-cloud-storage-upload",

@@ -3,6 +3,11 @@ T1025 - Data from Removable Media
 
 Adversaries may search connected removable media on compromised systems to locate files of interest.
 Sensitive data can be collected from optical drives, USB devices, and other removable storage before exfiltration.
+
+CROSS-REFERENCE: For real-time USB/block device connection detection on EC2 instances,
+see T1200 (Hardware Additions) which provides udev + systemd based real-time alerting
+when removable storage devices are connected. This detection enables early warning
+before data collection can occur.
 """
 
 from .template_loader import (

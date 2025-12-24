@@ -284,7 +284,213 @@ output "guardduty_detector_id" {
                 "EC2 instances with SSM agent for automated deployment",
             ],
         ),
-        # Strategy 2: Data Staging Detection (Cloud API Level)
+        # Strategy 2: Real-Time Block Device Detection for USB Exfiltration
+        DetectionStrategy(
+            strategy_id="t1052-aws-realtime-block-device",
+            name="AWS Real-Time Block Device Monitoring for Exfiltration Detection",
+            description=(
+                "Deploy real-time block device detection to alert when external storage devices are "
+                "connected to EC2 instances. Uses Linux udev rules and systemd to provide SUB-SECOND "
+                "alerting, enabling rapid response to potential USB-based data exfiltration. The same "
+                "device connection that enables exfiltration becomes the detection signal. See T1200 "
+                "(Hardware Additions) for full SSM Document implementation details."
+            ),
+            detection_type=DetectionType.CLOUDWATCH_QUERY,
+            aws_service="cloudwatch",
+            cloud_provider=CloudProvider.AWS,
+            implementation=DetectionImplementation(
+                query="""fields @timestamp, ts, host, event, devkernel, devpath
+| filter event = "block_device_add"
+| stats count(*) as device_adds by host, bin(1h)
+| filter device_adds > 0
+| sort @timestamp desc""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
+Description: |
+  Real-time detection of storage device connections for exfiltration monitoring.
+  Alerts when USB drives or external storage are connected to EC2.
+  See T1200 template for full SSM Document implementation.
+
+Parameters:
+  AlertEmail:
+    Type: String
+    Description: Email for security alerts
+  LogGroupName:
+    Type: String
+    Default: /security/block-device-monitor
+
+Resources:
+  # Step 1: SNS topic for exfiltration alerts
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: Exfiltration Device Alerts
+      Subscription:
+        - Protocol: email
+          Endpoint: !Ref AlertEmail
+
+  SNSTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: [!Ref AlertTopic]
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+
+  # Step 2: CloudWatch Log Group
+  BlockDeviceLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Ref LogGroupName
+      RetentionInDays: 30
+
+  # Step 3: Metric filter for storage device connections
+  ExfilDeviceMetric:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref BlockDeviceLogGroup
+      FilterPattern: '{ $.event = "block_device_add" }'
+      MetricTransformations:
+        - MetricName: ExfiltrationDeviceConnected
+          MetricNamespace: Security/DataExfil
+          MetricValue: "1"
+
+  # Step 4: High-priority alarm for potential exfiltration
+  ExfilDeviceAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: T1052-ExfiltrationDeviceDetected
+      AlarmDescription: Storage device connected - immediate exfiltration risk
+      MetricName: ExfiltrationDeviceConnected
+      Namespace: Security/DataExfil
+      Statistic: Sum
+      Period: 60
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: 1
+      AlarmActions:
+        - !Ref AlertTopic
+      TreatMissingData: notBreaching
+
+Outputs:
+  Note:
+    Description: Implementation
+    Value: "Deploy SSM Document from T1200 template. Tag instances with BlockDeviceMonitor=true"
+""",
+                terraform_template="""# Real-time storage device detection for exfiltration monitoring
+# See T1200 template for full SSM Document implementation.
+
+variable "alert_email" {
+  type        = string
+  description = "Email for exfiltration alerts"
+}
+
+variable "log_group_name" {
+  type    = string
+  default = "/security/block-device-monitor"
+}
+
+# Step 1: SNS Topic for alerts
+resource "aws_sns_topic" "exfil_alerts" {
+  name         = "exfiltration-device-alerts"
+  display_name = "Exfiltration Device Alerts"
+}
+
+resource "aws_sns_topic_subscription" "email" {
+  topic_arn = aws_sns_topic.exfil_alerts.arn
+  protocol  = "email"
+  endpoint  = var.alert_email
+}
+
+resource "aws_sns_topic_policy" "alerts_policy" {
+  arn = aws_sns_topic.exfil_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.exfil_alerts.arn
+    }]
+  })
+}
+
+# Step 2: CloudWatch Log Group + Metric Filter + Alarm
+resource "aws_cloudwatch_log_group" "block_device_monitor" {
+  name              = var.log_group_name
+  retention_in_days = 30
+}
+
+resource "aws_cloudwatch_log_metric_filter" "exfil_device" {
+  name           = "exfiltration-device-connected"
+  log_group_name = aws_cloudwatch_log_group.block_device_monitor.name
+  pattern        = "{ $.event = \"block_device_add\" }"
+
+  metric_transformation {
+    name      = "ExfiltrationDeviceConnected"
+    namespace = "Security/DataExfil"
+    value     = "1"
+  }
+}
+
+resource "aws_cloudwatch_metric_alarm" "exfil_device" {
+  alarm_name          = "T1052-exfiltration-device-detected"
+  alarm_description   = "Storage device connected - immediate exfiltration risk"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = 1
+  threshold           = 1
+  period              = 60
+  statistic           = "Sum"
+  namespace           = "Security/DataExfil"
+  metric_name         = "ExfiltrationDeviceConnected"
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.exfil_alerts.arn]
+}
+
+# NOTE: Deploy SSM Document from T1200 template to enable detection
+# Tag instances with BlockDeviceMonitor=true to receive the SSM association""",
+                alert_severity="critical",
+                alert_title="Exfiltration Device Connected (Real-Time Detection)",
+                alert_description_template="External storage device {devkernel} connected to host {host} at {ts}. IMMEDIATE exfiltration risk - investigate promptly.",
+                investigation_steps=[
+                    "URGENT: This is a potential active exfiltration attempt",
+                    "Identify the EC2 instance from the CloudWatch log stream",
+                    "Check the device details (devkernel, lsblk output) for device type",
+                    "Review recent user activity and authentication on the instance",
+                    "Check for file copy commands (cp, rsync, tar) executed after device connection",
+                    "Review which sensitive data may be accessible from the instance",
+                    "Check for data staging activity (compression, archiving) prior to connection",
+                    "Correlate with data access logs from S3, RDS, or other data stores",
+                ],
+                containment_actions=[
+                    "IMMEDIATELY isolate the instance via security groups",
+                    "Block all egress traffic if not already isolated",
+                    "Do NOT allow the device to be removed until forensic capture",
+                    "Capture memory dump and disk image for forensic analysis",
+                    "If device was removed, attempt to identify device serial number from logs",
+                    "Rotate all credentials accessible from the instance",
+                    "Notify data protection team and potentially legal/compliance",
+                    "Implement USB device control policies to prevent recurrence",
+                ],
+            ),
+            estimated_false_positive_rate=FalsePositiveRate.LOW,
+            false_positive_tuning="Root device automatically suppressed. Correlate with user activity to distinguish admin maintenance from exfiltration.",
+            detection_coverage="85% - real-time detection of storage device connections. Best cloud-native approach for exfiltration monitoring.",
+            evasion_considerations="Attackers may use network exfiltration instead of USB. Combine with VPC Flow Logs and DLP for comprehensive coverage.",
+            implementation_effort=EffortLevel.MEDIUM,
+            implementation_time="1.5 hours",
+            estimated_monthly_cost="$10-20",
+            prerequisites=[
+                "SSM agent installed on instances",
+                "CloudWatch Agent installed for log shipping",
+                "Deploy SSM Document from T1200 template",
+                "Tag instances with BlockDeviceMonitor=true",
+            ],
+        ),
+        # Strategy 3: Data Staging Detection (Cloud API Level)
         DetectionStrategy(
             strategy_id="t1052-aws-data-staging",
             name="AWS Data Staging Activity Detection (Cloud API Level)",
@@ -706,6 +912,7 @@ resource "google_monitoring_alert_policy" "file_staging" {
     ],
     recommended_order=[
         "t1052-endpoint-agent",
+        "t1052-aws-realtime-block-device",  # Best cloud-native for USB exfiltration detection
         "t1052-gcp-disk-attach",
         "t1052-aws-data-staging",
         "t1052-gcp-file-staging",
