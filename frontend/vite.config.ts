@@ -11,9 +11,11 @@ export default defineConfig({
   },
   server: {
     port: 3000,
+    host: true,
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        // VITE_PROXY_TARGET for Docker (host.docker.internal), falls back to localhost
+        target: process.env.VITE_PROXY_TARGET || 'http://localhost:8000',
         changeOrigin: true,
       },
     },
