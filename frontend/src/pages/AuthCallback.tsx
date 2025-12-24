@@ -84,13 +84,13 @@ export default function AuthCallback() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen flex items-center justify-center bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full text-center">
-          <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-full bg-red-100 mb-4">
-            <AlertCircle className="h-6 w-6 text-red-600" />
+          <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-full bg-red-900/30 mb-4">
+            <AlertCircle className="h-6 w-6 text-red-400" />
           </div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Authentication Failed</h2>
-          <p className="text-gray-600 mb-6">{error}</p>
+          <h2 className="text-xl font-semibold text-white mb-2">Authentication Failed</h2>
+          <p className="text-gray-300 mb-6">{error}</p>
           <button
             onClick={() => navigate('/login')}
             className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -103,13 +103,13 @@ export default function AuthCallback() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full text-center">
-        <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-full bg-blue-100 mb-4">
-          <Shield className="h-6 w-6 text-blue-600" />
+        <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-full bg-blue-900/30 mb-4">
+          <Shield className="h-6 w-6 text-blue-400" />
         </div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">Completing Sign In</h2>
-        <div className="flex items-center justify-center text-gray-600">
+        <h2 className="text-xl font-semibold text-white mb-2">Completing Sign In</h2>
+        <div className="flex items-center justify-center text-gray-300">
           <Loader2 className="h-5 w-5 animate-spin mr-2" />
           <span>Please wait...</span>
         </div>

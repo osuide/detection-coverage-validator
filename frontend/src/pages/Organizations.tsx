@@ -197,9 +197,9 @@ export default function Organizations() {
       {/* Connect Modal - simplified, actual wizard is on separate page */}
       {showConnectModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h2 className="text-lg font-semibold mb-4">Connect Organisation</h2>
-            <p className="text-gray-600 mb-6">
+          <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 border border-gray-700">
+            <h2 className="text-lg font-semibold text-white mb-4">Connect Organisation</h2>
+            <p className="text-gray-300 mb-6">
               Choose your cloud provider to get started.
             </p>
             <div className="space-y-3">
@@ -366,7 +366,7 @@ function OrganizationCard({
           <button
             onClick={onDelete}
             disabled={isDeleting}
-            className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+            className="p-2 text-red-400 hover:bg-red-900/30 rounded-lg"
             title="Disconnect Organisation"
           >
             <Trash2 className="h-5 w-5" />

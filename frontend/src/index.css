@@ -48,4 +48,36 @@ body {
   .text-muted {
     @apply text-gray-400;
   }
+
+  /* Form inputs for dark theme */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="search"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="url"],
+  textarea,
+  select {
+    @apply bg-gray-800 border-gray-600 text-gray-100 placeholder-gray-500;
+  }
+
+  input:focus,
+  textarea:focus,
+  select:focus {
+    @apply border-blue-500 ring-blue-500/20;
+  }
+
+  /* Table styling for dark theme */
+  table {
+    @apply text-gray-200;
+  }
+
+  th {
+    @apply text-gray-300 border-gray-700;
+  }
+
+  td {
+    @apply border-gray-700;
+  }
 }

@@ -192,7 +192,7 @@ export default function Dashboard() {
                     Limit Reached
                   </span>
                   {scanStatus.week_resets_at && (
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-gray-400 mt-1">
                       Resets {new Date(scanStatus.week_resets_at).toLocaleDateString()}
                     </p>
                   )}
@@ -261,15 +261,15 @@ export default function Dashboard() {
                 className={`p-4 rounded-lg ${count > 0 ? config.bgColor : 'bg-gray-700/30'} transition-colors`}
               >
                 <div className="flex items-center space-x-2">
-                  <Icon className={`h-5 w-5 ${count > 0 ? config.color : 'text-gray-500'}`} />
-                  <span className={`text-sm font-medium ${count > 0 ? 'text-white' : 'text-gray-500'}`}>
+                  <Icon className={`h-5 w-5 ${count > 0 ? config.color : 'text-gray-400'}`} />
+                  <span className={`text-sm font-medium ${count > 0 ? 'text-white' : 'text-gray-400'}`}>
                     {config.label}
                   </span>
                 </div>
-                <p className={`text-2xl font-bold mt-2 ${count > 0 ? 'text-white' : 'text-gray-600'}`}>
+                <p className={`text-2xl font-bold mt-2 ${count > 0 ? 'text-white' : 'text-gray-500'}`}>
                   {count}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-gray-400 mt-1">
                   {count > 0 ? 'detections' : 'not configured'}
                 </p>
               </div>

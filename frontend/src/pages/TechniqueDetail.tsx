@@ -135,7 +135,7 @@ function CodeBlock({ code, language }: { code: string; language: string }) {
           )}
         </button>
       </div>
-      <div className="text-xs text-gray-500 mb-1">{language}</div>
+      <div className="text-xs text-gray-400 mb-1">{language}</div>
       <pre className="bg-gray-900 rounded-lg p-4 overflow-x-auto text-sm text-gray-300 font-mono">
         <code>{code}</code>
       </pre>
@@ -293,7 +293,7 @@ function StrategyCard({ strategy, defaultOpen }: { strategy: DetectionStrategy; 
               <h5 className="text-sm font-medium text-gray-300 flex items-center gap-2">
                 <FileCode className="w-4 h-4" />
                 Implementation Templates
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-gray-400">
                   ({[
                     strategy.implementation.terraform_template && 'Terraform',
                     strategy.implementation.cloudformation_template && 'CloudFormation',
@@ -664,7 +664,7 @@ export default function TechniqueDetail() {
                   <p className="text-sm text-gray-400">{campaign.description}</p>
                   {campaign.attributed_groups && campaign.attributed_groups.length > 0 && (
                     <div className="flex items-center gap-2 mt-2">
-                      <span className="text-xs text-gray-500">Attributed to:</span>
+                      <span className="text-xs text-gray-400">Attributed to:</span>
                       <div className="flex flex-wrap gap-1">
                         {campaign.attributed_groups.map((group) => (
                           <a
@@ -701,10 +701,10 @@ export default function TechniqueDetail() {
       {/* Detection Strategies */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-            <FileCode className="w-5 h-5 text-green-600" />
+          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+            <FileCode className="w-5 h-5 text-green-400" />
             Detection Strategies
-            <span className="text-sm font-normal text-gray-500">
+            <span className="text-sm font-normal text-gray-400">
               ({filteredStrategies.length} of {technique.detection_strategies.length})
             </span>
           </h2>
@@ -715,8 +715,8 @@ export default function TechniqueDetail() {
               onClick={() => setCloudFilter('all')}
               className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
                 cloudFilter === 'all'
-                  ? 'bg-gray-700 text-white'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  ? 'bg-gray-600 text-white'
+                  : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700'
               }`}
             >
               All ({technique.detection_strategies.length})
@@ -726,7 +726,7 @@ export default function TechniqueDetail() {
               className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
                 cloudFilter === 'aws'
                   ? 'bg-orange-600 text-white'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700'
               }`}
             >
               AWS ({awsCount})
@@ -736,7 +736,7 @@ export default function TechniqueDetail() {
               className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
                 cloudFilter === 'gcp'
                   ? 'bg-blue-600 text-white'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700'
               }`}
             >
               GCP ({gcpCount})
@@ -755,13 +755,13 @@ export default function TechniqueDetail() {
         </div>
 
         {filteredStrategies.length === 0 && (
-          <div className="bg-white border border-gray-200 rounded-lg p-8 text-center shadow-sm">
-            <p className="text-gray-600">
+          <div className="bg-gray-800 border border-gray-700 rounded-lg p-8 text-center">
+            <p className="text-gray-400">
               No {cloudFilter.toUpperCase()} strategies available for this technique.
             </p>
             <button
               onClick={() => setCloudFilter('all')}
-              className="mt-2 text-blue-600 hover:text-blue-700"
+              className="mt-2 text-blue-400 hover:text-blue-300"
             >
               Show all strategies
             </button>

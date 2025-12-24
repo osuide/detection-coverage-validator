@@ -42,19 +42,19 @@ const TACTICS = [
 
 function getCellColor(status: string, detectionCount: number): string {
   if (status === 'uncovered' || detectionCount === 0) {
-    return 'bg-gray-200 hover:bg-gray-300'
+    return 'bg-gray-600 hover:bg-gray-500'
   }
   if (status === 'partial') {
-    return 'bg-yellow-400 hover:bg-yellow-500'
+    return 'bg-yellow-500 hover:bg-yellow-400'
   }
   // Covered - vary by detection count
   if (detectionCount === 1) {
-    return 'bg-green-300 hover:bg-green-400'
+    return 'bg-green-600 hover:bg-green-500'
   }
   if (detectionCount === 2) {
-    return 'bg-green-400 hover:bg-green-500'
+    return 'bg-green-500 hover:bg-green-400'
   }
-  return 'bg-green-500 hover:bg-green-600'
+  return 'bg-green-400 hover:bg-green-300'
 }
 
 export default function MitreHeatmap({ techniques, onTechniqueClick }: MitreHeatmapProps) {
@@ -93,20 +93,20 @@ export default function MitreHeatmap({ techniques, onTechniqueClick }: MitreHeat
       {/* Legend */}
       <div className="flex items-center space-x-6 mb-4 text-sm">
         <div className="flex items-center">
-          <div className="w-4 h-4 bg-gray-200 rounded mr-2"></div>
-          <span className="text-gray-600">No Coverage</span>
+          <div className="w-4 h-4 bg-gray-600 rounded mr-2"></div>
+          <span className="text-gray-300">No Coverage</span>
         </div>
         <div className="flex items-center">
           <div className="w-4 h-4 bg-yellow-400 rounded mr-2"></div>
-          <span className="text-gray-600">Partial</span>
+          <span className="text-gray-300">Partial</span>
         </div>
         <div className="flex items-center">
           <div className="w-4 h-4 bg-green-300 rounded mr-2"></div>
-          <span className="text-gray-600">1 Detection</span>
+          <span className="text-gray-300">1 Detection</span>
         </div>
         <div className="flex items-center">
           <div className="w-4 h-4 bg-green-500 rounded mr-2"></div>
-          <span className="text-gray-600">2+ Detections</span>
+          <span className="text-gray-300">2+ Detections</span>
         </div>
       </div>
 

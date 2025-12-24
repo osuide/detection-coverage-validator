@@ -368,7 +368,7 @@ function GapCard({
           >
             <ExternalLink className="h-5 w-5" />
           </a>
-          <button className="p-2 text-gray-400 hover:text-gray-600">
+          <button className="p-2 text-gray-400 hover:text-gray-200">
             {isExpanded ? (
               <ChevronUp className="h-5 w-5" />
             ) : (

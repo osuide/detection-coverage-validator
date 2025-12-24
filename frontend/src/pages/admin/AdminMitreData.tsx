@@ -555,7 +555,7 @@ export default function AdminMitreData() {
           <div className="p-6">
             {activeTab === 'overview' && (
               <div className="text-center py-12 text-gray-400">
-                <Database className="h-12 w-12 mx-auto mb-4 text-gray-600" />
+                <Database className="h-12 w-12 mx-auto mb-4 text-gray-400" />
                 <h3 className="text-lg font-medium text-white mb-2">
                   MITRE ATT&CK Threat Intelligence
                 </h3>

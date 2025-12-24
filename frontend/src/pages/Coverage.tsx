@@ -61,13 +61,13 @@ export default function Coverage() {
         </div>
         <div className="flex items-center space-x-2">
           {/* View Mode Toggle */}
-          <div className="flex bg-gray-700 rounded-lg p-1">
+          <div className="flex bg-gray-800 rounded-lg p-1">
             <button
               onClick={() => setViewMode('heatmap')}
               className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                 viewMode === 'heatmap'
-                  ? 'bg-gray-700 text-gray-900 shadow-sm'
-                  : 'text-gray-400 hover:text-gray-900'
+                  ? 'bg-gray-600 text-white shadow-sm'
+                  : 'text-gray-400 hover:text-white'
               }`}
             >
               <Grid3X3 className="h-4 w-4 mr-1.5" />
@@ -77,8 +77,8 @@ export default function Coverage() {
               onClick={() => setViewMode('tactics')}
               className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                 viewMode === 'tactics'
-                  ? 'bg-gray-700 text-gray-900 shadow-sm'
-                  : 'text-gray-400 hover:text-gray-900'
+                  ? 'bg-gray-600 text-white shadow-sm'
+                  : 'text-gray-400 hover:text-white'
               }`}
             >
               <List className="h-4 w-4 mr-1.5" />
