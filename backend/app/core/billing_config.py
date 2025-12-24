@@ -52,7 +52,7 @@ _TIER_CONFIG_BY_VALUE = {
         "features": {
             "coverage_heatmap": True,
             "gap_list": True,
-            "pdf_report": True,
+            "pdf_report": False,  # Reports require paid subscription
             "remediation_templates": True,
             "scheduled_scans": False,
             "api_access": False,
@@ -167,10 +167,13 @@ _TIER_CONFIG_BY_VALUE = {
         "features": {
             "coverage_heatmap": True,
             "gap_list": True,
-            "pdf_report": True,
+            "pdf_report": False,  # Reports require paid subscription
             "remediation_templates": True,
             "scheduled_scans": False,
             "api_access": False,
+            "export_reports": False,
+            "historical_trends": False,
+            "alerts": False,
             "org_features": False,
             "code_analysis": False,
         },

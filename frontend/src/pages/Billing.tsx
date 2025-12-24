@@ -428,7 +428,7 @@ export default function Billing() {
                   { feature: 'Data Retention', free: '30 days', individual: '90 days', pro: '1 year', enterprise: 'Unlimited' },
                   { feature: 'Coverage Heatmap', free: true, individual: true, pro: true, enterprise: true },
                   { feature: 'Gap Analysis', free: true, individual: true, pro: true, enterprise: true },
-                  { feature: 'PDF Reports', free: 'Watermarked', individual: true, pro: true, enterprise: true },
+                  { feature: 'Export Reports (PDF/CSV)', free: false, individual: true, pro: true, enterprise: true },
                   { feature: 'Remediation Templates', free: true, individual: true, pro: true, enterprise: true },
                   { feature: 'Historical Trends', free: false, individual: true, pro: true, enterprise: true },
                   { feature: 'Scheduled Scans', free: false, individual: true, pro: true, enterprise: true },
