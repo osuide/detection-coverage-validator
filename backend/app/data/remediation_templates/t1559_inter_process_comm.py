@@ -57,13 +57,13 @@ TEMPLATE = RemediationTemplate(
                 name="3CX Supply Chain Attack",
                 year=2023,
                 description="AppleJeus malware created Windows named pipes for inter-module messaging during the 3CX supply chain compromise",
-                reference_url="https://attack.mitre.org/campaigns/C0026/",
+                reference_url="https://attack.mitre.org/campaigns/C0057/",
             ),
             Campaign(
                 name="Operation MidnightEclipse",
                 year=2024,
                 description="Unknown actors piped stdout to bash for execution in sophisticated cloud environment compromise",
-                reference_url="https://attack.mitre.org/techniques/T1559/",
+                reference_url="https://attack.mitre.org/campaigns/C0048/",
             ),
             Campaign(
                 name="Cyclops Blink Campaign",

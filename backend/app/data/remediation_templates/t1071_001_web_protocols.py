@@ -64,7 +64,7 @@ TEMPLATE = RemediationTemplate(
                 name="3CX Supply Chain Attack",
                 year=2023,
                 description="Sophisticated supply chain compromise using HTTP-based C2 communications to control infected endpoints via legitimate-looking web traffic",
-                reference_url="https://attack.mitre.org/campaigns/C0022/",
+                reference_url="https://attack.mitre.org/campaigns/C0057/",
             ),
             Campaign(
                 name="Operation Dream Job",
@@ -76,7 +76,7 @@ TEMPLATE = RemediationTemplate(
                 name="ArcaneDoor",
                 year=2024,
                 description="State-sponsored campaign exploiting network devices with custom HTTP-based backdoors for persistent C2 access",
-                reference_url="https://attack.mitre.org/campaigns/C0035/",
+                reference_url="https://attack.mitre.org/campaigns/C0046/",
             ),
             Campaign(
                 name="2015 Ukraine Electric Power Attack",

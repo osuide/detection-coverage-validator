@@ -55,7 +55,7 @@ TEMPLATE = RemediationTemplate(
                 name="Operation Wocao",
                 year=2019,
                 description="Threat actors extracted clipboard data in plaintext during targeting of government and industrial organisations",
-                reference_url="https://attack.mitre.org/techniques/T1115/",
+                reference_url="https://attack.mitre.org/campaigns/C0014/",
             ),
             Campaign(
                 name="Cryptocurrency Clipboard Hijacking",

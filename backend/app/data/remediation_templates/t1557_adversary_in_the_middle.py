@@ -46,7 +46,7 @@ TEMPLATE = RemediationTemplate(
                 name="ArcaneDoor Campaign",
                 year=2024,
                 description="Intercepted HTTP traffic on perimeter network devices to monitor and manipulate communications",
-                reference_url="https://attack.mitre.org/techniques/T1557/",
+                reference_url="https://attack.mitre.org/campaigns/C0046/",
             ),
             Campaign(
                 name="Sea Turtle DNS Hijacking",

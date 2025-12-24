@@ -44,7 +44,7 @@ TEMPLATE = RemediationTemplate(
                 name="Operation CuckooBees",
                 year=2022,
                 description="Campaign involving password policy discovery activities",
-                reference_url="https://attack.mitre.org/techniques/T1201/",
+                reference_url="https://attack.mitre.org/campaigns/C0012/",
             )
         ],
         prevalence="common",

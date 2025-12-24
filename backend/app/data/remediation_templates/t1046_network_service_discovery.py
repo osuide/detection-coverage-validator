@@ -67,7 +67,7 @@ TEMPLATE = RemediationTemplate(
                 name="Operation Wocao",
                 year=2019,
                 description="Chinese APT group scanned for open ports using nbtscan and custom tools during targeted attacks on managed service providers",
-                reference_url="https://attack.mitre.org/campaigns/",
+                reference_url="https://attack.mitre.org/campaigns/C0014/",
             ),
         ],
         prevalence="very_high",

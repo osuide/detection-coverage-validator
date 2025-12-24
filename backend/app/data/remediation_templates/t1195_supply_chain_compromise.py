@@ -58,7 +58,7 @@ TEMPLATE = RemediationTemplate(
                 name="3CX Desktop Application",
                 year=2023,
                 description="Double supply chain compromise leveraging initial access to insert malware in VoIP application",
-                reference_url="https://attack.mitre.org/techniques/T1195/",
+                reference_url="https://attack.mitre.org/campaigns/C0057/",
             ),
             Campaign(
                 name="Node.js Package Attack",

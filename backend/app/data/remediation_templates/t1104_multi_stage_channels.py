@@ -58,7 +58,7 @@ TEMPLATE = RemediationTemplate(
                 name="RedPenguin Separate Channels",
                 year=2023,
                 description="Used malware with separate channels for task requests and execution, obfuscating C2 relationships",
-                reference_url="https://attack.mitre.org/campaigns/C0024/",
+                reference_url="https://attack.mitre.org/campaigns/C0056/",
             ),
             Campaign(
                 name="APT3 SOCKS5 Intermediaries",

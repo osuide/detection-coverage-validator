@@ -44,7 +44,7 @@ TEMPLATE = RemediationTemplate(
                 name="Frankenstein Campaign",
                 year=2020,
                 description="Threat actors cobbled together open-source pieces to leverage MSBuild for code execution",
-                reference_url="https://attack.mitre.org/techniques/T1127/001/",
+                reference_url="https://attack.mitre.org/campaigns/C0001/",
             ),
             Campaign(
                 name="Paranoid PlugX",

@@ -69,7 +69,7 @@ TEMPLATE = RemediationTemplate(
                 name="Operation Dust Storm",
                 year=2016,
                 description="VBS code decoded and executed malicious payloads to establish persistence and exfiltrate data",
-                reference_url="https://attack.mitre.org/software/S0213/",
+                reference_url="https://attack.mitre.org/campaigns/C0016/",
             ),
         ],
         prevalence="very_common",

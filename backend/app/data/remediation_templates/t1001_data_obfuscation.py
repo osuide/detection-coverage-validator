@@ -68,7 +68,7 @@ TEMPLATE = RemediationTemplate(
                 name="Operation Wocao RC4 Encryption",
                 year=2022,
                 description="Threat actors in Operation Wocao encrypted proxy IP addresses with RC4 to hide C2 infrastructure",
-                reference_url="https://attack.mitre.org/techniques/T1001/",
+                reference_url="https://attack.mitre.org/campaigns/C0014/",
             ),
         ],
         prevalence="common",

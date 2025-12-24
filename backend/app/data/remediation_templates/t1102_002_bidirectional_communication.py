@@ -65,7 +65,7 @@ TEMPLATE = RemediationTemplate(
                 name="Operation Ghost",
                 year=2024,
                 description="APT29 used social media platforms to hide communications to C2 servers",
-                reference_url="https://attack.mitre.org/groups/G0016/",
+                reference_url="https://attack.mitre.org/campaigns/C0023/",
             ),
             Campaign(
                 name="Lazarus GitHub C2",

@@ -44,7 +44,7 @@ TEMPLATE = RemediationTemplate(
                 name="SolarWinds Compromise (C0024)",
                 year=2021,
                 description="APT29 forged cookies using stolen secret keys to bypass MFA on Outlook Web Access accounts and created SAML tokens using compromised AD FS signing certificates",
-                reference_url="https://attack.mitre.org/techniques/T1606/001/",
+                reference_url="https://attack.mitre.org/campaigns/C0024/",
             )
         ],
         prevalence="uncommon",

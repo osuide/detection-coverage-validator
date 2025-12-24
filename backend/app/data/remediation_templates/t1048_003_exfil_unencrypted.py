@@ -63,7 +63,7 @@ TEMPLATE = RemediationTemplate(
                 name="C0017 DNS Exfiltration",
                 year=2024,
                 description="Campaign C0017 involved exfiltrating victim data via DNS lookups using subdomain encoding",
-                reference_url="https://attack.mitre.org/campaigns/",
+                reference_url="https://attack.mitre.org/campaigns/C0017/",
             ),
             Campaign(
                 name="Agent Tesla Multi-Protocol Exfil",

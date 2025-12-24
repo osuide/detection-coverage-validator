@@ -68,9 +68,9 @@ TEMPLATE = RemediationTemplate(
             ),
             Campaign(
                 name="Night Dragon",
-                year=2024,
+                year=2011,
                 description="Energy sector targeting via spearphishing emails with malicious hyperlinks",
-                reference_url="https://attack.mitre.org/campaigns/",
+                reference_url="https://attack.mitre.org/campaigns/C0002/",
             ),
         ],
         prevalence="very_common",

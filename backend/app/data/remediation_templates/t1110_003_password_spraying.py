@@ -69,7 +69,7 @@ TEMPLATE = RemediationTemplate(
                 name="Quad7 Throttled Password Spraying",
                 year=2024,
                 description="Used extremely throttled variant with single attempts per 24-hour period",
-                reference_url="https://attack.mitre.org/techniques/T1110/003/",
+                reference_url="https://attack.mitre.org/campaigns/C0055/",
             ),
         ],
         prevalence="common",

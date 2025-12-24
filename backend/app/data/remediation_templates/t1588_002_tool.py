@@ -71,7 +71,7 @@ TEMPLATE = RemediationTemplate(
                 name="Operation Wocao",
                 year=2020,
                 description="Used JexBoss, KeeThief, and BloodHound for network reconnaissance and credential theft",
-                reference_url="https://attack.mitre.org/techniques/T1588/002/",
+                reference_url="https://attack.mitre.org/campaigns/C0014/",
             ),
         ],
         prevalence="common",

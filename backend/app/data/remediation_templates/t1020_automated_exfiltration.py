@@ -58,7 +58,7 @@ TEMPLATE = RemediationTemplate(
                 name="ArcaneDoor",
                 year=2024,
                 description="Campaign included scripted exfiltration mechanisms for automated data theft from compromised network devices",
-                reference_url="https://attack.mitre.org/campaigns/",
+                reference_url="https://attack.mitre.org/campaigns/C0046/",
             ),
             Campaign(
                 name="Winter Vivern Document Exfiltration",

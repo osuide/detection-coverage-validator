@@ -57,9 +57,9 @@ TEMPLATE = RemediationTemplate(
         recent_campaigns=[
             Campaign(
                 name="Night Dragon Remote Administration",
-                year=2024,
+                year=2011,
                 description="Deployed several remote administration tools as persistent infiltration channels",
-                reference_url="https://attack.mitre.org/techniques/T1219/",
+                reference_url="https://attack.mitre.org/campaigns/C0002/",
             ),
             Campaign(
                 name="Medusa Group Multi-RMM Campaign",
