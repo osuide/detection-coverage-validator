@@ -22,6 +22,7 @@ from app.models.user import (
     UserRole,
     MembershipStatus,
 )
+from app.models.billing import AccountTier, Subscription
 from app.services.auth_service import AuthService
 
 
@@ -109,10 +110,30 @@ async def test_org(db_session: AsyncSession) -> Organization:
 
 
 @pytest_asyncio.fixture(scope="function")
+async def test_subscription(
+    db_session: AsyncSession,
+    test_org: Organization,
+) -> Subscription:
+    """Create a test subscription (free tier) for fraud prevention checks."""
+    subscription = Subscription(
+        id=uuid.uuid4(),
+        organization_id=test_org.id,
+        tier=AccountTier.FREE,
+        status="active",
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+    )
+    db_session.add(subscription)
+    await db_session.flush()
+    return subscription
+
+
+@pytest_asyncio.fixture(scope="function")
 async def test_membership(
     db_session: AsyncSession,
     test_user: User,
     test_org: Organization,
+    test_subscription: Subscription,  # Ensure subscription exists
 ) -> OrganizationMember:
     """Create a test membership (user as org owner)."""
     membership = OrganizationMember(
