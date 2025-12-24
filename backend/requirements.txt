@@ -74,3 +74,4 @@ factory-boy==3.3.3
 black==25.1.0
 ruff==0.11.12
 mypy==1.16.0
+zipp>=3.19.1 # not directly required, pinned by Snyk to avoid a vulnerability
