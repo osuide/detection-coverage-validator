@@ -4,6 +4,7 @@ import {
   billingApi,
   Subscription,
   Invoice,
+  Pricing,
   isFreeTier as checkIsFreeTier,
   getTierDisplayName,
 } from '../services/billingApi'
@@ -12,6 +13,7 @@ export default function Billing() {
   const { token, user } = useAuth()
   const [subscription, setSubscription] = useState<Subscription | null>(null)
   const [invoices, setInvoices] = useState<Invoice[]>([])
+  const [pricing, setPricing] = useState<Pricing | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [checkoutLoading, setCheckoutLoading] = useState(false)
@@ -29,12 +31,14 @@ export default function Billing() {
     setError(null)
 
     try {
-      const [subData, invoicesData] = await Promise.all([
+      const [subData, invoicesData, pricingData] = await Promise.all([
         billingApi.getSubscription(token),
         billingApi.getInvoices(token),
+        billingApi.getPricing(token),
       ])
       setSubscription(subData)
       setInvoices(invoicesData)
+      setPricing(pricingData)
     } catch (err) {
       console.error('Failed to load billing data:', err)
       setError('Failed to load billing information')
@@ -102,6 +106,21 @@ export default function Billing() {
       style: 'currency',
       currency: 'USD',
     }).format(cents / 100)
+  }
+
+  const formatRetention = (days: number | null | undefined) => {
+    if (days === null || days === undefined) return 'Unlimited'
+    if (days >= 365) return days === 365 ? '1 year' : `${Math.round(days / 365)} years`
+    return `${days} days`
+  }
+
+  const getTierInfo = (tierName: string) => {
+    return pricing?.tiers?.find(t => t.tier === tierName)
+  }
+
+  const formatAccounts = (maxAccounts: number | null | undefined) => {
+    if (maxAccounts === null || maxAccounts === undefined) return 'Unlimited'
+    return String(maxAccounts)
   }
 
   const getTierBadgeColor = (tier: string) => {
@@ -235,12 +254,7 @@ export default function Billing() {
           <div>
             <p className="text-sm text-gray-500">Data Retention</p>
             <p className="text-lg font-medium text-gray-900">
-              {subscription?.tier === 'free' ? '30 days' :
-               subscription?.tier === 'free_scan' ? '7 days' :
-               subscription?.tier === 'individual' ? '90 days' :
-               subscription?.tier === 'pro' ? '1 year' :
-               subscription?.tier === 'enterprise' ? 'Unlimited' :
-               'Unlimited'}
+              {formatRetention(subscription?.history_retention_days)}
             </p>
           </div>
         </div>
@@ -257,17 +271,22 @@ export default function Billing() {
       </div>
 
       {/* Upgrade Section (for free tier users) */}
-      {isFreeTier && isOwner && (
+      {isFreeTier && isOwner && (() => {
+        const individualTier = getTierInfo('individual')
+        const accountLimit = individualTier?.max_accounts ?? 6
+        const retentionDays = individualTier?.history_retention_days ?? 90
+        const priceMonthly = individualTier?.price_monthly_dollars ?? 29
+        return (
         <div className="bg-gradient-to-r from-blue-600 to-cyan-600 shadow rounded-lg p-6 text-white">
           <h2 className="text-lg font-medium mb-2">Upgrade to Individual</h2>
           <p className="text-blue-100 mb-6">
-            Get up to 6 accounts, 90-day data retention, scheduled scans, alerts, and API access.
+            Get up to {accountLimit} accounts, {formatRetention(retentionDays)} data retention, scheduled scans, alerts, and API access.
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <p className="text-3xl font-bold">$29/mo</p>
-              <p className="text-blue-100 text-sm">Up to 6 cloud accounts included</p>
+              <p className="text-3xl font-bold">${priceMonthly}/mo</p>
+              <p className="text-blue-100 text-sm">Up to {accountLimit} cloud accounts included</p>
               <p className="text-blue-100 text-xs mt-2">No per-account fees - simple flat pricing</p>
             </div>
 
@@ -278,7 +297,7 @@ export default function Billing() {
                   <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
-                  Up to 6 cloud accounts (AWS + GCP)
+                  Up to {accountLimit} cloud accounts (AWS + GCP)
                 </li>
                 <li className="flex items-center gap-2">
                   <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
@@ -290,7 +309,7 @@ export default function Billing() {
                   <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
-                  90-day data retention
+                  {formatRetention(retentionDays)} data retention
                 </li>
                 <li className="flex items-center gap-2">
                   <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
@@ -322,7 +341,8 @@ export default function Billing() {
             {checkoutLoading ? 'Redirecting to checkout...' : 'Upgrade to Individual'}
           </button>
         </div>
-      )}
+        )
+      })()}
 
       {/* Non-owner upgrade notice */}
       {isFreeTier && !isOwner && (
@@ -424,8 +444,20 @@ export default function Billing() {
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {[
-                  { feature: 'Cloud Accounts', free: '1', individual: '6', pro: '500', enterprise: 'Unlimited' },
-                  { feature: 'Data Retention', free: '30 days', individual: '90 days', pro: '1 year', enterprise: 'Unlimited' },
+                  {
+                    feature: 'Cloud Accounts',
+                    free: formatAccounts(getTierInfo('free')?.max_accounts),
+                    individual: formatAccounts(getTierInfo('individual')?.max_accounts),
+                    pro: formatAccounts(getTierInfo('pro')?.max_accounts),
+                    enterprise: formatAccounts(getTierInfo('enterprise')?.max_accounts)
+                  },
+                  {
+                    feature: 'Data Retention',
+                    free: formatRetention(getTierInfo('free')?.history_retention_days),
+                    individual: formatRetention(getTierInfo('individual')?.history_retention_days),
+                    pro: formatRetention(getTierInfo('pro')?.history_retention_days),
+                    enterprise: formatRetention(getTierInfo('enterprise')?.history_retention_days)
+                  },
                   { feature: 'Coverage Heatmap', free: true, individual: true, pro: true, enterprise: true },
                   { feature: 'Gap Analysis', free: true, individual: true, pro: true, enterprise: true },
                   { feature: 'Export Reports (PDF/CSV)', free: false, individual: true, pro: true, enterprise: true },
