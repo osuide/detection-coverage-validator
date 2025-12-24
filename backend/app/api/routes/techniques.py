@@ -180,14 +180,14 @@ async def get_technique_detail(
         description = c.relationship_description or c.description or ""
 
         if year:  # Only include campaigns with a known year
-            # Map attributed groups
+            # Map attributed groups (with safety check)
             attributed_groups = [
                 AttributedGroupResponse(
                     external_id=g.external_id,
                     name=g.name,
                     mitre_url=g.mitre_url,
                 )
-                for g in c.attributed_groups
+                for g in (c.attributed_groups or [])
             ]
 
             recent_campaigns.append(

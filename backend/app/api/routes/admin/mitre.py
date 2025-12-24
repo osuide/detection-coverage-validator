@@ -39,13 +39,19 @@ async def get_mitre_status(
 
     Returns current sync state, version info, and statistics.
     """
-    threat_service = MitreThreatService(db)
-    stats = await threat_service.get_statistics()
+    try:
+        threat_service = MitreThreatService(db)
+        stats = await threat_service.get_statistics()
+    except Exception:
+        stats = {}
 
     # Get last sync info
-    sync_service = MitreSyncService(db)
-    history = await sync_service.get_sync_history(limit=1)
-    last_sync = history[0] if history else None
+    try:
+        sync_service = MitreSyncService(db)
+        history = await sync_service.get_sync_history(limit=1)
+        last_sync = history[0] if history else None
+    except Exception:
+        last_sync = None
 
     return MitreStatusResponse(
         is_synced=stats.get("is_synced", False),
