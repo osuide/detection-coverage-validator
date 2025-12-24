@@ -34,6 +34,41 @@ class FalsePositiveRate(str, Enum):
     HIGH = "high"
 
 
+class CostTier(str, Enum):
+    """Relative cost tier for a detection strategy."""
+
+    LOW = "low"  # <$10/month typical
+    MEDIUM = "medium"  # $10-50/month typical
+    HIGH = "high"  # >$50/month typical
+
+
+# AWS/GCP service pricing URLs - auto-populated via __post_init__
+PRICING_URLS = {
+    "guardduty": "https://aws.amazon.com/guardduty/pricing/",
+    "cloudwatch": "https://aws.amazon.com/cloudwatch/pricing/",
+    "cloudtrail": "https://aws.amazon.com/cloudtrail/pricing/",
+    "eventbridge": "https://aws.amazon.com/eventbridge/pricing/",
+    "config": "https://aws.amazon.com/config/pricing/",
+    "security_hub": "https://aws.amazon.com/security-hub/pricing/",
+    "lambda": "https://aws.amazon.com/lambda/pricing/",
+    "security_command_center": "https://cloud.google.com/security-command-center/pricing",
+    "cloud_logging": "https://cloud.google.com/logging/pricing",
+    "cloud_functions": "https://cloud.google.com/functions/pricing",
+}
+
+# Service cost tiers and pricing basis - used to auto-populate cost fields
+SERVICE_COSTS = {
+    "guardduty": (CostTier.MEDIUM, "~$4/month per million events analysed"),
+    "cloudwatch": (CostTier.LOW, "$0.005 per GB scanned (Logs Insights)"),
+    "eventbridge": (CostTier.LOW, "$1 per million custom events"),
+    "config": (CostTier.LOW, "$0.003 per configuration item"),
+    "security_hub": (CostTier.MEDIUM, "$0.0010 per finding check"),
+    "security_command_center": (CostTier.HIGH, "Premium tier by resource count"),
+    "cloud_logging": (CostTier.LOW, "First 50GB free, $0.50/GB after"),
+    "cloud_functions": (CostTier.LOW, "$0.40 per million invocations"),
+}
+
+
 @dataclass
 class Campaign:
     """Real-world campaign using this technique."""
@@ -108,12 +143,29 @@ class DetectionStrategy:
     evasion_considerations: str
     implementation_effort: EffortLevel
     implementation_time: str
-    estimated_monthly_cost: str
+    estimated_monthly_cost: str  # Legacy field
     prerequisites: List[str] = field(default_factory=list)
     cloud_provider: CloudProvider = CloudProvider.AWS  # Default to AWS
-    gcp_service: Optional[str] = (
-        None  # e.g., "security_command_center", "cloud_logging"
-    )
+    gcp_service: Optional[str] = None
+    # Cost fields - auto-populated from service if not provided
+    cost_tier: Optional[CostTier] = None
+    pricing_basis: Optional[str] = None
+    pricing_url: Optional[str] = None
+
+    def __post_init__(self):
+        """Auto-populate cost fields from service if not explicitly set."""
+        service = (self.gcp_service or self.aws_service or "").lower()
+
+        # Auto-populate pricing URL
+        if self.pricing_url is None and service in PRICING_URLS:
+            self.pricing_url = PRICING_URLS[service]
+
+        # Auto-populate cost tier and pricing basis
+        if service in SERVICE_COSTS:
+            if self.cost_tier is None:
+                self.cost_tier = SERVICE_COSTS[service][0]
+            if self.pricing_basis is None:
+                self.pricing_basis = SERVICE_COSTS[service][1]
 
 
 @dataclass

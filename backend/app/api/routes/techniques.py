@@ -78,8 +78,12 @@ class DetectionStrategyResponse(BaseModel):
     evasion_considerations: Optional[str] = None
     implementation_effort: str
     implementation_time: Optional[str] = None
-    estimated_monthly_cost: Optional[str] = None
+    estimated_monthly_cost: Optional[str] = None  # Legacy field
     prerequisites: list[str]
+    # New accurate cost fields
+    cost_tier: Optional[str] = None  # "low", "medium", "high"
+    pricing_basis: Optional[str] = None  # e.g., "$0.005 per GB scanned"
+    pricing_url: Optional[str] = None  # Link to official pricing page
 
 
 class TechniqueDetailResponse(BaseModel):
@@ -228,6 +232,10 @@ async def get_technique_detail(
                 implementation_time=s.implementation_time,
                 estimated_monthly_cost=s.estimated_monthly_cost,
                 prerequisites=s.prerequisites,
+                # New cost fields
+                cost_tier=s.cost_tier.value if s.cost_tier else None,
+                pricing_basis=s.pricing_basis,
+                pricing_url=s.pricing_url,
             )
             for s in template.detection_strategies
         ],

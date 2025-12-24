@@ -82,8 +82,12 @@ interface DetectionStrategy {
   evasion_considerations?: string
   implementation_effort: string
   implementation_time?: string
-  estimated_monthly_cost?: string
+  estimated_monthly_cost?: string  // Legacy field
   prerequisites: string[]
+  // New cost fields
+  cost_tier?: string  // "low", "medium", "high"
+  pricing_basis?: string  // e.g., "$0.005 per GB scanned"
+  pricing_url?: string  // Link to official pricing page
 }
 
 interface TechniqueDetail {
@@ -209,10 +213,36 @@ function StrategyCard({ strategy, defaultOpen }: { strategy: DetectionStrategy; 
                 <div className="font-medium text-white">{strategy.implementation_time}</div>
               </div>
             )}
-            {strategy.estimated_monthly_cost && (
+            {/* Cost Information */}
+            {(strategy.cost_tier || strategy.pricing_basis) && (
               <div className="bg-gray-700/30 rounded-lg p-3">
-                <div className="text-xs text-gray-400 mb-1">Est. Monthly Cost</div>
-                <div className="font-medium text-white">{strategy.estimated_monthly_cost}</div>
+                <div className="text-xs text-gray-400 mb-1">Cost</div>
+                <div className="space-y-1">
+                  {strategy.cost_tier && (
+                    <span className={`inline-block px-2 py-0.5 text-xs font-medium rounded ${
+                      strategy.cost_tier === 'low'
+                        ? 'bg-green-900/50 text-green-300'
+                        : strategy.cost_tier === 'medium'
+                        ? 'bg-yellow-900/50 text-yellow-300'
+                        : 'bg-red-900/50 text-red-300'
+                    }`}>
+                      {strategy.cost_tier.charAt(0).toUpperCase() + strategy.cost_tier.slice(1)}
+                    </span>
+                  )}
+                  {strategy.pricing_basis && (
+                    <div className="text-xs text-gray-300">{strategy.pricing_basis}</div>
+                  )}
+                  {strategy.pricing_url && (
+                    <a
+                      href={strategy.pricing_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                    >
+                      Pricing <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
+                </div>
               </div>
             )}
             {strategy.detection_coverage && (
