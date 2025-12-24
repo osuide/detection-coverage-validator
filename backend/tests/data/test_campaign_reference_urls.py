@@ -8,6 +8,9 @@ Key validations:
 1. All campaign URLs use the correct format (https://attack.mitre.org/campaigns/C####/)
 2. Known MITRE campaigns use their official campaign IDs
 3. URLs are well-formed and accessible
+
+The official MITRE campaign list is loaded dynamically from the synced database
+when available, with a fallback to a baseline hardcoded list for CI environments.
 """
 
 import re
@@ -18,8 +21,10 @@ import pytest
 from app.data.remediation_templates.template_loader import TEMPLATES, Campaign
 
 
-# Official MITRE ATT&CK Campaign ID to Name mapping (as of December 2024)
-OFFICIAL_MITRE_CAMPAIGNS: Dict[str, str] = {
+# Baseline MITRE ATT&CK Campaign ID to Name mapping
+# This serves as a fallback when database is not available (e.g., in CI)
+# and is merged with dynamically loaded campaigns from the database
+BASELINE_MITRE_CAMPAIGNS: Dict[str, str] = {
     "C0001": "Frankenstein",
     "C0002": "Night Dragon",
     "C0004": "CostaRicto",
@@ -77,32 +82,115 @@ OFFICIAL_MITRE_CAMPAIGNS: Dict[str, str] = {
     "C0059": "Salesforce Data Exfiltration",
 }
 
-# Mapping of known campaign names to their official MITRE campaign IDs
-# Used to validate that named campaigns use the correct URL
-CAMPAIGN_NAME_TO_ID: Dict[str, str] = {
-    # Exact matches
-    "operation wocao": "C0014",
-    "night dragon": "C0002",
-    "arcanedoor": "C0046",
-    "3cx supply chain": "C0057",
-    "3cx desktop application": "C0057",
-    "solarwinds": "C0024",
-    "sunburst": "C0024",
-    "operation dream job": "C0022",
-    "operation dust storm": "C0016",
-    "operation ghost": "C0023",
-    "operation cuckoobees": "C0012",
-    "frankenstein": "C0001",
-    "redpenguin": "C0056",
-    "florahox": "C0053",
-    "spacehop": "C0052",
-    "quad7": "C0055",
-    "operation midnighteclipse": "C0048",
-    "operation sharpshooter": "C0013",
-    "2015 ukraine electric power": "C0028",
-    "2016 ukraine electric power": "C0025",
-    "2022 ukraine electric power": "C0034",
-}
+
+def load_campaigns_from_database() -> Dict[str, str]:
+    """
+    Load official MITRE campaigns from the synced database.
+
+    Returns a dict mapping campaign external_id (e.g., 'C0014') to name.
+    Returns empty dict if database is unavailable or has no campaigns.
+    """
+    try:
+        import asyncio
+        from sqlalchemy import select
+        from app.core.database import async_session_factory
+        from app.models.mitre_threat import MitreCampaign
+
+        async def fetch_campaigns() -> Dict[str, str]:
+            async with async_session_factory() as session:
+                result = await session.execute(
+                    select(MitreCampaign.external_id, MitreCampaign.name).where(
+                        MitreCampaign.is_revoked == False,  # noqa: E712
+                        MitreCampaign.is_deprecated == False,  # noqa: E712
+                    )
+                )
+                return {row.external_id: row.name for row in result.fetchall()}
+
+        # Run async function
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # If event loop is already running, we can't use run_until_complete
+                return {}
+            return loop.run_until_complete(fetch_campaigns())
+        except RuntimeError:
+            # No event loop exists, create one
+            return asyncio.run(fetch_campaigns())
+
+    except Exception as e:
+        # Database not available (e.g., in CI without DB, or no campaigns synced)
+        print(f"Note: Could not load campaigns from database: {e}")
+        return {}
+
+
+def get_official_mitre_campaigns() -> Dict[str, str]:
+    """
+    Get the official MITRE campaigns list.
+
+    Attempts to load from database first (for most up-to-date data),
+    then merges with baseline list (to ensure comprehensive coverage).
+    """
+    # Start with baseline
+    campaigns = BASELINE_MITRE_CAMPAIGNS.copy()
+
+    # Try to load from database and merge (database takes precedence for names)
+    db_campaigns = load_campaigns_from_database()
+    if db_campaigns:
+        campaigns.update(db_campaigns)
+        print(f"Loaded {len(db_campaigns)} campaigns from database")
+
+    return campaigns
+
+
+def build_campaign_name_to_id_mapping(
+    campaigns: Dict[str, str],
+) -> Dict[str, str]:
+    """
+    Build a mapping of lowercase campaign name keywords to their IDs.
+
+    This is used to validate that named campaigns in templates use correct URLs.
+    """
+    name_to_id: Dict[str, str] = {}
+
+    # Add specific keyword mappings for common campaign references
+    keyword_mappings = {
+        "operation wocao": "C0014",
+        "night dragon": "C0002",
+        "arcanedoor": "C0046",
+        "3cx supply chain": "C0057",
+        "3cx desktop application": "C0057",
+        "solarwinds": "C0024",
+        "sunburst": "C0024",
+        "operation dream job": "C0022",
+        "operation dust storm": "C0016",
+        "operation ghost": "C0023",
+        "operation cuckoobees": "C0012",
+        "frankenstein": "C0001",
+        "redpenguin": "C0056",
+        "florahox": "C0053",
+        "spacehop": "C0052",
+        "quad7": "C0055",
+        "operation midnighteclipse": "C0048",
+        "operation sharpshooter": "C0013",
+        "2015 ukraine electric power": "C0028",
+        "2016 ukraine electric power": "C0025",
+        "2022 ukraine electric power": "C0034",
+    }
+    name_to_id.update(keyword_mappings)
+
+    # Also add mappings from the official campaign names
+    for campaign_id, name in campaigns.items():
+        name_lower = name.lower()
+        # Add the full name
+        if name_lower not in name_to_id:
+            name_to_id[name_lower] = campaign_id
+
+    return name_to_id
+
+
+# Load campaigns at module level for efficiency
+OFFICIAL_MITRE_CAMPAIGNS = get_official_mitre_campaigns()
+CAMPAIGN_NAME_TO_ID = build_campaign_name_to_id_mapping(OFFICIAL_MITRE_CAMPAIGNS)
 
 
 def extract_all_campaigns() -> List[Tuple[str, Campaign]]:
@@ -276,10 +364,35 @@ class TestCampaignReferenceURLs:
         print(f"With technique URLs: {with_technique_url}")
         print(f"With external URLs: {with_external_url}")
         print(f"Without URLs: {without_url}")
+        print(f"Official MITRE campaigns loaded: {len(OFFICIAL_MITRE_CAMPAIGNS)}")
         print(f"{'='*60}")
 
         # This test always passes - it's for reporting
         assert True
+
+
+class TestCampaignDataIntegrity:
+    """Test the integrity of campaign data sources."""
+
+    def test_baseline_campaigns_not_empty(self):
+        """Verify baseline campaign list is populated."""
+        assert len(BASELINE_MITRE_CAMPAIGNS) > 0
+        assert "C0001" in BASELINE_MITRE_CAMPAIGNS
+        assert "C0024" in BASELINE_MITRE_CAMPAIGNS  # SolarWinds
+
+    def test_official_campaigns_loaded(self):
+        """Verify official campaigns are loaded (from DB or baseline)."""
+        assert len(OFFICIAL_MITRE_CAMPAIGNS) >= len(BASELINE_MITRE_CAMPAIGNS)
+
+    def test_campaign_id_format(self):
+        """Verify all campaign IDs follow C#### format."""
+        import re
+
+        pattern = re.compile(r"^C\d{4}$")
+        for campaign_id in OFFICIAL_MITRE_CAMPAIGNS.keys():
+            assert pattern.match(
+                campaign_id
+            ), f"Invalid campaign ID format: {campaign_id}"
 
 
 class TestCampaignURLAccessibility:
