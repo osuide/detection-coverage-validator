@@ -102,7 +102,7 @@ TEMPLATE = RemediationTemplate(
                 query="""fields @timestamp, fileName, changeType, user
 | filter changeType = "MODIFIED" or changeType = "CREATED"
 | filter fileName like /\\.php$|\\.aspx$|\\.jsp$|\\.cgi$|web\\.config|httpd\\.conf/
-| filter fileName like /var\/www|inetpub|apache|nginx/
+| filter fileName like /var\\/www|inetpub|apache|nginx/
 | stats count(*) as changes by fileName, user, bin(1h)
 | filter changes > 0
 | sort @timestamp desc""",
@@ -224,7 +224,7 @@ resource "aws_cloudwatch_metric_alarm" "web_file_changes" {
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
                 query="""fields @timestamp, client_ip, request_url, user_agent, elb_status_code
-| filter request_url like /cmd=|exec|eval\(|system\(|passthru|shell_exec|base64_decode/
+| filter request_url like /cmd=|exec|eval\\(|system\\(|passthru|shell_exec|base64_decode/
 | filter elb_status_code = 200
 | stats count(*) as requests by client_ip, request_url, bin(5m)
 | filter requests > 0

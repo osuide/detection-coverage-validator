@@ -193,7 +193,7 @@ resource "aws_cloudwatch_metric_alarm" "amplification_attack" {
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
                 query="""fields @timestamp, type, severity, resource.instanceDetails.instanceId, service.action.networkConnectionAction
-| filter type like /Backdoor:EC2\/DenialOfService/
+| filter type like /Backdoor:EC2\\/DenialOfService/
 | sort @timestamp desc""",
                 terraform_template="""# Enable GuardDuty DDoS finding alerts
 

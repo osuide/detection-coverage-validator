@@ -82,7 +82,7 @@ TEMPLATE = RemediationTemplate(
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
                 query="""fields @timestamp, query_name, srcaddr, query_type
-| filter query_name like /pastebin|hastebin|paste\.ee|dpaste|privatebin|justpaste|rentry|telegra\.ph/
+| filter query_name like /pastebin|hastebin|paste\\.ee|dpaste|privatebin|justpaste|rentry|telegra\\.ph/
 | stats count() as query_count by srcaddr, query_name, bin(5m)
 | filter query_count > 0
 | sort @timestamp desc""",
@@ -539,7 +539,7 @@ resource "aws_sns_topic_policy" "allow_events" {
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
                 gcp_logging_query="""resource.type="dns_query"
-(protoPayload.queryName=~"pastebin|hastebin|paste\.ee|dpaste|privatebin|justpaste|rentry")""",
+(protoPayload.queryName=~"pastebin|hastebin|paste\\.ee|dpaste|privatebin|justpaste|rentry")""",
                 gcp_terraform_template="""# GCP: Detect DNS queries to text storage sites
 
 variable "project_id" {

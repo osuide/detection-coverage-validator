@@ -312,7 +312,7 @@ resource "aws_cloudwatch_metric_alarm" "nacl_modification_alert" {
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
                 gcp_logging_query="""resource.type="gce_firewall_rule"
-protoPayload.methodName=~"^.*firewalls\.(insert|delete|patch|update)$"
+protoPayload.methodName=~"^.*firewalls\\.(insert|delete|patch|update)$"
 (protoPayload.request.sourceRanges="0.0.0.0/0" OR protoPayload.request.sourceRanges="::/0")""",
                 gcp_terraform_template="""# GCP: Detect unauthorised firewall rule modifications
 
@@ -342,7 +342,7 @@ resource "google_logging_metric" "firewall_modifications" {
   name    = "firewall-rule-modifications"
   filter  = <<-EOT
     resource.type="gce_firewall_rule"
-    protoPayload.methodName=~"^.*firewalls\.(insert|delete|patch|update)$"
+    protoPayload.methodName=~"^.*firewalls\\.(insert|delete|patch|update)$"
   EOT
 
   metric_descriptor {

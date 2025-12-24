@@ -126,7 +126,7 @@ TEMPLATE = RemediationTemplate(
                 query="""fields @timestamp, httpRequest.clientIp, httpRequest.uri, httpRequest.headers, action
 | filter httpRequest.headers like /User-Agent.*python|curl|wget|powershell/
   or httpRequest.uri like /\\/api\\/.*[a-zA-Z0-9]{50,}/
-  or httpRequest.headers like /Cookie:.*[a-zA-Z0-9+\/=]{100,}/
+  or httpRequest.headers like /Cookie:.*[a-zA-Z0-9+\\/=]{100,}/
 | stats count(*) as suspicious_requests by httpRequest.clientIp, bin(5m)
 | filter suspicious_requests > 10
 | sort suspicious_requests desc""",

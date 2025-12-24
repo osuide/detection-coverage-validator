@@ -381,7 +381,7 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
             implementation=DetectionImplementation(
                 query="""fields @timestamp, detail.findingType, detail.resourceType, detail.principal
 | filter detail.status = "ACTIVE"
-| filter detail.isPublic = true or detail.principal.AWS not like /^arn:aws:iam::\d{12}:/
+| filter detail.isPublic = true or detail.principal.AWS not like /^arn:aws:iam::\\d{12}:/
 | sort @timestamp desc""",
                 terraform_template="""# AWS: Detect external resource access via IAM Access Analyzer
 
@@ -483,7 +483,7 @@ resource "aws_sns_topic_policy" "eventbridge_publish" {
                 gcp_logging_query='''resource.type="audited_resource"
 protoPayload.methodName=~"google.login|SetIamPolicy|GenerateAccessToken"
 protoPayload.authenticationInfo.principalEmail!=""
-NOT protoPayload.requestMetadata.callerIp=~"^(10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|192\.168\.)"''',
+NOT protoPayload.requestMetadata.callerIp=~"^(10\\.|172\\.(1[6-9]|2[0-9]|3[0-1])\\.|192\\.168\\.)"''',
                 gcp_terraform_template="""# GCP: Detect compromised credentials via anomalous authentication
 
 variable "project_id" {

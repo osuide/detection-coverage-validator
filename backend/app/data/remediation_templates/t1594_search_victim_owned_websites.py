@@ -93,7 +93,7 @@ TEMPLATE = RemediationTemplate(
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
                 query="""fields @timestamp, c-ip, cs-uri-stem, cs-user-agent
-| filter cs-uri-stem like /robots\.txt|sitemap\.xml/
+| filter cs-uri-stem like /robots\\.txt|sitemap\\.xml/
 | stats count(*) as requests by c-ip, bin(1h)
 | filter requests > 5
 | sort requests desc""",
@@ -208,7 +208,7 @@ resource "aws_cloudwatch_metric_alarm" "recon_detection" {
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
                 query="""fields @timestamp, client_ip, user_agent, request_url
-| filter request_url like /robots\.txt|sitemap|\.xml|admin|login|api/
+| filter request_url like /robots\\.txt|sitemap|\\.xml|admin|login|api/
 | stats count(*) as requests, count_distinct(request_url) as unique_paths by client_ip, user_agent, bin(10m)
 | filter requests > 20 or unique_paths > 15
 | sort requests desc""",

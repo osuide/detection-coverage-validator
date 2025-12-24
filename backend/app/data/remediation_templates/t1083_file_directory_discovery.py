@@ -243,7 +243,7 @@ resource "aws_cloudwatch_metric_alarm" "file_discovery" {
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
                 query="""fields @timestamp, @message, @logStream
-| filter @message like /(?i)(ls -la|find \/|tree \/|dir \/s|locate .*)/
+| filter @message like /(?i)(ls -la|find \\/|tree \\/|dir \\/s|locate .*)/
 | stats count(*) as enum_count by @logStream, bin(15m)
 | filter enum_count > 3
 | sort enum_count desc""",

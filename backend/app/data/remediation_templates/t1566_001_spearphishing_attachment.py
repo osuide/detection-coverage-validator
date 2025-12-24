@@ -245,7 +245,7 @@ resource "aws_cloudwatch_metric_alarm" "suspicious_attachments" {
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
                 query="""fields @timestamp, type, severity, resource.instanceDetails.instanceId, service.additionalInfo.threatName
-| filter type like /Execution:EC2\/MaliciousFile|UnauthorizedAccess:EC2\/MaliciousFile/
+| filter type like /Execution:EC2\\/MaliciousFile|UnauthorizedAccess:EC2\\/MaliciousFile/
 | stats count(*) as detections by resource.instanceDetails.instanceId, service.additionalInfo.threatName
 | sort detections desc""",
                 terraform_template="""# Detect malware execution via GuardDuty
@@ -339,7 +339,7 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
             implementation=DetectionImplementation(
                 query="""fields @timestamp, eventName, userIdentity.principalId, requestParameters
 | filter eventName = "RunInstances" or eventName = "CreateFunction"
-| filter requestParameters like /powershell|cmd\.exe|wscript|cscript|mshta/
+| filter requestParameters like /powershell|cmd\\.exe|wscript|cscript|mshta/
 | stats count(*) as suspicious by userIdentity.principalId
 | filter suspicious > 0""",
                 terraform_template="""# Detect Office apps spawning suspicious processes (via endpoint logs)

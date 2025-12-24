@@ -201,9 +201,9 @@ resource "aws_cloudwatch_event_target" "malware_alert" {
             implementation=DetectionImplementation(
                 query="""fields @timestamp, requestParameters.bucketName, requestParameters.key, userIdentity.principalId
 | filter eventName = "PutObject"
-| filter (requestParameters.key like /\.exe$/ or requestParameters.key like /\.dll$/
-         or requestParameters.key like /\.scr$/ or requestParameters.key like /\.vbs$/
-         or requestParameters.key like /\.ps1$/ or requestParameters.key like /\.bat$/)
+| filter (requestParameters.key like /\\.exe$/ or requestParameters.key like /\\.dll$/
+         or requestParameters.key like /\\.scr$/ or requestParameters.key like /\\.vbs$/
+         or requestParameters.key like /\\.ps1$/ or requestParameters.key like /\\.bat$/)
 | stats count(*) as uploads by userIdentity.principalId, requestParameters.bucketName
 | filter uploads > 10
 | sort uploads desc""",
@@ -413,7 +413,7 @@ resource "google_monitoring_alert_policy" "artifact_upload_alert" {
             implementation=DetectionImplementation(
                 gcp_logging_query="""resource.type="cloud_build"
 protoPayload.methodName="google.devtools.cloudbuild.v1.CloudBuild.CreateBuild"
-(protoPayload.request.steps.args=~"gcc|g\+\+|make|cmake|cargo|go build"
+(protoPayload.request.steps.args=~"gcc|g\\+\\+|make|cmake|cargo|go build"
  OR protoPayload.request.steps.name=~"compiler|builder")""",
                 gcp_terraform_template="""# GCP: Detect suspicious build activities
 

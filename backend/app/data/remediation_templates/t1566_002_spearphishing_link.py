@@ -98,7 +98,7 @@ TEMPLATE = RemediationTemplate(
             implementation=DetectionImplementation(
                 query="""fields @timestamp, mail.source, mail.destination, receipt.action
 | filter receipt.spfVerdict.status = "FAIL" or receipt.dkimVerdict.status = "FAIL" or receipt.dmarcVerdict.status = "FAIL"
-| filter content.bodyPlainText like /http|hxxp|bit\.ly|tinyurl|goo\.gl/
+| filter content.bodyPlainText like /http|hxxp|bit\\.ly|tinyurl|goo\\.gl/
 | stats count(*) as suspicious_emails by mail.source, bin(1h)
 | filter suspicious_emails > 3
 | sort suspicious_emails desc""",

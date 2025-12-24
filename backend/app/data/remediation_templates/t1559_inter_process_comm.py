@@ -111,7 +111,7 @@ TEMPLATE = RemediationTemplate(
 | filter @message like /mkfifo|mknod.*p|socketpair|shmget|shmat/
    or @message like /CreateNamedPipe|CreatePipe|CallNamedPipe/
    or @message like /\\\\.\\\\pipe\\\\/
-| parse @message /(?<process>\S+).*(?<ipc_object>\S+pipe\S+|\S+shm\S+)/
+| parse @message /(?<process>\\S+).*(?<ipc_object>\\S+pipe\\S+|\\S+shm\\S+)/
 | filter process not in ["systemd", "dockerd", "containerd"]
 | sort @timestamp desc
 | limit 100""",

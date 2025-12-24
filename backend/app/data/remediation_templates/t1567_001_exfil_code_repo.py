@@ -86,7 +86,7 @@ TEMPLATE = RemediationTemplate(
             implementation=DetectionImplementation(
                 query="""fields @timestamp, userIdentity.principalId, requestParameters, sourceIPAddress
 | filter eventName in ["RunCommand", "StartSession"]
-| filter requestParameters.commands[0] =~ /git\s+push|curl.*github|curl.*gitlab|curl.*bitbucket/
+| filter requestParameters.commands[0] =~ /git\\s+push|curl.*github|curl.*gitlab|curl.*bitbucket/
 | sort @timestamp desc""",
                 cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect git operations and repository API calls
@@ -225,7 +225,7 @@ resource "aws_cloudwatch_metric_alarm" "git_push" {
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
                 query="""fields @timestamp, srcAddr, dstAddr, bytes
-| filter dstAddr =~ /api\.github\.com|gitlab\.com|bitbucket\.org/
+| filter dstAddr =~ /api\\.github\\.com|gitlab\\.com|bitbucket\\.org/
 | filter action = "ACCEPT"
 | stats sum(bytes) as total_bytes, count(*) as requests by srcAddr, bin(5m)
 | filter total_bytes > 1048576 or requests > 10
@@ -489,7 +489,7 @@ resource "aws_sns_topic_policy" "allow_events" {
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
                 gcp_logging_query="""resource.type="gce_instance"
-jsonPayload.connection.dest_ip=~"api\.github\.com|gitlab\.com|bitbucket\.org"
+jsonPayload.connection.dest_ip=~"api\\.github\\.com|gitlab\\.com|bitbucket\\.org"
 jsonPayload.bytes_sent > 1048576""",
                 gcp_terraform_template="""# GCP: Detect repository API uploads
 
@@ -515,7 +515,7 @@ resource "google_logging_metric" "repo_api" {
   name   = "repository-api-uploads"
   filter = <<-EOT
     resource.type="gce_instance"
-    jsonPayload.connection.dest_ip=~"api\.github\.com|gitlab\.com|bitbucket\.org"
+    jsonPayload.connection.dest_ip=~"api\\.github\\.com|gitlab\\.com|bitbucket\\.org"
     jsonPayload.bytes_sent > 1048576
   EOT
 
@@ -581,7 +581,7 @@ resource "google_monitoring_alert_policy" "repo_upload" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''resource.type="gce_instance"
 protoPayload.methodName="RunCommand"
-protoPayload.request.command=~"git\s+push|curl.*github|curl.*gitlab|curl.*bitbucket"''',
+protoPayload.request.command=~"git\\s+push|curl.*github|curl.*gitlab|curl.*bitbucket"''',
                 gcp_terraform_template="""# GCP: Detect git command execution
 
 variable "project_id" {
@@ -607,7 +607,7 @@ resource "google_logging_metric" "git_commands" {
   filter = <<-EOT
     resource.type="gce_instance"
     protoPayload.methodName="RunCommand"
-    protoPayload.request.command=~"git\s+push|curl.*github|curl.*gitlab|curl.*bitbucket"
+    protoPayload.request.command=~"git\\s+push|curl.*github|curl.*gitlab|curl.*bitbucket"
   EOT
 
   metric_descriptor {

@@ -106,7 +106,7 @@ TEMPLATE = RemediationTemplate(
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
                 query="""fields @timestamp, @message, instanceId, processName, commandLine
-| filter @message like /base64|gzip|openssl enc|uuencode|certutil.*encode|xxd|\.7z|\.enc|\.zip/
+| filter @message like /base64|gzip|openssl enc|uuencode|certutil.*encode|xxd|\\.7z|\\.enc|\\.zip/
 | filter @message like /curl|wget|aws s3|scp/ or processName like /python|perl|ruby/
 | stats count() as encoding_operations by instanceId, processName, bin(10m)
 | filter encoding_operations > 3
@@ -270,7 +270,7 @@ resource "aws_cloudwatch_metric_alarm" "encoding_activity" {
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
                 query="""fields @timestamp, @message, commandLine, userName
-| filter commandLine like /powershell.*-enc|python.*-c.*eval|bash.*-c.*eval|\$\{.*\}|\`.*\`/
+| filter commandLine like /powershell.*-enc|python.*-c.*eval|bash.*-c.*eval|\\$\\{.*\\}|\\`.*\\`/
 | filter commandLine like /IEX|Invoke-Expression|exec|char.*join|frombase64/i
 | stats count() as obfuscated_commands by userName, bin(15m)
 | filter obfuscated_commands > 2

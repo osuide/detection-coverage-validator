@@ -225,7 +225,7 @@ resource "aws_cloudwatch_metric_alarm" "dga_detection" {
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
                 query="""fields @timestamp, query_name, srcids.instance as instance_id, answers.Rdata as resolved_ip
-| filter query_name like /^[a-z]{15,}\./ or query_name like /^[0-9a-z]{20,}\./
+| filter query_name like /^[a-z]{15,}\\./ or query_name like /^[0-9a-z]{20,}\\./
 | stats count(*) as suspicious_queries by srcids.instance, bin(10m)
 | filter suspicious_queries > 20
 | sort suspicious_queries desc""",

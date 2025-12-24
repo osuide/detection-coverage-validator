@@ -286,8 +286,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
                 query="""fields @timestamp, @message, instanceId, fileName, fileSize
-| filter @message like /\.mp4|\.avi|\.mov|\.wmv|\.flv|\.mkv|\.webm/
-| filter @message like /\/tmp|\/var\/tmp|unusual|capture|recording/
+| filter @message like /\\.mp4|\\.avi|\\.mov|\\.wmv|\\.flv|\\.mkv|\\.webm/
+| filter @message like /\\/tmp|\\/var\\/tmp|unusual|capture|recording/
 | stats count() as video_files, sum(fileSize) as total_size by instanceId, bin(1h)
 | filter video_files > 3 or total_size > 100000000
 | sort @timestamp desc""",
@@ -699,7 +699,7 @@ resource "google_monitoring_alert_policy" "camera_access" {
             implementation=DetectionImplementation(
                 gcp_logging_query='''resource.type="gcs_bucket"
 protoPayload.methodName="storage.objects.create"
-protoPayload.resourceName=~".*\.(mp4|avi|mov|wmv|flv|mkv|webm)$"''',
+protoPayload.resourceName=~".*\\.(mp4|avi|mov|wmv|flv|mkv|webm)$"''',
                 gcp_terraform_template="""# GCP: Monitor Cloud Storage for video file uploads
 
 variable "project_id" {

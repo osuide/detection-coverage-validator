@@ -520,7 +520,7 @@ resource "google_monitoring_alert_policy" "secret_access_alert" {
             implementation=DetectionImplementation(
                 query="""fields @timestamp, @message
 | filter @message like /169.254.169.254/
-| filter @message like /latest\/meta-data\/iam\/security-credentials/
+| filter @message like /latest\\/meta-data\\/iam\\/security-credentials/
 | stats count(*) as metadata_requests by bin(5m)
 | filter metadata_requests > 100
 | sort metadata_requests desc""",

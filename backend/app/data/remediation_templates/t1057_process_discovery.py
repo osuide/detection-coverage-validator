@@ -228,7 +228,7 @@ resource "aws_cloudwatch_metric_alarm" "process_enum" {
                 query="""fields @timestamp, userIdentity.arn, requestParameters.task, requestParameters.command
 | filter eventSource = "ecs.amazonaws.com"
 | filter eventName = "ExecuteCommand"
-| filter requestParameters.command like /ps|top|\/proc/
+| filter requestParameters.command like /ps|top|\\/proc/
 | stats count(*) as exec_count by userIdentity.arn, requestParameters.cluster, bin(1h)
 | sort @timestamp desc""",
                 cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'

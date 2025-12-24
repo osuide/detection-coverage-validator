@@ -228,7 +228,7 @@ resource "aws_cloudwatch_metric_alarm" "financial_api" {
 | filter eventSource = "secretsmanager.amazonaws.com" or eventSource = "s3.amazonaws.com"
 | filter eventName in ["GetSecretValue", "GetObject"]
 | filter requestParameters.secretId like /(?i)(wallet|crypto|bitcoin|ethereum|private.?key)/
-    or requestParameters.key like /(?i)(wallet|crypto|bitcoin|ethereum|\.key$)/
+    or requestParameters.key like /(?i)(wallet|crypto|bitcoin|ethereum|\\.key$)/
 | stats count(*) as access_count by userIdentity.arn, bin(5m)
 | filter access_count > 10
 | sort access_count desc""",

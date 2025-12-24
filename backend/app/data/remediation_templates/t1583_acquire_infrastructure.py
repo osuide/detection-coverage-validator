@@ -259,7 +259,7 @@ resource "aws_cloudwatch_metric_alarm" "lambda_provisioning" {
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
                 query="""fields @timestamp, srcAddr, dstAddr, dstPort, bytes
-| filter dstAddr not like /^10\.|^172\.(1[6-9]|2[0-9]|3[0-1])\.|^192\.168\./
+| filter dstAddr not like /^10\\.|^172\\.(1[6-9]|2[0-9]|3[0-1])\\.|^192\\.168\\./
 | filter action = "ACCEPT"
 | stats sum(bytes) as total_bytes, count(*) as connections by srcAddr, dstAddr, dstPort, bin(5m)
 | filter connections > 50 or total_bytes > 10000000
@@ -444,7 +444,7 @@ resource "google_monitoring_alert_policy" "function_provisioning" {
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
                 gcp_logging_query="""resource.type="gce_subnetwork"
-jsonPayload.connection.dest_ip!~"^10\.|^172\.(1[6-9]|2[0-9]|3[0-1])\.|^192\.168\."
+jsonPayload.connection.dest_ip!~"^10\\.|^172\\.(1[6-9]|2[0-9]|3[0-1])\\.|^192\\.168\\."
 jsonPayload.bytes_sent>10000000""",
                 gcp_terraform_template="""# GCP: Detect suspicious VPC egress traffic
 

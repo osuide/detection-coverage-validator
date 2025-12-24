@@ -255,7 +255,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             implementation=DetectionImplementation(
                 query="""fields @timestamp, srcaddr, dstaddr, dstport, bytes, packets
 | filter dstport in [139, 445] and action = "ACCEPT"
-| filter dstaddr not like /^10\.|^172\.(1[6-9]|2[0-9]|3[01])\.|^192\.168\./
+| filter dstaddr not like /^10\\.|^172\\.(1[6-9]|2[0-9]|3[01])\\.|^192\\.168\\./
 | stats count(*) as connection_count,
         sum(bytes) as total_bytes,
         count_distinct(dstaddr) as unique_destinations

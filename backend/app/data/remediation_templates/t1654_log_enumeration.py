@@ -240,7 +240,7 @@ resource "aws_cloudwatch_metric_alarm" "excessive_log_enumeration" {
             implementation=DetectionImplementation(
                 query="""fields @timestamp, process, command, user
 | filter process in ["cat", "grep", "tail", "head", "less", "more", "wevtutil.exe", "Get-EventLog", "Get-WinEvent"]
-| filter command like /\/var\/log|\/var\/log\/auth\.log|\/var\/log\/secure|\.evtx|Security|System/
+| filter command like /\\/var\\/log|\\/var\\/log\\/auth\\.log|\\/var\\/log\\/secure|\\.evtx|Security|System/
 | stats count(*) as log_reads by user, bin(10m)
 | filter log_reads > 10
 | sort log_reads desc""",
@@ -503,7 +503,7 @@ resource "google_monitoring_alert_policy" "excessive_log_enumeration" {
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
                 gcp_logging_query='''resource.type="gce_instance"
-jsonPayload.message=~"(cat|grep|tail|head|less) .*(\/var\/log|auth\.log|syslog|secure)"
+jsonPayload.message=~"(cat|grep|tail|head|less) .*(\\/var\\/log|auth\\.log|syslog|secure)"
 OR jsonPayload.process_name=~"(cat|grep|tail|journalctl)"''',
                 gcp_terraform_template="""# GCP: Detect system log file access on Compute instances
 
@@ -533,7 +533,7 @@ resource "google_logging_metric" "vm_log_access" {
   project = var.project_id
   filter  = <<-EOT
     resource.type="gce_instance"
-    jsonPayload.message=~"(cat|grep|tail|head|less) .*(\/var\/log|auth\.log|syslog|secure)"
+    jsonPayload.message=~"(cat|grep|tail|head|less) .*(\\/var\\/log|auth\\.log|syslog|secure)"
   EOT
 
   metric_descriptor {
