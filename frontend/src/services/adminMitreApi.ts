@@ -114,9 +114,15 @@ export const mitreApi = {
       params: { skip, limit, search },
     }).then(r => r.data),
 
-  getCampaigns: (skip = 0, limit = 50) =>
+  getCampaigns: (
+    skip = 0,
+    limit = 50,
+    search?: string,
+    sortBy?: string,
+    sortOrder?: 'asc' | 'desc'
+  ) =>
     adminApi.get<PaginatedResponse<CampaignSummary>>('/mitre/campaigns', {
-      params: { skip, limit },
+      params: { skip, limit, search, sort_by: sortBy, sort_order: sortOrder },
     }).then(r => r.data),
 
   // Statistics

@@ -236,6 +236,9 @@ async def list_threat_groups(
 
 @router.get("/campaigns", response_model=PaginatedResponse)
 async def list_campaigns(
+    search: Optional[str] = Query(None, description="Search by name or external ID"),
+    sort_by: str = Query("last_seen", description="Field to sort by"),
+    sort_order: str = Query("desc", regex="^(asc|desc)$", description="Sort order"),
     skip: int = Query(0, ge=0, description="Number of items to skip"),
     limit: int = Query(50, le=100, description="Maximum number of items"),
     admin: AdminUser = Depends(require_permission("settings:read")),
@@ -244,10 +247,18 @@ async def list_campaigns(
     """
     Browse MITRE campaigns.
 
-    Lists all attack campaigns sorted by most recent first.
+    Lists all attack campaigns with search and sorting support.
+
+    Sort fields: name, external_id, first_seen, last_seen (default)
     """
     threat_service = MitreThreatService(db)
-    campaigns, total = await threat_service.get_all_campaigns(skip=skip, limit=limit)
+    campaigns, total = await threat_service.get_all_campaigns(
+        skip=skip,
+        limit=limit,
+        search=search,
+        sort_by=sort_by,
+        sort_order=sort_order,
+    )
 
     items = [
         CampaignSummary(

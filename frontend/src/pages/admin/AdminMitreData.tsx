@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import {
   Database, RefreshCw, ChevronLeft, Check, AlertCircle,
   Users, Target, Package, Link as LinkIcon, Clock,
-  Calendar, ExternalLink, Search
+  Calendar, ExternalLink, Search, ChevronUp, ChevronDown
 } from 'lucide-react'
 import { useAdminAuthStore } from '../../stores/adminAuthStore'
 import {
@@ -29,6 +29,9 @@ export default function AdminMitreData() {
   const [activeTab, setActiveTab] = useState<TabType>('overview')
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [campaignSearch, setCampaignSearch] = useState('')
+  const [campaignSortBy, setCampaignSortBy] = useState<string>('last_seen')
+  const [campaignSortOrder, setCampaignSortOrder] = useState<'asc' | 'desc'>('desc')
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -69,11 +72,35 @@ export default function AdminMitreData() {
 
   const fetchCampaigns = async () => {
     try {
-      const data = await mitreApi.getCampaigns(0, 100)
+      const data = await mitreApi.getCampaigns(
+        0,
+        100,
+        campaignSearch || undefined,
+        campaignSortBy,
+        campaignSortOrder
+      )
       setCampaigns(data.items)
     } catch (error) {
       console.error('Failed to fetch campaigns:', error)
     }
+  }
+
+  const handleCampaignSort = (field: string) => {
+    if (campaignSortBy === field) {
+      // Toggle sort order if clicking same column
+      setCampaignSortOrder(campaignSortOrder === 'asc' ? 'desc' : 'asc')
+    } else {
+      // New column, default to descending for dates, ascending for text
+      setCampaignSortBy(field)
+      setCampaignSortOrder(field === 'name' || field === 'external_id' ? 'asc' : 'desc')
+    }
+  }
+
+  const SortIcon = ({ field }: { field: string }) => {
+    if (campaignSortBy !== field) return null
+    return campaignSortOrder === 'asc'
+      ? <ChevronUp className="h-4 w-4 inline ml-1" />
+      : <ChevronDown className="h-4 w-4 inline ml-1" />
   }
 
   useEffect(() => {
@@ -83,6 +110,13 @@ export default function AdminMitreData() {
       fetchCampaigns()
     }
   }, [activeTab])
+
+  // Refetch campaigns when sort or search changes
+  useEffect(() => {
+    if (activeTab === 'campaigns') {
+      fetchCampaigns()
+    }
+  }, [campaignSortBy, campaignSortOrder])
 
   const handleSync = async () => {
     setSyncing(true)
@@ -398,19 +432,53 @@ export default function AdminMitreData() {
 
             {activeTab === 'campaigns' && (
               <div>
+                <div className="mb-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search campaigns by name or ID..."
+                      value={campaignSearch}
+                      onChange={(e) => setCampaignSearch(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && fetchCampaigns()}
+                      className="pl-10 pr-4 py-2 w-full border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    />
+                  </div>
+                </div>
+
                 {campaigns.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
-                    No campaigns found. Click "Sync Now" to download data.
+                    No campaigns found. {campaignSearch ? 'Try a different search term.' : 'Click "Sync Now" to download data.'}
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200">
                       <thead className="bg-gray-50">
                         <tr>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">First Seen</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Last Seen</th>
+                          <th
+                            onClick={() => handleCampaignSort('external_id')}
+                            className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                          >
+                            ID <SortIcon field="external_id" />
+                          </th>
+                          <th
+                            onClick={() => handleCampaignSort('name')}
+                            className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                          >
+                            Name <SortIcon field="name" />
+                          </th>
+                          <th
+                            onClick={() => handleCampaignSort('first_seen')}
+                            className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                          >
+                            First Seen <SortIcon field="first_seen" />
+                          </th>
+                          <th
+                            onClick={() => handleCampaignSort('last_seen')}
+                            className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                          >
+                            Last Seen <SortIcon field="last_seen" />
+                          </th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Link</th>
                         </tr>
                       </thead>

@@ -416,30 +416,66 @@ class MitreThreatService:
         self,
         skip: int = 0,
         limit: int = 50,
+        search: Optional[str] = None,
+        sort_by: str = "last_seen",
+        sort_order: str = "desc",
     ) -> tuple[list[CampaignInfo], int]:
         """
-        Get all campaigns with pagination.
+        Get all campaigns with pagination, search, and sorting.
+
+        Args:
+            skip: Number of items to skip
+            limit: Maximum number of items to return
+            search: Optional search term for name or external_id
+            sort_by: Field to sort by (name, external_id, first_seen, last_seen)
+            sort_order: Sort direction (asc or desc)
 
         Returns:
             Tuple of (campaigns list, total count)
         """
-        count_result = await self.db.execute(
-            select(func.count())
-            .select_from(MitreCampaign)
-            .where(
-                MitreCampaign.is_revoked == False,  # noqa: E712
-                MitreCampaign.is_deprecated == False,  # noqa: E712
+        # Build base filter conditions
+        base_conditions = [
+            MitreCampaign.is_revoked == False,  # noqa: E712
+            MitreCampaign.is_deprecated == False,  # noqa: E712
+        ]
+
+        # Add search filter if provided
+        if search:
+            search_term = f"%{search}%"
+            from sqlalchemy import or_
+
+            base_conditions.append(
+                or_(
+                    MitreCampaign.name.ilike(search_term),
+                    MitreCampaign.external_id.ilike(search_term),
+                )
             )
+
+        # Count query
+        count_result = await self.db.execute(
+            select(func.count()).select_from(MitreCampaign).where(*base_conditions)
         )
         total = count_result.scalar() or 0
 
+        # Determine sort column
+        sort_columns = {
+            "name": MitreCampaign.name,
+            "external_id": MitreCampaign.external_id,
+            "first_seen": MitreCampaign.first_seen,
+            "last_seen": MitreCampaign.last_seen,
+        }
+        sort_column = sort_columns.get(sort_by, MitreCampaign.last_seen)
+
+        # Apply sort order
+        if sort_order == "asc":
+            order_clause = sort_column.asc().nullslast()
+        else:
+            order_clause = sort_column.desc().nullslast()
+
         result = await self.db.execute(
             select(MitreCampaign)
-            .where(
-                MitreCampaign.is_revoked == False,  # noqa: E712
-                MitreCampaign.is_deprecated == False,  # noqa: E712
-            )
-            .order_by(MitreCampaign.last_seen.desc().nullslast())
+            .where(*base_conditions)
+            .order_by(order_clause)
             .offset(skip)
             .limit(limit)
         )
