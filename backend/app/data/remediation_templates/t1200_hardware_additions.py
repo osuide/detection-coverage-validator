@@ -272,8 +272,8 @@ output "alert_topic_arn" {
                 "It discovers devices that are currently connected but cannot alert on the moment "
                 "of insertion. For real-time USB detection, deploy endpoint agents."
             ),
-            detection_type=DetectionType.SSM_DOCUMENT,
-            aws_service="systems_manager",
+            detection_type=DetectionType.EVENTBRIDGE_RULE,
+            aws_service="eventbridge",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
                 cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
