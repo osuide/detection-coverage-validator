@@ -136,6 +136,7 @@ function CodeBlock({ code, language }: { code: string; language: string }) {
 function StrategyCard({ strategy, defaultOpen }: { strategy: DetectionStrategy; defaultOpen: boolean }) {
   const [isOpen, setIsOpen] = useState(defaultOpen)
   const [activeTab, setActiveTab] = useState<'cloudformation' | 'terraform' | 'gcp'>('terraform')
+  const [templatesExpanded, setTemplatesExpanded] = useState(false)
 
   const isAWS = strategy.cloud_provider === 'aws'
 
@@ -246,62 +247,83 @@ function StrategyCard({ strategy, defaultOpen }: { strategy: DetectionStrategy; 
             </div>
           )}
 
-          {/* Implementation Templates */}
-          <div>
-            <h5 className="text-sm font-medium text-gray-300 mb-3 flex items-center gap-2">
-              <FileCode className="w-4 h-4" />
-              Implementation Templates
-            </h5>
+          {/* Implementation Templates - Collapsible */}
+          <div className="border border-gray-700 rounded-lg overflow-hidden">
+            <button
+              onClick={() => setTemplatesExpanded(!templatesExpanded)}
+              className="w-full px-4 py-3 flex items-center justify-between bg-gray-700/30 hover:bg-gray-700/50 transition-colors"
+            >
+              <h5 className="text-sm font-medium text-gray-300 flex items-center gap-2">
+                <FileCode className="w-4 h-4" />
+                Implementation Templates
+                <span className="text-xs text-gray-500">
+                  ({[
+                    strategy.implementation.terraform_template && 'Terraform',
+                    strategy.implementation.cloudformation_template && 'CloudFormation',
+                    strategy.implementation.gcp_terraform_template && 'GCP Terraform',
+                  ].filter(Boolean).join(', ')})
+                </span>
+              </h5>
+              {templatesExpanded ? (
+                <ChevronDown className="w-4 h-4 text-gray-400" />
+              ) : (
+                <ChevronRight className="w-4 h-4 text-gray-400" />
+              )}
+            </button>
 
-            {/* Tab selector */}
-            <div className="flex gap-2 mb-4">
-              {strategy.implementation.terraform_template && (
-                <button
-                  onClick={() => setActiveTab('terraform')}
-                  className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
-                    activeTab === 'terraform'
-                      ? 'bg-purple-600 text-white'
-                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                  }`}
-                >
-                  Terraform (AWS)
-                </button>
-              )}
-              {strategy.implementation.cloudformation_template && (
-                <button
-                  onClick={() => setActiveTab('cloudformation')}
-                  className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
-                    activeTab === 'cloudformation'
-                      ? 'bg-orange-600 text-white'
-                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                  }`}
-                >
-                  CloudFormation
-                </button>
-              )}
-              {strategy.implementation.gcp_terraform_template && (
-                <button
-                  onClick={() => setActiveTab('gcp')}
-                  className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
-                    activeTab === 'gcp'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                  }`}
-                >
-                  Terraform (GCP)
-                </button>
-              )}
-            </div>
+            {templatesExpanded && (
+              <div className="p-4 border-t border-gray-700">
+                {/* Tab selector */}
+                <div className="flex gap-2 mb-4">
+                  {strategy.implementation.terraform_template && (
+                    <button
+                      onClick={() => setActiveTab('terraform')}
+                      className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                        activeTab === 'terraform'
+                          ? 'bg-purple-600 text-white'
+                          : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                      }`}
+                    >
+                      Terraform (AWS)
+                    </button>
+                  )}
+                  {strategy.implementation.cloudformation_template && (
+                    <button
+                      onClick={() => setActiveTab('cloudformation')}
+                      className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                        activeTab === 'cloudformation'
+                          ? 'bg-orange-600 text-white'
+                          : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                      }`}
+                    >
+                      CloudFormation
+                    </button>
+                  )}
+                  {strategy.implementation.gcp_terraform_template && (
+                    <button
+                      onClick={() => setActiveTab('gcp')}
+                      className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                        activeTab === 'gcp'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                      }`}
+                    >
+                      Terraform (GCP)
+                    </button>
+                  )}
+                </div>
 
-            {/* Template content */}
-            {activeTab === 'terraform' && strategy.implementation.terraform_template && (
-              <CodeBlock code={strategy.implementation.terraform_template} language="Terraform (HCL)" />
-            )}
-            {activeTab === 'cloudformation' && strategy.implementation.cloudformation_template && (
-              <CodeBlock code={strategy.implementation.cloudformation_template} language="CloudFormation (YAML)" />
-            )}
-            {activeTab === 'gcp' && strategy.implementation.gcp_terraform_template && (
-              <CodeBlock code={strategy.implementation.gcp_terraform_template} language="Terraform (GCP)" />
+                {/* Template content */}
+                {activeTab === 'terraform' && strategy.implementation.terraform_template && (
+                  <CodeBlock code={strategy.implementation.terraform_template} language="Terraform (HCL)" />
+                )}
+                {activeTab === 'cloudformation' && strategy.implementation.cloudformation_template && (
+                  <CodeBlock code={strategy.implementation.cloudformation_template} language="CloudFormation (YAML)" />
+                )}
+                {activeTab === 'gcp' && strategy.implementation.gcp_terraform_template && (
+                  <CodeBlock code={strategy.implementation.gcp_terraform_template} language="Terraform (GCP)" />
+                )}
+              </div>
             )}
           </div>
 
