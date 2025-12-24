@@ -3,6 +3,26 @@ T1115 - Clipboard Data
 
 Adversaries collect clipboard data from users copying information between applications.
 In cloud environments, this technique targets workstations, bastion hosts, and RDP/SSH sessions.
+
+IMPORTANT DETECTION LIMITATIONS:
+The detection strategies below monitor CLIPBOARD UTILITIES (clip.exe, Get-Clipboard,
+pbpaste, xclip, xsel). These are effective for script-based and administrative clipboard access.
+
+However, sophisticated malware typically uses:
+- Direct Windows API calls (OpenClipboard/GetClipboardData)
+- .NET System.Windows.Forms.Clipboard class
+- Python/PowerShell clipboard modules without spawning utility processes
+
+These API-level clipboard accesses are NOT detected by process monitoring alone.
+
+For comprehensive clipboard monitoring:
+- Windows: Enable AMSI (Antimalware Scan Interface) and use EDR with API hooking
+- AWS: GuardDuty Runtime Monitoring for behavioural detection
+- All platforms: Deploy EDR solutions (CrowdStrike, SentinelOne, Carbon Black) with
+  memory/API monitoring capabilities
+
+The utility-based detection below catches ~20-30% of clipboard theft attempts
+(script-based/administrative). API-level malware requires endpoint agent detection.
 """
 
 from .template_loader import (
@@ -226,7 +246,7 @@ resource "aws_cloudwatch_metric_alarm" "clipboard_access" {
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist legitimate administrative scripts; baseline normal clipboard usage patterns on jump hosts",
-            detection_coverage="65% - requires CloudWatch Agent with process monitoring enabled",
+            detection_coverage="25% - detects utility-based clipboard access only. API-level malware bypasses this detection.",
             evasion_considerations="Malware using direct Windows API calls instead of utilities; slow polling to avoid thresholds",
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
@@ -368,7 +388,7 @@ resource "aws_cloudwatch_metric_alarm" "get_clipboard" {
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist legitimate administrative automation; requires PowerShell logging enabled",
-            detection_coverage="70% - effective for PowerShell-based clipboard access",
+            detection_coverage="30% - effective for PowerShell cmdlet-based access. Direct API calls via .NET bypass this.",
             evasion_considerations="Direct Windows API usage; .NET clipboard classes; obfuscated PowerShell",
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1.5 hours",
@@ -511,7 +531,7 @@ resource "aws_cloudwatch_metric_alarm" "container_clipboard" {
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Clipboard utilities in containers are almost always suspicious; minimal tuning needed",
-            detection_coverage="80% - highly effective as containers rarely need clipboard access",
+            detection_coverage="70% - highly effective for containers since clipboard utilities are rarely legitimate there.",
             evasion_considerations="Pre-installed tools in custom base images; compiled binaries instead of package installation",
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",
@@ -626,7 +646,7 @@ resource "google_monitoring_alert_policy" "clipboard_access" {
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline clipboard usage on jump hosts; whitelist legitimate admin scripts",
-            detection_coverage="60% - requires OS logging agent configured",
+            detection_coverage="20% - detects utility execution only, requires OS logging agent. API-level access not detected.",
             evasion_considerations="Direct API calls instead of utilities; low-frequency polling",
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2 hours",
@@ -733,7 +753,7 @@ resource "google_monitoring_alert_policy" "container_clipboard" {
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Clipboard utilities in containers are almost always malicious; minimal false positives expected",
-            detection_coverage="85% - highly effective for containerised workloads",
+            detection_coverage="70% - highly effective for containers where clipboard utilities are suspicious.",
             evasion_considerations="Pre-built malicious images with embedded tools; binary injection at runtime",
             implementation_effort=EffortLevel.LOW,
             implementation_time="1 hour",

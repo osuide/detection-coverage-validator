@@ -4,6 +4,29 @@ T1557.002 - Adversary-in-the-Middle: ARP Cache Poisoning
 Adversaries exploit the unauthenticated nature of ARP to position themselves between
 networked devices. By poisoning ARP caches, attackers intercept communications to enable
 network sniffing and data manipulation. Used by Cleaver and LuminousMoth.
+
+CRITICAL DETECTION LIMITATION:
+VPC Flow Logs operate at Layer 3 (IP) but ARP operates at Layer 2 (Data Link).
+VPC Flow Logs CANNOT see ARP traffic at all - ARP packets are not IP packets.
+
+What VPC Flow Logs CAN detect:
+- Consequences of successful ARP poisoning (unusual traffic patterns AFTER attack succeeds)
+- IP traffic being routed through unexpected hosts
+
+What VPC Flow Logs CANNOT detect:
+- The ARP poisoning attack itself
+- Malicious ARP responses
+- ARP cache manipulation
+
+Coverage reality:
+- VPC Flow Logs: ~20% (detects post-attack traffic anomalies only)
+- VPC Traffic Mirroring with deep packet inspection: ~65%
+- Host-based ARP monitoring (arping, arpwatch): ~80%
+
+For accurate detection, deploy:
+1. VPC Traffic Mirroring with packet inspection tools
+2. Host-based ARP monitoring agents (arpwatch, Wazuh)
+3. Network IDS with Layer 2 visibility
 """
 
 from .template_loader import (
@@ -535,7 +558,7 @@ resource "aws_cloudwatch_metric_alarm" "traffic_alarm" {
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Establish traffic baselines per application; whitelist legitimate proxy and NAT instances",
-            detection_coverage="50% - behavioural analysis may miss sophisticated low-volume attacks",
+            detection_coverage="20% - detects post-attack traffic anomalies only. VPC Flow Logs operate at Layer 3 and CANNOT see Layer 2 ARP traffic.",
             evasion_considerations="Low-frequency poisoning or blending with normal traffic patterns",
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
@@ -688,7 +711,7 @@ resource "google_monitoring_alert_policy" "arp_attack" {
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Baseline normal traffic patterns; whitelist legitimate proxy and NAT instances",
-            detection_coverage="55% - behavioural analysis requires tuning per environment",
+            detection_coverage="20% - detects post-attack traffic anomalies only. VPC Flow Logs operate at Layer 3 and CANNOT see Layer 2 ARP traffic.",
             evasion_considerations="Slow attacks or legitimate-looking relay patterns may evade detection",
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",

@@ -3,6 +3,25 @@ T1055 - Process Injection
 
 Adversaries inject arbitrary code into the address space of a separate live process
 to evade process-based defences, elevate privileges, and mask malicious execution.
+
+IMPORTANT DETECTION LIMITATIONS:
+Process injection is an IN-MEMORY, OS-LEVEL technique. Direct detection requires:
+- Endpoint Detection and Response (EDR) with kernel-level visibility
+- GuardDuty Runtime Monitoring (uses eBPF agent for behavioural detection)
+- OS-level audit logging (auditd with syscall monitoring)
+
+Cloud-native APIs (CloudTrail, EventBridge) CANNOT see:
+- Memory manipulation (VirtualAllocEx, WriteProcessMemory, mmap)
+- Process memory access (/proc/pid/mem, ptrace)
+- Library injection (CreateRemoteThread, LD_PRELOAD)
+
+The strategies below provide:
+- GuardDuty Runtime Monitoring: Behavioural detection via managed eBPF agent (~60% coverage)
+- CloudWatch/Cloud Logging: Requires OS-level auditd configuration (~40% coverage)
+- Without endpoint agents or auditd: <10% coverage (limited to post-compromise indicators)
+
+For comprehensive protection, deploy GuardDuty Runtime Monitoring or third-party EDR
+(CrowdStrike, SentinelOne, Carbon Black, Microsoft Defender for Endpoint).
 """
 
 from .template_loader import (
@@ -119,14 +138,17 @@ TEMPLATE = RemediationTemplate(
             aws_service="guardduty",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
+                # NOTE: GuardDuty Runtime Monitoring finding types are behavioural indicators.
+                # There are NO specific "ProcessInjection" finding types - detection is via
+                # suspicious process behaviour patterns (new binaries, fileless execution).
                 guardduty_finding_types=[
                     "Execution:Runtime/NewLibraryLoaded",
                     "Execution:Runtime/NewBinaryExecuted",
-                    "PrivilegeEscalation:Runtime/ContainerMountsHostFS",
-                    "PrivilegeEscalation:Runtime/RuncExploitAttempt",
+                    "Execution:Runtime/SuspiciousTool",
                     "DefenseEvasion:Runtime/FilelessExecution",
-                    "DefenseEvasion:Runtime/ProcessInjection.Proc",
-                    "DefenseEvasion:Runtime/ProcessInjection.Ptrace",
+                    "DefenseEvasion:Runtime/SuspiciousCommand",
+                    "PrivilegeEscalation:Runtime/ContainerMountsHostFS",
+                    "PrivilegeEscalation:Runtime/RuncContainerEscape",
                 ],
                 cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty Runtime Monitoring for process injection detection
@@ -331,7 +353,7 @@ output "alert_topic_arn" {
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist legitimate software that uses code injection (debuggers, monitoring tools). Exclude authorised DevOps processes.",
-            detection_coverage="75% - covers common injection techniques on supported platforms (EC2, ECS, EKS)",
+            detection_coverage="60% - behavioural detection via eBPF agent. Cannot detect all injection techniques; requires Runtime Monitoring agent deployed.",
             evasion_considerations="Advanced attackers may use novel injection techniques not yet detected by runtime analysis. Linux-specific techniques (ptrace, /proc/mem) may have limited coverage.",
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",
@@ -928,7 +950,7 @@ output "insight_arn" {
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Security Hub aggregates findings from multiple sources. Tune individual detection mechanisms (GuardDuty, Inspector) to reduce false positives.",
-            detection_coverage="85% - comprehensive coverage when combined with GuardDuty Runtime Monitoring and third-party EDR integrations",
+            detection_coverage="70% - aggregates findings from underlying sources. Actual coverage depends on GuardDuty Runtime Monitoring and/or third-party EDR deployment.",
             evasion_considerations="Depends on underlying detection sources. No inherent evasion beyond those sources.",
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",

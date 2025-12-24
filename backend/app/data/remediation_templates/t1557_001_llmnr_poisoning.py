@@ -5,6 +5,27 @@ Adversaries spoof authoritative sources for name resolution to intercept network
 traffic and harvest authentication credentials. By responding to LLMNR (UDP 5355)
 and NBT-NS (UDP 137) broadcast queries, attackers capture NTLMv2 hashes for offline
 cracking or relay them to access target systems. Used by Lazarus Group, Wizard Spider.
+
+IMPORTANT DETECTION LIMITATIONS:
+VPC Flow Logs and Cloud Logging CANNOT inspect packet contents. They show:
+- Source/destination IP addresses
+- Ports and protocol (UDP 5355/137)
+- Bytes transferred and packet counts
+
+VPC Flow Logs CANNOT determine:
+- Whether LLMNR/NetBIOS responses are legitimate or spoofed
+- Actual name resolution queries and responses
+- If poisoning is occurring vs. normal name resolution
+
+Coverage reality:
+- VPC Flow Logs: ~25-30% (detects traffic volume anomalies, not actual poisoning)
+- With VPC Traffic Mirroring + deep packet inspection: ~70%
+- Windows Event Logs forwarded to cloud: ~80% (can detect actual attacks)
+
+For accurate detection, either:
+1. Disable LLMNR/NBT-NS via Group Policy (prevention)
+2. Deploy VPC Traffic Mirroring with packet inspection tools
+3. Forward Windows Event Logs (Event ID 4697, security logs) to CloudWatch/Cloud Logging
 """
 
 from .template_loader import (
@@ -301,7 +322,7 @@ resource "aws_cloudwatch_metric_alarm" "high_netbios" {
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal NetBIOS traffic; whitelist authorised Windows file servers",
-            detection_coverage="75% - effective for Windows instances in VPC with Flow Logs enabled",
+            detection_coverage="25% - detects traffic volume anomalies only. Flow Logs CANNOT inspect packet contents to confirm actual poisoning.",
             evasion_considerations="Attackers may throttle responses to avoid volume-based detection",
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
@@ -739,7 +760,7 @@ resource "google_monitoring_alert_policy" "netbios_alert" {
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline legitimate Windows networking; whitelist file servers",
-            detection_coverage="75% - effective for Windows VMs with VPC Flow Logs",
+            detection_coverage="25% - detects traffic volume anomalies only. VPC Flow Logs CANNOT inspect packet contents to confirm actual poisoning.",
             evasion_considerations="Low-volume poisoning may avoid rate-based detection",
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",

@@ -4,6 +4,21 @@ T1091 - Replication Through Removable Media
 Adversaries exploit removable media to spread malware across systems, particularly
 air-gapped networks. Attack leverages Autorun features and may involve modified
 USB devices, including malicious charging cables and mobile devices.
+
+IMPORTANT DETECTION LIMITATIONS:
+Cloud-native APIs (AWS CloudTrail/EventBridge, GCP Cloud Logging) CANNOT directly
+detect physical USB device insertions. This is an OS/hardware-layer signal.
+
+Detection capabilities by environment:
+- AWS WorkSpaces: USB redirection IS logged natively (good coverage)
+- EC2/GCE instances: Requires OS-level logging (syslog/Windows Events) forwarded
+  to cloud logging - NOT automatic, requires manual configuration
+- On-premises: Requires endpoint agents or local auditd configuration
+
+For real-time USB detection on EC2/GCE, deploy endpoint security solutions:
+- AWS: GuardDuty Runtime Monitoring, CrowdStrike, SentinelOne, Carbon Black
+- GCP: Chronicle Security, CrowdStrike, SentinelOne
+- Cross-platform: OSSEC, Wazuh with auditd rules
 """
 
 from .template_loader import (
@@ -100,11 +115,15 @@ TEMPLATE = RemediationTemplate(
         often_follows=["T1566.001", "T1195.003"],
     ),
     detection_strategies=[
-        # Strategy 1: AWS - WorkSpaces USB Device Detection
+        # Strategy 1: AWS - WorkSpaces USB Device Detection (Native Support)
         DetectionStrategy(
             strategy_id="t1091-aws-workspaces-usb",
-            name="AWS WorkSpaces USB Device Connection Detection",
-            description="Detect USB device connections to Amazon WorkSpaces virtual desktops.",
+            name="AWS WorkSpaces USB Redirection Monitoring (Native)",
+            description=(
+                "Detect USB device connections to Amazon WorkSpaces virtual desktops. "
+                "WorkSpaces DOES log USB redirection events natively when enabled. "
+                "This is the most reliable USB detection method for AWS VDI environments."
+            ),
             detection_type=DetectionType.CLOUDWATCH_QUERY,
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
@@ -116,7 +135,10 @@ TEMPLATE = RemediationTemplate(
 | filter deviceConnections > 0
 | sort @timestamp desc""",
                 cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
-Description: Detect USB device connections in AWS WorkSpaces
+Description: |
+  Detect USB device connections in AWS WorkSpaces.
+  NOTE: This works for WorkSpaces (VDI) which logs USB redirection natively.
+  For EC2 instances, see endpoint agent recommendations.
 
 Parameters:
   AlertEmail:
@@ -128,7 +150,7 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
-      DisplayName: USB Device Alerts
+      DisplayName: WorkSpaces USB Device Alerts
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -147,7 +169,7 @@ Resources:
       LogGroupName: !Ref WorkSpacesLogGroup
       FilterPattern: '[timestamp, workspace, level, msg="*USB*connect*" || msg="*removable*" || msg="*storage device*"]'
       MetricTransformations:
-        - MetricName: USBDeviceConnections
+        - MetricName: WorkSpacesUSBConnections
           MetricNamespace: Security/RemovableMedia
           MetricValue: "1"
 
@@ -157,7 +179,7 @@ Resources:
     Properties:
       AlarmName: WorkSpaces-USB-Device-Connected
       AlarmDescription: Alert when USB devices connect to WorkSpaces
-      MetricName: USBDeviceConnections
+      MetricName: WorkSpacesUSBConnections
       Namespace: Security/RemovableMedia
       Statistic: Sum
       Period: 300
@@ -166,8 +188,15 @@ Resources:
       EvaluationPeriods: 1
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching""",
-                terraform_template="""# AWS: Detect USB device connections in WorkSpaces
+      TreatMissingData: notBreaching
+
+Outputs:
+  Scope:
+    Description: Detection scope
+    Value: "WorkSpaces VDI only. For EC2/GCE USB detection, deploy endpoint agents."
+""",
+                terraform_template="""# AWS: Detect USB device connections in WorkSpaces (Native Support)
+# NOTE: WorkSpaces logs USB redirection natively. For EC2, deploy endpoint agents.
 
 variable "alert_email" {
   type        = string
@@ -177,7 +206,7 @@ variable "alert_email" {
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "usb_alerts" {
   name         = "workspaces-usb-device-alerts"
-  display_name = "USB Device Alerts"
+  display_name = "WorkSpaces USB Device Alerts"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -194,12 +223,12 @@ resource "aws_cloudwatch_log_group" "workspaces_usb" {
 
 # Step 3: Metric filter for USB connections
 resource "aws_cloudwatch_log_metric_filter" "usb_connection" {
-  name           = "usb-device-connections"
+  name           = "workspaces-usb-connections"
   log_group_name = aws_cloudwatch_log_group.workspaces_usb.name
   pattern        = "[timestamp, workspace, level, msg=\"*USB*connect*\" || msg=\"*removable*\" || msg=\"*storage device*\"]"
 
   metric_transformation {
-    name      = "USBDeviceConnections"
+    name      = "WorkSpacesUSBConnections"
     namespace = "Security/RemovableMedia"
     value     = "1"
   }
@@ -209,7 +238,7 @@ resource "aws_cloudwatch_log_metric_filter" "usb_connection" {
 resource "aws_cloudwatch_metric_alarm" "usb_connection" {
   alarm_name          = "WorkSpaces-USB-Device-Connected"
   alarm_description   = "Alert when USB devices connect to WorkSpaces"
-  metric_name         = "USBDeviceConnections"
+  metric_name         = "WorkSpacesUSBConnections"
   namespace           = "Security/RemovableMedia"
   statistic           = "Sum"
   period              = 300
@@ -218,7 +247,13 @@ resource "aws_cloudwatch_metric_alarm" "usb_connection" {
   evaluation_periods  = 1
   alarm_actions       = [aws_sns_topic.usb_alerts.arn]
   treat_missing_data  = "notBreaching"
-}""",
+}
+
+# NOTE: This detection works for WorkSpaces only.
+# For EC2 USB detection, deploy:
+# - GuardDuty Runtime Monitoring
+# - Third-party EDR (CrowdStrike, SentinelOne, Carbon Black)
+# - OSSEC/Wazuh with auditd USB rules""",
                 alert_severity="high",
                 alert_title="USB Device Connected to WorkSpace",
                 alert_description_template="USB or removable storage device connected to WorkSpace {workspaceId} by user {principalId}.",
@@ -238,335 +273,171 @@ resource "aws_cloudwatch_metric_alarm" "usb_connection" {
                     "Review and restrict USB access policies organisation-wide",
                     "Enable USB device allowlisting if supported",
                     "Implement data loss prevention (DLP) for removable media",
-                    "Document incident and update security policies",
                 ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
             false_positive_tuning="Whitelist authorised users and job roles requiring USB access; implement device registration system",
-            detection_coverage="80% - covers WorkSpaces with USB redirection enabled",
-            evasion_considerations="Does not detect USB connections to on-premises systems or EC2 instances without proper logging",
+            detection_coverage="75% - native WorkSpaces USB logging. Does NOT cover EC2 instances.",
+            evasion_considerations="Only covers WorkSpaces VDI. EC2 instances require endpoint agents for USB detection.",
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$5-15",
             prerequisites=[
                 "WorkSpaces deployed",
-                "USB redirection configured",
+                "USB redirection configured and logged",
                 "CloudWatch Logs enabled",
             ],
         ),
-        # Strategy 2: AWS - EC2 Systems Manager USB Device Inventory
+        # Strategy 2: AWS/GCP - Endpoint Agent for Real USB Detection (Recommended)
         DetectionStrategy(
-            strategy_id="t1091-aws-ssm-inventory",
-            name="AWS Systems Manager USB Device Inventory",
-            description="Use AWS Systems Manager Inventory to detect USB and removable storage devices connected to EC2 instances.",
-            detection_type=DetectionType.EVENTBRIDGE_RULE,
-            aws_service="systems_manager",
-            cloud_provider=CloudProvider.AWS,
-            implementation=DetectionImplementation(
-                event_pattern={
-                    "source": ["aws.ssm"],
-                    "detail-type": ["Inventory Resource State Change"],
-                    "detail": {
-                        "resourceType": [
-                            "AWS:WindowsUpdate",
-                            "AWS:Application",
-                            "Custom:USBDevice",
-                        ]
-                    },
-                },
-                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
-Description: Monitor USB devices via Systems Manager Inventory
-
-Parameters:
-  AlertEmail:
-    Type: String
-    Description: Email for security alerts
-
-Resources:
-  # Step 1: SNS topic for alerts
-  AlertTopic:
-    Type: AWS::SNS::Topic
-    Properties:
-      DisplayName: USB Inventory Alerts
-      Subscription:
-        - Protocol: email
-          Endpoint: !Ref AlertEmail
-
-  # Step 2: Systems Manager Association for inventory
-  InventoryAssociation:
-    Type: AWS::SSM::Association
-    Properties:
-      Name: AWS-GatherSoftwareInventory
-      ScheduleExpression: rate(30 minutes)
-      Targets:
-        - Key: InstanceIds
-          Values:
-            - "*"
-      Parameters:
-        applications:
-          - Enabled
-        customInventory:
-          - Enabled
-        windowsUpdates:
-          - Enabled
-
-  # Step 3: EventBridge rule for inventory changes
-  InventoryChangeRule:
-    Type: AWS::Events::Rule
-    Properties:
-      Name: usb-device-inventory-detection
-      Description: Detect USB device inventory changes
-      EventPattern:
-        source:
-          - aws.ssm
-        detail-type:
-          - Inventory Resource State Change
-      Targets:
-        - Id: Alert
-          Arn: !Ref AlertTopic
-
-  # Step 4: Topic policy
-  TopicPolicy:
-    Type: AWS::SNS::TopicPolicy
-    Properties:
-      Topics:
-        - !Ref AlertTopic
-      PolicyDocument:
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: events.amazonaws.com
-            Action: sns:Publish
-            Resource: !Ref AlertTopic""",
-                terraform_template="""# AWS: Monitor USB devices via Systems Manager
-
-variable "alert_email" {
-  type        = string
-  description = "Email for security alerts"
-}
-
-# Step 1: SNS topic
-resource "aws_sns_topic" "inventory_alerts" {
-  name = "usb-inventory-alerts"
-}
-
-resource "aws_sns_topic_subscription" "email" {
-  topic_arn = aws_sns_topic.inventory_alerts.arn
-  protocol  = "email"
-  endpoint  = var.alert_email
-}
-
-# Step 2: Systems Manager Association
-resource "aws_ssm_association" "inventory" {
-  name                = "AWS-GatherSoftwareInventory"
-  schedule_expression = "rate(30 minutes)"
-
-  targets {
-    key    = "InstanceIds"
-    values = ["*"]
-  }
-
-  parameters = {
-    applications     = "Enabled"
-    customInventory  = "Enabled"
-    windowsUpdates   = "Enabled"
-  }
-}
-
-# Step 3: EventBridge rule
-resource "aws_cloudwatch_event_rule" "inventory_change" {
-  name        = "usb-device-inventory-detection"
-  description = "Detect USB device inventory changes"
-
-  event_pattern = jsonencode({
-    source      = ["aws.ssm"]
-    detail-type = ["Inventory Resource State Change"]
-  })
-}
-
-resource "aws_cloudwatch_event_target" "sns" {
-  rule      = aws_cloudwatch_event_rule.inventory_change.name
-  target_id = "InventoryAlert"
-  arn       = aws_sns_topic.inventory_alerts.arn
-}
-
-# Step 4: SNS topic policy
-resource "aws_sns_topic_policy" "allow_events" {
-  arn = aws_sns_topic.inventory_alerts.arn
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect    = "Allow"
-      Principal = { Service = "events.amazonaws.com" }
-      Action    = "sns:Publish"
-      Resource  = aws_sns_topic.inventory_alerts.arn
-    }]
-  })
-}""",
-                alert_severity="medium",
-                alert_title="USB Device Detected via Systems Manager Inventory",
-                alert_description_template="New USB or removable storage device detected on instance {instanceId}.",
-                investigation_steps=[
-                    "Review Systems Manager inventory data for the instance",
-                    "Identify the USB device type and manufacturer",
-                    "Check if device is authorised in asset inventory",
-                    "Review instance access logs around connection time",
-                    "Examine files transferred to/from device",
-                    "Check for malware signatures in transferred files",
-                    "Verify business justification for device usage",
-                ],
-                containment_actions=[
-                    "Disable USB ports via Group Policy if unauthorised",
-                    "Run malware scan on affected instance",
-                    "Isolate instance if malware detected",
-                    "Implement USB device allowlisting",
-                    "Enable USB storage encryption requirements",
-                    "Review and update device control policies",
-                ],
+            strategy_id="t1091-endpoint-agent",
+            name="Endpoint Agent Deployment for Real-Time USB Detection (Recommended)",
+            description=(
+                "Deploy endpoint security agents for real-time USB device detection on EC2/GCE instances. "
+                "This is the ONLY reliable method to detect USB insertions on cloud compute instances. "
+                "Cloud APIs cannot see USB/hardware layer events."
             ),
-            estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
-            false_positive_tuning="Whitelist known-good USB devices and authorised users; implement device registration workflow",
-            detection_coverage="70% - requires SSM agent on all instances",
-            evasion_considerations="Requires Systems Manager agent installed and running; may miss short-lived connections",
-            implementation_effort=EffortLevel.MEDIUM,
-            implementation_time="2 hours",
-            estimated_monthly_cost="$10-30",
-            prerequisites=[
-                "Systems Manager agent installed",
-                "Inventory collection enabled",
-                "EventBridge configured",
-            ],
-        ),
-        # Strategy 3: AWS - S3 Upload from Suspicious Sources
-        DetectionStrategy(
-            strategy_id="t1091-aws-s3-upload",
-            name="S3 Uploads from Untrusted Devices",
-            description="Detect file uploads to S3 that may originate from removable media or untrusted devices.",
-            detection_type=DetectionType.EVENTBRIDGE_RULE,
-            aws_service="s3",
+            detection_type=DetectionType.GUARDDUTY,
+            aws_service="guardduty",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                event_pattern={
-                    "source": ["aws.s3"],
-                    "detail-type": ["AWS API Call via CloudTrail"],
-                    "detail": {
-                        "eventName": [
-                            "PutObject",
-                            "UploadPart",
-                            "CompleteMultipartUpload",
-                        ]
-                    },
-                },
+                guardduty_finding_types=[
+                    "Execution:Runtime/NewBinaryExecuted",
+                    "Execution:Runtime/SuspiciousTool",
+                    "DefenseEvasion:Runtime/FilelessExecution",
+                ],
                 cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
-Description: Detect suspicious S3 uploads potentially from removable media
+Description: |
+  Enable GuardDuty Runtime Monitoring for endpoint-level USB/malware detection.
+  This is the RECOMMENDED approach for detecting malicious activity from removable media.
 
 Parameters:
   AlertEmail:
     Type: String
     Description: Email for security alerts
-  MonitoredBucket:
-    Type: String
-    Description: S3 bucket to monitor
 
 Resources:
-  # Step 1: SNS topic for alerts
+  # Step 1: Enable GuardDuty with Runtime Monitoring
+  GuardDutyDetector:
+    Type: AWS::GuardDuty::Detector
+    Properties:
+      Enable: true
+      Features:
+        - Name: RUNTIME_MONITORING
+          Status: ENABLED
+          AdditionalConfiguration:
+            - Name: EC2_AGENT_MANAGEMENT
+              Status: ENABLED
+
+  # Step 2: SNS topic for alerts
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
-      DisplayName: S3 Upload Alerts
+      DisplayName: Removable Media Security Alerts
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
-  # Step 2: EventBridge rule for S3 uploads
-  S3UploadRule:
+  # Step 3: Route runtime findings to alerts
+  RuntimeFindingsRule:
     Type: AWS::Events::Rule
     Properties:
-      Name: s3-suspicious-upload-detection
+      Name: T1091-RemovableMediaAlerts
+      Description: Alert on suspicious execution potentially from removable media
       EventPattern:
-        source:
-          - aws.s3
-        detail-type:
-          - AWS API Call via CloudTrail
+        source: [aws.guardduty]
         detail:
-          eventName:
-            - PutObject
-            - UploadPart
-            - CompleteMultipartUpload
-          requestParameters:
-            bucketName:
-              - !Ref MonitoredBucket
+          type:
+            - prefix: "Execution:Runtime/"
+            - prefix: "DefenseEvasion:Runtime/"
       Targets:
-        - Id: Alert
+        - Id: SNSTarget
           Arn: !Ref AlertTopic
 
-  # Step 3: Topic policy
-  TopicPolicy:
+  SNSTopicPolicy:
     Type: AWS::SNS::TopicPolicy
     Properties:
-      Topics:
-        - !Ref AlertTopic
+      Topics: [!Ref AlertTopic]
       PolicyDocument:
         Statement:
           - Effect: Allow
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
-                terraform_template="""# AWS: Detect suspicious S3 uploads
+            Resource: !Ref AlertTopic
+
+Outputs:
+  GuardDutyDetectorId:
+    Description: GuardDuty detector with runtime monitoring
+    Value: !Ref GuardDutyDetector
+  Recommendation:
+    Description: Additional recommendations
+    Value: |
+      GuardDuty Runtime Monitoring detects malicious execution from any source.
+      For specific USB device tracking, also configure:
+      - auditd rules: auditctl -w /dev/sd* -p wa -k usb_block_device
+      - Third-party EDR with USB device control""",
+                terraform_template="""# Enable GuardDuty Runtime Monitoring for EC2 USB/malware detection
+# This is the RECOMMENDED approach for detecting malicious activity
+# that may originate from removable media.
 
 variable "alert_email" {
   type        = string
   description = "Email for security alerts"
 }
 
-variable "monitored_bucket" {
-  type        = string
-  description = "S3 bucket to monitor for suspicious uploads"
+# Step 1: Enable GuardDuty with Runtime Monitoring
+resource "aws_guardduty_detector" "main" {
+  enable = true
 }
 
-# Step 1: SNS topic
-resource "aws_sns_topic" "upload_alerts" {
-  name = "s3-suspicious-upload-alerts"
+resource "aws_guardduty_detector_feature" "runtime_monitoring" {
+  detector_id = aws_guardduty_detector.main.id
+  name        = "RUNTIME_MONITORING"
+  status      = "ENABLED"
+
+  additional_configuration {
+    name   = "EC2_AGENT_MANAGEMENT"
+    status = "ENABLED"
+  }
+}
+
+# Step 2: SNS topic for alerts
+resource "aws_sns_topic" "runtime_alerts" {
+  name         = "removable-media-security-alerts"
+  display_name = "Removable Media Security Alerts"
 }
 
 resource "aws_sns_topic_subscription" "email" {
-  topic_arn = aws_sns_topic.upload_alerts.arn
+  topic_arn = aws_sns_topic.runtime_alerts.arn
   protocol  = "email"
   endpoint  = var.alert_email
 }
 
-# Step 2: EventBridge rule for S3 uploads
-resource "aws_cloudwatch_event_rule" "s3_upload" {
-  name        = "s3-suspicious-upload-detection"
-  description = "Detect suspicious S3 uploads potentially from removable media"
+# Step 3: Route runtime findings to alerts
+resource "aws_cloudwatch_event_rule" "runtime_findings" {
+  name        = "guardduty-runtime-findings"
+  description = "Alert on suspicious execution potentially from removable media"
 
   event_pattern = jsonencode({
-    source      = ["aws.s3"]
-    detail-type = ["AWS API Call via CloudTrail"]
+    source = ["aws.guardduty"]
     detail = {
-      eventName = [
-        "PutObject",
-        "UploadPart",
-        "CompleteMultipartUpload"
+      type = [
+        { prefix = "Execution:Runtime/" },
+        { prefix = "DefenseEvasion:Runtime/" }
       ]
-      requestParameters = {
-        bucketName = [var.monitored_bucket]
-      }
     }
   })
 }
 
 resource "aws_cloudwatch_event_target" "sns" {
-  rule      = aws_cloudwatch_event_rule.s3_upload.name
-  target_id = "UploadAlert"
-  arn       = aws_sns_topic.upload_alerts.arn
+  rule      = aws_cloudwatch_event_rule.runtime_findings.name
+  target_id = "SNSTarget"
+  arn       = aws_sns_topic.runtime_alerts.arn
 }
 
-# Step 3: SNS topic policy
-resource "aws_sns_topic_policy" "allow_events" {
-  arn = aws_sns_topic.upload_alerts.arn
+resource "aws_sns_topic_policy" "allow_eventbridge" {
+  arn = aws_sns_topic.runtime_alerts.arn
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -574,45 +445,62 @@ resource "aws_sns_topic_policy" "allow_events" {
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
-      Resource  = aws_sns_topic.upload_alerts.arn
+      Resource  = aws_sns_topic.runtime_alerts.arn
     }]
   })
-}""",
-                alert_severity="medium",
-                alert_title="Suspicious S3 Upload Detected",
-                alert_description_template="File uploaded to S3 bucket {bucketName} by {principalId}. Review for potential removable media transfer.",
+}
+
+output "guardduty_detector_id" {
+  description = "GuardDuty detector ID with runtime monitoring"
+  value       = aws_guardduty_detector.main.id
+}
+
+# RECOMMENDED: For comprehensive USB security, also deploy:
+# - auditd rules for USB block devices
+# - Third-party EDR with USB device control policies
+# - Group Policy USB restrictions (Windows)""",
+                alert_severity="high",
+                alert_title="Suspicious Execution - Potential Removable Media Malware",
+                alert_description_template="GuardDuty Runtime Monitoring detected suspicious execution that may indicate malware from removable media.",
                 investigation_steps=[
-                    "Identify the uploaded file and its source",
-                    "Review user activity around upload time",
-                    "Check for concurrent USB device connections",
-                    "Scan uploaded file for malware",
-                    "Examine file metadata and properties",
-                    "Verify business justification for upload",
-                    "Check if upload matches known file transfer patterns",
+                    "Review the GuardDuty finding details and process tree",
+                    "Identify the affected EC2 instance",
+                    "Check for recent block device attachments (lsblk)",
+                    "Review /var/log/syslog or dmesg for USB device messages",
+                    "Examine executed binaries and scripts",
+                    "Check for autorun indicators or suspicious files",
+                    "Analyse network connections from affected processes",
                 ],
                 containment_actions=[
-                    "Quarantine suspicious files in S3",
-                    "Run malware scanning on uploaded objects",
-                    "Block further uploads from suspicious sources",
-                    "Enable S3 Object Lock for critical buckets",
-                    "Implement S3 bucket policies restricting upload sources",
-                    "Enable MFA Delete on sensitive buckets",
+                    "Isolate the affected instance immediately",
+                    "Terminate suspicious processes",
+                    "Block USB storage via udev rules or Group Policy",
+                    "Capture memory and disk for forensic analysis",
+                    "Rotate credentials accessible from the instance",
+                    "Deploy USB device control policies",
                 ],
             ),
-            estimated_false_positive_rate=FalsePositiveRate.HIGH,
-            false_positive_tuning="Establish baseline upload patterns; whitelist known-good upload sources and automated processes",
-            detection_coverage="60% - requires correlation with other signals",
-            evasion_considerations="High false positive rate; requires correlation with USB detection for accuracy",
+            estimated_false_positive_rate=FalsePositiveRate.LOW,
+            false_positive_tuning="Whitelist legitimate binaries and DevOps automation. Exclude known deployment tools.",
+            detection_coverage="70% - detects malicious execution from any source including removable media. Best option for EC2.",
+            evasion_considerations="Sophisticated attacks may use fileless techniques. Combine with auditd rules for USB device logging.",
             implementation_effort=EffortLevel.LOW,
-            implementation_time="1 hour",
-            estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled", "S3 data events logged"],
+            implementation_time="45 minutes",
+            estimated_monthly_cost="$4.60 per EC2 instance",
+            prerequisites=[
+                "AWS account with GuardDuty access",
+                "EC2 instances with SSM agent",
+            ],
         ),
-        # Strategy 4: GCP - Compute Instance USB Device Detection
+        # Strategy 3: GCP - OS-Level USB Detection (Requires Configuration)
         DetectionStrategy(
-            strategy_id="t1091-gcp-usb-detection",
-            name="GCP Compute Instance USB Device Monitoring",
-            description="Detect USB device connections to GCP Compute Engine instances via OS logging.",
+            strategy_id="t1091-gcp-usb-os-logging",
+            name="GCP Compute Instance USB Monitoring via OS Logging (Requires Setup)",
+            description=(
+                "Detect USB device connections to GCP Compute Engine instances via OS-level logging. "
+                "LIMITATION: This requires manual configuration of OS logging (syslog/Windows Events) "
+                "to forward to Cloud Logging via Ops Agent. Without this setup, detection is 0%."
+            ),
             detection_type=DetectionType.CLOUD_LOGGING_QUERY,
             aws_service="n/a",
             gcp_service="cloud_logging",
@@ -627,7 +515,9 @@ AND (
   OR jsonPayload.message=~".*usb-storage.*"
   OR textPayload=~".*USB.*device.*attached.*"
 )""",
-                gcp_terraform_template="""# GCP: Detect USB device connections to Compute instances
+                gcp_terraform_template="""# GCP: Detect USB device connections via OS-level logging
+# IMPORTANT: This requires Ops Agent configuration on each instance.
+# Without OS logging setup, this detection provides 0% coverage.
 
 variable "project_id" {
   type        = string
@@ -642,7 +532,7 @@ variable "alert_email" {
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
   project      = var.project_id
-  display_name = "USB Device Alerts"
+  display_name = "USB Device Alerts (OS-Level)"
   type         = "email"
   labels = {
     email_address = var.alert_email
@@ -652,7 +542,7 @@ resource "google_monitoring_notification_channel" "email" {
 # Step 2: Log-based metric for USB connections
 resource "google_logging_metric" "usb_connection" {
   project = var.project_id
-  name    = "usb-device-connections"
+  name    = "usb-device-os-logs"
 
   filter = <<-EOT
     resource.type="gce_instance"
@@ -676,11 +566,11 @@ resource "google_logging_metric" "usb_connection" {
 # Step 3: Alert policy for USB connections
 resource "google_monitoring_alert_policy" "usb_alert" {
   project      = var.project_id
-  display_name = "USB Device Connection Detected"
+  display_name = "USB Device Connection (OS-Level Logs)"
   combiner     = "OR"
 
   conditions {
-    display_name = "USB device connected to instance"
+    display_name = "USB device detected in OS logs"
 
     condition_threshold {
       filter          = "metric.type=\"logging.googleapis.com/user/${google_logging_metric.usb_connection.name}\" AND resource.type=\"gce_instance\""
@@ -698,28 +588,51 @@ resource "google_monitoring_alert_policy" "usb_alert" {
   notification_channels = [google_monitoring_notification_channel.email.id]
 
   alert_strategy {
-    auto_close = "86400s"  # 24 hours
+    auto_close = "86400s"
   }
 
   documentation {
-    content   = "USB or removable storage device connected to Compute instance. Investigate for unauthorised device usage or potential malware."
+    content   = <<-EOT
+      # USB Device Detected (OS-Level Logging)
+
+      USB or removable storage device connection detected in OS syslog/Windows Event logs.
+
+      **PREREQUISITE**: This detection ONLY works if:
+      1. Ops Agent is installed on instances
+      2. Syslog/Windows Event forwarding is configured
+
+      Without these prerequisites, no USB events will be captured.
+
+      For real-time USB detection without manual config, consider:
+      - Chronicle Security with endpoint integration
+      - Third-party EDR (CrowdStrike, SentinelOne)
+    EOT
     mime_type = "text/markdown"
   }
-}""",
+}
+
+# IMPORTANT: You must install and configure Ops Agent on each instance:
+# https://cloud.google.com/logging/docs/agent/ops-agent/
+#
+# For Linux:
+#   curl -sSO https://dl.google.com/cloudagents/add-google-cloud-ops-agent-repo.sh
+#   sudo bash add-google-cloud-ops-agent-repo.sh --also-install
+#
+# Ensure /etc/rsyslog.d/ or journald forwards kernel USB messages.""",
                 alert_severity="high",
-                alert_title="GCP: USB Device Connected to Compute Instance",
-                alert_description_template="USB or removable storage device detected on instance {instance_name} in zone {zone}.",
+                alert_title="GCP: USB Device Detected (OS-Level Logs)",
+                alert_description_template="USB or removable storage device detected on instance {instance_name} via OS logs.",
                 investigation_steps=[
                     "Identify the Compute instance and project",
-                    "Review OS logs for device details",
-                    "Check if USB passthrough is enabled and authorised",
-                    "Examine files accessed during connection timeframe",
+                    "Review OS logs for USB device details (vendor, product ID)",
+                    "Check if USB passthrough was authorised",
+                    "Examine files accessed after device connection",
                     "Run malware scan on instance",
                     "Verify user authentication around connection time",
                     "Check for autorun scripts or suspicious executables",
                 ],
                 containment_actions=[
-                    "Disable USB passthrough if unauthorised",
+                    "Block USB storage via udev rules",
                     "Quarantine instance for forensic analysis",
                     "Run antimalware scan on affected instance",
                     "Implement organisation policy restricting USB access",
@@ -728,150 +641,190 @@ resource "google_monitoring_alert_policy" "usb_alert" {
                 ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
-            false_positive_tuning="Whitelist authorised users and instances requiring USB access; establish device registration process",
-            detection_coverage="75% - requires OS logging enabled",
-            evasion_considerations="Requires proper OS logging configuration; may miss brief connections",
-            implementation_effort=EffortLevel.MEDIUM,
-            implementation_time="1-2 hours",
-            estimated_monthly_cost="$10-20",
+            false_positive_tuning="Whitelist authorised instances and USB devices; establish device registration process",
+            detection_coverage="50% - ONLY works with Ops Agent and OS logging configured. 0% without configuration.",
+            evasion_considerations="Requires manual OS logging setup. Short-lived USB connections may be missed. Attackers can disable logging.",
+            implementation_effort=EffortLevel.HIGH,
+            implementation_time="2-4 hours (includes Ops Agent deployment)",
+            estimated_monthly_cost="$10-30",
             prerequisites=[
+                "Ops Agent installed on instances",
+                "Syslog/Windows Event forwarding configured",
                 "Cloud Logging enabled",
-                "OS logs forwarded to Cloud Logging",
-                "Syslog or Windows Event Forwarding configured",
             ],
         ),
-        # Strategy 5: GCP - Cloud Storage Unusual Upload Patterns
+        # Strategy 4: AWS/GCP - Cloud Storage Upload Correlation (Supplementary)
         DetectionStrategy(
-            strategy_id="t1091-gcp-storage-upload",
-            name="GCP Cloud Storage Unusual Upload Detection",
-            description="Detect unusual file upload patterns to Cloud Storage that may indicate removable media transfers.",
-            detection_type=DetectionType.CLOUD_LOGGING_QUERY,
-            aws_service="n/a",
-            gcp_service="cloud_logging",
-            cloud_provider=CloudProvider.GCP,
+            strategy_id="t1091-cloud-storage-upload",
+            name="Cloud Storage Upload Anomaly Detection (Supplementary)",
+            description=(
+                "Detect unusual file upload patterns that may indicate data transfer from removable media. "
+                "NOTE: This is a SUPPLEMENTARY detection that should be correlated with USB detection. "
+                "High false positive rate when used alone - best used with endpoint agent data."
+            ),
+            detection_type=DetectionType.EVENTBRIDGE_RULE,
+            aws_service="s3",
+            cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gcs_bucket"
-protoPayload.methodName="storage.objects.create"
-OR protoPayload.methodName="storage.objects.update"
-protoPayload.serviceName="storage.googleapis.com"''',
-                gcp_terraform_template="""# GCP: Detect unusual Cloud Storage uploads
+                event_pattern={
+                    "source": ["aws.s3"],
+                    "detail-type": ["AWS API Call via CloudTrail"],
+                    "detail": {
+                        "eventName": [
+                            "PutObject",
+                            "UploadPart",
+                            "CompleteMultipartUpload",
+                        ]
+                    },
+                },
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
+Description: |
+  Detect suspicious S3 uploads (supplementary to USB detection).
+  NOTE: High false positive rate - correlate with endpoint USB detection.
 
-variable "project_id" {
-  type        = string
-  description = "GCP project ID"
-}
+Parameters:
+  AlertEmail:
+    Type: String
+  MonitoredBucket:
+    Type: String
+    Description: S3 bucket to monitor
+
+Resources:
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: S3 Upload Anomaly Alerts
+      Subscription:
+        - Protocol: email
+          Endpoint: !Ref AlertEmail
+
+  S3UploadRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: t1091-s3-upload-anomaly
+      EventPattern:
+        source: [aws.s3]
+        detail-type: ["AWS API Call via CloudTrail"]
+        detail:
+          eventName: [PutObject, UploadPart]
+          requestParameters:
+            bucketName: [!Ref MonitoredBucket]
+      Targets:
+        - Id: Alert
+          Arn: !Ref AlertTopic
+
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: [!Ref AlertTopic]
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+
+Outputs:
+  Note:
+    Description: Usage note
+    Value: "Supplementary detection only. Correlate with endpoint USB detection for accuracy."
+""",
+                terraform_template="""# S3 Upload Anomaly Detection (Supplementary to USB detection)
+# NOTE: High false positive rate - correlate with endpoint USB detection.
 
 variable "alert_email" {
   type        = string
-  description = "Email for security alerts"
+  description = "Email for alerts"
 }
 
 variable "monitored_bucket" {
   type        = string
-  description = "Cloud Storage bucket to monitor"
+  description = "S3 bucket to monitor"
 }
 
-# Step 1: Notification channel
-resource "google_monitoring_notification_channel" "email" {
-  project      = var.project_id
-  display_name = "Storage Upload Alerts"
-  type         = "email"
-  labels = {
-    email_address = var.alert_email
-  }
+resource "aws_sns_topic" "upload_alerts" {
+  name = "s3-upload-anomaly-alerts"
 }
 
-# Step 2: Log-based metric for storage uploads
-resource "google_logging_metric" "storage_upload" {
-  project = var.project_id
-  name    = "unusual-storage-uploads"
-
-  filter = <<-EOT
-    resource.type="gcs_bucket"
-    resource.labels.bucket_name="${var.monitored_bucket}"
-    (protoPayload.methodName="storage.objects.create" OR
-     protoPayload.methodName="storage.objects.update")
-    protoPayload.serviceName="storage.googleapis.com"
-  EOT
-
-  metric_descriptor {
-    metric_kind = "DELTA"
-    value_type  = "INT64"
-  }
+resource "aws_sns_topic_subscription" "email" {
+  topic_arn = aws_sns_topic.upload_alerts.arn
+  protocol  = "email"
+  endpoint  = var.alert_email
 }
 
-# Step 3: Alert policy for upload anomalies
-resource "google_monitoring_alert_policy" "upload_alert" {
-  project      = var.project_id
-  display_name = "Unusual Cloud Storage Upload Pattern"
-  combiner     = "OR"
+resource "aws_cloudwatch_event_rule" "s3_upload" {
+  name        = "t1091-s3-upload-anomaly"
+  description = "Detect S3 uploads for correlation with USB detection"
 
-  conditions {
-    display_name = "High volume of uploads detected"
-
-    condition_threshold {
-      filter          = "metric.type=\"logging.googleapis.com/user/${google_logging_metric.storage_upload.name}\""
-      duration        = "300s"
-      comparison      = "COMPARISON_GT"
-      threshold_value = 10
-
-      aggregations {
-        alignment_period     = "300s"
-        per_series_aligner   = "ALIGN_RATE"
-        cross_series_reducer = "REDUCE_SUM"
-        group_by_fields      = ["resource.bucket_name"]
+  event_pattern = jsonencode({
+    source      = ["aws.s3"]
+    detail-type = ["AWS API Call via CloudTrail"]
+    detail = {
+      eventName = ["PutObject", "UploadPart"]
+      requestParameters = {
+        bucketName = [var.monitored_bucket]
       }
     }
-  }
+  })
+}
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+resource "aws_cloudwatch_event_target" "sns" {
+  rule      = aws_cloudwatch_event_rule.s3_upload.name
+  target_id = "UploadAlert"
+  arn       = aws_sns_topic.upload_alerts.arn
+}
 
-  documentation {
-    content   = "Unusual upload pattern detected. Review for potential removable media data transfer or bulk file upload from untrusted source."
-    mime_type = "text/markdown"
-  }
-}""",
-                alert_severity="medium",
-                alert_title="GCP: Unusual Cloud Storage Upload Pattern",
-                alert_description_template="High volume of uploads detected to bucket {bucket_name}. Review for potential removable media transfer.",
+resource "aws_sns_topic_policy" "allow_events" {
+  arn = aws_sns_topic.upload_alerts.arn
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.upload_alerts.arn
+    }]
+  })
+}
+
+# NOTE: This detection has HIGH false positive rate.
+# Use in combination with endpoint USB detection for correlation.""",
+                alert_severity="low",
+                alert_title="S3 Upload Detected (Correlation Signal)",
+                alert_description_template="File upload to {bucketName} - correlate with USB detection signals for removable media investigation.",
                 investigation_steps=[
-                    "Identify uploaded objects and their sources",
-                    "Review authentication principal performing uploads",
+                    "Correlate with endpoint USB detection signals",
+                    "Identify upload source IP and user",
+                    "Review file metadata and content type",
                     "Check for concurrent USB device connections",
                     "Scan uploaded files for malware",
-                    "Examine upload patterns and timing",
-                    "Verify business justification for bulk upload",
-                    "Check object metadata for source indicators",
+                    "Verify business justification for upload",
                 ],
                 containment_actions=[
-                    "Quarantine suspicious objects",
-                    "Enable object versioning to preserve evidence",
-                    "Run malware scanning on uploaded objects",
-                    "Implement bucket ACLs restricting upload sources",
-                    "Enable VPC Service Controls for bucket access",
-                    "Review and restrict upload permissions",
+                    "Quarantine suspicious files",
+                    "Run malware scanning on uploads",
+                    "Review bucket access policies",
+                    "Enable S3 Object Lock if needed",
                 ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
-            false_positive_tuning="Baseline normal upload patterns; whitelist known backup and sync operations",
-            detection_coverage="65% - requires correlation with other indicators",
-            evasion_considerations="High false positive rate; best used with correlation to USB detection signals",
-            implementation_effort=EffortLevel.MEDIUM,
-            implementation_time="1-2 hours",
-            estimated_monthly_cost="$10-25",
-            prerequisites=[
-                "Cloud Audit Logs enabled",
-                "Data Access logs enabled for Cloud Storage",
-            ],
+            false_positive_tuning="Establish baseline upload patterns; whitelist automated processes; correlate with endpoint detection",
+            detection_coverage="30% - supplementary signal only. Cannot detect USB directly. Must correlate with endpoint detection.",
+            evasion_considerations="Very high false positive rate. Cannot distinguish USB uploads from legitimate transfers without endpoint correlation.",
+            implementation_effort=EffortLevel.LOW,
+            implementation_time="30 minutes",
+            estimated_monthly_cost="$5-10",
+            prerequisites=["CloudTrail enabled", "S3 data events logged"],
         ),
     ],
     recommended_order=[
+        "t1091-endpoint-agent",
         "t1091-aws-workspaces-usb",
-        "t1091-gcp-usb-detection",
-        "t1091-aws-ssm-inventory",
-        "t1091-aws-s3-upload",
-        "t1091-gcp-storage-upload",
+        "t1091-gcp-usb-os-logging",
+        "t1091-cloud-storage-upload",
     ],
-    total_effort_hours=7.5,
-    coverage_improvement="+15% improvement for Initial Access and Lateral Movement tactics",
+    total_effort_hours=6.0,
+    coverage_improvement="+15% improvement for Initial Access and Lateral Movement tactics (endpoint agents required for full coverage)",
 )

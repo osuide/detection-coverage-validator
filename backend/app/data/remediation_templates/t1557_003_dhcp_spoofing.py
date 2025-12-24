@@ -4,6 +4,30 @@ T1557.003 - Adversary-in-the-Middle: DHCP Spoofing
 Adversaries impersonate DHCP servers to redirect network traffic through attacker-controlled
 systems, enabling credential theft and traffic interception. Used to capture unencrypted
 credentials and manipulate DNS/gateway configurations.
+
+IMPORTANT DETECTION LIMITATIONS:
+VPC Flow Logs can see DHCP traffic (UDP ports 67/68) but CANNOT inspect packet contents
+to distinguish legitimate DHCP servers from rogue ones.
+
+What VPC Flow Logs CAN detect:
+- Traffic on DHCP ports (67/68)
+- Multiple sources responding on DHCP ports (potential rogue servers)
+- Traffic volume anomalies
+
+What VPC Flow Logs CANNOT detect:
+- Whether DHCP offers are legitimate or malicious
+- Actual DHCP configuration being offered
+- Malicious DNS/gateway settings in offers
+
+Coverage reality:
+- VPC Flow Logs: ~30% (detects rogue DHCP server presence, not malicious config)
+- CloudTrail DHCP Options monitoring: ~90% (detects infrastructure config changes)
+- VPC Traffic Mirroring with packet inspection: ~70%
+
+Best detection approach:
+1. Monitor CloudTrail for DHCP Options Set changes (cloud API level - highly accurate)
+2. VPC Flow Logs for unexpected DHCP server sources
+3. Correlate with known authorised DHCP server IPs
 """
 
 from .template_loader import (
@@ -514,7 +538,7 @@ resource "aws_flow_log" "dhcp" {
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal DHCP traffic patterns; whitelist authorised DHCP servers and high-frequency legitimate traffic",
-            detection_coverage="60% - catches active DHCP spoofing but may miss stealthy attacks",
+            detection_coverage="30% - detects unexpected DHCP server sources only. Cannot inspect packet contents to verify malicious configuration.",
             evasion_considerations="Low-volume spoofing or spoofing during legitimate DHCP renewal windows may evade detection",
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
@@ -755,7 +779,7 @@ resource "google_monitoring_alert_policy" "dhcp_anomaly" {
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Establish baseline DHCP traffic patterns; whitelist authorised DHCP infrastructure",
-            detection_coverage="60% - catches active spoofing but may miss stealthy attacks",
+            detection_coverage="30% - detects unexpected DHCP server sources only. Cannot inspect packet contents to verify malicious configuration.",
             evasion_considerations="Low-volume spoofing during legitimate renewal windows may evade detection",
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",

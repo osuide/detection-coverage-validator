@@ -5,6 +5,31 @@ Adversaries position themselves between networked devices to enable follow-on at
 like network sniffing, data manipulation, and credential theft. Exploits network
 protocols (ARP, DNS, LLMNR) to force devices to communicate through attacker-controlled
 systems. Used by Sea Turtle, Kimsuky, Mustang Panda.
+
+IMPORTANT DETECTION LIMITATIONS:
+Adversary-in-the-Middle attacks often exploit Layer 2 protocols (ARP) or rely on
+packet content inspection (DNS poisoning, SSL stripping) that cloud logging cannot see.
+
+VPC Flow Logs CAN detect:
+- Traffic volume anomalies
+- Unexpected routing patterns
+- DNS query patterns (via Route 53 Resolver logging)
+
+VPC Flow Logs CANNOT detect:
+- Layer 2 ARP attacks (Flow Logs are Layer 3)
+- Packet content manipulation
+- SSL/TLS interception
+
+Coverage reality:
+- VPC Flow Logs alone: ~25-35%
+- With Route 53 Resolver Logging: ~55%
+- With VPC Traffic Mirroring + deep packet inspection: ~70%
+- With host-based Network IDS: ~80%
+
+For comprehensive AitM detection, combine:
+1. Route 53 Resolver Query Logging for DNS attacks
+2. VPC Traffic Mirroring for packet-level analysis
+3. Host-based IDS (Suricata, Zeek) for traffic inspection
 """
 
 from .template_loader import (
@@ -256,7 +281,7 @@ data "aws_caller_identity" "current" {}""",
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline normal DNS patterns; exclude authorised CDN and third-party services",
-            detection_coverage="70% - catches DNS-based AitM attacks within VPC",
+            detection_coverage="55% - catches DNS query anomalies. Cannot detect authoritative server cache poisoning or responses outside VPC.",
             evasion_considerations="Direct IP access bypasses DNS monitoring; HTTPS limits visibility",
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",
@@ -635,7 +660,7 @@ resource "google_monitoring_alert_policy" "dns_anomaly" {
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Baseline legitimate DNS patterns; exclude known CDNs and services",
-            detection_coverage="70% - catches DNS-based attacks using Cloud DNS",
+            detection_coverage="55% - catches DNS query anomalies. Cannot detect external authoritative server poisoning.",
             evasion_considerations="Direct IP connections bypass DNS monitoring",
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="2-3 hours",

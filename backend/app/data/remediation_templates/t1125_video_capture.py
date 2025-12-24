@@ -3,6 +3,28 @@ T1125 - Video Capture
 
 Adversaries may leverage peripheral devices (webcams) or applications to capture video
 recordings for intelligence gathering purposes.
+
+IMPORTANT DETECTION LIMITATIONS:
+Cloud-native APIs (CloudTrail, EventBridge, Cloud Logging) CANNOT detect webcam
+access or video recording. Video capture is an OS-level operation using device APIs
+(V4L2, DirectShow, AVFoundation) that generate no cloud events.
+
+What cloud detection CAN see:
+- Video file uploads to cloud storage (post-capture)
+- Execution of known video tools via SSM commands
+- Network traffic patterns from video streaming
+
+What requires endpoint agents:
+- Real-time camera/webcam access detection
+- Detection of video recording APIs
+- Process monitoring for video capture tools
+
+Coverage reality:
+- Cloud API monitoring: ~5% (post-capture file detection only)
+- With OS logging + file monitoring: ~20%
+- With endpoint agent (EDR): ~60-70%
+
+For comprehensive detection, deploy endpoint security with camera device access monitoring.
 """
 
 from .template_loader import (
@@ -247,7 +269,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised video conferencing and remote desktop instances",
-            detection_coverage="60% - detects suspicious runtime behaviour that may indicate video capture",
+            detection_coverage="15% - detects video file upload patterns only. Webcam access NOT detected without endpoint agent.",
             evasion_considerations="Legitimate video conferencing applications may mask malicious activity",
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",

@@ -3,6 +3,28 @@ T1123 - Audio Capture
 
 Adversaries capture audio to collect intelligence from microphones or voice/video call applications.
 This technique involves exploiting system APIs or applications to record audio for later exfiltration.
+
+IMPORTANT DETECTION LIMITATIONS:
+Cloud-native APIs (CloudTrail, EventBridge, Cloud Logging) CANNOT detect microphone
+access or audio recording. Audio capture is an OS-level operation using device APIs
+(ALSA, PulseAudio, CoreAudio, Windows Audio) that generate no cloud events.
+
+What cloud detection CAN see:
+- Audio file uploads to cloud storage (post-capture)
+- Execution of known audio tools via SSM commands
+- Network traffic patterns from audio streaming
+
+What requires endpoint agents:
+- Real-time microphone access detection
+- Detection of audio recording APIs
+- Process monitoring for audio capture tools
+
+Coverage reality:
+- Cloud API monitoring: ~5% (post-capture file detection only)
+- With OS logging + file monitoring: ~25%
+- With endpoint agent (EDR): ~65-75%
+
+For comprehensive detection, deploy endpoint security with audio device access monitoring.
 """
 
 from .template_loader import (
@@ -251,7 +273,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist instances running legitimate VoIP, conferencing, or media processing services",
-            detection_coverage="60% - detects abnormal process execution patterns",
+            detection_coverage="15% - detects audio file creation/upload patterns only. Microphone access NOT detected without endpoint agent.",
             evasion_considerations="Attackers may use legitimate tools or disguise processes to avoid detection",
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",

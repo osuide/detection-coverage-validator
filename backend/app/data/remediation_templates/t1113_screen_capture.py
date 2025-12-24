@@ -3,6 +3,28 @@ T1113 - Screen Capture
 
 Adversaries capture desktop screenshots to gather information during operations.
 Screenshot functionality is commonly embedded in remote access tools for intelligence collection.
+
+IMPORTANT DETECTION LIMITATIONS:
+Cloud-native APIs (CloudTrail, EventBridge, Cloud Logging) CANNOT detect in-guest
+screenshot capture. Screenshot APIs are OS-level calls (Windows GDI, X11, macOS APIs)
+that do not generate cloud events.
+
+What cloud detection CAN see:
+- AWS GetConsoleScreenshot API calls (cloud console screenshots only)
+- WorkSpaces session activity and configuration changes
+- File creation/upload patterns (post-capture indicators)
+
+What requires endpoint agents:
+- Real-time detection of screenshot tools (Snipping Tool, gnome-screenshot)
+- Detection of programmatic screenshot APIs (BitBlt, XGetImage)
+- Memory-resident screenshot malware
+
+Coverage reality:
+- Cloud API monitoring: ~10% (catches AWS console screenshots only)
+- With OS logging + file monitoring: ~30%
+- With endpoint agent (EDR): ~60-70%
+
+For comprehensive detection, deploy endpoint security solutions with process and API monitoring.
 """
 
 from .template_loader import (
@@ -225,7 +247,7 @@ resource "aws_cloudwatch_metric_alarm" "workspaces_activity" {
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised IT operations and maintenance windows for WorkSpaces management",
-            detection_coverage="60% - catches API-level indicators but not screenshot execution itself",
+            detection_coverage="10% - catches AWS console GetConsoleScreenshot API only. In-guest screenshots NOT detected without endpoint agent.",
             evasion_considerations="Attackers may use legitimate screenshot tools or capture screenshots without API calls",
             implementation_effort=EffortLevel.LOW,
             implementation_time="45 minutes",
@@ -711,7 +733,7 @@ resource "google_monitoring_alert_policy" "remote_desktop" {
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Establish baselines for normal remote desktop usage and whitelist authorised users",
-            detection_coverage="60% - detects access patterns but not actual screenshot execution",
+            detection_coverage="15% - detects file upload patterns only. In-guest screenshots NOT detected without endpoint agent.",
             evasion_considerations="Legitimate remote access can be used to execute screenshot tools without generating additional alerts",
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1 hour",
