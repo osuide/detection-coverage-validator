@@ -18,6 +18,7 @@ from uuid import UUID
 import bcrypt
 import pyotp
 import structlog
+from cryptography.fernet import Fernet, InvalidToken
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -476,26 +477,64 @@ class AdminAuthService:
         self.logger.info("admin_mfa_enabled", admin_id=str(admin.id))
         return True
 
-    def _encrypt_mfa_secret(self, secret: str) -> bytes:
-        """Encrypt MFA secret.
+    @staticmethod
+    def _get_mfa_encryption_key() -> Optional[bytes]:
+        """Get encryption key for admin MFA secrets.
 
-        In production, use AWS KMS or similar.
-        For now, use simple XOR with app secret (NOT production-ready).
+        Security: Uses credential_encryption_key with Fernet for production-grade
+        encryption. Returns None if not configured (development mode only).
+
+        In production, this key should be derived from AWS KMS or similar HSM.
         """
-        # TODO: Use proper encryption (KMS) in production
-        key = settings.secret_key.get_secret_value()[:32].encode()
-        secret_bytes = secret.encode()
+        key = settings.credential_encryption_key
+        if not key:
+            return None
+        try:
+            key_value = key.get_secret_value()
+            # Validate the key is a valid Fernet key
+            Fernet(key_value.encode())
+            return key_value.encode()
+        except Exception:
+            return None
 
-        # Simple XOR for development (replace with Fernet/KMS)
-        encrypted = bytes(a ^ b for a, b in zip(secret_bytes, key * 10))
-        return encrypted
+    def _encrypt_mfa_secret(self, secret: str) -> bytes:
+        """Encrypt MFA secret using Fernet (AES-128-CBC with HMAC).
+
+        Security: Uses credential_encryption_key for production-grade encryption.
+        Falls back to storing plaintext in development mode only (when no key configured).
+        """
+        key = self._get_mfa_encryption_key()
+        if not key:
+            # No encryption key - store as-is (development mode only)
+            self.logger.warning(
+                "admin_mfa_secret_unencrypted",
+                message="No credential_encryption_key configured - storing MFA secret unencrypted",
+            )
+            return secret.encode()
+
+        fernet = Fernet(key)
+        return fernet.encrypt(secret.encode())
 
     def _decrypt_mfa_secret(self, encrypted: bytes) -> str:
-        """Decrypt MFA secret."""
-        key = settings.secret_key.get_secret_value()[:32].encode()
+        """Decrypt MFA secret using Fernet.
 
-        decrypted = bytes(a ^ b for a, b in zip(encrypted, key * 10))
-        return decrypted.decode()
+        Handles both encrypted (production) and unencrypted (development) secrets.
+        """
+        key = self._get_mfa_encryption_key()
+        if not key:
+            # No encryption key - assume stored as plaintext (development mode)
+            return encrypted.decode()
+
+        try:
+            fernet = Fernet(key)
+            return fernet.decrypt(encrypted).decode()
+        except InvalidToken:
+            # If decryption fails, assume it's unencrypted legacy data
+            self.logger.warning(
+                "admin_mfa_decrypt_fallback",
+                message="Failed to decrypt MFA secret - assuming legacy unencrypted format",
+            )
+            return encrypted.decode()
 
     async def _log_action(
         self,

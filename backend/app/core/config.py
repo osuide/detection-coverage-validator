@@ -139,6 +139,18 @@ class Settings(BaseSettings):
     max_login_attempts: int = 5
     lockout_duration_minutes: int = 30
 
+    # Trusted Proxy Configuration
+    # Security: Controls whether to trust X-Forwarded-For and Forwarded headers
+    # Only enable when behind a trusted reverse proxy (ALB, CloudFront, nginx, etc.)
+    trust_proxy_headers: bool = False  # Default: safe - don't trust forwarded headers
+
+    # CIDR ranges of trusted proxies (comma-separated)
+    # When trust_proxy_headers is True, X-Forwarded-For is only trusted if the
+    # immediate peer (request.client.host) matches one of these CIDRs
+    # Examples: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16" for private networks
+    # AWS ALB/CloudFront IPs can be obtained from https://ip-ranges.amazonaws.com/ip-ranges.json
+    trusted_proxy_cidrs: str = ""
+
     # CORS
     cors_origins: str = "http://localhost:3000,http://localhost:3001"
 

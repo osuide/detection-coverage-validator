@@ -209,12 +209,15 @@ async def create_api_key(
         expires_at = datetime.now(timezone.utc) + timedelta(days=body.expires_days)
 
     # Create API key
+    # Security: Use SHA-256 hash (hash_token) for API keys, not bcrypt (hash_password)
+    # API keys have high entropy (secrets.token_hex) so SHA-256 is secure and allows
+    # fast lookup during authentication
     api_key = APIKey(
         organization_id=auth.organization_id,
         created_by_id=auth.user.id,
         name=body.name,
         key_prefix=prefix,
-        key_hash=auth_service.hash_password(full_key),
+        key_hash=auth_service.hash_token(full_key),
         scopes=body.scopes or [],
         ip_allowlist=body.ip_allowlist,
         expires_at=expires_at,

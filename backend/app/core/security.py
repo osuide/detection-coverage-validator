@@ -126,47 +126,130 @@ class AuthContext:
         )
 
 
-def get_client_ip(request: Request) -> Optional[str]:
-    """Get client IP address from request.
+def _validate_ip(ip_str: str) -> Optional[str]:
+    """Validate and return IP address, or None if invalid."""
+    import ipaddress
 
-    Security: Uses CloudFront-Viewer-Address if available (most reliable),
-    otherwise falls back to X-Forwarded-For first IP (when behind trusted proxy).
-    Validates IP addresses using Python's ipaddress module to prevent injection.
+    try:
+        # Handle IPv6 with port (e.g., [::1]:8080)
+        if ip_str.startswith("["):
+            ip_str = ip_str.split("]")[0][1:]
+        # Handle IPv4 with port (e.g., 1.2.3.4:8080)
+        elif "." in ip_str and ":" in ip_str:
+            ip_str = ip_str.rsplit(":", 1)[0]
+        ipaddress.ip_address(ip_str)
+        return ip_str
+    except ValueError:
+        return None
+
+
+def _is_trusted_proxy(peer_ip: str) -> bool:
+    """Check if the immediate peer IP is a trusted proxy.
+
+    Security: Used to determine if X-Forwarded-For headers should be trusted.
+    Only returns True if trust_proxy_headers is enabled AND the peer is in
+    the trusted_proxy_cidrs list.
     """
     import ipaddress
 
-    def _validate_ip(ip_str: str) -> Optional[str]:
-        """Validate and return IP address, or None if invalid."""
+    if not settings.trust_proxy_headers:
+        return False
+
+    if not settings.trusted_proxy_cidrs:
+        # If trust_proxy_headers is True but no CIDRs configured,
+        # trust all proxies (backwards compatibility for simple deployments)
+        return True
+
+    try:
+        peer = ipaddress.ip_address(peer_ip)
+    except ValueError:
+        return False
+
+    # Parse trusted CIDRs
+    trusted_cidrs = [
+        cidr.strip() for cidr in settings.trusted_proxy_cidrs.split(",") if cidr.strip()
+    ]
+
+    for cidr in trusted_cidrs:
         try:
-            # Handle IPv6 with port (e.g., [::1]:8080)
-            if ip_str.startswith("["):
-                ip_str = ip_str.split("]")[0][1:]
-            # Handle IPv4 with port (e.g., 1.2.3.4:8080)
-            elif "." in ip_str and ":" in ip_str:
-                ip_str = ip_str.rsplit(":", 1)[0]
-            ipaddress.ip_address(ip_str)
-            return ip_str
+            network = ipaddress.ip_network(cidr, strict=False)
+            if peer in network:
+                return True
         except ValueError:
-            return None
+            continue
 
-    # CloudFront-Viewer-Address is most reliable when behind CloudFront
-    cf_viewer = request.headers.get("CloudFront-Viewer-Address")
-    if cf_viewer:
-        # Format is IP:port, extract and validate
-        validated = _validate_ip(cf_viewer.split(":")[0].strip())
-        if validated:
-            return validated
+    return False
 
-    # X-Forwarded-For: client, proxy1, proxy2, ...
-    # When behind AWS ALB/CloudFront, the first IP is the original client
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        first_ip = forwarded.split(",")[0].strip()
-        validated = _validate_ip(first_ip)
-        if validated:
-            return validated
 
-    return request.client.host if request.client else None
+def _parse_forwarded_header(forwarded: str) -> Optional[str]:
+    """Parse RFC 7239 Forwarded header and extract client IP.
+
+    Format: Forwarded: for=client_ip;by=proxy;host=example.com
+    Multiple proxies: Forwarded: for=client1, for=client2
+    """
+    import re
+
+    # Match the 'for=' directive (case-insensitive)
+    # Handles both quoted and unquoted values, IPv4 and IPv6
+    pattern = r'for\s*=\s*"?([^\s,;"\]]+|\[[^\]]+\])"?'
+    matches = re.findall(pattern, forwarded, re.IGNORECASE)
+
+    if matches:
+        # First 'for' value is the original client
+        client_ip = matches[0]
+        # Handle IPv6 in brackets [::1]
+        if client_ip.startswith("[") and "]" in client_ip:
+            client_ip = client_ip[1:].split("]")[0]
+        return _validate_ip(client_ip)
+
+    return None
+
+
+def get_client_ip(request: Request) -> Optional[str]:
+    """Get client IP address from request with trusted proxy handling.
+
+    Security Design:
+    1. Only trusts forwarded headers if trust_proxy_headers is enabled
+    2. Verifies the immediate peer is in trusted_proxy_cidrs before trusting
+    3. Validates all IP addresses to prevent injection attacks
+    4. Falls back to request.client.host when headers can't be trusted
+
+    Header priority (when trusted):
+    1. CloudFront-Viewer-Address (AWS CloudFront specific, most reliable)
+    2. Forwarded header (RFC 7239 standard)
+    3. X-Forwarded-For (de facto standard)
+    4. request.client.host (direct connection)
+    """
+    # Get the immediate peer IP (direct connection)
+    peer_ip = request.client.host if request.client else None
+
+    # Check if we should trust proxy headers
+    if peer_ip and _is_trusted_proxy(peer_ip):
+        # CloudFront-Viewer-Address is most reliable when behind CloudFront
+        cf_viewer = request.headers.get("CloudFront-Viewer-Address")
+        if cf_viewer:
+            # Format is IP:port, extract and validate
+            validated = _validate_ip(cf_viewer.split(":")[0].strip())
+            if validated:
+                return validated
+
+        # Try RFC 7239 Forwarded header first
+        forwarded = request.headers.get("Forwarded")
+        if forwarded:
+            validated = _parse_forwarded_header(forwarded)
+            if validated:
+                return validated
+
+        # X-Forwarded-For: client, proxy1, proxy2, ...
+        xff = request.headers.get("X-Forwarded-For")
+        if xff:
+            first_ip = xff.split(",")[0].strip()
+            validated = _validate_ip(first_ip)
+            if validated:
+                return validated
+
+    # Not behind trusted proxy or no valid forwarded headers - use direct peer
+    return peer_ip
 
 
 def _check_ip_in_allowlist(client_ip: str, allowlist: list) -> bool:

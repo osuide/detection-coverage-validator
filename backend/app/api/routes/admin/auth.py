@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
 from app.core.database import get_db
+from app.core.security import get_client_ip
 from app.models.admin import AdminUser
 from app.services.admin_auth_service import get_admin_auth_service
 from app.api.deps import get_current_admin
@@ -82,15 +83,6 @@ class AdminEnableMFARequest(BaseModel):
     totp_code: str
 
 
-def get_client_ip(request: Request) -> str:
-    """Get client IP from request."""
-    # Check for forwarded headers (behind proxy/load balancer)
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
-
-
 @router.post("/login", response_model=AdminLoginResponse)
 async def admin_login(
     body: AdminLoginRequest,
@@ -104,7 +96,7 @@ async def admin_login(
     Step 3: If MFA not enabled, return tokens directly (dev mode only)
     """
     auth_service = get_admin_auth_service(db)
-    ip_address = get_client_ip(request)
+    ip_address = get_client_ip(request) or "unknown"
     user_agent = request.headers.get("User-Agent")
 
     # Check IP allowlist
@@ -171,7 +163,7 @@ async def verify_mfa(
 ):
     """Verify MFA code and issue tokens."""
     auth_service = get_admin_auth_service(db)
-    ip_address = get_client_ip(request)
+    ip_address = get_client_ip(request) or "unknown"
     user_agent = request.headers.get("User-Agent")
 
     # Decode MFA token to get admin ID
@@ -236,7 +228,7 @@ async def refresh_token(
 ):
     """Refresh access token."""
     auth_service = get_admin_auth_service(db)
-    ip_address = get_client_ip(request)
+    ip_address = get_client_ip(request) or "unknown"
 
     access_token = await auth_service.refresh_access_token(
         refresh_token=body.refresh_token,
@@ -263,7 +255,7 @@ async def logout(
 ):
     """Logout and terminate session."""
     auth_service = get_admin_auth_service(db)
-    ip_address = get_client_ip(request)
+    ip_address = get_client_ip(request) or "unknown"
     user_agent = request.headers.get("User-Agent")
 
     # Get session ID from token
