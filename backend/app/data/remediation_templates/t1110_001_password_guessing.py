@@ -554,7 +554,7 @@ Resources:
                 "(credential compromise indicator), and supports CIDR allowlisting. "
                 "Provides better signal-to-noise ratio than simple threshold alerting."
             ),
-            detection_type=DetectionType.EVENTBRIDGE,
+            detection_type=DetectionType.EVENTBRIDGE_RULE,
             aws_service="eventbridge",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(

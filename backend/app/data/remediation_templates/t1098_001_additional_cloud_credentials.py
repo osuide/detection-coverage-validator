@@ -463,7 +463,7 @@ Resources:
                 "checks if target user has admin permissions, evaluates time of day, "
                 "and supports CI/CD automation allowlisting."
             ),
-            detection_type=DetectionType.EVENTBRIDGE,
+            detection_type=DetectionType.EVENTBRIDGE_RULE,
             aws_service="eventbridge",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(

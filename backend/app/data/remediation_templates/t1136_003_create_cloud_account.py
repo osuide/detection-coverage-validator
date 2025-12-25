@@ -462,7 +462,7 @@ Resources:
                 "Detects immediate admin permission grants, out-of-hours creation, "
                 "root user activity, and supports HR automation allowlisting."
             ),
-            detection_type=DetectionType.EVENTBRIDGE,
+            detection_type=DetectionType.EVENTBRIDGE_RULE,
             aws_service="eventbridge",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(

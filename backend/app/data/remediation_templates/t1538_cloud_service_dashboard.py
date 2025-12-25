@@ -324,7 +324,7 @@ TEMPLATE = RemediationTemplate(
                 "Evaluates out-of-hours access, MFA status, new source IPs, and "
                 "user agent changes against a per-principal baseline stored in DynamoDB."
             ),
-            detection_type=DetectionType.EVENTBRIDGE,
+            detection_type=DetectionType.EVENTBRIDGE_RULE,
             aws_service="eventbridge",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
