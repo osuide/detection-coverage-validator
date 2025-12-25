@@ -55,7 +55,161 @@ TEMPLATE = RemediationTemplate(
         often_follows=["T1078.004", "T1098.003"],
     ),
     detection_strategies=[
-        # Strategy 1: AWS - EC2 Instance Creation
+        # =====================================================================
+        # STRATEGY 1: GuardDuty EC2 Runtime Monitoring (Recommended)
+        # =====================================================================
+        DetectionStrategy(
+            strategy_id="t1578002-aws-guardduty",
+            name="AWS GuardDuty EC2 Cryptomining Detection",
+            description=(
+                "Leverage GuardDuty EC2 Runtime Monitoring to detect cryptomining "
+                "and malicious activity on newly created instances. "
+                "See: https://docs.aws.amazon.com/guardduty/latest/ug/guardduty_finding-types-ec2.html"
+            ),
+            detection_type=DetectionType.GUARDDUTY,
+            aws_service="guardduty",
+            cloud_provider=CloudProvider.AWS,
+            implementation=DetectionImplementation(
+                guardduty_finding_types=[
+                    "CryptoCurrency:EC2/BitcoinTool.B!DNS",
+                    "CryptoCurrency:Runtime/BitcoinTool.B",
+                    "Impact:Runtime/CryptoMinerExecuted",
+                    "Backdoor:EC2/C&CActivity.B!DNS",
+                    "UnauthorizedAccess:EC2/TorClient",
+                ],
+                terraform_template="""# AWS GuardDuty EC2 Runtime Monitoring
+# Detects: CryptoCurrency, Backdoor, UnauthorizedAccess on EC2
+# See: https://docs.aws.amazon.com/guardduty/latest/ug/findings-runtime-monitoring.html
+
+variable "alert_email" {
+  type        = string
+  description = "Email for EC2 security alerts"
+}
+
+# Step 1: Create encrypted SNS topic
+resource "aws_sns_topic" "ec2_alerts" {
+  name              = "guardduty-ec2-runtime-alerts"
+  kms_master_key_id = "alias/aws/sns"
+}
+
+resource "aws_sns_topic_subscription" "alert_email" {
+  topic_arn = aws_sns_topic.ec2_alerts.arn
+  protocol  = "email"
+  endpoint  = var.alert_email
+}
+
+# Step 2: Enable GuardDuty with Runtime Monitoring
+resource "aws_guardduty_detector" "main" {
+  enable = true
+}
+
+resource "aws_guardduty_detector_feature" "runtime_monitoring" {
+  detector_id = aws_guardduty_detector.main.id
+  name        = "RUNTIME_MONITORING"
+  status      = "ENABLED"
+
+  additional_configuration {
+    name   = "ECS_FARGATE_AGENT_MANAGEMENT"
+    status = "ENABLED"
+  }
+}
+
+# Step 3: Route EC2 findings to SNS
+resource "aws_cloudwatch_event_rule" "ec2_findings" {
+  name        = "guardduty-ec2-findings"
+  description = "Detect cryptomining and malicious EC2 activity"
+
+  event_pattern = jsonencode({
+    source      = ["aws.guardduty"]
+    detail-type = ["GuardDuty Finding"]
+    detail = {
+      type = [
+        { prefix = "CryptoCurrency:EC2/" },
+        { prefix = "CryptoCurrency:Runtime/" },
+        { prefix = "Impact:Runtime/" },
+        { prefix = "Backdoor:EC2/" },
+        { prefix = "Backdoor:Runtime/" }
+      ]
+    }
+  })
+}
+
+resource "aws_cloudwatch_event_target" "to_sns" {
+  rule      = aws_cloudwatch_event_rule.ec2_findings.name
+  target_id = "SendToSNS"
+  arn       = aws_sns_topic.ec2_alerts.arn
+
+  input_transformer {
+    input_paths = {
+      findingType = "$.detail.type"
+      severity    = "$.detail.severity"
+      instanceId  = "$.detail.resource.instanceDetails.instanceId"
+      accountId   = "$.account"
+    }
+    input_template = <<-EOF
+      "CRITICAL: GuardDuty EC2 Runtime Alert"
+      "Type: <findingType>"
+      "Severity: <severity>"
+      "Instance: <instanceId>"
+      "Account: <accountId>"
+      "Action: Immediately investigate instance for cryptomining or compromise"
+    EOF
+  }
+}
+
+resource "aws_sns_topic_policy" "allow_eventbridge" {
+  arn = aws_sns_topic.ec2_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowEventBridgePublish"
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.ec2_alerts.arn
+    }]
+  })
+}""",
+                alert_severity="critical",
+                alert_title="GuardDuty: EC2 Malicious Activity Detected",
+                alert_description_template=(
+                    "GuardDuty detected malicious activity on EC2 instance {instanceId}: {type}. "
+                    "This may indicate cryptomining, backdoor, or C&C communication."
+                ),
+                investigation_steps=[
+                    "Review the specific GuardDuty finding for full context",
+                    "Check instance CPU/network utilisation for mining indicators",
+                    "Review when the instance was created and by whom",
+                    "Check the instance's security groups and IAM role",
+                    "Look for associated billing spikes",
+                ],
+                containment_actions=[
+                    "Immediately stop or terminate the instance",
+                    "Preserve the EBS volume for forensics if needed",
+                    "Revoke credentials used to create the instance",
+                    "Review RunInstances permissions in the account",
+                    "Check for other instances created by the same principal",
+                ],
+            ),
+            estimated_false_positive_rate=FalsePositiveRate.LOW,
+            false_positive_tuning=(
+                "GuardDuty's ML minimises false positives. "
+                "Suppress findings for legitimate blockchain workloads. "
+                "Use trusted IP lists for known mining pools (if authorised)."
+            ),
+            detection_coverage="90% - runtime monitoring of EC2 processes",
+            evasion_considerations="Encrypted or obfuscated mining traffic may evade",
+            implementation_effort=EffortLevel.LOW,
+            implementation_time="30 minutes",
+            estimated_monthly_cost=(
+                "Runtime Monitoring: ~$1.50/instance/month. "
+                "See: https://aws.amazon.com/guardduty/pricing/"
+            ),
+            prerequisites=["GuardDuty enabled", "SSM Agent installed on instances"],
+        ),
+        # =====================================================================
+        # STRATEGY 2: AWS - EC2 Instance Creation
+        # =====================================================================
         DetectionStrategy(
             strategy_id="t1578002-aws-ec2",
             name="EC2 Instance Creation Detection",
@@ -321,10 +475,11 @@ resource "google_monitoring_alert_policy" "gce_create" {
         ),
     ],
     recommended_order=[
+        "t1578002-aws-guardduty",
         "t1578002-aws-ec2",
         "t1578002-aws-largeinstance",
         "t1578002-gcp-gce",
     ],
-    total_effort_hours=2.5,
+    total_effort_hours=3.0,
     coverage_improvement="+15% improvement for Defence Evasion tactic",
 )

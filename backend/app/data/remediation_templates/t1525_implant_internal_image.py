@@ -56,6 +56,232 @@ TEMPLATE = RemediationTemplate(
         often_follows=["T1078.004", "T1190"],
     ),
     detection_strategies=[
+        # =====================================================================
+        # STRATEGY 1: AWS ECR Image Scan Findings (Recommended)
+        # =====================================================================
+        DetectionStrategy(
+            strategy_id="t1525-aws-ecr-scan",
+            name="AWS ECR Image Scan Vulnerability Detection",
+            description=(
+                "Detect vulnerabilities and malware in container images using ECR "
+                "native scanning or Amazon Inspector. Triggers on scan completion. "
+                "See: https://docs.aws.amazon.com/AmazonECR/latest/userguide/image-scanning.html"
+            ),
+            detection_type=DetectionType.EVENTBRIDGE_RULE,
+            aws_service="eventbridge",
+            cloud_provider=CloudProvider.AWS,
+            implementation=DetectionImplementation(
+                event_pattern={
+                    "source": ["aws.ecr"],
+                    "detail-type": ["ECR Image Scan"],
+                    "detail": {"scan-status": ["COMPLETE"]},
+                },
+                terraform_template="""# AWS ECR Image Scanning with Inspector
+# Detects: Vulnerabilities and malware in container images
+# See: https://docs.aws.amazon.com/AmazonECR/latest/userguide/image-scanning.html
+
+variable "alert_email" {
+  type        = string
+  description = "Email for image security alerts"
+}
+
+variable "ecr_repository_name" {
+  type        = string
+  description = "ECR repository name to enable scanning"
+}
+
+# Step 1: Create encrypted SNS topic
+resource "aws_sns_topic" "image_scan_alerts" {
+  name              = "ecr-image-scan-alerts"
+  kms_master_key_id = "alias/aws/sns"
+}
+
+resource "aws_sns_topic_subscription" "alert_email" {
+  topic_arn = aws_sns_topic.image_scan_alerts.arn
+  protocol  = "email"
+  endpoint  = var.alert_email
+}
+
+# Step 2: Enable enhanced scanning with Inspector
+resource "aws_ecr_registry_scanning_configuration" "enhanced" {
+  scan_type = "ENHANCED"
+
+  rule {
+    scan_frequency = "SCAN_ON_PUSH"
+    repository_filter {
+      filter      = "*"
+      filter_type = "WILDCARD"
+    }
+  }
+}
+
+# Step 3: EventBridge rule for scan findings
+resource "aws_cloudwatch_event_rule" "image_scan_findings" {
+  name        = "ecr-image-scan-findings"
+  description = "Detect vulnerabilities in container images"
+
+  event_pattern = jsonencode({
+    source      = ["aws.ecr"]
+    detail-type = ["ECR Image Scan"]
+    detail = {
+      scan-status        = ["COMPLETE"]
+      finding-severity-counts = {
+        CRITICAL = [{ exists = true }]
+      }
+    }
+  })
+}
+
+resource "aws_cloudwatch_event_target" "to_sns" {
+  rule      = aws_cloudwatch_event_rule.image_scan_findings.name
+  target_id = "SendToSNS"
+  arn       = aws_sns_topic.image_scan_alerts.arn
+
+  input_transformer {
+    input_paths = {
+      repository = "$.detail.repository-name"
+      tag        = "$.detail.image-tags[0]"
+      critical   = "$.detail.finding-severity-counts.CRITICAL"
+      high       = "$.detail.finding-severity-counts.HIGH"
+    }
+    input_template = <<-EOF
+      "ECR Image Scan Alert - Critical Vulnerabilities Found"
+      "Repository: <repository>"
+      "Tag: <tag>"
+      "Critical: <critical>, High: <high>"
+      "Action: Do NOT deploy this image until vulnerabilities are remediated"
+    EOF
+  }
+}
+
+resource "aws_sns_topic_policy" "allow_eventbridge" {
+  arn = aws_sns_topic.image_scan_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowEventBridgePublish"
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.image_scan_alerts.arn
+    }]
+  })
+}
+
+# Step 4: Lambda to block deployment of vulnerable images (optional)
+resource "aws_lambda_function" "block_vulnerable_deploy" {
+  function_name = "block-vulnerable-image-deploy"
+  runtime       = "python3.11"
+  handler       = "index.handler"
+  role          = aws_iam_role.lambda_role.arn
+  timeout       = 30
+
+  filename         = data.archive_file.lambda_zip.output_path
+  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
+
+  environment {
+    variables = {
+      CRITICAL_THRESHOLD = "0"
+      HIGH_THRESHOLD     = "5"
+    }
+  }
+}""",
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
+Description: Detect vulnerabilities in ECR container images
+
+Parameters:
+  AlertEmail:
+    Type: String
+    Description: Email for image security alerts
+
+Resources:
+  # Step 1: Create SNS topic with encryption
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: ecr-image-scan-alerts
+      KmsMasterKeyId: alias/aws/sns
+      Subscription:
+        - Protocol: email
+          Endpoint: !Ref AlertEmail
+
+  # Step 2: EventBridge rule for critical findings
+  ImageScanRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: ecr-critical-vulnerabilities
+      Description: Alert on critical vulnerabilities in container images
+      EventPattern:
+        source:
+          - aws.ecr
+        detail-type:
+          - ECR Image Scan
+        detail:
+          scan-status:
+            - COMPLETE
+          finding-severity-counts:
+            CRITICAL:
+              - exists: true
+      Targets:
+        - Id: AlertTopic
+          Arn: !Ref AlertTopic
+
+  # Step 3: Allow EventBridge to publish
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref AlertTopic
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic""",
+                alert_severity="critical",
+                alert_title="ECR Image Scan: Critical Vulnerabilities Found",
+                alert_description_template=(
+                    "Container image {repository-name}:{image-tag} contains critical "
+                    "vulnerabilities. Do not deploy until remediated."
+                ),
+                investigation_steps=[
+                    "Review the specific CVEs found in the scan",
+                    "Check if base image needs updating",
+                    "Identify which packages are vulnerable",
+                    "Check if patches are available",
+                    "Review if image is already deployed",
+                ],
+                containment_actions=[
+                    "Block deployment of vulnerable images",
+                    "Update base images to patched versions",
+                    "Implement admission controllers to prevent deployment",
+                    "Roll back any deployments using this image",
+                    "Enable Binary Authorisation patterns",
+                ],
+            ),
+            estimated_false_positive_rate=FalsePositiveRate.LOW,
+            false_positive_tuning=(
+                "Some vulnerabilities may not be exploitable in context. "
+                "Use vulnerability exception lists for accepted risks. "
+                "Focus on CRITICAL and HIGH severity."
+            ),
+            detection_coverage="95% - scans all pushed images",
+            evasion_considerations="Zero-day vulnerabilities not in databases",
+            implementation_effort=EffortLevel.LOW,
+            implementation_time="30 minutes",
+            estimated_monthly_cost=(
+                "Enhanced scanning: $0.11 per image. "
+                "See: https://aws.amazon.com/ecr/pricing/"
+            ),
+            prerequisites=[
+                "ECR repository",
+                "Inspector enabled (for enhanced scanning)",
+            ],
+        ),
+        # =====================================================================
+        # STRATEGY 2: AWS ECR Image Push Detection
+        # =====================================================================
         DetectionStrategy(
             strategy_id="t1525-aws-ecr",
             name="AWS ECR Image Push Detection",
@@ -247,7 +473,11 @@ resource "google_monitoring_alert_policy" "image_push" {
             prerequisites=["Cloud Audit Logs enabled"],
         ),
     ],
-    recommended_order=["t1525-aws-ecr", "t1525-gcp-gcr"],
-    total_effort_hours=1.5,
+    recommended_order=[
+        "t1525-aws-ecr-scan",
+        "t1525-aws-ecr",
+        "t1525-gcp-gcr",
+    ],
+    total_effort_hours=2.0,
     coverage_improvement="+15% improvement for Persistence tactic",
 )

@@ -55,7 +55,146 @@ TEMPLATE = RemediationTemplate(
         often_follows=["T1078.004", "T1087.004"],
     ),
     detection_strategies=[
-        # Strategy 1: AWS - EC2/VPC Enumeration
+        # =====================================================================
+        # STRATEGY 1: GuardDuty Reconnaissance Detection (Recommended)
+        # =====================================================================
+        DetectionStrategy(
+            strategy_id="t1580-aws-guardduty",
+            name="AWS GuardDuty Reconnaissance Detection",
+            description=(
+                "Leverage GuardDuty to detect reconnaissance activities including "
+                "port scanning and unusual API activity patterns. "
+                "See: https://docs.aws.amazon.com/guardduty/latest/ug/guardduty_finding-types-ec2.html"
+            ),
+            detection_type=DetectionType.GUARDDUTY,
+            aws_service="guardduty",
+            cloud_provider=CloudProvider.AWS,
+            implementation=DetectionImplementation(
+                guardduty_finding_types=[
+                    "Recon:EC2/PortProbeEMRUnprotectedPort",
+                    "Recon:EC2/PortProbeUnprotectedPort",
+                    "Recon:EC2/Portscan",
+                    "Discovery:IAMUser/AnomalousBehavior",
+                ],
+                terraform_template="""# AWS GuardDuty Reconnaissance Detection
+# Detects: Port scanning, unusual API patterns, anomalous discovery
+# See: https://docs.aws.amazon.com/guardduty/latest/ug/guardduty_finding-types-ec2.html
+
+variable "alert_email" {
+  type        = string
+  description = "Email for reconnaissance security alerts"
+}
+
+# Step 1: Create encrypted SNS topic
+resource "aws_sns_topic" "recon_alerts" {
+  name              = "guardduty-recon-alerts"
+  kms_master_key_id = "alias/aws/sns"
+}
+
+resource "aws_sns_topic_subscription" "alert_email" {
+  topic_arn = aws_sns_topic.recon_alerts.arn
+  protocol  = "email"
+  endpoint  = var.alert_email
+}
+
+# Step 2: Enable GuardDuty
+resource "aws_guardduty_detector" "main" {
+  enable = true
+}
+
+# Step 3: Route reconnaissance findings to SNS
+resource "aws_cloudwatch_event_rule" "recon_findings" {
+  name        = "guardduty-recon-findings"
+  description = "Detect reconnaissance and discovery activity"
+
+  event_pattern = jsonencode({
+    source      = ["aws.guardduty"]
+    detail-type = ["GuardDuty Finding"]
+    detail = {
+      type = [
+        { prefix = "Recon:EC2/" },
+        { prefix = "Discovery:" }
+      ]
+    }
+  })
+}
+
+resource "aws_cloudwatch_event_target" "to_sns" {
+  rule      = aws_cloudwatch_event_rule.recon_findings.name
+  target_id = "SendToSNS"
+  arn       = aws_sns_topic.recon_alerts.arn
+
+  input_transformer {
+    input_paths = {
+      findingType = "$.detail.type"
+      severity    = "$.detail.severity"
+      accountId   = "$.account"
+      region      = "$.region"
+    }
+    input_template = <<-EOF
+      "GuardDuty Reconnaissance Alert"
+      "Type: <findingType>"
+      "Severity: <severity>"
+      "Account: <accountId>"
+      "Region: <region>"
+      "Action: Investigate potential attacker reconnaissance activity"
+    EOF
+  }
+}
+
+resource "aws_sns_topic_policy" "allow_eventbridge" {
+  arn = aws_sns_topic.recon_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowEventBridgePublish"
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.recon_alerts.arn
+    }]
+  })
+}""",
+                alert_severity="high",
+                alert_title="GuardDuty: Reconnaissance Activity Detected",
+                alert_description_template=(
+                    "GuardDuty detected reconnaissance activity: {type}. "
+                    "This indicates an attacker is mapping your infrastructure."
+                ),
+                investigation_steps=[
+                    "Review the specific GuardDuty finding for context",
+                    "Identify the source of reconnaissance (internal/external)",
+                    "Check for compromised EC2 instances",
+                    "Review recent IAM activity for the affected resources",
+                    "Look for follow-on attack activity",
+                ],
+                containment_actions=[
+                    "Block source IPs at security groups/NACLs",
+                    "Isolate any compromised instances",
+                    "Review and tighten security group rules",
+                    "Enable VPC Flow Logs for detailed analysis",
+                    "Consider enabling AWS Network Firewall",
+                ],
+            ),
+            estimated_false_positive_rate=FalsePositiveRate.LOW,
+            false_positive_tuning=(
+                "GuardDuty's ML reduces false positives. "
+                "Suppress findings for authorised vulnerability scanners. "
+                "Use trusted IP lists for known security tools."
+            ),
+            detection_coverage="85% - ML-based detection of recon patterns",
+            evasion_considerations="Slow/distributed scanning may evade",
+            implementation_effort=EffortLevel.LOW,
+            implementation_time="30 minutes",
+            estimated_monthly_cost=(
+                "GuardDuty: ~$4/GB VPC Flow Logs analysed. "
+                "See: https://aws.amazon.com/guardduty/pricing/"
+            ),
+            prerequisites=["GuardDuty enabled", "VPC Flow Logs (for Recon findings)"],
+        ),
+        # =====================================================================
+        # STRATEGY 2: AWS - EC2/VPC Enumeration (CloudWatch)
+        # =====================================================================
         DetectionStrategy(
             strategy_id="t1580-aws-infra",
             name="AWS Infrastructure Enumeration Detection",
@@ -269,7 +408,11 @@ resource "google_monitoring_alert_policy" "infra_enum" {
             prerequisites=["Cloud Audit Logs enabled"],
         ),
     ],
-    recommended_order=["t1580-aws-infra", "t1580-gcp-infra"],
-    total_effort_hours=2.0,
+    recommended_order=[
+        "t1580-aws-guardduty",
+        "t1580-aws-infra",
+        "t1580-gcp-infra",
+    ],
+    total_effort_hours=2.5,
     coverage_improvement="+10% improvement for Discovery tactic",
 )
