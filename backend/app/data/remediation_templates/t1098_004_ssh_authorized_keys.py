@@ -236,129 +236,270 @@ resource "aws_cloudwatch_metric_alarm" "authorized_keys" {
             strategy_id="t1098004-metadata-injection",
             name="Detect SSH Key Injection via EC2 Metadata API",
             description=(
-                "Monitor EC2 instance metadata service calls that add SSH keys to instances. "
-                "Detects use of ModifyInstanceAttribute API calls to inject public keys."
+                "Detect EC2 key pair operations in near real-time via EventBridge. "
+                "Every ImportKeyPair or CreateKeyPair event triggers an immediate alert."
             ),
-            detection_type=DetectionType.CLOUDWATCH_QUERY,
-            aws_service="cloudwatch",
+            detection_type=DetectionType.EVENTBRIDGE_RULE,
+            aws_service="eventbridge",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query="""fields @timestamp, userIdentity.principalId, eventName, requestParameters.instanceId, requestParameters.attribute
-| filter eventSource = "ec2.amazonaws.com"
-| filter eventName in ["ModifyInstanceAttribute", "ImportKeyPair", "CreateKeyPair"]
-| filter requestParameters.attribute = "userData" or eventName like /KeyPair/
-| stats count() as api_calls by userIdentity.principalId, eventName, requestParameters.instanceId, bin(10m)
-| sort @timestamp desc""",
+                event_pattern={
+                    "source": ["aws.ec2"],
+                    "detail-type": ["AWS API Call via CloudTrail"],
+                    "detail": {
+                        "eventSource": ["ec2.amazonaws.com"],
+                        "eventName": ["ImportKeyPair", "CreateKeyPair"],
+                    },
+                },
                 cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
-Description: Detect SSH key injection via EC2 metadata
+Description: Detect SSH key injection via EC2 metadata (T1098.004)
 
 Parameters:
-  CloudTrailLogGroup:
+  AlertEmail:
     Type: String
-    Description: CloudTrail log group name
-  SNSTopicArn:
-    Type: String
-    Description: SNS topic for alerts
+    Description: Email for security alerts
 
 Resources:
-  # Step 1: Monitor ModifyInstanceAttribute for userData changes
-  UserDataModificationFilter:
-    Type: AWS::Logs::MetricFilter
+  AlertTopic:
+    Type: AWS::SNS::Topic
     Properties:
-      LogGroupName: !Ref CloudTrailLogGroup
-      FilterPattern: '{ $.eventSource = "ec2.amazonaws.com" && $.eventName = "ModifyInstanceAttribute" && $.requestParameters.attribute = "userData" }'
-      MetricTransformations:
-        - MetricName: UserDataModification
-          MetricNamespace: Security/T1098.004
-          MetricValue: "1"
+      TopicName: t1098004-ssh-key-alerts
+      KmsMasterKeyId: alias/aws/sns
+      Subscription:
+        - Protocol: email
+          Endpoint: !Ref AlertEmail
 
-  # Step 2: Monitor SSH key pair operations
-  KeyPairOperationsFilter:
-    Type: AWS::Logs::MetricFilter
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
     Properties:
-      LogGroupName: !Ref CloudTrailLogGroup
-      FilterPattern: '{ $.eventSource = "ec2.amazonaws.com" && ($.eventName = "ImportKeyPair" || $.eventName = "CreateKeyPair") }'
-      MetricTransformations:
-        - MetricName: KeyPairOperations
-          MetricNamespace: Security/T1098.004
-          MetricValue: "1"
+      QueueName: t1098004-ssh-key-dlq
+      MessageRetentionPeriod: 1209600
 
-  # Step 3: Create alarm for metadata injection attempts
-  MetadataInjectionAlarm:
-    Type: AWS::CloudWatch::Alarm
+  KeyPairRule:
+    Type: AWS::Events::Rule
     Properties:
-      AlarmName: T1098.004-MetadataSSHKeyInjection
-      AlarmDescription: SSH key injection via metadata detected
-      MetricName: UserDataModification
-      Namespace: Security/T1098.004
-      Statistic: Sum
-      Period: 300
-      EvaluationPeriods: 1
-      Threshold: 1
-      ComparisonOperator: GreaterThanOrEqualToThreshold
-      AlarmActions:
-        - !Ref SNSTopicArn""",
-                terraform_template="""# Detect SSH key injection via EC2 metadata
+      Name: t1098004-keypair-detection
+      Description: Detect EC2 key pair operations (T1098.004)
+      State: ENABLED
+      EventPattern:
+        source:
+          - aws.ec2
+        detail-type:
+          - AWS API Call via CloudTrail
+        detail:
+          eventSource:
+            - ec2.amazonaws.com
+          eventName:
+            - ImportKeyPair
+            - CreateKeyPair
+      Targets:
+        - Id: SNSTarget
+          Arn: !Ref AlertTopic
+          DeadLetterConfig:
+            Arn: !GetAtt DeadLetterQueue.Arn
+          RetryPolicy:
+            MaximumEventAgeInSeconds: 3600
+            MaximumRetryAttempts: 8
+          InputTransformer:
+            InputPathsMap:
+              time: $.time
+              account: $.account
+              region: $.detail.awsRegion
+              eventName: $.detail.eventName
+              actor: $.detail.userIdentity.arn
+              sourceIp: $.detail.sourceIPAddress
+              keyName: $.detail.requestParameters.keyName
+            InputTemplate: |
+              "ALERT: EC2 Key Pair Operation Detected (T1098.004)"
+              "time=<time>"
+              "account=<account> region=<region>"
+              "event=<eventName>"
+              "actor=<actor>"
+              "source_ip=<sourceIp>"
+              "key_name=<keyName>"
 
-variable "cloudtrail_log_group" {
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref AlertTopic
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowEventBridgePublishScoped
+            Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt KeyPairRule.Arn
+
+  DLQPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref DeadLetterQueue
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt DeadLetterQueue.Arn
+
+Outputs:
+  AlertTopicArn:
+    Description: SNS topic for SSH key alerts
+    Value: !Ref AlertTopic
+  EventRuleArn:
+    Description: EventBridge rule ARN
+    Value: !GetAtt KeyPairRule.Arn""",
+                terraform_template="""# Detect SSH key injection via EC2 metadata (T1098.004)
+# Uses EventBridge for near real-time detection
+# Every key pair operation triggers an immediate alert
+
+variable "name_prefix" {
   type        = string
-  description = "CloudTrail log group name"
+  default     = "t1098004-ssh-key"
+  description = "Prefix for resource names"
 }
 
 variable "alert_email" {
   type        = string
-  description = "Email for alerts"
+  description = "Email for security alerts (SNS subscription confirmation required)"
 }
 
-resource "aws_sns_topic" "alerts" {
-  name = "ssh-key-injection-alerts"
+data "aws_caller_identity" "current" {}
+
+# SNS topic for alerts
+resource "aws_sns_topic" "ssh_key_alerts" {
+  name              = "${var.name_prefix}-alerts"
+  display_name      = "SSH Key Operation Alerts"
   kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
-  topic_arn = aws_sns_topic.alerts.arn
+  topic_arn = aws_sns_topic.ssh_key_alerts.arn
   protocol  = "email"
   endpoint  = var.alert_email
 }
 
-# Step 1: Monitor ModifyInstanceAttribute for userData changes
-resource "aws_cloudwatch_log_metric_filter" "userdata_modification" {
-  name           = "userdata-ssh-key-injection"
-  log_group_name = var.cloudtrail_log_group
-  pattern        = "{ $.eventSource = \"ec2.amazonaws.com\" && $.eventName = \"ModifyInstanceAttribute\" && $.requestParameters.attribute = \"userData\" }"
+# EventBridge rule: detect EC2 key pair operations
+resource "aws_cloudwatch_event_rule" "keypair_operations" {
+  name        = "${var.name_prefix}-keypair"
+  description = "Detect EC2 key pair operations (T1098.004)"
 
-  metric_transformation {
-    name      = "UserDataModification"
-    namespace = "Security/T1098.004"
-    value     = "1"
+  event_pattern = jsonencode({
+    source        = ["aws.ec2"]
+    "detail-type" = ["AWS API Call via CloudTrail"]
+    detail = {
+      eventSource = ["ec2.amazonaws.com"]
+      eventName   = ["ImportKeyPair", "CreateKeyPair"]
+    }
+  })
+}
+
+# DLQ for delivery failures (14 day retention)
+resource "aws_sqs_queue" "ssh_key_dlq" {
+  name                      = "${var.name_prefix}-dlq"
+  message_retention_seconds = 1209600
+}
+
+# Route to SNS with input transformer for human-readable alerts
+resource "aws_cloudwatch_event_target" "keypair_to_sns" {
+  rule      = aws_cloudwatch_event_rule.keypair_operations.name
+  target_id = "SNSTarget"
+  arn       = aws_sns_topic.ssh_key_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.ssh_key_dlq.arn
+  }
+
+  input_transformer {
+    input_paths = {
+      time      = "$.time"
+      account   = "$.account"
+      region    = "$.detail.awsRegion"
+      eventName = "$.detail.eventName"
+      actor     = "$.detail.userIdentity.arn"
+      sourceIp  = "$.detail.sourceIPAddress"
+      keyName   = "$.detail.requestParameters.keyName"
+    }
+
+    input_template = <<-EOT
+"ALERT: EC2 Key Pair Operation Detected (T1098.004)
+time=<time>
+account=<account> region=<region>
+event=<eventName>
+actor=<actor>
+source_ip=<sourceIp>
+key_name=<keyName>"
+EOT
   }
 }
 
-# Step 2: Monitor SSH key pair operations
-resource "aws_cloudwatch_log_metric_filter" "keypair_operations" {
-  name           = "ssh-keypair-operations"
-  log_group_name = var.cloudtrail_log_group
-  pattern        = "{ $.eventSource = \"ec2.amazonaws.com\" && ($.eventName = \"ImportKeyPair\" || $.eventName = \"CreateKeyPair\") }"
+# SNS topic policy with scoped conditions
+resource "aws_sns_topic_policy" "allow_eventbridge_publish" {
+  arn = aws_sns_topic.ssh_key_alerts.arn
 
-  metric_transformation {
-    name      = "KeyPairOperations"
-    namespace = "Security/T1098.004"
-    value     = "1"
-  }
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowEventBridgePublishScoped"
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.ssh_key_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.keypair_operations.arn
+        }
+      }
+    }]
+  })
 }
 
-# Step 3: Create alarm for metadata injection attempts
-resource "aws_cloudwatch_metric_alarm" "metadata_injection" {
-  alarm_name          = "T1098.004-MetadataSSHKeyInjection"
-  alarm_description   = "SSH key injection via metadata detected"
-  metric_name         = "UserDataModification"
-  namespace           = "Security/T1098.004"
-  statistic           = "Sum"
-  period              = 300
-  evaluation_periods  = 1
-  threshold           = 1
-  comparison_operator = "GreaterThanOrEqualToThreshold"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+# Allow EventBridge to send to DLQ
+resource "aws_sqs_queue_policy" "ssh_key_dlq" {
+  queue_url = aws_sqs_queue.ssh_key_dlq.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.ssh_key_dlq.arn
+    }]
+  })
+}
+
+output "alert_topic_arn" {
+  description = "SNS topic for SSH key alerts"
+  value       = aws_sns_topic.ssh_key_alerts.arn
+}
+
+output "event_rule_arn" {
+  description = "EventBridge rule ARN"
+  value       = aws_cloudwatch_event_rule.keypair_operations.arn
+}
+
+output "dlq_url" {
+  description = "Dead letter queue URL for failed deliveries"
+  value       = aws_sqs_queue.ssh_key_dlq.url
 }""",
                 alert_severity="high",
                 alert_title="SSH Key Injection via EC2 Metadata Detected",
@@ -387,12 +528,12 @@ resource "aws_cloudwatch_metric_alarm" "metadata_injection" {
             ),
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="Whitelist authorised automation tools and infrastructure-as-code deployments",
-            detection_coverage="90% - catches metadata-based key injection",
-            evasion_considerations="Cannot evade if CloudTrail is enabled and monitoring EC2 API calls",
+            detection_coverage="95% - catches all key pair operations via CloudTrail",
+            evasion_considerations="Cannot evade if CloudTrail is enabled",
             implementation_effort=EffortLevel.LOW,
-            implementation_time="45 minutes - 1 hour",
-            estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled", "CloudTrail logs sent to CloudWatch"],
+            implementation_time="20 minutes",
+            estimated_monthly_cost="$1-3",
+            prerequisites=["CloudTrail enabled"],
         ),
         # Strategy 3: Suspicious Process Execution for SSH Key Modification
         DetectionStrategy(

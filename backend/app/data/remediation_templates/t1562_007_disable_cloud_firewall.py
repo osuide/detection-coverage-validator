@@ -65,81 +65,165 @@ TEMPLATE = RemediationTemplate(
         DetectionStrategy(
             strategy_id="t1562-007-aws-sg-modify",
             name="AWS Security Group Modification Detection",
-            description="Detect unauthorised creation, deletion, or modification of AWS security groups.",
-            detection_type=DetectionType.CLOUDWATCH_QUERY,
-            aws_service="cloudtrail",
+            description=(
+                "Detect security group modifications in near real-time via EventBridge. "
+                "Every ingress/egress rule change triggers an immediate alert."
+            ),
+            detection_type=DetectionType.EVENTBRIDGE_RULE,
+            aws_service="eventbridge",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query="""fields @timestamp, userIdentity.principalId, eventName, requestParameters.groupId, requestParameters.ipPermissions
-| filter eventName in ["AuthorizeSecurityGroupIngress", "AuthorizeSecurityGroupEgress", "RevokeSecurityGroupIngress", "RevokeSecurityGroupEgress", "CreateSecurityGroup", "DeleteSecurityGroup"]
-| filter requestParameters.ipPermissions.items.0.ipRanges.items.0.cidrIp = "0.0.0.0/0" or requestParameters.ipPermissions.items.0.ipv6Ranges.items.0.cidrIpv6 = "::/0"
-| stats count(*) as modifications by userIdentity.principalId, eventName, bin(5m)
-| sort @timestamp desc""",
+                event_pattern={
+                    "source": ["aws.ec2"],
+                    "detail-type": ["AWS API Call via CloudTrail"],
+                    "detail": {
+                        "eventSource": ["ec2.amazonaws.com"],
+                        "eventName": [
+                            "AuthorizeSecurityGroupIngress",
+                            "AuthorizeSecurityGroupEgress",
+                            "RevokeSecurityGroupIngress",
+                            "RevokeSecurityGroupEgress",
+                            "CreateSecurityGroup",
+                            "DeleteSecurityGroup",
+                        ],
+                    },
+                },
                 cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
-Description: Detect unauthorised security group modifications
+Description: Detect security group modifications (T1562.007)
 
 Parameters:
-  CloudTrailLogGroup:
-    Type: String
-    Description: CloudTrail log group name
   AlertEmail:
     Type: String
     Description: Email for security alerts
 
 Resources:
-  # Step 1: Create SNS topic for alerts
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      TopicName: t1562007-sg-alerts
       KmsMasterKeyId: alias/aws/sns
-      DisplayName: Security Group Modification Alerts
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
-  # Step 2: Create metric filter for security group changes
-  SecurityGroupModificationFilter:
-    Type: AWS::Logs::MetricFilter
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
     Properties:
-      LogGroupName: !Ref CloudTrailLogGroup
-      FilterPattern: '{ ($.eventName = "AuthorizeSecurityGroupIngress") || ($.eventName = "AuthorizeSecurityGroupEgress") || ($.eventName = "RevokeSecurityGroupIngress") || ($.eventName = "RevokeSecurityGroupEgress") || ($.eventName = "CreateSecurityGroup") || ($.eventName = "DeleteSecurityGroup") }'
-      MetricTransformations:
-        - MetricName: SecurityGroupModifications
-          MetricNamespace: Security/Firewall
-          MetricValue: "1"
+      QueueName: t1562007-sg-dlq
+      MessageRetentionPeriod: 1209600
 
-  # Step 3: Create alarm for security group modifications
-  SecurityGroupModificationAlarm:
-    Type: AWS::CloudWatch::Alarm
+  SecurityGroupRule:
+    Type: AWS::Events::Rule
     Properties:
-      AlarmName: UnauthorisedSecurityGroupModification
-      AlarmDescription: Alert on security group modifications that may bypass firewall controls
-      MetricName: SecurityGroupModifications
-      Namespace: Security/Firewall
-      Statistic: Sum
-      Period: 300
-      Threshold: 5
-      ComparisonOperator: GreaterThanThreshold
-      EvaluationPeriods: 1
-      TreatMissingData: notBreaching
-      AlarmActions: [!Ref AlertTopic]""",
-                terraform_template="""# Detect unauthorised security group modifications
+      Name: t1562007-sg-modification
+      Description: Detect security group modifications (T1562.007)
+      State: ENABLED
+      EventPattern:
+        source:
+          - aws.ec2
+        detail-type:
+          - AWS API Call via CloudTrail
+        detail:
+          eventSource:
+            - ec2.amazonaws.com
+          eventName:
+            - AuthorizeSecurityGroupIngress
+            - AuthorizeSecurityGroupEgress
+            - RevokeSecurityGroupIngress
+            - RevokeSecurityGroupEgress
+            - CreateSecurityGroup
+            - DeleteSecurityGroup
+      Targets:
+        - Id: SNSTarget
+          Arn: !Ref AlertTopic
+          DeadLetterConfig:
+            Arn: !GetAtt DeadLetterQueue.Arn
+          RetryPolicy:
+            MaximumEventAgeInSeconds: 3600
+            MaximumRetryAttempts: 8
+          InputTransformer:
+            InputPathsMap:
+              time: $.time
+              account: $.account
+              region: $.detail.awsRegion
+              eventName: $.detail.eventName
+              actor: $.detail.userIdentity.arn
+              sourceIp: $.detail.sourceIPAddress
+              groupId: $.detail.requestParameters.groupId
+              cidr: $.detail.requestParameters.ipPermissions.items[0].ipRanges.items[0].cidrIp
+            InputTemplate: |
+              "ALERT: Security Group Modified (T1562.007)"
+              "time=<time>"
+              "account=<account> region=<region>"
+              "event=<eventName>"
+              "actor=<actor>"
+              "source_ip=<sourceIp>"
+              "security_group=<groupId>"
+              "cidr=<cidr>"
 
-variable "cloudtrail_log_group" {
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref AlertTopic
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowEventBridgePublishScoped
+            Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt SecurityGroupRule.Arn
+
+  DLQPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref DeadLetterQueue
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt DeadLetterQueue.Arn
+
+Outputs:
+  AlertTopicArn:
+    Description: SNS topic for security group alerts
+    Value: !Ref AlertTopic
+  EventRuleArn:
+    Description: EventBridge rule ARN
+    Value: !GetAtt SecurityGroupRule.Arn""",
+                terraform_template="""# Detect security group modifications (T1562.007)
+# Uses EventBridge for near real-time detection
+# Every security group change triggers an immediate alert
+
+variable "name_prefix" {
   type        = string
-  description = "CloudTrail log group name"
+  default     = "t1562007-sg"
+  description = "Prefix for resource names"
 }
 
 variable "alert_email" {
   type        = string
-  description = "Email for security alerts"
+  description = "Email for security alerts (SNS subscription confirmation required)"
 }
 
-# Step 1: Create SNS topic for alerts
+data "aws_caller_identity" "current" {}
+
+# SNS topic for alerts
 resource "aws_sns_topic" "sg_alerts" {
-  name         = "security-group-modification-alerts"
+  name              = "${var.name_prefix}-alerts"
+  display_name      = "Security Group Modification Alerts"
   kms_master_key_id = "alias/aws/sns"
-  display_name = "Security Group Modification Alerts"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -148,32 +232,124 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
-# Step 2: Create metric filter for security group changes
-resource "aws_cloudwatch_log_metric_filter" "sg_modifications" {
-  name           = "security-group-modifications"
-  log_group_name = var.cloudtrail_log_group
-  pattern        = "{ ($.eventName = \"AuthorizeSecurityGroupIngress\") || ($.eventName = \"AuthorizeSecurityGroupEgress\") || ($.eventName = \"RevokeSecurityGroupIngress\") || ($.eventName = \"RevokeSecurityGroupEgress\") || ($.eventName = \"CreateSecurityGroup\") || ($.eventName = \"DeleteSecurityGroup\") }"
+# EventBridge rule: detect security group modifications
+resource "aws_cloudwatch_event_rule" "sg_modifications" {
+  name        = "${var.name_prefix}-modification"
+  description = "Detect security group modifications (T1562.007)"
 
-  metric_transformation {
-    name      = "SecurityGroupModifications"
-    namespace = "Security/Firewall"
-    value     = "1"
+  event_pattern = jsonencode({
+    source        = ["aws.ec2"]
+    "detail-type" = ["AWS API Call via CloudTrail"]
+    detail = {
+      eventSource = ["ec2.amazonaws.com"]
+      eventName = [
+        "AuthorizeSecurityGroupIngress",
+        "AuthorizeSecurityGroupEgress",
+        "RevokeSecurityGroupIngress",
+        "RevokeSecurityGroupEgress",
+        "CreateSecurityGroup",
+        "DeleteSecurityGroup"
+      ]
+    }
+  })
+}
+
+# DLQ for delivery failures (14 day retention)
+resource "aws_sqs_queue" "sg_dlq" {
+  name                      = "${var.name_prefix}-dlq"
+  message_retention_seconds = 1209600
+}
+
+# Route to SNS with input transformer for human-readable alerts
+resource "aws_cloudwatch_event_target" "sg_to_sns" {
+  rule      = aws_cloudwatch_event_rule.sg_modifications.name
+  target_id = "SNSTarget"
+  arn       = aws_sns_topic.sg_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.sg_dlq.arn
+  }
+
+  input_transformer {
+    input_paths = {
+      time      = "$.time"
+      account   = "$.account"
+      region    = "$.detail.awsRegion"
+      eventName = "$.detail.eventName"
+      actor     = "$.detail.userIdentity.arn"
+      sourceIp  = "$.detail.sourceIPAddress"
+      groupId   = "$.detail.requestParameters.groupId"
+    }
+
+    input_template = <<-EOT
+"ALERT: Security Group Modified (T1562.007)
+time=<time>
+account=<account> region=<region>
+event=<eventName>
+actor=<actor>
+source_ip=<sourceIp>
+security_group=<groupId>"
+EOT
   }
 }
 
-# Step 3: Create alarm for security group modifications
-resource "aws_cloudwatch_metric_alarm" "sg_modification_alert" {
-  alarm_name          = "UnauthorisedSecurityGroupModification"
-  alarm_description   = "Alert on security group modifications that may bypass firewall controls"
-  metric_name         = "SecurityGroupModifications"
-  namespace           = "Security/Firewall"
-  statistic           = "Sum"
-  period              = 300
-  threshold           = 5
-  comparison_operator = "GreaterThanThreshold"
-  evaluation_periods  = 1
-  treat_missing_data  = "notBreaching"
-  alarm_actions       = [aws_sns_topic.sg_alerts.arn]
+# SNS topic policy with scoped conditions
+resource "aws_sns_topic_policy" "allow_eventbridge_publish" {
+  arn = aws_sns_topic.sg_alerts.arn
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowEventBridgePublishScoped"
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.sg_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.sg_modifications.arn
+        }
+      }
+    }]
+  })
+}
+
+# Allow EventBridge to send to DLQ
+resource "aws_sqs_queue_policy" "sg_dlq" {
+  queue_url = aws_sqs_queue.sg_dlq.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.sg_dlq.arn
+    }]
+  })
+}
+
+output "alert_topic_arn" {
+  description = "SNS topic for security group alerts"
+  value       = aws_sns_topic.sg_alerts.arn
+}
+
+output "event_rule_arn" {
+  description = "EventBridge rule ARN"
+  value       = aws_cloudwatch_event_rule.sg_modifications.arn
+}
+
+output "dlq_url" {
+  description = "Dead letter queue URL for failed deliveries"
+  value       = aws_sqs_queue.sg_dlq.url
 }""",
                 alert_severity="high",
                 alert_title="Unauthorised Security Group Modification Detected",
@@ -197,12 +373,12 @@ resource "aws_cloudwatch_metric_alarm" "sg_modification_alert" {
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Filter for authorised security principals or exclude known maintenance windows",
-            detection_coverage="80% - covers CloudTrail-logged security group modifications",
-            evasion_considerations="Adversaries with CloudTrail logging disabled or using compromised privileged accounts may evade detection",
+            detection_coverage="95% - catches all security group modifications via CloudTrail",
+            evasion_considerations="Cannot evade if CloudTrail is enabled",
             implementation_effort=EffortLevel.LOW,
-            implementation_time="30-60 minutes",
-            estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled with CloudWatch Logs integration"],
+            implementation_time="20 minutes",
+            estimated_monthly_cost="$1-3",
+            prerequisites=["CloudTrail enabled"],
         ),
         DetectionStrategy(
             strategy_id="t1562-007-aws-nacl-modify",
