@@ -21,7 +21,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.config import get_settings
 from app.core.database import get_db
-from app.core.security import AuthContext, get_auth_context, require_role
+from app.core.security import AuthContext, get_auth_context, require_role, require_scope
 from app.models.user import (
     OrganizationMember,
     UserRole,
@@ -30,6 +30,8 @@ from app.models.user import (
     AuditLogAction,
 )
 from app.services.auth_service import AuthService
+from app.models.user import User
+from app.api.routes.auth import get_current_user
 
 logger = structlog.get_logger()
 settings = get_settings()
@@ -127,12 +129,19 @@ async def log_team_action(
     db.add(log)
 
 
-@router.get("/members", response_model=list[MemberResponse])
+@router.get(
+    "/members",
+    response_model=list[MemberResponse],
+    dependencies=[Depends(require_scope("read:teams"))],
+)
 async def list_members(
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
-    """List all members of the current organization."""
+    """List all members of the current organization.
+
+    API keys require 'read:teams' scope.
+    """
     if not auth.organization_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -392,10 +401,14 @@ async def cancel_invite(
 async def accept_invite(
     request: Request,
     body: AcceptInviteRequest,
-    auth: AuthContext = Depends(get_auth_context),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Accept an organization invite."""
+    """Accept an organization invite.
+
+    This endpoint requires user authentication (not API keys) because
+    invites are tied to specific user email addresses.
+    """
     auth_service = AuthService(db)
     now = datetime.now(timezone.utc)
 
@@ -405,7 +418,7 @@ async def accept_invite(
         .options(selectinload(OrganizationMember.organization))
         .where(
             and_(
-                OrganizationMember.invited_email == auth.user.email,
+                OrganizationMember.invited_email == current_user.email,
                 OrganizationMember.status == MembershipStatus.PENDING,
                 OrganizationMember.invite_expires_at > now,
             )
@@ -427,11 +440,11 @@ async def accept_invite(
         )
 
     # H5: Additional validation - if invite has a user_id set, verify it matches
-    if invite.user_id and invite.user_id != auth.user.id:
+    if invite.user_id and invite.user_id != current_user.id:
         logger.warning(
             "invite_user_mismatch",
             invite_user_id=str(invite.user_id),
-            current_user_id=str(auth.user.id),
+            current_user_id=str(current_user.id),
         )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -439,7 +452,7 @@ async def accept_invite(
         )
 
     # Accept the invite
-    invite.user_id = auth.user.id
+    invite.user_id = current_user.id
     invite.status = MembershipStatus.ACTIVE
     invite.joined_at = now
     invite.invite_token = None
@@ -448,7 +461,7 @@ async def accept_invite(
     # Log the action
     await log_team_action(
         db=db,
-        user_id=auth.user.id,
+        user_id=current_user.id,
         org_id=invite.organization_id,
         action=AuditLogAction.MEMBER_JOINED,
         details={
@@ -462,10 +475,10 @@ async def accept_invite(
 
     return MemberResponse(
         id=invite.id,
-        user_id=auth.user.id,
-        email=auth.user.email,
-        full_name=auth.user.full_name,
-        avatar_url=auth.user.avatar_url,
+        user_id=current_user.id,
+        email=current_user.email,
+        full_name=current_user.full_name,
+        avatar_url=current_user.avatar_url,
         role=invite.role,
         status=MembershipStatus.ACTIVE,
         joined_at=invite.joined_at,
