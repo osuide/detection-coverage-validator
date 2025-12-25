@@ -61,9 +61,12 @@ TEMPLATE = RemediationTemplate(
         DetectionStrategy(
             strategy_id="t1609-aws-ecs-exec",
             name="AWS ECS Exec Command Detection",
-            description="Detect ECS exec commands executed in containers.",
-            detection_type=DetectionType.CLOUDWATCH_QUERY,
-            aws_service="cloudwatch",
+            description=(
+                "Detect ECS exec commands via EventBridge (CloudTrail integration). "
+                "Near real-time detection with human-readable alerts and reliable delivery."
+            ),
+            detection_type=DetectionType.EVENTBRIDGE_RULE,
+            aws_service="eventbridge",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
                 query="""fields @timestamp, eventName, userIdentity.arn, requestParameters.cluster, requestParameters.task, requestParameters.container
@@ -71,84 +74,150 @@ TEMPLATE = RemediationTemplate(
 | filter eventName = "ExecuteCommand"
 | sort @timestamp desc""",
                 cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
-Description: Detect ECS container exec commands
+Description: |
+  Detect ECS container exec commands (T1609)
+  Uses EventBridge for near real-time detection via CloudTrail
 
 Parameters:
-  CloudTrailLogGroup:
-    Type: String
-    Description: CloudTrail log group name
   AlertEmail:
     Type: String
-    Description: Email for alerts
+    Description: Email for alerts (requires SNS subscription confirmation)
 
 Resources:
-  AlertTopic:
+  # SNS topic for alerts
+  ECSExecAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      TopicName: t1609-ecs-exec-alerts
       KmsMasterKeyId: alias/aws/sns
       DisplayName: ECS Exec Alerts
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
-  # Metric filter for ECS exec commands
-  ExecFilter:
-    Type: AWS::Logs::MetricFilter
+  # DLQ for delivery failures
+  ECSExecDLQ:
+    Type: AWS::SQS::Queue
     Properties:
-      LogGroupName: !Ref CloudTrailLogGroup
-      FilterPattern: '{ $.eventSource = "ecs.amazonaws.com" && $.eventName = "ExecuteCommand" }'
-      MetricTransformations:
-        - MetricName: ECSExecCommands
-          MetricNamespace: Security/Containers
-          MetricValue: "1"
-          DefaultValue: 0
+      QueueName: t1609-ecs-exec-dlq
+      MessageRetentionPeriod: 1209600  # 14 days
 
-  # Alarm for exec commands
-  ExecAlarm:
-    Type: AWS::CloudWatch::Alarm
+  # EventBridge rule: detect ECS ExecuteCommand via CloudTrail
+  ECSExecRule:
+    Type: AWS::Events::Rule
     Properties:
-      AlarmName: ECS-Exec-Command-Alert
-      AlarmDescription: Alert on ECS container exec commands
-      MetricName: ECSExecCommands
-      Namespace: Security/Containers
-      Statistic: Sum
-      Period: 300
-      Threshold: 0
-      ComparisonOperator: GreaterThanThreshold
-      EvaluationPeriods: 1
-      AlarmActions:
-        - !Ref AlertTopic
-      TreatMissingData: notBreaching
+      Name: t1609-ecs-executecommand
+      Description: Detect ECS Exec (ExecuteCommand) via CloudTrail (T1609)
+      EventPattern:
+        source:
+          - aws.ecs
+        detail-type:
+          - AWS API Call via CloudTrail
+        detail:
+          eventSource:
+            - ecs.amazonaws.com
+          eventName:
+            - ExecuteCommand
+      State: ENABLED
+      Targets:
+        - Id: SNSTarget
+          Arn: !Ref ECSExecAlertTopic
+          DeadLetterConfig:
+            Arn: !GetAtt ECSExecDLQ.Arn
+          RetryPolicy:
+            MaximumEventAgeInSeconds: 3600
+            MaximumRetryAttempts: 8
+          InputTransformer:
+            InputPathsMap:
+              time: $.time
+              account: $.account
+              region: $.detail.awsRegion
+              actor: $.detail.userIdentity.arn
+              srcip: $.detail.sourceIPAddress
+              useragent: $.detail.userAgent
+              cluster: $.detail.requestParameters.cluster
+              task: $.detail.requestParameters.task
+              container: $.detail.requestParameters.container
+              command: $.detail.requestParameters.command
+            InputTemplate: |
+              "ALERT: ECS Exec detected (T1609)
+              time=<time>
+              account=<account> region=<region>
+              actor=<actor>
+              source_ip=<srcip>
+              cluster=<cluster>
+              task=<task>
+              container=<container>
+              command=<command>
+              user_agent=<useragent>"
 
-  TopicPolicy:
+  # SNS topic policy with scoped conditions
+  ECSExecTopicPolicy:
     Type: AWS::SNS::TopicPolicy
     Properties:
       Topics:
-        - !Ref AlertTopic
+        - !Ref ECSExecAlertTopic
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowEventBridgePublishScoped
+            Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref ECSExecAlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt ECSExecRule.Arn
+
+  # Allow EventBridge to send to DLQ
+  ECSExecDLQPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref ECSExecDLQ
       PolicyDocument:
         Statement:
           - Effect: Allow
             Principal:
-              Service: cloudwatch.amazonaws.com
-            Action: sns:Publish
-            Resource: !Ref AlertTopic""",
-                terraform_template="""# Detect ECS container exec commands
+              Service: events.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt ECSExecDLQ.Arn
 
-variable "cloudtrail_log_group" {
-  description = "CloudTrail log group name"
+Outputs:
+  AlertTopicArn:
+    Description: SNS topic for ECS Exec alerts
+    Value: !Ref ECSExecAlertTopic
+  EventRuleArn:
+    Description: EventBridge rule ARN
+    Value: !GetAtt ECSExecRule.Arn
+  DLQUrl:
+    Description: Dead letter queue URL for failed deliveries
+    Value: !Ref ECSExecDLQ""",
+                terraform_template="""# Detect ECS container exec commands (T1609)
+# Uses EventBridge for near real-time detection via CloudTrail
+# Optimised pattern: fewer moving parts, human-readable alerts, reliable delivery
+
+variable "name_prefix" {
   type        = string
+  default     = "t1609-ecs-exec"
+  description = "Prefix for resource names"
 }
 
 variable "alert_email" {
-  description = "Email for security alerts"
   type        = string
+  description = "Email for security alerts (SNS subscription confirmation required)"
 }
+
+data "aws_caller_identity" "current" {}
 
 # SNS topic for alerts
 resource "aws_sns_topic" "ecs_exec_alerts" {
-  name         = "ecs-exec-command-alerts"
+  name              = "$${var.name_prefix}-alerts"
+  display_name      = "ECS Exec Alerts"
   kms_master_key_id = "alias/aws/sns"
-  display_name = "ECS Exec Alerts"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -157,46 +226,123 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
-# Metric filter for ECS exec commands
-resource "aws_cloudwatch_log_metric_filter" "ecs_exec" {
-  name           = "ecs-exec-commands"
-  log_group_name = var.cloudtrail_log_group
-  pattern        = "{ $.eventSource = \"ecs.amazonaws.com\" && $.eventName = \"ExecuteCommand\" }"
+# EventBridge rule: detect ECS ExecuteCommand calls via CloudTrail
+resource "aws_cloudwatch_event_rule" "ecs_exec" {
+  name        = "$${var.name_prefix}-executecommand"
+  description = "Detect ECS Exec (ExecuteCommand) via CloudTrail (T1609)"
 
-  metric_transformation {
-    name      = "ECSExecCommands"
-    namespace = "Security/Containers"
-    value     = "1"
-    default_value = 0
+  event_pattern = jsonencode({
+    source        = ["aws.ecs"]
+    "detail-type" = ["AWS API Call via CloudTrail"]
+    detail = {
+      eventSource = ["ecs.amazonaws.com"]
+      eventName   = ["ExecuteCommand"]
+    }
+  })
+}
+
+# DLQ for delivery failures (14 day retention)
+resource "aws_sqs_queue" "ecs_exec_dlq" {
+  name                      = "$${var.name_prefix}-dlq"
+  message_retention_seconds = 1209600
+}
+
+# Route to SNS with input transformer for human-readable alerts
+resource "aws_cloudwatch_event_target" "ecs_exec_to_sns" {
+  rule      = aws_cloudwatch_event_rule.ecs_exec.name
+  target_id = "SNSTarget"
+  arn       = aws_sns_topic.ecs_exec_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.ecs_exec_dlq.arn
+  }
+
+  input_transformer {
+    input_paths = {
+      time      = "$.time"
+      account   = "$.account"
+      region    = "$.detail.awsRegion"
+      actor     = "$.detail.userIdentity.arn"
+      srcip     = "$.detail.sourceIPAddress"
+      useragent = "$.detail.userAgent"
+      cluster   = "$.detail.requestParameters.cluster"
+      task      = "$.detail.requestParameters.task"
+      container = "$.detail.requestParameters.container"
+      command   = "$.detail.requestParameters.command"
+    }
+
+    input_template = <<-EOT
+"ALERT: ECS Exec detected (T1609)
+time=<time>
+account=<account> region=<region>
+actor=<actor>
+source_ip=<srcip>
+cluster=<cluster>
+task=<task>
+container=<container>
+command=<command>
+user_agent=<useragent>"
+EOT
   }
 }
 
-# Alarm for exec commands
-resource "aws_cloudwatch_metric_alarm" "ecs_exec" {
-  alarm_name          = "ecs-exec-command-alert"
-  alarm_description   = "Alert on ECS container exec commands"
-  comparison_operator = "GreaterThanThreshold"
-  evaluation_periods  = 1
-  metric_name         = "ECSExecCommands"
-  namespace           = "Security/Containers"
-  period              = 300
-  statistic           = "Sum"
-  threshold           = 0
-  treat_missing_data  = "notBreaching"
-  alarm_actions       = [aws_sns_topic.ecs_exec_alerts.arn]
+# SNS topic policy with scoped conditions for least privilege
+resource "aws_sns_topic_policy" "allow_eventbridge_publish" {
+  arn = aws_sns_topic.ecs_exec_alerts.arn
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowEventBridgePublishScoped"
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.ecs_exec_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.ecs_exec.arn
+        }
+      }
+    }]
+  })
 }
 
-resource "aws_sns_topic_policy" "ecs_exec_alerts" {
-  arn = aws_sns_topic.ecs_exec_alerts.arn
+# Allow EventBridge to send to DLQ
+resource "aws_sqs_queue_policy" "ecs_exec_dlq" {
+  queue_url = aws_sqs_queue.ecs_exec_dlq.id
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
       Effect    = "Allow"
-      Principal = { Service = "cloudwatch.amazonaws.com" }
-      Action    = "SNS:Publish"
-      Resource  = aws_sns_topic.ecs_exec_alerts.arn
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.ecs_exec_dlq.arn
     }]
   })
+}
+
+output "alert_topic_arn" {
+  description = "SNS topic for ECS Exec alerts"
+  value       = aws_sns_topic.ecs_exec_alerts.arn
+}
+
+output "event_rule_arn" {
+  description = "EventBridge rule ARN"
+  value       = aws_cloudwatch_event_rule.ecs_exec.arn
+}
+
+output "dlq_url" {
+  description = "Dead letter queue URL for failed deliveries"
+  value       = aws_sqs_queue.ecs_exec_dlq.url
 }""",
                 alert_severity="high",
                 alert_title="ECS Container Exec Command Executed",
@@ -218,12 +364,15 @@ resource "aws_sns_topic_policy" "ecs_exec_alerts" {
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist authorised DevOps roles and scheduled maintenance windows",
-            detection_coverage="95% - captures all ECS exec commands",
+            detection_coverage="95% - captures all ECS exec commands in near real-time",
             evasion_considerations="Cannot evade if using ECS exec; attacker may use SSH instead",
             implementation_effort=EffortLevel.LOW,
-            implementation_time="30 minutes",
-            estimated_monthly_cost="$2-5",
-            prerequisites=["CloudTrail enabled", "ECS exec enabled"],
+            implementation_time="20 minutes",
+            estimated_monthly_cost="$1-3 (EventBridge + SNS, no log ingestion)",
+            prerequisites=[
+                "CloudTrail enabled (management events)",
+                "ECS exec enabled on cluster",
+            ],
         ),
         DetectionStrategy(
             strategy_id="t1609-gcp-gke-exec",

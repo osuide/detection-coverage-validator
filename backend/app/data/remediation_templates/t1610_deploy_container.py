@@ -61,9 +61,12 @@ TEMPLATE = RemediationTemplate(
         DetectionStrategy(
             strategy_id="t1610-aws-ecs",
             name="AWS ECS Container Deployment Detection",
-            description="Detect container deployments in ECS clusters, focusing on suspicious task definitions and privileged containers.",
-            detection_type=DetectionType.CLOUDWATCH_QUERY,
-            aws_service="cloudwatch",
+            description=(
+                "Detect ECS container deployments via EventBridge (CloudTrail integration). "
+                "Near real-time detection of RunTask and RegisterTaskDefinition events."
+            ),
+            detection_type=DetectionType.EVENTBRIDGE_RULE,
+            aws_service="eventbridge",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
                 query="""fields @timestamp, eventName, userIdentity.principalId, requestParameters.taskDefinition
@@ -72,56 +75,136 @@ TEMPLATE = RemediationTemplate(
 | filter requestParameters.containerDefinitions.0.privileged = true or requestParameters.taskDefinition like /unknown/
 | sort @timestamp desc""",
                 cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
-Description: Detect suspicious ECS container deployments
+Description: |
+  Detect ECS container deployments (T1610)
+  Uses EventBridge for near real-time detection via CloudTrail
 
 Parameters:
-  CloudTrailLogGroup:
-    Type: String
-    Description: CloudTrail log group name
   AlertEmail:
     Type: String
-    Description: Email for alerts
+    Description: Email for alerts (requires SNS subscription confirmation)
 
 Resources:
-  AlertTopic:
+  # SNS topic for alerts
+  DeployAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      TopicName: t1610-ecs-deploy-alerts
       KmsMasterKeyId: alias/aws/sns
+      DisplayName: ECS Deployment Alerts
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
-  # Detect container task launches
-  ContainerDeploymentFilter:
-    Type: AWS::Logs::MetricFilter
+  # DLQ for delivery failures
+  DeployDLQ:
+    Type: AWS::SQS::Queue
     Properties:
-      LogGroupName: !Ref CloudTrailLogGroup
-      FilterPattern: '{ ($.eventName = "RunTask") || ($.eventName = "RegisterTaskDefinition") }'
-      MetricTransformations:
-        - MetricName: ContainerDeployments
-          MetricNamespace: Security
-          MetricValue: "1"
+      QueueName: t1610-ecs-deploy-dlq
+      MessageRetentionPeriod: 1209600
 
-  ContainerDeploymentAlarm:
-    Type: AWS::CloudWatch::Alarm
+  # EventBridge rule: detect ECS deployments via CloudTrail
+  ECSDeployRule:
+    Type: AWS::Events::Rule
     Properties:
-      AlarmName: SuspiciousContainerDeployment
-      MetricName: ContainerDeployments
-      Namespace: Security
-      Statistic: Sum
-      Period: 300
-      Threshold: 5
-      ComparisonOperator: GreaterThanThreshold
-      EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]""",
-                terraform_template="""# Detect suspicious ECS container deployments
+      Name: t1610-ecs-container-deploy
+      Description: Detect ECS container deployments (T1610)
+      EventPattern:
+        source:
+          - aws.ecs
+        detail-type:
+          - AWS API Call via CloudTrail
+        detail:
+          eventSource:
+            - ecs.amazonaws.com
+          eventName:
+            - RunTask
+            - RegisterTaskDefinition
+      State: ENABLED
+      Targets:
+        - Id: SNSTarget
+          Arn: !Ref DeployAlertTopic
+          DeadLetterConfig:
+            Arn: !GetAtt DeployDLQ.Arn
+          RetryPolicy:
+            MaximumEventAgeInSeconds: 3600
+            MaximumRetryAttempts: 8
+          InputTransformer:
+            InputPathsMap:
+              time: $.time
+              account: $.account
+              region: $.detail.awsRegion
+              actor: $.detail.userIdentity.arn
+              event: $.detail.eventName
+              cluster: $.detail.requestParameters.cluster
+              taskdef: $.detail.requestParameters.taskDefinition
+            InputTemplate: |
+              "ALERT: ECS Container Deployment (T1610)
+              time=<time>
+              account=<account> region=<region>
+              actor=<actor>
+              event=<event>
+              cluster=<cluster>
+              task_definition=<taskdef>"
 
-variable "cloudtrail_log_group" { type = string }
-variable "alert_email" { type = string }
+  # SNS topic policy with scoped conditions
+  DeployTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref DeployAlertTopic
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowEventBridgePublishScoped
+            Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref DeployAlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt ECSDeployRule.Arn
+
+  DeployDLQPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref DeployDLQ
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt DeployDLQ.Arn
+
+Outputs:
+  AlertTopicArn:
+    Value: !Ref DeployAlertTopic
+  EventRuleArn:
+    Value: !GetAtt ECSDeployRule.Arn""",
+                terraform_template="""# Detect ECS container deployments (T1610)
+# Uses EventBridge for near real-time detection via CloudTrail
+
+variable "name_prefix" {
+  type        = string
+  default     = "t1610-ecs-deploy"
+}
+
+variable "alert_email" {
+  type        = string
+  description = "Email for security alerts"
+}
+
+data "aws_caller_identity" "current" {}
 
 resource "aws_sns_topic" "alerts" {
-  name = "container-deployment-alerts"
+  name              = "$${var.name_prefix}-alerts"
   kms_master_key_id = "alias/aws/sns"
+  display_name      = "ECS Deployment Alerts"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -130,31 +213,106 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
-# Metric filter for container deployments
-resource "aws_cloudwatch_log_metric_filter" "container_deploy" {
-  name           = "container-deployments"
-  log_group_name = var.cloudtrail_log_group
-  pattern        = "{ ($.eventName = RunTask) || ($.eventName = RegisterTaskDefinition) }"
+# EventBridge rule: detect ECS deployments via CloudTrail
+resource "aws_cloudwatch_event_rule" "ecs_deploy" {
+  name        = "$${var.name_prefix}-rule"
+  description = "Detect ECS container deployments (T1610)"
 
-  metric_transformation {
-    name      = "ContainerDeployments"
-    namespace = "Security"
-    value     = "1"
+  event_pattern = jsonencode({
+    source        = ["aws.ecs"]
+    "detail-type" = ["AWS API Call via CloudTrail"]
+    detail = {
+      eventSource = ["ecs.amazonaws.com"]
+      eventName   = ["RunTask", "RegisterTaskDefinition"]
+    }
+  })
+}
+
+resource "aws_sqs_queue" "dlq" {
+  name                      = "$${var.name_prefix}-dlq"
+  message_retention_seconds = 1209600
+}
+
+resource "aws_cloudwatch_event_target" "sns" {
+  rule      = aws_cloudwatch_event_rule.ecs_deploy.name
+  target_id = "SNSTarget"
+  arn       = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
+
+  input_transformer {
+    input_paths = {
+      time    = "$.time"
+      account = "$.account"
+      region  = "$.detail.awsRegion"
+      actor   = "$.detail.userIdentity.arn"
+      event   = "$.detail.eventName"
+      cluster = "$.detail.requestParameters.cluster"
+      taskdef = "$.detail.requestParameters.taskDefinition"
+    }
+
+    input_template = <<-EOT
+"ALERT: ECS Container Deployment (T1610)
+time=<time>
+account=<account> region=<region>
+actor=<actor>
+event=<event>
+cluster=<cluster>
+task_definition=<taskdef>"
+EOT
   }
 }
 
-# Alert on suspicious deployment activity
-resource "aws_cloudwatch_metric_alarm" "container_deploy" {
-  alarm_name          = "SuspiciousContainerDeployment"
-  comparison_operator = "GreaterThanThreshold"
-  evaluation_periods  = 1
-  metric_name         = "ContainerDeployments"
-  namespace           = "Security"
-  period              = 300
-  statistic           = "Sum"
-  threshold           = 5
-  alarm_actions       = [aws_sns_topic.alerts.arn]
-  alarm_description   = "Detects suspicious container deployment activity"
+resource "aws_sns_topic_policy" "alerts" {
+  arn = aws_sns_topic.alerts.arn
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowEventBridgePublishScoped"
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.ecs_deploy.arn
+        }
+      }
+    }]
+  })
+}
+
+resource "aws_sqs_queue_policy" "dlq" {
+  queue_url = aws_sqs_queue.dlq.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.dlq.arn
+    }]
+  })
+}
+
+output "alert_topic_arn" {
+  value = aws_sns_topic.alerts.arn
+}
+
+output "event_rule_arn" {
+  value = aws_cloudwatch_event_rule.ecs_deploy.arn
 }""",
                 alert_severity="high",
                 alert_title="Suspicious Container Deployment Detected",
@@ -178,12 +336,15 @@ resource "aws_cloudwatch_metric_alarm" "container_deploy" {
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known CI/CD pipelines and authorised deployment roles",
-            detection_coverage="80% - catches ECS deployments",
-            evasion_considerations="Attackers may use stolen authorised credentials or deploy slowly to avoid rate-based detection",
-            implementation_effort=EffortLevel.MEDIUM,
-            implementation_time="1-2 hours",
-            estimated_monthly_cost="$5-15",
-            prerequisites=["CloudTrail enabled", "CloudWatch Logs Insights"],
+            detection_coverage="95% - near real-time ECS deployment detection",
+            evasion_considerations="Cannot evade CloudTrail; attackers may use stolen authorised credentials",
+            implementation_effort=EffortLevel.LOW,
+            implementation_time="20 minutes",
+            estimated_monthly_cost="$1-3 (EventBridge + SNS, no log ingestion)",
+            prerequisites=[
+                "CloudTrail enabled (management events)",
+                "ECS cluster configured",
+            ],
         ),
         DetectionStrategy(
             strategy_id="t1610-aws-eks",
