@@ -382,16 +382,22 @@ async def confirm_domain_verification(
 
     # In production, this would actually check DNS records
     # For development, we'll auto-verify if the domain ends with .test or .local
-    # or if a special header is present
-    is_dev = domain.domain.endswith((".test", ".local", ".example"))
-    force_verify = request.headers.get("X-Force-Verify") == "true"
+    # or if a special header is present (ONLY in development environment)
+    is_dev_domain = domain.domain.endswith((".test", ".local", ".example"))
 
-    if not is_dev and not force_verify:
+    # Security: X-Force-Verify header only works in development environment
+    # This prevents attackers from bypassing domain verification in production
+    is_dev_environment = settings.environment == "development"
+    force_verify = (
+        is_dev_environment and request.headers.get("X-Force-Verify") == "true"
+    )
+
+    if not is_dev_domain and not force_verify:
         # TODO: Implement actual DNS verification
         # For now, return instructions
         return {
             "verified": False,
-            "message": "DNS verification not yet implemented. Use X-Force-Verify header in development.",
+            "message": "DNS verification not yet implemented. Add a TXT record to verify domain ownership.",
         }
 
     # Mark as verified

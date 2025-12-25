@@ -359,11 +359,13 @@ async def _authenticate_jwt(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # H1: Validate token type - reject admin tokens in user context
+    # H1: Validate token type - only accept access tokens
     token_type = payload.get("type")
     if token_type not in ("access", None):
         # Only accept "access" tokens (or legacy tokens without type)
-        # Admin tokens (type="admin") must use admin-specific endpoints
+        # Reject:
+        # - "admin" tokens (must use admin-specific endpoints)
+        # - "mfa_pending" tokens (can only be used at /login/mfa endpoint)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token type for this endpoint",

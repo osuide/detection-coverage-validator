@@ -98,6 +98,25 @@ class AuthService:
         return secrets.token_urlsafe(48)
 
     @staticmethod
+    def generate_mfa_pending_token(user_id: UUID, expires_minutes: int = 5) -> str:
+        """Generate a short-lived token for MFA verification flow.
+
+        Security: This token has type='mfa_pending' which is rejected by the
+        auth middleware. It can ONLY be used at the /login/mfa endpoint to
+        complete MFA verification. This prevents MFA bypass attacks.
+        """
+        expire = datetime.now(timezone.utc) + timedelta(minutes=expires_minutes)
+        payload = {
+            "sub": str(user_id),
+            "exp": expire,
+            "iat": datetime.now(timezone.utc),
+            "type": "mfa_pending",  # NOT 'access' - rejected by auth middleware
+        }
+        return jwt.encode(
+            payload, settings.secret_key.get_secret_value(), algorithm="HS256"
+        )
+
+    @staticmethod
     def decode_token(token: str) -> Optional[dict]:
         """Decode and validate a JWT token."""
         try:

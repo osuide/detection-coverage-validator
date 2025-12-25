@@ -21,6 +21,7 @@ from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.security import AuthContext, get_auth_context
 from app.models.user import User, Organization, OrganizationMember, MembershipStatus
+from app.models.security import OrganizationSecuritySettings
 from app.schemas.auth import (
     LoginRequest,
     LoginResponse,
@@ -302,10 +303,29 @@ async def login(
             detail=error or "Invalid credentials",
         )
 
-    # Check if MFA is required
+    # Get user's organizations first (needed for MFA policy check)
+    organizations = await auth_service.get_user_organizations(user.id)
+    org = organizations[0] if organizations else None
+
+    # Check if organization requires MFA
+    org_requires_mfa = False
+    if org:
+        result = await db.execute(
+            select(OrganizationSecuritySettings).where(
+                OrganizationSecuritySettings.organization_id == org.id
+            )
+        )
+        org_security = result.scalar_one_or_none()
+        if org_security and org_security.require_mfa:
+            org_requires_mfa = True
+
+    # Check if MFA is required (user has it enabled OR org requires it)
     if user.mfa_enabled:
-        # Generate a short-lived MFA token
-        mfa_token = auth_service.generate_access_token(user.id, expires_minutes=5)
+        # User has MFA set up - require verification
+        # Generate a short-lived MFA pending token
+        # Security: Uses type='mfa_pending' which is rejected by auth middleware,
+        # preventing this token from being used as an access token (MFA bypass fix)
+        mfa_token = auth_service.generate_mfa_pending_token(user.id, expires_minutes=5)
         # M4: Don't leak user info before MFA verification - return minimal data
         return LoginResponse(
             access_token="",
@@ -315,10 +335,12 @@ async def login(
             requires_mfa=True,
             mfa_token=mfa_token,
         )
-
-    # Get user's organizations
-    organizations = await auth_service.get_user_organizations(user.id)
-    org = organizations[0] if organizations else None
+    elif org_requires_mfa:
+        # Org requires MFA but user hasn't set it up - block login
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your organisation requires MFA. Please set up MFA before logging in.",
+        )
 
     # Get user's role in the organization
     user_role = None
@@ -373,6 +395,16 @@ async def verify_mfa(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired MFA token",
+        )
+
+    # Security: Validate token type is 'mfa_pending'
+    # This ensures only tokens from the login flow can be used here,
+    # not regular access tokens or other token types
+    token_type = payload.get("type")
+    if token_type != "mfa_pending":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid MFA token type",
         )
 
     user_id = UUID(payload.get("sub"))
