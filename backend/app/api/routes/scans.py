@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.database import get_db
-from app.core.security import AuthContext, get_auth_context
+from app.core.security import AuthContext, get_auth_context, require_scope
 from app.models.scan import Scan, ScanStatus
 from app.models.cloud_account import CloudAccount
 from app.schemas.scan import ScanCreate, ScanResponse, ScanListResponse
@@ -65,14 +65,22 @@ async def list_scans(
     )
 
 
-@router.post("", response_model=ScanResponse, status_code=201)
+@router.post(
+    "",
+    response_model=ScanResponse,
+    status_code=201,
+    dependencies=[Depends(require_scope("write:scans"))],
+)
 async def create_scan(
     scan_in: ScanCreate,
     background_tasks: BackgroundTasks,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
-    """Create and start a new scan job."""
+    """Create and start a new scan job.
+
+    API keys require 'write:scans' scope.
+    """
     # Verify cloud account exists and belongs to user's organization first
     # (before consuming a scan from the limit)
     result = await db.execute(

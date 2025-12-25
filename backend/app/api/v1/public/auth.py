@@ -12,6 +12,7 @@ from app.core.database import get_db_session
 from app.core.rate_limiter import check_api_rate_limit
 from app.models.user import APIKey, Organization
 from app.models.billing import Subscription
+from app.services.auth_service import AuthService
 
 
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
@@ -54,9 +55,14 @@ async def get_api_key_context(
         )
 
     async with get_db_session() as db:
-        # Look up API key
+        # Security: Look up API key by hash, not raw key
+        # API keys are stored as SHA-256 hashes for security
+        key_hash = AuthService.hash_token(api_key)
         result = await db.execute(
-            select(APIKey).where(APIKey.key == api_key, APIKey.is_active.is_(True))
+            select(APIKey).where(
+                APIKey.key_hash == key_hash,
+                APIKey.is_active.is_(True),
+            )
         )
         api_key_record = result.scalar_one_or_none()
 

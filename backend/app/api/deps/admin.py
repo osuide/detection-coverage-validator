@@ -10,20 +10,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.security import decode_token
+from app.core.security import decode_token, get_client_ip
 from app.models.admin import AdminUser, AdminSession, has_permission
 from app.services.admin_auth_service import get_admin_auth_service
 
 # Bearer token security scheme
 bearer_scheme = HTTPBearer(auto_error=False)
-
-
-def get_client_ip(request: Request) -> str:
-    """Get client IP from request."""
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
 
 
 async def get_current_admin(
@@ -84,8 +76,9 @@ async def get_current_admin(
         )
 
     # Validate session
+    # Security: Use centralised get_client_ip which respects trusted proxy settings
     auth_service = get_admin_auth_service(db)
-    ip_address = get_client_ip(request)
+    ip_address = get_client_ip(request) or "unknown"
     user_agent = request.headers.get("User-Agent")
 
     session = await auth_service.validate_session(
