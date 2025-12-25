@@ -27,7 +27,7 @@ export default function TacticHeatmap({ tactics }: TacticHeatmapProps) {
     if (percent >= 70) return 'bg-green-500'
     if (percent >= 40) return 'bg-yellow-500'
     if (percent > 0) return 'bg-orange-500'
-    return 'bg-gray-300'
+    return 'bg-gray-600'
   }
 
   const sortedTactics = [...tactics].sort((a, b) => {
@@ -42,11 +42,11 @@ export default function TacticHeatmap({ tactics }: TacticHeatmapProps) {
     <div className="space-y-2">
       {sortedTactics.map((tactic) => (
         <div key={tactic.tactic_id} className="flex items-center">
-          <div className="w-40 text-sm text-gray-700 truncate" title={tactic.tactic_name}>
+          <div className="w-40 text-sm text-white truncate" title={tactic.tactic_name}>
             {tactic.tactic_name}
           </div>
           <div className="flex-1 mx-3">
-            <div className="h-6 bg-gray-100 rounded-full overflow-hidden">
+            <div className="h-6 bg-gray-700 rounded-full overflow-hidden">
               <div
                 className={`h-full ${getColor(tactic.percent)} transition-all duration-300`}
                 style={{ width: `${tactic.percent}%` }}
@@ -54,10 +54,10 @@ export default function TacticHeatmap({ tactics }: TacticHeatmapProps) {
             </div>
           </div>
           <div className="w-24 text-right">
-            <span className="text-sm font-medium text-gray-900">
+            <span className="text-sm font-medium text-white">
               {tactic.covered}/{tactic.total}
             </span>
-            <span className="text-sm text-gray-500 ml-1">
+            <span className="text-sm text-gray-400 ml-1">
               ({tactic.percent.toFixed(0)}%)
             </span>
           </div>
