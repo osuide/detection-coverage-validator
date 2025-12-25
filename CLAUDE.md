@@ -226,3 +226,35 @@ resource "aws_cognito_identity_provider" "google" {
 **Reference**: https://github.com/hashicorp/terraform-provider-aws/issues/4831
 
 **Location**: `infrastructure/terraform/modules/cognito/main.tf`
+
+## Technical Debt / Backlog
+
+### Remediation Templates
+
+#### LOW: Add `treat_missing_data` to CloudWatch Alarms (152 templates)
+
+**Issue**: 152 remediation templates with CloudWatch metric alarms are missing the `treat_missing_data` setting.
+
+**Impact**: LOW - Alarms show `INSUFFICIENT_DATA` state when no log data is present, instead of staying in `OK` state.
+
+**Fix**: Add to Terraform templates:
+```hcl
+resource "aws_cloudwatch_metric_alarm" "..." {
+  # ... existing config ...
+  treat_missing_data = "notBreaching"
+}
+```
+
+Add to CloudFormation templates:
+```yaml
+Type: AWS::CloudWatch::Alarm
+Properties:
+  # ... existing config ...
+  TreatMissingData: notBreaching
+```
+
+**Templates affected**: Run this to identify:
+```bash
+cd backend/app/data/remediation_templates
+grep -L "treat_missing_data" t*.py | xargs grep -l "aws_cloudwatch_metric_alarm"
+```
