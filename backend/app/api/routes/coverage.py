@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, or_
 
 from app.core.database import get_db
-from app.core.security import AuthContext, get_auth_context
+from app.core.security import AuthContext, get_auth_context, require_scope
 from app.models.coverage import CoverageSnapshot, OrgCoverageSnapshot
 from app.models.cloud_account import CloudAccount
 from app.models.cloud_organization import CloudOrganization
@@ -133,7 +133,11 @@ class DriftSummaryResponse(BaseModel):
     snapshots_last_7d: int
 
 
-@router.get("/{cloud_account_id}", response_model=CoverageResponse)
+@router.get(
+    "/{cloud_account_id}",
+    response_model=CoverageResponse,
+    dependencies=[Depends(require_scope("read:coverage"))],
+)
 async def get_coverage(
     cloud_account_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
@@ -273,7 +277,11 @@ async def get_coverage(
     )
 
 
-@router.get("/{cloud_account_id}/history", response_model=CoverageHistoryResponse)
+@router.get(
+    "/{cloud_account_id}/history",
+    response_model=CoverageHistoryResponse,
+    dependencies=[Depends(require_scope("read:coverage"))],
+)
 async def get_coverage_history(
     cloud_account_id: UUID,
     days: int = Query(30, ge=1, le=365),
@@ -334,7 +342,10 @@ async def get_coverage_history(
     )
 
 
-@router.get("/{cloud_account_id}/techniques")
+@router.get(
+    "/{cloud_account_id}/techniques",
+    dependencies=[Depends(require_scope("read:coverage"))],
+)
 async def get_technique_coverage(
     cloud_account_id: UUID,
     cloud_only: bool = Query(
@@ -437,7 +448,11 @@ async def get_technique_coverage(
     return {"techniques": technique_coverage}
 
 
-@router.post("/{cloud_account_id}/calculate", response_model=CoverageResponse)
+@router.post(
+    "/{cloud_account_id}/calculate",
+    response_model=CoverageResponse,
+    dependencies=[Depends(require_scope("write:coverage"))],
+)
 async def calculate_coverage(
     cloud_account_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
@@ -568,7 +583,11 @@ async def calculate_coverage(
 # Organisation Coverage Endpoints
 
 
-@router.get("/organization/{cloud_organization_id}", response_model=OrgCoverageResponse)
+@router.get(
+    "/organization/{cloud_organization_id}",
+    response_model=OrgCoverageResponse,
+    dependencies=[Depends(require_scope("read:coverage"))],
+)
 async def get_org_coverage(
     cloud_organization_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
@@ -666,6 +685,7 @@ async def get_org_coverage(
 @router.post(
     "/organization/{cloud_organization_id}/calculate",
     response_model=OrgCoverageResponse,
+    dependencies=[Depends(require_scope("write:coverage"))],
 )
 async def calculate_org_coverage(
     cloud_organization_id: UUID,
@@ -751,7 +771,11 @@ async def calculate_org_coverage(
 # Drift Detection Endpoints
 
 
-@router.get("/{cloud_account_id}/drift", response_model=DriftHistoryResponse)
+@router.get(
+    "/{cloud_account_id}/drift",
+    response_model=DriftHistoryResponse,
+    dependencies=[Depends(require_scope("read:coverage"))],
+)
 async def get_drift_history(
     cloud_account_id: UUID,
     days: int = Query(30, ge=1, le=365),
@@ -773,7 +797,10 @@ async def get_drift_history(
     )
 
 
-@router.post("/{cloud_account_id}/drift/snapshot")
+@router.post(
+    "/{cloud_account_id}/drift/snapshot",
+    dependencies=[Depends(require_scope("write:coverage"))],
+)
 async def record_drift_snapshot(
     cloud_account_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
@@ -804,7 +831,11 @@ async def record_drift_snapshot(
     }
 
 
-@router.get("/drift/alerts", response_model=DriftAlertsResponse)
+@router.get(
+    "/drift/alerts",
+    response_model=DriftAlertsResponse,
+    dependencies=[Depends(require_scope("read:coverage"))],
+)
 async def get_drift_alerts(
     cloud_account_id: Optional[UUID] = None,
     acknowledged: Optional[bool] = None,
@@ -827,7 +858,10 @@ async def get_drift_alerts(
     )
 
 
-@router.post("/drift/alerts/{alert_id}/acknowledge")
+@router.post(
+    "/drift/alerts/{alert_id}/acknowledge",
+    dependencies=[Depends(require_scope("write:coverage"))],
+)
 async def acknowledge_drift_alert(
     alert_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
@@ -848,7 +882,11 @@ async def acknowledge_drift_alert(
     return {"message": "Alert acknowledged"}
 
 
-@router.get("/drift/summary", response_model=DriftSummaryResponse)
+@router.get(
+    "/drift/summary",
+    response_model=DriftSummaryResponse,
+    dependencies=[Depends(require_scope("read:coverage"))],
+)
 async def get_drift_summary(
     cloud_account_id: Optional[UUID] = None,
     auth: AuthContext = Depends(get_auth_context),

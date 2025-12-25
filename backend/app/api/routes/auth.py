@@ -19,7 +19,11 @@ from app.api.deps.rate_limit import (
 )
 from app.core.config import get_settings
 from app.core.database import get_db
-from app.core.security import AuthContext, get_auth_context
+from app.core.security import (
+    AuthContext,
+    get_auth_context,
+    get_client_ip as get_secure_client_ip,
+)
 from app.models.user import User, Organization, OrganizationMember, MembershipStatus
 from app.models.security import OrganizationSecuritySettings
 from app.schemas.auth import (
@@ -196,12 +200,12 @@ async def validate_csrf_token(request: Request) -> None:
 
 
 def get_client_ip(request: Request) -> Optional[str]:
-    """Get client IP address from request."""
-    # Check X-Forwarded-For header first (for proxies)
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else None
+    """Get client IP address from request.
+
+    Uses the secure implementation from app.core.security that properly
+    validates trusted proxies before accepting forwarded headers.
+    """
+    return get_secure_client_ip(request)
 
 
 def validate_password_policy(
@@ -330,6 +334,11 @@ async def login(
 
     Returns access and refresh tokens. If MFA is enabled,
     returns requires_mfa=True with a partial mfa_token.
+
+    Enforces organisation security policies:
+    - IP allowlist (if configured)
+    - Allowed authentication methods
+    - MFA requirements
     """
     auth_service = AuthService(db)
     ip_address = get_client_ip(request)
@@ -348,12 +357,13 @@ async def login(
             detail=error or "Invalid credentials",
         )
 
-    # Get user's organizations first (needed for MFA policy check)
+    # Get user's organizations first (needed for security policy checks)
     organizations = await auth_service.get_user_organizations(user.id)
     org = organizations[0] if organizations else None
 
-    # Check if organization requires MFA
+    # Get organisation security settings and enforce policies
     org_requires_mfa = False
+    org_security = None
     if org:
         result = await db.execute(
             select(OrganizationSecuritySettings).where(
@@ -361,8 +371,39 @@ async def login(
             )
         )
         org_security = result.scalar_one_or_none()
-        if org_security and org_security.require_mfa:
-            org_requires_mfa = True
+
+        if org_security:
+            # Enforce IP allowlist (if configured)
+            if org_security.ip_allowlist and ip_address:
+                if not org_security.is_ip_allowed(ip_address):
+                    logger.warning(
+                        "login_blocked_ip_allowlist",
+                        user_id=str(user.id),
+                        ip_address=ip_address,
+                        organization_id=str(org.id),
+                    )
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="Access denied: Your IP address is not allowed by organisation policy",
+                    )
+
+            # Enforce allowed authentication methods
+            if not org_security.is_auth_method_allowed("password"):
+                logger.warning(
+                    "login_blocked_auth_method",
+                    user_id=str(user.id),
+                    auth_method="password",
+                    allowed_methods=org_security.allowed_auth_methods,
+                    organization_id=str(org.id),
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Password authentication is not allowed for this organisation. Please use SSO.",
+                )
+
+            # Check MFA requirement
+            if org_security.require_mfa:
+                org_requires_mfa = True
 
     # Check if MFA is required (user has it enabled OR org requires it)
     if user.mfa_enabled:
@@ -840,7 +881,51 @@ async def reset_password(
     body: ResetPasswordRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    """Reset password using reset token."""
+    """Reset password using reset token.
+
+    Enforces organisation password policy if the user belongs to an organisation
+    with custom password requirements.
+    """
+    auth_service = AuthService(db)
+    ip_address = get_client_ip(request)
+
+    # First, get the user from the token to check their org's password policy
+    # This is done before the HIBP check to ensure org policy takes precedence
+    from datetime import datetime, timezone as tz
+
+    token_hash = auth_service.hash_token(body.token)
+    user_result = await db.execute(
+        select(User).where(
+            and_(
+                User.password_reset_token == token_hash,
+                User.password_reset_expires_at > datetime.now(tz.utc),
+            )
+        )
+    )
+    user = user_result.scalar_one_or_none()
+
+    if not user:
+        # Don't reveal if token was invalid vs expired - let auth_service handle it
+        pass
+    else:
+        # Get user's primary organisation security settings for password policy
+        orgs = await auth_service.get_user_organizations(user.id)
+        if orgs:
+            security_result = await db.execute(
+                select(OrganizationSecuritySettings).where(
+                    OrganizationSecuritySettings.organization_id == orgs[0].id
+                )
+            )
+            org_security = security_result.scalar_one_or_none()
+
+            # Validate password against organisation policy
+            policy_error = validate_password_policy(body.password, org_security)
+            if policy_error:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=policy_error,
+                )
+
     # Check if password has been exposed in data breaches (HIBP)
     if settings.hibp_password_check_enabled:
         breach_message = await check_password_breached(body.password)
@@ -849,9 +934,6 @@ async def reset_password(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=breach_message,
             )
-
-    auth_service = AuthService(db)
-    ip_address = get_client_ip(request)
 
     success, error = await auth_service.reset_password(
         token=body.token,

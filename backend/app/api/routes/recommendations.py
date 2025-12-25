@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.database import get_db
-from app.core.security import AuthContext, get_auth_context
+from app.core.security import AuthContext, get_auth_context, require_scope
 from app.models.cloud_account import CloudAccount
 from app.models.coverage import CoverageSnapshot
 from app.services.remediation_service import (
@@ -130,7 +130,11 @@ class ImplementationPlanResponse(BaseModel):
     phases: List[ImplementationPhase]
 
 
-@router.get("/techniques", response_model=List[TechniqueInfo])
+@router.get(
+    "/techniques",
+    response_model=List[TechniqueInfo],
+    dependencies=[Depends(require_scope("read:recommendations"))],
+)
 async def list_available_techniques(
     auth: AuthContext = Depends(get_auth_context),
 ):
@@ -143,7 +147,11 @@ async def list_available_techniques(
     return [TechniqueInfo(**t) for t in techniques]
 
 
-@router.get("/techniques/{technique_id}", response_model=TechniqueRemediationResponse)
+@router.get(
+    "/techniques/{technique_id}",
+    response_model=TechniqueRemediationResponse,
+    dependencies=[Depends(require_scope("read:recommendations"))],
+)
 async def get_technique_remediation(
     technique_id: str,
     db: AsyncSession = Depends(get_db),
@@ -209,6 +217,7 @@ async def get_technique_remediation(
 @router.get(
     "/techniques/{technique_id}/strategies/{strategy_id}",
     response_model=StrategyDetailResponse,
+    dependencies=[Depends(require_scope("read:recommendations"))],
 )
 async def get_strategy_details(
     technique_id: str,
@@ -255,7 +264,11 @@ async def get_strategy_details(
     )
 
 
-@router.get("/by-tactic/{tactic_id}", response_model=List[TechniqueInfo])
+@router.get(
+    "/by-tactic/{tactic_id}",
+    response_model=List[TechniqueInfo],
+    dependencies=[Depends(require_scope("read:recommendations"))],
+)
 async def get_techniques_by_tactic(
     tactic_id: str,
     auth: AuthContext = Depends(get_auth_context),
@@ -267,7 +280,11 @@ async def get_techniques_by_tactic(
     return [TechniqueInfo(**t) for t in techniques]
 
 
-@router.get("/{cloud_account_id}/quick-wins", response_model=List[QuickWin])
+@router.get(
+    "/{cloud_account_id}/quick-wins",
+    response_model=List[QuickWin],
+    dependencies=[Depends(require_scope("read:recommendations"))],
+)
 async def get_quick_wins(
     cloud_account_id: UUID,
     max_hours: float = Query(2.0, description="Maximum implementation time in hours"),
@@ -314,7 +331,11 @@ async def get_quick_wins(
     return [QuickWin(**qw) for qw in quick_wins[:limit]]
 
 
-@router.get("/{cloud_account_id}/plan", response_model=ImplementationPlanResponse)
+@router.get(
+    "/{cloud_account_id}/plan",
+    response_model=ImplementationPlanResponse,
+    dependencies=[Depends(require_scope("read:recommendations"))],
+)
 async def get_implementation_plan(
     cloud_account_id: UUID,
     budget_hours: Optional[float] = Query(

@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.security import AuthContext, get_auth_context
+from app.core.security import AuthContext, get_auth_context, require_scope
 from app.services.analytics_service import AnalyticsService
 
 
@@ -130,7 +130,11 @@ class TacticBreakdownResponse(BaseModel):
 # Endpoints
 
 
-@router.get("/trends", response_model=TrendsResponse)
+@router.get(
+    "/trends",
+    response_model=TrendsResponse,
+    dependencies=[Depends(require_scope("read:analytics"))],
+)
 async def get_coverage_trends(
     cloud_account_id: Optional[UUID] = None,
     days: int = Query(30, ge=1, le=365),
@@ -165,7 +169,11 @@ async def get_coverage_trends(
     )
 
 
-@router.get("/gaps", response_model=GapPrioritizationResponse)
+@router.get(
+    "/gaps",
+    response_model=GapPrioritizationResponse,
+    dependencies=[Depends(require_scope("read:analytics"))],
+)
 async def get_gap_prioritization(
     cloud_account_id: Optional[UUID] = None,
     limit: int = Query(20, ge=1, le=100),
@@ -191,7 +199,11 @@ async def get_gap_prioritization(
     )
 
 
-@router.get("/effectiveness", response_model=EffectivenessResponse)
+@router.get(
+    "/effectiveness",
+    response_model=EffectivenessResponse,
+    dependencies=[Depends(require_scope("read:analytics"))],
+)
 async def get_detection_effectiveness(
     cloud_account_id: Optional[UUID] = None,
     auth: AuthContext = Depends(get_auth_context),
@@ -216,7 +228,11 @@ async def get_detection_effectiveness(
     return EffectivenessResponse(by_type=by_type, summary=summary)
 
 
-@router.get("/recommendations", response_model=RecommendationsResponse)
+@router.get(
+    "/recommendations",
+    response_model=RecommendationsResponse,
+    dependencies=[Depends(require_scope("read:analytics"))],
+)
 async def get_recommendations(
     cloud_account_id: Optional[UUID] = None,
     limit: int = Query(10, ge=1, le=50),
@@ -241,7 +257,11 @@ async def get_recommendations(
     )
 
 
-@router.get("/tactics", response_model=TacticBreakdownResponse)
+@router.get(
+    "/tactics",
+    response_model=TacticBreakdownResponse,
+    dependencies=[Depends(require_scope("read:analytics"))],
+)
 async def get_tactic_breakdown(
     cloud_account_id: Optional[UUID] = None,
     auth: AuthContext = Depends(get_auth_context),
@@ -265,7 +285,10 @@ async def get_tactic_breakdown(
     )
 
 
-@router.get("/summary")
+@router.get(
+    "/summary",
+    dependencies=[Depends(require_scope("read:analytics"))],
+)
 async def get_analytics_summary(
     cloud_account_id: Optional[UUID] = None,
     auth: AuthContext = Depends(get_auth_context),
