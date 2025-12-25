@@ -60,11 +60,154 @@ TEMPLATE = RemediationTemplate(
         often_follows=["T1098", "T1078.004"],
     ),
     detection_strategies=[
+        # =====================================================================
+        # STRATEGY 1: GuardDuty Impact Detection (Recommended)
+        # =====================================================================
+        DetectionStrategy(
+            strategy_id="t1485-001-aws-guardduty",
+            name="AWS GuardDuty S3 Impact Detection",
+            description=(
+                "Leverage GuardDuty's ML-based detection for anomalous S3 deletion patterns. "
+                "Detects unusual bulk deletions and destructive activity. "
+                "See: https://docs.aws.amazon.com/guardduty/latest/ug/guardduty_finding-types-s3.html"
+            ),
+            detection_type=DetectionType.GUARDDUTY,
+            aws_service="guardduty",
+            cloud_provider=CloudProvider.AWS,
+            implementation=DetectionImplementation(
+                guardduty_finding_types=[
+                    "Impact:S3/AnomalousBehavior.Delete",
+                    "Impact:S3/AnomalousBehavior.Permission",
+                    "Impact:S3/AnomalousBehavior.Write",
+                ],
+                terraform_template="""# AWS GuardDuty S3 Impact Detection
+# Detects: Impact:S3/AnomalousBehavior.Delete
+# See: https://docs.aws.amazon.com/guardduty/latest/ug/guardduty_finding-types-s3.html
+
+variable "alert_email" {
+  type        = string
+  description = "Email for impact alerts"
+}
+
+# Step 1: Create encrypted SNS topic
+resource "aws_sns_topic" "impact_alerts" {
+  name              = "guardduty-impact-alerts"
+  kms_master_key_id = "alias/aws/sns"
+}
+
+resource "aws_sns_topic_subscription" "alert_email" {
+  topic_arn = aws_sns_topic.impact_alerts.arn
+  protocol  = "email"
+  endpoint  = var.alert_email
+}
+
+# Step 2: Enable GuardDuty with S3 Protection
+resource "aws_guardduty_detector" "main" {
+  enable = true
+  datasources {
+    s3_logs {
+      enable = true
+    }
+  }
+}
+
+# Step 3: Route Impact findings to SNS
+resource "aws_cloudwatch_event_rule" "impact_findings" {
+  name        = "guardduty-impact-findings"
+  description = "Detect S3 destructive activity via GuardDuty"
+
+  event_pattern = jsonencode({
+    source      = ["aws.guardduty"]
+    detail-type = ["GuardDuty Finding"]
+    detail = {
+      type = [{ prefix = "Impact:S3/" }]
+    }
+  })
+}
+
+resource "aws_cloudwatch_event_target" "to_sns" {
+  rule      = aws_cloudwatch_event_rule.impact_findings.name
+  target_id = "SendToSNS"
+  arn       = aws_sns_topic.impact_alerts.arn
+
+  input_transformer {
+    input_paths = {
+      findingType = "$.detail.type"
+      severity    = "$.detail.severity"
+      bucket      = "$.detail.resource.s3BucketDetails[0].name"
+      principal   = "$.detail.resource.accessKeyDetails.userName"
+      accountId   = "$.account"
+    }
+    input_template = <<-EOF
+      "CRITICAL: GuardDuty S3 Impact Alert"
+      "Type: <findingType>"
+      "Severity: <severity>"
+      "Bucket: <bucket>"
+      "Principal: <principal>"
+      "Account: <accountId>"
+      "Action: Immediately investigate - potential data destruction in progress"
+    EOF
+  }
+}
+
+resource "aws_sns_topic_policy" "allow_eventbridge" {
+  arn = aws_sns_topic.impact_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowEventBridgePublish"
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.impact_alerts.arn
+    }]
+  })
+}""",
+                alert_severity="critical",
+                alert_title="GuardDuty: S3 Destructive Activity Detected",
+                alert_description_template=(
+                    "GuardDuty detected destructive S3 activity: {type}. "
+                    "Bucket {bucket} affected by {principal}."
+                ),
+                investigation_steps=[
+                    "Review the specific GuardDuty finding for full context",
+                    "Identify all objects deleted in the time window",
+                    "Check S3 versioning status and recover deleted versions",
+                    "Verify if lifecycle policies were modified",
+                    "Review the principal's recent activity",
+                ],
+                containment_actions=[
+                    "Immediately revoke the principal's credentials",
+                    "Enable S3 versioning if not already enabled",
+                    "Enable S3 Object Lock on critical buckets",
+                    "Restore objects from versioned copies",
+                    "Review and restrict deletion permissions",
+                ],
+            ),
+            estimated_false_positive_rate=FalsePositiveRate.LOW,
+            false_positive_tuning=(
+                "GuardDuty's ML learns baseline deletion patterns. "
+                "Suppress findings for authorised cleanup automation. "
+                "Use trusted IP lists for known admin systems."
+            ),
+            detection_coverage="90% - ML-based anomaly detection for bulk deletions",
+            evasion_considerations="Very slow deletions over time may blend into baseline",
+            implementation_effort=EffortLevel.LOW,
+            implementation_time="30 minutes",
+            estimated_monthly_cost=(
+                "S3 Protection: ~$0.80 per million S3 events. "
+                "See: https://aws.amazon.com/guardduty/pricing/"
+            ),
+            prerequisites=["CloudTrail S3 data events enabled"],
+        ),
+        # =====================================================================
+        # STRATEGY 2: S3 Lifecycle Policy Modification Detection
+        # =====================================================================
         DetectionStrategy(
             strategy_id="t1485-001-aws-s3-lifecycle",
             name="AWS S3 Lifecycle Policy Modification Detection",
             description="Detect unauthorised modifications to S3 bucket lifecycle policies.",
-            detection_type=DetectionType.CLOUDWATCH_QUERY,
+            detection_type=DetectionType.EVENTBRIDGE_RULE,
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
@@ -544,6 +687,7 @@ resource "google_monitoring_alert_policy" "mass_deletion" {
         ),
     ],
     recommended_order=[
+        "t1485-001-aws-guardduty",
         "t1485-001-aws-s3-lifecycle",
         "t1485-001-gcp-storage-lifecycle",
         "t1485-001-aws-s3-mass-deletion",

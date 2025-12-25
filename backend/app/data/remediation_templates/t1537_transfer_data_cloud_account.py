@@ -56,12 +56,158 @@ TEMPLATE = RemediationTemplate(
         often_follows=["T1530", "T1078.004", "T1528"],
     ),
     detection_strategies=[
-        # Strategy 1: AWS - S3 Cross-Account Copy
+        # =====================================================================
+        # STRATEGY 1: GuardDuty S3 Exfiltration Detection (Recommended)
+        # =====================================================================
+        DetectionStrategy(
+            strategy_id="t1537-aws-guardduty",
+            name="AWS GuardDuty S3 Exfiltration Detection",
+            description=(
+                "Leverage GuardDuty's ML-based detection for S3 exfiltration patterns. "
+                "Detects anomalous S3 access, unusual data transfer volumes, and cross-account activity. "
+                "See: https://docs.aws.amazon.com/guardduty/latest/ug/guardduty_finding-types-s3.html"
+            ),
+            detection_type=DetectionType.GUARDDUTY,
+            aws_service="guardduty",
+            cloud_provider=CloudProvider.AWS,
+            implementation=DetectionImplementation(
+                guardduty_finding_types=[
+                    "Exfiltration:S3/AnomalousBehavior",
+                    "Exfiltration:S3/MaliciousIPCaller",
+                    "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.OutsideAWS",
+                    "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.InsideAWS",
+                ],
+                terraform_template="""# AWS GuardDuty S3 Exfiltration Detection
+# Detects: Exfiltration:S3/AnomalousBehavior, credential exfiltration
+# See: https://docs.aws.amazon.com/guardduty/latest/ug/guardduty_finding-types-s3.html
+
+variable "alert_email" {
+  type        = string
+  description = "Email for exfiltration alerts"
+}
+
+# Step 1: Create encrypted SNS topic
+resource "aws_sns_topic" "exfil_alerts" {
+  name              = "guardduty-exfiltration-alerts"
+  kms_master_key_id = "alias/aws/sns"
+}
+
+resource "aws_sns_topic_subscription" "alert_email" {
+  topic_arn = aws_sns_topic.exfil_alerts.arn
+  protocol  = "email"
+  endpoint  = var.alert_email
+}
+
+# Step 2: Enable GuardDuty with S3 Protection
+resource "aws_guardduty_detector" "main" {
+  enable = true
+  datasources {
+    s3_logs {
+      enable = true
+    }
+  }
+}
+
+# Step 3: Route exfiltration findings to SNS
+resource "aws_cloudwatch_event_rule" "exfil_findings" {
+  name        = "guardduty-exfiltration-findings"
+  description = "Detect S3 exfiltration and credential theft"
+
+  event_pattern = jsonencode({
+    source      = ["aws.guardduty"]
+    detail-type = ["GuardDuty Finding"]
+    detail = {
+      type = [
+        { prefix = "Exfiltration:S3/" },
+        { prefix = "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration" }
+      ]
+    }
+  })
+}
+
+resource "aws_cloudwatch_event_target" "to_sns" {
+  rule      = aws_cloudwatch_event_rule.exfil_findings.name
+  target_id = "SendToSNS"
+  arn       = aws_sns_topic.exfil_alerts.arn
+
+  input_transformer {
+    input_paths = {
+      findingType = "$.detail.type"
+      severity    = "$.detail.severity"
+      bucket      = "$.detail.resource.s3BucketDetails[0].name"
+      principal   = "$.detail.resource.accessKeyDetails.userName"
+      accountId   = "$.account"
+    }
+    input_template = <<-EOF
+      "CRITICAL: GuardDuty Exfiltration Alert"
+      "Type: <findingType>"
+      "Severity: <severity>"
+      "Bucket: <bucket>"
+      "Principal: <principal>"
+      "Account: <accountId>"
+      "Action: Immediately investigate data transfer activity"
+    EOF
+  }
+}
+
+resource "aws_sns_topic_policy" "allow_eventbridge" {
+  arn = aws_sns_topic.exfil_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowEventBridgePublish"
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.exfil_alerts.arn
+    }]
+  })
+}""",
+                alert_severity="critical",
+                alert_title="GuardDuty: S3 Data Exfiltration Detected",
+                alert_description_template=(
+                    "GuardDuty detected S3 exfiltration activity: {type}. "
+                    "Bucket {bucket} accessed by {principal}."
+                ),
+                investigation_steps=[
+                    "Review the specific GuardDuty finding for full context",
+                    "Identify all S3 objects accessed in the time window",
+                    "Check for cross-account data transfers",
+                    "Verify if credentials were exfiltrated from EC2",
+                    "Review S3 access logs for data volume transferred",
+                ],
+                containment_actions=[
+                    "Revoke credentials used for the exfiltration",
+                    "Enable S3 Block Public Access immediately",
+                    "Review and remove cross-account bucket policies",
+                    "Enable S3 Object Lock on critical buckets",
+                    "Check for compromised EC2 instances",
+                ],
+            ),
+            estimated_false_positive_rate=FalsePositiveRate.LOW,
+            false_positive_tuning=(
+                "GuardDuty's ML learns baseline S3 access patterns over 7-14 days. "
+                "Use trusted IP lists for known data transfer partners. "
+                "Suppress findings for authorised backup/DR accounts."
+            ),
+            detection_coverage="90% - ML-based anomaly detection",
+            evasion_considerations="Very slow exfiltration may blend into baseline",
+            implementation_effort=EffortLevel.LOW,
+            implementation_time="30 minutes",
+            estimated_monthly_cost=(
+                "S3 Protection: ~$0.80 per million S3 events. "
+                "See: https://aws.amazon.com/guardduty/pricing/"
+            ),
+            prerequisites=["CloudTrail S3 data events enabled"],
+        ),
+        # =====================================================================
+        # STRATEGY 2: AWS - S3 Cross-Account Copy
+        # =====================================================================
         DetectionStrategy(
             strategy_id="t1537-aws-s3-crossaccount",
             name="S3 Cross-Account Data Transfer",
             description="Detect S3 data copied or shared to external AWS accounts.",
-            detection_type=DetectionType.CLOUDWATCH_QUERY,
+            detection_type=DetectionType.EVENTBRIDGE_RULE,
             aws_service="cloudwatch",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
@@ -496,6 +642,7 @@ resource "google_monitoring_alert_policy" "image_share" {
         ),
     ],
     recommended_order=[
+        "t1537-aws-guardduty",
         "t1537-aws-snapshot",
         "t1537-aws-s3-crossaccount",
         "t1537-gcp-image",
