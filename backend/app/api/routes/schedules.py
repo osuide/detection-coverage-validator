@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.database import get_db
-from app.core.security import AuthContext, get_auth_context
+from app.core.security import AuthContext, get_auth_context, require_scope
 from app.models.schedule import ScanSchedule
 from app.models.cloud_account import CloudAccount
 from app.schemas.schedule import (
@@ -72,13 +72,21 @@ async def list_schedules(
     )
 
 
-@router.post("", response_model=ScheduleResponse, status_code=201)
+@router.post(
+    "",
+    response_model=ScheduleResponse,
+    status_code=201,
+    dependencies=[Depends(require_scope("write:schedules"))],
+)
 async def create_schedule(
     schedule_in: ScheduleCreate,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
-    """Create a new scan schedule."""
+    """Create a new scan schedule.
+
+    API keys require 'write:schedules' scope.
+    """
     # Verify cloud account exists and belongs to user's organization
     result = await db.execute(
         select(CloudAccount).where(
@@ -165,14 +173,21 @@ async def get_schedule_status(
     )
 
 
-@router.put("/{schedule_id}", response_model=ScheduleResponse)
+@router.put(
+    "/{schedule_id}",
+    response_model=ScheduleResponse,
+    dependencies=[Depends(require_scope("write:schedules"))],
+)
 async def update_schedule(
     schedule_id: UUID,
     schedule_in: ScheduleUpdate,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
-    """Update a schedule."""
+    """Update a schedule.
+
+    API keys require 'write:schedules' scope.
+    """
     result = await db.execute(
         select(ScanSchedule)
         .join(CloudAccount, ScanSchedule.cloud_account_id == CloudAccount.id)
@@ -200,13 +215,20 @@ async def update_schedule(
     return schedule
 
 
-@router.delete("/{schedule_id}", status_code=204)
+@router.delete(
+    "/{schedule_id}",
+    status_code=204,
+    dependencies=[Depends(require_scope("write:schedules"))],
+)
 async def delete_schedule(
     schedule_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
-    """Delete a schedule."""
+    """Delete a schedule.
+
+    API keys require 'write:schedules' scope.
+    """
     result = await db.execute(
         select(ScanSchedule)
         .join(CloudAccount, ScanSchedule.cloud_account_id == CloudAccount.id)

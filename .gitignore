@@ -51,6 +51,9 @@ credentials
 .terraform/
 *.tfstate
 *.tfstate.*
+*.tfplan
+*.tfplan.*
+plan.out
 *.tfvars
 !example.tfvars
 

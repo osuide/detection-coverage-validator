@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.security import AuthContext, get_auth_context
+from app.core.security import AuthContext, get_auth_context, require_scope
 from app.models.custom_detection import (
     CustomDetectionFormat,
     CustomDetectionStatus,
@@ -101,7 +101,11 @@ class MappingSummaryResponse(BaseModel):
 # Endpoints
 
 
-@router.post("", response_model=CustomDetectionResponse)
+@router.post(
+    "",
+    response_model=CustomDetectionResponse,
+    dependencies=[Depends(require_scope("write:detections"))],
+)
 async def create_custom_detection(
     request: CustomDetectionCreate,
     auth: AuthContext = Depends(get_auth_context),
@@ -112,6 +116,8 @@ async def create_custom_detection(
     The detection will be automatically mapped to MITRE ATT&CK techniques
     based on rule content analysis. Supported formats include SIGMA, YARA,
     SPL (Splunk), KQL (Kusto), and CloudWatch.
+
+    API keys require 'write:detections' scope.
     """
     if not auth.organization_id or not auth.user_id:
         raise HTTPException(status_code=401, detail="Authentication required")
@@ -150,7 +156,11 @@ async def create_custom_detection(
     )
 
 
-@router.post("/batch", response_model=BatchUploadResponse)
+@router.post(
+    "/batch",
+    response_model=BatchUploadResponse,
+    dependencies=[Depends(require_scope("write:detections"))],
+)
 async def upload_batch(
     file: UploadFile = File(...),
     format: CustomDetectionFormat = Form(...),
@@ -321,7 +331,11 @@ async def get_custom_detection(
     )
 
 
-@router.patch("/{detection_id}/mapping", response_model=CustomDetectionResponse)
+@router.patch(
+    "/{detection_id}/mapping",
+    response_model=CustomDetectionResponse,
+    dependencies=[Depends(require_scope("write:detections"))],
+)
 async def update_mapping(
     detection_id: UUID,
     request: MappingUpdate,
@@ -331,6 +345,8 @@ async def update_mapping(
     """Manually update the MITRE technique mapping for a detection.
 
     Use this when automatic mapping was unsuccessful or needs refinement.
+
+    API keys require 'write:detections' scope.
     """
     if not auth.organization_id:
         raise HTTPException(status_code=401, detail="Organisation context required")
@@ -367,13 +383,19 @@ async def update_mapping(
     )
 
 
-@router.delete("/{detection_id}")
+@router.delete(
+    "/{detection_id}",
+    dependencies=[Depends(require_scope("write:detections"))],
+)
 async def delete_custom_detection(
     detection_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
-    """Delete a custom detection."""
+    """Delete a custom detection.
+
+    API keys require 'write:detections' scope.
+    """
     if not auth.organization_id:
         raise HTTPException(status_code=401, detail="Organisation context required")
 

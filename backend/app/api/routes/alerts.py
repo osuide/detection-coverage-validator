@@ -10,7 +10,7 @@ from sqlalchemy import select
 import structlog
 
 from app.core.database import get_db
-from app.core.security import AuthContext, get_auth_context
+from app.core.security import AuthContext, get_auth_context, require_scope
 from app.models.alert import AlertConfig, AlertHistory, AlertSeverity
 from app.models.cloud_account import CloudAccount
 from app.schemas.alert import (
@@ -82,13 +82,21 @@ async def list_alerts(
     )
 
 
-@router.post("", response_model=AlertConfigResponse, status_code=201)
+@router.post(
+    "",
+    response_model=AlertConfigResponse,
+    status_code=201,
+    dependencies=[Depends(require_scope("write:alerts"))],
+)
 async def create_alert(
     alert_in: AlertConfigCreate,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
-    """Create a new alert configuration."""
+    """Create a new alert configuration.
+
+    API keys require 'write:alerts' scope.
+    """
     # Verify cloud account exists and belongs to user's organization if specified
     if alert_in.cloud_account_id:
         result = await db.execute(
@@ -141,14 +149,21 @@ async def get_alert(
     return alert
 
 
-@router.put("/{alert_id}", response_model=AlertConfigResponse)
+@router.put(
+    "/{alert_id}",
+    response_model=AlertConfigResponse,
+    dependencies=[Depends(require_scope("write:alerts"))],
+)
 async def update_alert(
     alert_id: UUID,
     alert_in: AlertConfigUpdate,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
-    """Update an alert configuration."""
+    """Update an alert configuration.
+
+    API keys require 'write:alerts' scope.
+    """
     result = await db.execute(
         select(AlertConfig).where(
             AlertConfig.id == alert_id,
@@ -176,13 +191,20 @@ async def update_alert(
     return alert
 
 
-@router.delete("/{alert_id}", status_code=204)
+@router.delete(
+    "/{alert_id}",
+    status_code=204,
+    dependencies=[Depends(require_scope("write:alerts"))],
+)
 async def delete_alert(
     alert_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
-    """Delete an alert configuration."""
+    """Delete an alert configuration.
+
+    API keys require 'write:alerts' scope.
+    """
     result = await db.execute(
         select(AlertConfig).where(
             AlertConfig.id == alert_id,
