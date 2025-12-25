@@ -138,6 +138,8 @@ Resources:
   ProcessInjectionAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Process Injection Alerts
       Subscription:
         - Protocol: email
@@ -228,6 +230,7 @@ resource "aws_guardduty_detector_feature" "runtime_monitoring" {
 # Step 2: Create SNS topic for critical alerts
 resource "aws_sns_topic" "process_injection_alerts" {
   name         = "guardduty-process-injection-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Process Injection Alerts"
 }
 
@@ -389,6 +392,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Process Injection Alerts
       Subscription:
         - Protocol: email
@@ -454,6 +459,7 @@ resource "aws_cloudwatch_metric_alarm" "process_injection" {
 # Step 3: SNS topic for alerts
 resource "aws_sns_topic" "alerts" {
   name         = "process-injection-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Process Injection Alerts"
 }
 
@@ -759,6 +765,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Security Hub Critical Findings
       Subscription:
         - Protocol: email
@@ -852,6 +860,7 @@ resource "aws_cloudwatch_event_target" "sns" {
 
 resource "aws_sns_topic" "alerts" {
   name         = "securityhub-critical-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Security Hub Critical Findings"
 }
 

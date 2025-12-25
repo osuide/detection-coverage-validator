@@ -99,6 +99,8 @@ Resources:
   UserDataAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: EC2 User Data Execution Alerts
       Subscription:
         - Protocol: email
@@ -145,6 +147,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for user data execution alerts
 resource "aws_sns_topic" "user_data_alerts" {
   name         = "ec2-user-data-execution-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "EC2 User Data Execution Alerts"
 }
 
@@ -252,6 +255,8 @@ Resources:
   LambdaAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Suspicious Lambda Execution Alerts
       Subscription:
         - Protocol: email
@@ -298,6 +303,7 @@ variable "alert_email" { type = string }
 # Step 1: Create SNS topic for Lambda execution alerts
 resource "aws_sns_topic" "lambda_alerts" {
   name         = "suspicious-lambda-execution-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Suspicious Lambda Execution Alerts"
 }
 
@@ -404,6 +410,7 @@ variable "alert_email" { type = string }
 # Step 1: Create SNS topic for SSM alerts
 resource "aws_sns_topic" "ssm_alerts" {
   name         = "ssm-command-execution-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "SSM Command Execution Alerts"
 }
 

@@ -100,6 +100,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       TopicName: cloud-storage-upload-alerts
       Subscription:
         - Protocol: email
@@ -160,6 +162,7 @@ variable "alert_email" {
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "alerts" {
   name = "cloud-storage-upload-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -258,6 +261,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       TopicName: cloud-storage-post-alerts
       Subscription:
         - Protocol: email
@@ -318,6 +323,7 @@ variable "alert_email" {
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "alerts" {
   name = "cloud-storage-post-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -408,6 +414,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       TopicName: guardduty-exfil-alerts
       Subscription:
         - Protocol: email
@@ -456,6 +464,7 @@ variable "alert_email" {
 # Step 1: SNS topic for GuardDuty findings
 resource "aws_sns_topic" "alerts" {
   name = "guardduty-exfil-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

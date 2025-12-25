@@ -96,6 +96,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Archive Detection Alerts
       Subscription:
         - Protocol: email
@@ -158,6 +160,7 @@ variable "process_log_group" {
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "archive_alerts" {
   name         = "archive-detection-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Archive Detection Alerts"
 }
 
@@ -275,6 +278,7 @@ variable "file_event_log_group" {
 
 resource "aws_sns_topic" "large_archive_alerts" {
   name = "large-archive-detection"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -388,6 +392,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -443,6 +449,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "s3_archive_alerts" {
   name = "s3-archive-upload-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

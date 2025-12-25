@@ -91,6 +91,8 @@ Resources:
   GuardDutyAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       TopicName: guardduty-masquerading-alerts
       Subscription:
         - Protocol: email
@@ -140,6 +142,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for GuardDuty alerts
 resource "aws_sns_topic" "guardduty_alerts" {
   name = "guardduty-masquerading-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -427,6 +430,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "alerts" {
   name = "ecs-masquerading-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

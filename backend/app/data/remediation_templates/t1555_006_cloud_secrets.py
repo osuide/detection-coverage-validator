@@ -93,6 +93,7 @@ Resources:
   CredentialAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
       TopicName: guardduty-credential-access-alerts
       KmsMasterKeyId: alias/aws/sns
 

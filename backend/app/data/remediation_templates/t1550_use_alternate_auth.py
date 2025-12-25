@@ -75,6 +75,7 @@ variable "alert_email" { type = string }
 
 resource "aws_sns_topic" "alerts" {
   name = "token-reuse-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -165,6 +166,7 @@ resource "aws_guardduty_detector" "main" {
 
 resource "aws_sns_topic" "alerts" {
   name = "guardduty-token-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

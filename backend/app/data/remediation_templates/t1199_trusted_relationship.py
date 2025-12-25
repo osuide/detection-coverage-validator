@@ -95,6 +95,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -151,6 +153,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "partner_alerts" {
   name = "t1199-partner-access-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -266,6 +269,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic
 resource "aws_sns_topic" "delegated_admin_alerts" {
   name = "t1199-delegated-admin-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -373,6 +377,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic
 resource "aws_sns_topic" "support_alerts" {
   name = "t1199-support-access-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

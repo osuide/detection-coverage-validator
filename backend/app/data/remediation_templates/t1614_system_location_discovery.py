@@ -102,6 +102,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Instance Metadata Location Discovery Alerts
       Subscription:
         - Protocol: email
@@ -150,6 +152,7 @@ variable "alert_email" {
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "metadata_location_alerts" {
   name         = "instance-metadata-location-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Instance Metadata Location Discovery Alerts"
 }
 
@@ -260,6 +263,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: System Location Discovery Alerts
       Subscription:
         - Protocol: email
@@ -308,6 +313,7 @@ variable "alert_email" {
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "location_discovery_alerts" {
   name         = "system-location-discovery-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "System Location Discovery Alerts"
 }
 
@@ -422,6 +428,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: SSM Location Discovery Alerts
       Subscription:
         - Protocol: email
@@ -474,6 +482,7 @@ variable "alert_email" {
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "ssm_location_alerts" {
   name         = "ssm-location-discovery-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "SSM Location Discovery Alerts"
 }
 

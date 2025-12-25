@@ -109,6 +109,8 @@ Resources:
   SecurityAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Obfuscation Detection Alerts
       Subscription:
         - Protocol: email
@@ -169,6 +171,7 @@ resource "aws_cloudwatch_log_metric_filter" "encoded_files" {
 # Step 2: Create SNS topic for alerts
 resource "aws_sns_topic" "obfuscation_alerts" {
   name         = "obfuscation-detection-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Obfuscation Detection Alerts"
 }
 
@@ -310,6 +313,7 @@ variable "alert_email" {
 
 resource "aws_sns_topic" "alerts" {
   name = "obfuscated-script-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -435,6 +439,8 @@ Resources:
   MalwareAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: S3 Malware Detection Alerts
       Subscription:
         - Protocol: email
@@ -500,6 +506,7 @@ resource "aws_guardduty_detector_feature" "s3_protection" {
 # Step 2: Create SNS topic for malware alerts
 resource "aws_sns_topic" "malware_alerts" {
   name         = "s3-malware-detection-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "S3 Malware Detection Alerts"
 }
 
@@ -788,6 +795,7 @@ variable "alert_email" {
 
 resource "aws_sns_topic" "alerts" {
   name = "lambda-obfuscation-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

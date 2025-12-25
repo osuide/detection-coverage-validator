@@ -96,6 +96,8 @@ Resources:
   GuardDutyAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       TopicName: t1189-guardduty-alerts
       Subscription:
         - Protocol: email
@@ -145,6 +147,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for GuardDuty alerts
 resource "aws_sns_topic" "guardduty_alerts" {
   name = "t1189-guardduty-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -259,6 +262,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       TopicName: t1189-browser-exploit-alerts
       Subscription:
         - Protocol: email
@@ -316,6 +321,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "browser_alerts" {
   name = "t1189-browser-exploit-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -434,6 +440,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       TopicName: t1189-malvertising-alerts
       Subscription:
         - Protocol: email
@@ -491,6 +499,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic
 resource "aws_sns_topic" "malvertising_alerts" {
   name = "t1189-malvertising-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

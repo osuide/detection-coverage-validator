@@ -91,6 +91,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: WorkMail Email Collection Alerts
       Subscription:
         - Protocol: email
@@ -137,6 +139,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "workmail_alerts" {
   name         = "workmail-email-collection-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "WorkMail Email Collection Alerts"
 }
 
@@ -232,6 +235,7 @@ variable "alert_email" {
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "ses_alerts" {
   name = "ses-email-collection-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

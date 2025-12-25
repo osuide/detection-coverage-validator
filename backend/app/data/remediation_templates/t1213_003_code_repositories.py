@@ -95,6 +95,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -164,6 +166,7 @@ variable "alert_email" {
 
 resource "aws_sns_topic" "code_repo_alerts" {
   name = "codecommit-security-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -282,6 +285,7 @@ variable "alert_email" {
 
 resource "aws_sns_topic" "secrets_correlation_alerts" {
   name = "repo-secrets-correlation-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

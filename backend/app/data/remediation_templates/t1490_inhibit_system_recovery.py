@@ -92,6 +92,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Snapshot Deletion Alerts
       Subscription:
         - Protocol: email
@@ -136,6 +138,7 @@ variable "alert_email" {
 
 resource "aws_sns_topic" "snapshot_alerts" {
   name         = "snapshot-deletion-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Snapshot Deletion Alerts"
 }
 
@@ -239,6 +242,7 @@ variable "alert_email" {
 
 resource "aws_sns_topic" "backup_alerts" {
   name         = "backup-policy-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Backup Policy Modification Alerts"
 }
 
@@ -341,6 +345,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -382,6 +388,7 @@ variable "alert_email" {
 
 resource "aws_sns_topic" "versioning_alerts" {
   name = "s3-versioning-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

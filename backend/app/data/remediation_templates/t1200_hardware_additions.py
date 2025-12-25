@@ -116,6 +116,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Network Interface Alerts
       Subscription:
         - Protocol: email
@@ -174,6 +176,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "alerts" {
   name         = "network-interface-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Network Interface Alerts"
 }
 
@@ -306,6 +309,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Block Device Monitor Alerts
       Subscription:
         - Protocol: email
@@ -602,6 +607,7 @@ variable "monitor_tag_value" {
 # Step 1: SNS Topic for Alerts
 resource "aws_sns_topic" "alerts" {
   name         = "block-device-monitor-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Block Device Monitor Alerts"
 }
 
@@ -918,6 +924,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Hardware Audit Results
       Subscription:
         - Protocol: email
@@ -1339,6 +1347,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Runtime Security Alerts
       Subscription:
         - Protocol: email
@@ -1411,6 +1421,7 @@ resource "aws_guardduty_detector_feature" "runtime_monitoring" {
 # Step 2: SNS topic for alerts
 resource "aws_sns_topic" "runtime_alerts" {
   name         = "runtime-security-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Runtime Security Alerts"
 }
 

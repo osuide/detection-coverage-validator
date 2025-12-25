@@ -94,6 +94,8 @@ Resources:
   RootAccountAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Root Account Activity Alerts
       Subscription:
         - Protocol: email
@@ -141,6 +143,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for root account alerts
 resource "aws_sns_topic" "root_alerts" {
   name         = "root-account-activity-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Root Account Activity Alerts"
 }
 
@@ -244,6 +247,8 @@ Resources:
   ServiceAccountAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -287,6 +292,7 @@ variable "alert_email" {
 # Step 1: SNS topic for service account alerts
 resource "aws_sns_topic" "service_account_alerts" {
   name = "service-account-activity-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -513,6 +519,8 @@ Resources:
   RootSSHAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -557,6 +565,7 @@ variable "alert_email" {
 # Step 1: SNS topic for root SSH alerts
 resource "aws_sns_topic" "root_ssh_alerts" {
   name = "root-ssh-login-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -683,6 +692,8 @@ Resources:
   ComplianceAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail""",
@@ -739,6 +750,7 @@ resource "aws_config_config_rule" "root_mfa" {
 # Step 3: Alert on non-compliance
 resource "aws_sns_topic" "compliance_alerts" {
   name = "config-compliance-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

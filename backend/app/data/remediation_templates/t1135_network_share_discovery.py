@@ -89,6 +89,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       TopicName: share-discovery-alerts
       Subscription:
         - Protocol: email
@@ -134,6 +136,7 @@ variable "alert_email" {
 # SNS topic for alerts
 resource "aws_sns_topic" "share_enum_alerts" {
   name = "share-discovery-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -228,6 +231,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       TopicName: smb-enumeration-alerts
       Subscription:
         - Protocol: email
@@ -273,6 +278,7 @@ variable "alert_email" {
 # SNS topic for alerts
 resource "aws_sns_topic" "smb_enum_alerts" {
   name = "smb-enumeration-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -464,6 +470,7 @@ variable "alert_email" {
 # SNS topic for GuardDuty findings
 resource "aws_sns_topic" "guardduty_alerts" {
   name = "guardduty-recon-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

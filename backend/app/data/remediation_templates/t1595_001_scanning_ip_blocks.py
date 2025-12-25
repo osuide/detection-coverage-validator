@@ -89,6 +89,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -123,6 +125,7 @@ variable "alert_email" { type = string }
 
 resource "aws_sns_topic" "alerts" {
   name = "ip-scanning-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -206,6 +209,7 @@ resource "aws_guardduty_detector" "main" {
 
 resource "aws_sns_topic" "guardduty_alerts" {
   name = "guardduty-scanning-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

@@ -95,6 +95,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Suspicious File Execution Alerts
       Subscription:
         - Protocol: email
@@ -143,6 +145,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "suspicious_execution_alerts" {
   name         = "suspicious-file-execution-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Suspicious File Execution Alerts"
 }
 
@@ -240,6 +243,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for macro execution alerts
 resource "aws_sns_topic" "macro_execution_alerts" {
   name         = "office-macro-execution-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Office Macro Execution Alerts"
 }
 
@@ -454,6 +458,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "lnk_execution_alerts" {
   name         = "lnk-file-execution-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "LNK File Execution Alerts"
 }
 

@@ -98,6 +98,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Supply Chain Security Alerts
       Subscription:
         - Protocol: email
@@ -177,6 +179,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "supply_chain_alerts" {
   name         = "t1195-supply-chain-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Supply Chain Security Alerts"
 }
 
@@ -314,6 +317,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -363,6 +368,7 @@ variable "alert_email" {
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "ecr_alerts" {
   name = "t1195-ecr-supply-chain-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -485,6 +491,7 @@ variable "allowed_source_patterns" {
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "codebuild_alerts" {
   name = "t1195-codebuild-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

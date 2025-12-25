@@ -90,6 +90,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Email Bombing Alerts
       Subscription:
         - Protocol: email
@@ -137,6 +139,7 @@ variable "alert_email" {
 # SNS topic for alerts
 resource "aws_sns_topic" "email_bombing_alerts" {
   name         = "email-bombing-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Email Bombing Alerts"
 }
 
@@ -231,6 +234,7 @@ variable "alert_email" {
 # SNS topic for alerts
 resource "aws_sns_topic" "workmail_bombing_alerts" {
   name         = "workmail-email-bombing-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "WorkMail Email Bombing Alerts"
 }
 
@@ -444,6 +448,7 @@ variable "alert_email" {
 # SNS topic for pattern-based alerts
 resource "aws_sns_topic" "pattern_alerts" {
   name         = "email-bombing-pattern-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Email Bombing Pattern Alerts"
 }
 

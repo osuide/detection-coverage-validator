@@ -107,6 +107,8 @@ Resources:
   WMIAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: WMI Abuse Alerts
       Subscription:
         - Protocol: email
@@ -173,6 +175,7 @@ resource "aws_guardduty_detector_feature" "runtime_monitoring" {
 # Step 2: Create SNS topic for WMI alerts
 resource "aws_sns_topic" "wmi_alerts" {
   name         = "wmi-abuse-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "WMI Abuse Alerts"
 }
 
@@ -333,6 +336,7 @@ variable "alert_email" {
 
 resource "aws_sns_topic" "alerts" {
   name = "wmi-execution-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -448,6 +452,7 @@ variable "alert_email" {
 
 resource "aws_sns_topic" "alerts" {
   name = "remote-wmi-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -743,6 +748,7 @@ variable "alert_email" {
 
 resource "aws_sns_topic" "alerts" {
   name = "wmi-persistence-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

@@ -97,6 +97,7 @@ Resources:
   LambdaAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
       TopicName: guardduty-lambda-alerts
       KmsMasterKeyId: alias/aws/sns
 

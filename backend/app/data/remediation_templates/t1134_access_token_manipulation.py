@@ -109,6 +109,8 @@ Resources:
   SecurityAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Token Manipulation Alerts
       Subscription:
         - Protocol: email
@@ -175,6 +177,7 @@ resource "aws_guardduty_detector_feature" "runtime_monitoring" {
 # Step 2: Create SNS topic for alerts
 resource "aws_sns_topic" "token_manipulation_alerts" {
   name         = "token-manipulation-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Token Manipulation Alerts"
 }
 
@@ -339,6 +342,7 @@ variable "alert_email" {
 
 resource "aws_sns_topic" "alerts" {
   name = "token-manipulation-windows-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -514,6 +518,7 @@ resource "aws_cloudwatch_log_metric_filter" "token_manipulation_tools" {
 # Step 2: Create SNS topic
 resource "aws_sns_topic" "alerts" {
   name = "token-tool-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -790,6 +795,7 @@ variable "alert_email" {
 
 resource "aws_sns_topic" "alerts" {
   name = "token-anomaly-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

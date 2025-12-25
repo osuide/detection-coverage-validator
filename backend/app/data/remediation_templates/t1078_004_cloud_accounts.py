@@ -498,6 +498,7 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: GuardDuty Credential Abuse Alerts
       KmsMasterKeyId: alias/aws/sns
       Subscription:

@@ -89,6 +89,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       TopicName: ssm-service-execution-alerts
       Subscription:
         - Protocol: email
@@ -141,6 +143,7 @@ variable "alert_email" {
 # SNS topic for security alerts
 resource "aws_sns_topic" "ssm_alerts" {
   name = "ssm-service-execution-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -248,6 +251,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       TopicName: ecs-task-execution-alerts
       Subscription:
         - Protocol: email
@@ -299,6 +304,7 @@ variable "alert_email" {
 # SNS topic for security alerts
 resource "aws_sns_topic" "ecs_alerts" {
   name = "ecs-task-execution-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

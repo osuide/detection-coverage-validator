@@ -88,6 +88,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Credential Stuffing Alerts
       Subscription:
         - Protocol: email
@@ -135,6 +137,7 @@ variable "alert_email" {
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "credential_stuffing_alerts" {
   name         = "credential-stuffing-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Credential Stuffing Alerts"
 }
 
@@ -227,6 +230,7 @@ variable "alert_email" {
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "cognito_alerts" {
   name         = "cognito-credential-stuffing-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Cognito Credential Stuffing Alerts"
 }
 

@@ -92,6 +92,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: S3 Website Defacement Alerts
       Subscription:
         - Protocol: email
@@ -134,6 +136,7 @@ variable "alert_email" {
 
 resource "aws_sns_topic" "defacement_alerts" {
   name         = "s3-website-defacement-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "S3 Website Defacement Alerts"
 }
 
@@ -229,6 +232,7 @@ variable "web_server_log_group" {
 
 resource "aws_sns_topic" "file_modification_alerts" {
   name         = "ec2-web-defacement-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "EC2 Web Server Defacement Alerts"
 }
 

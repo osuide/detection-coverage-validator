@@ -91,6 +91,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: SSM Lateral Movement Alerts
       Subscription:
         - Protocol: email
@@ -126,6 +128,7 @@ variable "alert_email" { type = string }
 
 resource "aws_sns_topic" "alerts" {
   name         = "ssm-lateral-movement-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "SSM Lateral Movement Alerts"
 }
 
@@ -216,6 +219,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -249,6 +254,7 @@ variable "alert_email" { type = string }
 
 resource "aws_sns_topic" "alerts" {
   name = "lateral-movement-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -328,6 +334,7 @@ variable "alert_email" { type = string }
 
 resource "aws_sns_topic" "alerts" {
   name = "ecs-exec-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

@@ -86,6 +86,7 @@ Resources:
   RansomwareAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
       TopicName: s3-mass-putobject-alerts
       KmsMasterKeyId: alias/aws/sns
       Subscription:
@@ -495,6 +496,7 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
       TopicName: s3-ssec-ransomware-alerts
       KmsMasterKeyId: alias/aws/sns
       Subscription:
@@ -626,6 +628,7 @@ Resources:
   KMSAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
       TopicName: kms-manipulation-alerts
       KmsMasterKeyId: alias/aws/sns
       Subscription:
@@ -834,6 +837,7 @@ Resources:
   EBSAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
       TopicName: ebs-encryption-anomaly-alerts
       KmsMasterKeyId: alias/aws/sns
       Subscription:
@@ -1039,6 +1043,7 @@ Resources:
   RDSAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
       TopicName: rds-encryption-modification-alerts
       KmsMasterKeyId: alias/aws/sns
       Subscription:

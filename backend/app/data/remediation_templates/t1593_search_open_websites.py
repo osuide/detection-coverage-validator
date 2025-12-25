@@ -88,6 +88,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Repository Security Alerts
       Subscription:
         - Protocol: email
@@ -143,6 +145,7 @@ variable "alert_email" {
 # SNS Topic for alerts
 resource "aws_sns_topic" "repo_alerts" {
   name         = "repository-security-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Repository Security Alerts"
 }
 

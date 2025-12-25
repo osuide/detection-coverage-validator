@@ -92,6 +92,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: MFA Interception Alerts
       Subscription:
         - Protocol: email
@@ -145,6 +147,7 @@ variable "alert_email" {
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "mfa_interception_alerts" {
   name         = "mfa-interception-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "MFA Interception Alerts"
 }
 
@@ -249,6 +252,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Cognito MFA Interception
       Subscription:
         - Protocol: email
@@ -288,6 +293,7 @@ variable "alert_email" { type = string }
 # Step 1: SNS topic
 resource "aws_sns_topic" "cognito_sms_alerts" {
   name         = "cognito-sms-mfa-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Cognito MFA Interception"
 }
 
@@ -392,6 +398,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Phone Number Change Alerts
       Subscription:
         - Protocol: email
@@ -434,6 +442,7 @@ variable "alert_email" { type = string }
 # Step 1: SNS topic
 resource "aws_sns_topic" "phone_change_alerts" {
   name         = "phone-number-change-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Phone Number Change Alerts"
 }
 
@@ -759,6 +768,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -819,6 +830,7 @@ resource "aws_sqs_queue" "alert_dlq" {
 
 resource "aws_sns_topic" "alerts" {
   name = "mfa-fatigue-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

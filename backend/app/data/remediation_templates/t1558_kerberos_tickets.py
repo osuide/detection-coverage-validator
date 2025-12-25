@@ -99,6 +99,7 @@ variable "alert_email" {
 # SNS topic for alerts
 resource "aws_sns_topic" "kerberos_alerts" {
   name = "kerberos-ticket-anomaly-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -202,6 +203,8 @@ Resources:
   KerberosAlertsTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       TopicName: kerberos-ticket-anomaly-alerts
       Subscription:
         - Endpoint: !Ref AlertEmail
@@ -342,6 +345,7 @@ variable "alert_email" {
 # SNS topic for Kerberoasting alerts
 resource "aws_sns_topic" "kerberoasting_alerts" {
   name = "kerberoasting-detection-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -430,6 +434,8 @@ Resources:
   KerberoastingAlertsTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       TopicName: kerberoasting-detection-alerts
       Subscription:
         - Endpoint: !Ref AlertEmail

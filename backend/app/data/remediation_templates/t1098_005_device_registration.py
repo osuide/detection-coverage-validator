@@ -85,6 +85,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Device Registration Alerts
       Subscription:
         - Protocol: email
@@ -128,6 +130,7 @@ variable "alert_email" {
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "device_alerts" {
   name         = "device-registration-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Device Registration Alerts"
 }
 
@@ -228,6 +231,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -273,6 +278,7 @@ variable "alert_email" {
 # Step 1: SNS topic
 resource "aws_sns_topic" "alerts" {
   name = "device-registration-pattern-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -566,6 +572,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -628,6 +636,7 @@ variable "alert_email" {
 # Step 1: SNS topic
 resource "aws_sns_topic" "alerts" {
   name = "dormant-account-device-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

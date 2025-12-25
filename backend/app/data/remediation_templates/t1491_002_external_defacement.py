@@ -101,6 +101,8 @@ Resources:
   DefacementAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       TopicName: s3-defacement-alerts
       Subscription:
         - Protocol: email
@@ -171,6 +173,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for defacement alerts
 resource "aws_sns_topic" "defacement_alerts" {
   name = "s3-defacement-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -307,6 +310,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -351,6 +356,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "alerts" {
   name = "cloudfront-defacement-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -463,6 +469,8 @@ Resources:
   IntegrityAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -512,6 +520,7 @@ variable "monitored_bucket" {
 # Step 1: Create SNS topic for integrity alerts
 resource "aws_sns_topic" "integrity_alerts" {
   name = "s3-integrity-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

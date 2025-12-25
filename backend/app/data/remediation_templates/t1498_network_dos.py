@@ -83,6 +83,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: DDoS Attack Alerts
       Subscription:
         - Protocol: email
@@ -138,6 +140,7 @@ variable "alert_email" {
 
 resource "aws_sns_topic" "alerts" {
   name         = "ddos-attack-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "DDoS Attack Alerts"
 }
 
@@ -237,6 +240,7 @@ variable "alert_email" { type = string }
 
 resource "aws_sns_topic" "alerts" {
   name = "network-flood-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

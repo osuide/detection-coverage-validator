@@ -105,6 +105,7 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: GuardDuty Credential Abuse Alerts
       Subscription:
         - Protocol: email
@@ -156,6 +157,7 @@ resource "aws_guardduty_detector" "main" {
 # Step 2: Create SNS topic for alerts
 resource "aws_sns_topic" "credential_alerts" {
   name         = "guardduty-credential-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "GuardDuty Credential Abuse Alerts"
 }
 
@@ -441,6 +443,7 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
       TopicName: t1078-offhours-alerts
       KmsMasterKeyId: alias/aws/sns
 
@@ -1453,6 +1456,7 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
       TopicName: t1078-federated-no-mfa-alerts
       KmsMasterKeyId: alias/aws/sns
 
@@ -2068,6 +2072,7 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
       TopicName: t1078-oidc-abuse-alerts
       KmsMasterKeyId: alias/aws/sns
 

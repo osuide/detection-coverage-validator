@@ -125,6 +125,8 @@ Resources:
   AudioCaptureAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Audio Capture Detection Alerts
       Subscription:
         - Protocol: email
@@ -178,6 +180,7 @@ resource "aws_guardduty_detector_feature" "runtime_monitoring" {
 # Step 2: Create SNS topic for alerts
 resource "aws_sns_topic" "audio_capture_alerts" {
   name         = "audio-capture-detection-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Audio Capture Detection Alerts"
 }
 
@@ -298,6 +301,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -344,6 +349,7 @@ resource "aws_cloudwatch_log_metric_filter" "audio_files" {
 # Step 2: Create SNS topic
 resource "aws_sns_topic" "alerts" {
   name = "audio-file-creation-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -442,6 +448,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -488,6 +496,7 @@ resource "aws_cloudwatch_log_metric_filter" "audio_tools" {
 # Step 2: Create SNS topic
 resource "aws_sns_topic" "alerts" {
   name = "audio-tool-detection-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

@@ -89,6 +89,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       TopicName: ec2-download-alerts
       Subscription:
         - Protocol: email
@@ -137,6 +139,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "alerts" {
   name = "ec2-download-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -229,6 +232,8 @@ Resources:
   GuardDutyAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       TopicName: guardduty-download-alerts
       Subscription:
         - Protocol: email
@@ -278,6 +283,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for GuardDuty alerts
 resource "aws_sns_topic" "guardduty_alerts" {
   name = "guardduty-download-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -380,6 +386,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "alerts" {
   name = "vpc-download-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

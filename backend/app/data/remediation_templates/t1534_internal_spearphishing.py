@@ -98,6 +98,8 @@ Resources:
   InternalPhishingAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Internal Spearphishing Alerts
       Subscription:
         - Protocol: email
@@ -145,6 +147,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for internal phishing alerts
 resource "aws_sns_topic" "internal_phishing_alerts" {
   name         = "internal-spearphishing-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Internal Spearphishing Alerts"
 }
 
@@ -243,6 +246,7 @@ variable "alert_email" { type = string }
 # Step 1: Create SNS topic for attachment alerts
 resource "aws_sns_topic" "attachment_alerts" {
   name = "suspicious-attachment-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

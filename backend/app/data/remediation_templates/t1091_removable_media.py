@@ -114,6 +114,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: WorkSpaces USB Device Alerts
       Subscription:
         - Protocol: email
@@ -170,6 +172,7 @@ variable "alert_email" {
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "usb_alerts" {
   name         = "workspaces-usb-device-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "WorkSpaces USB Device Alerts"
 }
 
@@ -298,6 +301,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Removable Media Alerts
       Subscription:
         - Protocol: email
@@ -371,6 +376,7 @@ variable "log_group_name" {
 # Step 1: SNS Topic
 resource "aws_sns_topic" "alerts" {
   name         = "removable-media-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Removable Media Alerts"
 }
 
@@ -509,6 +515,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Removable Media Security Alerts
       Subscription:
         - Protocol: email
@@ -581,6 +589,7 @@ resource "aws_guardduty_detector_feature" "runtime_monitoring" {
 # Step 2: SNS topic for alerts
 resource "aws_sns_topic" "runtime_alerts" {
   name         = "removable-media-security-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Removable Media Security Alerts"
 }
 
@@ -869,6 +878,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: S3 Upload Anomaly Alerts
       Subscription:
         - Protocol: email
@@ -921,6 +932,7 @@ variable "monitored_bucket" {
 
 resource "aws_sns_topic" "upload_alerts" {
   name = "s3-upload-anomaly-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

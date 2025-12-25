@@ -85,6 +85,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -119,6 +121,7 @@ variable "alert_email" { type = string }
 
 resource "aws_sns_topic" "alerts" {
   name = "wordlist-scanning-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -204,6 +207,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -238,6 +243,7 @@ variable "alert_email" { type = string }
 
 resource "aws_sns_topic" "alerts" {
   name = "s3-enumeration-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -316,6 +322,7 @@ variable "alert_email" { type = string }
 
 resource "aws_sns_topic" "alerts" {
   name = "directory-scanning-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

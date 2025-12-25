@@ -99,6 +99,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: System Time Discovery Alerts
       Subscription:
         - Protocol: email
@@ -147,6 +149,7 @@ variable "alert_email" {
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "time_discovery_alerts" {
   name         = "system-time-discovery-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "System Time Discovery Alerts"
 }
 
@@ -259,6 +262,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: SSM Time Discovery Alerts
       Subscription:
         - Protocol: email
@@ -311,6 +316,7 @@ variable "alert_email" {
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "ssm_alerts" {
   name         = "ssm-time-discovery-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "SSM Time Discovery Alerts"
 }
 

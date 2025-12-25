@@ -95,6 +95,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: CloudTrail Log Deletion Alerts
       Subscription:
         - Protocol: email
@@ -147,6 +149,7 @@ variable "cloudtrail_bucket_name" {
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "cloudtrail_log_deletion_alerts" {
   name         = "cloudtrail-log-deletion-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "CloudTrail Log Deletion Alerts"
 }
 
@@ -248,6 +251,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -292,6 +297,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic
 resource "aws_sns_topic" "history_clear_alerts" {
   name = "bash-history-clearing-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -384,6 +390,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -427,6 +435,7 @@ variable "alert_email" {
 # Step 1: SNS topic
 resource "aws_sns_topic" "log_deletion_alerts" {
   name = "container-log-deletion-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

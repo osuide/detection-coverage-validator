@@ -99,6 +99,8 @@ Resources:
   PasswordStoreAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Password Store Access Alerts
       Subscription:
         - Protocol: email
@@ -151,6 +153,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "password_store_alerts" {
   name         = "password-store-access-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Password Store Access Alerts"
 }
 
@@ -255,6 +258,8 @@ Resources:
   BulkAccessAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -299,6 +304,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic
 resource "aws_sns_topic" "bulk_access_alerts" {
   name = "bulk-password-store-access-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -392,6 +398,8 @@ Resources:
   BrowserCredAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -436,6 +444,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic
 resource "aws_sns_topic" "browser_cred_alerts" {
   name = "browser-password-access-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -641,6 +650,8 @@ Resources:
   K8sSecretsAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -686,6 +697,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic
 resource "aws_sns_topic" "k8s_secrets_alerts" {
   name = "kubernetes-secrets-access-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

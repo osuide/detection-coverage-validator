@@ -91,6 +91,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       TopicName: compromised-account-alerts
       Subscription:
         - Protocol: email
@@ -138,6 +140,7 @@ variable "alert_email" {
 # SNS topic for alerts
 resource "aws_sns_topic" "compromised_account_alerts" {
   name = "compromised-account-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email_alerts" {
@@ -231,6 +234,7 @@ resource "aws_guardduty_detector" "main" {
 # SNS topic for GuardDuty alerts
 resource "aws_sns_topic" "guardduty_alerts" {
   name = "guardduty-compromised-credentials"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email_alerts" {
@@ -507,6 +511,7 @@ resource "aws_accessanalyzer_analyzer" "main" {
 # SNS topic for Access Analyzer alerts
 resource "aws_sns_topic" "access_analyzer_alerts" {
   name = "access-analyzer-external-access"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email_alerts" {

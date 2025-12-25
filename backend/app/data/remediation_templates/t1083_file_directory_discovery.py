@@ -95,6 +95,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: File Discovery Alerts
       Subscription:
         - Protocol: email
@@ -141,6 +143,7 @@ variable "alert_email" {
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "file_discovery_alerts" {
   name         = "file-discovery-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "File Discovery Alerts"
 }
 
@@ -238,6 +241,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Container File Discovery Alerts
       Subscription:
         - Protocol: email
@@ -284,6 +289,7 @@ variable "alert_email" {
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "container_enum_alerts" {
   name         = "container-file-enumeration-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Container File Discovery Alerts"
 }
 

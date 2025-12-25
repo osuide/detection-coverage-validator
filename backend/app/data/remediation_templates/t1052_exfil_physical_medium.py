@@ -125,6 +125,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Exfiltration Security Alerts
       Subscription:
         - Protocol: email
@@ -197,6 +199,7 @@ resource "aws_guardduty_detector_feature" "runtime_monitoring" {
 # Step 2: SNS topic for alerts
 resource "aws_sns_topic" "exfil_alerts" {
   name         = "exfiltration-security-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Exfiltration Security Alerts"
 }
 
@@ -323,6 +326,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Exfiltration Device Alerts
       Subscription:
         - Protocol: email
@@ -396,6 +401,7 @@ variable "log_group_name" {
 # Step 1: SNS Topic for alerts
 resource "aws_sns_topic" "exfil_alerts" {
   name         = "exfiltration-device-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Exfiltration Device Alerts"
 }
 
@@ -529,6 +535,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       TopicName: data-staging-alerts
       Subscription:
         - Protocol: email
@@ -582,6 +590,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "staging_alerts" {
   name = "data-staging-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

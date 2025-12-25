@@ -95,6 +95,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: HTTP Exfiltration Alerts
       Subscription:
         - Protocol: email
@@ -143,6 +145,7 @@ variable "vpc_flow_log_group" {
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "http_exfil_alerts" {
   name         = "http-exfiltration-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "HTTP Exfiltration Alerts"
 }
 
@@ -239,6 +242,8 @@ Resources:
   FTPAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: FTP Exfiltration Alerts
       Subscription:
         - Protocol: email
@@ -287,6 +292,7 @@ variable "vpc_flow_log_group" {
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "ftp_exfil_alerts" {
   name         = "ftp-exfiltration-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "FTP Exfiltration Alerts"
 }
 
@@ -425,6 +431,8 @@ Resources:
   DNSAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: DNS Tunnelling Alerts
       Subscription:
         - Protocol: email
@@ -467,6 +475,7 @@ resource "aws_cloudwatch_log_metric_filter" "dns_tunnel" {
 # Step 3: Create alarm for DNS tunnelling activity
 resource "aws_sns_topic" "dns_alerts" {
   name         = "dns-tunnelling-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "DNS Tunnelling Alerts"
 }
 

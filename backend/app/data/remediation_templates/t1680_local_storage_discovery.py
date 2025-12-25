@@ -92,6 +92,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       TopicName: ebs-enumeration-alerts
       Subscription:
         - Protocol: email
@@ -134,6 +136,7 @@ variable "alert_email" {
 
 resource "aws_sns_topic" "alerts" {
   name = "ebs-enumeration-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -218,6 +221,7 @@ variable "alert_email" {
 
 resource "aws_sns_topic" "alerts" {
   name = "ssm-storage-discovery-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

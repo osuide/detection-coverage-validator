@@ -95,6 +95,8 @@ Resources:
   InstanceDiscoveryAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: EC2 Instance Discovery Alerts
       Subscription:
         - Protocol: email
@@ -143,6 +145,7 @@ variable "alert_email" {
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "instance_discovery_alerts" {
   name         = "ec2-instance-discovery-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "EC2 Instance Discovery Alerts"
 }
 
@@ -242,6 +245,8 @@ Resources:
   SSMDiscoveryAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -283,6 +288,7 @@ variable "alert_email" {
 # Step 1: SNS topic
 resource "aws_sns_topic" "ssm_discovery_alerts" {
   name = "ssm-remote-discovery-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

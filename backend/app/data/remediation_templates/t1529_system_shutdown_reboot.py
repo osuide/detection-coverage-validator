@@ -92,6 +92,8 @@ Resources:
   SecurityAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: EC2 Shutdown Alerts
       Subscription:
         - Protocol: email
@@ -168,6 +170,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "ec2_shutdown_alerts" {
   name         = "ec2-shutdown-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "EC2 Shutdown Alerts"
 }
 
@@ -349,6 +352,7 @@ variable "alert_email" {
 
 resource "aws_sns_topic" "alerts" {
   name = "shutdown-command-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -643,6 +647,7 @@ variable "alert_email" {
 
 resource "aws_sns_topic" "alerts" {
   name = "windows-shutdown-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -805,6 +810,7 @@ variable "shutdown_threshold" {
 
 resource "aws_sns_topic" "critical_alerts" {
   name = "mass-shutdown-critical-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

@@ -93,6 +93,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Unused Region Activity Alerts
       Subscription:
         - Protocol: email
@@ -147,6 +149,7 @@ variable "allowed_regions" {
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "unused_region_alerts" {
   name         = "unused-region-activity-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Unused Region Activity Alerts"
 }
 
@@ -258,6 +261,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -304,6 +309,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "alerts" {
   name = "unused-region-metric-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

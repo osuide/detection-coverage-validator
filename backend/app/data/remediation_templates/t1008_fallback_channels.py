@@ -92,6 +92,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       TopicName: c2-fallback-alerts
       Subscription:
         - Protocol: email
@@ -140,6 +142,7 @@ variable "vpc_flow_log_group" {
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "alerts" {
   name = "c2-fallback-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -254,6 +257,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       TopicName: dns-fallback-alerts
       Subscription:
         - Protocol: email
@@ -308,6 +313,7 @@ resource "aws_cloudwatch_log_metric_filter" "dns_fallback" {
 # Step 3: Create alert for DNS fallback activity
 resource "aws_sns_topic" "alerts" {
   name = "dns-fallback-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -385,6 +391,7 @@ variable "vpc_flow_log_group" {
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "alerts" {
   name = "port-hopping-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -476,6 +483,8 @@ Resources:
   GuardDutyAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       TopicName: guardduty-c2-alerts
       Subscription:
         - Protocol: email
@@ -524,6 +533,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for GuardDuty alerts
 resource "aws_sns_topic" "guardduty_alerts" {
   name = "guardduty-c2-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

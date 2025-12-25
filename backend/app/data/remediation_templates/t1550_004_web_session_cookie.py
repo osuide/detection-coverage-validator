@@ -91,6 +91,8 @@ Resources:
   SessionAnomalyAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: AWS Session Cookie Anomaly Alerts
       Subscription:
         - Protocol: email
@@ -139,6 +141,7 @@ variable "alert_email" {
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "session_anomaly_alerts" {
   name         = "aws-session-cookie-anomaly-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "AWS Session Cookie Anomaly Alerts"
 }
 
@@ -235,6 +238,8 @@ Resources:
   ImpossibleTravelAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: AWS Impossible Travel Alerts
       Subscription:
         - Protocol: email
@@ -286,6 +291,7 @@ variable "alert_email" {
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "impossible_travel_alerts" {
   name         = "aws-impossible-travel-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "AWS Impossible Travel Alerts"
 }
 

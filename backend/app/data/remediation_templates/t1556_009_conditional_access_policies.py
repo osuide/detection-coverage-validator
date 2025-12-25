@@ -89,6 +89,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       TopicName: iam-policy-condition-alerts
       Subscription:
         - Protocol: email
@@ -135,6 +137,7 @@ variable "alert_email" {
 # SNS topic for alerts
 resource "aws_sns_topic" "alerts" {
   name = "iam-policy-condition-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -224,6 +227,7 @@ variable "alert_email" {
 # SNS topic for alerts
 resource "aws_sns_topic" "alerts" {
   name = "scp-modification-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

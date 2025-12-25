@@ -101,6 +101,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -147,6 +149,7 @@ variable "application_log_group" {
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "base64_alerts" {
   name = "base64-encoding-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -247,6 +250,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -293,6 +298,7 @@ resource "aws_cloudwatch_log_group" "dns_queries" {
 # Step 2: SNS topic for alerts
 resource "aws_sns_topic" "dns_encoding_alerts" {
   name = "dns-encoding-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -387,6 +393,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -445,6 +453,7 @@ variable "cloudtrail_log_group" {
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "encoding_tools_alerts" {
   name = "encoding-tools-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

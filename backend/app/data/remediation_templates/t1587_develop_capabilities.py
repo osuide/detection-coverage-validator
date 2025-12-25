@@ -84,6 +84,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: GuardDuty Malware Alerts
       Subscription:
         - Protocol: email
@@ -116,6 +118,7 @@ variable "alert_email" { type = string }
 
 resource "aws_sns_topic" "alerts" {
   name         = "guardduty-malware-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "GuardDuty Malware Alerts"
 }
 
@@ -208,6 +211,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: S3 Suspicious Upload Alerts
       Subscription:
         - Protocol: email
@@ -242,6 +247,7 @@ variable "alert_email" { type = string }
 
 resource "aws_sns_topic" "alerts" {
   name         = "s3-suspicious-upload-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "S3 Suspicious Upload Alerts"
 }
 

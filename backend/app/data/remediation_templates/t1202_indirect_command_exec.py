@@ -105,6 +105,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Indirect Command Execution Alerts
       Subscription:
         - Protocol: email
@@ -167,6 +169,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "indirect_exec_alerts" {
   name         = "indirect-command-execution-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Indirect Command Execution Alerts"
 }
 
@@ -290,6 +293,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: SSH Config Abuse Alerts
       Subscription:
         - Protocol: email
@@ -352,6 +357,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic
 resource "aws_sns_topic" "ssh_config_alerts" {
   name         = "ssh-config-abuse-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "SSH Config Abuse Alerts"
 }
 
@@ -615,6 +621,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: WSL Abuse Alerts
       Subscription:
         - Protocol: email
@@ -677,6 +685,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic
 resource "aws_sns_topic" "wsl_abuse_alerts" {
   name         = "wsl-abuse-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "WSL Abuse Alerts"
 }
 

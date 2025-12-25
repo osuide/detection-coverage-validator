@@ -95,6 +95,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Data Staging Alerts
       Subscription:
         - Protocol: email
@@ -154,6 +156,7 @@ variable "alert_email" {
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "staging_alerts" {
   name         = "data-staging-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Data Staging Alerts"
 }
 
@@ -268,6 +271,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: S3 Staging Alerts
       Subscription:
         - Protocol: email
@@ -325,6 +330,7 @@ variable "alert_email" {
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "s3_staging_alerts" {
   name         = "s3-staging-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "S3 Staging Alerts"
 }
 

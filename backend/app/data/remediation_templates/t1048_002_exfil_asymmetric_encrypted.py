@@ -92,6 +92,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -129,6 +131,7 @@ variable "vpc_flow_log_group" { type = string }
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "alerts" {
   name = "https-exfil-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -220,6 +223,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -257,6 +262,7 @@ variable "vpc_flow_log_group" { type = string }
 # Step 1: Create alert topic
 resource "aws_sns_topic" "alerts" {
   name = "sftp-scp-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -347,6 +353,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -383,6 +391,7 @@ variable "vpc_flow_log_group" { type = string }
 # Step 1: Create notification topic
 resource "aws_sns_topic" "alerts" {
   name = "smtps-exfil-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -473,6 +482,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -509,6 +520,7 @@ variable "cloudtrail_log_group" { type = string }
 # Step 1: Create alert topic
 resource "aws_sns_topic" "alerts" {
   name = "data-access-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

@@ -92,6 +92,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       TopicName: auth-bypass-alerts
       Subscription:
         - Protocol: email
@@ -140,6 +142,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "auth_alerts" {
   name = "auth-bypass-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email_alerts" {
@@ -236,6 +239,8 @@ Resources:
   GuardDutyTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       TopicName: guardduty-credential-alerts
       Subscription:
         - Protocol: email
@@ -284,6 +289,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for GuardDuty findings
 resource "aws_sns_topic" "guardduty_alerts" {
   name = "guardduty-credential-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "guardduty_email" {

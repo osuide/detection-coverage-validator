@@ -315,6 +315,7 @@ resource "aws_guardduty_detector" "main" {
 # SNS topic for alerts
 resource "aws_sns_topic" "guardduty_persistence" {
   name         = "guardduty-persistence-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "GuardDuty Persistence Alerts"
 }
 
@@ -383,6 +384,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: GuardDuty Persistence Alerts
       Subscription:
         - Protocol: email
@@ -523,6 +526,7 @@ variable "alert_threshold" {
 # SNS Topic
 resource "aws_sns_topic" "alerts" {
   name         = "${var.name_prefix}-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Access Key Creation Alerts"
 }
 
@@ -681,6 +685,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Access Key Creation Alerts
       Subscription:
         - Protocol: email
@@ -843,6 +849,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Access Key Creation Alerts
       Subscription:
         - Protocol: email
@@ -891,6 +899,7 @@ variable "alert_email" {
 
 resource "aws_sns_topic" "alerts" {
   name         = "accesskey-creation-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Access Key Creation Alerts"
 }
 

@@ -94,6 +94,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Network Interface Alerts
       Subscription:
         - Protocol: email
@@ -140,6 +142,7 @@ variable "alert_email" {
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "network_interface_alerts" {
   name         = "network-interface-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Network Interface Alerts"
 }
 
@@ -244,6 +247,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -286,6 +291,7 @@ variable "vpc_flow_log_group" {
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "traffic_alerts" {
   name = "network-traffic-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -376,6 +382,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -418,6 +426,7 @@ variable "ssm_log_group" {
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "network_tool_alerts" {
   name = "network-tool-execution-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

@@ -96,6 +96,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: C2 Exfiltration Alerts
       Subscription:
         - Protocol: email
@@ -144,6 +146,7 @@ variable "vpc_flow_log_group" {
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "c2_exfil_alerts" {
   name         = "c2-exfiltration-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "C2 Exfiltration Alerts"
 }
 
@@ -242,6 +245,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -278,6 +283,7 @@ variable "vpc_flow_log_group" { type = string }
 # Step 1: Create alert topic
 resource "aws_sns_topic" "alerts" {
   name = "c2-protocol-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -369,6 +375,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -406,6 +414,7 @@ variable "vpc_flow_log_group" { type = string }
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "alerts" {
   name = "c2-rare-destination-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

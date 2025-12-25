@@ -200,6 +200,7 @@ Resources:
   DnsThreatAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: DNS Firewall Threat Alerts
       KmsMasterKeyId: !Ref AlertTopicEncryptionKey
       Subscription:
@@ -684,6 +685,7 @@ Resources:
   DnsAnomalyAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: DNS Query Anomaly Alerts
       Subscription:
         - Protocol: email
@@ -867,6 +869,7 @@ resource "aws_route53_resolver_query_log_config_association" "vpc" {
 # Step 3: SNS topic for anomaly alerts
 resource "aws_sns_topic" "dns_anomalies" {
   name         = "dns-query-anomaly-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "DNS Query Anomaly Alerts"
 }
 
@@ -1018,6 +1021,7 @@ Resources:
   BeaconingAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: DNS Beaconing Detection Alerts
       Subscription:
         - Protocol: email
@@ -1113,6 +1117,7 @@ variable "alert_email" {
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "dns_beaconing" {
   name         = "dns-beaconing-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "DNS Beaconing Detection Alerts"
 }
 
@@ -1282,6 +1287,7 @@ Resources:
   GuardDutyAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: GuardDuty DNS C2 Alerts
       Subscription:
         - Protocol: email
@@ -1354,6 +1360,7 @@ resource "aws_guardduty_detector" "main" {
 # Step 2: SNS topic for alerts
 resource "aws_sns_topic" "guardduty_dns" {
   name         = "guardduty-dns-c2-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "GuardDuty DNS C2 Alerts"
 }
 

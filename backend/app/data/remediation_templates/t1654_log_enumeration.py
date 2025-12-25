@@ -94,6 +94,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Log Enumeration Alerts
       Subscription:
         - Protocol: email
@@ -142,6 +144,7 @@ variable "alert_email" {
 # SNS topic for alerts
 resource "aws_sns_topic" "log_enumeration_alerts" {
   name         = "log-enumeration-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Log Enumeration Alerts"
 }
 
@@ -240,6 +243,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: System Log Access Alerts
       Subscription:
         - Protocol: email
@@ -288,6 +293,7 @@ variable "alert_email" {
 # SNS topic for alerts
 resource "aws_sns_topic" "log_access_alerts" {
   name         = "system-log-access-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "System Log Access Alerts"
 }
 

@@ -91,6 +91,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -135,6 +137,7 @@ variable "alert_email" {
 # SNS topic for security alerts
 resource "aws_sns_topic" "email_alerts" {
   name = "suspicious-email-attachment-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -218,6 +221,7 @@ variable "alert_email" {
 # SNS topic for GuardDuty alerts
 resource "aws_sns_topic" "guardduty_alerts" {
   name = "guardduty-malware-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -317,6 +321,7 @@ variable "alert_email" {
 # SNS topic for alerts
 resource "aws_sns_topic" "process_alerts" {
   name = "suspicious-process-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

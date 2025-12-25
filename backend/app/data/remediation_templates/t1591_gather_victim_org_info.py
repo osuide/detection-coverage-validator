@@ -91,6 +91,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Web Scraping Alerts
       Subscription:
         - Protocol: email
@@ -137,6 +139,7 @@ variable "alert_email" {
 # SNS topic for alerts
 resource "aws_sns_topic" "scraping_alerts" {
   name         = "web-scraping-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Web Scraping Alerts"
 }
 
@@ -229,6 +232,7 @@ variable "alert_email" {
 # SNS topic for alerts
 resource "aws_sns_topic" "phishing_alerts" {
   name         = "reconnaissance-phishing-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Reconnaissance Phishing Alerts"
 }
 

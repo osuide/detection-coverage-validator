@@ -90,6 +90,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: DGA Detection Alerts
       Subscription:
         - Protocol: email
@@ -135,6 +137,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "dga_alerts" {
   name         = "dga-detection-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "DGA Detection Alerts"
 }
 
@@ -230,6 +233,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "dga_pattern_alerts" {
   name         = "dga-pattern-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "DGA Pattern Detection"
 }
 

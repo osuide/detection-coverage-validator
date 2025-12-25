@@ -119,6 +119,8 @@ Resources:
   NativeAPIAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Native API Abuse Alerts
       Subscription:
         - Protocol: email
@@ -208,6 +210,7 @@ resource "aws_guardduty_detector_feature" "runtime_monitoring" {
 # Step 2: Create SNS topic for native API alerts
 resource "aws_sns_topic" "native_api_alerts" {
   name         = "guardduty-native-api-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Native API Abuse Alerts"
 }
 
@@ -369,6 +372,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Native API Abuse Alerts
       Subscription:
         - Protocol: email
@@ -434,6 +439,7 @@ resource "aws_cloudwatch_metric_alarm" "native_api" {
 # Step 3: SNS topic for alerts
 resource "aws_sns_topic" "alerts" {
   name         = "native-api-abuse-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Native API Abuse Alerts"
 }
 
@@ -725,6 +731,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Native API Pattern Alerts
       Subscription:
         - Protocol: email
@@ -782,6 +790,7 @@ resource "aws_cloudwatch_event_rule" "suspicious_api_pattern" {
 # Step 2: SNS topic for alerts
 resource "aws_sns_topic" "alerts" {
   name         = "native-api-pattern-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Native API Pattern Alerts"
 }
 

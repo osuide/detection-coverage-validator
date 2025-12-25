@@ -101,6 +101,8 @@ Resources:
   GroupDiscoveryAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: IAM Group Discovery Alerts
       Subscription:
         - Protocol: email
@@ -157,6 +159,7 @@ variable "alert_email" {
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "group_discovery_alerts" {
   name         = "iam-group-discovery-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "IAM Group Discovery Alerts"
 }
 
@@ -456,6 +459,8 @@ Resources:
   CrossAccountAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Cross-Account Discovery Alerts
       Subscription:
         - Protocol: email
@@ -510,6 +515,7 @@ variable "alert_email" {
 # Step 1: SNS topic for cross-account alerts
 resource "aws_sns_topic" "cross_account_alerts" {
   name         = "cross-account-discovery-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Cross-Account Discovery Alerts"
 }
 

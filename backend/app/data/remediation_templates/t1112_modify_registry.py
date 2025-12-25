@@ -109,6 +109,8 @@ Resources:
   RegistryModAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Registry Modification Alerts
       Subscription:
         - Protocol: email
@@ -175,6 +177,7 @@ resource "aws_guardduty_detector_feature" "runtime_monitoring" {
 # Step 2: Create SNS topic for alerts
 resource "aws_sns_topic" "registry_mod_alerts" {
   name         = "registry-modification-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Registry Modification Alerts"
 }
 
@@ -353,6 +356,7 @@ variable "alert_email" {
 
 resource "aws_sns_topic" "alerts" {
   name = "registry-modification-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -536,6 +540,7 @@ variable "alert_email" {
 
 resource "aws_sns_topic" "alerts" {
   name = "powershell-registry-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -847,6 +852,7 @@ variable "alert_email" {
 
 resource "aws_sns_topic" "alerts" {
   name = "registry-tool-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

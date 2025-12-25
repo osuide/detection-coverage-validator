@@ -92,6 +92,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: EKS RBAC Modification Alerts
       Subscription:
         - Protocol: email
@@ -135,6 +137,7 @@ variable "alert_email" {
 
 resource "aws_sns_topic" "eks_rbac_alerts" {
   name         = "eks-rbac-modification-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "EKS RBAC Modification Alerts"
 }
 
@@ -225,6 +228,7 @@ variable "alert_email" {
 
 resource "aws_sns_topic" "cluster_admin_alerts" {
   name         = "eks-cluster-admin-assignment-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "EKS Cluster Admin Assignment Alerts"
 }
 

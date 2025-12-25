@@ -140,6 +140,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -206,6 +208,7 @@ resource "aws_route53_resolver_query_log_config_association" "main" {
 # Step 3: CloudWatch alerts
 resource "aws_sns_topic" "alerts" {
   name = "dns-anomaly-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -300,6 +303,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -341,6 +346,7 @@ variable "alert_email" {
 # Step 1: SNS topic
 resource "aws_sns_topic" "alerts" {
   name = "certificate-operation-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -478,6 +484,7 @@ resource "aws_ec2_traffic_mirror_session" "monitoring" {
 # SNS for alerts
 resource "aws_sns_topic" "alerts" {
   name = "traffic-anomaly-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

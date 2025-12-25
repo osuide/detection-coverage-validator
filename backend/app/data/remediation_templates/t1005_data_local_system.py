@@ -102,6 +102,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Data Collection Alerts
       Subscription:
         - Protocol: email
@@ -161,6 +163,7 @@ variable "alert_email" {
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "data_collection_alerts" {
   name         = "data-collection-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Data Collection Alerts"
 }
 
@@ -281,6 +284,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Sensitive File Access Alerts
       Subscription:
         - Protocol: email
@@ -340,6 +345,7 @@ variable "alert_email" {
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "sensitive_file_alerts" {
   name         = "sensitive-file-access-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Sensitive File Access Alerts"
 }
 

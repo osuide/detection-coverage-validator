@@ -98,6 +98,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Scheduled Transfer Alerts
       Subscription:
         - Protocol: email
@@ -151,6 +153,7 @@ variable "vpc_flow_log_group" {
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "scheduled_transfer_alerts" {
   name         = "scheduled-transfer-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Scheduled Transfer Alerts"
 }
 
@@ -261,6 +264,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Scheduled Task Monitoring
       Subscription:
         - Protocol: email
@@ -314,6 +319,7 @@ variable "alert_email" {
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "scheduled_task_alerts" {
   name         = "scheduled-task-monitoring"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Scheduled Task Monitoring"
 }
 
@@ -426,6 +432,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: S3 Time-Based Upload Alerts
       Subscription:
         - Protocol: email
@@ -476,6 +484,7 @@ variable "alert_email" {
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "s3_timing_alerts" {
   name         = "s3-time-based-upload-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "S3 Time-Based Upload Alerts"
 }
 

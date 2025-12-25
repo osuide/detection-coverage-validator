@@ -329,6 +329,7 @@ resource "aws_guardduty_detector" "main" {
 
 resource "aws_sns_topic" "guardduty_persistence" {
   name         = "guardduty-user-creation-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "GuardDuty User Creation Alerts"
 }
 
@@ -391,6 +392,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: GuardDuty User Creation Alerts
       Subscription:
         - Protocol: email
@@ -522,6 +525,7 @@ variable "alert_threshold" {
 # SNS Topic
 resource "aws_sns_topic" "alerts" {
   name         = "${var.name_prefix}-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "User Creation Alerts"
 }
 
@@ -754,6 +758,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: IAM User Creation Alerts
       Subscription:
         - Protocol: email
@@ -802,6 +808,7 @@ variable "alert_email" {
 
 resource "aws_sns_topic" "alerts" {
   name         = "iam-user-creation-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "IAM User Creation Alerts"
 }
 

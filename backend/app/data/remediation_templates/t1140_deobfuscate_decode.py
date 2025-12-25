@@ -111,6 +111,8 @@ Resources:
   SecurityAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Deobfuscation Detection Alerts
       Subscription:
         - Protocol: email
@@ -171,6 +173,7 @@ resource "aws_cloudwatch_log_metric_filter" "decoding_utilities" {
 # Step 2: Create SNS topic for alerts
 resource "aws_sns_topic" "deobfuscation_alerts" {
   name         = "deobfuscation-detection-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Deobfuscation Detection Alerts"
 }
 
@@ -313,6 +316,7 @@ variable "alert_email" {
 
 resource "aws_sns_topic" "alerts" {
   name = "powershell-decode-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -442,6 +446,8 @@ Resources:
   SecurityAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Runtime Decryption Alerts
       Subscription:
         - Protocol: email
@@ -502,6 +508,7 @@ resource "aws_cloudwatch_log_metric_filter" "runtime_decryption" {
 # Step 2: Create SNS topic for alerts
 resource "aws_sns_topic" "runtime_decrypt_alerts" {
   name         = "runtime-decryption-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Runtime Decryption Alerts"
 }
 
@@ -778,6 +785,7 @@ variable "alert_email" {
 
 resource "aws_sns_topic" "alerts" {
   name = "lambda-decode-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

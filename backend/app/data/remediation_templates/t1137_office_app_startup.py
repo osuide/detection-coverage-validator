@@ -97,6 +97,8 @@ Resources:
   OfficePersistenceAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Office Application Startup Alerts
       Subscription:
         - Protocol: email
@@ -144,6 +146,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for Office persistence alerts
 resource "aws_sns_topic" "office_persistence_alerts" {
   name         = "office-application-startup-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Office Application Startup Alerts"
 }
 
@@ -256,6 +259,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for macro execution alerts
 resource "aws_sns_topic" "m365_macro_alerts" {
   name         = "m365-macro-execution-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Microsoft 365 Macro Alerts"
 }
 
@@ -515,6 +519,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for registry alerts
 resource "aws_sns_topic" "registry_persistence_alerts" {
   name         = "office-registry-persistence-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Office Registry Persistence Alerts"
 }
 

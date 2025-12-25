@@ -90,6 +90,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -146,6 +148,7 @@ resource "aws_guardduty_detector" "main" {
 # Step 2: Create SNS topic for alerts
 resource "aws_sns_topic" "alerts" {
   name = "guardduty-iam-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

@@ -118,6 +118,8 @@ Resources:
   SecurityAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Pass the Ticket Alerts
       Subscription:
         - Protocol: email
@@ -166,6 +168,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "pass_the_ticket_alerts" {
   name         = "pass-the-ticket-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Pass the Ticket Alerts"
 }
 
@@ -278,6 +281,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Hybrid Auth Anomaly Alerts
       Subscription:
         - Protocol: email
@@ -327,6 +332,7 @@ resource "aws_guardduty_detector" "main" {
 # Step 2: Create SNS topic
 resource "aws_sns_topic" "hybrid_auth_alerts" {
   name         = "hybrid-auth-anomaly-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Hybrid Auth Anomaly Alerts"
 }
 
@@ -485,6 +491,7 @@ variable "alert_email" {
 
 resource "aws_sns_topic" "alerts" {
   name = "directory-api-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -786,6 +793,7 @@ variable "alert_email" {
 
 resource "aws_sns_topic" "alerts" {
   name = "kerberos-ticket-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

@@ -104,6 +104,8 @@ Resources:
   SecurityAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Credential Dumping Alerts
       Subscription:
         - Protocol: email
@@ -171,6 +173,7 @@ resource "aws_guardduty_detector_feature" "runtime_monitoring" {
 # Step 2: Create SNS topic for alerts
 resource "aws_sns_topic" "credential_dumping_alerts" {
   name         = "credential-dumping-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Credential Dumping Alerts"
 }
 
@@ -339,6 +342,7 @@ resource "aws_cloudwatch_log_metric_filter" "credential_dumping_tools" {
 # Step 2: Create SNS topic
 resource "aws_sns_topic" "alerts" {
   name = "credential-dumping-tool-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -475,6 +479,7 @@ variable "alert_email" {
 
 resource "aws_sns_topic" "alerts" {
   name = "container-credential-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -761,6 +766,7 @@ variable "alert_email" {
 
 resource "aws_sns_topic" "alerts" {
   name = "secrets-access-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

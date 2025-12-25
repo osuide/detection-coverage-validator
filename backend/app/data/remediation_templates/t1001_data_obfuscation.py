@@ -91,6 +91,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -127,6 +129,7 @@ variable "vpc_flow_log_group" { type = string }
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "alerts" {
   name = "http-c2-obfuscation-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -237,6 +240,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -283,6 +288,7 @@ resource "aws_cloudwatch_log_metric_filter" "encoded_dns" {
 # Step 3: Alert on suspicious DNS activity
 resource "aws_sns_topic" "alerts" {
   name = "dns-encoding-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -358,6 +364,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -394,6 +402,7 @@ variable "vpc_flow_log_group" { type = string }
 # Step 1: Create alert topic
 resource "aws_sns_topic" "alerts" {
   name = "protocol-impersonation-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

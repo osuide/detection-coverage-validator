@@ -98,6 +98,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Input Capture Alerts
       Subscription:
         - Protocol: email
@@ -146,6 +148,7 @@ resource "aws_guardduty_detector" "main" {
 # Step 2: Create SNS topic for alerts
 resource "aws_sns_topic" "alerts" {
   name         = "input-capture-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Input Capture Alerts"
 }
 
@@ -265,6 +268,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Failed Login Alerts
       Subscription:
         - Protocol: email
@@ -312,6 +317,7 @@ variable "alert_email" {
 # Step 1: Create alert topic
 resource "aws_sns_topic" "alerts" {
   name         = "failed-login-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Failed Login Alerts"
 }
 

@@ -93,6 +93,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -126,6 +128,7 @@ variable "alert_email" { type = string }
 
 resource "aws_sns_topic" "web_service_alerts" {
   name = "web-service-abuse-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -207,6 +210,7 @@ variable "alert_email" { type = string }
 
 resource "aws_sns_topic" "web_service_traffic" {
   name = "web-service-traffic-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

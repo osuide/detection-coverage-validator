@@ -93,6 +93,8 @@ Resources:
   PhishingAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: SES Phishing Alerts
       Subscription:
         - Protocol: email
@@ -140,6 +142,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for phishing alerts
 resource "aws_sns_topic" "phishing_alerts" {
   name         = "ses-phishing-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "SES Phishing Alerts"
 }
 
@@ -251,6 +254,8 @@ Resources:
   MalwareAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -301,6 +306,7 @@ resource "aws_guardduty_detector" "main" {
 # Step 2: Create SNS topic for malware alerts
 resource "aws_sns_topic" "malware_alerts" {
   name = "guardduty-malware-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -398,6 +404,7 @@ variable "alert_email" { type = string }
 
 resource "aws_sns_topic" "alerts" {
   name = "workmail-rule-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

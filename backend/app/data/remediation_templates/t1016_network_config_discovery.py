@@ -91,6 +91,8 @@ Resources:
   NetworkDiscoveryAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Network Configuration Discovery Alerts
       Subscription:
         - Protocol: email
@@ -139,6 +141,7 @@ variable "alert_email" {
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "network_discovery_alerts" {
   name         = "network-configuration-discovery-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Network Configuration Discovery Alerts"
 }
 
@@ -237,6 +240,8 @@ Resources:
   ENIDiscoveryAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -278,6 +283,7 @@ variable "alert_email" {
 # Step 1: SNS topic
 resource "aws_sns_topic" "eni_discovery_alerts" {
   name = "network-interface-enumeration-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

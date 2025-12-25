@@ -95,6 +95,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Accessibility Feature Tampering Alerts
       Subscription:
         - Protocol: email
@@ -155,6 +157,7 @@ variable "alert_email" {
 # SNS topic for alerts
 resource "aws_sns_topic" "accessibility_alerts" {
   name         = "accessibility-feature-tampering-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Accessibility Feature Tampering Alerts"
 }
 
@@ -271,6 +274,7 @@ variable "windows_log_group" {
 # SNS topic for alerts
 resource "aws_sns_topic" "ifeo_alerts" {
   name         = "ifeo-modification-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Image File Execution Options Modification Alerts"
 }
 

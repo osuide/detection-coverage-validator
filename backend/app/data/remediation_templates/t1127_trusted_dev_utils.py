@@ -107,6 +107,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: T1127 Developer Utility Alerts
       Subscription:
         - Protocol: email
@@ -168,6 +170,7 @@ resource "aws_cloudwatch_log_metric_filter" "developer_utility" {
 # Step 2: Create SNS topic for alerts
 resource "aws_sns_topic" "alerts" {
   name         = "t1127-developer-utility-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "T1127 Developer Utility Alerts"
 }
 

@@ -105,6 +105,8 @@ Resources:
   MaliciousDocumentTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Template Injection Alerts
       Subscription:
         - Protocol: email
@@ -168,6 +170,7 @@ resource "aws_guardduty_detector" "main" {
 # Step 2: Create SNS topic for malicious document alerts
 resource "aws_sns_topic" "malicious_documents" {
   name         = "s3-malicious-document-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Template Injection Alerts"
 }
 
@@ -282,6 +285,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for template fetch alerts
 resource "aws_sns_topic" "template_fetch_alerts" {
   name         = "template-injection-network-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Template Injection Network Alerts"
 }
 
@@ -383,6 +387,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for WorkSpaces security alerts
 resource "aws_sns_topic" "workspaces_alerts" {
   name         = "workspaces-document-security-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "WorkSpaces Security Alerts"
 }
 

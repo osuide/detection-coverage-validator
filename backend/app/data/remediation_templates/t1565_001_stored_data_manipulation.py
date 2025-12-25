@@ -96,6 +96,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       TopicName: s3-data-manipulation-alerts
       Subscription:
         - Protocol: email
@@ -155,6 +157,7 @@ variable "critical_bucket_prefix" {
 
 resource "aws_sns_topic" "alerts" {
   name = "s3-data-manipulation-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -282,6 +285,7 @@ variable "db_instance_identifier" {
 # SNS topic for alerts
 resource "aws_sns_topic" "rds_alerts" {
   name = "rds-manipulation-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -434,6 +438,7 @@ variable "critical_table_names" {
 # SNS topic for alerts
 resource "aws_sns_topic" "dynamodb_alerts" {
   name = "dynamodb-manipulation-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

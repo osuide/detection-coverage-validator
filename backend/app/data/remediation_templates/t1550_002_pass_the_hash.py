@@ -105,6 +105,8 @@ Resources:
   SecurityAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Pass the Hash Detection Alerts
       Subscription:
         - Protocol: email
@@ -155,6 +157,7 @@ resource "aws_guardduty_detector" "main" {
 # Step 2: Create SNS topic for alerts
 resource "aws_sns_topic" "pth_alerts" {
   name         = "pass-the-hash-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Pass the Hash Detection Alerts"
 }
 
@@ -292,6 +295,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -339,6 +344,7 @@ resource "aws_cloudwatch_log_metric_filter" "ntlm_auth" {
 # Step 2: Create SNS topic for alerts
 resource "aws_sns_topic" "ntlm_alerts" {
   name = "ntlm-pth-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

@@ -92,6 +92,7 @@ Resources:
   StealthAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
       TopicName: guardduty-stealth-alerts
       KmsMasterKeyId: alias/aws/sns
 
@@ -310,6 +311,7 @@ Resources:
   ComplianceAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
       TopicName: config-cloudtrail-compliance
       KmsMasterKeyId: alias/aws/sns
 

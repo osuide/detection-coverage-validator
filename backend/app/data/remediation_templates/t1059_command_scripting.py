@@ -94,6 +94,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Interpreter Execution Alerts
       Subscription:
         - Protocol: email
@@ -149,6 +151,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "interpreter_alerts" {
   name         = "interpreter-execution-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Interpreter Execution Alerts"
 }
 
@@ -280,6 +283,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: GuardDuty Runtime Alerts
       Subscription:
         - Protocol: email
@@ -340,6 +345,7 @@ resource "aws_guardduty_detector" "main" {
 # Step 2: Create SNS topic for alerts
 resource "aws_sns_topic" "guardduty_alerts" {
   name         = "guardduty-runtime-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "GuardDuty Runtime Alerts"
 }
 
@@ -454,6 +460,8 @@ Resources:
   LambdaAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Lambda Security Alerts
       Subscription:
         - Protocol: email
@@ -494,6 +502,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for Lambda security alerts
 resource "aws_sns_topic" "lambda_alerts" {
   name         = "lambda-security-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Lambda Security Alerts"
 }
 

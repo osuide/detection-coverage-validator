@@ -86,6 +86,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Boot Integrity Alerts
       Subscription:
         - Protocol: email
@@ -128,6 +130,7 @@ variable "alert_email" {
 # SNS topic for alerts
 resource "aws_sns_topic" "boot_alerts" {
   name         = "ec2-boot-integrity-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Boot Integrity Alerts"
 }
 
@@ -219,6 +222,7 @@ variable "alert_email" {
 # SNS topic for Nitro attestation alerts
 resource "aws_sns_topic" "nitro_alerts" {
   name = "nitro-attestation-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

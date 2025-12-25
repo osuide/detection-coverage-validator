@@ -93,6 +93,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: SSM Suspicious Activity Alerts
       Subscription:
         - Protocol: email
@@ -140,6 +142,7 @@ variable "alert_email" {
 # SNS topic for alerts
 resource "aws_sns_topic" "ssm_alerts" {
   name         = "ssm-suspicious-activity-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "SSM Suspicious Activity Alerts"
 }
 
@@ -236,6 +239,7 @@ variable "alert_email" {
 
 resource "aws_sns_topic" "ssm_document_alerts" {
   name         = "ssm-unusual-document-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "SSM Unusual Document Alerts"
 }
 

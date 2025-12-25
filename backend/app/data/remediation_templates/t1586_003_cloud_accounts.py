@@ -91,6 +91,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: IAM Anomaly Alerts
       Subscription:
         - Protocol: email
@@ -138,6 +140,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "iam_anomaly_alerts" {
   name         = "iam-anomaly-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "IAM Anomaly Alerts"
 }
 
@@ -230,6 +233,8 @@ Resources:
   GuardDutyAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: GuardDuty Credential Alerts
       Subscription:
         - Protocol: email
@@ -279,6 +284,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for GuardDuty alerts
 resource "aws_sns_topic" "guardduty_alerts" {
   name         = "guardduty-credential-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "GuardDuty Credential Alerts"
 }
 
@@ -385,6 +391,7 @@ resource "aws_accessanalyzer_analyzer" "account" {
 # Step 2: Create SNS topic for alerts
 resource "aws_sns_topic" "access_analyzer_alerts" {
   name         = "access-analyzer-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "IAM Access Analyzer Alerts"
 }
 

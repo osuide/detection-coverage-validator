@@ -90,6 +90,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -127,6 +129,7 @@ variable "vpc_flow_log_group" { type = string }
 # Step 1: Create SNS alert topic
 resource "aws_sns_topic" "alerts" {
   name = "encrypted-exfil-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -217,6 +220,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -253,6 +258,7 @@ variable "cloudtrail_log_group" { type = string }
 # Step 1: Create SNS topic
 resource "aws_sns_topic" "alerts" {
   name = "crypto-tool-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -343,6 +349,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -379,6 +387,7 @@ variable "cloudtrail_log_group" { type = string }
 # Step 1: Create alert topic
 resource "aws_sns_topic" "alerts" {
   name = "symmetric-encryption-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

@@ -102,6 +102,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Volume Attachment Alerts
       Subscription:
         - Protocol: email
@@ -161,6 +163,7 @@ variable "alert_email" {
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "volume_alerts" {
   name         = "ebs-volume-attachment-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Volume Attachment Alerts"
 }
 
@@ -276,6 +279,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Snapshot Import Alerts
       Subscription:
         - Protocol: email
@@ -333,6 +338,7 @@ variable "alert_email" {
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "snapshot_alerts" {
   name         = "snapshot-import-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Snapshot Import Alerts"
 }
 
@@ -446,6 +452,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: SSM Session Alerts
       Subscription:
         - Protocol: email
@@ -503,6 +511,7 @@ variable "alert_email" {
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "ssm_alerts" {
   name         = "ssm-session-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "SSM Session Alerts"
 }
 

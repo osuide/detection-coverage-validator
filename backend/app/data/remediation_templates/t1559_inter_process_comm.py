@@ -133,6 +133,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: IPC Abuse Alerts
       Subscription:
         - Protocol: email
@@ -198,6 +200,7 @@ resource "aws_cloudwatch_metric_alarm" "ipc_creation" {
 # Step 3: SNS topic for alerts
 resource "aws_sns_topic" "alerts" {
   name         = "ipc-abuse-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "IPC Abuse Alerts"
 }
 
@@ -313,6 +316,8 @@ Resources:
   IPCAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: IPC Abuse Alerts
       Subscription:
         - Protocol: email
@@ -398,6 +403,7 @@ resource "aws_guardduty_detector_feature" "runtime_monitoring" {
 # Step 2: Create SNS topic for alerts
 resource "aws_sns_topic" "ipc_alerts" {
   name         = "guardduty-ipc-abuse-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "IPC Abuse Alerts"
 }
 

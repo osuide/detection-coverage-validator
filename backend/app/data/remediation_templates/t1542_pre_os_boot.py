@@ -91,6 +91,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Boot Integrity Alerts
       Subscription:
         - Protocol: email
@@ -182,6 +184,7 @@ variable "alert_email" {
 # SNS topic for alerts
 resource "aws_sns_topic" "boot_alerts" {
   name         = "ec2-boot-integrity-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Boot Integrity Alerts"
 }
 
@@ -337,6 +340,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Boot Anomaly Alerts
       Subscription:
         - Protocol: email
@@ -380,6 +385,7 @@ variable "alert_email" {
 # SNS topic for alerts
 resource "aws_sns_topic" "boot_anomaly_alerts" {
   name         = "ec2-boot-anomaly-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Boot Anomaly Alerts"
 }
 

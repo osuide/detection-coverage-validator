@@ -89,6 +89,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Email Protocol C2 Alerts
       Subscription:
         - Protocol: email
@@ -136,6 +138,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "alerts" {
   name         = "email-protocol-c2-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Email Protocol C2 Alerts"
 }
 
@@ -233,6 +236,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: GuardDuty Email C2 Alerts
       Subscription:
         - Protocol: email
@@ -282,6 +287,7 @@ resource "aws_guardduty_detector" "main" {
 # Step 2: Create SNS topic for alerts
 resource "aws_sns_topic" "alerts" {
   name         = "guardduty-email-c2-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "GuardDuty Email C2 Alerts"
 }
 

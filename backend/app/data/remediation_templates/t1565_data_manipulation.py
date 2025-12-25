@@ -93,6 +93,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -129,6 +131,7 @@ variable "alert_email" { type = string }
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "alerts" {
   name = "s3-modification-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -220,6 +223,7 @@ variable "alert_email" { type = string }
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "alerts" {
   name = "rds-modification-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -318,6 +322,7 @@ variable "alert_email" { type = string }
 # Step 1: Create SNS topic for critical alerts
 resource "aws_sns_topic" "alerts" {
   name = "cloudtrail-tampering-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -409,6 +414,7 @@ variable "alert_email" { type = string }
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "alerts" {
   name = "dynamodb-modification-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

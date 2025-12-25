@@ -86,6 +86,7 @@ Resources:
   ApiReconAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
       TopicName: guardduty-api-recon-alerts
       KmsMasterKeyId: alias/aws/sns
 

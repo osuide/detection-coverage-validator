@@ -88,6 +88,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: RDS Export Alerts
       Subscription:
         - Protocol: email
@@ -137,6 +139,7 @@ variable "cloudtrail_log_group" {
 # SNS Topic for alerts
 resource "aws_sns_topic" "rds_alerts" {
   name         = "rds-export-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "RDS Export Alerts"
 }
 
@@ -230,6 +233,7 @@ variable "ec2_log_group" {
 # SNS Topic for alerts
 resource "aws_sns_topic" "db_tool_alerts" {
   name         = "database-tool-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Database Tool Alerts"
 }
 
@@ -550,6 +554,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: DynamoDB Export Alerts
       Subscription:
         - Protocol: email
@@ -599,6 +605,7 @@ variable "cloudtrail_log_group" {
 # SNS Topic for alerts
 resource "aws_sns_topic" "dynamodb_alerts" {
   name         = "dynamodb-export-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "DynamoDB Export Alerts"
 }
 

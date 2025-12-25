@@ -99,6 +99,8 @@ Resources:
   ExtensionAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       TopicName: browser-extension-alerts
       Subscription:
         - Protocol: email
@@ -152,6 +154,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "extension_alerts" {
   name = "browser-extension-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -268,6 +271,8 @@ Resources:
   MalwareAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       TopicName: guardduty-malware-alerts
       Subscription:
         - Protocol: email
@@ -329,6 +334,7 @@ resource "aws_guardduty_detector_feature" "malware_protection" {
 # Step 2: Create SNS topic for alerts
 resource "aws_sns_topic" "malware_alerts" {
   name = "guardduty-malware-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -443,6 +449,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic
 resource "aws_sns_topic" "alerts" {
   name = "browser-config-modification-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

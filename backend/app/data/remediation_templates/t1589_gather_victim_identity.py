@@ -89,6 +89,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Username Enumeration Alerts
       Subscription:
         - Protocol: email
@@ -137,6 +139,7 @@ variable "alert_email" {
 # SNS topic for alerts
 resource "aws_sns_topic" "username_enum_alerts" {
   name         = "username-enumeration-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Username Enumeration Alerts"
 }
 
@@ -232,6 +235,7 @@ variable "alert_email" {
 # SNS topic for alerts
 resource "aws_sns_topic" "auth_recon_alerts" {
   name         = "authentication-reconnaissance-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Authentication Reconnaissance Alerts"
 }
 
@@ -438,6 +442,7 @@ variable "alert_email" {
 # SNS topic for alerts
 resource "aws_sns_topic" "public_exposure_alerts" {
   name         = "public-identity-exposure-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Public Identity Exposure Alerts"
 }
 

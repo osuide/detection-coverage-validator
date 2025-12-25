@@ -103,6 +103,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -162,6 +164,7 @@ resource "aws_cloudwatch_log_group" "dga_detection" {
 # Step 2: SNS topic for alerts
 resource "aws_sns_topic" "dga_alerts" {
   name = "dga-domain-detection-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -274,6 +277,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -337,6 +342,7 @@ resource "aws_cloudwatch_log_group" "ddns_detection" {
 # Step 2: SNS topic for alerts
 resource "aws_sns_topic" "ddns_alerts" {
   name = "dynamic-dns-detection-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -437,6 +443,7 @@ resource "aws_cloudwatch_log_group" "fastflux_detection" {
 # Step 2: SNS topic for alerts
 resource "aws_sns_topic" "fastflux_alerts" {
   name = "fast-flux-detection-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -545,6 +552,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -597,6 +606,7 @@ resource "aws_guardduty_detector" "main" {
 # Step 2: SNS topic for alerts
 resource "aws_sns_topic" "guardduty_alerts" {
   name = "guardduty-malicious-domain-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {

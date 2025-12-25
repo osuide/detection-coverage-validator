@@ -101,6 +101,8 @@ Resources:
   CredentialAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Credential Exposure Alerts
       Subscription:
         - Protocol: email
@@ -152,6 +154,7 @@ resource "aws_guardduty_detector" "main" {
 # Step 2: SNS topic for alerts
 resource "aws_sns_topic" "credential_alerts" {
   name         = "credential-exposure-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Credential Exposure Alerts"
 }
 
@@ -257,6 +260,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Secret Access Alerts
       Subscription:
         - Protocol: email
@@ -304,6 +309,7 @@ variable "alert_email" {
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "secret_access_alerts" {
   name         = "secret-access-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Secret Access Alerts"
 }
 
@@ -513,6 +519,8 @@ Resources:
   MetadataAbuseTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Metadata Service Abuse Alerts
       Subscription:
         - Protocol: email
@@ -557,6 +565,7 @@ variable "alert_email" {
 # Step 1: SNS topic
 resource "aws_sns_topic" "metadata_abuse" {
   name         = "metadata-abuse-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Metadata Service Abuse Alerts"
 }
 
