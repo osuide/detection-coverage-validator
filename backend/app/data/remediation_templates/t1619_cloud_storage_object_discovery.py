@@ -57,7 +57,148 @@ TEMPLATE = RemediationTemplate(
         often_follows=["T1078.004", "T1580"],
     ),
     detection_strategies=[
-        # Strategy 1: AWS - S3 ListObjects Detection
+        # =====================================================================
+        # STRATEGY 1: GuardDuty S3 Discovery Detection (Recommended)
+        # =====================================================================
+        DetectionStrategy(
+            strategy_id="t1619-aws-guardduty",
+            name="AWS GuardDuty S3 Discovery Detection",
+            description=(
+                "Leverage GuardDuty's ML-based detection for S3 enumeration patterns. "
+                "Detects unusual bucket and object listing activity. "
+                "See: https://docs.aws.amazon.com/guardduty/latest/ug/guardduty_finding-types-s3.html"
+            ),
+            detection_type=DetectionType.GUARDDUTY,
+            aws_service="guardduty",
+            cloud_provider=CloudProvider.AWS,
+            implementation=DetectionImplementation(
+                guardduty_finding_types=[
+                    "Discovery:S3/AnomalousBehavior",
+                    "Discovery:S3/MaliciousIPCaller.Custom",
+                ],
+                terraform_template="""# AWS GuardDuty S3 Discovery Detection
+# Detects: Discovery:S3/AnomalousBehavior
+# See: https://docs.aws.amazon.com/guardduty/latest/ug/guardduty_finding-types-s3.html
+
+variable "alert_email" {
+  type        = string
+  description = "Email for discovery alerts"
+}
+
+# Step 1: Create encrypted SNS topic
+resource "aws_sns_topic" "discovery_alerts" {
+  name              = "guardduty-discovery-alerts"
+  kms_master_key_id = "alias/aws/sns"
+}
+
+resource "aws_sns_topic_subscription" "alert_email" {
+  topic_arn = aws_sns_topic.discovery_alerts.arn
+  protocol  = "email"
+  endpoint  = var.alert_email
+}
+
+# Step 2: Enable GuardDuty with S3 Protection
+resource "aws_guardduty_detector" "main" {
+  enable = true
+  datasources {
+    s3_logs {
+      enable = true
+    }
+  }
+}
+
+# Step 3: Route Discovery findings to SNS
+resource "aws_cloudwatch_event_rule" "discovery_findings" {
+  name        = "guardduty-discovery-findings"
+  description = "Detect S3 discovery activity via GuardDuty"
+
+  event_pattern = jsonencode({
+    source      = ["aws.guardduty"]
+    detail-type = ["GuardDuty Finding"]
+    detail = {
+      type = [{ prefix = "Discovery:S3/" }]
+    }
+  })
+}
+
+resource "aws_cloudwatch_event_target" "to_sns" {
+  rule      = aws_cloudwatch_event_rule.discovery_findings.name
+  target_id = "SendToSNS"
+  arn       = aws_sns_topic.discovery_alerts.arn
+
+  input_transformer {
+    input_paths = {
+      findingType = "$.detail.type"
+      severity    = "$.detail.severity"
+      bucket      = "$.detail.resource.s3BucketDetails[0].name"
+      principal   = "$.detail.resource.accessKeyDetails.userName"
+      accountId   = "$.account"
+    }
+    input_template = <<-EOF
+      "GuardDuty S3 Discovery Alert"
+      "Type: <findingType>"
+      "Severity: <severity>"
+      "Bucket: <bucket>"
+      "Principal: <principal>"
+      "Account: <accountId>"
+      "Action: Review for reconnaissance activity before exfiltration"
+    EOF
+  }
+}
+
+resource "aws_sns_topic_policy" "allow_eventbridge" {
+  arn = aws_sns_topic.discovery_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowEventBridgePublish"
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.discovery_alerts.arn
+    }]
+  })
+}""",
+                alert_severity="medium",
+                alert_title="GuardDuty: S3 Discovery Activity Detected",
+                alert_description_template=(
+                    "GuardDuty detected S3 discovery activity: {type}. "
+                    "Bucket {bucket} being enumerated by {principal}."
+                ),
+                investigation_steps=[
+                    "Review the GuardDuty finding for full anomaly context",
+                    "Identify all buckets accessed by this principal",
+                    "Check for subsequent GetObject (data access) calls",
+                    "Verify if the principal normally accesses these buckets",
+                    "Look for signs of credential compromise",
+                ],
+                containment_actions=[
+                    "Review and restrict the principal's S3 permissions",
+                    "Check for data exfiltration after the enumeration",
+                    "Consider rotating the affected credentials",
+                    "Enable S3 Block Public Access if not set",
+                    "Review bucket policies for overly permissive access",
+                ],
+            ),
+            estimated_false_positive_rate=FalsePositiveRate.LOW,
+            false_positive_tuning=(
+                "GuardDuty's ML learns baseline S3 access patterns. "
+                "Suppress findings for legitimate backup and inventory tools. "
+                "Use trusted IP lists for known automation infrastructure."
+            ),
+            detection_coverage="85% - ML-based detection of enumeration patterns",
+            evasion_considerations="Slow enumeration may blend into baseline activity",
+            implementation_effort=EffortLevel.LOW,
+            implementation_time="30 minutes",
+            estimated_monthly_cost=(
+                "S3 Protection: ~$0.80 per million S3 events. "
+                "See: https://aws.amazon.com/guardduty/pricing/"
+            ),
+            prerequisites=["CloudTrail S3 data events enabled"],
+        ),
+        # =====================================================================
+        # STRATEGY 2: AWS - S3 ListObjects Detection
+        # =====================================================================
         DetectionStrategy(
             strategy_id="t1619-aws-s3list",
             name="S3 Object Listing Detection",
@@ -251,7 +392,7 @@ resource "google_monitoring_alert_policy" "gcs_enum" {
             prerequisites=["Cloud Audit Logs with data access enabled"],
         ),
     ],
-    recommended_order=["t1619-aws-s3list", "t1619-gcp-gcslist"],
+    recommended_order=["t1619-aws-guardduty", "t1619-aws-s3list", "t1619-gcp-gcslist"],
     total_effort_hours=2.0,
     coverage_improvement="+15% improvement for Discovery tactic",
 )

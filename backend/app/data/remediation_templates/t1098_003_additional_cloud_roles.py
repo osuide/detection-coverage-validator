@@ -55,7 +55,144 @@ TEMPLATE = RemediationTemplate(
         often_follows=["T1078.004", "T1098.001"],
     ),
     detection_strategies=[
-        # Strategy 1: AWS - Role Trust Policy Modification
+        # =====================================================================
+        # STRATEGY 1: GuardDuty Persistence Detection (Recommended)
+        # =====================================================================
+        DetectionStrategy(
+            strategy_id="t1098003-aws-guardduty",
+            name="AWS GuardDuty Persistence Detection",
+            description=(
+                "Leverage GuardDuty's ML-based detection for IAM persistence patterns. "
+                "Detects unusual IAM policy changes and role modifications. "
+                "See: https://docs.aws.amazon.com/guardduty/latest/ug/guardduty_finding-types-iam.html"
+            ),
+            detection_type=DetectionType.GUARDDUTY,
+            aws_service="guardduty",
+            cloud_provider=CloudProvider.AWS,
+            implementation=DetectionImplementation(
+                guardduty_finding_types=[
+                    "Persistence:IAMUser/AnomalousBehavior",
+                    "PrivilegeEscalation:IAMUser/AnomalousBehavior",
+                ],
+                terraform_template="""# AWS GuardDuty Persistence Detection for IAM
+# Detects: Persistence:IAMUser/AnomalousBehavior
+# See: https://docs.aws.amazon.com/guardduty/latest/ug/guardduty_finding-types-iam.html
+
+variable "alert_email" {
+  type        = string
+  description = "Email for persistence alerts"
+}
+
+# Step 1: Create encrypted SNS topic
+resource "aws_sns_topic" "persistence_alerts" {
+  name              = "guardduty-persistence-alerts"
+  kms_master_key_id = "alias/aws/sns"
+}
+
+resource "aws_sns_topic_subscription" "alert_email" {
+  topic_arn = aws_sns_topic.persistence_alerts.arn
+  protocol  = "email"
+  endpoint  = var.alert_email
+}
+
+# Step 2: Enable GuardDuty
+resource "aws_guardduty_detector" "main" {
+  enable = true
+}
+
+# Step 3: Route Persistence and PrivilegeEscalation findings to SNS
+resource "aws_cloudwatch_event_rule" "persistence_findings" {
+  name        = "guardduty-persistence-findings"
+  description = "Detect IAM persistence and privilege escalation"
+
+  event_pattern = jsonencode({
+    source      = ["aws.guardduty"]
+    detail-type = ["GuardDuty Finding"]
+    detail = {
+      type = [
+        { prefix = "Persistence:IAMUser/" },
+        { prefix = "PrivilegeEscalation:IAMUser/" }
+      ]
+    }
+  })
+}
+
+resource "aws_cloudwatch_event_target" "to_sns" {
+  rule      = aws_cloudwatch_event_rule.persistence_findings.name
+  target_id = "SendToSNS"
+  arn       = aws_sns_topic.persistence_alerts.arn
+
+  input_transformer {
+    input_paths = {
+      findingType = "$.detail.type"
+      severity    = "$.detail.severity"
+      principal   = "$.detail.resource.accessKeyDetails.userName"
+      accountId   = "$.account"
+    }
+    input_template = <<-EOF
+      "CRITICAL: GuardDuty Persistence Alert"
+      "Type: <findingType>"
+      "Severity: <severity>"
+      "Principal: <principal>"
+      "Account: <accountId>"
+      "Action: Investigate IAM changes immediately"
+    EOF
+  }
+}
+
+resource "aws_sns_topic_policy" "allow_eventbridge" {
+  arn = aws_sns_topic.persistence_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowEventBridgePublish"
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.persistence_alerts.arn
+    }]
+  })
+}""",
+                alert_severity="critical",
+                alert_title="GuardDuty: IAM Persistence Activity Detected",
+                alert_description_template=(
+                    "GuardDuty detected IAM persistence activity: {type}. "
+                    "Principal {principal} may be establishing persistent access."
+                ),
+                investigation_steps=[
+                    "Review the specific GuardDuty finding for full context",
+                    "Identify all IAM changes made by this principal",
+                    "Check for new roles, policies, or trust relationships",
+                    "Review access key creation activity",
+                    "Look for privilege escalation patterns",
+                ],
+                containment_actions=[
+                    "Revoke the principal's credentials immediately",
+                    "Remove any IAM changes made by the principal",
+                    "Review and restrict IAM modification permissions",
+                    "Enable MFA for all IAM operations",
+                    "Audit all IAM resources for backdoors",
+                ],
+            ),
+            estimated_false_positive_rate=FalsePositiveRate.LOW,
+            false_positive_tuning=(
+                "GuardDuty's ML learns baseline IAM patterns over 7-14 days. "
+                "New automation may trigger initial findings. "
+                "Use suppression rules for known CI/CD systems."
+            ),
+            detection_coverage="85% - ML-based detection of anomalous IAM activity",
+            evasion_considerations="Very slow, gradual privilege escalation may evade",
+            implementation_effort=EffortLevel.LOW,
+            implementation_time="30 minutes",
+            estimated_monthly_cost=(
+                "Included in base GuardDuty cost. "
+                "See: https://aws.amazon.com/guardduty/pricing/"
+            ),
+            prerequisites=["CloudTrail enabled"],
+        ),
+        # =====================================================================
+        # STRATEGY 2: AWS - Role Trust Policy Modification
+        # =====================================================================
         DetectionStrategy(
             strategy_id="t1098003-aws-trustpolicy",
             name="IAM Role Trust Policy Modification",
@@ -499,6 +636,7 @@ resource "google_monitoring_alert_policy" "sa_impersonation" {
         ),
     ],
     recommended_order=[
+        "t1098003-aws-guardduty",
         "t1098003-aws-trustpolicy",
         "t1098003-gcp-rolebinding",
         "t1098003-aws-adminpolicy",
