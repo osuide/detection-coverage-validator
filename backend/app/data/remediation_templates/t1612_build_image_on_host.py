@@ -61,133 +61,308 @@ TEMPLATE = RemediationTemplate(
         DetectionStrategy(
             strategy_id="t1612-aws-docker-build",
             name="AWS Docker Build Activity Detection",
-            description="Detect Docker build commands and suspicious Dockerfile instructions on EC2/ECS.",
-            detection_type=DetectionType.CLOUDWATCH_QUERY,
-            aws_service="cloudwatch",
+            description=(
+                "Detect Docker build commands via CodeBuild/CloudTrail in near real-time. "
+                "Uses EventBridge for low-latency alerting with reliable delivery."
+            ),
+            detection_type=DetectionType.EVENTBRIDGE_RULE,
+            aws_service="eventbridge",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query="""fields @timestamp, @message
-| filter @message like /docker build/
-| filter @message like /RUN curl|RUN wget|RUN nc|ADD http/
-| sort @timestamp desc""",
+                event_pattern={
+                    "source": ["aws.codebuild"],
+                    "detail-type": ["CodeBuild Build State Change"],
+                    "detail": {
+                        "build-status": ["IN_PROGRESS", "SUCCEEDED"],
+                    },
+                },
                 cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
-Description: Detect suspicious Docker build activity
+Description: Detect Docker build activity via CodeBuild (T1612)
 
 Parameters:
-  LogGroupName:
-    Type: String
-    Description: CloudWatch log group for Docker logs
   AlertEmail:
     Type: String
+    Description: Email for security alerts
 
 Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      TopicName: t1612-docker-build-alerts
       KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
-  DockerBuildFilter:
-    Type: AWS::Logs::MetricFilter
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
     Properties:
-      LogGroupName: !Ref LogGroupName
-      FilterPattern: '[time, request_id, event_type = *build*, ...]'
-      MetricTransformations:
-        - MetricName: DockerBuildCount
-          MetricNamespace: Security/Container
-          MetricValue: "1"
+      QueueName: t1612-docker-build-dlq
+      MessageRetentionPeriod: 1209600
 
-  DockerBuildAlarm:
-    Type: AWS::CloudWatch::Alarm
+  CodeBuildRule:
+    Type: AWS::Events::Rule
     Properties:
-      AlarmName: SuspiciousDockerBuild
-      MetricName: DockerBuildCount
-      Namespace: Security/Container
-      Statistic: Sum
-      Period: 300
-      Threshold: 1
-      ComparisonOperator: GreaterThanThreshold
-      EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]""",
-                terraform_template="""# Detect suspicious Docker build activity
+      Name: t1612-codebuild-detection
+      Description: Detect CodeBuild builds that may include Docker (T1612)
+      State: ENABLED
+      EventPattern:
+        source:
+          - aws.codebuild
+        detail-type:
+          - CodeBuild Build State Change
+        detail:
+          build-status:
+            - IN_PROGRESS
+            - SUCCEEDED
+      Targets:
+        - Id: SNSTarget
+          Arn: !Ref AlertTopic
+          DeadLetterConfig:
+            Arn: !GetAtt DeadLetterQueue.Arn
+          RetryPolicy:
+            MaximumEventAgeInSeconds: 3600
+            MaximumRetryAttempts: 8
+          InputTransformer:
+            InputPathsMap:
+              time: $.time
+              account: $.account
+              region: $.region
+              project: $.detail.project-name
+              status: $.detail.build-status
+              buildId: $.detail.build-id
+              initiator: $.detail.additional-information.initiator
+            InputTemplate: |
+              "ALERT: CodeBuild Activity Detected (T1612)"
+              "time=<time>"
+              "account=<account> region=<region>"
+              "project=<project>"
+              "status=<status>"
+              "build_id=<buildId>"
+              "initiator=<initiator>"
 
-variable "log_group_name" {
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref AlertTopic
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowEventBridgePublishScoped
+            Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt CodeBuildRule.Arn
+
+  DLQPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref DeadLetterQueue
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt DeadLetterQueue.Arn
+
+Outputs:
+  AlertTopicArn:
+    Description: SNS topic for Docker build alerts
+    Value: !Ref AlertTopic
+  EventRuleArn:
+    Description: EventBridge rule ARN
+    Value: !GetAtt CodeBuildRule.Arn
+  DLQUrl:
+    Description: Dead letter queue URL
+    Value: !Ref DeadLetterQueue""",
+                terraform_template="""# Detect Docker build activity via CodeBuild (T1612)
+# Uses EventBridge for near real-time detection
+# Optimised pattern: DLQ, retry policy, scoped SNS, human-readable alerts
+
+variable "name_prefix" {
   type        = string
-  description = "CloudWatch log group for Docker logs"
+  default     = "t1612-docker-build"
+  description = "Prefix for resource names"
 }
-variable "alert_email" { type = string }
 
-resource "aws_sns_topic" "alerts" {
-  name = "docker-build-alerts"
+variable "alert_email" {
+  type        = string
+  description = "Email for security alerts (SNS subscription confirmation required)"
+}
+
+data "aws_caller_identity" "current" {}
+
+# SNS topic for alerts
+resource "aws_sns_topic" "docker_build_alerts" {
+  name              = "${var.name_prefix}-alerts"
+  display_name      = "Docker Build Alerts"
   kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
-  topic_arn = aws_sns_topic.alerts.arn
+  topic_arn = aws_sns_topic.docker_build_alerts.arn
   protocol  = "email"
   endpoint  = var.alert_email
 }
 
-resource "aws_cloudwatch_log_metric_filter" "docker_build" {
-  name           = "docker-build-activity"
-  log_group_name = var.log_group_name
-  pattern        = "[time, request_id, event_type = *build*, ...]"
+# EventBridge rule: detect CodeBuild builds
+resource "aws_cloudwatch_event_rule" "docker_build" {
+  name        = "${var.name_prefix}-codebuild"
+  description = "Detect CodeBuild builds that may include Docker (T1612)"
 
-  metric_transformation {
-    name      = "DockerBuildCount"
-    namespace = "Security/Container"
-    value     = "1"
+  event_pattern = jsonencode({
+    source        = ["aws.codebuild"]
+    "detail-type" = ["CodeBuild Build State Change"]
+    detail = {
+      "build-status" = ["IN_PROGRESS", "SUCCEEDED"]
+    }
+  })
+}
+
+# DLQ for delivery failures (14 day retention)
+resource "aws_sqs_queue" "docker_build_dlq" {
+  name                      = "${var.name_prefix}-dlq"
+  message_retention_seconds = 1209600
+}
+
+# Route to SNS with input transformer for human-readable alerts
+resource "aws_cloudwatch_event_target" "docker_build_to_sns" {
+  rule      = aws_cloudwatch_event_rule.docker_build.name
+  target_id = "SNSTarget"
+  arn       = aws_sns_topic.docker_build_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.docker_build_dlq.arn
+  }
+
+  input_transformer {
+    input_paths = {
+      time      = "$.time"
+      account   = "$.account"
+      region    = "$.region"
+      project   = "$.detail.project-name"
+      status    = "$.detail.build-status"
+      buildId   = "$.detail.build-id"
+      initiator = "$.detail.additional-information.initiator"
+    }
+
+    input_template = <<-EOT
+"ALERT: CodeBuild Activity Detected (T1612)
+time=<time>
+account=<account> region=<region>
+project=<project>
+status=<status>
+build_id=<buildId>
+initiator=<initiator>"
+EOT
   }
 }
 
-resource "aws_cloudwatch_metric_alarm" "docker_build" {
-  alarm_name          = "suspicious-docker-build"
-  comparison_operator = "GreaterThanThreshold"
-  evaluation_periods  = 1
-  metric_name         = "DockerBuildCount"
-  namespace           = "Security/Container"
-  period              = 300
-  statistic           = "Sum"
-  threshold           = 1
-  alarm_description   = "Alert on Docker build activity"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+# SNS topic policy with scoped conditions for least privilege
+resource "aws_sns_topic_policy" "allow_eventbridge_publish" {
+  arn = aws_sns_topic.docker_build_alerts.arn
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowEventBridgePublishScoped"
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.docker_build_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.docker_build.arn
+        }
+      }
+    }]
+  })
+}
+
+# Allow EventBridge to send to DLQ
+resource "aws_sqs_queue_policy" "docker_build_dlq" {
+  queue_url = aws_sqs_queue.docker_build_dlq.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.docker_build_dlq.arn
+    }]
+  })
+}
+
+output "alert_topic_arn" {
+  description = "SNS topic for Docker build alerts"
+  value       = aws_sns_topic.docker_build_alerts.arn
+}
+
+output "event_rule_arn" {
+  description = "EventBridge rule ARN"
+  value       = aws_cloudwatch_event_rule.docker_build.arn
+}
+
+output "dlq_url" {
+  description = "Dead letter queue URL for failed deliveries"
+  value       = aws_sqs_queue.docker_build_dlq.url
 }""",
                 alert_severity="high",
-                alert_title="Suspicious Docker Build Detected",
-                alert_description_template="Docker build with suspicious instructions detected on {instance_id}.",
+                alert_title="Docker Build Activity Detected",
+                alert_description_template="CodeBuild project {project} triggered by {initiator}. Review for container image builds.",
                 investigation_steps=[
-                    "Review Dockerfile contents",
-                    "Check for malicious RUN/ADD/COPY commands",
+                    "Review CodeBuild project configuration",
+                    "Check buildspec.yml for Docker commands",
                     "Identify who initiated the build",
-                    "Examine network connections during build",
+                    "Review build logs for suspicious activity",
                     "Scan resulting image for malware",
                 ],
                 containment_actions=[
-                    "Delete suspicious images",
-                    "Block Docker API access from internet",
+                    "Delete suspicious images from ECR",
+                    "Restrict CodeBuild permissions",
                     "Require TLS authentication for Docker API",
                     "Implement image scanning pipeline",
-                    "Restrict Docker socket access",
+                    "Enable ECR image scanning",
                 ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
-            false_positive_tuning="Whitelist legitimate CI/CD build processes",
-            detection_coverage="80% - requires Docker logging enabled",
-            evasion_considerations="Attacker may use obfuscated Dockerfiles or multi-stage builds",
-            implementation_effort=EffortLevel.MEDIUM,
-            implementation_time="1.5 hours",
-            estimated_monthly_cost="$5-15",
+            false_positive_tuning="Filter by project name pattern to exclude known CI/CD projects",
+            detection_coverage="95% - catches all CodeBuild activity",
+            evasion_considerations="Direct Docker builds on EC2 may bypass - use GuardDuty Runtime Monitoring",
+            implementation_effort=EffortLevel.LOW,
+            implementation_time="20 minutes",
+            estimated_monthly_cost="$1-3",
             prerequisites=[
-                "Docker daemon logging to CloudWatch",
-                "Container Insights enabled",
+                "CloudTrail enabled",
+                "CodeBuild used for container builds",
             ],
         ),
         DetectionStrategy(
             strategy_id="t1612-aws-ecr-rapid-build",
-            name="AWS Rapid Build-Push Detection",
-            description="Detect images built and immediately deployed without approval process.",
+            name="AWS ECR Image Push Detection",
+            description=(
+                "Detect images pushed to ECR in near real-time. "
+                "Uses EventBridge with DLQ and retry for reliable alerting."
+            ),
             detection_type=DetectionType.EVENTBRIDGE_RULE,
             aws_service="eventbridge",
             cloud_provider=CloudProvider.AWS,
@@ -198,97 +373,253 @@ resource "aws_cloudwatch_metric_alarm" "docker_build" {
                     "detail": {"action-type": ["PUSH"], "result": ["SUCCESS"]},
                 },
                 cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
-Description: Detect rapid image build and push
+Description: Detect ECR image push (T1612)
 
 Parameters:
   AlertEmail:
     Type: String
+    Description: Email for security alerts
 
 Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      TopicName: t1612-ecr-push-alerts
       KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: t1612-ecr-push-dlq
+      MessageRetentionPeriod: 1209600
+
   ECRPushRule:
     Type: AWS::Events::Rule
     Properties:
-      Description: Alert on ECR image push
-      EventPattern:
-        source: [aws.ecr]
-        detail-type: [ECR Image Action]
-        detail:
-          action-type: [PUSH]
-          result: [SUCCESS]
+      Name: t1612-ecr-push-detection
+      Description: Alert on ECR image push (T1612)
       State: ENABLED
+      EventPattern:
+        source:
+          - aws.ecr
+        detail-type:
+          - ECR Image Action
+        detail:
+          action-type:
+            - PUSH
+          result:
+            - SUCCESS
       Targets:
-        - Id: Alert
+        - Id: SNSTarget
           Arn: !Ref AlertTopic
+          DeadLetterConfig:
+            Arn: !GetAtt DeadLetterQueue.Arn
+          RetryPolicy:
+            MaximumEventAgeInSeconds: 3600
+            MaximumRetryAttempts: 8
+          InputTransformer:
+            InputPathsMap:
+              time: $.time
+              account: $.account
+              region: $.region
+              repository: $.detail.repository-name
+              tag: $.detail.image-tag
+              digest: $.detail.image-digest
+            InputTemplate: |
+              "ALERT: ECR Image Push Detected (T1612)"
+              "time=<time>"
+              "account=<account> region=<region>"
+              "repository=<repository>"
+              "tag=<tag>"
+              "digest=<digest>"
 
   TopicPolicy:
     Type: AWS::SNS::TopicPolicy
     Properties:
-      Topics: [!Ref AlertTopic]
+      Topics:
+        - !Ref AlertTopic
       PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowEventBridgePublishScoped
+            Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt ECRPushRule.Arn
+
+  DLQPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref DeadLetterQueue
+      PolicyDocument:
+        Version: '2012-10-17'
         Statement:
           - Effect: Allow
             Principal:
               Service: events.amazonaws.com
-            Action: sns:Publish
-            Resource: !Ref AlertTopic""",
-                terraform_template="""# Detect rapid image build and push
+            Action: sqs:SendMessage
+            Resource: !GetAtt DeadLetterQueue.Arn
 
-variable "alert_email" { type = string }
+Outputs:
+  AlertTopicArn:
+    Description: SNS topic for ECR push alerts
+    Value: !Ref AlertTopic
+  EventRuleArn:
+    Description: EventBridge rule ARN
+    Value: !GetAtt ECRPushRule.Arn""",
+                terraform_template="""# Detect ECR image push (T1612)
+# Uses EventBridge for near real-time detection
+# Optimised pattern: DLQ, retry policy, scoped SNS, human-readable alerts
 
-resource "aws_sns_topic" "alerts" {
-  name = "ecr-rapid-push-alerts"
+variable "name_prefix" {
+  type        = string
+  default     = "t1612-ecr-push"
+  description = "Prefix for resource names"
+}
+
+variable "alert_email" {
+  type        = string
+  description = "Email for security alerts (SNS subscription confirmation required)"
+}
+
+data "aws_caller_identity" "current" {}
+
+# SNS topic for alerts
+resource "aws_sns_topic" "ecr_push_alerts" {
+  name              = "${var.name_prefix}-alerts"
+  display_name      = "ECR Push Alerts"
   kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
-  topic_arn = aws_sns_topic.alerts.arn
+  topic_arn = aws_sns_topic.ecr_push_alerts.arn
   protocol  = "email"
   endpoint  = var.alert_email
 }
 
+# EventBridge rule: detect ECR image pushes
 resource "aws_cloudwatch_event_rule" "ecr_push" {
-  name        = "ecr-image-push-detection"
-  description = "Alert on ECR image push"
+  name        = "${var.name_prefix}-detection"
+  description = "Alert on ECR image push (T1612)"
 
   event_pattern = jsonencode({
-    source      = ["aws.ecr"]
-    detail-type = ["ECR Image Action"]
+    source        = ["aws.ecr"]
+    "detail-type" = ["ECR Image Action"]
     detail = {
-      action-type = ["PUSH"]
-      result      = ["SUCCESS"]
+      "action-type" = ["PUSH"]
+      result        = ["SUCCESS"]
     }
   })
 }
 
-resource "aws_cloudwatch_event_target" "sns" {
-  rule      = aws_cloudwatch_event_rule.ecr_push.name
-  target_id = "SendToSNS"
-  arn       = aws_sns_topic.alerts.arn
+# DLQ for delivery failures (14 day retention)
+resource "aws_sqs_queue" "ecr_push_dlq" {
+  name                      = "${var.name_prefix}-dlq"
+  message_retention_seconds = 1209600
 }
 
-resource "aws_sns_topic_policy" "allow_events" {
-  arn = aws_sns_topic.alerts.arn
+# Route to SNS with input transformer for human-readable alerts
+resource "aws_cloudwatch_event_target" "ecr_push_to_sns" {
+  rule      = aws_cloudwatch_event_rule.ecr_push.name
+  target_id = "SNSTarget"
+  arn       = aws_sns_topic.ecr_push_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.ecr_push_dlq.arn
+  }
+
+  input_transformer {
+    input_paths = {
+      time       = "$.time"
+      account    = "$.account"
+      region     = "$.region"
+      repository = "$.detail.repository-name"
+      tag        = "$.detail.image-tag"
+      digest     = "$.detail.image-digest"
+    }
+
+    input_template = <<-EOT
+"ALERT: ECR Image Push Detected (T1612)
+time=<time>
+account=<account> region=<region>
+repository=<repository>
+tag=<tag>
+digest=<digest>"
+EOT
+  }
+}
+
+# SNS topic policy with scoped conditions for least privilege
+resource "aws_sns_topic_policy" "allow_eventbridge_publish" {
+  arn = aws_sns_topic.ecr_push_alerts.arn
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowEventBridgePublishScoped"
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.ecr_push_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.ecr_push.arn
+        }
+      }
+    }]
+  })
+}
+
+# Allow EventBridge to send to DLQ
+resource "aws_sqs_queue_policy" "ecr_push_dlq" {
+  queue_url = aws_sqs_queue.ecr_push_dlq.id
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
-      Action    = "sns:Publish"
-      Resource  = aws_sns_topic.alerts.arn
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.ecr_push_dlq.arn
     }]
   })
+}
+
+output "alert_topic_arn" {
+  description = "SNS topic for ECR push alerts"
+  value       = aws_sns_topic.ecr_push_alerts.arn
+}
+
+output "event_rule_arn" {
+  description = "EventBridge rule ARN"
+  value       = aws_cloudwatch_event_rule.ecr_push.arn
+}
+
+output "dlq_url" {
+  description = "Dead letter queue URL for failed deliveries"
+  value       = aws_sqs_queue.ecr_push_dlq.url
 }""",
                 alert_severity="medium",
-                alert_title="ECR Image Push After Build",
-                alert_description_template="Image pushed to ECR repository {repository-name} by {identity}.",
+                alert_title="ECR Image Push Detected",
+                alert_description_template="Image pushed to ECR repository {repository} with tag {tag}.",
                 investigation_steps=[
                     "Verify push was from approved CI/CD",
                     "Check if image went through scanning",
@@ -304,13 +635,13 @@ resource "aws_sns_topic_policy" "allow_events" {
                 ],
             ),
             estimated_false_positive_rate=FalsePositiveRate.HIGH,
-            false_positive_tuning="Filter legitimate CI/CD service roles and tag conventions",
-            detection_coverage="90% - catches all ECR pushes",
-            evasion_considerations="Attacker may use different registries or slow down timing",
+            false_positive_tuning="Filter by repository name or tag pattern to exclude known CI/CD pipelines",
+            detection_coverage="95% - catches all ECR pushes",
+            evasion_considerations="Attacker may use different registries",
             implementation_effort=EffortLevel.LOW,
-            implementation_time="30 minutes",
-            estimated_monthly_cost="$2-5",
-            prerequisites=["ECR repositories configured", "EventBridge enabled"],
+            implementation_time="20 minutes",
+            estimated_monthly_cost="$1-3",
+            prerequisites=["ECR repositories configured"],
         ),
         DetectionStrategy(
             strategy_id="t1612-gcp-docker-build",

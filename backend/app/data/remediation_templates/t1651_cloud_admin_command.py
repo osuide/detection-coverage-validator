@@ -678,11 +678,11 @@ output "s3_bucket_name" {
             strategy_id="t1651-aws-ssm-eventbridge",
             name="AWS SSM Command EventBridge Monitoring",
             description=(
-                "Simple EventBridge rule for SSM SendCommand and StartSession events. "
-                "Quick to deploy for basic visibility into SSM usage."
+                "EventBridge rule for SSM SendCommand and StartSession events. "
+                "Quick to deploy with reliable delivery (DLQ + retry) and human-readable alerts."
             ),
             detection_type=DetectionType.EVENTBRIDGE_RULE,
-            aws_service="ssm",
+            aws_service="eventbridge",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
                 event_pattern={
@@ -691,74 +691,138 @@ output "s3_bucket_name" {
                     "detail": {"eventName": ["SendCommand", "StartSession"]},
                 },
                 cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
-Description: Simple SSM Command Monitoring
+Description: SSM Command Monitoring via EventBridge (T1651)
 
 Parameters:
   AlertEmail:
     Type: String
+    Description: Email for security alerts
 
 Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
-      KmsMasterKeyId: alias/aws/sns
-      TopicName: ssm-command-alerts
+      TopicName: t1651-ssm-command-alerts
       KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: t1651-ssm-command-dlq
+      MessageRetentionPeriod: 1209600
+
   SSMCommandRule:
     Type: AWS::Events::Rule
     Properties:
-      Name: ssm-command-monitoring
-      Description: Monitor SSM command execution
+      Name: t1651-ssm-command-monitoring
+      Description: Monitor SSM command execution (T1651)
       State: ENABLED
       EventPattern:
-        source: [aws.ssm]
-        detail-type: [AWS API Call via CloudTrail]
+        source:
+          - aws.ssm
+        detail-type:
+          - AWS API Call via CloudTrail
         detail:
-          eventName: [SendCommand, StartSession, StartAutomationExecution]
+          eventName:
+            - SendCommand
+            - StartSession
+            - StartAutomationExecution
       Targets:
-        - Id: SendToSNS
+        - Id: SNSTarget
           Arn: !Ref AlertTopic
+          DeadLetterConfig:
+            Arn: !GetAtt DeadLetterQueue.Arn
+          RetryPolicy:
+            MaximumEventAgeInSeconds: 3600
+            MaximumRetryAttempts: 8
           InputTransformer:
             InputPathsMap:
+              time: $.time
+              account: $.account
+              region: $.detail.awsRegion
               eventName: $.detail.eventName
               user: $.detail.userIdentity.arn
               sourceIp: $.detail.sourceIPAddress
               target: $.detail.requestParameters.instanceIds
+              document: $.detail.requestParameters.documentName
             InputTemplate: |
-              "SSM Command Executed"
-              "Event: <eventName>"
-              "User: <user>"
-              "Source IP: <sourceIp>"
-              "Targets: <target>"
+              "ALERT: SSM Command Executed (T1651)"
+              "time=<time>"
+              "account=<account> region=<region>"
+              "event=<eventName>"
+              "user=<user>"
+              "source_ip=<sourceIp>"
+              "targets=<target>"
+              "document=<document>"
 
   TopicPolicy:
     Type: AWS::SNS::TopicPolicy
     Properties:
-      Topics: [!Ref AlertTopic]
+      Topics:
+        - !Ref AlertTopic
       PolicyDocument:
+        Version: '2012-10-17'
         Statement:
-          - Effect: Allow
+          - Sid: AllowEventBridgePublishScoped
+            Effect: Allow
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
             Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt SSMCommandRule.Arn
+
+  DLQPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref DeadLetterQueue
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt DeadLetterQueue.Arn
 
 Outputs:
   AlertTopicArn:
-    Value: !Ref AlertTopic""",
-                terraform_template="""# Simple SSM Command EventBridge Monitoring
+    Description: SNS topic for SSM alerts
+    Value: !Ref AlertTopic
+  EventRuleArn:
+    Description: EventBridge rule ARN
+    Value: !GetAtt SSMCommandRule.Arn
+  DLQUrl:
+    Description: Dead letter queue URL
+    Value: !Ref DeadLetterQueue""",
+                terraform_template="""# SSM Command EventBridge Monitoring (T1651)
+# Uses EventBridge for near real-time detection
+# Optimised pattern: DLQ, retry policy, scoped SNS, human-readable alerts
+
+variable "name_prefix" {
+  type        = string
+  default     = "t1651-ssm-command"
+  description = "Prefix for resource names"
+}
 
 variable "alert_email" {
   type        = string
-  description = "Email for SSM command alerts"
+  description = "Email for security alerts (SNS subscription confirmation required)"
 }
 
+data "aws_caller_identity" "current" {}
+
+# SNS topic for alerts
 resource "aws_sns_topic" "ssm_alerts" {
-  name              = "ssm-command-alerts"
+  name              = "${var.name_prefix}-alerts"
+  display_name      = "SSM Command Alerts"
   kms_master_key_id = "alias/aws/sns"
 }
 
@@ -768,60 +832,123 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
+# EventBridge rule: detect SSM commands via CloudTrail
 resource "aws_cloudwatch_event_rule" "ssm_commands" {
-  name        = "ssm-command-monitoring"
-  description = "Monitor SSM command execution"
+  name        = "${var.name_prefix}-monitoring"
+  description = "Monitor SSM command execution (T1651)"
 
   event_pattern = jsonencode({
-    source      = ["aws.ssm"]
-    detail-type = ["AWS API Call via CloudTrail"]
+    source        = ["aws.ssm"]
+    "detail-type" = ["AWS API Call via CloudTrail"]
     detail = {
       eventName = ["SendCommand", "StartSession", "StartAutomationExecution"]
     }
   })
 }
 
-resource "aws_cloudwatch_event_target" "to_sns" {
+# DLQ for delivery failures (14 day retention)
+resource "aws_sqs_queue" "ssm_dlq" {
+  name                      = "${var.name_prefix}-dlq"
+  message_retention_seconds = 1209600
+}
+
+# Route to SNS with input transformer for human-readable alerts
+resource "aws_cloudwatch_event_target" "ssm_to_sns" {
   rule      = aws_cloudwatch_event_rule.ssm_commands.name
-  target_id = "SendToSNS"
+  target_id = "SNSTarget"
   arn       = aws_sns_topic.ssm_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.ssm_dlq.arn
+  }
 
   input_transformer {
     input_paths = {
+      time      = "$.time"
+      account   = "$.account"
+      region    = "$.detail.awsRegion"
       eventName = "$.detail.eventName"
       user      = "$.detail.userIdentity.arn"
       sourceIp  = "$.detail.sourceIPAddress"
       targets   = "$.detail.requestParameters.instanceIds"
+      document  = "$.detail.requestParameters.documentName"
     }
-    input_template = <<-EOF
-      {
-        "alert": "SSM Command Executed",
-        "event": "<eventName>",
-        "user": "<user>",
-        "sourceIp": "<sourceIp>",
-        "targets": "<targets>"
-      }
-    EOF
+
+    input_template = <<-EOT
+"ALERT: SSM Command Executed (T1651)
+time=<time>
+account=<account> region=<region>
+event=<eventName>
+user=<user>
+source_ip=<sourceIp>
+targets=<targets>
+document=<document>"
+EOT
   }
 }
 
-resource "aws_sns_topic_policy" "allow_eventbridge" {
+# SNS topic policy with scoped conditions for least privilege
+resource "aws_sns_topic_policy" "allow_eventbridge_publish" {
   arn = aws_sns_topic.ssm_alerts.arn
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Sid       = "AllowEventBridgePublish"
+      Sid       = "AllowEventBridgePublishScoped"
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.ssm_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.ssm_commands.arn
+        }
+      }
     }]
   })
+}
+
+# Allow EventBridge to send to DLQ
+resource "aws_sqs_queue_policy" "ssm_dlq" {
+  queue_url = aws_sqs_queue.ssm_dlq.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.ssm_dlq.arn
+    }]
+  })
+}
+
+output "alert_topic_arn" {
+  description = "SNS topic for SSM alerts"
+  value       = aws_sns_topic.ssm_alerts.arn
+}
+
+output "event_rule_arn" {
+  description = "EventBridge rule ARN"
+  value       = aws_cloudwatch_event_rule.ssm_commands.arn
+}
+
+output "dlq_url" {
+  description = "Dead letter queue URL for failed deliveries"
+  value       = aws_sqs_queue.ssm_dlq.url
 }""",
                 alert_severity="medium",
                 alert_title="SSM Command Executed",
                 alert_description_template=(
-                    "SSM {eventName} executed by {userIdentity.arn} targeting {instanceIds}."
+                    "SSM {event} executed by {user} targeting {targets}."
                 ),
                 investigation_steps=[
                     "Verify the command execution was authorised",
@@ -844,8 +971,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             detection_coverage="95% - catches all SSM commands",
             evasion_considerations="Cannot evade SSM logging",
             implementation_effort=EffortLevel.LOW,
-            implementation_time="30 minutes",
-            estimated_monthly_cost="$5/month (EventBridge + SNS)",
+            implementation_time="20 minutes",
+            estimated_monthly_cost="$1-3",
             prerequisites=["CloudTrail enabled"],
         ),
         # =====================================================================
