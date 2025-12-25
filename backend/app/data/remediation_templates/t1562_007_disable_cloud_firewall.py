@@ -91,6 +91,7 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Security Group Modification Alerts
       Subscription:
         - Protocol: email
@@ -137,6 +138,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "sg_alerts" {
   name         = "security-group-modification-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Security Group Modification Alerts"
 }
 
@@ -229,6 +231,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "nacl_alerts" {
   name         = "network-acl-modification-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Network ACL Modification Alerts"
 }
 
@@ -434,6 +437,7 @@ variable "alert_email" {
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "guardduty_alerts" {
   name         = "guardduty-suppression-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "GuardDuty Suppression Alerts"
 }
 

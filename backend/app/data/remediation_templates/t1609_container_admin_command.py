@@ -85,6 +85,7 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: ECS Exec Alerts
       Subscription:
         - Protocol: email
@@ -146,6 +147,7 @@ variable "alert_email" {
 # SNS topic for alerts
 resource "aws_sns_topic" "ecs_exec_alerts" {
   name         = "ecs-exec-command-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "ECS Exec Alerts"
 }
 
@@ -374,6 +376,7 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: EKS Exec Alerts
       Subscription:
         - Protocol: email
@@ -435,6 +438,7 @@ variable "alert_email" {
 # SNS topic for alerts
 resource "aws_sns_topic" "eks_exec_alerts" {
   name         = "eks-kubectl-exec-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "EKS Exec Alerts"
 }
 
@@ -541,6 +545,7 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
       DisplayName: Docker Exec Alerts
       Subscription:
         - Protocol: email
@@ -602,6 +607,7 @@ variable "alert_email" {
 # SNS topic for alerts
 resource "aws_sns_topic" "docker_exec_alerts" {
   name         = "docker-exec-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Docker Exec Alerts"
 }
 

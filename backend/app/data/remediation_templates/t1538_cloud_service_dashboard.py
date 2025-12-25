@@ -436,6 +436,7 @@ data "aws_caller_identity" "current" {}
 # SNS Topic for alerts
 resource "aws_sns_topic" "alerts" {
   name         = "${var.name_prefix}-alerts"
+  kms_master_key_id = "alias/aws/sns"
   display_name = "Console Access Anomaly Alerts"
 }
 
@@ -663,6 +664,7 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: alias/aws/sns
       TopicName: !Sub '${NamePrefix}-alerts'
       DisplayName: Console Access Anomaly Alerts
 
@@ -891,6 +893,7 @@ resource "aws_guardduty_detector" "main" {
 
 resource "aws_sns_topic" "guardduty_alerts" {
   name = "guardduty-console-anomaly-alerts"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
