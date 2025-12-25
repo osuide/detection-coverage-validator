@@ -76,36 +76,44 @@ TEMPLATE = RemediationTemplate(
 | sort rejectCount desc
 | limit 100""",
                 cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
-Description: Detect port scanning activity in VPC Flow Logs
+Description: Detect port scanning activity with VPC Flow Logs and GuardDuty
 
 Parameters:
+  NamePrefix:
+    Type: String
+    Default: t1046-port-scan
   VpcId:
     Type: String
   AlertEmail:
     Type: String
+  ThresholdRejects:
+    Type: Number
+    Default: 50
 
 Resources:
-  # Step 1: Enable VPC Flow Logs
-  FlowLog:
-    Type: AWS::EC2::FlowLog
+  # Step 1: CloudWatch Log Group for VPC Flow Logs
+  FlowLogGroup:
+    Type: AWS::Logs::LogGroup
     Properties:
-      ResourceType: VPC
-      ResourceIds:
-        - !Ref VpcId
-      TrafficType: ALL
-      LogDestinationType: cloud-watch-logs
-      LogGroupName: /aws/vpc/flowlogs
-      DeliverLogsPermissionArn: !GetAtt FlowLogRole.Arn
+      LogGroupName: !Sub /aws/vpc/flowlogs/${NamePrefix}
+      RetentionInDays: 7
 
+  # Step 2: IAM Role with confused-deputy mitigation
   FlowLogRole:
     Type: AWS::IAM::Role
     Properties:
+      RoleName: !Sub ${NamePrefix}-vpc-flow-logs-role
       AssumeRolePolicyDocument:
         Statement:
           - Effect: Allow
             Principal:
               Service: vpc-flow-logs.amazonaws.com
             Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+              ArnLike:
+                aws:SourceArn: !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:vpc-flow-log/*
       Policies:
         - PolicyName: CloudWatchLogs
           PolicyDocument:
@@ -115,40 +123,123 @@ Resources:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/vpc/flowlogs:*
+                  - logs:DescribeLogGroups
+                  - logs:DescribeLogStreams
+                Resource: '*'
 
-  FlowLogGroup:
-    Type: AWS::Logs::LogGroup
+  # Step 3: VPC Flow Log with 1-minute aggregation
+  FlowLog:
+    Type: AWS::EC2::FlowLog
     Properties:
-      LogGroupName: /aws/vpc/flowlogs
-      RetentionInDays: 7
+      ResourceType: VPC
+      ResourceId: !Ref VpcId
+      TrafficType: ALL
+      LogDestinationType: cloud-watch-logs
+      LogDestination: !GetAtt FlowLogGroup.Arn
+      DeliverLogsPermissionArn: !GetAtt FlowLogRole.Arn
+      MaxAggregationInterval: 60
+      LogFormat: '${version} ${account-id} ${interface-id} ${srcaddr} ${dstaddr} ${srcport} ${dstport} ${protocol} ${packets} ${bytes} ${start} ${end} ${action} ${log-status}'
 
-  # Step 2: SNS topic for alerts
+  # Step 4: SNS topic for alerts
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      TopicName: !Sub ${NamePrefix}-alerts
+      DisplayName: Port Scan Alerts
       KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
-  # Step 3: CloudWatch alarm for port scanning
+  # Step 5: Metric filter for TCP REJECT flows
+  PortScanMetric:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref FlowLogGroup
+      FilterPattern: '[version, accountid, interfaceid, srcaddr, dstaddr, srcport, dstport, protocol=6, packets, bytes, start, end, action=REJECT, logstatus]'
+      MetricTransformations:
+        - MetricName: PortScanRejects
+          MetricNamespace: Security/NetworkScanning
+          MetricValue: '1'
+          DefaultValue: 0
+
+  # Step 6: CloudWatch alarm
   PortScanAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      AlarmName: port-scanning-detected
-      AlarmDescription: Multiple rejected connections to different ports detected
-      MetricName: IncomingBytes
-      Namespace: AWS/EC2
+      AlarmName: !Sub ${NamePrefix}-heuristic
+      AlarmDescription: High-rate REJECTed TCP flows indicating port scanning
+      MetricName: PortScanRejects
+      Namespace: Security/NetworkScanning
       Statistic: Sum
       Period: 300
       EvaluationPeriods: 1
-      Threshold: 1000000
+      Threshold: !Ref ThresholdRejects
+      ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
-
       AlarmActions:
-        - !Ref AlertTopic""",
-                terraform_template="""# AWS: Detect port scanning in VPC Flow Logs
+        - !Ref AlertTopic
+
+  # Step 7: GuardDuty EventBridge rule for high-confidence detection
+  GuardDutyRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub ${NamePrefix}-guardduty
+      Description: Alert on GuardDuty Recon:EC2/Portscan findings
+      EventPattern:
+        source: [aws.guardduty]
+        detail-type: [GuardDuty Finding]
+        detail:
+          severity: [{ numeric: ['>=', 4] }]
+          type:
+            - prefix: 'Recon:EC2/Portscan'
+            - prefix: 'Recon:EC2/PortProbeUnprotectedPort'
+      State: ENABLED
+      Targets:
+        - Id: SNSTarget
+          Arn: !Ref AlertTopic
+
+  # Step 8: DLQ for EventBridge
+  GuardDutyDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub ${NamePrefix}-guardduty-dlq
+      MessageRetentionPeriod: 1209600
+
+  # Step 9: SNS topic policy for CloudWatch and EventBridge
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref AlertTopic
+      PolicyDocument:
+        Statement:
+          - Sid: AllowCloudWatchAlarmsPublish
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+          - Sid: AllowEventBridgePublishScoped
+            Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt GuardDutyRule.Arn""",
+                terraform_template="""# AWS: Detect port scanning in VPC Flow Logs with GuardDuty augmentation
+
+variable "name_prefix" {
+  type    = string
+  default = "t1046-port-scan"
+}
 
 variable "vpc_id" {
   type = string
@@ -158,29 +249,48 @@ variable "alert_email" {
   type = string
 }
 
-# Step 1: CloudWatch Log Group and VPC Flow Logs
+variable "threshold_rejects" {
+  type    = number
+  default = 50
+}
+
+variable "enable_guardduty" {
+  type    = bool
+  default = true
+}
+
+data "aws_region" "current" {}
+data "aws_caller_identity" "current" {}
+
+# Step 1: CloudWatch Log Group and VPC Flow Logs with confused-deputy mitigation
 resource "aws_cloudwatch_log_group" "flow_logs" {
-  name              = "/aws/vpc/flowlogs"
+  name              = "/aws/vpc/flowlogs/${var.name_prefix}"
   retention_in_days = 7
 }
 
 resource "aws_iam_role" "flow_logs" {
-  name = "vpc-flow-logs-role"
+  name = "${var.name_prefix}-vpc-flow-logs-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Effect = "Allow"
-      Principal = {
-        Service = "vpc-flow-logs.amazonaws.com"
+      Effect    = "Allow"
+      Principal = { Service = "vpc-flow-logs.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+      Condition = {
+        StringEquals = {
+          "aws:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnLike = {
+          "aws:SourceArn" = "arn:aws:ec2:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:vpc-flow-log/*"
+        }
       }
-      Action = "sts:AssumeRole"
     }]
   })
 }
 
 resource "aws_iam_role_policy" "flow_logs" {
-  name = "flow-logs-policy"
+  name = "${var.name_prefix}-flow-logs-policy"
   role = aws_iam_role.flow_logs.id
 
   policy = jsonencode({
@@ -190,23 +300,33 @@ resource "aws_iam_role_policy" "flow_logs" {
       Action = [
         "logs:CreateLogGroup",
         "logs:CreateLogStream",
-        "logs:PutLogEvents"
+        "logs:PutLogEvents",
+        "logs:DescribeLogGroups",
+        "logs:DescribeLogStreams"
       ]
-      Resource = "${aws_cloudwatch_log_group.flow_logs.arn}:*"
+      Resource = "*"
     }]
   })
 }
 
 resource "aws_flow_log" "main" {
-  iam_role_arn    = aws_iam_role.flow_logs.arn
-  log_destination = aws_cloudwatch_log_group.flow_logs.arn
-  traffic_type    = "ALL"
-  vpc_id          = var.vpc_id
+  vpc_id               = var.vpc_id
+  traffic_type         = "ALL"
+  log_destination_type = "cloud-watch-logs"
+  log_destination      = aws_cloudwatch_log_group.flow_logs.arn
+  iam_role_arn         = aws_iam_role.flow_logs.arn
+
+  # 1-minute aggregation for faster detection
+  max_aggregation_interval = 60
+
+  # Explicit log format for reliable parsing
+  log_format = "$${version} $${account-id} $${interface-id} $${srcaddr} $${dstaddr} $${srcport} $${dstport} $${protocol} $${packets} $${bytes} $${start} $${end} $${action} $${log-status}"
 }
 
 # Step 2: SNS topic for alerts
 resource "aws_sns_topic" "alerts" {
-  name = "port-scanning-alerts"
+  name              = "${var.name_prefix}-alerts"
+  display_name      = "Port Scan Alerts"
   kms_master_key_id = "alias/aws/sns"
 }
 
@@ -216,35 +336,142 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
-# Step 3: Log metric filter for port scanning
+# Step 3: Metric filter for TCP REJECT flows (protocol=6)
 resource "aws_cloudwatch_log_metric_filter" "port_scan" {
-  name           = "port-scanning-detection"
+  name           = "${var.name_prefix}-rejects"
   log_group_name = aws_cloudwatch_log_group.flow_logs.name
-  pattern        = "[version, account, eni, source, destination, srcport, destport, protocol, packets, bytes, windowstart, windowend, action=REJECT, flowlogstatus]"
+
+  # Filter TCP (protocol=6) REJECT flows only
+  pattern = "[version, accountid, interfaceid, srcaddr, dstaddr, srcport, dstport, protocol=6, packets, bytes, start, end, action=REJECT, logstatus]"
 
   metric_transformation {
-    name      = "PortScanAttempts"
-    namespace = "Security/NetworkScanning"
-    value     = "1"
+    name          = "PortScanRejects"
+    namespace     = "Security/NetworkScanning"
+    value         = "1"
+    default_value = "0"
     dimensions = {
-      SourceIP = "$source"
+      SourceIP = "$srcaddr"
     }
   }
 }
 
+# Step 4: Alarm using metric math to aggregate across all SourceIP dimensions
 resource "aws_cloudwatch_metric_alarm" "port_scan" {
-  alarm_name          = "port-scanning-detected"
-  alarm_description   = "Multiple rejected connections indicating port scanning"
-  comparison_operator = "GreaterThanThreshold"
+  alarm_name          = "${var.name_prefix}-heuristic"
+  alarm_description   = "Heuristic scan signal: high-rate REJECTed flows (aggregated across SourceIP)"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  threshold           = var.threshold_rejects
   evaluation_periods  = 1
-  metric_name         = "PortScanAttempts"
-  namespace           = "Security/NetworkScanning"
-  period              = 300
-  statistic           = "Sum"
-  threshold           = 50
   treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  # Metric math aggregates across all SourceIP dimension values
+  metric_query {
+    id          = "e1"
+    return_data = true
+    label       = "TotalPortScanRejects"
+    expression  = "SUM(SEARCH('{Security/NetworkScanning,SourceIP} MetricName=\"PortScanRejects\"', 'Sum', 300))"
+  }
+}
+
+# Step 5: GuardDuty integration for higher-confidence detection
+resource "aws_guardduty_detector" "main" {
+  count  = var.enable_guardduty ? 1 : 0
+  enable = true
+}
+
+resource "aws_cloudwatch_event_rule" "guardduty_portscan" {
+  name        = "${var.name_prefix}-guardduty"
+  description = "Alert on GuardDuty Recon:EC2/Portscan findings"
+
+  event_pattern = jsonencode({
+    source        = ["aws.guardduty"]
+    "detail-type" = ["GuardDuty Finding"]
+    detail = {
+      severity = [{ numeric = [">=", 4] }]
+      type = [
+        { prefix = "Recon:EC2/Portscan" },
+        { prefix = "Recon:EC2/PortProbeUnprotectedPort" }
+      ]
+    }
+  })
+}
+
+resource "aws_sqs_queue" "guardduty_dlq" {
+  name                      = "${var.name_prefix}-guardduty-dlq"
+  message_retention_seconds = 1209600
+}
+
+resource "aws_cloudwatch_event_target" "guardduty_to_sns" {
+  rule      = aws_cloudwatch_event_rule.guardduty_portscan.name
+  target_id = "SNSTarget"
+  arn       = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.guardduty_dlq.arn
+  }
+
+  input_transformer {
+    input_paths = {
+      acct     = "$.account"
+      region   = "$.region"
+      time     = "$.time"
+      type     = "$.detail.type"
+      severity = "$.detail.severity"
+      srcip    = "$.detail.service.action.networkConnectionAction.remoteIpDetails.ipAddressV4"
+      dstport  = "$.detail.service.action.networkConnectionAction.localPortDetails.port"
+    }
+
+    input_template = <<-EOT
+"GuardDuty Recon Alert (T1046)
+time=<time> account=<acct> region=<region>
+type=<type> severity=<severity>
+src_ip=<srcip> dst_port=<dstport>"
+EOT
+  }
+}
+
+# Step 6: Scoped SNS topic policy for both CloudWatch and EventBridge
+resource "aws_sns_topic_policy" "alerts" {
+  arn = aws_sns_topic.alerts.arn
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "AllowCloudWatchAlarmsPublish"
+        Effect    = "Allow"
+        Principal = { Service = "cloudwatch.amazonaws.com" }
+        Action    = "sns:Publish"
+        Resource  = aws_sns_topic.alerts.arn
+        Condition = {
+          StringEquals = {
+            "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+          }
+        }
+      },
+      {
+        Sid       = "AllowEventBridgePublishScoped"
+        Effect    = "Allow"
+        Principal = { Service = "events.amazonaws.com" }
+        Action    = "sns:Publish"
+        Resource  = aws_sns_topic.alerts.arn
+        Condition = {
+          StringEquals = {
+            "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+          }
+          ArnEquals = {
+            "aws:SourceArn" = aws_cloudwatch_event_rule.guardduty_portscan.arn
+          }
+        }
+      }
+    ]
+  })
 }""",
                 alert_severity="high",
                 alert_title="Port Scanning Activity Detected",
@@ -347,22 +574,34 @@ Resources:
               Service: events.amazonaws.com
             Action: sns:Publish
             Resource: !Ref AlertTopic""",
-                terraform_template="""# AWS: GuardDuty reconnaissance detection
+                terraform_template="""# AWS: GuardDuty reconnaissance detection with optimised EventBridge pattern
+
+variable "name_prefix" {
+  type    = string
+  default = "t1046-guardduty"
+}
 
 variable "alert_email" {
   type = string
 }
 
+variable "guardduty_min_severity" {
+  type    = number
+  default = 4
+}
+
+data "aws_caller_identity" "current" {}
+
 # Step 1: Enable GuardDuty
 resource "aws_guardduty_detector" "main" {
-  enable = true
-
+  enable                       = true
   finding_publishing_frequency = "FIFTEEN_MINUTES"
 }
 
 # Step 2: SNS topic for alerts
 resource "aws_sns_topic" "alerts" {
-  name = "guardduty-recon-alerts"
+  name              = "${var.name_prefix}-alerts"
+  display_name      = "GuardDuty Recon Alerts"
   kms_master_key_id = "alias/aws/sns"
 }
 
@@ -372,39 +611,90 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
-# Step 3: EventBridge rule for reconnaissance findings
+# Step 3: EventBridge rule with severity filtering
 resource "aws_cloudwatch_event_rule" "guardduty_recon" {
-  name        = "guardduty-network-scanning"
+  name        = "${var.name_prefix}-network-scanning"
   description = "Alert on GuardDuty reconnaissance findings"
 
   event_pattern = jsonencode({
-    source      = ["aws.guardduty"]
-    detail-type = ["GuardDuty Finding"]
+    source        = ["aws.guardduty"]
+    "detail-type" = ["GuardDuty Finding"]
     detail = {
+      severity = [{ numeric = [">=", var.guardduty_min_severity] }]
       type = [
-        "Recon:EC2/PortProbeUnprotectedPort",
-        "Recon:EC2/PortProbeEMRUnprotectedPort",
-        "Recon:EC2/Portscan",
-        "UnauthorizedAccess:EC2/TorIPCaller"
+        { prefix = "Recon:EC2/PortProbeUnprotectedPort" },
+        { prefix = "Recon:EC2/PortProbeEMRUnprotectedPort" },
+        { prefix = "Recon:EC2/Portscan" },
+        { prefix = "UnauthorizedAccess:EC2/TorIPCaller" }
       ]
     }
   })
 }
 
-resource "aws_cloudwatch_event_target" "sns" {
-  rule = aws_cloudwatch_event_rule.guardduty_recon.name
-  arn  = aws_sns_topic.alerts.arn
+# Step 4: DLQ for failed deliveries
+resource "aws_sqs_queue" "dlq" {
+  name                      = "${var.name_prefix}-dlq"
+  message_retention_seconds = 1209600
 }
 
+# Step 5: EventBridge target with DLQ, retry, and input transformer
+resource "aws_cloudwatch_event_target" "sns" {
+  rule      = aws_cloudwatch_event_rule.guardduty_recon.name
+  target_id = "SNSTarget"
+  arn       = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
+
+  input_transformer {
+    input_paths = {
+      acct     = "$.account"
+      region   = "$.region"
+      time     = "$.time"
+      type     = "$.detail.type"
+      severity = "$.detail.severity"
+      title    = "$.detail.title"
+      srcip    = "$.detail.service.action.networkConnectionAction.remoteIpDetails.ipAddressV4"
+      dstip    = "$.detail.service.action.networkConnectionAction.localIpDetails.ipAddressV4"
+      dstport  = "$.detail.service.action.networkConnectionAction.localPortDetails.port"
+    }
+
+    input_template = <<-EOT
+"GuardDuty Network Reconnaissance Alert (T1046)
+time=<time> account=<acct> region=<region>
+type=<type> severity=<severity>
+title=<title>
+src_ip=<srcip> dst_ip=<dstip> dst_port=<dstport>"
+EOT
+  }
+}
+
+# Step 6: Scoped SNS topic policy
 resource "aws_sns_topic_policy" "allow_events" {
   arn = aws_sns_topic.alerts.arn
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowEventBridgePublishScoped"
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.guardduty_recon.arn
+        }
+      }
     }]
   })
 }""",
@@ -456,6 +746,9 @@ resource "aws_sns_topic_policy" "allow_events" {
 Description: Detect excessive security group enumeration
 
 Parameters:
+  NamePrefix:
+    Type: String
+    Default: t1046-sg-enum
   CloudTrailLogGroup:
     Type: String
     Default: /aws/cloudtrail/logs
@@ -488,7 +781,7 @@ Resources:
   EnumerationAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      AlarmName: security-group-enumeration
+      AlarmName: !Sub ${NamePrefix}-detected
       AlarmDescription: Excessive security group enumeration detected
       MetricName: SecurityGroupEnumeration
       Namespace: Security/Reconnaissance
@@ -498,11 +791,32 @@ Resources:
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
-
       AlarmActions:
-        - !Ref AlertTopic""",
+        - !Ref AlertTopic
+
+  # Step 4: SNS topic policy
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref AlertTopic
+      PolicyDocument:
+        Statement:
+          - Sid: AllowCloudWatchAlarmsPublish
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId""",
                 terraform_template="""# AWS: Detect security group enumeration
+
+variable "name_prefix" {
+  type    = string
+  default = "t1046-sg-enum"
+}
 
 variable "cloudtrail_log_group" {
   type    = string
@@ -513,9 +827,12 @@ variable "alert_email" {
   type = string
 }
 
+data "aws_caller_identity" "current" {}
+
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "alerts" {
-  name = "sg-enumeration-alerts"
+  name              = "${var.name_prefix}-alerts"
+  display_name      = "SG Enumeration Alerts"
   kms_master_key_id = "alias/aws/sns"
 }
 
@@ -527,21 +844,22 @@ resource "aws_sns_topic_subscription" "email" {
 
 # Step 2: CloudWatch metric filter
 resource "aws_cloudwatch_log_metric_filter" "sg_enumeration" {
-  name           = "security-group-enumeration"
+  name           = "${var.name_prefix}-detection"
   log_group_name = var.cloudtrail_log_group
 
   pattern = "{ ($.eventName = DescribeSecurityGroups) || ($.eventName = DescribeSecurityGroupRules) || ($.eventName = DescribeInstances) }"
 
   metric_transformation {
-    name      = "SecurityGroupEnumeration"
-    namespace = "Security/Reconnaissance"
-    value     = "1"
+    name          = "SecurityGroupEnumeration"
+    namespace     = "Security/Reconnaissance"
+    value         = "1"
+    default_value = "0"
   }
 }
 
 # Step 3: CloudWatch alarm
 resource "aws_cloudwatch_metric_alarm" "sg_enumeration" {
-  alarm_name          = "security-group-enumeration"
+  alarm_name          = "${var.name_prefix}-detected"
   alarm_description   = "Excessive security group enumeration detected"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
@@ -551,8 +869,28 @@ resource "aws_cloudwatch_metric_alarm" "sg_enumeration" {
   statistic           = "Sum"
   threshold           = 50
   treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.alerts.arn]
+}
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+# Step 4: Scoped SNS topic policy
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.alerts.arn
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchAlarmsPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="medium",
                 alert_title="Excessive Security Group Enumeration",
