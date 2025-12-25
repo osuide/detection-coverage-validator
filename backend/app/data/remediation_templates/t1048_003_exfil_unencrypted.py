@@ -96,7 +96,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: HTTP Exfiltration Alerts
       Subscription:
         - Protocol: email
@@ -242,7 +241,6 @@ Resources:
   FTPAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
-      KmsMasterKeyId: alias/aws/sns
       KmsMasterKeyId: alias/aws/sns
       DisplayName: FTP Exfiltration Alerts
       Subscription:
@@ -431,7 +429,6 @@ Resources:
   DNSAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
-      KmsMasterKeyId: alias/aws/sns
       KmsMasterKeyId: alias/aws/sns
       DisplayName: DNS Tunnelling Alerts
       Subscription:

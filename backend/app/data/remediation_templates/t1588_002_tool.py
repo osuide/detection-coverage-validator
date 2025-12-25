@@ -88,7 +88,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       TopicName: malicious-tool-alerts
       Subscription:
         - Protocol: email
@@ -243,7 +242,6 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
-      KmsMasterKeyId: alias/aws/sns
       KmsMasterKeyId: alias/aws/sns
       TopicName: s3-tool-download-alerts
       Subscription:

@@ -100,7 +100,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       TopicName: browser-extension-alerts
       Subscription:
         - Protocol: email
@@ -272,7 +271,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       TopicName: guardduty-malware-alerts
       Subscription:
         - Protocol: email
@@ -286,6 +284,8 @@ Resources:
       Description: Alert on malicious browser extension files
       EventPattern:
         source: [aws.guardduty]
+        detail-type:
+          - GuardDuty Finding
         detail:
           type:
             - prefix: "Execution:EC2"
@@ -349,6 +349,7 @@ resource "aws_cloudwatch_event_rule" "malware_detection" {
   description = "Alert on malicious browser extension files"
   event_pattern = jsonencode({
     source = ["aws.guardduty"]
+    "detail-type" = ["GuardDuty Finding"]
     detail = {
       type = [
         { prefix = "Execution:EC2" },

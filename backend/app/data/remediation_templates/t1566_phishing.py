@@ -94,7 +94,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: SES Phishing Alerts
       Subscription:
         - Protocol: email
@@ -255,7 +254,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -321,6 +319,7 @@ resource "aws_cloudwatch_event_rule" "malware_findings" {
 
   event_pattern = jsonencode({
     source = ["aws.guardduty"]
+    "detail-type" = ["GuardDuty Finding"]
     detail = {
       type = [
         { prefix = "Discovery:S3" },

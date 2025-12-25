@@ -97,7 +97,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       TopicName: multi-stage-c2-alerts
       Subscription:
         - Protocol: email
@@ -244,7 +243,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       TopicName: process-network-sequence-alerts
       Subscription:
         - Protocol: email
@@ -389,7 +387,6 @@ Resources:
   GuardDutyAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
-      KmsMasterKeyId: alias/aws/sns
       KmsMasterKeyId: alias/aws/sns
       TopicName: guardduty-multi-stage-alerts
       Subscription:

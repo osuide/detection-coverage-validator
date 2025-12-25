@@ -106,7 +106,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: Pass the Hash Detection Alerts
       Subscription:
         - Protocol: email
@@ -120,6 +119,8 @@ Resources:
       Description: Detect suspicious Windows authentication patterns
       EventPattern:
         source: [aws.guardduty]
+        detail-type:
+          - GuardDuty Finding
         detail:
           type:
             - prefix: "UnauthorizedAccess:EC2"
@@ -174,6 +175,7 @@ resource "aws_cloudwatch_event_rule" "suspicious_auth" {
 
   event_pattern = jsonencode({
     source = ["aws.guardduty"]
+    "detail-type" = ["GuardDuty Finding"]
     detail = {
       type = [
         { prefix = "UnauthorizedAccess:EC2" },
@@ -295,7 +297,6 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
-      KmsMasterKeyId: alias/aws/sns
       KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email

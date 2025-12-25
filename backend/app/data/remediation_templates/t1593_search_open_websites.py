@@ -89,7 +89,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: Repository Security Alerts
       Subscription:
         - Protocol: email

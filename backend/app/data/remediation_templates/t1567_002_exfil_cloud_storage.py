@@ -101,7 +101,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       TopicName: cloud-storage-upload-alerts
       Subscription:
         - Protocol: email
@@ -262,7 +261,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       TopicName: cloud-storage-post-alerts
       Subscription:
         - Protocol: email
@@ -414,7 +412,6 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
-      KmsMasterKeyId: alias/aws/sns
       KmsMasterKeyId: alias/aws/sns
       TopicName: guardduty-exfil-alerts
       Subscription:

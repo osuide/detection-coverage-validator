@@ -665,7 +665,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       TopicName: !Sub '${NamePrefix}-alerts'
       DisplayName: Console Access Anomaly Alerts
 

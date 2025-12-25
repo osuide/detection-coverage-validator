@@ -100,7 +100,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       TopicName: browser-discovery-alerts
       Subscription:
         - Protocol: email
@@ -270,7 +269,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       TopicName: linux-browser-discovery-alerts
       Subscription:
         - Protocol: email
@@ -439,7 +437,6 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
-      KmsMasterKeyId: alias/aws/sns
       KmsMasterKeyId: alias/aws/sns
       TopicName: browser-process-discovery-alerts
       Subscription:

@@ -385,7 +385,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: GuardDuty Persistence Alerts
       Subscription:
         - Protocol: email
@@ -686,7 +685,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: Access Key Creation Alerts
       Subscription:
         - Protocol: email
@@ -849,7 +847,6 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
-      KmsMasterKeyId: alias/aws/sns
       KmsMasterKeyId: alias/aws/sns
       DisplayName: Access Key Creation Alerts
       Subscription:

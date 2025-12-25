@@ -204,7 +204,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       TopicName: kerberos-ticket-anomaly-alerts
       Subscription:
         - Endpoint: !Ref AlertEmail
@@ -434,7 +433,6 @@ Resources:
   KerberoastingAlertsTopic:
     Type: AWS::SNS::Topic
     Properties:
-      KmsMasterKeyId: alias/aws/sns
       KmsMasterKeyId: alias/aws/sns
       TopicName: kerberoasting-detection-alerts
       Subscription:

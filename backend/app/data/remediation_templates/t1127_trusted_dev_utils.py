@@ -108,7 +108,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: T1127 Developer Utility Alerts
       Subscription:
         - Protocol: email

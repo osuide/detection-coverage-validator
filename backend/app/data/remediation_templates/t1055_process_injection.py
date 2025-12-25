@@ -110,7 +110,16 @@ TEMPLATE = RemediationTemplate(
                     "PrivilegeEscalation:Runtime/RuncContainerEscape",
                 ],
                 cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
-Description: GuardDuty Runtime Monitoring for process injection detection
+Description: |
+  GuardDuty Runtime Monitoring for process injection detection (T1055)
+
+  IMPORTANT: Runtime Monitoring requires GuardDuty security agent deployment:
+  - EC2: SSM agent auto-deploys GuardDuty agent (verify via SSM Fleet Manager)
+  - EKS: GuardDuty addon auto-managed (verify: kubectl get pods -n amazon-guardduty)
+  - ECS Fargate: Auto-managed (verify via GuardDuty console > Runtime Monitoring > Coverage)
+
+  Coverage is NOT guaranteed just by enabling the feature - verify agent status!
+  Unsupported: EKS on Fargate, Windows containers, non-SSM managed EC2 instances
 
 Parameters:
   AlertEmail:
@@ -127,11 +136,12 @@ Resources:
         - Name: RUNTIME_MONITORING
           Status: ENABLED
           AdditionalConfiguration:
+            # Alphabetical order to prevent drift
+            - Name: EC2_AGENT_MANAGEMENT
+              Status: ENABLED
             - Name: ECS_FARGATE_AGENT_MANAGEMENT
               Status: ENABLED
             - Name: EKS_ADDON_MANAGEMENT
-              Status: ENABLED
-            - Name: EC2_AGENT_MANAGEMENT
               Status: ENABLED
 
   # Step 2: Create SNS topic for critical alerts
@@ -139,41 +149,54 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: Process Injection Alerts
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
   # Step 3: Route process injection findings to alerts
+  # Pattern scoped to ONLY process injection findings to avoid alert fatigue
+  # Finding types: ProcessInjection.Proc, ProcessInjection.Ptrace, ProcessInjection.VirtualMemoryWrite
   ProcessInjectionRule:
     Type: AWS::Events::Rule
     Properties:
       Name: T1055-ProcessInjectionDetection
-      Description: Alert on GuardDuty process injection findings
+      Description: Alert on GuardDuty process injection findings (severity >= 4)
       EventPattern:
-        source: [aws.guardduty]
+        source:
+          - aws.guardduty
+        detail-type:
+          - GuardDuty Finding
         detail:
           type:
-            - prefix: "Execution:Runtime/"
             - prefix: "DefenseEvasion:Runtime/ProcessInjection"
-            - prefix: "PrivilegeEscalation:Runtime/"
+          severity:
+            - numeric:
+                - ">="
+                - 4
       State: ENABLED
       Targets:
         - Id: SNSTarget
           Arn: !Ref ProcessInjectionAlertTopic
 
+  # SNS topic policy with aws:SourceArn condition for least privilege
   SNSTopicPolicy:
     Type: AWS::SNS::TopicPolicy
     Properties:
-      Topics: [!Ref ProcessInjectionAlertTopic]
+      Topics:
+        - !Ref ProcessInjectionAlertTopic
       PolicyDocument:
+        Version: '2012-10-17'
         Statement:
-          - Effect: Allow
+          - Sid: AllowEventBridgeRule
+            Effect: Allow
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
             Resource: !Ref ProcessInjectionAlertTopic
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !GetAtt ProcessInjectionRule.Arn
 
 Outputs:
   GuardDutyDetectorId:
@@ -181,12 +204,34 @@ Outputs:
     Value: !Ref GuardDutyDetector
   AlertTopicArn:
     Description: SNS topic for alerts
-    Value: !Ref ProcessInjectionAlertTopic""",
+    Value: !Ref ProcessInjectionAlertTopic
+  EventRuleArn:
+    Description: EventBridge rule ARN
+    Value: !GetAtt ProcessInjectionRule.Arn""",
                 terraform_template="""# GuardDuty Runtime Monitoring for process injection detection
+#
+# IMPORTANT: Runtime Monitoring requires GuardDuty security agent deployment:
+# - EC2: SSM agent auto-deploys GuardDuty agent (verify via SSM Fleet Manager)
+# - EKS: GuardDuty addon auto-managed (verify: kubectl get pods -n amazon-guardduty)
+# - ECS Fargate: Auto-managed (verify via GuardDuty console > Runtime Monitoring > Coverage)
+#
+# Coverage is NOT guaranteed just by enabling the feature - verify agent status!
+# Unsupported: EKS on Fargate, Windows containers, non-SSM managed EC2 instances
 
 variable "alert_email" {
   description = "Email address for security alerts"
   type        = string
+}
+
+variable "aws_account_id" {
+  description = "AWS account ID for policy conditions"
+  type        = string
+}
+
+variable "aws_region" {
+  description = "AWS region"
+  type        = string
+  default     = "eu-west-2"
 }
 
 # Step 1: Enable GuardDuty with Runtime Monitoring
@@ -206,10 +251,17 @@ resource "aws_guardduty_detector" "main" {
 }
 
 # Enable Runtime Monitoring feature
+# NOTE: Keep additional_configuration blocks in alphabetical order to prevent
+# Terraform provider drift issues (known issue with some AWS provider versions)
 resource "aws_guardduty_detector_feature" "runtime_monitoring" {
   detector_id = aws_guardduty_detector.main.id
   name        = "RUNTIME_MONITORING"
   status      = "ENABLED"
+
+  additional_configuration {
+    name   = "EC2_AGENT_MANAGEMENT"
+    status = "ENABLED"
+  }
 
   additional_configuration {
     name   = "ECS_FARGATE_AGENT_MANAGEMENT"
@@ -221,17 +273,17 @@ resource "aws_guardduty_detector_feature" "runtime_monitoring" {
     status = "ENABLED"
   }
 
-  additional_configuration {
-    name   = "EC2_AGENT_MANAGEMENT"
-    status = "ENABLED"
+  lifecycle {
+    # Prevent replacement due to provider ordering changes
+    create_before_destroy = true
   }
 }
 
 # Step 2: Create SNS topic for critical alerts
 resource "aws_sns_topic" "process_injection_alerts" {
-  name         = "guardduty-process-injection-alerts"
+  name              = "guardduty-process-injection-alerts"
   kms_master_key_id = "alias/aws/sns"
-  display_name = "Process Injection Alerts"
+  display_name      = "Process Injection Alerts"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -241,17 +293,22 @@ resource "aws_sns_topic_subscription" "email" {
 }
 
 # Step 3: Route process injection findings to alerts
+# Pattern scoped to ONLY process injection findings to avoid alert fatigue
+# Finding types: ProcessInjection.Proc, ProcessInjection.Ptrace, ProcessInjection.VirtualMemoryWrite
 resource "aws_cloudwatch_event_rule" "process_injection" {
   name        = "guardduty-process-injection-detection"
-  description = "Alert on GuardDuty process injection findings"
+  description = "Alert on GuardDuty process injection findings (T1055)"
 
   event_pattern = jsonencode({
-    source = ["aws.guardduty"]
+    source        = ["aws.guardduty"]
+    "detail-type" = ["GuardDuty Finding"]
     detail = {
       type = [
-        { prefix = "Execution:Runtime/" },
-        { prefix = "DefenseEvasion:Runtime/ProcessInjection" },
-        { prefix = "PrivilegeEscalation:Runtime/" }
+        { prefix = "DefenseEvasion:Runtime/ProcessInjection" }
+      ]
+      # Severity >= 4 (MEDIUM or above) to filter noise
+      severity = [
+        { numeric = [">=", 4] }
       ]
     }
   })
@@ -263,16 +320,23 @@ resource "aws_cloudwatch_event_target" "sns" {
   arn       = aws_sns_topic.process_injection_alerts.arn
 }
 
+# SNS topic policy with aws:SourceArn condition for least privilege
 resource "aws_sns_topic_policy" "allow_eventbridge" {
   arn = aws_sns_topic.process_injection_alerts.arn
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowEventBridgeRule"
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.process_injection_alerts.arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = "arn:aws:events:$${var.aws_region}:$${var.aws_account_id}:rule/${aws_cloudwatch_event_rule.process_injection.name}"
+        }
+      }
     }]
   })
 }
@@ -285,6 +349,11 @@ output "guardduty_detector_id" {
 output "alert_topic_arn" {
   description = "SNS topic for alerts"
   value       = aws_sns_topic.process_injection_alerts.arn
+}
+
+output "event_rule_arn" {
+  description = "EventBridge rule ARN"
+  value       = aws_cloudwatch_event_rule.process_injection.arn
 }""",
                 alert_severity="critical",
                 alert_title="GuardDuty: Process Injection Detected",
@@ -393,7 +462,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: Process Injection Alerts
       Subscription:
         - Protocol: email
@@ -402,10 +470,13 @@ Resources:
   TopicPolicy:
     Type: AWS::SNS::TopicPolicy
     Properties:
-      Topics: [!Ref AlertTopic]
+      Topics:
+        - !Ref AlertTopic
       PolicyDocument:
+        Version: '2012-10-17'
         Statement:
-          - Effect: Allow
+          - Sid: AllowCloudWatchAlarms
+            Effect: Allow
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
@@ -766,23 +837,29 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: Security Hub Critical Findings
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
+  # SNS topic policy with aws:SourceArn condition for least privilege
   SNSTopicPolicy:
     Type: AWS::SNS::TopicPolicy
     Properties:
-      Topics: [!Ref AlertTopic]
+      Topics:
+        - !Ref AlertTopic
       PolicyDocument:
+        Version: '2012-10-17'
         Statement:
-          - Effect: Allow
+          - Sid: AllowEventBridgeRule
+            Effect: Allow
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
             Resource: !Ref AlertTopic
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !GetAtt CriticalFindingsRule.Arn
 
 Outputs:
   SecurityHubArn:
@@ -790,7 +867,10 @@ Outputs:
     Value: !Ref SecurityHub
   InsightArn:
     Description: Process injection insight ARN
-    Value: !GetAtt ProcessInjectionInsight.InsightArn""",
+    Value: !GetAtt ProcessInjectionInsight.InsightArn
+  EventRuleArn:
+    Description: EventBridge rule ARN
+    Value: !GetAtt CriticalFindingsRule.Arn""",
                 terraform_template="""# Security Hub aggregation for process injection findings
 
 variable "alert_email" {
@@ -859,9 +939,9 @@ resource "aws_cloudwatch_event_target" "sns" {
 }
 
 resource "aws_sns_topic" "alerts" {
-  name         = "securityhub-critical-alerts"
+  name              = "securityhub-critical-alerts"
   kms_master_key_id = "alias/aws/sns"
-  display_name = "Security Hub Critical Findings"
+  display_name      = "Security Hub Critical Findings"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -870,16 +950,23 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
+# SNS topic policy with aws:SourceArn condition for least privilege
 resource "aws_sns_topic_policy" "alerts" {
   arn = aws_sns_topic.alerts.arn
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowEventBridgeRule"
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
       Action    = "SNS:Publish"
       Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.critical_findings.arn
+        }
+      }
     }]
   })
 }
@@ -892,6 +979,11 @@ output "securityhub_arn" {
 output "insight_arn" {
   description = "Process injection insight ARN"
   value       = aws_securityhub_insight.process_injection.arn
+}
+
+output "event_rule_arn" {
+  description = "EventBridge rule ARN"
+  value       = aws_cloudwatch_event_rule.critical_findings.arn
 }""",
                 alert_severity="critical",
                 alert_title="Security Hub: Process Injection Finding",

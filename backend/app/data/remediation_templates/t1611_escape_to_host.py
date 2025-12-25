@@ -93,7 +93,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -214,7 +213,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -222,13 +220,22 @@ Resources:
   ContainerEscapeRule:
     Type: AWS::Events::Rule
     Properties:
+      # Scoped to specific container escape finding types to avoid alert fatigue
       EventPattern:
         source: [aws.guardduty]
         detail-type: [GuardDuty Finding]
         detail:
           type:
-            - prefix: "PrivilegeEscalation:Runtime/"
+            # Container escape specific findings
+            - "PrivilegeEscalation:Runtime/RuncContainerEscape"
+            - "PrivilegeEscalation:Runtime/CGroupsReleaseAgentModified"
+            - "PrivilegeEscalation:Runtime/ContainerMountsHostDirectory"
+            - "PrivilegeEscalation:Runtime/DockerSocketAccessed"
             - "Execution:Runtime/NewBinaryExecuted"
+          severity:
+            - numeric:
+                - ">="
+                - 4
       Targets:
         - Id: Alert
           Arn: !Ref AlertTopic
@@ -261,14 +268,21 @@ resource "aws_sns_topic_subscription" "email" {
 
 resource "aws_cloudwatch_event_rule" "container_escape" {
   name = "guardduty-container-escape"
+  # Scoped to specific container escape finding types to avoid alert fatigue
   event_pattern = jsonencode({
-    source      = ["aws.guardduty"]
-    detail-type = ["GuardDuty Finding"]
-    detail      = {
+    source        = ["aws.guardduty"]
+    "detail-type" = ["GuardDuty Finding"]
+    detail = {
       type = [
-        { prefix = "PrivilegeEscalation:Runtime/" },
+        # Container escape specific findings
+        "PrivilegeEscalation:Runtime/RuncContainerEscape",
+        "PrivilegeEscalation:Runtime/CGroupsReleaseAgentModified",
+        "PrivilegeEscalation:Runtime/ContainerMountsHostDirectory",
+        "PrivilegeEscalation:Runtime/DockerSocketAccessed",
         "Execution:Runtime/NewBinaryExecuted"
       ]
+      # Severity >= 4 (MEDIUM or above) to filter noise
+      severity = [{ numeric = [">=", 4] }]
     }
   })
 }

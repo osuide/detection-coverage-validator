@@ -102,7 +102,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       TopicName: s3-defacement-alerts
       Subscription:
         - Protocol: email
@@ -311,7 +310,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -469,7 +467,6 @@ Resources:
   IntegrityAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
-      KmsMasterKeyId: alias/aws/sns
       KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email

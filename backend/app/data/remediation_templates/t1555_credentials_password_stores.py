@@ -100,7 +100,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: Password Store Access Alerts
       Subscription:
         - Protocol: email
@@ -259,7 +258,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -398,7 +396,6 @@ Resources:
   BrowserCredAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
-      KmsMasterKeyId: alias/aws/sns
       KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
@@ -650,7 +647,6 @@ Resources:
   K8sSecretsAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
-      KmsMasterKeyId: alias/aws/sns
       KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email

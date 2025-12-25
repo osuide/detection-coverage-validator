@@ -112,7 +112,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: Deobfuscation Detection Alerts
       Subscription:
         - Protocol: email
@@ -446,7 +445,6 @@ Resources:
   SecurityAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
-      KmsMasterKeyId: alias/aws/sns
       KmsMasterKeyId: alias/aws/sns
       DisplayName: Runtime Decryption Alerts
       Subscription:

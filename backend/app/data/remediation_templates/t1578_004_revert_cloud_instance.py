@@ -92,7 +92,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       TopicName: snapshot-restore-alerts
       Subscription:
         - Protocol: email

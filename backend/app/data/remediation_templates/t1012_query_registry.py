@@ -98,7 +98,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -249,7 +248,6 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
-      KmsMasterKeyId: alias/aws/sns
       KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
@@ -405,7 +403,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -417,6 +414,8 @@ Resources:
       Name: T1012-RegistryDiscovery
       EventPattern:
         source: [aws.guardduty]
+        detail-type:
+          - GuardDuty Finding
         detail:
           type:
             - prefix: "Discovery:Runtime"
@@ -470,6 +469,7 @@ resource "aws_cloudwatch_event_rule" "registry_discovery" {
   name = "guardduty-registry-discovery"
   event_pattern = jsonencode({
     source = ["aws.guardduty"]
+    "detail-type" = ["GuardDuty Finding"]
     detail = {
       type = [
         { prefix = "Discovery:Runtime" },

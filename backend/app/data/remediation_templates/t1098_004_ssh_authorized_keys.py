@@ -97,7 +97,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: SSH Authorized Keys Modification Alerts
       Subscription:
         - Protocol: email

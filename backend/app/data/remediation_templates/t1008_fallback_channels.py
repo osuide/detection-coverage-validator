@@ -93,7 +93,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       TopicName: c2-fallback-alerts
       Subscription:
         - Protocol: email
@@ -257,7 +256,6 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
-      KmsMasterKeyId: alias/aws/sns
       KmsMasterKeyId: alias/aws/sns
       TopicName: dns-fallback-alerts
       Subscription:
@@ -483,7 +481,6 @@ Resources:
   GuardDutyAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
-      KmsMasterKeyId: alias/aws/sns
       KmsMasterKeyId: alias/aws/sns
       TopicName: guardduty-c2-alerts
       Subscription:

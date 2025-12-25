@@ -113,7 +113,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: XSL Script Processing Alerts
       Subscription:
         - Protocol: email
@@ -643,7 +642,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: XSL Script Processing Runtime Alerts
       Subscription:
         - Protocol: email
@@ -657,6 +655,8 @@ Resources:
       Description: Alert on suspicious runtime activity from XSL processing
       EventPattern:
         source: [aws.guardduty]
+        detail-type:
+          - GuardDuty Finding
         detail:
           type:
             - prefix: "Execution:Runtime"
@@ -726,6 +726,7 @@ resource "aws_cloudwatch_event_rule" "runtime_detection" {
   description = "Alert on suspicious runtime activity from XSL processing"
   event_pattern = jsonencode({
     source = ["aws.guardduty"]
+    "detail-type" = ["GuardDuty Finding"]
     detail = {
       type = [
         { prefix = "Execution:Runtime" },

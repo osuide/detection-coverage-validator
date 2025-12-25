@@ -100,7 +100,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: System Time Discovery Alerts
       Subscription:
         - Protocol: email
@@ -262,7 +261,6 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
-      KmsMasterKeyId: alias/aws/sns
       KmsMasterKeyId: alias/aws/sns
       DisplayName: SSM Time Discovery Alerts
       Subscription:

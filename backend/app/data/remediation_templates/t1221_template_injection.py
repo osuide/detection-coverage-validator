@@ -106,7 +106,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: Template Injection Alerts
       Subscription:
         - Protocol: email
@@ -187,6 +186,7 @@ resource "aws_cloudwatch_event_rule" "malware_detection" {
 
   event_pattern = jsonencode({
     source = ["aws.guardduty"]
+    "detail-type" = ["GuardDuty Finding"]
     detail = {
       type = [
         "Execution:S3/MaliciousFile",

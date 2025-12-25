@@ -105,7 +105,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: Credential Dumping Alerts
       Subscription:
         - Protocol: email
@@ -119,6 +118,8 @@ Resources:
       Description: Alert on credential dumping attempts
       EventPattern:
         source: [aws.guardduty]
+        detail-type:
+          - GuardDuty Finding
         detail:
           type:
             - prefix: "CredentialAccess:Runtime"
@@ -189,6 +190,7 @@ resource "aws_cloudwatch_event_rule" "credential_dumping" {
   description = "Alert on credential dumping attempts"
   event_pattern = jsonencode({
     source = ["aws.guardduty"]
+    "detail-type" = ["GuardDuty Finding"]
     detail = {
       type = [
         { prefix = "CredentialAccess:Runtime" },

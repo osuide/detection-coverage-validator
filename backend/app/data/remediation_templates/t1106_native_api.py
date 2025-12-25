@@ -120,7 +120,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: Native API Abuse Alerts
       Subscription:
         - Protocol: email
@@ -132,12 +131,22 @@ Resources:
     Properties:
       Name: T1106-NativeAPIDetection
       Description: Alert on GuardDuty native API abuse findings
+      # Scoped to specific native API abuse findings to avoid alert fatigue
       EventPattern:
         source: [aws.guardduty]
+        detail-type:
+          - GuardDuty Finding
         detail:
           type:
-            - prefix: "Execution:Runtime/"
-            - prefix: "DefenseEvasion:Runtime/"
+            - "Execution:Runtime/SuspiciousCommand"
+            - "Execution:Runtime/SuspiciousTool"
+            - "Execution:Runtime/MaliciousFileExecuted"
+            - "DefenseEvasion:Runtime/SuspiciousCommand"
+            - "DefenseEvasion:Runtime/FilelessExecution"
+          severity:
+            - numeric:
+                - ">="
+                - 4
       State: ENABLED
       Targets:
         - Id: SNSTarget
@@ -225,13 +234,20 @@ resource "aws_cloudwatch_event_rule" "native_api" {
   name        = "guardduty-native-api-detection"
   description = "Alert on GuardDuty native API abuse findings"
 
+  # Scoped to specific native API abuse findings to avoid alert fatigue
   event_pattern = jsonencode({
-    source = ["aws.guardduty"]
+    source        = ["aws.guardduty"]
+    "detail-type" = ["GuardDuty Finding"]
     detail = {
       type = [
-        { prefix = "Execution:Runtime/" },
-        { prefix = "DefenseEvasion:Runtime/" }
+        "Execution:Runtime/SuspiciousCommand",
+        "Execution:Runtime/SuspiciousTool",
+        "Execution:Runtime/MaliciousFileExecuted",
+        "DefenseEvasion:Runtime/SuspiciousCommand",
+        "DefenseEvasion:Runtime/FilelessExecution"
       ]
+      # Severity >= 4 (MEDIUM or above) to filter noise
+      severity = [{ numeric = [">=", 4] }]
     }
   })
 }
@@ -372,7 +388,6 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
-      KmsMasterKeyId: alias/aws/sns
       KmsMasterKeyId: alias/aws/sns
       DisplayName: Native API Abuse Alerts
       Subscription:
@@ -731,7 +746,6 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
-      KmsMasterKeyId: alias/aws/sns
       KmsMasterKeyId: alias/aws/sns
       DisplayName: Native API Pattern Alerts
       Subscription:

@@ -126,7 +126,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: Exfiltration Security Alerts
       Subscription:
         - Protocol: email
@@ -138,12 +137,20 @@ Resources:
     Properties:
       Name: T1052-ExfiltrationAlerts
       Description: Alert on suspicious data exfiltration activity
+      # Physical medium exfiltration not directly detectable - use data movement indicators
       EventPattern:
         source: [aws.guardduty]
+        detail-type:
+          - GuardDuty Finding
         detail:
           type:
-            - prefix: "Exfiltration:Runtime/"
-            - prefix: "Execution:Runtime/"
+            - prefix: "Exfiltration:S3/"
+            - prefix: "Exfiltration:IAMUser/"
+            - "Execution:Runtime/SuspiciousCommand"
+          severity:
+            - numeric:
+                - ">="
+                - 4
       Targets:
         - Id: SNSTarget
           Arn: !Ref AlertTopic
@@ -214,13 +221,18 @@ resource "aws_cloudwatch_event_rule" "exfiltration_findings" {
   name        = "guardduty-exfiltration-findings"
   description = "Alert on suspicious data exfiltration activity"
 
+  # Physical medium exfiltration not directly detectable - use data movement indicators
   event_pattern = jsonencode({
-    source = ["aws.guardduty"]
+    source        = ["aws.guardduty"]
+    "detail-type" = ["GuardDuty Finding"]
     detail = {
       type = [
-        { prefix = "Exfiltration:Runtime/" },
-        { prefix = "Execution:Runtime/" }
+        { prefix = "Exfiltration:S3/" },
+        { prefix = "Exfiltration:IAMUser/" },
+        "Execution:Runtime/SuspiciousCommand"
       ]
+      # Severity >= 4 (MEDIUM or above) to filter noise
+      severity = [{ numeric = [">=", 4] }]
     }
   })
 }
@@ -326,7 +338,6 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
-      KmsMasterKeyId: alias/aws/sns
       KmsMasterKeyId: alias/aws/sns
       DisplayName: Exfiltration Device Alerts
       Subscription:
@@ -535,7 +546,6 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
-      KmsMasterKeyId: alias/aws/sns
       KmsMasterKeyId: alias/aws/sns
       TopicName: data-staging-alerts
       Subscription:

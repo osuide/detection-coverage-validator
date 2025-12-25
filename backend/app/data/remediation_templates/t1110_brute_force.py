@@ -92,7 +92,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -103,6 +102,8 @@ Resources:
     Properties:
       EventPattern:
         source: [aws.guardduty]
+        detail-type:
+          - GuardDuty Finding
         detail:
           type:
             - prefix: "UnauthorizedAccess:EC2/SSHBruteForce"
@@ -151,6 +152,7 @@ resource "aws_cloudwatch_event_rule" "brute_force" {
   name = "guardduty-bruteforce-alerts"
   event_pattern = jsonencode({
     source = ["aws.guardduty"]
+    "detail-type" = ["GuardDuty Finding"]
     detail = {
       type = [
         { prefix = "UnauthorizedAccess:EC2/SSHBruteForce" },
@@ -242,7 +244,6 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
-      KmsMasterKeyId: alias/aws/sns
       KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email

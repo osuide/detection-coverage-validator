@@ -99,7 +99,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       TopicName: web-service-c2-alerts
       Subscription:
         - Protocol: email
@@ -339,7 +338,6 @@ Resources:
   GuardDutyAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
-      KmsMasterKeyId: alias/aws/sns
       KmsMasterKeyId: alias/aws/sns
       TopicName: guardduty-c2-alerts
       Subscription:

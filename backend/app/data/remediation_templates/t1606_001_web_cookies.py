@@ -93,7 +93,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       TopicName: auth-bypass-alerts
       Subscription:
         - Protocol: email
@@ -239,7 +238,6 @@ Resources:
   GuardDutyTopic:
     Type: AWS::SNS::Topic
     Properties:
-      KmsMasterKeyId: alias/aws/sns
       KmsMasterKeyId: alias/aws/sns
       TopicName: guardduty-credential-alerts
       Subscription:

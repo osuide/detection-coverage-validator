@@ -98,7 +98,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: Office Application Startup Alerts
       Subscription:
         - Protocol: email

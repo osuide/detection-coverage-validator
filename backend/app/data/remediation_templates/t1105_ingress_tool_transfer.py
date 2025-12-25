@@ -90,7 +90,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       TopicName: ec2-download-alerts
       Subscription:
         - Protocol: email
@@ -232,7 +231,6 @@ Resources:
   GuardDutyAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
-      KmsMasterKeyId: alias/aws/sns
       KmsMasterKeyId: alias/aws/sns
       TopicName: guardduty-download-alerts
       Subscription:

@@ -102,7 +102,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: Credential Exposure Alerts
       Subscription:
         - Protocol: email
@@ -116,6 +115,8 @@ Resources:
       Description: Alert on credential exposure and exfiltration
       EventPattern:
         source: [aws.guardduty]
+        detail-type:
+          - GuardDuty Finding
         detail:
           type:
             - prefix: "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration"
@@ -171,6 +172,7 @@ resource "aws_cloudwatch_event_rule" "credential_exposure" {
 
   event_pattern = jsonencode({
     source = ["aws.guardduty"]
+    "detail-type" = ["GuardDuty Finding"]
     detail = {
       type = [
         { prefix = "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration" },
@@ -260,7 +262,6 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
-      KmsMasterKeyId: alias/aws/sns
       KmsMasterKeyId: alias/aws/sns
       DisplayName: Secret Access Alerts
       Subscription:
@@ -519,7 +520,6 @@ Resources:
   MetadataAbuseTopic:
     Type: AWS::SNS::Topic
     Properties:
-      KmsMasterKeyId: alias/aws/sns
       KmsMasterKeyId: alias/aws/sns
       DisplayName: Metadata Service Abuse Alerts
       Subscription:

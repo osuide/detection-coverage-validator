@@ -87,7 +87,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: Boot Integrity Alerts
       Subscription:
         - Protocol: email

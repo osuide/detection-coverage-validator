@@ -117,7 +117,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: Network Interface Alerts
       Subscription:
         - Protocol: email
@@ -309,7 +308,6 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
-      KmsMasterKeyId: alias/aws/sns
       KmsMasterKeyId: alias/aws/sns
       DisplayName: Block Device Monitor Alerts
       Subscription:
@@ -925,7 +923,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: Hardware Audit Results
       Subscription:
         - Protocol: email
@@ -1348,7 +1345,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: Runtime Security Alerts
       Subscription:
         - Protocol: email
@@ -1360,12 +1356,21 @@ Resources:
     Properties:
       Name: T1200-RuntimeSecurityAlerts
       Description: Alert on GuardDuty runtime findings
+      # Hardware additions not directly detectable - use post-compromise indicators
       EventPattern:
         source: [aws.guardduty]
+        detail-type:
+          - GuardDuty Finding
         detail:
           type:
-            - prefix: "Execution:Runtime/"
-            - prefix: "DefenseEvasion:Runtime/"
+            - "Execution:Runtime/NewBinaryExecuted"
+            - "Execution:Runtime/MaliciousFileExecuted"
+            - "Execution:Runtime/SuspiciousCommand"
+            - "Backdoor:EC2/C&CActivity.B"
+          severity:
+            - numeric:
+                - ">="
+                - 4
       Targets:
         - Id: SNSTarget
           Arn: !Ref AlertTopic
@@ -1436,13 +1441,19 @@ resource "aws_cloudwatch_event_rule" "runtime_findings" {
   name        = "guardduty-runtime-findings"
   description = "Alert on GuardDuty runtime findings"
 
+  # Hardware additions not directly detectable - use post-compromise indicators
   event_pattern = jsonencode({
-    source = ["aws.guardduty"]
+    source        = ["aws.guardduty"]
+    "detail-type" = ["GuardDuty Finding"]
     detail = {
       type = [
-        { prefix = "Execution:Runtime/" },
-        { prefix = "DefenseEvasion:Runtime/" }
+        "Execution:Runtime/NewBinaryExecuted",
+        "Execution:Runtime/MaliciousFileExecuted",
+        "Execution:Runtime/SuspiciousCommand",
+        "Backdoor:EC2/C&CActivity.B"
       ]
+      # Severity >= 4 (MEDIUM or above) to filter noise
+      severity = [{ numeric = [">=", 4] }]
     }
   })
 }

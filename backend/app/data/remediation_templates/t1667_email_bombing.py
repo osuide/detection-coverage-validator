@@ -91,7 +91,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: Email Bombing Alerts
       Subscription:
         - Protocol: email

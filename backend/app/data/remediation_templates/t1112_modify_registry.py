@@ -110,7 +110,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: Registry Modification Alerts
       Subscription:
         - Protocol: email
@@ -124,6 +123,8 @@ Resources:
       Description: Alert on suspicious registry modifications
       EventPattern:
         source: [aws.guardduty]
+        detail-type:
+          - GuardDuty Finding
         detail:
           type:
             - prefix: "DefenseEvasion:Runtime"
@@ -193,6 +194,7 @@ resource "aws_cloudwatch_event_rule" "registry_modification" {
   description = "Alert on suspicious registry modifications"
   event_pattern = jsonencode({
     source = ["aws.guardduty"]
+    "detail-type" = ["GuardDuty Finding"]
     detail = {
       type = [
         { prefix = "DefenseEvasion:Runtime" },

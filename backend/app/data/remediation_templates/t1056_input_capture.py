@@ -99,7 +99,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: Input Capture Alerts
       Subscription:
         - Protocol: email
@@ -112,6 +111,8 @@ Resources:
       Name: input-capture-suspicious-logins
       EventPattern:
         source: [aws.guardduty]
+        detail-type:
+          - GuardDuty Finding
         detail:
           type:
             - prefix: "UnauthorizedAccess:IAMUser/ConsoleLoginSuccess"
@@ -163,6 +164,7 @@ resource "aws_cloudwatch_event_rule" "suspicious_logins" {
   name = "input-capture-suspicious-logins"
   event_pattern = jsonencode({
     source = ["aws.guardduty"]
+    "detail-type" = ["GuardDuty Finding"]
     detail = {
       type = [
         { prefix = "UnauthorizedAccess:IAMUser/ConsoleLoginSuccess" },
@@ -268,7 +270,6 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
-      KmsMasterKeyId: alias/aws/sns
       KmsMasterKeyId: alias/aws/sns
       DisplayName: Failed Login Alerts
       Subscription:

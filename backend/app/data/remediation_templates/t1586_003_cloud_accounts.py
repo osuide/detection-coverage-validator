@@ -92,7 +92,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: IAM Anomaly Alerts
       Subscription:
         - Protocol: email
@@ -233,7 +232,6 @@ Resources:
   GuardDutyAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
-      KmsMasterKeyId: alias/aws/sns
       KmsMasterKeyId: alias/aws/sns
       DisplayName: GuardDuty Credential Alerts
       Subscription:

@@ -96,7 +96,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: Suspicious File Execution Alerts
       Subscription:
         - Protocol: email

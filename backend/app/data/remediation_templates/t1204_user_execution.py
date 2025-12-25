@@ -100,7 +100,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: EC2 User Data Execution Alerts
       Subscription:
         - Protocol: email
@@ -255,7 +254,6 @@ Resources:
   LambdaAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
-      KmsMasterKeyId: alias/aws/sns
       KmsMasterKeyId: alias/aws/sns
       DisplayName: Suspicious Lambda Execution Alerts
       Subscription:

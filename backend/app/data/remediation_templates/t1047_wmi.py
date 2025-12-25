@@ -108,7 +108,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: WMI Abuse Alerts
       Subscription:
         - Protocol: email
@@ -122,6 +121,8 @@ Resources:
       Description: Alert on WMI command execution attempts
       EventPattern:
         source: [aws.guardduty]
+        detail-type:
+          - GuardDuty Finding
         detail:
           type:
             - prefix: "Execution:Runtime"
@@ -191,6 +192,7 @@ resource "aws_cloudwatch_event_rule" "wmi_execution" {
   description = "Alert on WMI command execution attempts"
   event_pattern = jsonencode({
     source = ["aws.guardduty"]
+    "detail-type" = ["GuardDuty Finding"]
     detail = {
       type = [
         { prefix = "Execution:Runtime" },

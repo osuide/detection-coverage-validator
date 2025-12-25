@@ -93,7 +93,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       TopicName: s3-lateral-transfer-alerts
       Subscription:
         - Protocol: email
@@ -240,7 +239,6 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
-      KmsMasterKeyId: alias/aws/sns
       KmsMasterKeyId: alias/aws/sns
       TopicName: ssm-lateral-transfer-alerts
       Subscription:

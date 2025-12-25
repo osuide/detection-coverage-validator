@@ -110,7 +110,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: Obfuscation Detection Alerts
       Subscription:
         - Protocol: email
@@ -440,7 +439,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: S3 Malware Detection Alerts
       Subscription:
         - Protocol: email
@@ -454,6 +452,8 @@ Resources:
       Description: Alert on malicious files in S3
       EventPattern:
         source: [aws.guardduty]
+        detail-type:
+          - GuardDuty Finding
         detail:
           type:
             - prefix: "Execution:S3"
@@ -522,6 +522,7 @@ resource "aws_cloudwatch_event_rule" "malware_detection" {
   description = "Alert on malicious files in S3"
   event_pattern = jsonencode({
     source = ["aws.guardduty"]
+    "detail-type" = ["GuardDuty Finding"]
     detail = {
       type = [
         { prefix = "Execution:S3" },

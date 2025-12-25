@@ -95,7 +95,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: Interpreter Execution Alerts
       Subscription:
         - Protocol: email
@@ -284,7 +283,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: GuardDuty Runtime Alerts
       Subscription:
         - Protocol: email
@@ -362,6 +360,7 @@ resource "aws_cloudwatch_event_rule" "execution_findings" {
 
   event_pattern = jsonencode({
     source = ["aws.guardduty"]
+    "detail-type" = ["GuardDuty Finding"]
     detail = {
       type = [
         { prefix = "Execution:Runtime" },
@@ -460,7 +459,6 @@ Resources:
   LambdaAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
-      KmsMasterKeyId: alias/aws/sns
       KmsMasterKeyId: alias/aws/sns
       DisplayName: Lambda Security Alerts
       Subscription:

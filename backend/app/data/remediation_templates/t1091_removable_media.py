@@ -115,7 +115,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: WorkSpaces USB Device Alerts
       Subscription:
         - Protocol: email
@@ -301,7 +300,6 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
-      KmsMasterKeyId: alias/aws/sns
       KmsMasterKeyId: alias/aws/sns
       DisplayName: Removable Media Alerts
       Subscription:
@@ -516,7 +514,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: Removable Media Security Alerts
       Subscription:
         - Protocol: email
@@ -528,12 +525,21 @@ Resources:
     Properties:
       Name: T1091-RemovableMediaAlerts
       Description: Alert on suspicious execution potentially from removable media
+      # Removable media not directly detectable - use execution indicators
       EventPattern:
         source: [aws.guardduty]
+        detail-type:
+          - GuardDuty Finding
         detail:
           type:
-            - prefix: "Execution:Runtime/"
-            - prefix: "DefenseEvasion:Runtime/"
+            - "Execution:Runtime/NewBinaryExecuted"
+            - "Execution:Runtime/MaliciousFileExecuted"
+            - "Execution:Runtime/SuspiciousCommand"
+            - "Execution:Runtime/SuspiciousTool"
+          severity:
+            - numeric:
+                - ">="
+                - 4
       Targets:
         - Id: SNSTarget
           Arn: !Ref AlertTopic
@@ -604,13 +610,19 @@ resource "aws_cloudwatch_event_rule" "runtime_findings" {
   name        = "guardduty-runtime-findings"
   description = "Alert on suspicious execution potentially from removable media"
 
+  # Removable media not directly detectable - use execution indicators
   event_pattern = jsonencode({
-    source = ["aws.guardduty"]
+    source        = ["aws.guardduty"]
+    "detail-type" = ["GuardDuty Finding"]
     detail = {
       type = [
-        { prefix = "Execution:Runtime/" },
-        { prefix = "DefenseEvasion:Runtime/" }
+        "Execution:Runtime/NewBinaryExecuted",
+        "Execution:Runtime/MaliciousFileExecuted",
+        "Execution:Runtime/SuspiciousCommand",
+        "Execution:Runtime/SuspiciousTool"
       ]
+      # Severity >= 4 (MEDIUM or above) to filter noise
+      severity = [{ numeric = [">=", 4] }]
     }
   })
 }
@@ -878,7 +890,6 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
-      KmsMasterKeyId: alias/aws/sns
       KmsMasterKeyId: alias/aws/sns
       DisplayName: S3 Upload Anomaly Alerts
       Subscription:

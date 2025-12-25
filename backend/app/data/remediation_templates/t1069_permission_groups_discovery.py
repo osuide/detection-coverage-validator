@@ -102,7 +102,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: IAM Group Discovery Alerts
       Subscription:
         - Protocol: email
@@ -459,7 +458,6 @@ Resources:
   CrossAccountAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
-      KmsMasterKeyId: alias/aws/sns
       KmsMasterKeyId: alias/aws/sns
       DisplayName: Cross-Account Discovery Alerts
       Subscription:

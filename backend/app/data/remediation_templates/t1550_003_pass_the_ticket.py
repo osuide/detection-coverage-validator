@@ -119,7 +119,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: Pass the Ticket Alerts
       Subscription:
         - Protocol: email
@@ -282,7 +281,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: Hybrid Auth Anomaly Alerts
       Subscription:
         - Protocol: email
@@ -296,6 +294,8 @@ Resources:
       Description: Detect authentication anomalies in hybrid environments
       EventPattern:
         source: [aws.guardduty]
+        detail-type:
+          - GuardDuty Finding
         detail:
           type:
             - prefix: "UnauthorizedAccess:IAMUser"
@@ -348,6 +348,7 @@ resource "aws_cloudwatch_event_rule" "hybrid_auth_anomaly" {
   description = "Detect authentication anomalies in hybrid environments"
   event_pattern = jsonencode({
     source = ["aws.guardduty"]
+    "detail-type" = ["GuardDuty Finding"]
     detail = {
       type = [
         { prefix = "UnauthorizedAccess:IAMUser" },

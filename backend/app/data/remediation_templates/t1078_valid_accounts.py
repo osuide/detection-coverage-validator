@@ -119,6 +119,8 @@ Resources:
       Description: Alert on suspicious credential usage
       EventPattern:
         source: [aws.guardduty]
+        detail-type:
+          - GuardDuty Finding
         detail:
           type:
             - prefix: "UnauthorizedAccess:IAMUser"
@@ -174,6 +176,7 @@ resource "aws_cloudwatch_event_rule" "credential_findings" {
 
   event_pattern = jsonencode({
     source = ["aws.guardduty"]
+    "detail-type" = ["GuardDuty Finding"]
     detail = {
       type = [
         { prefix = "UnauthorizedAccess:IAMUser" },

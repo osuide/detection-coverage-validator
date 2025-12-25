@@ -134,7 +134,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: IPC Abuse Alerts
       Subscription:
         - Protocol: email
@@ -317,7 +316,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: IPC Abuse Alerts
       Subscription:
         - Protocol: email
@@ -329,12 +327,21 @@ Resources:
     Properties:
       Name: T1559-IPC-Abuse-Detection
       Description: Alert on GuardDuty IPC abuse findings
+      # Scoped to process injection findings relevant to IPC abuse
       EventPattern:
         source: [aws.guardduty]
+        detail-type:
+          - GuardDuty Finding
         detail:
           type:
-            - prefix: "Execution:Runtime/"
-            - prefix: "DefenseEvasion:Runtime/"
+            - "DefenseEvasion:Runtime/ProcessInjection.Proc"
+            - "DefenseEvasion:Runtime/ProcessInjection.Ptrace"
+            - "DefenseEvasion:Runtime/ProcessInjection.VirtualMemoryWrite"
+            - "Execution:Runtime/SuspiciousCommand"
+          severity:
+            - numeric:
+                - ">="
+                - 4
       State: ENABLED
       Targets:
         - Id: SNSTarget
@@ -418,13 +425,19 @@ resource "aws_cloudwatch_event_rule" "ipc_findings" {
   name        = "guardduty-ipc-abuse-detection"
   description = "Alert on GuardDuty IPC abuse findings"
 
+  # Scoped to process injection findings relevant to IPC abuse
   event_pattern = jsonencode({
-    source = ["aws.guardduty"]
+    source        = ["aws.guardduty"]
+    "detail-type" = ["GuardDuty Finding"]
     detail = {
       type = [
-        { prefix = "Execution:Runtime/" },
-        { prefix = "DefenseEvasion:Runtime/" }
+        "DefenseEvasion:Runtime/ProcessInjection.Proc",
+        "DefenseEvasion:Runtime/ProcessInjection.Ptrace",
+        "DefenseEvasion:Runtime/ProcessInjection.VirtualMemoryWrite",
+        "Execution:Runtime/SuspiciousCommand"
       ]
+      # Severity >= 4 (MEDIUM or above) to filter noise
+      severity = [{ numeric = [">=", 4] }]
     }
   })
 }

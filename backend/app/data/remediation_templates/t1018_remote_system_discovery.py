@@ -96,7 +96,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: EC2 Instance Discovery Alerts
       Subscription:
         - Protocol: email
@@ -245,7 +244,6 @@ Resources:
   SSMDiscoveryAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
-      KmsMasterKeyId: alias/aws/sns
       KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email

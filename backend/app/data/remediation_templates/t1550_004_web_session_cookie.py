@@ -92,7 +92,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: alias/aws/sns
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: AWS Session Cookie Anomaly Alerts
       Subscription:
         - Protocol: email
@@ -238,7 +237,6 @@ Resources:
   ImpossibleTravelAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
-      KmsMasterKeyId: alias/aws/sns
       KmsMasterKeyId: alias/aws/sns
       DisplayName: AWS Impossible Travel Alerts
       Subscription:
