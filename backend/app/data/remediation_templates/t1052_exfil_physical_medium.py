@@ -387,6 +387,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
       TreatMissingData: notBreaching
@@ -464,7 +466,9 @@ resource "aws_cloudwatch_metric_alarm" "exfil_device" {
   namespace           = "Security/DataExfil"
   metric_name         = "ExfiltrationDeviceConnected"
   treat_missing_data  = "notBreaching"
-  alarm_actions       = [aws_sns_topic.exfil_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.exfil_alerts.arn]
 }
 
 # NOTE: Deploy SSM Document from T1200 template to enable detection
@@ -572,10 +576,12 @@ Resources:
       MetricName: DataStagingCommands
       Namespace: Security/DataExfil
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
 
@@ -629,11 +635,13 @@ resource "aws_cloudwatch_metric_alarm" "data_staging" {
   metric_name         = "DataStagingCommands"
   namespace           = "Security/DataExfil"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 5
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.staging_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.staging_alerts.arn]
 }
 
 # NOTE: This detection monitors SSM commands only.

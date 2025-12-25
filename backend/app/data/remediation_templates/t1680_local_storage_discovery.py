@@ -119,6 +119,8 @@ Resources:
       Threshold: 100
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic""",
                 terraform_template="""# Detect EBS volume enumeration activity
@@ -165,7 +167,9 @@ resource "aws_cloudwatch_metric_alarm" "ebs_enumeration" {
   threshold           = 100
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="EBS Volume Enumeration Detected",
@@ -246,11 +250,13 @@ resource "aws_cloudwatch_metric_alarm" "storage_discovery" {
   metric_name         = "StorageDiscoveryCommands"
   namespace           = "Security/StorageDiscovery"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 10
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Storage Discovery Commands Detected",

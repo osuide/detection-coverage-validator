@@ -122,6 +122,8 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]
       TreatMissingData: notBreaching""",
                 terraform_template="""# AWS: Detect compromised IAM credentials via anomalous authentication
@@ -175,7 +177,9 @@ resource "aws_cloudwatch_metric_alarm" "compromised_credentials" {
   threshold           = 5
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.iam_anomaly_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.iam_anomaly_alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",

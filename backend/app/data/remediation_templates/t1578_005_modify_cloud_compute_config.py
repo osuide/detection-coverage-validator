@@ -118,6 +118,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# AWS: Detect service quota modifications
 
@@ -167,7 +170,10 @@ resource "aws_cloudwatch_metric_alarm" "quota_modification" {
   evaluation_periods  = 1
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
-  alarm_actions       = [aws_sns_topic.quota_alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.quota_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Service Quota Modification Detected",
@@ -257,7 +263,10 @@ resource "aws_cloudwatch_metric_alarm" "ec2_limit_change" {
   evaluation_periods  = 1
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
-  alarm_actions       = [aws_sns_topic.ec2_limit_alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.ec2_limit_alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="EC2 Instance Limit Modified",

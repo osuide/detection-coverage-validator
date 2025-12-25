@@ -124,6 +124,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 10
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
 
@@ -185,7 +188,9 @@ resource "aws_cloudwatch_metric_alarm" "partner_abuse" {
   threshold           = 10
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.partner_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.partner_alerts.arn]
 }
 
 resource "aws_sns_topic_policy" "allow_cloudwatch" {
@@ -405,11 +410,13 @@ resource "aws_cloudwatch_metric_alarm" "support_abuse" {
   metric_name         = "SupportAPIAccess"
   namespace           = "Security/T1199"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 10
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.support_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.support_alerts.arn]
 }
 
 resource "aws_sns_topic_policy" "allow_cloudwatch" {

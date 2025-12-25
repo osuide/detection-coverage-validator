@@ -115,10 +115,12 @@ Resources:
       MetricName: FinancialAPIActivity
       Namespace: Security/Financial
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect unauthorised financial API activity
 
@@ -153,11 +155,13 @@ resource "aws_cloudwatch_metric_alarm" "financial_api" {
   metric_name         = "FinancialAPIActivity"
   namespace           = "Security/Financial"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 5
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="Unusual Financial API Activity Detected",
@@ -241,6 +245,8 @@ Resources:
       Threshold: 10
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect cryptocurrency wallet theft
 
@@ -279,7 +285,9 @@ resource "aws_cloudwatch_metric_alarm" "crypto_theft" {
   threshold           = 10
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="Suspicious Cryptocurrency Wallet Access",

@@ -134,7 +134,9 @@ resource "aws_cloudwatch_metric_alarm" "kerberos_anomaly" {
   statistic           = "Sum"
   threshold           = "5"
   alarm_description   = "Detects potential Golden Ticket or Kerberos ticket forgery"
-  alarm_actions       = [aws_sns_topic.kerberos_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.kerberos_alerts.arn]
 }
 
 # EventBridge rule for Directory Service authentication failures
@@ -233,6 +235,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref KerberosAlertsTopic
 
@@ -379,7 +384,9 @@ resource "aws_cloudwatch_metric_alarm" "kerberoasting_detected" {
   statistic           = "Sum"
   threshold           = "20"    # Adjust based on environment
   alarm_description   = "Detects potential Kerberoasting attack - excessive SPN ticket requests"
-  alarm_actions       = [aws_sns_topic.kerberoasting_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.kerberoasting_alerts.arn]
   treat_missing_data  = "notBreaching"
 }
 
@@ -409,7 +416,9 @@ resource "aws_cloudwatch_metric_alarm" "asrep_roasting_detected" {
   statistic           = "Sum"
   threshold           = "10"
   alarm_description   = "Detects potential AS-REP Roasting attack"
-  alarm_actions       = [aws_sns_topic.kerberoasting_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.kerberoasting_alerts.arn]
 }""",
                 cloudformation_template="""# AWS CloudFormation: Detect Kerberoasting attacks
 # Step 1: Create metric filters for excessive SPN ticket requests
@@ -459,10 +468,13 @@ Resources:
       MetricName: KerberoastingAttempts
       Namespace: Security/Kerberos
       Statistic: Sum
-      Period: 3600
+      Period: 300
       EvaluationPeriods: 1
       Threshold: 20
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref KerberoastingAlertsTopic
       TreatMissingData: notBreaching
@@ -491,6 +503,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 10
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref KerberoastingAlertsTopic
 

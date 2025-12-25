@@ -1233,7 +1233,9 @@ resource "aws_cloudwatch_metric_alarm" "high_cli_usage" {
   period              = 300
   statistic           = "Sum"
   threshold           = 500
-  alarm_actions       = [aws_sns_topic.cli_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.cli_alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="medium",

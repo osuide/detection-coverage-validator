@@ -259,6 +259,8 @@ Resources:
       Threshold: 3
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect network enumeration via SSM
 
@@ -305,7 +307,9 @@ resource "aws_cloudwatch_metric_alarm" "ssm_network_enum" {
   threshold           = 3
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Network Enumeration via SSM Detected",
@@ -390,10 +394,12 @@ Resources:
       MetricName: VPCNetworkDiscovery
       Namespace: Security
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 20
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect VPC network discovery
 
@@ -436,11 +442,13 @@ resource "aws_cloudwatch_metric_alarm" "vpc_discovery" {
   metric_name         = "VPCNetworkDiscovery"
   namespace           = "Security"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 20
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="low",
                 alert_title="VPC Network Discovery Activity Detected",

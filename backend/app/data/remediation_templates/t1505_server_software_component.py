@@ -114,6 +114,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect unauthorised web server file modifications
 
@@ -152,7 +154,9 @@ resource "aws_cloudwatch_metric_alarm" "web_file_changes" {
   threshold           = 1
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Unauthorised Web Server File Modification",
@@ -236,7 +240,9 @@ resource "aws_cloudwatch_metric_alarm" "webshell_activity" {
   threshold           = 3
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="Potential Web Shell Activity Detected",

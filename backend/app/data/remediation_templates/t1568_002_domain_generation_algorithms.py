@@ -120,6 +120,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 100
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect DGA activity via Route 53 DNS query logs
 
@@ -170,7 +173,10 @@ resource "aws_cloudwatch_metric_alarm" "dga_detection" {
   evaluation_periods  = 1
   threshold           = 100
   comparison_operator = "GreaterThanThreshold"
-  alarm_actions       = [aws_sns_topic.dga_alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.dga_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Possible DGA Activity Detected",
@@ -267,7 +273,10 @@ resource "aws_cloudwatch_metric_alarm" "dga_pattern_detection" {
   evaluation_periods  = 1
   threshold           = 50
   comparison_operator = "GreaterThanThreshold"
-  alarm_actions       = [aws_sns_topic.dga_pattern_alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.dga_pattern_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Suspicious Domain Pattern Detected",

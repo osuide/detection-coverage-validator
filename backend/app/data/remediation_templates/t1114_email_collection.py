@@ -117,10 +117,12 @@ Resources:
       MetricName: WorkMailEmailAccess
       Namespace: Security/EmailCollection
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 50
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic""",
                 terraform_template="""# AWS: Detect WorkMail email collection attempts
@@ -168,11 +170,13 @@ resource "aws_cloudwatch_metric_alarm" "bulk_email_access" {
   metric_name         = "WorkMailEmailAccess"
   namespace           = "Security/EmailCollection"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 50
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.workmail_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.workmail_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="AWS WorkMail Bulk Email Access Detected",
@@ -263,11 +267,13 @@ resource "aws_cloudwatch_metric_alarm" "ses_bulk_access" {
   metric_name         = "SESMessageAccess"
   namespace           = "Security/EmailCollection"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 100
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.ses_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.ses_alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="AWS SES Bulk Message Retrieval",

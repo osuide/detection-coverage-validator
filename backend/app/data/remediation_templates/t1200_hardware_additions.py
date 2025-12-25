@@ -357,6 +357,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
       TreatMissingData: notBreaching
@@ -666,7 +668,9 @@ resource "aws_cloudwatch_metric_alarm" "block_device_add" {
   namespace           = local.metric_namespace
   metric_name         = local.metric_name
   treat_missing_data  = "notBreaching"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }
 
 # Step 3: SSM Document for udev + systemd installation

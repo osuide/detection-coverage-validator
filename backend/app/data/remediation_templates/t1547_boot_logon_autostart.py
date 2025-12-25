@@ -119,6 +119,8 @@ Resources:
       Threshold: 2
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]
       AlarmDescription: Detects modifications to EC2 user data""",
                 terraform_template="""# Detect EC2 user data modifications for persistence
@@ -160,7 +162,9 @@ resource "aws_cloudwatch_metric_alarm" "userdata_mod" {
   period              = 300
   statistic           = "Sum"
   threshold           = 2
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
   alarm_description   = "Detects modifications to EC2 user data for persistence"
 }""",
                 alert_severity="high",
@@ -246,6 +250,8 @@ Resources:
       Threshold: 2
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect EC2 launch template modifications
 
@@ -286,7 +292,9 @@ resource "aws_cloudwatch_metric_alarm" "launch_template" {
   period              = 300
   statistic           = "Sum"
   threshold           = 2
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
   alarm_description   = "Detects launch template modifications"
 }""",
                 alert_severity="high",
@@ -369,7 +377,9 @@ resource "aws_cloudwatch_metric_alarm" "asg_config" {
   period              = 300
   statistic           = "Sum"
   threshold           = 3
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
   alarm_description   = "Detects Auto Scaling Group configuration changes"
 }""",
                 alert_severity="high",
@@ -453,7 +463,9 @@ resource "aws_cloudwatch_metric_alarm" "ssm_persistence" {
   period              = 300
   statistic           = "Sum"
   threshold           = 5
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
   alarm_description   = "Detects SSM Run Command for persistence"
 }""",
                 alert_severity="high",

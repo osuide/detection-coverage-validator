@@ -257,6 +257,8 @@ Resources:
       Threshold: 10
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Alert on .env file access attempts
 
@@ -303,7 +305,9 @@ resource "aws_cloudwatch_metric_alarm" "env_access" {
   threshold           = 10
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title=".env File Access Attempts Detected",
@@ -474,10 +478,12 @@ Resources:
       MetricName: SecretsAccess
       Namespace: Security
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Alert on unusual Secrets Manager access
 
@@ -520,11 +526,13 @@ resource "aws_cloudwatch_metric_alarm" "secrets_access" {
   metric_name         = "SecretsAccess"
   namespace           = "Security"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 50
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Unusual Secrets Manager Access",

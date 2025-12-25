@@ -106,6 +106,8 @@ Resources:
       Threshold: 0
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect usage of unapproved images
 

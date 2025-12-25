@@ -321,6 +321,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic""",
                 terraform_template="""# AWS: Monitor audio file creation
@@ -370,7 +373,10 @@ resource "aws_cloudwatch_metric_alarm" "audio_files" {
   evaluation_periods  = 1
   threshold           = 5
   comparison_operator = "GreaterThanThreshold"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Suspicious Audio File Creation Detected",
@@ -467,6 +473,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic""",
                 terraform_template="""# AWS: Detect audio capture tool execution
@@ -516,7 +525,10 @@ resource "aws_cloudwatch_metric_alarm" "audio_tools" {
   evaluation_periods  = 1
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Audio Capture Tool Execution Detected",

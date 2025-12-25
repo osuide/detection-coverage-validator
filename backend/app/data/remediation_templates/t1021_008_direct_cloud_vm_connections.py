@@ -118,6 +118,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]
       TreatMissingData: notBreaching""",
                 terraform_template="""# Detect EC2 Instance Connect usage
@@ -168,7 +170,9 @@ resource "aws_cloudwatch_metric_alarm" "ec2_connect_detection" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.ec2_connect_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.ec2_connect_alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="medium",
@@ -257,6 +261,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]
       TreatMissingData: notBreaching""",
                 terraform_template="""# Detect AWS Systems Manager Session Manager usage
@@ -307,7 +313,9 @@ resource "aws_cloudwatch_metric_alarm" "ssm_session_detection" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.ssm_session_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.ssm_session_alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="medium",

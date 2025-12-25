@@ -272,6 +272,8 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Alert on 5+ failed console logins in 5 minutes
 
@@ -318,7 +320,9 @@ resource "aws_cloudwatch_metric_alarm" "failed_logins" {
   threshold           = 5
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Excessive Failed Login Attempts",

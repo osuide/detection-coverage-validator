@@ -128,11 +128,13 @@ Resources:
       MetricName: IAMGroupEnumeration
       Namespace: Security/Discovery
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 30
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref GroupDiscoveryAlertTopic
 
@@ -189,12 +191,14 @@ resource "aws_cloudwatch_metric_alarm" "group_enumeration" {
   metric_name         = "IAMGroupEnumeration"
   namespace           = "Security/Discovery"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 30
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
-  alarm_actions       = [aws_sns_topic.group_discovery_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.group_discovery_alerts.arn]
 
   tags = {
     MitreTechnique = "T1069"
@@ -485,11 +489,13 @@ Resources:
       MetricName: CrossAccountAssumeRole
       Namespace: Security/Discovery
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 15
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref CrossAccountAlertTopic
 
@@ -544,12 +550,14 @@ resource "aws_cloudwatch_metric_alarm" "cross_account_enum" {
   metric_name         = "CrossAccountAssumeRole"
   namespace           = "Security/Discovery"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 15
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
-  alarm_actions       = [aws_sns_topic.cross_account_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.cross_account_alerts.arn]
 
   tags = {
     MitreTechnique = "T1069"

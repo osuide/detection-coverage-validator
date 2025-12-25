@@ -279,6 +279,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic""",
                 terraform_template="""# Detect bash history clearing on EC2 instances
@@ -328,7 +331,10 @@ resource "aws_cloudwatch_metric_alarm" "history_clear" {
   evaluation_periods  = 1
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
-  alarm_actions       = [aws_sns_topic.history_clear_alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.history_clear_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_description_template="Bash history clearing detected on instance {instance_id}. Command: {command_line}",

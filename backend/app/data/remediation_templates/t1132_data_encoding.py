@@ -131,6 +131,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic""",
                 terraform_template="""# Detect Base64 encoded HTTP traffic
@@ -181,7 +184,9 @@ resource "aws_cloudwatch_metric_alarm" "base64_traffic" {
   period              = 300
   statistic           = "Sum"
   threshold           = 50
-  alarm_actions       = [aws_sns_topic.base64_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.base64_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="High Volume Base64 Encoded HTTP Traffic Detected",
@@ -278,6 +283,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic""",
                 terraform_template="""# Detect encoded data in DNS queries
@@ -329,7 +337,9 @@ resource "aws_cloudwatch_metric_alarm" "encoded_dns" {
   period              = 300
   statistic           = "Sum"
   threshold           = 50
-  alarm_actions       = [aws_sns_topic.dns_encoding_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.dns_encoding_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Encoded DNS Queries Detected",

@@ -115,6 +115,8 @@ Resources:
       Threshold: 100
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect port scanning via VPC Flow Logs
 
@@ -153,7 +155,9 @@ resource "aws_cloudwatch_metric_alarm" "port_scanning" {
   threshold           = 100
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Port Scanning Activity Detected",
@@ -321,7 +325,9 @@ resource "aws_cloudwatch_metric_alarm" "vuln_scanning" {
   threshold           = 20
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Web Vulnerability Scanning Detected",

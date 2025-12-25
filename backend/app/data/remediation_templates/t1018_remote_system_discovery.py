@@ -122,10 +122,12 @@ Resources:
       MetricName: EC2InstanceDiscovery
       Namespace: SecurityDetection
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref InstanceDiscoveryAlertTopic
       TreatMissingData: notBreaching""",
@@ -175,11 +177,13 @@ resource "aws_cloudwatch_metric_alarm" "instance_discovery" {
   metric_name         = "EC2InstanceDiscovery"
   namespace           = "SecurityDetection"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 50
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.instance_discovery_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.instance_discovery_alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="medium",
@@ -272,6 +276,8 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref SSMDiscoveryAlertTopic]""",
                 terraform_template="""# AWS: Detect remote discovery via Systems Manager
 
@@ -319,7 +325,9 @@ resource "aws_cloudwatch_metric_alarm" "ssm_discovery" {
   threshold           = 5
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.ssm_discovery_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.ssm_discovery_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Remote Discovery Commands via Systems Manager",

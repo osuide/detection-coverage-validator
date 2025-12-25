@@ -119,6 +119,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 100
       ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic""",
                 terraform_template="""# Detect EC2 metadata enumeration for sandbox evasion
@@ -168,7 +171,10 @@ resource "aws_cloudwatch_metric_alarm" "metadata_enum" {
   evaluation_periods  = 1
   threshold           = 100
   comparison_operator = "GreaterThanOrEqualToThreshold"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="EC2 Instance Metadata Enumeration Detected",
@@ -260,6 +266,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 30
       ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic""",
                 terraform_template="""# Detect rapid system discovery for sandbox evasion
@@ -308,7 +317,10 @@ resource "aws_cloudwatch_metric_alarm" "rapid_discovery" {
   evaluation_periods  = 1
   threshold           = 30
   comparison_operator = "GreaterThanOrEqualToThreshold"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Rapid System Discovery Detected",

@@ -127,6 +127,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 5
       ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
       TreatMissingData: notBreaching
@@ -195,7 +198,9 @@ resource "aws_cloudwatch_metric_alarm" "archive_activity" {
   statistic           = "Sum"
   threshold           = 5
   treat_missing_data  = "notBreaching"
-  alarm_actions       = [aws_sns_topic.archive_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.archive_alerts.arn]
 }
 
 resource "aws_sns_topic_policy" "allow_cloudwatch" {
@@ -308,7 +313,9 @@ resource "aws_cloudwatch_metric_alarm" "large_archive" {
   period              = 600
   statistic           = "Sum"
   threshold           = 2
-  alarm_actions       = [aws_sns_topic.large_archive_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.large_archive_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Large Archive Files Created",

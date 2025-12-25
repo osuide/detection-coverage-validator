@@ -311,6 +311,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref SNSTopicArn
 
@@ -371,7 +374,10 @@ resource "aws_cloudwatch_metric_alarm" "wmi_execution" {
   evaluation_periods  = 1
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }
 
 # Step 3: Create filter for shadow copy deletion (critical ransomware indicator)
@@ -488,7 +494,10 @@ resource "aws_cloudwatch_metric_alarm" "remote_wmi_alert" {
   evaluation_periods  = 1
   threshold           = 5
   comparison_operator = "GreaterThanThreshold"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
 }
 
@@ -719,10 +728,13 @@ Resources:
       MetricName: WMIEventSubscription
       Namespace: Security/T1047
       Statistic: Sum
-      Period: 3600
+      Period: 300
       EvaluationPeriods: 1
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref SNSTopicArn
 
@@ -779,11 +791,14 @@ resource "aws_cloudwatch_metric_alarm" "wmi_persistence" {
   metric_name         = "WMIEventSubscription"
   namespace           = "Security/T1047"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   evaluation_periods  = 1
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }
 
 # Step 3: Monitor for malicious WMI consumer types

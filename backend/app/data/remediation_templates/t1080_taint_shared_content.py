@@ -323,10 +323,13 @@ Resources:
       MetricName: S3ObjectOverwrites
       Namespace: Security/T1080
       Statistic: Sum
-      Period: 3600
+      Period: 300
       EvaluationPeriods: 1
       Threshold: !Ref ModificationThreshold
       ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
 
@@ -395,10 +398,12 @@ resource "aws_cloudwatch_metric_alarm" "overwrite_alarm" {
   evaluation_periods  = 1
   metric_name         = "S3ObjectOverwrites"
   namespace           = "Security/T1080"
-  period              = 3600
+  period              = 300
   statistic           = "Sum"
   threshold           = var.modification_threshold
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }
 
 resource "aws_sns_topic_policy" "allow_cloudwatch" {

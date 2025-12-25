@@ -556,6 +556,8 @@ Resources:
       Threshold: 0
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
       TreatMissingData: notBreaching
@@ -623,7 +625,9 @@ resource "aws_cloudwatch_metric_alarm" "kubectl_exec" {
   statistic           = "Sum"
   threshold           = 0
   treat_missing_data  = "notBreaching"
-  alarm_actions       = [aws_sns_topic.eks_exec_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.eks_exec_alerts.arn]
 }
 
 resource "aws_sns_topic_policy" "eks_exec_alerts" {
@@ -725,6 +729,8 @@ Resources:
       Threshold: 0
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
       TreatMissingData: notBreaching
@@ -792,7 +798,9 @@ resource "aws_cloudwatch_metric_alarm" "docker_exec" {
   statistic           = "Sum"
   threshold           = 0
   treat_missing_data  = "notBreaching"
-  alarm_actions       = [aws_sns_topic.docker_exec_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.docker_exec_alerts.arn]
 }
 
 resource "aws_sns_topic_policy" "docker_exec_alerts" {

@@ -124,6 +124,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 0
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref RootAccountAlertTopic
       TreatMissingData: notBreaching""",
@@ -176,7 +179,10 @@ resource "aws_cloudwatch_metric_alarm" "root_usage" {
   evaluation_periods  = 1
   threshold           = 0
   comparison_operator = "GreaterThanThreshold"
-  alarm_actions       = [aws_sns_topic.root_alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.root_alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="critical",
@@ -275,6 +281,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 0
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref ServiceAccountAlertTopic""",
                 terraform_template="""# Detect suspicious default service account activity
@@ -323,7 +332,10 @@ resource "aws_cloudwatch_metric_alarm" "service_account" {
   evaluation_periods  = 1
   threshold           = 0
   comparison_operator = "GreaterThanThreshold"
-  alarm_actions       = [aws_sns_topic.service_account_alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.service_account_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Suspicious Default Service Account Activity",
@@ -546,6 +558,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 0
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref RootSSHAlertTopic""",
                 terraform_template="""# Detect SSH root logins on EC2 instances
@@ -595,7 +610,10 @@ resource "aws_cloudwatch_metric_alarm" "root_ssh" {
   evaluation_periods  = 1
   threshold           = 0
   comparison_operator = "GreaterThanThreshold"
-  alarm_actions       = [aws_sns_topic.root_ssh_alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.root_ssh_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Root SSH Login Detected",

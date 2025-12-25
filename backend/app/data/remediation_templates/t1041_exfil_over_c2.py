@@ -123,10 +123,12 @@ Resources:
       MetricName: HighVolumeOutbound
       Namespace: Security/C2Detection
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 524288000
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
       TreatMissingData: notBreaching""",
@@ -176,11 +178,13 @@ resource "aws_cloudwatch_metric_alarm" "high_volume" {
   metric_name         = "HighVolumeOutbound"
   namespace           = "Security/C2Detection"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 524288000
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.c2_exfil_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.c2_exfil_alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",
@@ -268,10 +272,12 @@ Resources:
       MetricName: UnusualProtocolConnections
       Namespace: Security/C2Detection
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect unusual protocol usage for C2 communications
 
@@ -309,11 +315,13 @@ resource "aws_cloudwatch_metric_alarm" "protocol_alarm" {
   metric_name         = "UnusualProtocolConnections"
   namespace           = "Security/C2Detection"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 50
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Unusual Protocol Usage Detected",
@@ -402,6 +410,8 @@ Resources:
       Threshold: 52428800
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect encrypted connections to rare external destinations
 
@@ -444,7 +454,9 @@ resource "aws_cloudwatch_metric_alarm" "rare_destination" {
   threshold           = 52428800
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Encrypted Connections to Rare Destinations",

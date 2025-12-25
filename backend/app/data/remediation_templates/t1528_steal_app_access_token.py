@@ -110,10 +110,12 @@ Resources:
       MetricName: CognitoAuthAttempts
       Namespace: Security
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 500
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect OAuth token anomalies
 
@@ -156,11 +158,13 @@ resource "aws_cloudwatch_metric_alarm" "auth_spike" {
   metric_name         = "CognitoAuthAttempts"
   namespace           = "Security"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 500
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Unusual OAuth Token Activity",
@@ -239,10 +243,12 @@ Resources:
       MetricName: APIErrors
       Namespace: Security
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 500
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect API key abuse
 
@@ -285,11 +291,13 @@ resource "aws_cloudwatch_metric_alarm" "api_abuse" {
   metric_name         = "APIErrors"
   namespace           = "Security"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 500
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="API Key Abuse Detected",

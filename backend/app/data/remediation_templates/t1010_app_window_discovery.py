@@ -121,6 +121,8 @@ Resources:
       Threshold: 15
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect application window discovery on Windows EC2
 
@@ -168,7 +170,9 @@ resource "aws_cloudwatch_metric_alarm" "window_enum" {
   threshold           = 15
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Application Window Discovery Detected",
@@ -257,6 +261,8 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect PowerShell window enumeration
 
@@ -304,7 +310,9 @@ resource "aws_cloudwatch_metric_alarm" "powershell_window" {
   threshold           = 5
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="PowerShell Window Enumeration Detected",

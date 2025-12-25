@@ -495,10 +495,12 @@ Resources:
       MetricName: IMDSAccess
       Namespace: Security
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 1000
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Monitor IMDS access via VPC Flow Logs
 
@@ -541,11 +543,13 @@ resource "aws_cloudwatch_metric_alarm" "imds_access" {
   metric_name         = "IMDSAccess"
   namespace           = "Security"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 1000
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="High IMDS Access Volume",

@@ -122,6 +122,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# AWS: Detect email bombing via SES rate monitoring
 
@@ -174,7 +176,9 @@ resource "aws_cloudwatch_metric_alarm" "email_bombing" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
-  alarm_actions       = [aws_sns_topic.email_bombing_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.email_bombing_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Email Bombing Attack Detected",
@@ -269,7 +273,9 @@ resource "aws_cloudwatch_metric_alarm" "workmail_bombing" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
-  alarm_actions       = [aws_sns_topic.workmail_bombing_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.workmail_bombing_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="WorkMail Email Bombing Detected",

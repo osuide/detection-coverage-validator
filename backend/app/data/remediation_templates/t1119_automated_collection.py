@@ -121,6 +121,8 @@ Resources:
       Threshold: 50
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect automated S3 enumeration for T1119
 
@@ -167,7 +169,9 @@ resource "aws_cloudwatch_metric_alarm" "s3_enum" {
   threshold           = 50
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Automated S3 Enumeration Detected",
@@ -261,10 +265,12 @@ Resources:
       MetricName: ScriptedAPICalls
       Namespace: Security/T1119
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 100
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect scripted API usage for automated collection
 
@@ -307,11 +313,13 @@ resource "aws_cloudwatch_metric_alarm" "scripted_api" {
   metric_name         = "ScriptedAPICalls"
   namespace           = "Security/T1119"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 100
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="High-Volume Scripted API Usage Detected",
@@ -400,10 +408,12 @@ Resources:
       MetricName: SecretsAccess
       Namespace: Security/T1119
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 20
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect bulk secrets access for T1119
 
@@ -446,11 +456,13 @@ resource "aws_cloudwatch_metric_alarm" "secrets_access" {
   metric_name         = "SecretsAccess"
   namespace           = "Security/T1119"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 20
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="Bulk Secrets Access Detected",

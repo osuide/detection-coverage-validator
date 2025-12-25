@@ -107,10 +107,12 @@ Resources:
       MetricName: SuspiciousEmails
       Namespace: Security
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect phishing campaigns via SES logs
 
@@ -145,11 +147,13 @@ resource "aws_cloudwatch_metric_alarm" "phishing_campaign" {
   metric_name         = "SuspiciousEmails"
   namespace           = "Security"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 50
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Phishing Campaign Detected",
@@ -360,11 +364,13 @@ resource "aws_cloudwatch_metric_alarm" "spoofing_campaign" {
   metric_name         = "SpoofingAttempts"
   namespace           = "Security"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 10
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Email Spoofing Attempts Detected",

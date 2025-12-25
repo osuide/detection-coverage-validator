@@ -286,10 +286,13 @@ Resources:
       MetricName: UnusedRegionActivity
       Namespace: Security/RegionMonitoring
       Statistic: Sum
-      Period: 3600
+      Period: 300
       EvaluationPeriods: 1
       Threshold: 0
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]
       TreatMissingData: notBreaching""",
                 terraform_template="""# CloudWatch metric filter for unused region activity
@@ -339,11 +342,13 @@ resource "aws_cloudwatch_metric_alarm" "unused_region" {
   evaluation_periods  = 1
   metric_name         = "UnusedRegionActivity"
   namespace           = "Security/RegionMonitoring"
-  period              = 3600
+  period              = 300
   statistic           = "Sum"
   threshold           = 0
   treat_missing_data  = "notBreaching"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Unused Region Activity Detected",

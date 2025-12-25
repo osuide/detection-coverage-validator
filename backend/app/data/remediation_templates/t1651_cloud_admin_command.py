@@ -572,7 +572,9 @@ resource "aws_cloudwatch_metric_alarm" "suspicious_commands" {
   period              = 300
   statistic           = "Sum"
   threshold           = 0
-  alarm_actions       = [aws_sns_topic.ssm_session_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.ssm_session_alerts.arn]
   treat_missing_data  = "notBreaching"
 }
 

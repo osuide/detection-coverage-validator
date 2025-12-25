@@ -122,10 +122,12 @@ Resources:
       MetricName: UnencryptedHTTPTransfer
       Namespace: Security/Exfiltration
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 104857600
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
       TreatMissingData: notBreaching""",
@@ -175,11 +177,13 @@ resource "aws_cloudwatch_metric_alarm" "http_exfil" {
   metric_name         = "UnencryptedHTTPTransfer"
   namespace           = "Security/Exfiltration"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 104857600
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.http_exfil_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.http_exfil_alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",
@@ -268,10 +272,12 @@ Resources:
       MetricName: FTPDataTransfer
       Namespace: Security/Exfiltration
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 52428800
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref FTPAlertTopic
       TreatMissingData: notBreaching""",
@@ -321,11 +327,13 @@ resource "aws_cloudwatch_metric_alarm" "ftp_exfil" {
   metric_name         = "FTPDataTransfer"
   namespace           = "Security/Exfiltration"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 52428800
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.ftp_exfil_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.ftp_exfil_alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",
@@ -422,6 +430,8 @@ Resources:
       Threshold: 100
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref DNSAlertTopic
       TreatMissingData: notBreaching
@@ -492,7 +502,9 @@ resource "aws_cloudwatch_metric_alarm" "dns_tunnel" {
   threshold           = 100
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.dns_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.dns_alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",

@@ -110,10 +110,12 @@ Resources:
       MetricName: UnauthorisedEC2Launch
       Namespace: Security
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]
 
   # Detect Lambda function creation
@@ -134,10 +136,12 @@ Resources:
       MetricName: UnauthorisedLambdaCreate
       Namespace: Security
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 3
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect unauthorised infrastructure provisioning in AWS
 
@@ -173,11 +177,13 @@ resource "aws_cloudwatch_metric_alarm" "ec2_provisioning" {
   metric_name         = "UnauthorisedEC2Launch"
   namespace           = "Security"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 5
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }
 
 # Detect Lambda function creation
@@ -198,11 +204,13 @@ resource "aws_cloudwatch_metric_alarm" "lambda_provisioning" {
   metric_name         = "UnauthorisedLambdaCreate"
   namespace           = "Security"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 3
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Unauthorised Infrastructure Provisioning Detected",
@@ -283,7 +291,9 @@ resource "aws_cloudwatch_metric_alarm" "suspicious_connectivity" {
   threshold           = 10
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Suspicious VPC External Connectivity",

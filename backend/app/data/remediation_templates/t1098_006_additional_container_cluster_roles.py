@@ -121,6 +121,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect RBAC modifications in EKS clusters
 
@@ -169,7 +171,9 @@ resource "aws_cloudwatch_metric_alarm" "rbac_modification_alert" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
-  alarm_actions       = [aws_sns_topic.eks_rbac_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.eks_rbac_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Suspicious EKS RBAC Modification Detected",
@@ -260,7 +264,9 @@ resource "aws_cloudwatch_metric_alarm" "cluster_admin_alert" {
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
-  alarm_actions       = [aws_sns_topic.cluster_admin_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.cluster_admin_alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="Critical: Cluster-Admin Role Assigned in EKS",

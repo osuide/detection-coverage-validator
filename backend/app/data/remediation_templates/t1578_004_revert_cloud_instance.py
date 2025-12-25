@@ -122,6 +122,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]
       TreatMissingData: notBreaching""",
                 terraform_template="""# AWS: Detect suspicious snapshot restoration activities
@@ -173,7 +175,9 @@ resource "aws_cloudwatch_metric_alarm" "snapshot_restore" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",
@@ -268,7 +272,9 @@ resource "aws_cloudwatch_metric_alarm" "rapid_snapshot" {
   threshold           = 3
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="medium",
@@ -362,7 +368,9 @@ resource "aws_cloudwatch_metric_alarm" "external_snapshot" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",

@@ -644,10 +644,13 @@ Resources:
       MetricName: InfrastructureChanges
       Namespace: Security/T1578
       Statistic: Sum
-      Period: 3600
+      Period: 300
       EvaluationPeriods: 1
       Threshold: 10
       ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref SNSTopicArn
 
@@ -674,6 +677,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref SNSTopicArn""",
                 terraform_template="""# Suspicious infrastructure change pattern detection
@@ -707,10 +713,12 @@ resource "aws_cloudwatch_metric_alarm" "infra_changes" {
   evaluation_periods  = 1
   metric_name         = "InfrastructureChanges"
   namespace           = "Security/T1578"
-  period              = 3600
+  period              = 300
   statistic           = "Sum"
   threshold           = 10
-  alarm_actions       = [var.sns_topic_arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [var.sns_topic_arn]
 }
 
 # Step 3: Metric filter for snapshot deletion
@@ -736,7 +744,9 @@ resource "aws_cloudwatch_metric_alarm" "snapshot_deletion" {
   period              = 300
   statistic           = "Sum"
   threshold           = 1
-  alarm_actions       = [var.sns_topic_arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [var.sns_topic_arn]
 }""",
                 alert_severity="high",
                 alert_title="Suspicious Infrastructure Change Pattern",

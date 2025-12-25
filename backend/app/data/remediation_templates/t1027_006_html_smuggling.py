@@ -116,10 +116,12 @@ Resources:
       MetricName: SuspiciousHTMLUploads
       Namespace: Security
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 10
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect suspicious HTML file uploads to S3
 
@@ -154,11 +156,13 @@ resource "aws_cloudwatch_metric_alarm" "html_smuggling" {
   metric_name         = "SuspiciousHTMLUploads"
   namespace           = "Security"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 10
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Suspicious HTML File Upload Detected",
@@ -383,7 +387,9 @@ resource "aws_cloudwatch_metric_alarm" "html_smuggling_detected" {
   threshold           = 5
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="HTML Smuggling Pattern Detected",

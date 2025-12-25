@@ -315,6 +315,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 10
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic""",
                 terraform_template="""# CloudWatch analysis for Pass the Hash detection
@@ -365,7 +368,9 @@ resource "aws_cloudwatch_metric_alarm" "excessive_ntlm" {
   period              = 900
   statistic           = "Sum"
   threshold           = 10
-  alarm_actions       = [aws_sns_topic.ntlm_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.ntlm_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Excessive NTLM Authentication Activity",

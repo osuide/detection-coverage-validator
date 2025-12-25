@@ -284,6 +284,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 0
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic""",
                 terraform_template="""# Detect creation of IAM users with admin privileges
@@ -332,7 +335,10 @@ resource "aws_cloudwatch_metric_alarm" "admin_account" {
   evaluation_periods  = 1
   threshold           = 0
   comparison_operator = "GreaterThanThreshold"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="AWS: Administrator Account Created",
@@ -689,10 +695,13 @@ Resources:
       MetricName: UserCreationRate
       Namespace: Security/T1136
       Statistic: Sum
-      Period: 3600
+      Period: 300
       EvaluationPeriods: 1
       Threshold: 3
       ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic""",
                 terraform_template="""# Detect suspicious account creation patterns
@@ -737,11 +746,14 @@ resource "aws_cloudwatch_metric_alarm" "rapid_creation" {
   metric_name         = "UserCreationRate"
   namespace           = "Security/T1136"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   evaluation_periods  = 1
   threshold           = 3
   comparison_operator = "GreaterThanOrEqualToThreshold"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Suspicious Account Creation Pattern",

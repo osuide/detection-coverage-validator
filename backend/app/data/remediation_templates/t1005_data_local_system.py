@@ -113,7 +113,7 @@ Resources:
     Type: AWS::Logs::MetricFilter
     Properties:
       LogGroupName: !Ref CloudTrailLogGroup
-      FilterPattern: '{ ($.eventSource = "ssm.amazonaws.com") && (($.eventName = "SendCommand") || ($.eventName = "StartSession")) }'
+      FilterPattern: '{ $.eventSource = "ssm.amazonaws.com" && ( $.eventName = "SendCommand" || $.eventName = "StartSession" ) }'
       MetricTransformations:
         - MetricName: SSMDataCollectionCommands
           MetricNamespace: Security/T1005
@@ -123,15 +123,18 @@ Resources:
   DataCollectionAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      AlarmName: T1005-DataCollectionDetected
-      AlarmDescription: Suspicious data collection commands detected via SSM
+      AlarmName: T1005-SSM-Collection-Activity
+      AlarmDescription: SSM SendCommand/StartSession observed (potential collection channel)
       MetricName: SSMDataCollectionCommands
       Namespace: Security/T1005
       Statistic: Sum
-      Period: 3600
+      Period: 300
       EvaluationPeriods: 1
-      Threshold: 5
+      Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
 
@@ -176,7 +179,8 @@ resource "aws_sns_topic_subscription" "email" {
 resource "aws_cloudwatch_log_metric_filter" "data_collection" {
   name           = "ssm-data-collection-commands"
   log_group_name = var.cloudtrail_log_group
-  pattern        = "{ ($.eventSource = \"ssm.amazonaws.com\") && (($.eventName = \"SendCommand\") || ($.eventName = \"StartSession\")) }"
+
+  pattern = "{ $.eventSource = \"ssm.amazonaws.com\" && ( $.eventName = \"SendCommand\" || $.eventName = \"StartSession\" ) }"
 
   metric_transformation {
     name      = "SSMDataCollectionCommands"
@@ -187,16 +191,19 @@ resource "aws_cloudwatch_log_metric_filter" "data_collection" {
 
 # Step 3: CloudWatch alarm for suspicious activity
 resource "aws_cloudwatch_metric_alarm" "data_collection" {
-  alarm_name          = "T1005-DataCollectionDetected"
-  alarm_description   = "Suspicious data collection commands detected via SSM"
+  alarm_name          = "T1005-SSM-Collection-Activity"
+  alarm_description   = "SSM SendCommand/StartSession observed (potential collection channel)"
   metric_name         = "SSMDataCollectionCommands"
   namespace           = "Security/T1005"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   evaluation_periods  = 1
-  threshold           = 5
+  threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
-  alarm_actions       = [aws_sns_topic.data_collection_alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.data_collection_alerts.arn]
 }
 
 resource "aws_sns_topic_policy" "allow_cloudwatch" {
@@ -313,6 +320,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 3
       ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
 
@@ -377,7 +387,10 @@ resource "aws_cloudwatch_metric_alarm" "sensitive_files" {
   evaluation_periods  = 1
   threshold           = 3
   comparison_operator = "GreaterThanOrEqualToThreshold"
-  alarm_actions       = [aws_sns_topic.sensitive_file_alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.sensitive_file_alerts.arn]
 }
 
 resource "aws_sns_topic_policy" "allow_cloudwatch" {

@@ -125,6 +125,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
       TreatMissingData: notBreaching""",
@@ -177,7 +180,10 @@ resource "aws_cloudwatch_metric_alarm" "remote_tool_alert" {
   evaluation_periods  = 1
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",
@@ -275,7 +281,10 @@ resource "aws_cloudwatch_metric_alarm" "remote_connection_alert" {
   evaluation_periods  = 1
   threshold           = 10
   comparison_operator = "GreaterThanThreshold"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",

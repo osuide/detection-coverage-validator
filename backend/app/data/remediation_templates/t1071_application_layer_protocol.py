@@ -817,6 +817,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic""",
                 terraform_template="""# Detect unusual protocol and port usage
@@ -869,7 +872,9 @@ resource "aws_cloudwatch_metric_alarm" "protocol_anomaly" {
   statistic           = "Sum"
   threshold           = 50
   alarm_description   = "Alert on unusual protocol or port usage"
-  alarm_actions       = [aws_sns_topic.protocol_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.protocol_alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Unusual Network Protocol or Port Detected",

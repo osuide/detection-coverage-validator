@@ -141,10 +141,12 @@ Resources:
       MetricName: SuspiciousWorkSpacesActivity
       Namespace: Security/T1113
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 5
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Monitor AWS WorkSpaces for screen capture indicators
 
@@ -187,11 +189,13 @@ resource "aws_cloudwatch_metric_alarm" "workspaces_activity" {
   metric_name         = "SuspiciousWorkSpacesActivity"
   namespace           = "Security/T1113"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 5
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Suspicious AWS WorkSpaces Activity Detected",
@@ -421,10 +425,12 @@ Resources:
       MetricName: AppStreamActivity
       Namespace: Security/T1113
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 10
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Monitor AppStream for screen capture indicators
 
@@ -467,11 +473,13 @@ resource "aws_cloudwatch_metric_alarm" "appstream_activity" {
   metric_name         = "AppStreamActivity"
   namespace           = "Security/T1113"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 10
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Suspicious AppStream Activity Detected",

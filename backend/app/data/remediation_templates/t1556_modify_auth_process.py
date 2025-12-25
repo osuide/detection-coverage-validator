@@ -330,6 +330,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 0
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic""",
                 terraform_template="""# Monitor AssumeRole calls without MFA for privileged roles
@@ -378,7 +381,9 @@ resource "aws_cloudwatch_metric_alarm" "assume_role_no_mfa" {
   threshold           = 0
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.assume_role_no_mfa_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.assume_role_no_mfa_alerts.arn]
   alarm_description   = "Privileged role assumed without MFA authentication"
 }""",
                 alert_severity="high",
@@ -872,6 +877,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 0
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic""",
                 terraform_template="""# Monitor Cognito authentication configuration changes
@@ -920,7 +928,9 @@ resource "aws_cloudwatch_metric_alarm" "cognito_auth" {
   threshold           = 0
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.cognito_auth_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.cognito_auth_alerts.arn]
   alarm_description   = "Cognito authentication configuration modified"
 }""",
                 alert_severity="high",

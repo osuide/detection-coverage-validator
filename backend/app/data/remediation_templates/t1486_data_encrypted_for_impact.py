@@ -520,10 +520,12 @@ Resources:
       MetricName: S3SSECUploads
       Namespace: Security/Ransomware
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]
       AlarmDescription: Detects high-volume SSE-C encryption indicating ransomware""",
                 terraform_template="""# Detect potential S3 ransomware via SSE-C
@@ -560,11 +562,13 @@ resource "aws_cloudwatch_metric_alarm" "ransomware" {
   metric_name         = "S3SSECUploads"
   namespace           = "Security/Ransomware"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 50
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="Potential S3 Ransomware - SSE-C Encryption",

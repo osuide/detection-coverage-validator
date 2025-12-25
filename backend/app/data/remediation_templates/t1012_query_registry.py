@@ -126,6 +126,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 30
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect suspicious Windows Registry queries on EC2
 
@@ -175,7 +178,10 @@ resource "aws_cloudwatch_metric_alarm" "registry_queries" {
   evaluation_periods  = 1
   threshold           = 30
   comparison_operator = "GreaterThanThreshold"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Suspicious Windows Registry Queries Detected",
@@ -277,6 +283,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 10
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect Registry query tool execution on Windows EC2
 
@@ -326,7 +335,10 @@ resource "aws_cloudwatch_metric_alarm" "reg_tool" {
   evaluation_periods  = 1
   threshold           = 10
   comparison_operator = "GreaterThanThreshold"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Registry Query Tool Execution Detected",

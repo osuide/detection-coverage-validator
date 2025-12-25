@@ -125,6 +125,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
       TreatMissingData: notBreaching""",
@@ -178,7 +181,10 @@ resource "aws_cloudwatch_metric_alarm" "excessive_log_enumeration" {
   evaluation_periods  = 1
   threshold           = 50
   comparison_operator = "GreaterThanThreshold"
-  alarm_actions       = [aws_sns_topic.log_enumeration_alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.log_enumeration_alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="medium",
@@ -273,6 +279,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 20
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
       TreatMissingData: notBreaching""",
@@ -326,7 +335,10 @@ resource "aws_cloudwatch_metric_alarm" "excessive_log_access" {
   evaluation_periods  = 1
   threshold           = 20
   comparison_operator = "GreaterThanThreshold"
-  alarm_actions       = [aws_sns_topic.log_access_alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.log_access_alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="medium",

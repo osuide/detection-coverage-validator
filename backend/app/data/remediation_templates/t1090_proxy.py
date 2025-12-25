@@ -472,7 +472,9 @@ resource "aws_cloudwatch_metric_alarm" "multihop" {
   statistic           = "Sum"
   threshold           = 20
   alarm_description   = "Alert on potential multi-hop proxy chains"
-  alarm_actions       = [aws_sns_topic.multihop_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.multihop_alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="Multi-hop Proxy Chain Detected",

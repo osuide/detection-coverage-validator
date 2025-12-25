@@ -123,6 +123,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 3
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
       TreatMissingData: notBreaching
@@ -181,7 +184,9 @@ resource "aws_cloudwatch_metric_alarm" "mfa_interception" {
   threshold           = 3
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.mfa_interception_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.mfa_interception_alerts.arn]
   treat_missing_data  = "notBreaching"
 }
 
@@ -281,6 +286,8 @@ Resources:
       Threshold: 3
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic""",
                 terraform_template="""# Detect SMS MFA code replay attempts in Cognito
@@ -326,7 +333,9 @@ resource "aws_cloudwatch_metric_alarm" "sms_replay" {
   threshold           = 3
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.cognito_sms_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.cognito_sms_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Cognito SMS MFA Code Replay Detected",
@@ -803,6 +812,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: !Ref MFAAttemptThreshold
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic""",
                 terraform_template="""# AWS MFA Fatigue Detection for T1111
@@ -868,7 +880,10 @@ resource "aws_cloudwatch_metric_alarm" "mfa_fatigue" {
   evaluation_periods  = 1
   threshold           = var.mfa_attempt_threshold
   comparison_operator = "GreaterThanThreshold"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="MFA Fatigue Attack Detected",

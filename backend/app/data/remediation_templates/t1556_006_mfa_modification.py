@@ -267,6 +267,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 0
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic""",
                 terraform_template="""# Monitor Cognito MFA configuration changes
@@ -315,7 +318,9 @@ resource "aws_cloudwatch_metric_alarm" "cognito_mfa" {
   threshold           = 0
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.cognito_mfa_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.cognito_mfa_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Cognito MFA Configuration Changed",

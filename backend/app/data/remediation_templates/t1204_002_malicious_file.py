@@ -127,6 +127,8 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]
       TreatMissingData: notBreaching""",
                 terraform_template="""# AWS: Detect suspicious file execution patterns
@@ -180,7 +182,9 @@ resource "aws_cloudwatch_metric_alarm" "suspicious_execution" {
   threshold           = 5
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.suspicious_execution_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.suspicious_execution_alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",
@@ -278,7 +282,9 @@ resource "aws_cloudwatch_metric_alarm" "office_macro_execution" {
   threshold           = 1
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.macro_execution_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.macro_execution_alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="critical",
@@ -493,7 +499,9 @@ resource "aws_cloudwatch_metric_alarm" "lnk_execution_detected" {
   threshold           = 1
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.lnk_execution_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.lnk_execution_alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",

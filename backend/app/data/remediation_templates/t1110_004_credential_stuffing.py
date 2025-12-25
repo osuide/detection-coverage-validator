@@ -120,6 +120,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# AWS: Detect credential stuffing via CloudTrail failed authentications
 
@@ -172,7 +174,9 @@ resource "aws_cloudwatch_metric_alarm" "credential_stuffing" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
-  alarm_actions       = [aws_sns_topic.credential_stuffing_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.credential_stuffing_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Credential Stuffing Attack Detected",
@@ -265,7 +269,9 @@ resource "aws_cloudwatch_metric_alarm" "cognito_stuffing" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
-  alarm_actions       = [aws_sns_topic.cognito_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.cognito_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Cognito Credential Stuffing Detected",

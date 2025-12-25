@@ -756,10 +756,12 @@ Resources:
       MetricName: STSTokenRequests
       Namespace: Security
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 100
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect STS token anomalies
 
@@ -802,11 +804,13 @@ resource "aws_cloudwatch_metric_alarm" "sts_anomaly" {
   metric_name         = "STSTokenRequests"
   namespace           = "Security"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 100
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Unusual STS Token Activity",
@@ -895,6 +899,8 @@ Resources:
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect OAuth token reuse anomalies
 
@@ -941,7 +947,9 @@ resource "aws_cloudwatch_metric_alarm" "token_reuse" {
   threshold           = 50
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="OAuth Token Used from Multiple Locations",

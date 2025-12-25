@@ -119,6 +119,8 @@ Resources:
       Threshold: 20
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect suspicious SAML token usage in AWS
 
@@ -159,7 +161,9 @@ resource "aws_cloudwatch_metric_alarm" "high_saml_activity" {
   threshold           = 20
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.saml_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.saml_alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="Suspicious SAML Authentication Detected",
@@ -243,7 +247,9 @@ resource "aws_cloudwatch_metric_alarm" "saml_mfa_bypass" {
   threshold           = 1
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.mfa_bypass_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.mfa_bypass_alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="Privileged SAML Authentication Without MFA",
@@ -422,7 +428,9 @@ resource "aws_cloudwatch_metric_alarm" "cross_account_saml" {
   threshold           = 5
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.cross_account_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.cross_account_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Cross-Account SAML Authentication Detected",

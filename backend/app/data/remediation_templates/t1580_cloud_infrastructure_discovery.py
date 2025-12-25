@@ -247,10 +247,12 @@ Resources:
       MetricName: InfraEnumeration
       Namespace: Security
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 100
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect cloud infrastructure enumeration
 
@@ -293,11 +295,13 @@ resource "aws_cloudwatch_metric_alarm" "infra_enum" {
   metric_name         = "InfraEnumeration"
   namespace           = "Security"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 100
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Infrastructure Enumeration Detected",

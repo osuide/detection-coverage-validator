@@ -408,6 +408,8 @@ Resources:
       Threshold: 0
       ComparisonOperator: LessThanOrEqualToThreshold
       TreatMissingData: breaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
 
@@ -442,7 +444,9 @@ resource "aws_cloudwatch_metric_alarm" "agent_stop" {
   statistic           = "Average"
   threshold           = 0
   treat_missing_data  = "breaching"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="CloudWatch Agent Stopped",

@@ -144,6 +144,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic""",
                 terraform_template="""# Monitor for accessibility feature tampering on EC2 Windows instances
@@ -237,7 +239,9 @@ resource "aws_cloudwatch_metric_alarm" "accessibility_tamper" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.accessibility_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.accessibility_alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="Windows Accessibility Feature Tampering Detected",
@@ -334,7 +338,9 @@ resource "aws_cloudwatch_metric_alarm" "ifeo_tamper" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.ifeo_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.ifeo_alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="critical",

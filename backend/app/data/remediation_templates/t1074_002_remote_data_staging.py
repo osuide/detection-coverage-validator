@@ -108,10 +108,12 @@ Resources:
       MetricName: S3StagingActivity
       Namespace: Security
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 100
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect S3 remote data staging activity
 
@@ -146,11 +148,13 @@ resource "aws_cloudwatch_metric_alarm" "s3_staging" {
   metric_name         = "S3StagingActivity"
   namespace           = "Security"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 100
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Potential Remote Data Staging Detected",
@@ -228,10 +232,12 @@ Resources:
       MetricName: LargeInstanceTransfers
       Namespace: Security
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 10
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect large inter-instance data transfers
 
@@ -266,11 +272,13 @@ resource "aws_cloudwatch_metric_alarm" "large_transfers" {
   metric_name         = "LargeInstanceTransfers"
   namespace           = "Security"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 10
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Large Inter-Instance Data Transfer Detected",

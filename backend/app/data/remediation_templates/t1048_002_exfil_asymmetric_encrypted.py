@@ -121,6 +121,8 @@ Resources:
       Threshold: 104857600
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect non-browser HTTPS exfiltration after data staging
 
@@ -163,7 +165,9 @@ resource "aws_cloudwatch_metric_alarm" "https_exfil" {
   threshold           = 104857600
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Large HTTPS Transfer Detected from Non-Browser Process",
@@ -247,10 +251,12 @@ Resources:
       MetricName: SFTPTransfers
       Namespace: Security
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 52428800
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect SFTP/SCP exfiltration activity
 
@@ -289,11 +295,13 @@ resource "aws_cloudwatch_metric_alarm" "sftp" {
   metric_name         = "SFTPTransfers"
   namespace           = "Security"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 52428800
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Large SFTP/SCP Transfer Detected",
@@ -375,10 +383,12 @@ Resources:
       MetricName: SMTPSConnections
       Namespace: Security
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect encrypted email exfiltration via SMTPS
 
@@ -416,11 +426,13 @@ resource "aws_cloudwatch_metric_alarm" "smtps" {
   metric_name         = "SMTPSConnections"
   namespace           = "Security"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 50
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Encrypted Email Exfiltration Detected",
@@ -507,6 +519,8 @@ Resources:
       Threshold: 20
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect sensitive data access before encrypted exfiltration
 
@@ -548,7 +562,9 @@ resource "aws_cloudwatch_metric_alarm" "data_access" {
   threshold           = 20
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Rapid Sensitive Data Access Detected",

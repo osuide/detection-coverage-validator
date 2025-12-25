@@ -120,6 +120,8 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# AWS: Detect S3 website defacement
 
@@ -167,7 +169,9 @@ resource "aws_cloudwatch_metric_alarm" "website_defacement" {
   threshold           = 5
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.defacement_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.defacement_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Potential S3 Website Defacement",
@@ -263,7 +267,9 @@ resource "aws_cloudwatch_metric_alarm" "web_defacement" {
   threshold           = 10
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.file_modification_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.file_modification_alerts.arn]
 }
 
 # Note: Requires file integrity monitoring agent on EC2 instances

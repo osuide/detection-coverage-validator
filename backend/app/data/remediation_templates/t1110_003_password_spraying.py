@@ -113,10 +113,12 @@ Resources:
       MetricName: FailedConsoleLogins
       Namespace: Security/Authentication
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 10
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
       TreatMissingData: notBreaching""",
@@ -160,11 +162,13 @@ resource "aws_cloudwatch_metric_alarm" "password_spraying" {
   metric_name         = "FailedConsoleLogins"
   namespace           = "Security/Authentication"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 10
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.password_spray_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.password_spray_alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",
@@ -247,11 +251,13 @@ resource "aws_cloudwatch_metric_alarm" "api_spraying" {
   metric_name         = "APIAuthFailures"
   namespace           = "Security/Authentication"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 20
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.api_spray_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.api_spray_alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",

@@ -130,6 +130,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 3
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref ExtensionAlertTopic
       TreatMissingData: notBreaching
@@ -187,7 +190,10 @@ resource "aws_cloudwatch_metric_alarm" "extension_activity" {
   evaluation_periods  = 1
   threshold           = 3
   comparison_operator = "GreaterThanThreshold"
-  alarm_actions       = [aws_sns_topic.extension_alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.extension_alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",
@@ -484,7 +490,10 @@ resource "aws_cloudwatch_metric_alarm" "config_changes" {
   evaluation_periods  = 1
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",

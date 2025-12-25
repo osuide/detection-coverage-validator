@@ -121,6 +121,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect username enumeration via CloudTrail
 # This monitors for suspicious patterns of user lookup failures
@@ -174,7 +176,9 @@ resource "aws_cloudwatch_metric_alarm" "username_enum_attack" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
-  alarm_actions       = [aws_sns_topic.username_enum_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.username_enum_alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Username Enumeration Activity Detected",
@@ -270,7 +274,9 @@ resource "aws_cloudwatch_metric_alarm" "auth_recon_attack" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
-  alarm_actions       = [aws_sns_topic.auth_recon_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.auth_recon_alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Suspicious Authentication Pattern Detected",

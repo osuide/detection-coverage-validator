@@ -146,6 +146,8 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect clipboard utility execution on EC2
 
@@ -193,7 +195,9 @@ resource "aws_cloudwatch_metric_alarm" "clipboard_access" {
   threshold           = 5
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Clipboard Utility Execution Detected",
@@ -287,10 +291,12 @@ Resources:
       MetricName: PowerShellClipboardAccess
       Namespace: Security/T1115
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 3
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect PowerShell clipboard access
 
@@ -333,11 +339,13 @@ resource "aws_cloudwatch_metric_alarm" "get_clipboard" {
   metric_name         = "PowerShellClipboardAccess"
   namespace           = "Security/T1115"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 3
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Suspicious PowerShell Clipboard Access Detected",
@@ -435,6 +443,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect clipboard utilities in containers
 
@@ -482,7 +492,9 @@ resource "aws_cloudwatch_metric_alarm" "container_clipboard" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Clipboard Utility Detected in Container",

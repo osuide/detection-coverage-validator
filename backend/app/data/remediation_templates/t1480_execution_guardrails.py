@@ -118,6 +118,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 3
       ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref SNSTopicArn
 
@@ -169,7 +172,9 @@ resource "aws_cloudwatch_metric_alarm" "execution_guardrails" {
   period              = 300
   statistic           = "Sum"
   threshold           = 3
-  alarm_actions       = [var.sns_topic_arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [var.sns_topic_arn]
 }
 
 # Step 3: Query definition for investigation
@@ -276,6 +281,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 5
       ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref SNSTopicArn
 
@@ -327,7 +335,9 @@ resource "aws_cloudwatch_metric_alarm" "geolocation_checks" {
   period              = 300
   statistic           = "Sum"
   threshold           = 5
-  alarm_actions       = [var.sns_topic_arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [var.sns_topic_arn]
 }
 
 # Step 3: Investigation query definition
@@ -429,6 +439,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 10
       ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref SNSTopicArn
 
@@ -480,7 +493,9 @@ resource "aws_cloudwatch_metric_alarm" "s3_location_checks" {
   period              = 300
   statistic           = "Sum"
   threshold           = 10
-  alarm_actions       = [var.sns_topic_arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [var.sns_topic_arn]
 }
 
 # Step 3: Investigation query definition

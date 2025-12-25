@@ -100,6 +100,9 @@ Resources:
       EvaluationPeriods: 2
       Threshold: 90
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
       TreatMissingData: notBreaching
@@ -116,6 +119,9 @@ Resources:
       EvaluationPeriods: 2
       Threshold: 90
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
       TreatMissingData: notBreaching""",
@@ -144,7 +150,9 @@ resource "aws_cloudwatch_metric_alarm" "ec2_cpu" {
   period              = 300
   statistic           = "Average"
   threshold           = 90
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
 }
 
@@ -158,7 +166,9 @@ resource "aws_cloudwatch_metric_alarm" "ecs_cpu" {
   period              = 300
   statistic           = "Average"
   threshold           = 90
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
 }
 
@@ -172,7 +182,9 @@ resource "aws_cloudwatch_metric_alarm" "rds_cpu" {
   period              = 300
   statistic           = "Average"
   threshold           = 90
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",
@@ -235,7 +247,9 @@ resource "aws_cloudwatch_metric_alarm" "lambda_throttles" {
   period              = 300
   statistic           = "Sum"
   threshold           = 100
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
 }
 
@@ -249,7 +263,9 @@ resource "aws_cloudwatch_metric_alarm" "lambda_errors" {
   period              = 300
   statistic           = "Sum"
   threshold           = 50
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
 }
 
@@ -263,7 +279,9 @@ resource "aws_cloudwatch_metric_alarm" "lambda_concurrent" {
   period              = 60
   statistic           = "Maximum"
   threshold           = 900  # Near account limit
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",
@@ -345,7 +363,9 @@ resource "aws_cloudwatch_metric_alarm" "api_flood" {
   period              = 300
   statistic           = "Sum"
   threshold           = 100
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
   alarm_description   = "Detects API request flood attacks causing throttling"
 }""",
                 alert_severity="high",

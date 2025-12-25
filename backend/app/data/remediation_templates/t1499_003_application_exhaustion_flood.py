@@ -114,6 +114,8 @@ Resources:
       Threshold: 100
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 2
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]
 
   # Monitor 5xx errors indicating resource exhaustion
@@ -139,6 +141,8 @@ Resources:
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 2
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect application exhaustion via ALB metrics
 
@@ -186,7 +190,9 @@ resource "aws_cloudwatch_metric_alarm" "slow_request_rate" {
   threshold           = 100
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }
 
 # Monitor 5xx errors indicating resource exhaustion
@@ -212,7 +218,9 @@ resource "aws_cloudwatch_metric_alarm" "server_error_rate" {
   threshold           = 50
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Application Exhaustion Attack Detected",
@@ -285,6 +293,8 @@ Resources:
       Dimensions:
         - Name: ClusterName
           Value: !Ref ECSClusterName
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]
 
   # Monitor sustained high memory usage
@@ -303,6 +313,8 @@ Resources:
       Dimensions:
         - Name: ClusterName
           Value: !Ref ECSClusterName
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]
 
   # Monitor rapid autoscaling events
@@ -312,6 +324,8 @@ Resources:
       AlarmName: RapidAutoscalingExhaustion
       AlarmDescription: Rapid autoscaling suggesting DoS attack
       AlarmRule: !Sub "ALARM(${HighCPUAlarm}) AND ALARM(${HighMemoryAlarm})"
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect resource exhaustion via ECS metrics
 
@@ -352,7 +366,10 @@ resource "aws_cloudwatch_metric_alarm" "high_cpu" {
     ClusterName = var.ecs_cluster_name
   }
 
-  alarm_actions = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }
 
 # Monitor sustained high memory usage
@@ -371,14 +388,19 @@ resource "aws_cloudwatch_metric_alarm" "high_memory" {
     ClusterName = var.ecs_cluster_name
   }
 
-  alarm_actions = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }
 
 # Monitor rapid autoscaling events (composite alarm)
 resource "aws_cloudwatch_composite_alarm" "rapid_scaling" {
   alarm_name          = "RapidAutoscalingExhaustion"
   alarm_description   = "Rapid autoscaling suggesting DoS attack"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 
   alarm_rule = join(" AND ", [
     "ALARM(${aws_cloudwatch_metric_alarm.high_cpu.alarm_name})",

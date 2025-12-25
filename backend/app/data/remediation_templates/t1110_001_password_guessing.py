@@ -896,6 +896,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]
 
   DLQ:
@@ -957,7 +959,9 @@ resource "aws_cloudwatch_metric_alarm" "console_brute_force" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
-  alarm_actions       = [aws_sns_topic.console_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.console_alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="AWS Console Brute Force Detected",

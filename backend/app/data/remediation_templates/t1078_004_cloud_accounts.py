@@ -950,11 +950,13 @@ resource "aws_cloudwatch_metric_alarm" "multi_ip" {
   evaluation_periods  = 1
   metric_name         = "ConsoleLoginSuccess"
   namespace           = "Security/ImpossibleTravel"
-  period              = 3600
+  period              = 300
   statistic           = "SampleCount"
   threshold           = 2
   treat_missing_data  = "notBreaching"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Impossible Travel: Multiple Login Locations",

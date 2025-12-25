@@ -123,6 +123,8 @@ Resources:
       Threshold: 100
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 2
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]
       TreatMissingData: notBreaching""",
                 terraform_template="""# AWS: Detect suspicious process-to-web-service communications
@@ -173,7 +175,9 @@ resource "aws_cloudwatch_metric_alarm" "suspicious_web_service_traffic" {
   threshold           = 100
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
-  alarm_actions       = [aws_sns_topic.web_service_c2_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.web_service_c2_alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",

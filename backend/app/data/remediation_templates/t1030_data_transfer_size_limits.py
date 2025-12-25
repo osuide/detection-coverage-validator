@@ -131,6 +131,8 @@ Resources:
       Threshold: 15
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]
       TreatMissingData: notBreaching""",
                 terraform_template="""# Detect chunked S3 uploads
@@ -183,7 +185,9 @@ resource "aws_cloudwatch_metric_alarm" "chunked_upload" {
   threshold           = 15
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.chunked_upload_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.chunked_upload_alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",
@@ -276,6 +280,8 @@ Resources:
       Threshold: 30
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect uniform network transfer patterns
 
@@ -322,7 +328,9 @@ resource "aws_cloudwatch_metric_alarm" "uniform_transfer" {
   threshold           = 30
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.network_chunk_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.network_chunk_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Network Chunked Transfer Pattern Detected",

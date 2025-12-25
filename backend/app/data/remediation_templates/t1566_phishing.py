@@ -434,7 +434,9 @@ resource "aws_cloudwatch_metric_alarm" "rule_change" {
   threshold           = 0
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="WorkMail: Email Rule Modified",

@@ -275,6 +275,8 @@ Resources:
       Threshold: 104857600
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Monitor network interface traffic patterns
 
@@ -322,7 +324,9 @@ resource "aws_cloudwatch_metric_alarm" "large_transfer" {
   threshold           = 104857600
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.traffic_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.traffic_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Unusual Network Interface Traffic Detected",
@@ -408,6 +412,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect network management tool execution
 
@@ -455,7 +461,9 @@ resource "aws_cloudwatch_metric_alarm" "network_tools" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.network_tool_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.network_tool_alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Network Management Tool Execution Detected",

@@ -271,6 +271,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect Lambda scheduled event triggers
 
@@ -311,7 +313,9 @@ resource "aws_cloudwatch_metric_alarm" "lambda_schedule" {
   period              = 300
   statistic           = "Sum"
   threshold           = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
   alarm_description   = "Detects Lambda functions with new scheduled event triggers"
 }""",
                 alert_severity="medium",
@@ -398,6 +402,8 @@ Resources:
       Threshold: 3
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect ECS scheduled task creation
 
@@ -438,7 +444,9 @@ resource "aws_cloudwatch_metric_alarm" "ecs_scheduled" {
   period              = 300
   statistic           = "Sum"
   threshold           = 3
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
   alarm_description   = "Detects creation of ECS scheduled tasks"
 }""",
                 alert_severity="medium",
@@ -665,7 +673,9 @@ resource "aws_cloudwatch_metric_alarm" "cronjob_creation" {
   period              = 300
   statistic           = "Sum"
   threshold           = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
   alarm_description   = "Detects Kubernetes CronJob creation or modification"
 }""",
                 alert_severity="high",

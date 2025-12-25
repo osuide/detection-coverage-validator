@@ -119,10 +119,13 @@ Resources:
       MetricName: EFSAccessActivity
       Namespace: Security/T1039
       Statistic: Sum
-      Period: 3600
+      Period: 300
       EvaluationPeriods: 1
       Threshold: 10
       ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
 
@@ -183,11 +186,14 @@ resource "aws_cloudwatch_metric_alarm" "efs_access" {
   metric_name         = "EFSAccessActivity"
   namespace           = "Security/T1039"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   evaluation_periods  = 1
   threshold           = 10
   comparison_operator = "GreaterThanOrEqualToThreshold"
-  alarm_actions       = [aws_sns_topic.efs_alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.efs_alerts.arn]
 }
 
 resource "aws_sns_topic_policy" "allow_cloudwatch" {

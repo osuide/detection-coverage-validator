@@ -255,6 +255,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect bulk EBS volume deletion
 
@@ -306,7 +308,9 @@ resource "aws_cloudwatch_metric_alarm" "bulk_delete" {
   statistic           = "Sum"
   threshold           = 3
   treat_missing_data  = "notBreaching"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="Bulk EBS Volume Deletion - Potential Disk Wipe",

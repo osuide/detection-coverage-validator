@@ -285,6 +285,8 @@ Resources:
       Threshold: 3
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Alert on outbound SMB connections to external hosts
 
@@ -331,7 +333,9 @@ resource "aws_cloudwatch_metric_alarm" "outbound_smb" {
   threshold           = 3
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Outbound SMB Connections to External Hosts Detected",
@@ -431,6 +435,8 @@ Resources:
       Threshold: 20
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect unusual IMDS credential retrieval patterns
 
@@ -477,7 +483,9 @@ resource "aws_cloudwatch_metric_alarm" "imds_abuse" {
   threshold           = 20
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="Unusual EC2 Instance Metadata Service Access",

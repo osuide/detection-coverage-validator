@@ -115,10 +115,13 @@ Resources:
       MetricName: RDSSnapshotOperations
       Namespace: Security/Database
       Statistic: Sum
-      Period: 3600
+      Period: 300
       EvaluationPeriods: 1
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
       TreatMissingData: notBreaching""",
@@ -169,11 +172,14 @@ resource "aws_cloudwatch_metric_alarm" "rds_snapshot_activity" {
   metric_name         = "RDSSnapshotOperations"
   namespace           = "Security/Database"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   evaluation_periods  = 1
   threshold           = 5
   comparison_operator = "GreaterThanThreshold"
-  alarm_actions       = [aws_sns_topic.rds_alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.rds_alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",
@@ -263,11 +269,14 @@ resource "aws_cloudwatch_metric_alarm" "db_cli_activity" {
   metric_name         = "DatabaseCLIExecution"
   namespace           = "Security/Database"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   evaluation_periods  = 1
   threshold           = 10
   comparison_operator = "GreaterThanThreshold"
-  alarm_actions       = [aws_sns_topic.db_tool_alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.db_tool_alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="medium",
@@ -580,10 +589,13 @@ Resources:
       MetricName: DynamoDBExports
       Namespace: Security/Database
       Statistic: Sum
-      Period: 3600
+      Period: 300
       EvaluationPeriods: 1
       Threshold: 1
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
       TreatMissingData: notBreaching""",
@@ -634,11 +646,14 @@ resource "aws_cloudwatch_metric_alarm" "dynamodb_export_activity" {
   metric_name         = "DynamoDBExports"
   namespace           = "Security/Database"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   evaluation_periods  = 1
   threshold           = 1
   comparison_operator = "GreaterThanThreshold"
-  alarm_actions       = [aws_sns_topic.dynamodb_alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.dynamodb_alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",

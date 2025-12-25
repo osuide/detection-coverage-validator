@@ -273,7 +273,9 @@ resource "aws_cloudwatch_metric_alarm" "suspicious_activity" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_description   = "Detect suspicious instance launch patterns"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Suspicious Browser/Download Activity",
@@ -361,6 +363,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       AlarmDescription: Detect suspicious file types downloaded
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic""",
                 terraform_template="""# Detect suspicious file downloads via web proxy
@@ -411,7 +415,9 @@ resource "aws_cloudwatch_metric_alarm" "download_alert" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_description   = "Detect suspicious file types downloaded"
-  alarm_actions       = [aws_sns_topic.download_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.download_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Suspicious File Download Detected",

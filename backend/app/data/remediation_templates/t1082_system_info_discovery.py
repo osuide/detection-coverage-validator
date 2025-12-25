@@ -112,10 +112,12 @@ Resources:
       MetricName: SystemInfoDiscovery
       Namespace: Security
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect system information discovery via EC2 API
 
@@ -158,11 +160,13 @@ resource "aws_cloudwatch_metric_alarm" "system_info" {
   metric_name         = "SystemInfoDiscovery"
   namespace           = "Security"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 50
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="low",
                 alert_title="System Information Discovery Detected",
@@ -243,10 +247,12 @@ Resources:
       MetricName: SSMInventoryAccess
       Namespace: Security
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 30
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect SSM inventory access
 
@@ -289,11 +295,13 @@ resource "aws_cloudwatch_metric_alarm" "ssm_inventory" {
   metric_name         = "SSMInventoryAccess"
   namespace           = "Security"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 30
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="SSM Inventory Access Detected",

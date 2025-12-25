@@ -365,7 +365,9 @@ resource "aws_cloudwatch_metric_alarm" "high_modification_rate" {
   statistic           = "Sum"
   threshold           = 100
   alarm_description   = "High rate of database modifications detected"
-  alarm_actions       = [aws_sns_topic.rds_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.rds_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="RDS Database Manipulation Detected",

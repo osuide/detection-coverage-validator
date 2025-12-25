@@ -114,10 +114,12 @@ Resources:
       MetricName: ConsoleSessionEvents
       Namespace: Security/SessionTheft
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 10
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# AWS: Detect session cookie theft via context changes
 
@@ -161,11 +163,13 @@ resource "aws_cloudwatch_metric_alarm" "session_theft" {
   metric_name         = "ConsoleSessionEvents"
   namespace           = "Security/SessionTheft"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 10
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.session_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.session_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="AWS Session Cookie Theft Detected",
@@ -252,6 +256,8 @@ Resources:
       Threshold: 3
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# AWS: Detect impossible travel patterns
 
@@ -300,7 +306,9 @@ resource "aws_cloudwatch_metric_alarm" "impossible_travel" {
   threshold           = 3
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.travel_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.travel_alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="Impossible Travel Pattern Detected",

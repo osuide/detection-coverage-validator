@@ -147,6 +147,8 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
 
@@ -235,7 +237,9 @@ resource "aws_cloudwatch_metric_alarm" "image_updates" {
   threshold           = 5
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.supply_chain_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.supply_chain_alerts.arn]
 }
 
 resource "aws_sns_topic_policy" "allow_events" {
@@ -522,7 +526,9 @@ resource "aws_cloudwatch_metric_alarm" "codebuild_compromise" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.codebuild_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.codebuild_alerts.arn]
 }
 
 resource "aws_sns_topic_policy" "allow_cloudwatch" {

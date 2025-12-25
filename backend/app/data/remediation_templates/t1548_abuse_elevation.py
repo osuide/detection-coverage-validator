@@ -119,6 +119,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 20
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
 
@@ -177,7 +180,9 @@ resource "aws_cloudwatch_metric_alarm" "assume_role_high" {
   period              = 300
   statistic           = "Sum"
   threshold           = 20
-  alarm_actions       = [aws_sns_topic.assume_role_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.assume_role_alerts.arn]
 }
 
 resource "aws_sns_topic_policy" "assume_role_alerts" {
@@ -405,6 +410,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
 
@@ -460,7 +468,9 @@ resource "aws_cloudwatch_metric_alarm" "session_token" {
   period              = 300
   statistic           = "Sum"
   threshold           = 5
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }
 
 resource "aws_sns_topic_policy" "alerts" {

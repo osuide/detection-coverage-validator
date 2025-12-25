@@ -125,12 +125,14 @@ Resources:
       MetricName: RecurringDataTransfers
       Namespace: Security/Exfiltration
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 10485760
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 3
       DatapointsToAlarm: 3
       TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]
 
 Outputs:
@@ -183,13 +185,15 @@ resource "aws_cloudwatch_metric_alarm" "recurring_transfer" {
   metric_name         = "RecurringDataTransfers"
   namespace           = "Security/Exfiltration"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 10485760
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 3
   datapoints_to_alarm = 3
   treat_missing_data  = "notBreaching"
-  alarm_actions       = [aws_sns_topic.scheduled_transfer_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.scheduled_transfer_alerts.arn]
 }
 
 output "alert_topic_arn" {

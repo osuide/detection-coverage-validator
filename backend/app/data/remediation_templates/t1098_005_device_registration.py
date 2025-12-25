@@ -256,10 +256,13 @@ Resources:
       MetricName: DeviceRegistrations
       Namespace: Security
       Statistic: Sum
-      Period: 3600
+      Period: 300
       EvaluationPeriods: 1
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic""",
                 terraform_template="""# Monitor for suspicious device registration patterns
@@ -305,11 +308,14 @@ resource "aws_cloudwatch_metric_alarm" "high_registrations" {
   metric_name         = "DeviceRegistrations"
   namespace           = "Security"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   evaluation_periods  = 1
   threshold           = 5
   comparison_operator = "GreaterThanThreshold"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Suspicious Device Registration Pattern",

@@ -295,7 +295,9 @@ resource "aws_cloudwatch_metric_alarm" "excessive_enumeration" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_description   = "Detects excessive instance enumeration activity"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Excessive Instance Enumeration Detected",

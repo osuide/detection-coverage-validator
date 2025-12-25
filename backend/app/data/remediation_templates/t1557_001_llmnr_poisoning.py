@@ -185,6 +185,8 @@ Resources:
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic""",
                 terraform_template="""# AWS: Detect LLMNR and NetBIOS poisoning attempts
@@ -278,7 +280,9 @@ resource "aws_cloudwatch_metric_alarm" "high_netbios" {
   threshold           = 50
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Suspicious LLMNR/NetBIOS Name Resolution Traffic",

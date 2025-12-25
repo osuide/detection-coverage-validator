@@ -128,6 +128,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 3
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref SecurityAlertTopic
 
@@ -191,7 +194,10 @@ resource "aws_cloudwatch_metric_alarm" "encoding_activity" {
   evaluation_periods  = 1
   threshold           = 3
   comparison_operator = "GreaterThanThreshold"
-  alarm_actions       = [aws_sns_topic.obfuscation_alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.obfuscation_alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Obfuscated File Creation Detected",
@@ -285,6 +291,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 2
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref SNSTopicArn
 
@@ -345,7 +354,10 @@ resource "aws_cloudwatch_metric_alarm" "obfuscated_scripts" {
   evaluation_periods  = 1
   threshold           = 2
   comparison_operator = "GreaterThanThreshold"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }
 
 # Step 3: Monitor for environment variable obfuscation

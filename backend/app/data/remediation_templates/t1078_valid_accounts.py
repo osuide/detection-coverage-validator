@@ -300,10 +300,13 @@ Resources:
       MetricName: ConsoleLoginFromMultipleIPs
       Namespace: Security/T1078
       Statistic: Sum
-      Period: 3600
+      Period: 300
       EvaluationPeriods: 1
       Threshold: 2
       ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref SNSTopicArn
       TreatMissingData: notBreaching""",
@@ -341,10 +344,12 @@ resource "aws_cloudwatch_metric_alarm" "impossible_travel" {
   evaluation_periods  = 1
   metric_name         = "ConsoleLoginFromMultipleIPs"
   namespace           = "Security/T1078"
-  period              = 3600
+  period              = 300
   statistic           = "Sum"
   threshold           = 2
-  alarm_actions       = [var.sns_topic_arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [var.sns_topic_arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",
@@ -1088,6 +1093,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref SNSTopicArn""",
                 terraform_template="""# AWS First-time sensitive API detection for T1078
@@ -1130,7 +1138,9 @@ resource "aws_cloudwatch_metric_alarm" "sensitive_api" {
   period              = 300
   statistic           = "Sum"
   threshold           = 1
-  alarm_actions       = [var.sns_topic_arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [var.sns_topic_arn]
 }""",
                 alert_severity="medium",
                 alert_title="First-Time Sensitive API Call",

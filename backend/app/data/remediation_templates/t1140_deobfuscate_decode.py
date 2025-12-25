@@ -130,6 +130,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 2
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref SecurityAlertTopic
 
@@ -193,7 +196,10 @@ resource "aws_cloudwatch_metric_alarm" "decoding_activity" {
   evaluation_periods  = 1
   threshold           = 2
   comparison_operator = "GreaterThanThreshold"
-  alarm_actions       = [aws_sns_topic.deobfuscation_alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.deobfuscation_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Decoding Utility Abuse Detected",
@@ -288,6 +294,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 1
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref SNSTopicArn
 
@@ -348,7 +357,10 @@ resource "aws_cloudwatch_metric_alarm" "powershell_decode" {
   evaluation_periods  = 1
   threshold           = 1
   comparison_operator = "GreaterThanThreshold"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }
 
 # Step 3: Monitor for archive decompression
@@ -464,6 +476,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 3
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref SecurityAlertTopic
 
@@ -527,7 +542,10 @@ resource "aws_cloudwatch_metric_alarm" "runtime_decryption" {
   evaluation_periods  = 1
   threshold           = 3
   comparison_operator = "GreaterThanThreshold"
-  alarm_actions       = [aws_sns_topic.runtime_decrypt_alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.runtime_decrypt_alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="Runtime Decryption Activity Detected",
@@ -749,6 +767,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 2
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref SNSTopicArn
 
@@ -816,7 +837,10 @@ resource "aws_cloudwatch_metric_alarm" "lambda_decode" {
   evaluation_periods  = 1
   threshold           = 2
   comparison_operator = "GreaterThanThreshold"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }
 
 # Step 3: Monitor Lambda configuration changes

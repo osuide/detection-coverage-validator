@@ -122,10 +122,12 @@ Resources:
       MetricName: PeripheralDeviceDiscovery
       Namespace: Security
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 40
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect peripheral device discovery via EBS enumeration
 
@@ -168,11 +170,13 @@ resource "aws_cloudwatch_metric_alarm" "peripheral_device" {
   metric_name         = "PeripheralDeviceDiscovery"
   namespace           = "Security"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 40
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Peripheral Device Discovery Detected",
@@ -256,10 +260,12 @@ Resources:
       MetricName: StorageDeviceDiscovery
       Namespace: Security
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 25
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect peripheral storage device discovery
 
@@ -302,11 +308,13 @@ resource "aws_cloudwatch_metric_alarm" "storage_device" {
   metric_name         = "StorageDeviceDiscovery"
   namespace           = "Security"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 25
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Storage Device Discovery Detected",

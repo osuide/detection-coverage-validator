@@ -132,6 +132,8 @@ Resources:
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
 
@@ -196,7 +198,9 @@ resource "aws_cloudwatch_metric_alarm" "dga_detection" {
   period              = 300
   statistic           = "Sum"
   threshold           = 50
-  alarm_actions       = [aws_sns_topic.dga_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.dga_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Domain Generation Algorithm (DGA) Activity Detected",
@@ -374,7 +378,9 @@ resource "aws_cloudwatch_metric_alarm" "ddns_detection" {
   period              = 300
   statistic           = "Sum"
   threshold           = 5
-  alarm_actions       = [aws_sns_topic.ddns_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.ddns_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Dynamic DNS Provider Usage Detected",
@@ -478,7 +484,9 @@ resource "aws_cloudwatch_metric_alarm" "fastflux_detection" {
   period              = 600
   statistic           = "Sum"
   threshold           = 100
-  alarm_actions       = [aws_sns_topic.fastflux_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.fastflux_alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="Fast Flux DNS Activity Detected",

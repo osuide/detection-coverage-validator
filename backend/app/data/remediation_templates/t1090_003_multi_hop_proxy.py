@@ -115,6 +115,8 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect Tor and multi-hop proxy traffic
 
@@ -162,7 +164,9 @@ resource "aws_cloudwatch_metric_alarm" "tor_detection" {
   threshold           = 5
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.proxy_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.proxy_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Multi-hop Proxy Traffic Detected",

@@ -151,6 +151,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
       TreatMissingData: notBreaching
@@ -211,7 +213,9 @@ resource "aws_cloudwatch_metric_alarm" "usb_connection" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.usb_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.usb_alerts.arn]
   treat_missing_data  = "notBreaching"
 }
 
@@ -349,6 +353,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
       TreatMissingData: notBreaching
@@ -426,7 +432,9 @@ resource "aws_cloudwatch_metric_alarm" "removable_media" {
   namespace           = "Security/RemovableMedia"
   metric_name         = "RemovableMediaConnected"
   treat_missing_data  = "notBreaching"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }
 
 # NOTE: Deploy the SSM Document from T1200 template to enable detection

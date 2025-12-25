@@ -122,6 +122,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 15
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref SessionAnomalyAlertTopic
       TreatMissingData: notBreaching""",
@@ -175,7 +178,10 @@ resource "aws_cloudwatch_metric_alarm" "session_anomaly" {
   evaluation_periods  = 1
   threshold           = 15
   comparison_operator = "GreaterThanThreshold"
-  alarm_actions       = [aws_sns_topic.session_anomaly_alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.session_anomaly_alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",
@@ -271,6 +277,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 3
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref ImpossibleTravelAlertTopic
       TreatMissingData: notBreaching""",
@@ -327,7 +336,10 @@ resource "aws_cloudwatch_metric_alarm" "impossible_travel" {
   evaluation_periods  = 1
   threshold           = 3
   comparison_operator = "GreaterThanThreshold"
-  alarm_actions       = [aws_sns_topic.impossible_travel_alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.impossible_travel_alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="critical",

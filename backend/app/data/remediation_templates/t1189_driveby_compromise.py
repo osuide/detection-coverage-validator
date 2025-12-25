@@ -291,6 +291,8 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
 
@@ -352,7 +354,9 @@ resource "aws_cloudwatch_metric_alarm" "browser_exploitation" {
   threshold           = 5
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.browser_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.browser_alerts.arn]
 }
 
 resource "aws_sns_topic_policy" "allow_cloudwatch" {
@@ -468,6 +472,8 @@ Resources:
       Threshold: 20
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
 
@@ -529,7 +535,9 @@ resource "aws_cloudwatch_metric_alarm" "malvertising" {
   threshold           = 20
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.malvertising_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.malvertising_alerts.arn]
 }
 
 resource "aws_sns_topic_policy" "allow_cloudwatch" {

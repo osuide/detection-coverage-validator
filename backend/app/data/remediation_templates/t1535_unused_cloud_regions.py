@@ -106,10 +106,12 @@ Resources:
       MetricName: UnusedRegionActivity
       Namespace: Security
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 0
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect activity in unused AWS regions
 

@@ -107,6 +107,8 @@ Resources:
       Threshold: 80
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
 
@@ -152,7 +154,9 @@ resource "aws_cloudwatch_metric_alarm" "high_cpu" {
   threshold           = 80
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }
 
 # Step 3: Create metric filter for process-level detection
@@ -255,6 +259,8 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect network connections to cryptocurrency mining pools
 
@@ -304,7 +310,9 @@ resource "aws_cloudwatch_metric_alarm" "mining_detected" {
   threshold           = 5
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="Cryptocurrency Mining Pool Connection Detected",
@@ -386,6 +394,9 @@ Resources:
       EvaluationPeriods: 4
       Threshold: 80
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]
 
   # Step 3: Container Insights anomaly detection
@@ -410,6 +421,8 @@ Resources:
         - Id: ad1
           Expression: ANOMALY_DETECTION_BAND(m1, 2)
       ThresholdMetricId: ad1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect cryptomining in ECS containers
 
@@ -451,7 +464,10 @@ resource "aws_cloudwatch_metric_alarm" "container_high_cpu" {
   evaluation_periods  = 4
   threshold           = 80
   comparison_operator = "GreaterThanThreshold"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }
 
 # Step 3: Anomaly detection for CPU patterns
@@ -460,7 +476,9 @@ resource "aws_cloudwatch_metric_alarm" "cpu_anomaly" {
   comparison_operator = "LessThanLowerOrGreaterThanUpperThreshold"
   evaluation_periods  = 2
   threshold_metric_id = "ad1"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 
   metric_query {
     id          = "m1"

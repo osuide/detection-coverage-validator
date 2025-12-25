@@ -114,6 +114,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 3
       ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref SNSTopicArn
 
@@ -165,7 +168,9 @@ resource "aws_cloudwatch_metric_alarm" "sandbox_evasion" {
   period              = 300
   statistic           = "Sum"
   threshold           = 3
-  alarm_actions       = [var.sns_topic_arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [var.sns_topic_arn]
 }
 
 # Step 3: Query for investigation
@@ -267,6 +272,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 10
       ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref SNSTopicArn
 
@@ -316,7 +324,9 @@ resource "aws_cloudwatch_metric_alarm" "metadata_checks" {
   period              = 300
   statistic           = "Sum"
   threshold           = 10
-  alarm_actions       = [var.sns_topic_arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [var.sns_topic_arn]
 }
 
 # Step 3: Investigation query
@@ -427,10 +437,13 @@ Resources:
       MetricName: LongRunningExecutions
       Namespace: Security/T1497
       Statistic: Sum
-      Period: 3600
+      Period: 300
       EvaluationPeriods: 1
       Threshold: 5
       ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref SNSTopicArn""",
                 terraform_template="""# Time-based evasion detection for Lambda functions
@@ -480,10 +493,12 @@ resource "aws_cloudwatch_metric_alarm" "long_execution" {
   evaluation_periods  = 1
   metric_name         = "LongRunningExecutions"
   namespace           = "Security/T1497"
-  period              = 3600
+  period              = 300
   statistic           = "Sum"
   threshold           = 5
-  alarm_actions       = [var.sns_topic_arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [var.sns_topic_arn]
 }""",
                 alert_severity="low",
                 alert_title="Time-Based Evasion Pattern Detected",

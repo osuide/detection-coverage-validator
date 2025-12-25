@@ -118,10 +118,12 @@ Resources:
       MetricName: AccountLogins
       Namespace: Security/AccountCompromise
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic""",
                 terraform_template="""# AWS: Detect compromised accounts via anomalous authentication
@@ -169,11 +171,13 @@ resource "aws_cloudwatch_metric_alarm" "compromised_account" {
   metric_name         = "AccountLogins"
   namespace           = "Security/AccountCompromise"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 5
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.compromised_account_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.compromised_account_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Potential Compromised AWS Account Detected",

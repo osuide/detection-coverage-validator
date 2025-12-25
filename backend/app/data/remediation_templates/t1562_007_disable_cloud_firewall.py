@@ -442,7 +442,9 @@ resource "aws_cloudwatch_metric_alarm" "nacl_modification_alert" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
-  alarm_actions       = [aws_sns_topic.nacl_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.nacl_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Unauthorised Network ACL Modification Detected",
@@ -648,7 +650,9 @@ resource "aws_cloudwatch_metric_alarm" "guardduty_suppression_alert" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
-  alarm_actions       = [aws_sns_topic.guardduty_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.guardduty_alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="GuardDuty Suppression or Allowlisting Detected",

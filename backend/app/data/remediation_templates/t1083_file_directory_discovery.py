@@ -121,10 +121,12 @@ Resources:
       MetricName: FileDiscoveryCommands
       Namespace: Security/Discovery
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 10
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic""",
                 terraform_template="""# Detect file discovery commands via SSM
@@ -172,11 +174,13 @@ resource "aws_cloudwatch_metric_alarm" "file_discovery" {
   metric_name         = "FileDiscoveryCommands"
   namespace           = "Security/Discovery"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 10
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.file_discovery_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.file_discovery_alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="File Discovery Commands Detected",
@@ -270,6 +274,8 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic""",
                 terraform_template="""# Detect file enumeration in containers
@@ -321,7 +327,9 @@ resource "aws_cloudwatch_metric_alarm" "container_enum" {
   threshold           = 5
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.container_enum_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.container_enum_alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Container File Enumeration Detected",

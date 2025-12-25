@@ -123,6 +123,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 0
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic""",
                 terraform_template="""# Detect unauthorised Azure AD PTA agent registration
@@ -172,7 +175,9 @@ resource "aws_cloudwatch_metric_alarm" "pta_agent" {
   threshold           = 0
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.pta_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.pta_alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="Unauthorised PTA Agent Registered",
@@ -268,6 +273,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 0
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic""",
                 terraform_template="""# Detect AD FS configuration file modifications
@@ -317,7 +325,9 @@ resource "aws_cloudwatch_metric_alarm" "adfs_config" {
   threshold           = 0
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.adfs_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.adfs_alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="AD FS Configuration Modified",
@@ -577,7 +587,9 @@ resource "aws_cloudwatch_metric_alarm" "dll_load" {
   threshold           = 0
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.dll_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.dll_alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="Suspicious DLL Loaded in Identity Process",

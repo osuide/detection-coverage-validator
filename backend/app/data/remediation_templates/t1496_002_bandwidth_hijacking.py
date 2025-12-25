@@ -112,6 +112,8 @@ Resources:
       Threshold: 5000000000  # 5GB in 5 minutes
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect bandwidth hijacking via VPC Flow Logs
 
@@ -150,7 +152,9 @@ resource "aws_cloudwatch_metric_alarm" "bandwidth_hijacking" {
   threshold           = 5000000000  # 5GB in 5 minutes
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Potential Bandwidth Hijacking Detected",
@@ -519,7 +523,9 @@ resource "aws_cloudwatch_metric_alarm" "ecs_high_egress" {
   threshold           = 5000000000  # 5GB in 5 minutes
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }
 
 # For EKS - use Container Insights

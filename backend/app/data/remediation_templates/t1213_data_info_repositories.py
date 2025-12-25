@@ -120,10 +120,12 @@ Resources:
       MetricName: DatabaseRepositoryAccess
       Namespace: Security/T1213
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 20
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect unusual database access for T1213
 
@@ -166,11 +168,13 @@ resource "aws_cloudwatch_metric_alarm" "db_access" {
   metric_name         = "DatabaseRepositoryAccess"
   namespace           = "Security/T1213"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 20
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Unusual Database Repository Access Detected",
@@ -266,6 +270,8 @@ Resources:
       Threshold: 30
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect bulk code repository access for T1213
 
@@ -312,7 +318,9 @@ resource "aws_cloudwatch_metric_alarm" "code_repo" {
   threshold           = 30
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Bulk Code Repository Access Detected",
@@ -404,10 +412,12 @@ Resources:
       MetricName: DocumentRepositoryAccess
       Namespace: Security/T1213
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 50
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect bulk document repository access for T1213
 
@@ -450,11 +460,13 @@ resource "aws_cloudwatch_metric_alarm" "workdocs" {
   metric_name         = "DocumentRepositoryAccess"
   namespace           = "Security/T1213"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 50
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Bulk Document Repository Access Detected",

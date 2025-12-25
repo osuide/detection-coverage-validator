@@ -263,6 +263,8 @@ Resources:
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect S3 lifecycle policy modifications for rapid deletion
 
@@ -314,7 +316,9 @@ resource "aws_cloudwatch_metric_alarm" "lifecycle_policy" {
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
-  alarm_actions       = [aws_sns_topic.lifecycle_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.lifecycle_alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="S3 Lifecycle Policy Modification Detected",
@@ -406,6 +410,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect mass S3 object deletions
 
@@ -457,7 +463,9 @@ resource "aws_cloudwatch_metric_alarm" "mass_deletion" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
-  alarm_actions       = [aws_sns_topic.deletion_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.deletion_alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="Mass S3 Object Deletion Detected",

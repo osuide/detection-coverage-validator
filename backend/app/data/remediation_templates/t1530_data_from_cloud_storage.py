@@ -852,11 +852,13 @@ resource "aws_cloudwatch_metric_alarm" "cross_account" {
   evaluation_periods  = 1
   metric_name         = "CrossAccountS3Access"
   namespace           = "Security/T1530"
-  period              = 3600
+  period              = 300
   statistic           = "Sum"
   threshold           = 10
   treat_missing_data  = "notBreaching"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Cross-Account S3 Access Detected",

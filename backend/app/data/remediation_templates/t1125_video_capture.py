@@ -461,10 +461,13 @@ Resources:
       MetricName: ChimeRecordingActivity
       Namespace: Security/T1125
       Statistic: Sum
-      Period: 3600
+      Period: 300
       EvaluationPeriods: 1
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic""",
                 terraform_template="""# Detect Amazon Chime SDK recording abuse
@@ -509,11 +512,14 @@ resource "aws_cloudwatch_metric_alarm" "recording_abuse" {
   metric_name         = "ChimeRecordingActivity"
   namespace           = "Security/T1125"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   evaluation_periods  = 1
   threshold           = 5
   comparison_operator = "GreaterThanThreshold"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Video Conferencing Recording Abuse Detected",

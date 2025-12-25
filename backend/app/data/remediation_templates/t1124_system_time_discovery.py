@@ -126,10 +126,13 @@ Resources:
       MetricName: SystemTimeDiscovery
       Namespace: Security/Discovery
       Statistic: Sum
-      Period: 3600
+      Period: 300
       EvaluationPeriods: 1
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
       TreatMissingData: notBreaching""",
@@ -179,11 +182,14 @@ resource "aws_cloudwatch_metric_alarm" "time_discovery" {
   metric_name         = aws_cloudwatch_log_metric_filter.time_discovery.metric_transformation[0].name
   namespace           = aws_cloudwatch_log_metric_filter.time_discovery.metric_transformation[0].namespace
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   evaluation_periods  = 1
   threshold           = 5
   comparison_operator = "GreaterThanThreshold"
-  alarm_actions       = [aws_sns_topic.time_discovery_alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.time_discovery_alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="low",

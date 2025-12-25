@@ -248,10 +248,12 @@ Resources:
       MetricName: S3ObjectListing
       Namespace: Security
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 500
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect S3 object enumeration
 
@@ -286,11 +288,13 @@ resource "aws_cloudwatch_metric_alarm" "s3_enum" {
   metric_name         = "S3ObjectListing"
   namespace           = "Security"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 500
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="S3 Object Enumeration Detected",

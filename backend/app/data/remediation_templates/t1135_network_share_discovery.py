@@ -119,6 +119,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       AlarmDescription: Detects excessive network share enumeration attempts
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect network share enumeration via process monitoring
 
@@ -168,7 +170,9 @@ resource "aws_cloudwatch_metric_alarm" "share_enum_alarm" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_description   = "Detects excessive network share enumeration attempts"
-  alarm_actions       = [aws_sns_topic.share_enum_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.share_enum_alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Network Share Enumeration Detected",
@@ -260,6 +264,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       AlarmDescription: Detects excessive SMB connections indicating share enumeration
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect SMB enumeration via VPC Flow Logs
 
@@ -309,7 +315,9 @@ resource "aws_cloudwatch_metric_alarm" "smb_enum_alarm" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   alarm_description   = "Detects excessive SMB connections indicating share enumeration"
-  alarm_actions       = [aws_sns_topic.smb_enum_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.smb_enum_alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="SMB Share Enumeration Pattern Detected",

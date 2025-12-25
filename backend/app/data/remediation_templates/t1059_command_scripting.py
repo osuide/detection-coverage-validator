@@ -125,6 +125,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 10
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
 
@@ -184,7 +187,9 @@ resource "aws_cloudwatch_metric_alarm" "interpreter_alert" {
   period              = 300
   statistic           = "Sum"
   threshold           = 10
-  alarm_actions       = [aws_sns_topic.interpreter_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.interpreter_alerts.arn]
 }
 
 resource "aws_sns_topic_policy" "interpreter_policy" {
@@ -489,6 +494,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref LambdaAlertTopic""",
                 terraform_template="""# Detect suspicious Lambda function execution patterns
@@ -534,7 +542,9 @@ resource "aws_cloudwatch_metric_alarm" "lambda_execution_alert" {
   period              = 300
   statistic           = "Sum"
   threshold           = 5
-  alarm_actions       = [aws_sns_topic.lambda_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.lambda_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Suspicious Lambda Function Execution",

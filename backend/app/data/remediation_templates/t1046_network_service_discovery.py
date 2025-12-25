@@ -144,6 +144,8 @@ Resources:
       Period: 300
       EvaluationPeriods: 1
       Threshold: 1000000
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic""",
                 terraform_template="""# AWS: Detect port scanning in VPC Flow Logs
@@ -240,7 +242,9 @@ resource "aws_cloudwatch_metric_alarm" "port_scan" {
   period              = 300
   statistic           = "Sum"
   threshold           = 50
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Port Scanning Activity Detected",
@@ -493,6 +497,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic""",
                 terraform_template="""# AWS: Detect security group enumeration
@@ -543,7 +550,9 @@ resource "aws_cloudwatch_metric_alarm" "sg_enumeration" {
   period              = 300
   statistic           = "Sum"
   threshold           = 50
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Excessive Security Group Enumeration",

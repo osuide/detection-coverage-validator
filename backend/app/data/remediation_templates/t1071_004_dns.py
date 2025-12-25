@@ -263,6 +263,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 10
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref DnsThreatAlertTopic
 
@@ -499,7 +502,9 @@ resource "aws_cloudwatch_metric_alarm" "blocked_queries" {
   period              = 300
   statistic           = "Sum"
   threshold           = 10
-  alarm_actions       = [aws_sns_topic.dns_threats.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.dns_threats.arn]
   treat_missing_data  = "notBreaching"
 }
 
@@ -728,6 +733,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref DnsAnomalyAlertTopic
 
@@ -916,7 +924,9 @@ resource "aws_cloudwatch_metric_alarm" "dns_tunnelling" {
   period              = 300
   statistic           = "Sum"
   threshold           = 50
-  alarm_actions       = [aws_sns_topic.dns_anomalies.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.dns_anomalies.arn]
   treat_missing_data  = "notBreaching"
 }
 
@@ -1082,6 +1092,9 @@ Resources:
       EvaluationPeriods: 2
       Threshold: 100
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref BeaconingAlertTopic
 
@@ -1183,7 +1196,9 @@ resource "aws_cloudwatch_metric_alarm" "beaconing" {
   period              = 900
   statistic           = "Sum"
   threshold           = 100
-  alarm_actions       = [aws_sns_topic.dns_beaconing.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.dns_beaconing.arn]
   treat_missing_data  = "notBreaching"
 }
 

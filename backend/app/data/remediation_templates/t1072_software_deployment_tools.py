@@ -124,6 +124,8 @@ Resources:
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]
       TreatMissingData: notBreaching""",
                 terraform_template="""# Detect suspicious AWS Systems Manager activity
@@ -175,7 +177,9 @@ resource "aws_cloudwatch_metric_alarm" "ssm_command_volume" {
   threshold           = 50
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.ssm_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.ssm_alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",
@@ -272,7 +276,9 @@ resource "aws_cloudwatch_metric_alarm" "unusual_documents" {
   threshold           = 10
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.ssm_document_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.ssm_document_alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",

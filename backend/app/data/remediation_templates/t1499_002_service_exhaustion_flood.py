@@ -113,6 +113,8 @@ Resources:
       Dimensions:
         - Name: LoadBalancer
           Value: !Ref LoadBalancerName
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
       TreatMissingData: notBreaching
@@ -132,6 +134,8 @@ Resources:
       Dimensions:
         - Name: LoadBalancer
           Value: !Ref LoadBalancerName
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
       TreatMissingData: notBreaching
@@ -151,6 +155,8 @@ Resources:
       Dimensions:
         - Name: LoadBalancer
           Value: !Ref LoadBalancerName
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
       TreatMissingData: notBreaching""",
@@ -180,7 +186,9 @@ resource "aws_cloudwatch_metric_alarm" "http_flood" {
   period              = 60
   statistic           = "Sum"
   threshold           = 10000
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
 
   dimensions = {
@@ -198,7 +206,9 @@ resource "aws_cloudwatch_metric_alarm" "high_5xx" {
   period              = 300
   statistic           = "Sum"
   threshold           = 100
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
 
   dimensions = {
@@ -216,7 +226,9 @@ resource "aws_cloudwatch_metric_alarm" "high_response_time" {
   period              = 300
   statistic           = "Average"
   threshold           = 5
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
 
   dimensions = {
@@ -286,7 +298,9 @@ resource "aws_cloudwatch_metric_alarm" "request_flood" {
   period              = 60
   statistic           = "Sum"
   threshold           = 50000
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
 
   dimensions = {
@@ -304,7 +318,9 @@ resource "aws_cloudwatch_metric_alarm" "high_errors" {
   period              = 300
   statistic           = "Average"
   threshold           = 5
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
 
   dimensions = {
@@ -322,7 +338,9 @@ resource "aws_cloudwatch_metric_alarm" "origin_latency" {
   period              = 300
   statistic           = "Average"
   threshold           = 3000
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
 
   dimensions = {
@@ -392,7 +410,9 @@ resource "aws_cloudwatch_metric_alarm" "connection_flood" {
   period              = 60
   statistic           = "Sum"
   threshold           = 5000
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
 
   dimensions = {
@@ -410,7 +430,9 @@ resource "aws_cloudwatch_metric_alarm" "new_connections" {
   period              = 60
   statistic           = "Sum"
   threshold           = 2000
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
 
   dimensions = {
@@ -428,7 +450,9 @@ resource "aws_cloudwatch_metric_alarm" "rejected_connections" {
   period              = 300
   statistic           = "Sum"
   threshold           = 10
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
 
   dimensions = {

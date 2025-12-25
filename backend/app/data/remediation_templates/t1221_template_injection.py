@@ -321,7 +321,9 @@ resource "aws_cloudwatch_metric_alarm" "template_fetch_alarm" {
   statistic           = "Sum"
   threshold           = 10
   alarm_description   = "Detects potential template injection activity via network connections"
-  alarm_actions       = [aws_sns_topic.template_fetch_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.template_fetch_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="AWS VPC: Suspicious Template Fetch Activity",
@@ -422,7 +424,9 @@ resource "aws_cloudwatch_metric_alarm" "workspaces_alarm" {
   statistic           = "Sum"
   threshold           = 0
   alarm_description   = "Alert on suspicious WorkSpaces activity that may indicate compromise"
-  alarm_actions       = [aws_sns_topic.workspaces_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.workspaces_alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="AWS WorkSpaces: Suspicious Activity Detected",

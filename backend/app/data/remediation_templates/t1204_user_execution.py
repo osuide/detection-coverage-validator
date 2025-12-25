@@ -129,6 +129,8 @@ Resources:
       Threshold: 0
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref UserDataAlertTopic""",
                 terraform_template="""# AWS: Detect suspicious EC2 user data execution
@@ -181,7 +183,9 @@ resource "aws_cloudwatch_metric_alarm" "user_data_execution" {
   threshold           = 0
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.user_data_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.user_data_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="AWS EC2: Instance Launched with User Data Script",
@@ -443,7 +447,9 @@ resource "aws_cloudwatch_metric_alarm" "ssm_execution" {
   threshold           = 5
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.ssm_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.ssm_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="AWS SSM: Remote Command Execution Detected",

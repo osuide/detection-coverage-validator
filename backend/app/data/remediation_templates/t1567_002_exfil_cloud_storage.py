@@ -131,6 +131,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
 
@@ -194,7 +197,9 @@ resource "aws_cloudwatch_metric_alarm" "upload_tool_alert" {
   threshold           = 5
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="Cloud Storage Upload Tool Detected",
@@ -287,10 +292,13 @@ Resources:
       MetricName: LargeHTTPSUpload
       Namespace: Security/Exfiltration
       Statistic: Sum
-      Period: 3600
+      Period: 300
       EvaluationPeriods: 1
       Threshold: 1073741824
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
 
@@ -350,11 +358,13 @@ resource "aws_cloudwatch_metric_alarm" "large_upload_alert" {
   metric_name         = "LargeHTTPSUpload"
   namespace           = "Security/Exfiltration"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 1073741824  # 1 GB
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Large HTTPS Upload to Cloud Storage",

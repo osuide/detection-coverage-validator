@@ -131,6 +131,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 2
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
       TreatMissingData: notBreaching""",
@@ -183,7 +186,10 @@ resource "aws_cloudwatch_metric_alarm" "bits_jobs" {
   evaluation_periods  = 1
   threshold           = 2
   comparison_operator = "GreaterThanThreshold"
-  alarm_actions       = [aws_sns_topic.bits_alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.bits_alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",
@@ -282,6 +288,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
       TreatMissingData: notBreaching""",
@@ -334,7 +343,10 @@ resource "aws_cloudwatch_metric_alarm" "bits_events" {
   evaluation_periods  = 1
   threshold           = 5
   comparison_operator = "GreaterThanThreshold"
-  alarm_actions       = [aws_sns_topic.bits_event_alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.bits_event_alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="medium",
@@ -433,6 +445,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 52428800
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
       TreatMissingData: notBreaching""",
@@ -485,7 +500,10 @@ resource "aws_cloudwatch_metric_alarm" "bits_network" {
   evaluation_periods  = 1
   threshold           = 52428800
   comparison_operator = "GreaterThanThreshold"
-  alarm_actions       = [aws_sns_topic.bits_network_alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.bits_network_alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="medium",

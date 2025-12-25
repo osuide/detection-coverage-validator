@@ -133,6 +133,8 @@ Resources:
       Threshold: 20
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic""",
                 terraform_template="""# Detect suspicious HTTP patterns for C2 activity
@@ -184,7 +186,9 @@ resource "aws_cloudwatch_metric_alarm" "http_c2" {
   statistic           = "Sum"
   threshold           = 20
   alarm_description   = "Alert on suspicious HTTP patterns indicative of C2"
-  alarm_actions       = [aws_sns_topic.http_c2_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.http_c2_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Suspicious HTTP C2 Pattern Detected",
@@ -275,6 +279,8 @@ Resources:
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic""",
                 terraform_template="""# Detect HTTP beaconing behaviour via ALB logs
@@ -326,7 +332,9 @@ resource "aws_cloudwatch_metric_alarm" "beaconing" {
   statistic           = "Sum"
   threshold           = 50
   alarm_description   = "Alert on HTTP beaconing behaviour"
-  alarm_actions       = [aws_sns_topic.beaconing_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.beaconing_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="HTTP Beaconing Pattern Detected",
@@ -421,6 +429,8 @@ Resources:
       Threshold: 200
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic""",
                 terraform_template="""# Detect unusual HTTPS connection patterns
@@ -472,7 +482,9 @@ resource "aws_cloudwatch_metric_alarm" "https_anomaly" {
   statistic           = "Sum"
   threshold           = 200
   alarm_description   = "Alert on unusual HTTPS connection patterns"
-  alarm_actions       = [aws_sns_topic.https_anomaly_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.https_anomaly_alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Unusual HTTPS Connection Pattern Detected",

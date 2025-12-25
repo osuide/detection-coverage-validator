@@ -121,10 +121,13 @@ Resources:
       MetricName: DataStagingActivity
       Namespace: Security/T1074
       Statistic: Sum
-      Period: 3600
+      Period: 300
       EvaluationPeriods: 1
       Threshold: 10
       ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
 
@@ -185,11 +188,14 @@ resource "aws_cloudwatch_metric_alarm" "staging_alarm" {
   metric_name         = "DataStagingActivity"
   namespace           = "Security/T1074"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   evaluation_periods  = 1
   threshold           = 10
   comparison_operator = "GreaterThanOrEqualToThreshold"
-  alarm_actions       = [aws_sns_topic.staging_alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.staging_alerts.arn]
 }
 
 resource "aws_sns_topic_policy" "allow_cloudwatch" {
@@ -296,10 +302,13 @@ Resources:
       MetricName: S3StagingUploads
       Namespace: Security/T1074
       Statistic: Sum
-      Period: 3600
+      Period: 300
       EvaluationPeriods: 1
       Threshold: 50
       ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
 
@@ -358,11 +367,14 @@ resource "aws_cloudwatch_metric_alarm" "s3_staging" {
   metric_name         = "S3StagingUploads"
   namespace           = "Security/T1074"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   evaluation_periods  = 1
   threshold           = 50
   comparison_operator = "GreaterThanOrEqualToThreshold"
-  alarm_actions       = [aws_sns_topic.s3_staging_alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.s3_staging_alerts.arn]
 }
 
 resource "aws_sns_topic_policy" "allow_cloudwatch" {

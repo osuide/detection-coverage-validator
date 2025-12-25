@@ -120,10 +120,12 @@ Resources:
       MetricName: CodeCommitBulkAccess
       Namespace: Security/CodeRepositories
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 20
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]
 
   # Detect repository access from unusual locations
@@ -146,10 +148,12 @@ Resources:
       MetricName: CodeCommitExternalAccess
       Namespace: Security/CodeRepositories
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 10
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect anomalous CodeCommit repository access
 
@@ -193,11 +197,13 @@ resource "aws_cloudwatch_metric_alarm" "bulk_repo_access" {
   metric_name         = "CodeCommitBulkAccess"
   namespace           = "Security/CodeRepositories"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 20
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.code_repo_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.code_repo_alerts.arn]
 }
 
 # Detect repository access from unusual locations
@@ -219,11 +225,13 @@ resource "aws_cloudwatch_metric_alarm" "unusual_location" {
   metric_name         = "CodeCommitExternalAccess"
   namespace           = "Security/CodeRepositories"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 10
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.code_repo_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.code_repo_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Anomalous Code Repository Access Detected",
@@ -316,7 +324,9 @@ resource "aws_cloudwatch_metric_alarm" "secrets_enumeration" {
   threshold           = 15
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.secrets_correlation_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.secrets_correlation_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Code Repository and Secrets Access Correlation",

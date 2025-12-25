@@ -119,6 +119,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]
       AlarmDescription: Executable or suspicious file extension detected in email attachment""",
                 terraform_template="""# Detect suspicious email attachments via SES/WorkMail
@@ -169,7 +171,9 @@ resource "aws_cloudwatch_metric_alarm" "suspicious_attachments" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.email_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.email_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Suspicious Email Attachment Detected",
@@ -353,7 +357,9 @@ resource "aws_cloudwatch_metric_alarm" "office_spawn" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.process_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.process_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Office Application Spawned Suspicious Process",

@@ -286,6 +286,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 10
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref BulkAccessAlertTopic""",
                 terraform_template="""# Alert on bulk password store access patterns
@@ -335,7 +338,10 @@ resource "aws_cloudwatch_metric_alarm" "bulk_access" {
   evaluation_periods  = 1
   threshold           = 10
   comparison_operator = "GreaterThanThreshold"
-  alarm_actions       = [aws_sns_topic.bulk_access_alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.bulk_access_alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="Bulk Password Store Access Detected",
@@ -425,6 +431,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref BrowserCredAlertTopic""",
                 terraform_template="""# Detect browser password store access on EC2 instances
@@ -474,7 +483,10 @@ resource "aws_cloudwatch_metric_alarm" "browser_cred_access" {
   evaluation_periods  = 1
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
-  alarm_actions       = [aws_sns_topic.browser_cred_alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.browser_cred_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Browser Password Store Access Detected",
@@ -676,6 +688,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref K8sSecretsAlertTopic""",
                 terraform_template="""# Detect Kubernetes secrets access in EKS
@@ -726,7 +741,10 @@ resource "aws_cloudwatch_metric_alarm" "k8s_secrets" {
   evaluation_periods  = 1
   threshold           = 5
   comparison_operator = "GreaterThanThreshold"
-  alarm_actions       = [aws_sns_topic.k8s_secrets_alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.k8s_secrets_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Kubernetes Secrets Access Detected",

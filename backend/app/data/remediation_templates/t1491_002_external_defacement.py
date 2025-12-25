@@ -338,6 +338,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 1000
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic""",
                 terraform_template="""# AWS: Monitor CloudFront for defacement indicators
@@ -387,7 +390,10 @@ resource "aws_cloudwatch_metric_alarm" "traffic_anomaly" {
   evaluation_periods  = 1
   threshold           = 1000
   comparison_operator = "GreaterThanThreshold"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="CloudFront Unusual Traffic Pattern Detected",
@@ -496,6 +502,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref IntegrityAlertTopic
       TreatMissingData: notBreaching""",
@@ -554,7 +563,10 @@ resource "aws_cloudwatch_metric_alarm" "critical_file_alarm" {
   evaluation_periods  = 1
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
-  alarm_actions       = [aws_sns_topic.integrity_alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.integrity_alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="critical",

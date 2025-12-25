@@ -297,10 +297,12 @@ Resources:
       MetricName: FailedConsoleLogins
       Namespace: Security/InputCapture
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 3
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]
       TreatMissingData: notBreaching""",
                 terraform_template="""# Alert on failed logins followed by success (credential testing pattern)
@@ -349,11 +351,13 @@ resource "aws_cloudwatch_metric_alarm" "failed_logins" {
   metric_name         = "FailedConsoleLogins"
   namespace           = "Security/InputCapture"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 3
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="medium",
@@ -449,6 +453,8 @@ Resources:
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref SNSTopicArn]
       TreatMissingData: notBreaching""",
                 terraform_template="""# Detect unusual session token usage patterns
@@ -488,7 +494,9 @@ resource "aws_cloudwatch_metric_alarm" "session_tokens" {
   threshold           = 50
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [var.sns_topic_arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [var.sns_topic_arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="medium",

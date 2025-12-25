@@ -118,10 +118,12 @@ Resources:
       MetricName: NetworkConfigDiscovery
       Namespace: SecurityDetection
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref NetworkDiscoveryAlertTopic
       TreatMissingData: notBreaching""",
@@ -171,11 +173,13 @@ resource "aws_cloudwatch_metric_alarm" "network_discovery" {
   metric_name         = "NetworkConfigDiscovery"
   namespace           = "SecurityDetection"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 50
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.network_discovery_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.network_discovery_alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="medium",
@@ -267,6 +271,8 @@ Resources:
       Threshold: 30
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref ENIDiscoveryAlertTopic]""",
                 terraform_template="""# AWS: Detect network interface enumeration
 
@@ -314,7 +320,9 @@ resource "aws_cloudwatch_metric_alarm" "eni_discovery" {
   threshold           = 30
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.eni_discovery_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.eni_discovery_alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Network Interface Enumeration Detected",

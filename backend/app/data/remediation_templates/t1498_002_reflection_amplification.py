@@ -118,6 +118,8 @@ Resources:
       Threshold: 5000
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect potential reflection amplification attack sources
 
@@ -157,7 +159,9 @@ resource "aws_cloudwatch_metric_alarm" "amplification_attack" {
   threshold           = 5000
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Potential Reflection Amplification Attack Source Detected",
@@ -341,7 +345,10 @@ resource "aws_cloudwatch_metric_alarm" "ddos_detected" {
     ResourceArn = var.protected_resource_arn
   }
 
-  alarm_actions = [aws_sns_topic.shield_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+
+  alarm_actions [aws_sns_topic.shield_alerts.arn]
 }
 
 # Alert on high attack volume
@@ -361,7 +368,10 @@ resource "aws_cloudwatch_metric_alarm" "attack_volume" {
     ResourceArn = var.protected_resource_arn
   }
 
-  alarm_actions = [aws_sns_topic.shield_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+
+  alarm_actions [aws_sns_topic.shield_alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="AWS Shield: DDoS Attack Detected",

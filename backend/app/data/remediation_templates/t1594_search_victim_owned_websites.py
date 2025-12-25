@@ -109,10 +109,12 @@ Resources:
       MetricName: ReconRequests
       Namespace: Security
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 10
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect web reconnaissance via CloudFront
 
@@ -147,11 +149,13 @@ resource "aws_cloudwatch_metric_alarm" "recon_detection" {
   metric_name         = "ReconRequests"
   namespace           = "Security"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 10
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Website Reconnaissance Detected",
@@ -228,7 +232,9 @@ resource "aws_cloudwatch_metric_alarm" "crawl_detection" {
   threshold           = 30
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Web Crawling Activity Detected",
@@ -377,11 +383,13 @@ resource "aws_cloudwatch_metric_alarm" "form_abuse_detection" {
   metric_name         = "ContactFormSubmissions"
   namespace           = "Security"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 10
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Contact Form Abuse Detected",

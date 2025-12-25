@@ -111,10 +111,12 @@ Resources:
       MetricName: SAMLTokenUsage
       Namespace: Security
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 100
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref SAMLAlertTopic]""",
                 terraform_template="""# Detect forged SAML tokens and anomalous federation
 
@@ -157,11 +159,13 @@ resource "aws_cloudwatch_metric_alarm" "saml_anomaly" {
   metric_name         = "SAMLTokenUsage"
   namespace           = "Security"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 100
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.saml_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.saml_alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="Suspicious SAML Token Activity Detected",
@@ -246,6 +250,8 @@ Resources:
       Threshold: 20
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref FederationAlertTopic]""",
                 terraform_template="""# Detect GetFederationToken abuse
 
@@ -292,7 +298,9 @@ resource "aws_cloudwatch_metric_alarm" "federation_abuse" {
   threshold           = 20
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.federation_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.federation_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Federation Token Abuse Detected",
@@ -373,10 +381,12 @@ Resources:
       MetricName: ConsoleLoginAttempts
       Namespace: Security
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 30
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref SessionAlertTopic]""",
                 terraform_template="""# Detect forged console session cookies
 
@@ -419,11 +429,13 @@ resource "aws_cloudwatch_metric_alarm" "session_anomaly" {
   metric_name         = "ConsoleLoginAttempts"
   namespace           = "Security"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 30
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.session_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.session_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Console Session Anomaly Detected",

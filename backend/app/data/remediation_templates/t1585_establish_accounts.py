@@ -110,10 +110,12 @@ Resources:
       MetricName: NewAccountActivity
       Namespace: Security/AccountAbuse
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect suspicious AWS account creation patterns
 
@@ -149,11 +151,13 @@ resource "aws_cloudwatch_metric_alarm" "account_abuse" {
   metric_name         = "NewAccountActivity"
   namespace           = "Security/AccountAbuse"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 5
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Suspicious AWS Account Activity Detected",
@@ -231,7 +235,9 @@ resource "aws_cloudwatch_metric_alarm" "rapid_provisioning" {
   threshold           = 10
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Rapid Free Tier Resource Provisioning",
@@ -393,10 +399,12 @@ Resources:
       MetricName: IAMUserCreation
       Namespace: Security/AccountAbuse
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect suspicious IAM user creation patterns
 
@@ -431,11 +439,13 @@ resource "aws_cloudwatch_metric_alarm" "rapid_iam_creation" {
   metric_name         = "IAMUserCreation"
   namespace           = "Security/AccountAbuse"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 5
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Suspicious IAM User Creation Activity",

@@ -92,6 +92,8 @@ Resources:
       Threshold: 90
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 12
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]
       Dimensions:
         - Name: InstanceId
@@ -121,7 +123,9 @@ resource "aws_cloudwatch_metric_alarm" "high_cpu" {
   threshold           = 90
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 12  # 1 hour sustained
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Potential Cryptomining Detected",

@@ -112,10 +112,12 @@ Resources:
       MetricName: SuspiciousDNSQueries
       Namespace: Security/Reconnaissance
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Monitor for external reconnaissance indicators
 
@@ -151,11 +153,13 @@ resource "aws_cloudwatch_metric_alarm" "dns_reconnaissance" {
   metric_name         = "SuspiciousDNSQueries"
   namespace           = "Security/Reconnaissance"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 50
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Potential DNS Reconnaissance Detected",

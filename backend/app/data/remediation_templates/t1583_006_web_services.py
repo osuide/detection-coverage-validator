@@ -115,10 +115,12 @@ Resources:
       MetricName: SuspiciousWebServiceAccess
       Namespace: Security/WebServices
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 100
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect suspicious web service access patterns
 
@@ -153,11 +155,13 @@ resource "aws_cloudwatch_metric_alarm" "web_service_abuse" {
   metric_name         = "SuspiciousWebServiceAccess"
   namespace           = "Security/WebServices"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 100
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.web_service_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.web_service_alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Suspicious Web Service Access Detected",
@@ -235,11 +239,13 @@ resource "aws_cloudwatch_metric_alarm" "high_web_service_traffic" {
   metric_name         = "WebServiceConnections"
   namespace           = "Security/Network"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 100000000
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.web_service_traffic.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.web_service_traffic.arn]
 }""",
                 alert_severity="medium",
                 alert_title="High-Volume Web Service Traffic",

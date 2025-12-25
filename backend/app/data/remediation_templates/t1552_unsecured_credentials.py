@@ -294,6 +294,8 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Alert on unusual access to credential storage services
 
@@ -346,7 +348,9 @@ resource "aws_cloudwatch_metric_alarm" "secret_access" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
-  alarm_actions       = [aws_sns_topic.secret_access_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.secret_access_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Unusual Access to Secret Storage",
@@ -550,6 +554,8 @@ Resources:
       Threshold: 100
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref MetadataAbuseTopic]""",
                 terraform_template="""# Detect EC2 metadata service abuse for T1552.005
 
@@ -599,7 +605,9 @@ resource "aws_cloudwatch_metric_alarm" "metadata_abuse" {
   threshold           = 100
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.metadata_abuse.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.metadata_abuse.arn]
 }""",
                 alert_severity="high",
                 alert_title="EC2 Metadata Service Abuse Detected",

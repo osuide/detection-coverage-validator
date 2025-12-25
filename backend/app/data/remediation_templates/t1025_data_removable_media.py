@@ -128,10 +128,13 @@ Resources:
       MetricName: ExternalVolumeAttachment
       Namespace: Security/T1025
       Statistic: Sum
-      Period: 3600
+      Period: 300
       EvaluationPeriods: 1
       Threshold: 5
       ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
 
@@ -192,11 +195,14 @@ resource "aws_cloudwatch_metric_alarm" "volume_attach_alarm" {
   metric_name         = "ExternalVolumeAttachment"
   namespace           = "Security/T1025"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   evaluation_periods  = 1
   threshold           = 5
   comparison_operator = "GreaterThanOrEqualToThreshold"
-  alarm_actions       = [aws_sns_topic.volume_alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.volume_alerts.arn]
 }
 
 resource "aws_sns_topic_policy" "allow_cloudwatch" {
@@ -304,10 +310,13 @@ Resources:
       MetricName: SnapshotImportActivity
       Namespace: Security/T1025
       Statistic: Sum
-      Period: 3600
+      Period: 300
       EvaluationPeriods: 1
       Threshold: 3
       ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
 
@@ -366,11 +375,14 @@ resource "aws_cloudwatch_metric_alarm" "snapshot_import_alarm" {
   metric_name         = "SnapshotImportActivity"
   namespace           = "Security/T1025"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   evaluation_periods  = 1
   threshold           = 3
   comparison_operator = "GreaterThanOrEqualToThreshold"
-  alarm_actions       = [aws_sns_topic.snapshot_alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.snapshot_alerts.arn]
 }
 
 resource "aws_sns_topic_policy" "allow_cloudwatch" {
@@ -476,10 +488,13 @@ Resources:
       MetricName: SSMSessionActivity
       Namespace: Security/T1025
       Statistic: Sum
-      Period: 3600
+      Period: 300
       EvaluationPeriods: 1
       Threshold: 5
       ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AlertTopic
 
@@ -538,11 +553,14 @@ resource "aws_cloudwatch_metric_alarm" "ssm_session_alarm" {
   metric_name         = "SSMSessionActivity"
   namespace           = "Security/T1025"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   evaluation_periods  = 1
   threshold           = 5
   comparison_operator = "GreaterThanOrEqualToThreshold"
-  alarm_actions       = [aws_sns_topic.ssm_alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.ssm_alerts.arn]
 }
 
 resource "aws_sns_topic_policy" "allow_cloudwatch" {

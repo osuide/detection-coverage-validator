@@ -126,6 +126,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref AuthorizedKeysAlertTopic
 
@@ -190,7 +193,10 @@ resource "aws_cloudwatch_metric_alarm" "authorized_keys" {
   evaluation_periods  = 1
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
-  alarm_actions       = [aws_sns_topic.authorized_keys_alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.authorized_keys_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="SSH Authorized Keys File Modified",
@@ -600,6 +606,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref SNSTopicArn""",
                 terraform_template="""# Detect suspicious process execution modifying SSH keys
@@ -662,7 +671,10 @@ resource "aws_cloudwatch_metric_alarm" "ssh_key_modification" {
   evaluation_periods  = 1
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Suspicious SSH Key Modification Process Detected",
@@ -902,10 +914,13 @@ Resources:
       MetricName: SSHPublicKeyAuth
       Namespace: Security/T1098.004
       Statistic: Sum
-      Period: 3600
+      Period: 300
       EvaluationPeriods: 1
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref SNSTopicArn""",
                 terraform_template="""# Correlate SSH key addition with authentication events
@@ -965,11 +980,14 @@ resource "aws_cloudwatch_metric_alarm" "correlated_access" {
   metric_name         = "SSHPublicKeyAuth"
   namespace           = "Security/T1098.004"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   evaluation_periods  = 1
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="SSH Key Added and Immediately Used for Authentication",

@@ -376,10 +376,12 @@ Resources:
       MetricName: SecurityHubEnum
       Namespace: Security
       Statistic: Sum
-      Period: 3600
+      Period: 300
       Threshold: 10
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect Security Hub enumeration
 
@@ -422,11 +424,13 @@ resource "aws_cloudwatch_metric_alarm" "securityhub_enum" {
   metric_name         = "SecurityHubEnum"
   namespace           = "Security"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 10
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_description_template="Security Hub enumeration detected from {userIdentity.arn}.",

@@ -127,6 +127,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 0
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref OfficePersistenceAlertTopic
       TreatMissingData: notBreaching""",
@@ -179,7 +182,10 @@ resource "aws_cloudwatch_metric_alarm" "office_persistence" {
   evaluation_periods  = 1
   threshold           = 0
   comparison_operator = "GreaterThanThreshold"
-  alarm_actions       = [aws_sns_topic.office_persistence_alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.office_persistence_alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",
@@ -292,7 +298,10 @@ resource "aws_cloudwatch_metric_alarm" "m365_macro" {
   evaluation_periods  = 1
   threshold           = 2
   comparison_operator = "GreaterThanThreshold"
-  alarm_actions       = [aws_sns_topic.m365_macro_alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.m365_macro_alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",
@@ -552,7 +561,10 @@ resource "aws_cloudwatch_metric_alarm" "office_registry" {
   evaluation_periods  = 1
   threshold           = 0
   comparison_operator = "GreaterThanThreshold"
-  alarm_actions       = [aws_sns_topic.registry_persistence_alerts.arn]
+  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.registry_persistence_alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",

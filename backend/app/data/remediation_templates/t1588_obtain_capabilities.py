@@ -116,6 +116,8 @@ Resources:
       Threshold: 100
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 2
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect Cobalt Strike beaconing patterns
 
@@ -158,7 +160,9 @@ resource "aws_cloudwatch_metric_alarm" "beacon_detected" {
   threshold           = 100
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="Cobalt Strike Beacon Detected",
@@ -241,6 +245,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect execution of commonly obtained attack tools
 
@@ -282,7 +288,9 @@ resource "aws_cloudwatch_metric_alarm" "tool_detected" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="Suspicious Attack Tool Executed",
@@ -447,11 +455,13 @@ resource "aws_cloudwatch_metric_alarm" "cert_anomaly" {
   metric_name         = "CertificateOperations"
   namespace           = "Security"
   statistic           = "Sum"
-  period              = 3600
+  period              = 300
   threshold           = 5
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Unusual Certificate Activity Detected",

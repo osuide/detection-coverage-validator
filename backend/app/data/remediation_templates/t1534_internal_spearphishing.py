@@ -129,6 +129,9 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 20
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      TreatMissingData: notBreaching
+
       AlarmActions:
         - !Ref InternalPhishingAlertTopic""",
                 terraform_template="""# AWS SES/WorkMail internal spearphishing detection
@@ -181,7 +184,9 @@ resource "aws_cloudwatch_metric_alarm" "unusual_email_volume" {
   threshold           = 20
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.internal_phishing_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.internal_phishing_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="AWS: Unusual Internal Email Sending Pattern Detected",
@@ -279,7 +284,9 @@ resource "aws_cloudwatch_metric_alarm" "suspicious_attachments" {
   threshold           = 0
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.attachment_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.attachment_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="WorkMail: Suspicious Attachment in Internal Email",

@@ -166,6 +166,8 @@ Resources:
       Threshold: 500
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# AWS: Detect DNS anomalies via Route 53 Resolver
 
@@ -237,7 +239,9 @@ resource "aws_cloudwatch_metric_alarm" "high_dns" {
   threshold           = 500
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
 }
 
 data "aws_caller_identity" "current" {}""",

@@ -117,6 +117,8 @@ Resources:
       Threshold: 500000
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref AlertTopic]
       AlarmDescription: Detects potential network flood attacks""",
                 terraform_template="""# Detect network flood attacks via VPC Flow Logs
@@ -166,7 +168,9 @@ resource "aws_cloudwatch_metric_alarm" "network_flood" {
   threshold           = 500000
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.alerts.arn]
   alarm_description   = "Detects potential network flood attacks"
 }""",
                 alert_severity="critical",
@@ -237,6 +241,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref DDoSAlertTopic]
       AlarmDescription: Alert when Shield detects DDoS attack
 
@@ -252,6 +258,8 @@ Resources:
       Threshold: 1000000
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+
       AlarmActions: [!Ref DDoSAlertTopic]
       AlarmDescription: Alert on high DDoS attack volume""",
                 terraform_template="""# Monitor AWS Shield DDoS events
@@ -283,7 +291,9 @@ resource "aws_cloudwatch_metric_alarm" "ddos_detected" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.ddos_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.ddos_alerts.arn]
   alarm_description   = "Alert when Shield detects DDoS attack"
 }
 
@@ -297,7 +307,9 @@ resource "aws_cloudwatch_metric_alarm" "attack_volume" {
   threshold           = 1000000
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  alarm_actions       = [aws_sns_topic.ddos_alerts.arn]
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions [aws_sns_topic.ddos_alerts.arn]
   alarm_description   = "Alert on high DDoS attack volume"
 }""",
                 alert_severity="critical",
