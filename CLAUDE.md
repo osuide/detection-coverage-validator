@@ -44,6 +44,75 @@ Every MITRE ATT&CK technique template should provide:
 - Both in simplified 3-step format with clear comments
 - CloudWatch/Cloud Logging queries where applicable
 
+### EventBridge Template Best Practices
+
+When creating EventBridge-based detection templates, follow the optimised pattern:
+
+**Required Components:**
+1. **SNS Topic** with `kms_master_key_id = "alias/aws/sns"` for encryption
+2. **Dead Letter Queue** (SQS) with `message_retention_seconds = 1209600` (14 days)
+3. **Retry Policy** with `maximum_retry_attempts = 8` and `maximum_event_age_in_seconds = 3600`
+4. **Scoped SNS Topic Policy** with `AWS:SourceAccount` and `aws:SourceArn` conditions
+5. **Input Transformer** for human-readable alert format
+6. **`data "aws_caller_identity" "current" {}`** for dynamic account ID
+
+**Example Terraform Pattern:**
+```hcl
+data "aws_caller_identity" "current" {}
+
+resource "aws_sns_topic" "alerts" {
+  name              = "${var.name_prefix}-alerts"
+  kms_master_key_id = "alias/aws/sns"
+}
+
+resource "aws_sqs_queue" "dlq" {
+  name                      = "${var.name_prefix}-dlq"
+  message_retention_seconds = 1209600
+}
+
+resource "aws_cloudwatch_event_target" "to_sns" {
+  rule      = aws_cloudwatch_event_rule.detection.name
+  target_id = "SNSTarget"
+  arn       = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
+
+  input_transformer {
+    input_paths = { ... }
+    input_template = "..."
+  }
+}
+
+resource "aws_sns_topic_policy" "allow_eventbridge" {
+  arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = { "AWS:SourceAccount" = data.aws_caller_identity.current.account_id }
+        ArnEquals    = { "aws:SourceArn" = aws_cloudwatch_event_rule.detection.arn }
+      }
+    }]
+  })
+}
+```
+
+**CloudFormation Equivalent:**
+- Add `TopicPolicy` resource with `AWS::SNS::TopicPolicy`
+- Use `!Ref AWS::AccountId` for account scoping
+- Use `!GetAtt EventRule.Arn` for rule ARN scoping
+
 ## Key Components
 
 - **Backend**: FastAPI with PostgreSQL, located in `/backend`
@@ -230,6 +299,15 @@ resource "aws_cognito_identity_provider" "google" {
 ## Technical Debt / Backlog
 
 ### Remediation Templates
+
+#### COMPLETED: Recent Improvements (December 2025)
+
+| Improvement | Templates | Commit | Status |
+|-------------|-----------|--------|--------|
+| SNS encryption (KMS) | 253 | `cd9f88a` | DONE |
+| Alert fatigue fixes | 236 | `ed7080b` | DONE |
+| EventBridge pattern upgrades | 7 techniques | `05946ab`, `6385324`, `8cfcc2b` | DONE |
+| Missing SNS topic policies | 18 | `c0aa7dd` | DONE |
 
 #### LOW: Add `treat_missing_data` to CloudWatch Alarms (152 templates)
 
