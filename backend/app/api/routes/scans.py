@@ -18,7 +18,11 @@ from app.services.scan_limit_service import ScanLimitService
 router = APIRouter()
 
 
-@router.get("", response_model=ScanListResponse)
+@router.get(
+    "",
+    response_model=ScanListResponse,
+    dependencies=[Depends(require_scope("read:scans"))],
+)
 async def list_scans(
     cloud_account_id: Optional[UUID] = None,
     status: Optional[ScanStatus] = None,
@@ -27,7 +31,10 @@ async def list_scans(
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
-    """List scan jobs."""
+    """List scan jobs.
+
+    API keys require 'read:scans' scope.
+    """
     # Filter by organization through cloud_account
     query = (
         select(Scan)
@@ -137,13 +144,20 @@ async def create_scan(
     return scan
 
 
-@router.get("/{scan_id}", response_model=ScanResponse)
+@router.get(
+    "/{scan_id}",
+    response_model=ScanResponse,
+    dependencies=[Depends(require_scope("read:scans"))],
+)
 async def get_scan(
     scan_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get a specific scan job."""
+    """Get a specific scan job.
+
+    API keys require 'read:scans' scope.
+    """
     result = await db.execute(
         select(Scan)
         .join(CloudAccount, Scan.cloud_account_id == CloudAccount.id)

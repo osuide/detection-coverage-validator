@@ -48,7 +48,11 @@ logger = structlog.get_logger()
 router = APIRouter()
 
 
-@router.get("", response_model=list[CloudAccountResponse])
+@router.get(
+    "",
+    response_model=list[CloudAccountResponse],
+    dependencies=[Depends(require_scope("read:accounts"))],
+)
 async def list_accounts(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
@@ -59,7 +63,7 @@ async def list_accounts(
     """
     List cloud accounts for the authenticated user's organisation.
 
-    Requires authentication. Returns only accounts the user has access to.
+    Requires authentication. API keys require 'read:accounts' scope.
     """
     # Security: Always require organisation context to prevent cross-org data leaks
     if not auth.organization:
@@ -195,13 +199,20 @@ async def create_account(
     return account
 
 
-@router.get("/{account_id}", response_model=CloudAccountResponse)
+@router.get(
+    "/{account_id}",
+    response_model=CloudAccountResponse,
+    dependencies=[Depends(require_scope("read:accounts"))],
+)
 async def get_account(
     account_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get a specific cloud account."""
+    """Get a specific cloud account.
+
+    API keys require 'read:accounts' scope.
+    """
     query = select(CloudAccount).where(CloudAccount.id == account_id)
 
     # Filter by organization if authenticated

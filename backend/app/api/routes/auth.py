@@ -204,6 +204,51 @@ def get_client_ip(request: Request) -> Optional[str]:
     return request.client.host if request.client else None
 
 
+def validate_password_policy(
+    password: str,
+    security_settings: Optional[OrganizationSecuritySettings],
+) -> Optional[str]:
+    """Validate password against organisation security policy.
+
+    Returns error message if validation fails, None if password is valid.
+    """
+    if not security_settings:
+        # No org security settings - use sensible defaults
+        min_length = 8
+        require_uppercase = True
+        require_lowercase = True
+        require_number = True
+        require_special = False
+    else:
+        min_length = security_settings.password_min_length
+        require_uppercase = security_settings.password_require_uppercase
+        require_lowercase = security_settings.password_require_lowercase
+        require_number = security_settings.password_require_number
+        require_special = security_settings.password_require_special
+
+    errors = []
+
+    if len(password) < min_length:
+        errors.append(f"at least {min_length} characters")
+
+    if require_uppercase and not re.search(r"[A-Z]", password):
+        errors.append("an uppercase letter")
+
+    if require_lowercase and not re.search(r"[a-z]", password):
+        errors.append("a lowercase letter")
+
+    if require_number and not re.search(r"\d", password):
+        errors.append("a number")
+
+    if require_special and not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
+        errors.append("a special character")
+
+    if errors:
+        return f"Password must contain {', '.join(errors)}"
+
+    return None
+
+
 async def get_current_user(
     request: Request,
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
@@ -874,7 +919,10 @@ async def change_password(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Change current user's password."""
+    """Change current user's password.
+
+    Enforces organisation password policy if configured.
+    """
     auth_service = AuthService(db)
 
     # Verify current password
@@ -884,6 +932,25 @@ async def change_password(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Current password is incorrect",
+        )
+
+    # Get user's primary organisation security settings for password policy
+    orgs = await auth_service.get_user_organizations(current_user.id)
+    org_security = None
+    if orgs:
+        result = await db.execute(
+            select(OrganizationSecuritySettings).where(
+                OrganizationSecuritySettings.organization_id == orgs[0].id
+            )
+        )
+        org_security = result.scalar_one_or_none()
+
+    # Validate password against organisation policy
+    policy_error = validate_password_policy(body.new_password, org_security)
+    if policy_error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=policy_error,
         )
 
     # Check if new password has been exposed in data breaches (HIBP)

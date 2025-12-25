@@ -10,7 +10,7 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
-from app.core.security import AuthContext, get_auth_context
+from app.core.security import AuthContext, get_auth_context, require_scope
 from app.models.cloud_account import CloudAccount
 from app.models.detection import Detection, DetectionType, DetectionStatus
 from app.models.mapping import DetectionMapping
@@ -79,7 +79,11 @@ class BulkValidationResponse(BaseModel):
     errors: list[dict]
 
 
-@router.get("", response_model=DetectionListResponse)
+@router.get(
+    "",
+    response_model=DetectionListResponse,
+    dependencies=[Depends(require_scope("read:detections"))],
+)
 async def list_detections(
     cloud_account_id: Optional[UUID] = None,
     detection_type: Optional[DetectionType] = None,
@@ -91,7 +95,10 @@ async def list_detections(
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
-    """List detections with optional filters."""
+    """List detections with optional filters.
+
+    API keys require 'read:detections' scope.
+    """
     # Filter detections by organization through cloud_account
     query = (
         select(Detection)
@@ -213,13 +220,19 @@ async def get_detection(
     )
 
 
-@router.get("/{detection_id}/mappings")
+@router.get(
+    "/{detection_id}/mappings",
+    dependencies=[Depends(require_scope("read:detections"))],
+)
 async def get_detection_mappings(
     detection_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get technique mappings for a detection."""
+    """Get technique mappings for a detection.
+
+    API keys require 'read:detections' scope.
+    """
     # Verify detection exists and belongs to user's organization
     result = await db.execute(
         select(Detection)
