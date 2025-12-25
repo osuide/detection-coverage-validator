@@ -65,100 +65,275 @@ TEMPLATE = RemediationTemplate(
         DetectionStrategy(
             strategy_id="t1543-aws-ecs",
             name="AWS ECS Task Definition Modification Detection",
-            description="Detect modifications to ECS task definitions that could establish persistence via system processes.",
-            detection_type=DetectionType.CLOUDWATCH_QUERY,
-            aws_service="cloudwatch",
+            description=(
+                "Detect modifications to ECS task definitions in near real-time via EventBridge. "
+                "Every task definition change is security-critical and triggers an immediate alert."
+            ),
+            detection_type=DetectionType.EVENTBRIDGE_RULE,
+            aws_service="eventbridge",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query="""fields @timestamp, eventName, userIdentity.principalId, requestParameters.taskDefinition, requestParameters.containerDefinitions.0.command
-| filter eventSource = "ecs.amazonaws.com"
-| filter eventName = "RegisterTaskDefinition" or eventName = "UpdateService"
-| filter requestParameters.containerDefinitions.0.command like /systemd|init|cron|service/
-| sort @timestamp desc""",
+                event_pattern={
+                    "source": ["aws.ecs"],
+                    "detail-type": ["AWS API Call via CloudTrail"],
+                    "detail": {
+                        "eventSource": ["ecs.amazonaws.com"],
+                        "eventName": ["RegisterTaskDefinition", "UpdateService"],
+                    },
+                },
                 cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
-Description: Detect ECS task definition modifications for persistence
+Description: Detect ECS task definition modifications (T1543)
 
 Parameters:
-  CloudTrailLogGroup:
-    Type: String
-    Description: CloudTrail log group name
   AlertEmail:
     Type: String
-    Description: Email for alerts
+    Description: Email for security alerts
 
 Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      TopicName: t1543-ecs-task-alerts
       KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
-  # Detect task definition modifications
-  TaskDefModificationFilter:
-    Type: AWS::Logs::MetricFilter
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
     Properties:
-      LogGroupName: !Ref CloudTrailLogGroup
-      FilterPattern: '{ ($.eventName = "RegisterTaskDefinition") || ($.eventName = "UpdateService") }'
-      MetricTransformations:
-        - MetricName: ECSTaskDefinitionChanges
-          MetricNamespace: Security
-          MetricValue: "1"
+      QueueName: t1543-ecs-task-dlq
+      MessageRetentionPeriod: 1209600
 
-  TaskDefModificationAlarm:
-    Type: AWS::CloudWatch::Alarm
+  ECSTaskRule:
+    Type: AWS::Events::Rule
     Properties:
-      AlarmName: SuspiciousECSTaskDefModification
-      MetricName: ECSTaskDefinitionChanges
-      Namespace: Security
-      Statistic: Sum
-      Period: 300
-      Threshold: 3
-      ComparisonOperator: GreaterThanThreshold
-      EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]""",
-                terraform_template="""# Detect ECS task definition modifications for persistence
+      Name: t1543-ecs-task-modification
+      Description: Detect ECS task definition modifications (T1543)
+      State: ENABLED
+      EventPattern:
+        source:
+          - aws.ecs
+        detail-type:
+          - AWS API Call via CloudTrail
+        detail:
+          eventSource:
+            - ecs.amazonaws.com
+          eventName:
+            - RegisterTaskDefinition
+            - UpdateService
+      Targets:
+        - Id: SNSTarget
+          Arn: !Ref AlertTopic
+          DeadLetterConfig:
+            Arn: !GetAtt DeadLetterQueue.Arn
+          RetryPolicy:
+            MaximumEventAgeInSeconds: 3600
+            MaximumRetryAttempts: 8
+          InputTransformer:
+            InputPathsMap:
+              time: $.time
+              account: $.account
+              region: $.detail.awsRegion
+              eventName: $.detail.eventName
+              actor: $.detail.userIdentity.arn
+              sourceIp: $.detail.sourceIPAddress
+              taskDef: $.detail.requestParameters.taskDefinition
+              family: $.detail.requestParameters.family
+            InputTemplate: |
+              "ALERT: ECS Task Definition Modified (T1543)"
+              "time=<time>"
+              "account=<account> region=<region>"
+              "event=<eventName>"
+              "actor=<actor>"
+              "source_ip=<sourceIp>"
+              "task_definition=<taskDef>"
+              "family=<family>"
 
-variable "cloudtrail_log_group" { type = string }
-variable "alert_email" { type = string }
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref AlertTopic
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowEventBridgePublishScoped
+            Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt ECSTaskRule.Arn
 
-resource "aws_sns_topic" "alerts" {
-  name = "ecs-task-modification-alerts"
+  DLQPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref DeadLetterQueue
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt DeadLetterQueue.Arn
+
+Outputs:
+  AlertTopicArn:
+    Description: SNS topic for ECS task alerts
+    Value: !Ref AlertTopic
+  EventRuleArn:
+    Description: EventBridge rule ARN
+    Value: !GetAtt ECSTaskRule.Arn""",
+                terraform_template="""# Detect ECS task definition modifications (T1543)
+# Uses EventBridge for near real-time detection
+# Every task definition change triggers an immediate alert
+
+variable "name_prefix" {
+  type        = string
+  default     = "t1543-ecs-task"
+  description = "Prefix for resource names"
+}
+
+variable "alert_email" {
+  type        = string
+  description = "Email for security alerts (SNS subscription confirmation required)"
+}
+
+data "aws_caller_identity" "current" {}
+
+# SNS topic for alerts
+resource "aws_sns_topic" "ecs_task_alerts" {
+  name              = "${var.name_prefix}-alerts"
+  display_name      = "ECS Task Definition Alerts"
   kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
-  topic_arn = aws_sns_topic.alerts.arn
+  topic_arn = aws_sns_topic.ecs_task_alerts.arn
   protocol  = "email"
   endpoint  = var.alert_email
 }
 
-# Metric filter for task definition changes
-resource "aws_cloudwatch_log_metric_filter" "task_def_mod" {
-  name           = "ecs-task-definition-changes"
-  log_group_name = var.cloudtrail_log_group
-  pattern        = "{ ($.eventName = RegisterTaskDefinition) || ($.eventName = UpdateService) }"
+# EventBridge rule: detect ECS task definition modifications
+resource "aws_cloudwatch_event_rule" "ecs_task_mod" {
+  name        = "${var.name_prefix}-modification"
+  description = "Detect ECS task definition modifications (T1543)"
 
-  metric_transformation {
-    name      = "ECSTaskDefinitionChanges"
-    namespace = "Security"
-    value     = "1"
+  event_pattern = jsonencode({
+    source        = ["aws.ecs"]
+    "detail-type" = ["AWS API Call via CloudTrail"]
+    detail = {
+      eventSource = ["ecs.amazonaws.com"]
+      eventName   = ["RegisterTaskDefinition", "UpdateService"]
+    }
+  })
+}
+
+# DLQ for delivery failures (14 day retention)
+resource "aws_sqs_queue" "ecs_task_dlq" {
+  name                      = "${var.name_prefix}-dlq"
+  message_retention_seconds = 1209600
+}
+
+# Route to SNS with input transformer for human-readable alerts
+resource "aws_cloudwatch_event_target" "ecs_task_to_sns" {
+  rule      = aws_cloudwatch_event_rule.ecs_task_mod.name
+  target_id = "SNSTarget"
+  arn       = aws_sns_topic.ecs_task_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.ecs_task_dlq.arn
+  }
+
+  input_transformer {
+    input_paths = {
+      time      = "$.time"
+      account   = "$.account"
+      region    = "$.detail.awsRegion"
+      eventName = "$.detail.eventName"
+      actor     = "$.detail.userIdentity.arn"
+      sourceIp  = "$.detail.sourceIPAddress"
+      taskDef   = "$.detail.requestParameters.taskDefinition"
+      family    = "$.detail.requestParameters.family"
+    }
+
+    input_template = <<-EOT
+"ALERT: ECS Task Definition Modified (T1543)
+time=<time>
+account=<account> region=<region>
+event=<eventName>
+actor=<actor>
+source_ip=<sourceIp>
+task_definition=<taskDef>
+family=<family>"
+EOT
   }
 }
 
-# Alert on suspicious modifications
-resource "aws_cloudwatch_metric_alarm" "task_def_mod" {
-  alarm_name          = "SuspiciousECSTaskDefModification"
-  comparison_operator = "GreaterThanThreshold"
-  evaluation_periods  = 1
-  metric_name         = "ECSTaskDefinitionChanges"
-  namespace           = "Security"
-  period              = 300
-  statistic           = "Sum"
-  threshold           = 3
-  alarm_actions       = [aws_sns_topic.alerts.arn]
-  alarm_description   = "Detects suspicious ECS task definition modifications"
+# SNS topic policy with scoped conditions
+resource "aws_sns_topic_policy" "allow_eventbridge_publish" {
+  arn = aws_sns_topic.ecs_task_alerts.arn
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowEventBridgePublishScoped"
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.ecs_task_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.ecs_task_mod.arn
+        }
+      }
+    }]
+  })
+}
+
+# Allow EventBridge to send to DLQ
+resource "aws_sqs_queue_policy" "ecs_task_dlq" {
+  queue_url = aws_sqs_queue.ecs_task_dlq.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.ecs_task_dlq.arn
+    }]
+  })
+}
+
+output "alert_topic_arn" {
+  description = "SNS topic for ECS task alerts"
+  value       = aws_sns_topic.ecs_task_alerts.arn
+}
+
+output "event_rule_arn" {
+  description = "EventBridge rule ARN"
+  value       = aws_cloudwatch_event_rule.ecs_task_mod.arn
+}
+
+output "dlq_url" {
+  description = "Dead letter queue URL for failed deliveries"
+  value       = aws_sqs_queue.ecs_task_dlq.url
 }""",
                 alert_severity="high",
                 alert_title="Suspicious ECS Task Definition Modification",
@@ -184,107 +359,292 @@ resource "aws_cloudwatch_metric_alarm" "task_def_mod" {
             false_positive_tuning="Whitelist authorised CI/CD pipelines and deployment roles",
             detection_coverage="75% - catches task definition modifications",
             evasion_considerations="Attackers may use stolen authorised credentials or make incremental changes",
-            implementation_effort=EffortLevel.MEDIUM,
-            implementation_time="1-2 hours",
-            estimated_monthly_cost="$5-15",
-            prerequisites=["CloudTrail enabled", "CloudWatch Logs Insights"],
+            implementation_effort=EffortLevel.LOW,
+            implementation_time="20 minutes",
+            estimated_monthly_cost="$1-3",
+            prerequisites=["CloudTrail enabled"],
         ),
         DetectionStrategy(
             strategy_id="t1543-aws-lambda",
             name="AWS Lambda Function Modification Detection",
-            description="Detect modifications to Lambda functions that could be used for persistent execution.",
-            detection_type=DetectionType.CLOUDWATCH_QUERY,
-            aws_service="cloudwatch",
+            description=(
+                "Detect modifications to Lambda functions in near real-time via EventBridge. "
+                "Every Lambda code or configuration change triggers an immediate alert."
+            ),
+            detection_type=DetectionType.EVENTBRIDGE_RULE,
+            aws_service="eventbridge",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                query="""fields @timestamp, eventName, userIdentity.principalId, requestParameters.functionName, responseElements.functionArn
-| filter eventSource = "lambda.amazonaws.com"
-| filter eventName = "UpdateFunctionCode20150331v2" or eventName = "UpdateFunctionConfiguration20150331v2" or eventName = "CreateEventSourceMapping20150331"
-| sort @timestamp desc""",
+                event_pattern={
+                    "source": ["aws.lambda"],
+                    "detail-type": ["AWS API Call via CloudTrail"],
+                    "detail": {
+                        "eventSource": ["lambda.amazonaws.com"],
+                        "eventName": [
+                            "UpdateFunctionCode20150331v2",
+                            "UpdateFunctionConfiguration20150331v2",
+                            "CreateEventSourceMapping20150331",
+                        ],
+                    },
+                },
                 cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
-Description: Detect Lambda function modifications for persistence
+Description: Detect Lambda function modifications (T1543)
 
 Parameters:
-  CloudTrailLogGroup:
-    Type: String
-    Description: CloudTrail log group name
   AlertEmail:
     Type: String
-    Description: Email for alerts
+    Description: Email for security alerts
 
 Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      TopicName: t1543-lambda-alerts
       KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
-  # Detect Lambda function modifications
-  LambdaModificationFilter:
-    Type: AWS::Logs::MetricFilter
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
     Properties:
-      LogGroupName: !Ref CloudTrailLogGroup
-      FilterPattern: '{ ($.eventName = "UpdateFunctionCode20150331v2") || ($.eventName = "UpdateFunctionConfiguration20150331v2") || ($.eventName = "CreateEventSourceMapping20150331") }'
-      MetricTransformations:
-        - MetricName: LambdaFunctionModifications
-          MetricNamespace: Security
-          MetricValue: "1"
+      QueueName: t1543-lambda-dlq
+      MessageRetentionPeriod: 1209600
 
-  LambdaModificationAlarm:
-    Type: AWS::CloudWatch::Alarm
+  LambdaRule:
+    Type: AWS::Events::Rule
     Properties:
-      AlarmName: SuspiciousLambdaModification
-      MetricName: LambdaFunctionModifications
-      Namespace: Security
-      Statistic: Sum
-      Period: 300
-      Threshold: 5
-      ComparisonOperator: GreaterThanThreshold
-      EvaluationPeriods: 1
-      AlarmActions: [!Ref AlertTopic]""",
-                terraform_template="""# Detect Lambda function modifications for persistence
+      Name: t1543-lambda-modification
+      Description: Detect Lambda function modifications (T1543)
+      State: ENABLED
+      EventPattern:
+        source:
+          - aws.lambda
+        detail-type:
+          - AWS API Call via CloudTrail
+        detail:
+          eventSource:
+            - lambda.amazonaws.com
+          eventName:
+            - UpdateFunctionCode20150331v2
+            - UpdateFunctionConfiguration20150331v2
+            - CreateEventSourceMapping20150331
+      Targets:
+        - Id: SNSTarget
+          Arn: !Ref AlertTopic
+          DeadLetterConfig:
+            Arn: !GetAtt DeadLetterQueue.Arn
+          RetryPolicy:
+            MaximumEventAgeInSeconds: 3600
+            MaximumRetryAttempts: 8
+          InputTransformer:
+            InputPathsMap:
+              time: $.time
+              account: $.account
+              region: $.detail.awsRegion
+              eventName: $.detail.eventName
+              actor: $.detail.userIdentity.arn
+              sourceIp: $.detail.sourceIPAddress
+              functionName: $.detail.requestParameters.functionName
+              runtime: $.detail.requestParameters.runtime
+            InputTemplate: |
+              "ALERT: Lambda Function Modified (T1543)"
+              "time=<time>"
+              "account=<account> region=<region>"
+              "event=<eventName>"
+              "actor=<actor>"
+              "source_ip=<sourceIp>"
+              "function=<functionName>"
+              "runtime=<runtime>"
 
-variable "cloudtrail_log_group" { type = string }
-variable "alert_email" { type = string }
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref AlertTopic
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowEventBridgePublishScoped
+            Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt LambdaRule.Arn
 
-resource "aws_sns_topic" "alerts" {
-  name = "lambda-modification-alerts"
+  DLQPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref DeadLetterQueue
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt DeadLetterQueue.Arn
+
+Outputs:
+  AlertTopicArn:
+    Description: SNS topic for Lambda alerts
+    Value: !Ref AlertTopic
+  EventRuleArn:
+    Description: EventBridge rule ARN
+    Value: !GetAtt LambdaRule.Arn""",
+                terraform_template="""# Detect Lambda function modifications (T1543)
+# Uses EventBridge for near real-time detection
+# Every Lambda change triggers an immediate alert
+
+variable "name_prefix" {
+  type        = string
+  default     = "t1543-lambda"
+  description = "Prefix for resource names"
+}
+
+variable "alert_email" {
+  type        = string
+  description = "Email for security alerts (SNS subscription confirmation required)"
+}
+
+data "aws_caller_identity" "current" {}
+
+# SNS topic for alerts
+resource "aws_sns_topic" "lambda_alerts" {
+  name              = "${var.name_prefix}-alerts"
+  display_name      = "Lambda Modification Alerts"
   kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "email" {
-  topic_arn = aws_sns_topic.alerts.arn
+  topic_arn = aws_sns_topic.lambda_alerts.arn
   protocol  = "email"
   endpoint  = var.alert_email
 }
 
-# Metric filter for Lambda modifications
-resource "aws_cloudwatch_log_metric_filter" "lambda_mod" {
-  name           = "lambda-function-modifications"
-  log_group_name = var.cloudtrail_log_group
-  pattern        = "{ ($.eventName = UpdateFunctionCode20150331v2) || ($.eventName = UpdateFunctionConfiguration20150331v2) || ($.eventName = CreateEventSourceMapping20150331) }"
+# EventBridge rule: detect Lambda modifications
+resource "aws_cloudwatch_event_rule" "lambda_mod" {
+  name        = "${var.name_prefix}-modification"
+  description = "Detect Lambda function modifications (T1543)"
 
-  metric_transformation {
-    name      = "LambdaFunctionModifications"
-    namespace = "Security"
-    value     = "1"
+  event_pattern = jsonencode({
+    source        = ["aws.lambda"]
+    "detail-type" = ["AWS API Call via CloudTrail"]
+    detail = {
+      eventSource = ["lambda.amazonaws.com"]
+      eventName = [
+        "UpdateFunctionCode20150331v2",
+        "UpdateFunctionConfiguration20150331v2",
+        "CreateEventSourceMapping20150331"
+      ]
+    }
+  })
+}
+
+# DLQ for delivery failures (14 day retention)
+resource "aws_sqs_queue" "lambda_dlq" {
+  name                      = "${var.name_prefix}-dlq"
+  message_retention_seconds = 1209600
+}
+
+# Route to SNS with input transformer for human-readable alerts
+resource "aws_cloudwatch_event_target" "lambda_to_sns" {
+  rule      = aws_cloudwatch_event_rule.lambda_mod.name
+  target_id = "SNSTarget"
+  arn       = aws_sns_topic.lambda_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.lambda_dlq.arn
+  }
+
+  input_transformer {
+    input_paths = {
+      time         = "$.time"
+      account      = "$.account"
+      region       = "$.detail.awsRegion"
+      eventName    = "$.detail.eventName"
+      actor        = "$.detail.userIdentity.arn"
+      sourceIp     = "$.detail.sourceIPAddress"
+      functionName = "$.detail.requestParameters.functionName"
+      runtime      = "$.detail.requestParameters.runtime"
+    }
+
+    input_template = <<-EOT
+"ALERT: Lambda Function Modified (T1543)
+time=<time>
+account=<account> region=<region>
+event=<eventName>
+actor=<actor>
+source_ip=<sourceIp>
+function=<functionName>
+runtime=<runtime>"
+EOT
   }
 }
 
-# Alert on suspicious Lambda modifications
-resource "aws_cloudwatch_metric_alarm" "lambda_mod" {
-  alarm_name          = "SuspiciousLambdaModification"
-  comparison_operator = "GreaterThanThreshold"
-  evaluation_periods  = 1
-  metric_name         = "LambdaFunctionModifications"
-  namespace           = "Security"
-  period              = 300
-  statistic           = "Sum"
-  threshold           = 5
-  alarm_actions       = [aws_sns_topic.alerts.arn]
-  alarm_description   = "Detects suspicious Lambda function modifications"
+# SNS topic policy with scoped conditions
+resource "aws_sns_topic_policy" "allow_eventbridge_publish" {
+  arn = aws_sns_topic.lambda_alerts.arn
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowEventBridgePublishScoped"
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.lambda_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.lambda_mod.arn
+        }
+      }
+    }]
+  })
+}
+
+# Allow EventBridge to send to DLQ
+resource "aws_sqs_queue_policy" "lambda_dlq" {
+  queue_url = aws_sqs_queue.lambda_dlq.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.lambda_dlq.arn
+    }]
+  })
+}
+
+output "alert_topic_arn" {
+  description = "SNS topic for Lambda alerts"
+  value       = aws_sns_topic.lambda_alerts.arn
+}
+
+output "event_rule_arn" {
+  description = "EventBridge rule ARN"
+  value       = aws_cloudwatch_event_rule.lambda_mod.arn
+}
+
+output "dlq_url" {
+  description = "Dead letter queue URL for failed deliveries"
+  value       = aws_sqs_queue.lambda_dlq.url
 }""",
                 alert_severity="high",
                 alert_title="Suspicious Lambda Function Modification",
@@ -308,12 +668,12 @@ resource "aws_cloudwatch_metric_alarm" "lambda_mod" {
             ),
             estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
             false_positive_tuning="Whitelist known deployment services and CI/CD tools",
-            detection_coverage="80% - catches Lambda modifications and event mappings",
+            detection_coverage="95% - catches all Lambda modifications via CloudTrail",
             evasion_considerations="Attackers may use existing event sources or modify functions slowly",
             implementation_effort=EffortLevel.LOW,
-            implementation_time="1 hour",
-            estimated_monthly_cost="$5-10",
-            prerequisites=["CloudTrail enabled", "Lambda execution logs enabled"],
+            implementation_time="20 minutes",
+            estimated_monthly_cost="$1-3",
+            prerequisites=["CloudTrail enabled"],
         ),
         DetectionStrategy(
             strategy_id="t1543-aws-eks",
