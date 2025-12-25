@@ -29,7 +29,11 @@ logger = structlog.get_logger()
 router = APIRouter()
 
 
-@router.get("", response_model=AlertConfigListResponse)
+@router.get(
+    "",
+    response_model=AlertConfigListResponse,
+    dependencies=[Depends(require_scope("read:alerts"))],
+)
 async def list_alerts(
     cloud_account_id: Optional[UUID] = None,
     alert_type: Optional[str] = None,
@@ -130,7 +134,11 @@ async def create_alert(
     return alert
 
 
-@router.get("/{alert_id}", response_model=AlertConfigResponse)
+@router.get(
+    "/{alert_id}",
+    response_model=AlertConfigResponse,
+    dependencies=[Depends(require_scope("read:alerts"))],
+)
 async def get_alert(
     alert_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
@@ -219,7 +227,11 @@ async def delete_alert(
     await db.commit()
 
 
-@router.post("/{alert_id}/activate", response_model=AlertConfigResponse)
+@router.post(
+    "/{alert_id}/activate",
+    response_model=AlertConfigResponse,
+    dependencies=[Depends(require_scope("write:alerts"))],
+)
 async def activate_alert(
     alert_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
@@ -243,7 +255,11 @@ async def activate_alert(
     return alert
 
 
-@router.post("/{alert_id}/deactivate", response_model=AlertConfigResponse)
+@router.post(
+    "/{alert_id}/deactivate",
+    response_model=AlertConfigResponse,
+    dependencies=[Depends(require_scope("write:alerts"))],
+)
 async def deactivate_alert(
     alert_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
@@ -267,7 +283,10 @@ async def deactivate_alert(
     return alert
 
 
-@router.post("/{alert_id}/test")
+@router.post(
+    "/{alert_id}/test",
+    dependencies=[Depends(require_scope("write:alerts"))],
+)
 async def test_alert(
     alert_id: UUID,
     request: TestAlertRequest,
@@ -332,7 +351,11 @@ async def test_alert(
 # Alert History endpoints
 
 
-@router.get("/history/", response_model=AlertHistoryListResponse)
+@router.get(
+    "/history/",
+    response_model=AlertHistoryListResponse,
+    dependencies=[Depends(require_scope("read:alerts"))],
+)
 async def list_alert_history(
     cloud_account_id: Optional[UUID] = None,
     alert_config_id: Optional[UUID] = None,
@@ -386,7 +409,11 @@ async def list_alert_history(
     )
 
 
-@router.post("/history/{history_id}/resolve", response_model=AlertHistoryResponse)
+@router.post(
+    "/history/{history_id}/resolve",
+    response_model=AlertHistoryResponse,
+    dependencies=[Depends(require_scope("write:alerts"))],
+)
 async def resolve_alert(
     history_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
