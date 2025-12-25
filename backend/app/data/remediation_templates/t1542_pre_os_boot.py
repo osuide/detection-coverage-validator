@@ -178,6 +178,19 @@ Resources:
 variable "alert_email" {
   type        = string
   description = "Email for boot integrity alerts"
+
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref AlertTopic
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
 }
 
 # SNS topic for alerts
@@ -228,6 +241,20 @@ resource "aws_cloudwatch_event_target" "lambda" {
   rule      = aws_cloudwatch_event_rule.instance_launch.name
   target_id = "VerifyBoot"
   arn       = aws_lambda_function.verify_boot.arn
+}
+
+# Allow EventBridge to publish to SNS
+resource "aws_sns_topic_policy" "allow_eventbridge" {
+  arn = aws_sns_topic.boot_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.boot_alerts.arn
+    }]
+  })
 }
 
 # Lambda execution role

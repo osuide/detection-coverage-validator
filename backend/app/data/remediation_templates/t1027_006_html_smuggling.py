@@ -237,6 +237,19 @@ Resources:
                 terraform_template="""# Configure GuardDuty for HTML smuggling detection
 
 variable "s3_bucket_arn" { type = string }
+
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref AlertTopic
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
 variable "alert_email" { type = string }
 
 resource "aws_sns_topic" "alerts" {

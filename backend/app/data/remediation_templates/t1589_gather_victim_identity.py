@@ -530,6 +530,20 @@ resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.public_exposure.name
   target_id = "SendToSNS"
   arn       = aws_sns_topic.public_exposure_alerts.arn
+}
+
+# Allow EventBridge to publish to SNS
+resource "aws_sns_topic_policy" "allow_eventbridge" {
+  arn = aws_sns_topic.username_enum_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.username_enum_alerts.arn
+    }]
+  })
 }""",
                 alert_severity="high",
                 alert_title="Public Exposure of Identity Information Detected",

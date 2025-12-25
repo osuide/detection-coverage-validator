@@ -389,6 +389,20 @@ resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.macie_findings.name
   target_id = "SendToSNS"
   arn       = aws_sns_topic.alerts.arn
+}
+
+# Allow EventBridge to publish to SNS
+resource "aws_sns_topic_policy" "allow_eventbridge" {
+  arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+    }]
+  })
 }""",
                 alert_severity="high",
                 alert_title="Sensitive Data Exposure Detected",

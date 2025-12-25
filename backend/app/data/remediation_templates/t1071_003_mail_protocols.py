@@ -274,6 +274,19 @@ Resources:
 variable "alert_email" {
   type        = string
   description = "Email address for security alerts"
+
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref AlertTopic
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
 }
 
 # Step 1: Enable GuardDuty (if not already enabled)

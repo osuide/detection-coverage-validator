@@ -149,6 +149,19 @@ Outputs:
     Description: SNS topic for API reconnaissance alerts
     Value: !Ref ApiReconAlertTopic""",
                 terraform_template="""# AWS GuardDuty API Reconnaissance Detection
+
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref ApiReconAlertTopic
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref ApiReconAlertTopic
 # Detects: Discovery:IAMUser/AnomalousBehavior, Recon:IAMUser/MaliciousIPCaller
 # See: https://docs.aws.amazon.com/guardduty/latest/ug/guardduty_finding-types-iam.html
 

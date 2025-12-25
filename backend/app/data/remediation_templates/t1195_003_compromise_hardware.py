@@ -267,6 +267,20 @@ resource "aws_cloudwatch_event_target" "lambda" {
   arn       = aws_lambda_function.verify_attestation.arn
 }
 
+# Allow EventBridge to publish to SNS
+resource "aws_sns_topic_policy" "allow_eventbridge" {
+  arn = aws_sns_topic.boot_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.boot_alerts.arn
+    }]
+  })
+}
+
 # Lambda execution role
 resource "aws_iam_role" "lambda_role" {
   name = "nitro-attestation-lambda-role"

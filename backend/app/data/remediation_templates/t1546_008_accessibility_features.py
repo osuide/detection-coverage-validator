@@ -151,6 +151,19 @@ Resources:
 variable "alert_email" {
   type = string
   description = "Email address for security alerts"
+
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref AlertTopic
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
 }
 
 # SNS topic for alerts
@@ -184,6 +197,20 @@ resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.accessibility_tamper.name
   target_id = "SendToSNS"
   arn       = aws_sns_topic.accessibility_alerts.arn
+}
+
+# Allow EventBridge to publish to SNS
+resource "aws_sns_topic_policy" "allow_eventbridge" {
+  arn = aws_sns_topic.accessibility_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.accessibility_alerts.arn
+    }]
+  })
 }
 
 # CloudWatch Log Metric Filter

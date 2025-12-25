@@ -326,6 +326,19 @@ Resources:
 variable "alert_email" {
   type        = string
   description = "Email for security alerts"
+
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref AlertTopic
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
 }
 
 resource "aws_sns_topic" "guardduty_tor_alerts" {

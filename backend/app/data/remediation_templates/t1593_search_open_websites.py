@@ -139,6 +139,19 @@ Outputs:
 variable "alert_email" {
   type        = string
   description = "Email for security alerts"
+
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref AlertTopic
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
 }
 
 # SNS Topic for alerts

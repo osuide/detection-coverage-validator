@@ -119,6 +119,19 @@ resource "aws_sns_topic" "alerts" {
   name         = "guardduty-malware-alerts"
   kms_master_key_id = "alias/aws/sns"
   display_name = "GuardDuty Malware Alerts"
+
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref AlertTopic
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -150,6 +163,20 @@ resource "aws_cloudwatch_event_target" "malware_alert" {
   rule      = aws_cloudwatch_event_rule.malware_finding.name
   target_id = "MalwareAlertTarget"
   arn       = aws_sns_topic.alerts.arn
+}
+
+# Allow EventBridge to publish to SNS
+resource "aws_sns_topic_policy" "allow_eventbridge" {
+  arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+    }]
+  })
 }""",
                 alert_severity="high",
                 alert_title="Malware Detected in AWS Environment",

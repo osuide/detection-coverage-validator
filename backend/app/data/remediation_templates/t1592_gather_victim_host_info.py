@@ -134,6 +134,19 @@ variable "alert_email" { type = string }
 resource "aws_sns_topic" "alerts" {
   name = "public-exposure-alerts"
   kms_master_key_id = "alias/aws/sns"
+
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref AlertTopic
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -189,6 +202,20 @@ resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.config_compliance.name
   target_id = "SendToSNS"
   arn       = aws_sns_topic.alerts.arn
+}
+
+# Allow EventBridge to publish to SNS
+resource "aws_sns_topic_policy" "allow_eventbridge" {
+  arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+    }]
+  })
 }""",
                 alert_severity="medium",
                 alert_title="Public Asset Exposure Detected",
