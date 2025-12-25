@@ -24,6 +24,7 @@ from app.models.user import (
     AuditLog,
     AuditLogAction,
 )
+from app.models.security import OrganizationSecuritySettings
 
 logger = structlog.get_logger()
 settings = get_settings()
@@ -316,13 +317,35 @@ class AuthService:
         """
         Create a new session for a user.
 
+        Uses org's session_timeout_minutes if configured, otherwise falls back
+        to default refresh_token_expire_days.
+
         Returns:
             Tuple of (access_token, refresh_token)
         """
         refresh_token = self.generate_refresh_token()
-        expires_at = datetime.now(timezone.utc) + timedelta(
-            days=settings.refresh_token_expire_days
-        )
+
+        # Check org security settings for custom session timeout
+        session_timeout_minutes = None
+        if organization_id:
+            org_security_result = await self.db.execute(
+                select(OrganizationSecuritySettings).where(
+                    OrganizationSecuritySettings.organization_id == organization_id
+                )
+            )
+            org_security = org_security_result.scalar_one_or_none()
+            if org_security and org_security.session_timeout_minutes:
+                session_timeout_minutes = org_security.session_timeout_minutes
+
+        # Use org timeout if set, otherwise use default
+        if session_timeout_minutes:
+            expires_at = datetime.now(timezone.utc) + timedelta(
+                minutes=session_timeout_minutes
+            )
+        else:
+            expires_at = datetime.now(timezone.utc) + timedelta(
+                days=settings.refresh_token_expire_days
+            )
 
         session = UserSession(
             user_id=user.id,
@@ -408,6 +431,45 @@ class AuthService:
         user = await self.get_user_by_id(session.user_id)
         if not user or not user.is_active:
             return None, None
+
+        # Check org security settings for IP allowlist and idle timeout
+        if session.organization_id:
+            org_security_result = await self.db.execute(
+                select(OrganizationSecuritySettings).where(
+                    OrganizationSecuritySettings.organization_id
+                    == session.organization_id
+                )
+            )
+            org_security = org_security_result.scalar_one_or_none()
+
+            if org_security:
+                # Check IP allowlist
+                if org_security.ip_allowlist and ip_address:
+                    if not org_security.is_ip_allowed(ip_address):
+                        self.logger.warning(
+                            "refresh_blocked_ip_allowlist",
+                            user_id=str(user.id),
+                            ip_address=ip_address,
+                            organization_id=str(session.organization_id),
+                        )
+                        return None, None
+
+                # Check idle timeout
+                if org_security.idle_timeout_minutes:
+                    idle_threshold = session.last_activity_at + timedelta(
+                        minutes=org_security.idle_timeout_minutes
+                    )
+                    if datetime.now(timezone.utc) > idle_threshold:
+                        self.logger.warning(
+                            "refresh_blocked_idle_timeout",
+                            user_id=str(user.id),
+                            idle_minutes=org_security.idle_timeout_minutes,
+                            last_activity=session.last_activity_at.isoformat(),
+                            organization_id=str(session.organization_id),
+                        )
+                        # Invalidate the session
+                        session.is_active = False
+                        return None, None
 
         # M2: Save current hash as previous before rotating
         session.previous_token_hash = session.refresh_token_hash

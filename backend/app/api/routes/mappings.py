@@ -9,7 +9,7 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
-from app.core.security import AuthContext, get_auth_context
+from app.core.security import AuthContext, get_auth_context, require_scope
 from app.models.cloud_account import CloudAccount
 from app.models.mapping import DetectionMapping, MappingSource
 from app.models.mitre import Technique, Tactic
@@ -23,7 +23,11 @@ from app.schemas.mapping import (
 router = APIRouter()
 
 
-@router.get("", response_model=MappingListResponse)
+@router.get(
+    "",
+    response_model=MappingListResponse,
+    dependencies=[Depends(require_scope("read:mappings"))],
+)
 async def list_mappings(
     detection_id: Optional[UUID] = None,
     technique_id: Optional[str] = None,
@@ -116,7 +120,11 @@ async def list_mappings(
     )
 
 
-@router.get("/techniques", response_model=list[TechniqueResponse])
+@router.get(
+    "/techniques",
+    response_model=list[TechniqueResponse],
+    dependencies=[Depends(require_scope("read:mappings"))],
+)
 async def list_techniques(
     tactic_id: Optional[str] = None,
     platform: Optional[str] = Query(None, description="Filter by platform (AWS, GCP)"),
@@ -157,7 +165,11 @@ async def list_techniques(
     ]
 
 
-@router.get("/tactics", response_model=list[TacticResponse])
+@router.get(
+    "/tactics",
+    response_model=list[TacticResponse],
+    dependencies=[Depends(require_scope("read:mappings"))],
+)
 async def list_tactics(
     db: AsyncSession = Depends(get_db),
 ):
@@ -204,7 +216,10 @@ async def delete_mapping(
     await db.delete(mapping)
 
 
-@router.post("/remap-all")
+@router.post(
+    "/remap-all",
+    dependencies=[Depends(require_scope("write:mappings"))],
+)
 async def remap_all_detections(
     cloud_account_id: Optional[UUID] = None,
     auth: AuthContext = Depends(get_auth_context),

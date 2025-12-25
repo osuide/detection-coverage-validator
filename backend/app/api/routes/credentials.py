@@ -17,7 +17,7 @@ import structlog
 
 from app.core.config import get_settings
 from app.core.database import get_db
-from app.core.security import AuthContext, require_role
+from app.core.security import AuthContext, require_role, require_scope
 from app.models.user import UserRole, AuditLog, AuditLogAction
 from app.models.cloud_account import CloudAccount, CloudProvider
 from app.models.cloud_credential import (
@@ -135,7 +135,11 @@ class ValidationResponse(BaseModel):
 # === Endpoints ===
 
 
-@router.get("/setup/{cloud_account_id}", response_model=SetupInstructionsResponse)
+@router.get(
+    "/setup/{cloud_account_id}",
+    response_model=SetupInstructionsResponse,
+    dependencies=[Depends(require_scope("read:credentials"))],
+)
 async def get_setup_instructions(
     cloud_account_id: UUID,
     auth: AuthContext = Depends(require_role(UserRole.ADMIN, UserRole.OWNER)),
@@ -247,7 +251,11 @@ async def get_setup_instructions(
     raise HTTPException(status_code=400, detail="Unsupported provider")
 
 
-@router.post("/aws", response_model=CredentialResponse)
+@router.post(
+    "/aws",
+    response_model=CredentialResponse,
+    dependencies=[Depends(require_scope("write:credentials"))],
+)
 async def create_aws_credential(
     request: Request,
     body: AWSCredentialCreate,
@@ -317,7 +325,11 @@ async def create_aws_credential(
     return _credential_to_response(credential)
 
 
-@router.post("/gcp", response_model=CredentialResponse)
+@router.post(
+    "/gcp",
+    response_model=CredentialResponse,
+    dependencies=[Depends(require_scope("write:credentials"))],
+)
 async def create_gcp_credential(
     request: Request,
     body: GCPCredentialCreate,
@@ -396,7 +408,11 @@ async def create_gcp_credential(
     return _credential_to_response(credential)
 
 
-@router.post("/validate/{cloud_account_id}", response_model=ValidationResponse)
+@router.post(
+    "/validate/{cloud_account_id}",
+    response_model=ValidationResponse,
+    dependencies=[Depends(require_scope("write:credentials"))],
+)
 async def validate_credential(
     cloud_account_id: UUID,
     request: Request,
@@ -463,7 +479,11 @@ async def validate_credential(
     )
 
 
-@router.get("/{cloud_account_id}", response_model=CredentialResponse)
+@router.get(
+    "/{cloud_account_id}",
+    response_model=CredentialResponse,
+    dependencies=[Depends(require_scope("read:credentials"))],
+)
 async def get_credential(
     cloud_account_id: UUID,
     auth: AuthContext = Depends(
@@ -485,7 +505,10 @@ async def get_credential(
     return _credential_to_response(credential)
 
 
-@router.delete("/{cloud_account_id}")
+@router.delete(
+    "/{cloud_account_id}",
+    dependencies=[Depends(require_scope("write:credentials"))],
+)
 async def delete_credential(
     cloud_account_id: UUID,
     request: Request,

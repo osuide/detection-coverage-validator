@@ -13,7 +13,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.config import get_settings
 from app.core.database import get_db
-from app.core.security import AuthContext, get_auth_context, require_role
+from app.core.security import AuthContext, get_auth_context, require_role, require_scope
 from app.models.user import (
     AuditLog,
     AuditLogAction,
@@ -72,7 +72,11 @@ class AuditStatsResponse(BaseModel):
     top_actors: List[dict]
 
 
-@router.get("", response_model=AuditLogListResponse)
+@router.get(
+    "",
+    response_model=AuditLogListResponse,
+    dependencies=[Depends(require_scope("read:audit"))],
+)
 async def list_audit_logs(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=100),
@@ -177,7 +181,10 @@ async def list_audit_logs(
     )
 
 
-@router.get("/actions")
+@router.get(
+    "/actions",
+    dependencies=[Depends(require_scope("read:audit"))],
+)
 async def list_action_types(
     auth: AuthContext = Depends(get_auth_context),
 ):
@@ -195,7 +202,11 @@ async def list_action_types(
     return {"actions": actions}
 
 
-@router.get("/stats", response_model=AuditStatsResponse)
+@router.get(
+    "/stats",
+    response_model=AuditStatsResponse,
+    dependencies=[Depends(require_scope("read:audit"))],
+)
 async def get_audit_stats(
     auth: AuthContext = Depends(require_role(UserRole.OWNER, UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
@@ -308,7 +319,11 @@ async def get_audit_stats(
     )
 
 
-@router.get("/{log_id}", response_model=AuditLogResponse)
+@router.get(
+    "/{log_id}",
+    response_model=AuditLogResponse,
+    dependencies=[Depends(require_scope("read:audit"))],
+)
 async def get_audit_log(
     log_id: UUID,
     auth: AuthContext = Depends(require_role(UserRole.OWNER, UserRole.ADMIN)),

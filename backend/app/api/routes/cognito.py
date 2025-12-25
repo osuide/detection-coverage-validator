@@ -25,6 +25,7 @@ from app.models.user import (
     AuditLogAction,
 )
 from app.models.billing import Subscription, AccountTier
+from app.models.security import OrganizationSecuritySettings
 from fastapi.responses import JSONResponse
 from app.services.cognito_service import cognito_service, generate_pkce
 from app.services.auth_service import AuthService
@@ -366,6 +367,44 @@ async def exchange_cognito_token(
         select(Organization).where(Organization.id == membership.organization_id)
     )
     organization = result.scalar_one()
+
+    # Check org security settings for allowed auth methods and IP allowlist
+    org_security_result = await db.execute(
+        select(OrganizationSecuritySettings).where(
+            OrganizationSecuritySettings.organization_id == organization.id
+        )
+    )
+    org_security = org_security_result.scalar_one_or_none()
+
+    if org_security:
+        # Check if the identity provider is allowed
+        # identity_provider can be "cognito", "google", "github", or "microsoft"
+        if not org_security.is_auth_method_allowed(identity_provider):
+            logger.warning(
+                "cognito_login_blocked_auth_method",
+                user_id=str(user.id),
+                provider=identity_provider,
+                organization_id=str(organization.id),
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"{identity_provider.title()} authentication is not allowed for this organisation. Please use an approved sign-in method.",
+            )
+
+        # Check IP allowlist
+        ip_address = get_client_ip(request)
+        if org_security.ip_allowlist and ip_address:
+            if not org_security.is_ip_allowed(ip_address):
+                logger.warning(
+                    "cognito_login_blocked_ip_allowlist",
+                    user_id=str(user.id),
+                    ip_address=ip_address,
+                    organization_id=str(organization.id),
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Access denied: Your IP address is not allowed by organisation policy",
+                )
 
     # Create audit log
     audit_log = AuditLog(

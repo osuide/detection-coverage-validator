@@ -26,6 +26,7 @@ from app.models.user import (
     AuditLogAction,
 )
 from app.models.billing import Subscription, AccountTier
+from app.models.security import OrganizationSecuritySettings
 from app.services.github_oauth_service import github_oauth_service
 from app.services.auth_service import AuthService
 from app.api.routes.auth import (
@@ -330,6 +331,42 @@ async def exchange_github_token(
         select(Organization).where(Organization.id == membership.organization_id)
     )
     organization = result.scalar_one()
+
+    # Check org security settings for allowed auth methods and IP allowlist
+    org_security_result = await db.execute(
+        select(OrganizationSecuritySettings).where(
+            OrganizationSecuritySettings.organization_id == organization.id
+        )
+    )
+    org_security = org_security_result.scalar_one_or_none()
+
+    if org_security:
+        # Check if GitHub auth is allowed
+        if not org_security.is_auth_method_allowed("github"):
+            logger.warning(
+                "github_login_blocked_auth_method",
+                user_id=str(user.id),
+                organization_id=str(organization.id),
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="GitHub authentication is not allowed for this organisation. Please use an approved sign-in method.",
+            )
+
+        # Check IP allowlist
+        ip_address = get_client_ip(request)
+        if org_security.ip_allowlist and ip_address:
+            if not org_security.is_ip_allowed(ip_address):
+                logger.warning(
+                    "github_login_blocked_ip_allowlist",
+                    user_id=str(user.id),
+                    ip_address=ip_address,
+                    organization_id=str(organization.id),
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Access denied: Your IP address is not allowed by organisation policy",
+                )
 
     # Create audit log
     audit_log = AuditLog(

@@ -18,7 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.security import AuthContext, get_auth_context
+from app.core.security import AuthContext, get_auth_context, require_scope
 from app.models.cloud_account import CloudAccount
 from app.models.code_analysis import (
     CodeAnalysisConsent,
@@ -109,7 +109,11 @@ async def get_disclosure():
     )
 
 
-@router.get("/status/{cloud_account_id}", response_model=FeatureStatusResponse)
+@router.get(
+    "/status/{cloud_account_id}",
+    response_model=FeatureStatusResponse,
+    dependencies=[Depends(require_scope("read:code_analysis"))],
+)
 async def get_feature_status(
     cloud_account_id: UUID,
     auth_ctx: AuthContext = Depends(get_auth_context),
@@ -174,7 +178,11 @@ async def get_feature_status(
     )
 
 
-@router.post("/consent", response_model=ConsentResponse)
+@router.post(
+    "/consent",
+    response_model=ConsentResponse,
+    dependencies=[Depends(require_scope("write:code_analysis"))],
+)
 async def give_consent(
     request: ConsentRequest,
     auth_ctx: AuthContext = Depends(get_auth_context),
@@ -286,7 +294,10 @@ async def give_consent(
     )
 
 
-@router.delete("/consent/{cloud_account_id}")
+@router.delete(
+    "/consent/{cloud_account_id}",
+    dependencies=[Depends(require_scope("write:code_analysis"))],
+)
 async def revoke_consent(
     cloud_account_id: UUID,
     reason: Optional[str] = None,
@@ -334,7 +345,11 @@ async def revoke_consent(
     }
 
 
-@router.get("/consent/{cloud_account_id}", response_model=ConsentResponse)
+@router.get(
+    "/consent/{cloud_account_id}",
+    response_model=ConsentResponse,
+    dependencies=[Depends(require_scope("read:code_analysis"))],
+)
 async def get_consent(
     cloud_account_id: UUID,
     auth_ctx: AuthContext = Depends(get_auth_context),

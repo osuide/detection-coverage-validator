@@ -11,7 +11,7 @@ from sqlalchemy import select
 import structlog
 
 from app.core.database import get_db
-from app.core.security import AuthContext, get_auth_context
+from app.core.security import AuthContext, get_auth_context, require_scope
 from app.models.cloud_account import CloudAccount
 from app.models.billing import Subscription, AccountTier
 from app.services.report_service import ReportService
@@ -68,7 +68,10 @@ async def _require_paid_subscription(db: AsyncSession, organization_id: UUID) ->
         )
 
 
-@router.get("/coverage/csv")
+@router.get(
+    "/coverage/csv",
+    dependencies=[Depends(require_scope("read:reports"))],
+)
 async def download_coverage_csv(
     cloud_account_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
@@ -104,7 +107,10 @@ async def download_coverage_csv(
     )
 
 
-@router.get("/gaps/csv")
+@router.get(
+    "/gaps/csv",
+    dependencies=[Depends(require_scope("read:reports"))],
+)
 async def download_gaps_csv(
     cloud_account_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
@@ -139,7 +145,10 @@ async def download_gaps_csv(
     )
 
 
-@router.get("/detections/csv")
+@router.get(
+    "/detections/csv",
+    dependencies=[Depends(require_scope("read:reports"))],
+)
 async def download_detections_csv(
     cloud_account_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
@@ -174,7 +183,10 @@ async def download_detections_csv(
     )
 
 
-@router.get("/executive/pdf")
+@router.get(
+    "/executive/pdf",
+    dependencies=[Depends(require_scope("read:reports"))],
+)
 async def download_executive_pdf(
     cloud_account_id: UUID,
     include_gaps: bool = Query(True, description="Include gap analysis section"),
@@ -221,7 +233,10 @@ async def download_executive_pdf(
         raise HTTPException(status_code=500, detail="Failed to generate PDF report")
 
 
-@router.get("/full/pdf")
+@router.get(
+    "/full/pdf",
+    dependencies=[Depends(require_scope("read:reports"))],
+)
 async def download_full_pdf(
     cloud_account_id: UUID,
     auth: AuthContext = Depends(get_auth_context),

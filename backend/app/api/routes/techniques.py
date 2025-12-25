@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.security import AuthContext, require_role
+from app.core.security import AuthContext, require_role, require_scope
 from app.models.user import UserRole
 from app.models.mitre import Tactic
 from app.data.remediation_templates.template_loader import get_template
@@ -120,7 +120,11 @@ class TechniqueSummaryResponse(BaseModel):
     strategy_count: int
 
 
-@router.get("/{technique_id}", response_model=TechniqueDetailResponse)
+@router.get(
+    "/{technique_id}",
+    response_model=TechniqueDetailResponse,
+    dependencies=[Depends(require_scope("read:techniques"))],
+)
 async def get_technique_detail(
     technique_id: str,
     db: AsyncSession = Depends(get_db),
@@ -265,7 +269,11 @@ async def get_technique_detail(
     )
 
 
-@router.get("", response_model=list[TechniqueSummaryResponse])
+@router.get(
+    "",
+    response_model=list[TechniqueSummaryResponse],
+    dependencies=[Depends(require_scope("read:techniques"))],
+)
 async def list_techniques_with_templates(
     db: AsyncSession = Depends(get_db),
     auth: AuthContext = Depends(
