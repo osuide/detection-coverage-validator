@@ -965,7 +965,7 @@ resource "aws_cloudwatch_event_target" "sns" {
                     "Audit all actions taken during anomalous sessions",
                 ],
             ),
-            estimated_false_positive_rate=FalsePositiveRate.VERY_LOW,
+            estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning=(
                 "GuardDuty uses ML and threat intelligence, so false positives are rare. "
                 "Suppress specific principals via GuardDuty suppression rules if needed."
