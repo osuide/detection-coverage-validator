@@ -1,16 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, ExternalLink, ChevronDown, ChevronUp, Filter, Search, Clock, Zap, Shield, Users, Check, Loader2, RotateCcw, CheckCircle, ShieldAlert } from 'lucide-react'
+import { AlertTriangle, ExternalLink, ChevronDown, ChevronRight, Filter, Search, Clock, Zap, Shield, Users, Check, Loader2, RotateCcw, CheckCircle, ShieldAlert } from 'lucide-react'
 import { coverageApi, gapsApi, Gap, RecommendedStrategy, AcknowledgedGap } from '../services/api'
 import { useState } from 'react'
 import StrategyDetailModal from '../components/StrategyDetailModal'
 import toast from 'react-hot-toast'
 import { useSelectedAccount } from '../hooks/useSelectedAccount'
 
+// Priority styles matching Compliance page
 const priorityStyles = {
-  critical: 'bg-red-900/30 text-red-400 border-red-600',
-  high: 'bg-orange-900/30 text-orange-400 border-orange-600',
-  medium: 'bg-yellow-900/30 text-yellow-400 border-yellow-600',
-  low: 'bg-blue-900/30 text-blue-400 border-blue-600',
+  critical: 'bg-red-900/50 text-red-300 border border-red-700',
+  high: 'bg-orange-900/50 text-orange-300 border border-orange-700',
+  medium: 'bg-yellow-900/50 text-yellow-300 border border-yellow-700',
+  low: 'bg-blue-900/50 text-blue-300 border border-blue-700',
 }
 
 const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 }
@@ -132,23 +133,50 @@ export default function Gaps() {
         <p className="text-gray-400">Prioritized MITRE ATT&CK techniques lacking detection coverage</p>
       </div>
 
-      {/* Summary */}
-      <div className="grid grid-cols-4 gap-4 mb-8">
-        <div className="stat-card border-l-4 border-red-500">
-          <p className="text-2xl font-bold text-white">{criticalGaps.length}</p>
-          <p className="text-sm text-gray-400">Critical</p>
-        </div>
-        <div className="stat-card border-l-4 border-orange-500">
-          <p className="text-2xl font-bold text-white">{highGaps.length}</p>
-          <p className="text-sm text-gray-400">High</p>
-        </div>
-        <div className="stat-card border-l-4 border-yellow-500">
-          <p className="text-2xl font-bold text-white">{mediumGaps.length}</p>
-          <p className="text-sm text-gray-400">Medium</p>
-        </div>
-        <div className="stat-card border-l-4 border-blue-500">
-          <p className="text-2xl font-bold text-white">{lowGaps.length}</p>
-          <p className="text-sm text-gray-400">Low</p>
+      {/* Summary - matching Compliance page style */}
+      <div className="bg-gray-800 rounded-lg p-6 mb-8">
+        <h3 className="text-lg font-medium text-white mb-4">Gap Summary</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <button
+            onClick={() => setPriorityFilter('critical')}
+            className="bg-gray-700/50 rounded-lg p-4 text-left hover:bg-gray-700 transition-colors cursor-pointer group"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <AlertTriangle className="w-4 h-4 text-red-400" />
+              <span className="text-sm text-gray-400 group-hover:text-gray-300">Critical</span>
+            </div>
+            <div className="text-2xl font-bold text-red-400">{criticalGaps.length}</div>
+          </button>
+          <button
+            onClick={() => setPriorityFilter('high')}
+            className="bg-gray-700/50 rounded-lg p-4 text-left hover:bg-gray-700 transition-colors cursor-pointer group"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <AlertTriangle className="w-4 h-4 text-orange-400" />
+              <span className="text-sm text-gray-400 group-hover:text-gray-300">High</span>
+            </div>
+            <div className="text-2xl font-bold text-orange-400">{highGaps.length}</div>
+          </button>
+          <button
+            onClick={() => setPriorityFilter('medium')}
+            className="bg-gray-700/50 rounded-lg p-4 text-left hover:bg-gray-700 transition-colors cursor-pointer group"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <Clock className="w-4 h-4 text-yellow-400" />
+              <span className="text-sm text-gray-400 group-hover:text-gray-300">Medium</span>
+            </div>
+            <div className="text-2xl font-bold text-yellow-400">{mediumGaps.length}</div>
+          </button>
+          <button
+            onClick={() => setPriorityFilter('low')}
+            className="bg-gray-700/50 rounded-lg p-4 text-left hover:bg-gray-700 transition-colors cursor-pointer group"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <Shield className="w-4 h-4 text-blue-400" />
+              <span className="text-sm text-gray-400 group-hover:text-gray-300">Low</span>
+            </div>
+            <div className="text-2xl font-bold text-blue-400">{lowGaps.length}</div>
+          </button>
         </div>
       </div>
 
@@ -259,26 +287,46 @@ export default function Gaps() {
         )}
       </p>
 
-      {/* Gap List */}
-      {gaps.length === 0 ? (
-        <div className="text-center py-12 card">
-          <AlertTriangle className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-lg font-medium text-white">No matching gaps</h3>
-          <p className="mt-1 text-sm text-gray-400">Try adjusting your filters.</p>
+      {/* Gap List - wrapped in card like Compliance */}
+      <div className="bg-gray-800 rounded-lg p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-medium text-white">
+            Actionable Gaps
+            <span className="text-sm font-normal text-gray-400 ml-2">
+              ({gaps.length} techniques)
+            </span>
+          </h3>
         </div>
-      ) : (
-        <div className="space-y-4">
-          {gaps.map((gap) => (
-            <GapCard
-              key={gap.technique_id}
-              gap={gap}
-              isExpanded={expandedGaps.has(gap.technique_id)}
-              onToggle={() => toggleExpand(gap.technique_id)}
-              accountId={selectedAccount?.id}
-            />
-          ))}
-        </div>
-      )}
+
+        {gaps.length === 0 ? (
+          <div className="text-center py-8">
+            <AlertTriangle className="mx-auto h-8 w-8 text-gray-500 mb-2" />
+            <p className="text-gray-400">No matching gaps found.</p>
+            <button
+              onClick={() => {
+                setSearch('')
+                setTacticFilter('')
+                setPriorityFilter('')
+              }}
+              className="mt-2 text-blue-400 hover:text-blue-300 text-sm"
+            >
+              Clear filters
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {gaps.map((gap) => (
+              <GapCard
+                key={gap.technique_id}
+                gap={gap}
+                isExpanded={expandedGaps.has(gap.technique_id)}
+                onToggle={() => toggleExpand(gap.technique_id)}
+                accountId={selectedAccount?.id}
+              />
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Acknowledged Gaps Section */}
       {showAcknowledged && acknowledgedGaps.length > 0 && (
@@ -335,46 +383,38 @@ function GapCard({
   })
 
   return (
-    <div className={`card border-l-4 ${
-      gap.priority === 'critical' ? 'border-red-500' :
-      gap.priority === 'high' ? 'border-orange-500' :
-      gap.priority === 'medium' ? 'border-yellow-500' :
-      'border-blue-500'
-    }`}>
+    <div className="bg-gray-700/30 rounded-lg p-4 hover:bg-gray-700/50 transition-colors">
       {/* Header - always visible */}
       <div
         className="flex items-start justify-between cursor-pointer"
         onClick={onToggle}
       >
         <div className="flex-1">
-          <div className="flex items-center space-x-3">
-            <span className={`px-2 py-1 text-xs font-medium rounded-full ${priorityStyles[gap.priority]}`}>
+          <div className="flex items-center gap-3">
+            {isExpanded ? (
+              <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
+            ) : (
+              <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+            )}
+            <span className={`px-2 py-0.5 text-xs font-medium rounded ${priorityStyles[gap.priority]}`}>
               {gap.priority}
             </span>
-            <h3 className="font-semibold text-white">
-              {gap.technique_id}: {gap.technique_name}
-            </h3>
+            <span className="text-sm font-mono text-blue-400">{gap.technique_id}</span>
+            <span className="font-medium text-white">{gap.technique_name}</span>
           </div>
-          <p className="mt-1 text-sm text-gray-400">{gap.tactic_name}</p>
+          <p className="mt-1 ml-7 text-sm text-gray-400">{gap.tactic_name}</p>
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center gap-2">
           <a
             href={mitreUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="p-2 text-gray-400 hover:text-blue-400 transition-colors"
+            className="p-1.5 text-gray-400 hover:text-blue-400 transition-colors"
             title="View on MITRE ATT&CK"
             onClick={(e) => e.stopPropagation()}
           >
-            <ExternalLink className="h-5 w-5" />
+            <ExternalLink className="h-4 w-4" />
           </a>
-          <button className="p-2 text-gray-400 hover:text-gray-200">
-            {isExpanded ? (
-              <ChevronUp className="h-5 w-5" />
-            ) : (
-              <ChevronDown className="h-5 w-5" />
-            )}
-          </button>
         </div>
       </div>
 
@@ -581,7 +621,7 @@ function AcknowledgedGapCard({
   const isRiskAccepted = gap.status === 'risk_accepted'
 
   return (
-    <div className={`card border-l-4 ${isRiskAccepted ? 'border-purple-500' : 'border-gray-400'} bg-gray-700/30`}>
+    <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="flex items-center space-x-3">
