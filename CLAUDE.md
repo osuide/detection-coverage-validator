@@ -37,17 +37,18 @@ Common UK English spellings to use:
 
 **Exception**: AWS/GCP infrastructure costs in remediation templates can use $ (USD) since those are vendor prices.
 
-#### Pre-Production Currency Checklist
+#### Currency Implementation (Completed)
 
-Before going to production, ensure:
+All product pricing uses GBP:
+- Stripe checkout sessions use `currency: "gbp"`
+- Invoice model uses `default="gbp"`
+- API field names use `*_pounds` and `*_pence`
+- Frontend uses `Intl.NumberFormat` with `currency: 'GBP'`
+- Landing page shows £0, £29, £250 pricing
 
-| Item | File | Current | Required |
-|------|------|---------|----------|
-| Stripe checkout currency | `stripe_service.py:126,151` | `"usd"` | `"gbp"` |
-| Billing model currency default | `billing.py:664` | `"usd"` | `"gbp"` |
-| Price variable names | `billing.py`, `billing_config.py` | `*_dollars` | `*_pounds` |
-| Pricing comments | `billing.py:215-220` | `$29`, `$250` | `£29`, `£250` |
-| Admin metrics pricing | `admin/metrics.py:144` | `$0`, `$29`, `$499` | `£0`, `£29`, `£499` |
+Stripe products (test mode):
+- A13E Individual: `price_1SijVDAB6j5KiVeUwd4QD5uX` (£29/month, 6 accounts)
+- A13E Pro: `price_1SijVTAB6j5KiVeUZTSUdnBl` (£250/month, 500 accounts)
 
 ## Project Context
 

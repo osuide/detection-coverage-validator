@@ -95,11 +95,11 @@ export default function AdminDashboard() {
     navigate('/admin/login');
   };
 
-  const formatCurrency = (cents: number) => {
-    return new Intl.NumberFormat('en-US', {
+  const formatCurrency = (pence: number) => {
+    return new Intl.NumberFormat('en-GB', {
       style: 'currency',
-      currency: 'USD',
-    }).format(cents / 100);
+      currency: 'GBP',
+    }).format(pence / 100);
   };
 
   if (!isInitialised || loading) {

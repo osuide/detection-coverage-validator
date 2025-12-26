@@ -31,11 +31,11 @@ STRIPE_PRICE_IDS = {
     "enterprise_monthly": None,  # Custom pricing
 }
 
-# Prices in cents (USD)
+# Prices in pence (GBP)
 STRIPE_PRICES = {
     "free_monthly": 0,
-    "individual_monthly": 2900,  # $29/month
-    "pro_monthly": 25000,  # $250/month
+    "individual_monthly": 2900,  # £29/month
+    "pro_monthly": 25000,  # £250/month
     "enterprise_monthly": None,  # Custom pricing
 }
 
@@ -326,25 +326,25 @@ def calculate_pricing(tier: Any) -> dict:
     config = get_tier_config(tier)
     tier_value = tier.value if hasattr(tier, "value") else str(tier)
 
-    price_cents = config.get("price_monthly_cents")
-    if price_cents is None:
+    price_pence = config.get("price_monthly_cents")  # stored as pence in GBP
+    if price_pence is None:
         return {
             "tier": tier_value,
             "display_name": config.get("display_name"),
-            "price_monthly_cents": None,
-            "price_monthly_dollars": None,
-            "price_yearly_cents": None,
-            "price_yearly_dollars": None,
+            "price_monthly_pence": None,
+            "price_monthly_pounds": None,
+            "price_yearly_pence": None,
+            "price_yearly_pounds": None,
             "is_custom_pricing": True,
         }
 
     return {
         "tier": tier_value,
         "display_name": config.get("display_name"),
-        "price_monthly_cents": price_cents,
-        "price_monthly_dollars": price_cents / 100,
-        "price_yearly_cents": price_cents * 12,
-        "price_yearly_dollars": (price_cents * 12) / 100,
+        "price_monthly_pence": price_pence,
+        "price_monthly_pounds": price_pence / 100,
+        "price_yearly_pence": price_pence * 12,
+        "price_yearly_pounds": (price_pence * 12) / 100,
         "is_custom_pricing": False,
     }
 

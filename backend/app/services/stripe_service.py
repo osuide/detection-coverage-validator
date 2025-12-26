@@ -123,7 +123,7 @@ class StripeService:
             line_items.append(
                 {
                     "price_data": {
-                        "currency": "usd",
+                        "currency": "gbp",
                         "product_data": {
                             "name": "Detection Coverage Validator - Subscriber",
                             "description": "Monthly subscription with unlimited scans, 3 cloud accounts, and full features",
@@ -148,7 +148,7 @@ class StripeService:
                 line_items.append(
                     {
                         "price_data": {
-                            "currency": "usd",
+                            "currency": "gbp",
                             "product_data": {
                                 "name": "Additional Cloud Account",
                                 "description": "Add more cloud accounts to your subscription",
@@ -559,7 +559,7 @@ class StripeService:
                 "id": str(inv.id),
                 "stripe_invoice_id": inv.stripe_invoice_id,
                 "amount_cents": inv.amount_cents,
-                "amount_dollars": inv.amount_dollars,
+                "amount_pounds": inv.amount_pounds,
                 "currency": inv.currency,
                 "status": inv.status,
                 "invoice_pdf_url": inv.invoice_pdf_url,

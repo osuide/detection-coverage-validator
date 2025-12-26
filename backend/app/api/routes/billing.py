@@ -84,7 +84,7 @@ class InvoiceResponse(BaseModel):
     id: str
     stripe_invoice_id: str
     amount_cents: int
-    amount_dollars: float
+    amount_pounds: float
     currency: str
     status: Optional[str]
     invoice_pdf_url: Optional[str]
@@ -100,8 +100,8 @@ class TierPricingInfo(BaseModel):
 
     tier: str
     display_name: str
-    price_monthly_cents: Optional[int]
-    price_monthly_dollars: Optional[float]
+    price_monthly_pence: Optional[int]
+    price_monthly_pounds: Optional[float]
     max_accounts: Optional[int]  # None = unlimited
     max_team_members: Optional[int]  # None = unlimited
     history_retention_days: Optional[int]  # None = unlimited
@@ -111,18 +111,18 @@ class TierPricingInfo(BaseModel):
 
 
 class PricingResponse(BaseModel):
-    """Pricing info response with new simplified tiers."""
+    """Pricing info response with simplified tiers."""
 
-    # New tier structure
+    # Tier structure
     tiers: list[TierPricingInfo]
 
     # Legacy pricing (for backward compatibility)
-    subscriber_monthly_cents: int
-    subscriber_monthly_dollars: float
-    enterprise_monthly_cents: Optional[int] = None
-    enterprise_monthly_dollars: Optional[float] = None
-    additional_account_subscriber_cents: int
-    additional_account_subscriber_dollars: float
+    subscriber_monthly_pence: int
+    subscriber_monthly_pounds: float
+    enterprise_monthly_pence: Optional[int] = None
+    enterprise_monthly_pounds: Optional[float] = None
+    additional_account_subscriber_pence: int
+    additional_account_subscriber_pounds: float
     free_tier_accounts: int
     subscriber_tier_accounts: int
     enterprise_included_accounts: Optional[int] = None
@@ -146,12 +146,12 @@ class PricingCalculatorResponse(BaseModel):
     account_count: int
     included_accounts: Optional[int]
     additional_accounts: int
-    base_cost_cents: Optional[int]
-    base_cost_dollars: Optional[float]
-    additional_cost_cents: int
-    additional_cost_dollars: float
-    total_cost_cents: Optional[int]
-    total_cost_dollars: Optional[float]
+    base_cost_pence: Optional[int]
+    base_cost_pounds: Optional[float]
+    additional_cost_pence: int
+    additional_cost_pounds: float
+    total_cost_pence: Optional[int]
+    total_cost_pounds: Optional[float]
     breakdown: list[dict]
     # Upgrade recommendations
     upgrade_required: bool = False
@@ -214,13 +214,13 @@ async def get_pricing():
         AccountTier,
     )
 
-    # Build new tier structure
+    # Build tier structure
     tiers = [
         TierPricingInfo(
             tier="free",
             display_name="Free",
-            price_monthly_cents=0,
-            price_monthly_dollars=0,
+            price_monthly_pence=0,
+            price_monthly_pounds=0,
             max_accounts=1,
             max_team_members=1,
             history_retention_days=30,
@@ -236,8 +236,8 @@ async def get_pricing():
         TierPricingInfo(
             tier="individual",
             display_name="Individual",
-            price_monthly_cents=2900,
-            price_monthly_dollars=29.00,
+            price_monthly_pence=2900,
+            price_monthly_pounds=29.00,
             max_accounts=6,
             max_team_members=3,
             history_retention_days=90,
@@ -254,8 +254,8 @@ async def get_pricing():
         TierPricingInfo(
             tier="pro",
             display_name="Pro",
-            price_monthly_cents=25000,
-            price_monthly_dollars=250.00,
+            price_monthly_pence=25000,
+            price_monthly_pounds=250.00,
             max_accounts=500,
             max_team_members=10,
             history_retention_days=365,
@@ -272,8 +272,8 @@ async def get_pricing():
         TierPricingInfo(
             tier="enterprise",
             display_name="Enterprise",
-            price_monthly_cents=None,
-            price_monthly_dollars=None,
+            price_monthly_pence=None,
+            price_monthly_pounds=None,
             max_accounts=None,  # Unlimited
             max_team_members=None,  # Unlimited
             history_retention_days=None,  # Unlimited
@@ -293,14 +293,14 @@ async def get_pricing():
     return PricingResponse(
         tiers=tiers,
         # Legacy pricing for backward compatibility
-        subscriber_monthly_cents=STRIPE_PRICES["subscriber_monthly"],
-        subscriber_monthly_dollars=STRIPE_PRICES["subscriber_monthly"] / 100,
-        enterprise_monthly_cents=None,  # Custom pricing
-        enterprise_monthly_dollars=None,
-        additional_account_subscriber_cents=STRIPE_PRICES[
+        subscriber_monthly_pence=STRIPE_PRICES["subscriber_monthly"],
+        subscriber_monthly_pounds=STRIPE_PRICES["subscriber_monthly"] / 100,
+        enterprise_monthly_pence=None,  # Custom pricing
+        enterprise_monthly_pounds=None,
+        additional_account_subscriber_pence=STRIPE_PRICES[
             "additional_account_subscriber"
         ],
-        additional_account_subscriber_dollars=STRIPE_PRICES[
+        additional_account_subscriber_pounds=STRIPE_PRICES[
             "additional_account_subscriber"
         ]
         / 100,
@@ -381,12 +381,10 @@ async def calculate_pricing(body: PricingCalculatorRequest):
         recommended_tier_display = "Pro"
 
     # Calculate base and total costs (handle None for Enterprise)
-    base_cost_cents = result.get("base_cost_cents")
-    total_cost_cents = result.get("total_cost_cents")
-    base_cost_dollars = base_cost_cents / 100 if base_cost_cents is not None else None
-    total_cost_dollars = (
-        total_cost_cents / 100 if total_cost_cents is not None else None
-    )
+    base_cost_pence = result.get("base_cost_cents")
+    total_cost_pence = result.get("total_cost_cents")
+    base_cost_pounds = base_cost_pence / 100 if base_cost_pence is not None else None
+    total_cost_pounds = total_cost_pence / 100 if total_cost_pence is not None else None
 
     return PricingCalculatorResponse(
         tier=body.tier,
@@ -394,12 +392,12 @@ async def calculate_pricing(body: PricingCalculatorRequest):
         account_count=body.account_count,
         included_accounts=result.get("included_accounts"),
         additional_accounts=result.get("additional_accounts", 0),
-        base_cost_cents=base_cost_cents,
-        base_cost_dollars=base_cost_dollars,
-        additional_cost_cents=result.get("additional_cost_cents", 0),
-        additional_cost_dollars=result.get("additional_cost_cents", 0) / 100,
-        total_cost_cents=total_cost_cents,
-        total_cost_dollars=total_cost_dollars,
+        base_cost_pence=base_cost_pence,
+        base_cost_pounds=base_cost_pounds,
+        additional_cost_pence=result.get("additional_cost_cents", 0),
+        additional_cost_pounds=result.get("additional_cost_cents", 0) / 100,
+        total_cost_pence=total_cost_pence,
+        total_cost_pounds=total_cost_pounds,
         breakdown=breakdown,
         upgrade_required=result.get("upgrade_required", False),
         recommended_tier=recommended_tier,

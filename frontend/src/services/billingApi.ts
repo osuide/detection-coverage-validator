@@ -43,12 +43,12 @@ export interface Subscription {
 
 export interface Pricing {
   // Legacy fields (kept for backward compatibility)
-  subscriber_monthly_cents: number
-  subscriber_monthly_dollars: number
-  enterprise_monthly_cents: number
-  enterprise_monthly_dollars: number
-  additional_account_subscriber_cents: number
-  additional_account_subscriber_dollars: number
+  subscriber_monthly_pence: number
+  subscriber_monthly_pounds: number
+  enterprise_monthly_pence: number
+  enterprise_monthly_pounds: number
+  additional_account_subscriber_pence: number
+  additional_account_subscriber_pounds: number
   free_tier_accounts: number
   subscriber_tier_accounts: number
   enterprise_included_accounts: number
@@ -56,20 +56,20 @@ export interface Pricing {
   volume_tiers: Array<{
     min_accounts: number
     max_accounts: number | string
-    price_per_account_cents: number
-    price_per_account_dollars: number
+    price_per_account_pence: number
+    price_per_account_pounds: number
     label: string
   }>
-  // New tier information (optional for backward compatibility)
+  // Tier information
   tiers?: TierInfo[]
 }
 
-// New tier pricing information
+// Tier pricing information
 export interface TierInfo {
   tier: AccountTier
   display_name: string
-  price_monthly_cents: number | null
-  price_monthly_dollars: number | null
+  price_monthly_pence: number | null
+  price_monthly_pounds: number | null
   max_accounts: number | null
   max_team_members: number | null
   history_retention_days: number | null
@@ -114,7 +114,7 @@ export interface Invoice {
   id: string
   stripe_invoice_id: string
   amount_cents: number
-  amount_dollars: number
+  amount_pounds: number
   currency: string
   status?: string
   invoice_pdf_url?: string

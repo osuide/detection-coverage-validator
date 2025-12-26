@@ -141,10 +141,16 @@ async def get_business_metrics(
         tier_breakdown[tier.value] = tier_count_result.scalar() or 0
 
     # Calculate MRR (simplified)
-    # Free: $0, Subscriber: $29, Enterprise: $499
+    # Free: £0, Individual: £29, Pro: £250
+    individual_count = tier_breakdown.get("individual", 0)
+    pro_count = tier_breakdown.get("pro", 0)
+    # Include legacy tiers for backward compatibility
     subscriber_count = tier_breakdown.get("subscriber", 0)
-    enterprise_count = tier_breakdown.get("enterprise", 0)
-    mrr_cents = (subscriber_count * 2900) + (enterprise_count * 49900)
+    mrr_pence = (
+        (individual_count * 2900)  # £29
+        + (pro_count * 25000)  # £250
+        + (subscriber_count * 2900)  # Legacy: £29
+    )
 
     return BusinessMetricsResponse(
         total_organizations=total_organizations,
@@ -153,8 +159,8 @@ async def get_business_metrics(
         churned_30d=0,  # TODO: Calculate from subscription history
         total_users=total_users,
         active_users_7d=active_users_7d,
-        mrr_cents=mrr_cents,
-        arr_cents=mrr_cents * 12,
+        mrr_cents=mrr_pence,  # stored as pence (GBP)
+        arr_cents=mrr_pence * 12,
         tier_breakdown=tier_breakdown,
     )
 

@@ -101,11 +101,11 @@ export default function Billing() {
     })
   }
 
-  const formatCurrency = (cents: number) => {
-    return new Intl.NumberFormat('en-US', {
+  const formatCurrency = (pence: number) => {
+    return new Intl.NumberFormat('en-GB', {
       style: 'currency',
-      currency: 'USD',
-    }).format(cents / 100)
+      currency: 'GBP',
+    }).format(pence / 100)
   }
 
   const formatRetention = (days: number | null | undefined) => {
@@ -275,7 +275,7 @@ export default function Billing() {
         const individualTier = getTierInfo('individual')
         const accountLimit = individualTier?.max_accounts ?? 6
         const retentionDays = individualTier?.history_retention_days ?? 90
-        const priceMonthly = individualTier?.price_monthly_dollars ?? 29
+        const priceMonthly = individualTier?.price_monthly_pounds ?? 29
         return (
         <div className="bg-gradient-to-r from-blue-600 to-cyan-600 shadow rounded-lg p-6 text-white">
           <h2 className="text-lg font-medium mb-2">Upgrade to Individual</h2>
@@ -285,7 +285,7 @@ export default function Billing() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <p className="text-3xl font-bold">${priceMonthly}/mo</p>
+              <p className="text-3xl font-bold">£{priceMonthly}/mo</p>
               <p className="text-blue-100 text-sm">Up to {accountLimit} cloud accounts included</p>
               <p className="text-blue-100 text-xs mt-2">No per-account fees - simple flat pricing</p>
             </div>

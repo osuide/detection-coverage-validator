@@ -524,7 +524,7 @@ export default function Landing() {
               <div className="mb-6">
                 <h3 className="text-xl font-bold text-white mb-2">Free</h3>
                 <div className="flex items-baseline">
-                  <span className="text-4xl font-bold text-white">$0</span>
+                  <span className="text-4xl font-bold text-white">£0</span>
                   <span className="text-gray-400 ml-2">forever</span>
                 </div>
               </div>
@@ -577,7 +577,7 @@ export default function Landing() {
               <div className="mb-6">
                 <h3 className="text-xl font-bold text-white mb-2">Individual</h3>
                 <div className="flex items-baseline">
-                  <span className="text-4xl font-bold text-white">$29</span>
+                  <span className="text-4xl font-bold text-white">£29</span>
                   <span className="text-blue-100 ml-2">/month</span>
                 </div>
               </div>
@@ -630,7 +630,7 @@ export default function Landing() {
               <div className="mb-6">
                 <h3 className="text-xl font-bold text-white mb-2">Pro</h3>
                 <div className="flex items-baseline">
-                  <span className="text-4xl font-bold text-white">$250</span>
+                  <span className="text-4xl font-bold text-white">£250</span>
                   <span className="text-gray-400 ml-2">/month</span>
                 </div>
               </div>

@@ -212,12 +212,12 @@ TIER_LIMITS = {
 STRIPE_PRICES = {
     # New tiers
     "free_monthly": 0,
-    "individual_monthly": 2900,  # $29.00/month (up to 6 accounts)
-    "pro_monthly": 25000,  # $250.00/month (up to 500 accounts)
+    "individual_monthly": 2900,  # £29.00/month (up to 6 accounts)
+    "pro_monthly": 25000,  # £250.00/month (up to 500 accounts)
     "enterprise_monthly": None,  # Custom pricing (contact sales)
     # Legacy tiers (for backward compatibility)
-    "subscriber_monthly": 2900,  # $29.00/month base (legacy)
-    "additional_account_subscriber": 900,  # $9.00/account for legacy Subscriber overage
+    "subscriber_monthly": 2900,  # £29.00/month base (legacy)
+    "additional_account_subscriber": 900,  # £9.00/account for legacy Subscriber overage
 }
 
 
@@ -226,9 +226,9 @@ def calculate_account_cost(account_count: int, tier: AccountTier) -> dict:
     Calculate monthly cost for a given number of accounts.
 
     New simplified pricing (2024-12):
-    - FREE: $0 for 1 account
-    - INDIVIDUAL: $29/month for up to 6 accounts
-    - PRO: $250/month for up to 500 accounts
+    - FREE: £0 for 1 account
+    - INDIVIDUAL: £29/month for up to 6 accounts
+    - PRO: £250/month for up to 500 accounts
     - ENTERPRISE: Custom pricing for 500+ accounts
 
     Returns dict with:
@@ -661,7 +661,7 @@ class Invoice(Base):
 
     stripe_invoice_id: Mapped[str] = mapped_column(String(255), nullable=False)
     amount_cents: Mapped[int] = mapped_column(Integer, nullable=False)
-    currency: Mapped[str] = mapped_column(String(3), nullable=False, default="usd")
+    currency: Mapped[str] = mapped_column(String(3), nullable=False, default="gbp")
     status: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
 
     invoice_pdf_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -685,8 +685,8 @@ class Invoice(Base):
     organization = relationship("Organization", back_populates="invoices")
 
     @property
-    def amount_dollars(self) -> float:
-        """Amount in dollars."""
+    def amount_pounds(self) -> float:
+        """Amount in pounds."""
         return self.amount_cents / 100.0
 
 
