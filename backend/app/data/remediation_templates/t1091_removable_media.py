@@ -155,7 +155,6 @@ Resources:
 
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching
 
 Outputs:
   Scope:
@@ -216,7 +215,6 @@ resource "aws_cloudwatch_metric_alarm" "usb_connection" {
   treat_missing_data  = "notBreaching"
 
   alarm_actions       = [aws_sns_topic.usb_alerts.arn]
-  treat_missing_data  = "notBreaching"
 }
 
 # NOTE: This detection works for WorkSpaces only.
@@ -357,7 +355,6 @@ Resources:
 
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching
 
 Outputs:
   Note:

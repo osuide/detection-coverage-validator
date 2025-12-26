@@ -84,8 +84,8 @@ TEMPLATE = RemediationTemplate(
                     "PrivilegeEscalation:Runtime/SuspiciousCommand",
                     "PrivilegeEscalation:Runtime/ContainerMountsHostDirectory",
                     "Execution:Runtime/NewBinaryExecuted",
-                    "Defense Evasion:Runtime/ProcessInjectionAttempt",
-                    "PrivilegeEscalation:Runtime/SuspiciousCommand",
+                    "DefenseEvasion:Runtime/ProcessInjection.Proc",
+                    "DefenseEvasion:Runtime/ProcessInjection.Ptrace",
                 ],
                 cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty Runtime Monitoring for token manipulation detection

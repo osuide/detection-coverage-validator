@@ -128,8 +128,7 @@ Resources:
       TreatMissingData: notBreaching
 
       AlarmActions:
-        - !Ref AlertTopic
-      TreatMissingData: notBreaching""",
+        - !Ref AlertTopic""",
                 terraform_template="""# AWS: Detect remote access tool installation on EC2
 
 variable "cloudtrail_log_group" {
@@ -182,7 +181,6 @@ resource "aws_cloudwatch_metric_alarm" "remote_tool_alert" {
   treat_missing_data  = "notBreaching"
 
   alarm_actions       = [aws_sns_topic.alerts.arn]
-  treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",
                 alert_title="Remote Access Tool Detected on EC2",
@@ -282,7 +280,6 @@ resource "aws_cloudwatch_metric_alarm" "remote_connection_alert" {
   treat_missing_data  = "notBreaching"
 
   alarm_actions       = [aws_sns_topic.alerts.arn]
-  treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",
                 alert_title="Remote Access Tool Network Activity Detected",

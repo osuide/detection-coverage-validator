@@ -129,8 +129,7 @@ Resources:
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
 
-      AlarmActions: [!Ref AlertTopic]
-      TreatMissingData: notBreaching""",
+      AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# AWS: Detect suspicious file execution patterns
 
 variable "cloudwatch_log_group" {

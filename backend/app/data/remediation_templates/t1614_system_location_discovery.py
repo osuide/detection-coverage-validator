@@ -136,8 +136,7 @@ Resources:
       TreatMissingData: notBreaching
 
       AlarmActions:
-        - !Ref AlertTopic
-      TreatMissingData: notBreaching""",
+        - !Ref AlertTopic""",
                 terraform_template="""# AWS: Detect instance metadata location discovery
 
 variable "vpc_flow_logs_group" {
@@ -191,7 +190,6 @@ resource "aws_cloudwatch_metric_alarm" "metadata_location" {
   treat_missing_data  = "notBreaching"
 
   alarm_actions       = [aws_sns_topic.metadata_location_alerts.arn]
-  treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="medium",
                 alert_title="Instance Metadata Location Discovery Detected",
@@ -300,8 +298,7 @@ Resources:
       TreatMissingData: notBreaching
 
       AlarmActions:
-        - !Ref AlertTopic
-      TreatMissingData: notBreaching""",
+        - !Ref AlertTopic""",
                 terraform_template="""# AWS: Detect system locale and timezone discovery
 
 variable "cloudwatch_log_group" {
@@ -355,7 +352,6 @@ resource "aws_cloudwatch_metric_alarm" "locale_discovery" {
   treat_missing_data  = "notBreaching"
 
   alarm_actions       = [aws_sns_topic.location_discovery_alerts.arn]
-  treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="medium",
                 alert_title="System Location Discovery Detected",

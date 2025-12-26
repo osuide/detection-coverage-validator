@@ -555,8 +555,7 @@ Resources:
       TreatMissingData: notBreaching
 
       AlarmActions:
-        - !Ref IntegrityAlertTopic
-      TreatMissingData: notBreaching""",
+        - !Ref IntegrityAlertTopic""",
                 terraform_template="""# AWS: S3 object integrity monitoring for defacement
 
 variable "cloudtrail_log_group" {
@@ -615,7 +614,6 @@ resource "aws_cloudwatch_metric_alarm" "critical_file_alarm" {
   treat_missing_data  = "notBreaching"
 
   alarm_actions       = [aws_sns_topic.integrity_alerts.arn]
-  treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="critical",
                 alert_title="Critical Website File Modified",

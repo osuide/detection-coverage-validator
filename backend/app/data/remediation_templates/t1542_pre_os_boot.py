@@ -438,8 +438,7 @@ Resources:
       TreatMissingData: notBreaching
 
       AlarmActions:
-        - !Ref AlertTopic
-      TreatMissingData: notBreaching""",
+        - !Ref AlertTopic""",
                 terraform_template="""# AWS: Detect EC2 boot anomalies and firmware issues
 
 variable "alert_email" {
@@ -488,7 +487,6 @@ resource "aws_cloudwatch_metric_alarm" "boot_anomaly" {
   treat_missing_data  = "notBreaching"
 
   alarm_actions       = [aws_sns_topic.boot_anomaly_alerts.arn]
-  treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="critical",
                 alert_title="EC2 Boot Anomaly Detected",

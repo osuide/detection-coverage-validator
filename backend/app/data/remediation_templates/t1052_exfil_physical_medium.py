@@ -440,7 +440,6 @@ Resources:
 
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching
 
 Outputs:
   Note:

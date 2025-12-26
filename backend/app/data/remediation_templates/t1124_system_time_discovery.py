@@ -133,8 +133,7 @@ Resources:
       TreatMissingData: notBreaching
 
       AlarmActions:
-        - !Ref AlertTopic
-      TreatMissingData: notBreaching""",
+        - !Ref AlertTopic""",
                 terraform_template="""# AWS: Detect system time discovery
 
 variable "cloudwatch_log_group" {
@@ -188,7 +187,6 @@ resource "aws_cloudwatch_metric_alarm" "time_discovery" {
   treat_missing_data  = "notBreaching"
 
   alarm_actions       = [aws_sns_topic.time_discovery_alerts.arn]
-  treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="low",
                 alert_title="System Time Discovery Detected",

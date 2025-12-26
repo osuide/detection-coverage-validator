@@ -125,8 +125,7 @@ Resources:
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
 
-      AlarmActions: [!Ref AlertTopic]
-      TreatMissingData: notBreaching""",
+      AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect IAM policy condition modifications in AWS
 
 variable "cloudtrail_log_group" {
@@ -178,7 +177,6 @@ resource "aws_cloudwatch_metric_alarm" "iam_policy_modifications" {
   treat_missing_data  = "notBreaching"
 
   alarm_actions       = [aws_sns_topic.alerts.arn]
-  treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",
                 alert_title="IAM Policy Condition Modification Detected",

@@ -132,8 +132,7 @@ Resources:
       TreatMissingData: notBreaching
 
       AlarmActions:
-        - !Ref AlertTopic
-      TreatMissingData: notBreaching""",
+        - !Ref AlertTopic""",
                 terraform_template="""# AWS: Detect unusual web service API calls
 
 variable "cloudtrail_log_group" {
@@ -186,7 +185,6 @@ resource "aws_cloudwatch_metric_alarm" "web_service_alert" {
   treat_missing_data  = "notBreaching"
 
   alarm_actions       = [aws_sns_topic.alerts.arn]
-  treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",
                 alert_title="Unusual Web Service API Activity Detected",
@@ -286,7 +284,6 @@ resource "aws_cloudwatch_metric_alarm" "web_traffic_alert" {
   treat_missing_data  = "notBreaching"
 
   alarm_actions       = [aws_sns_topic.alerts.arn]
-  treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="medium",
                 alert_title="Abnormal Web Service Traffic Pattern",

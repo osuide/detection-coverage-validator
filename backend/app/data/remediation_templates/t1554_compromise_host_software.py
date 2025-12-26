@@ -131,7 +131,6 @@ Resources:
 
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching
 
   TopicPolicy:
     Type: AWS::SNS::TopicPolicy
@@ -198,7 +197,6 @@ resource "aws_cloudwatch_metric_alarm" "binary_modified" {
   treat_missing_data  = "notBreaching"
 
   alarm_actions       = [aws_sns_topic.binary_alerts.arn]
-  treat_missing_data  = "notBreaching"
 }
 
 data "aws_caller_identity" "current" {}

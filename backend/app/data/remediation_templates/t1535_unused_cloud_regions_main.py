@@ -341,8 +341,7 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
 
-      AlarmActions: [!Ref AlertTopic]
-      TreatMissingData: notBreaching""",
+      AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# CloudWatch metric filter for unused region activity
 
 variable "cloudtrail_log_group" {

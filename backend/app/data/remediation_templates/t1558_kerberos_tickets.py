@@ -431,7 +431,6 @@ resource "aws_cloudwatch_metric_alarm" "kerberoasting_detected" {
   treat_missing_data  = "notBreaching"
 
   alarm_actions       = [aws_sns_topic.kerberoasting_alerts.arn]
-  treat_missing_data  = "notBreaching"
 }
 
 # Additional metric for AS-REP Roasting detection
@@ -520,7 +519,6 @@ Resources:
 
       AlarmActions:
         - !Ref KerberoastingAlertsTopic
-      TreatMissingData: notBreaching
 
   # Metric Filter for AS-REP Roasting
   ASREPRoastingFilter:

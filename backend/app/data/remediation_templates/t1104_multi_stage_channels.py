@@ -130,8 +130,7 @@ Resources:
       TreatMissingData: notBreaching
 
       AlarmActions:
-        - !Ref AlertTopic
-      TreatMissingData: notBreaching""",
+        - !Ref AlertTopic""",
                 terraform_template="""# AWS: Detect multi-stage C2 connections
 
 variable "vpc_flow_log_group" {
@@ -184,7 +183,6 @@ resource "aws_cloudwatch_metric_alarm" "multi_stage_alert" {
   treat_missing_data  = "notBreaching"
 
   alarm_actions       = [aws_sns_topic.alerts.arn]
-  treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",
                 alert_title="Multi-Stage C2 Connection Pattern Detected",
@@ -280,8 +278,7 @@ Resources:
       TreatMissingData: notBreaching
 
       AlarmActions:
-        - !Ref AlertTopic
-      TreatMissingData: notBreaching""",
+        - !Ref AlertTopic""",
                 terraform_template="""# AWS: Detect process network sequences
 
 variable "cloudtrail_log_group" {
@@ -334,7 +331,6 @@ resource "aws_cloudwatch_metric_alarm" "process_sequence_alert" {
   treat_missing_data  = "notBreaching"
 
   alarm_actions       = [aws_sns_topic.alerts.arn]
-  treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",
                 alert_title="Process Network Sequence Detected",

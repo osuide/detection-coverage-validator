@@ -404,7 +404,6 @@ Resources:
 
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching
 
   # Step 5: SSM Document for udev + systemd installation
   BlockDeviceMonitorDocument:

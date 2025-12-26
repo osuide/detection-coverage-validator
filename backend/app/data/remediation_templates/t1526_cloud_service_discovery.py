@@ -50,6 +50,159 @@ TEMPLATE = RemediationTemplate(
         often_follows=["T1078.004", "T1580"],
     ),
     detection_strategies=[
+        # AWS GuardDuty Detection (Recommended)
+        DetectionStrategy(
+            strategy_id="t1526-aws-guardduty",
+            name="AWS GuardDuty Anomaly Detection",
+            description=(
+                "AWS GuardDuty detects anomalous cloud service discovery activity. Discovery:IAMUser/AnomalousBehavior identifies when service enumeration APIs like DescribeInstances, ListBuckets, or ListFunctions are called in unusual patterns."
+            ),
+            detection_type=DetectionType.GUARDDUTY,
+            aws_service="guardduty",
+            cloud_provider=CloudProvider.AWS,
+            implementation=DetectionImplementation(
+                guardduty_finding_types=[
+                    "Discovery:IAMUser/AnomalousBehavior",
+                ],
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
+Description: GuardDuty alerts for T1526
+
+Parameters:
+  AlertEmail:
+    Type: String
+    Description: Email for security alerts
+
+Resources:
+  # Step 1: SNS Topic for alerts
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: GuardDuty-T1526-Alerts
+      KmsMasterKeyId: alias/aws/sns
+
+  AlertSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref AlertTopic
+      Protocol: email
+      Endpoint: !Ref AlertEmail
+
+  # Step 2: EventBridge rule for GuardDuty findings
+  GuardDutyRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Capture GuardDuty findings for T1526
+      EventPattern:
+        source:
+          - aws.guardduty
+        detail-type:
+          - GuardDuty Finding
+        detail:
+          type:
+            - prefix: "Discovery:IAMUser/"
+      State: ENABLED
+      Targets:
+        - Id: SNSTarget
+          Arn: !Ref AlertTopic
+
+  # Step 3: Allow EventBridge to publish to SNS
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref AlertTopic
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic""",
+                terraform_template="""# GuardDuty alerts for T1526
+
+variable "alert_email" {
+  type        = string
+  description = "Email for security alerts"
+}
+
+data "aws_caller_identity" "current" {}
+
+# Step 1: SNS Topic
+resource "aws_sns_topic" "guardduty_alerts" {
+  name              = "guardduty-t1526-alerts"
+  kms_master_key_id = "alias/aws/sns"
+}
+
+resource "aws_sns_topic_subscription" "email" {
+  topic_arn = aws_sns_topic.guardduty_alerts.arn
+  protocol  = "email"
+  endpoint  = var.alert_email
+}
+
+# Step 2: EventBridge rule for findings
+resource "aws_cloudwatch_event_rule" "guardduty" {
+  name        = "guardduty-t1526"
+  description = "Capture GuardDuty findings for T1526"
+
+  event_pattern = jsonencode({
+    source      = ["aws.guardduty"]
+    detail-type = ["GuardDuty Finding"]
+    detail = {
+      type = [{ prefix = "Discovery:IAMUser/" }]
+    }
+  })
+}
+
+# Step 3: Target with DLQ and retry
+resource "aws_sqs_queue" "dlq" {
+  name                      = "guardduty-t1526-dlq"
+  message_retention_seconds = 1209600
+}
+
+resource "aws_cloudwatch_event_target" "sns" {
+  rule      = aws_cloudwatch_event_rule.guardduty.name
+  target_id = "SNSTarget"
+  arn       = aws_sns_topic.guardduty_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
+}
+
+# Step 4: SNS topic policy
+resource "aws_sns_topic_policy" "allow_eventbridge" {
+  arn = aws_sns_topic.guardduty_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.guardduty_alerts.arn
+      Condition = {
+        StringEquals = { "AWS:SourceAccount" = data.aws_caller_identity.current.account_id }
+        ArnEquals    = { "aws:SourceArn" = aws_cloudwatch_event_rule.guardduty.arn }
+      }
+    }]
+  })
+}""",
+            ),
+            estimated_false_positive_rate=FalsePositiveRate.LOW,
+            false_positive_tuning="GuardDuty uses ML baselines; tune suppression rules for known benign patterns",
+            detection_coverage="70% - detects anomalous behaviour but may miss attacks that blend with normal activity",
+            implementation_effort=EffortLevel.LOW,
+            implementation_time="30 minutes",
+            estimated_monthly_cost="$4-10 per million events",
+            prerequisites=[
+                "AWS GuardDuty enabled",
+                "CloudTrail logging active",
+            ],
+        ),
         DetectionStrategy(
             strategy_id="t1526-aws-service",
             name="AWS Service Enumeration Detection",

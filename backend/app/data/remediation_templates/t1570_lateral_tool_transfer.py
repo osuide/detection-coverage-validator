@@ -126,8 +126,7 @@ Resources:
       TreatMissingData: notBreaching
 
       AlarmActions:
-        - !Ref AlertTopic
-      TreatMissingData: notBreaching""",
+        - !Ref AlertTopic""",
                 terraform_template="""# AWS: Detect S3 lateral tool transfer
 
 variable "cloudtrail_log_group" {
@@ -180,7 +179,6 @@ resource "aws_cloudwatch_metric_alarm" "transfer_alert" {
   treat_missing_data  = "notBreaching"
 
   alarm_actions       = [aws_sns_topic.alerts.arn]
-  treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",
                 alert_title="S3 Lateral Tool Transfer Detected",
@@ -468,7 +466,6 @@ resource "aws_cloudwatch_metric_alarm" "transfer_alert" {
   treat_missing_data  = "notBreaching"
 
   alarm_actions       = [aws_sns_topic.alerts.arn]
-  treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="medium",
                 alert_title="Large Internal File Transfer Detected",

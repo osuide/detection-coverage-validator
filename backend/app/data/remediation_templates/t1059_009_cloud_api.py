@@ -211,10 +211,24 @@ resource "aws_cloudwatch_event_rule" "api_recon" {
   })
 }
 
+resource "aws_sqs_queue" "dlq" {
+  name                      = "api-recon-dlq"
+  message_retention_seconds = 1209600
+}
+
 resource "aws_cloudwatch_event_target" "to_sns" {
   rule      = aws_cloudwatch_event_rule.api_recon.name
   target_id = "SendToSNS"
   arn       = aws_sns_topic.api_recon_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
 
   input_transformer {
     input_paths = {

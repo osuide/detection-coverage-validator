@@ -249,13 +249,19 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                 "CloudTrail enabled",
             ],
         ),
-        # Strategy 2: AWS Impossible Travel
+        # Strategy 2: AWS CloudWatch Console Login Monitoring
+        # NOTE: This is a SUPPLEMENTARY detection. GuardDuty (Strategy 1) provides
+        # true impossible travel detection with ML and geolocation. This CloudWatch
+        # approach only detects multiple logins and cannot determine geographic
+        # impossibility. Use GuardDuty for actual impossible travel detection.
         DetectionStrategy(
-            strategy_id="t1078-aws-impossible-travel",
-            name="Impossible Travel Detection via CloudWatch",
+            strategy_id="t1078-aws-console-login-monitoring",
+            name="Console Login Monitoring via CloudWatch (Supplementary)",
             description=(
-                "Detect when the same user authenticates from geographically distant locations "
-                "within a timeframe that makes physical travel impossible, indicating credential compromise."
+                "Monitor console logins for suspicious patterns. NOTE: This detection counts "
+                "login events but CANNOT detect true impossible travel (which requires geolocation). "
+                "For actual impossible travel detection, use GuardDuty Strategy 1 with "
+                "UnauthorizedAccess:IAMUser/ConsoleLoginSuccess.B finding."
             ),
             detection_type=DetectionType.CLOUDWATCH_QUERY,
             aws_service="cloudwatch",
@@ -273,7 +279,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
 | filter unique_ips > 1
 | sort last_login desc""",
                 cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
-Description: Impossible travel detection for T1078
+Description: |
+  Console login monitoring for T1078 (SUPPLEMENTARY DETECTION)
+  NOTE: This monitors login frequency only. For true impossible travel
+  detection with geolocation, use GuardDuty with finding type
+  UnauthorizedAccess:IAMUser/ConsoleLoginSuccess.B
 
 Parameters:
   CloudTrailLogGroup:
@@ -284,37 +294,41 @@ Parameters:
     Description: SNS topic for alerts
 
 Resources:
-  # Step 1: Metric filter for multiple IPs
-  MultipleIPMetricFilter:
+  # Step 1: Metric filter for console logins
+  ConsoleLoginMetricFilter:
     Type: AWS::Logs::MetricFilter
     Properties:
       LogGroupName: !Ref CloudTrailLogGroup
       FilterPattern: '{ $.eventName = "ConsoleLogin" && $.responseElements.ConsoleLogin = "Success" }'
       MetricTransformations:
-        - MetricName: ConsoleLoginFromMultipleIPs
+        - MetricName: SuccessfulConsoleLogins
           MetricNamespace: Security/T1078
           MetricValue: "1"
           DefaultValue: 0
 
-  # Step 2: Create alarm for impossible travel
-  ImpossibleTravelAlarm:
+  # Step 2: Alarm for high login frequency (may indicate credential sharing or compromise)
+  HighLoginFrequencyAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      AlarmName: T1078-ImpossibleTravel
-      AlarmDescription: Multiple console logins from different IPs detected
-      MetricName: ConsoleLoginFromMultipleIPs
+      AlarmName: T1078-HighLoginFrequency
+      AlarmDescription: |
+        High console login frequency detected. This may indicate credential
+        sharing or compromise. For impossible travel detection, check GuardDuty.
+      MetricName: SuccessfulConsoleLogins
       Namespace: Security/T1078
       Statistic: Sum
       Period: 300
       EvaluationPeriods: 1
-      Threshold: 2
+      Threshold: 5
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
-
       AlarmActions:
-        - !Ref SNSTopicArn
-      TreatMissingData: notBreaching""",
-                terraform_template="""# AWS Impossible travel detection for T1078
+        - !Ref SNSTopicArn""",
+                terraform_template="""# Console login monitoring for T1078 (SUPPLEMENTARY DETECTION)
+#
+# NOTE: This monitors login frequency only. For true impossible travel
+# detection with geolocation and ML, use GuardDuty with finding type:
+# UnauthorizedAccess:IAMUser/ConsoleLoginSuccess.B
 
 variable "cloudtrail_log_group" {
   type        = string
@@ -326,41 +340,40 @@ variable "sns_topic_arn" {
   description = "SNS topic ARN for alerts"
 }
 
-# Step 1: Metric filter for multiple IPs
-resource "aws_cloudwatch_log_metric_filter" "multiple_ips" {
-  name           = "console-login-multiple-ips"
+# Step 1: Metric filter for console logins
+resource "aws_cloudwatch_log_metric_filter" "console_logins" {
+  name           = "successful-console-logins"
   log_group_name = var.cloudtrail_log_group
   pattern        = "{ $.eventName = \"ConsoleLogin\" && $.responseElements.ConsoleLogin = \"Success\" }"
 
   metric_transformation {
-    name          = "ConsoleLoginFromMultipleIPs"
+    name          = "SuccessfulConsoleLogins"
     namespace     = "Security/T1078"
     value         = "1"
     default_value = 0
   }
 }
 
-# Step 2: Create alarm for impossible travel
-resource "aws_cloudwatch_metric_alarm" "impossible_travel" {
-  alarm_name          = "T1078-ImpossibleTravel"
-  alarm_description   = "Multiple console logins from different IPs detected"
+# Step 2: Alarm for high login frequency (may indicate credential sharing or compromise)
+resource "aws_cloudwatch_metric_alarm" "high_login_frequency" {
+  alarm_name          = "T1078-HighLoginFrequency"
+  alarm_description   = "High console login frequency. For impossible travel, check GuardDuty."
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
-  metric_name         = "ConsoleLoginFromMultipleIPs"
+  metric_name         = "SuccessfulConsoleLogins"
   namespace           = "Security/T1078"
   period              = 300
   statistic           = "Sum"
-  threshold           = 2
+  threshold           = 5
   treat_missing_data  = "notBreaching"
-
   alarm_actions       = [var.sns_topic_arn]
-  treat_missing_data  = "notBreaching"
 }""",
-                alert_severity="high",
-                alert_title="Impossible Travel: Multiple Login Locations",
+                alert_severity="medium",
+                alert_title="High Console Login Frequency Detected",
                 alert_description_template=(
-                    "User {user} logged in from {unique_ips} different IP addresses within 1 hour. "
-                    "IP addresses: {ip_addresses}. This may indicate credential compromise."
+                    "High console login frequency detected ({count} logins in 5 minutes). "
+                    "This may indicate credential sharing or automated access. "
+                    "For impossible travel alerts, check GuardDuty findings."
                 ),
                 investigation_steps=[
                     "Identify all IP addresses used by the user in the detection window",

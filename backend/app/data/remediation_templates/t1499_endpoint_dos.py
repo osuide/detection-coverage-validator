@@ -104,7 +104,6 @@ Resources:
 
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching
 
   # ECS CPU Exhaustion Alarm
   ECSCpuAlarm:
@@ -121,8 +120,7 @@ Resources:
       TreatMissingData: notBreaching
 
       AlarmActions:
-        - !Ref AlertTopic
-      TreatMissingData: notBreaching""",
+        - !Ref AlertTopic""",
                 terraform_template="""# Detect CPU/Memory exhaustion attacks
 
 variable "alert_email" { type = string }
@@ -151,7 +149,6 @@ resource "aws_cloudwatch_metric_alarm" "ec2_cpu" {
   treat_missing_data  = "notBreaching"
 
   alarm_actions       = [aws_sns_topic.alerts.arn]
-  treat_missing_data  = "notBreaching"
 }
 
 # ECS CPU Exhaustion Alarm
@@ -167,7 +164,6 @@ resource "aws_cloudwatch_metric_alarm" "ecs_cpu" {
   treat_missing_data  = "notBreaching"
 
   alarm_actions       = [aws_sns_topic.alerts.arn]
-  treat_missing_data  = "notBreaching"
 }
 
 # RDS CPU Exhaustion Alarm
@@ -268,7 +264,6 @@ resource "aws_cloudwatch_metric_alarm" "lambda_throttles" {
   treat_missing_data  = "notBreaching"
 
   alarm_actions       = [aws_sns_topic.alerts.arn]
-  treat_missing_data  = "notBreaching"
 }
 
 # Lambda Errors Alarm

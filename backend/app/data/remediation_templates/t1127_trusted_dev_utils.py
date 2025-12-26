@@ -130,7 +130,6 @@ Resources:
 
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching
 
   TopicPolicy:
     Type: AWS::SNS::TopicPolicy

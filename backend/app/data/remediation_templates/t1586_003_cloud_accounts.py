@@ -124,8 +124,7 @@ Resources:
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
 
-      AlarmActions: [!Ref AlertTopic]
-      TreatMissingData: notBreaching""",
+      AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# AWS: Detect compromised IAM credentials via anomalous authentication
 
 variable "cloudtrail_log_group" {
@@ -180,7 +179,6 @@ resource "aws_cloudwatch_metric_alarm" "compromised_credentials" {
   treat_missing_data  = "notBreaching"
 
   alarm_actions       = [aws_sns_topic.iam_anomaly_alerts.arn]
-  treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",
                 alert_title="Potential Compromised IAM Credentials",

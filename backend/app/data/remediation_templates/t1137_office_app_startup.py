@@ -130,8 +130,7 @@ Resources:
       TreatMissingData: notBreaching
 
       AlarmActions:
-        - !Ref OfficePersistenceAlertTopic
-      TreatMissingData: notBreaching""",
+        - !Ref OfficePersistenceAlertTopic""",
                 terraform_template="""# AWS WorkSpaces Office Persistence Detection
 
 variable "workspaces_log_group" {
@@ -320,7 +319,6 @@ resource "aws_cloudwatch_metric_alarm" "m365_macro" {
   treat_missing_data  = "notBreaching"
 
   alarm_actions       = [aws_sns_topic.m365_macro_alerts.arn]
-  treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",
                 alert_title="Microsoft 365 Suspicious Macro Activity",
@@ -582,7 +580,6 @@ resource "aws_cloudwatch_metric_alarm" "office_registry" {
   treat_missing_data  = "notBreaching"
 
   alarm_actions       = [aws_sns_topic.registry_persistence_alerts.arn]
-  treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",
                 alert_title="Office Registry Persistence Detected",

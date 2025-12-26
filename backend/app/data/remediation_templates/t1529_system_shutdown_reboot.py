@@ -852,8 +852,7 @@ Resources:
       TreatMissingData: notBreaching
 
       AlarmActions:
-        - !Ref SNSTopicArn
-      TreatMissingData: notBreaching""",
+        - !Ref SNSTopicArn""",
                 terraform_template="""# Detect mass shutdown events across EC2 fleet
 
 variable "alert_email" {
@@ -910,7 +909,6 @@ resource "aws_cloudwatch_metric_alarm" "mass_shutdown" {
   treat_missing_data  = "notBreaching"
 
   alarm_actions       = [aws_sns_topic.critical_alerts.arn]
-  treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="critical",
                 alert_title="Mass Instance Shutdown Detected - Potential Attack",

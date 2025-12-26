@@ -125,8 +125,7 @@ Resources:
       EvaluationPeriods: 2
       TreatMissingData: notBreaching
 
-      AlarmActions: [!Ref AlertTopic]
-      TreatMissingData: notBreaching""",
+      AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# AWS: Detect suspicious process-to-web-service communications
 
 variable "vpc_flow_log_group" {
@@ -178,7 +177,6 @@ resource "aws_cloudwatch_metric_alarm" "suspicious_web_service_traffic" {
   treat_missing_data  = "notBreaching"
 
   alarm_actions       = [aws_sns_topic.web_service_c2_alerts.arn]
-  treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",
                 alert_title="Suspicious Web Service C2 Activity Detected",

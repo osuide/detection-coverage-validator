@@ -560,6 +560,47 @@ resource "aws_cloudwatch_event_rule" "pattern_check" {
   name                = "email-bombing-pattern-check"
   description         = "Check for email bombing patterns every 15 minutes"
   schedule_expression = "rate(15 minutes)"
+}
+
+# DLQ for failed event deliveries
+resource "aws_sqs_queue" "dlq" {
+  name                      = "email-bombing-pattern-dlq"
+  message_retention_seconds = 1209600
+}
+
+# EventBridge target with DLQ and retry policy
+resource "aws_cloudwatch_event_target" "to_sns" {
+  rule      = aws_cloudwatch_event_rule.pattern_check.name
+  target_id = "SendToSNS"
+  arn       = aws_sns_topic.pattern_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
+}
+
+# SNS topic policy to allow EventBridge
+resource "aws_sns_topic_policy" "allow_eventbridge" {
+  arn = aws_sns_topic.pattern_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowEventBridgePublish"
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.pattern_alerts.arn
+      Condition = {
+        StringEquals = { "AWS:SourceAccount" = data.aws_caller_identity.current.account_id }
+        ArnEquals    = { "aws:SourceArn" = aws_cloudwatch_event_rule.pattern_check.arn }
+      }
+    }]
+  })
 }""",
                 alert_severity="high",
                 alert_title="Email Bombing Pattern Detected",

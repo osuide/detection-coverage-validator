@@ -145,8 +145,7 @@ Resources:
       TreatMissingData: notBreaching
 
       AlarmActions:
-        - !Ref AlertTopic
-      TreatMissingData: notBreaching""",
+        - !Ref AlertTopic""",
                 terraform_template="""# AWS: Detect CloudTrail and CloudWatch log enumeration
 
 variable "cloudtrail_log_group" {
