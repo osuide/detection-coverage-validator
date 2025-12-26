@@ -490,8 +490,41 @@ resource "aws_cloudwatch_event_rule" "encoding_tools" {
 }
 
 resource "aws_cloudwatch_event_target" "sns" {
-  rule = aws_cloudwatch_event_rule.encoding_tools.name
-  arn  = aws_sns_topic.encoding_tools_alerts.arn
+  rule      = aws_cloudwatch_event_rule.encoding_tools.name
+  target_id = "SendToSNS"
+  arn       = aws_sns_topic.encoding_tools_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.encoding_tools_dlq.arn
+  }
+}
+
+resource "aws_sqs_queue" "encoding_tools_dlq" {
+  name                      = "encoding-tools-alerts-dlq"
+  message_retention_seconds = 1209600
+}
+
+resource "aws_sqs_queue_policy" "encoding_tools_dlq_policy" {
+  queue_url = aws_sqs_queue.encoding_tools_dlq.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.encoding_tools_dlq.arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.encoding_tools.arn
+        }
+      }
+    }]
+  })
 }
 
 # Step 3: SNS topic policy

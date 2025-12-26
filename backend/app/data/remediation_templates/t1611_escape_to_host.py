@@ -203,7 +203,7 @@ resource "aws_cloudwatch_metric_alarm" "privileged_container" {
                     "PrivilegeEscalation:Runtime/DockerSocketAccessed",
                     "PrivilegeEscalation:Runtime/RuncContainerEscape",
                     "Execution:Runtime/NewBinaryExecuted",
-                    "PrivilegeEscalation:Runtime/ContainerMountsHost",
+                    "PrivilegeEscalation:Runtime/ContainerMountsHostDirectory",
                 ],
                 cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty container escape detection via EventBridge
@@ -270,6 +270,28 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
+# Dead Letter Queue for EventBridge targets
+resource "aws_sqs_queue" "events_dlq" {
+  name                      = "container-escape-dlq"
+  message_retention_seconds = 1209600
+}
+
+resource "aws_sqs_queue_policy" "events_dlq" {
+  queue_url = aws_sqs_queue.events_dlq.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Service = "events.amazonaws.com"
+      }
+      Action   = "sqs:SendMessage"
+      Resource = aws_sqs_queue.events_dlq.arn
+    }]
+  })
+}
+
 resource "aws_cloudwatch_event_rule" "container_escape" {
   name = "guardduty-container-escape"
   # Scoped to specific container escape finding types to avoid alert fatigue
@@ -294,6 +316,15 @@ resource "aws_cloudwatch_event_rule" "container_escape" {
 resource "aws_cloudwatch_event_target" "sns" {
   rule = aws_cloudwatch_event_rule.container_escape.name
   arn  = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.events_dlq.arn
+  }
 }
 
 data "aws_caller_identity" "current" {}

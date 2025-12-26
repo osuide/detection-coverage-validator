@@ -349,6 +349,40 @@ resource "aws_sqs_queue" "dlq" {
   kms_master_key_id         = "alias/aws/sqs"
 }
 
+# SQS Queue Policy for EventBridge DLQ (CRITICAL)
+# Without this, EventBridge cannot send failed events to the DLQ
+data "aws_iam_policy_document" "eventbridge_dlq_policy" {
+  statement {
+    sid     = "AllowEventBridgeToSendToDLQ"
+    effect  = "Allow"
+    actions = ["sqs:SendMessage"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["events.amazonaws.com"]
+    }
+
+    resources = [aws_sqs_queue.dlq.arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+
+    condition {
+      test     = "ArnEquals"
+      variable = "aws:SourceArn"
+      values   = [aws_cloudwatch_event_rule.guardduty_s3.arn]
+    }
+  }
+}
+
+resource "aws_sqs_queue_policy" "event_dlq" {
+  queue_url = aws_sqs_queue.dlq.url
+  policy    = data.aws_iam_policy_document.eventbridge_dlq_policy.json
+}
+
 # EventBridge rule for ALL S3 finding types
 resource "aws_cloudwatch_event_rule" "guardduty_s3" {
   name        = "guardduty-s3-exfiltration"
@@ -559,6 +593,20 @@ Outputs:
                     },
                 },
                 terraform_template="""# Lambda-based bulk S3 access detection
+
+terraform {
+  required_version = ">= 1.0"
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = ">= 5.0"
+    }
+    archive = {
+      source  = "hashicorp/archive"
+      version = ">= 2.4.0"
+    }
+  }
+}
 
 variable "name_prefix" {
   type        = string

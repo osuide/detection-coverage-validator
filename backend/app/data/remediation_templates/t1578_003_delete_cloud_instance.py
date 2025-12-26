@@ -144,9 +144,43 @@ resource "aws_cloudwatch_event_rule" "ec2_terminate" {
   })
 }
 
+resource "aws_sqs_queue" "ec2_dlq" {
+  name                      = "ec2-deletion-dlq"
+  message_retention_seconds = 1209600
+}
+
 resource "aws_cloudwatch_event_target" "sns" {
-  rule = aws_cloudwatch_event_rule.ec2_terminate.name
-  arn  = aws_sns_topic.alerts.arn
+  rule      = aws_cloudwatch_event_rule.ec2_terminate.name
+  target_id = "SendToSNS"
+  arn       = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.ec2_dlq.arn
+  }
+}
+
+resource "aws_sqs_queue_policy" "ec2_dlq_policy" {
+  queue_url = aws_sqs_queue.ec2_dlq.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.ec2_dlq.arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.ec2_terminate.arn
+        }
+      }
+    }]
+  })
 }
 
 # Step 3: Allow EventBridge to publish to SNS
@@ -377,9 +411,43 @@ resource "aws_cloudwatch_event_rule" "rds_delete" {
   })
 }
 
+resource "aws_sqs_queue" "rds_dlq" {
+  name                      = "rds-deletion-dlq"
+  message_retention_seconds = 1209600
+}
+
 resource "aws_cloudwatch_event_target" "sns" {
-  rule = aws_cloudwatch_event_rule.rds_delete.name
-  arn  = aws_sns_topic.alerts.arn
+  rule      = aws_cloudwatch_event_rule.rds_delete.name
+  target_id = "SendToSNS"
+  arn       = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.rds_dlq.arn
+  }
+}
+
+resource "aws_sqs_queue_policy" "rds_dlq_policy" {
+  queue_url = aws_sqs_queue.rds_dlq.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.rds_dlq.arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.rds_delete.arn
+        }
+      }
+    }]
+  })
 }
 
 # Step 3: Allow EventBridge to publish to SNS

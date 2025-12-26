@@ -198,10 +198,25 @@ resource "aws_cloudwatch_event_rule" "config_compliance" {
   })
 }
 
+# Dead Letter Queue for config compliance events
+resource "aws_sqs_queue" "config_dlq" {
+  name                      = "config-compliance-dlq"
+  message_retention_seconds = 1209600  # 14 days
+}
+
 resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.config_compliance.name
   target_id = "SendToSNS"
   arn       = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.config_dlq.arn
+  }
 }
 
 # Allow EventBridge to publish to SNS
@@ -216,9 +231,32 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
-    Condition = {
+      Condition = {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.config_compliance.arn
+        }
+      }
+    }]
+  })
+}
+
+# SQS queue policy for config compliance DLQ
+resource "aws_sqs_queue_policy" "config_dlq_policy" {
+  queue_url = aws_sqs_queue.config_dlq.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.config_dlq.arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.config_compliance.arn
         }
       }
     }]
@@ -530,10 +568,68 @@ resource "aws_cloudwatch_event_rule" "guardduty_recon" {
   })
 }
 
+# Dead Letter Queue for GuardDuty recon events
+resource "aws_sqs_queue" "guardduty_dlq" {
+  name                      = "guardduty-recon-dlq"
+  message_retention_seconds = 1209600  # 14 days
+}
+
 resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.guardduty_recon.name
   target_id = "SendToSNS"
   arn       = aws_sns_topic.guardduty_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.guardduty_dlq.arn
+  }
+}
+
+# SNS topic policy for GuardDuty alerts
+resource "aws_sns_topic_policy" "guardduty_publish" {
+  arn = aws_sns_topic.guardduty_alerts.arn
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "SNS:Publish"
+      Resource  = aws_sns_topic.guardduty_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.guardduty_recon.arn
+        }
+      }
+    }]
+  })
+}
+
+# SQS queue policy for GuardDuty DLQ
+resource "aws_sqs_queue_policy" "guardduty_dlq_policy" {
+  queue_url = aws_sqs_queue.guardduty_dlq.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.guardduty_dlq.arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.guardduty_recon.arn
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="high",
                 alert_title="Reconnaissance Activity Detected",

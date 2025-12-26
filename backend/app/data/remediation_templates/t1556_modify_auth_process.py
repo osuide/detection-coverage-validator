@@ -186,6 +186,40 @@ resource "aws_sqs_queue" "event_dlq" {
   message_retention_seconds = 1209600  # 14 days
 }
 
+# SQS Queue Policy for EventBridge DLQ (CRITICAL)
+# Without this, EventBridge cannot send failed events to the DLQ
+data "aws_iam_policy_document" "eventbridge_dlq_policy" {
+  statement {
+    sid     = "AllowEventBridgeToSendToDLQ"
+    effect  = "Allow"
+    actions = ["sqs:SendMessage"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["events.amazonaws.com"]
+    }
+
+    resources = [aws_sqs_queue.event_dlq.arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+
+    condition {
+      test     = "ArnEquals"
+      variable = "aws:SourceArn"
+      values   = [aws_cloudwatch_event_rule.iam_policy_change.arn]
+    }
+  }
+}
+
+resource "aws_sqs_queue_policy" "event_dlq_policy" {
+  queue_url = aws_sqs_queue.event_dlq.url
+  policy    = data.aws_iam_policy_document.eventbridge_dlq_policy.json
+}
+
 # Step 2: EventBridge rule for IAM policy changes
 resource "aws_cloudwatch_event_rule" "iam_policy_change" {
   name        = "iam-auth-policy-modifications"
@@ -535,6 +569,40 @@ resource "aws_sns_topic_subscription" "email" {
 resource "aws_sqs_queue" "event_dlq" {
   name                      = "identity-provider-dlq"
   message_retention_seconds = 1209600  # 14 days
+}
+
+# SQS Queue Policy for EventBridge DLQ (CRITICAL)
+# Without this, EventBridge cannot send failed events to the DLQ
+data "aws_iam_policy_document" "idp_dlq_policy" {
+  statement {
+    sid     = "AllowEventBridgeToSendToDLQ"
+    effect  = "Allow"
+    actions = ["sqs:SendMessage"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["events.amazonaws.com"]
+    }
+
+    resources = [aws_sqs_queue.event_dlq.arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+
+    condition {
+      test     = "ArnEquals"
+      variable = "aws:SourceArn"
+      values   = [aws_cloudwatch_event_rule.idp_change.arn]
+    }
+  }
+}
+
+resource "aws_sqs_queue_policy" "idp_dlq_policy" {
+  queue_url = aws_sqs_queue.event_dlq.url
+  policy    = data.aws_iam_policy_document.idp_dlq_policy.json
 }
 
 # Step 2: EventBridge rule for IdP changes

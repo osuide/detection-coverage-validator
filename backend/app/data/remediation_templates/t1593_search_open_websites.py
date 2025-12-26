@@ -94,6 +94,26 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
+  # Dead Letter Queue for EventBridge targets
+  EventsDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: codecommit-events-dlq
+      MessageRetentionPeriod: 1209600
+
+  DLQPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref EventsDLQ
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt EventsDLQ.Arn
+
   # EventBridge Rule for CodeCommit events
   CodeCommitEventRule:
     Type: AWS::Events::Rule
@@ -113,6 +133,11 @@ Resources:
       Targets:
         - Arn: !Ref AlertTopic
           Id: NotifyOnPush
+          RetryPolicy:
+            MaximumEventAge: 3600
+            MaximumRetryAttempts: 8
+          DeadLetterConfig:
+            Arn: !GetAtt EventsDLQ.Arn
 
   # EventBridge Rule for CodeArtifact package events
   CodeArtifactEventRule:
@@ -129,6 +154,11 @@ Resources:
       Targets:
         - Arn: !Ref AlertTopic
           Id: NotifyOnPackage
+          RetryPolicy:
+            MaximumEventAge: 3600
+            MaximumRetryAttempts: 8
+          DeadLetterConfig:
+            Arn: !GetAtt EventsDLQ.Arn
 
 Outputs:
   AlertTopicArn:
@@ -167,6 +197,28 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
+# Dead Letter Queue for EventBridge targets
+resource "aws_sqs_queue" "events_dlq" {
+  name                      = "codecommit-events-dlq"
+  message_retention_seconds = 1209600
+}
+
+resource "aws_sqs_queue_policy" "events_dlq" {
+  queue_url = aws_sqs_queue.events_dlq.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Service = "events.amazonaws.com"
+      }
+      Action   = "sqs:SendMessage"
+      Resource = aws_sqs_queue.events_dlq.arn
+    }]
+  })
+}
+
 # EventBridge Rule for CodeCommit events
 resource "aws_cloudwatch_event_rule" "codecommit_push" {
   name        = "codecommit-push-monitor"
@@ -185,6 +237,15 @@ resource "aws_cloudwatch_event_target" "codecommit_sns" {
   rule      = aws_cloudwatch_event_rule.codecommit_push.name
   target_id = "NotifyOnPush"
   arn       = aws_sns_topic.repo_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.events_dlq.arn
+  }
 }
 
 # EventBridge Rule for CodeArtifact package events
@@ -202,6 +263,15 @@ resource "aws_cloudwatch_event_target" "codeartifact_sns" {
   rule      = aws_cloudwatch_event_rule.codeartifact_package.name
   target_id = "NotifyOnPackage"
   arn       = aws_sns_topic.repo_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.events_dlq.arn
+  }
 }
 
 # SNS Topic Policy

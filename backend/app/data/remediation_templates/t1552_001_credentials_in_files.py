@@ -104,7 +104,7 @@ Resources:
           - GuardDuty Finding
         detail:
           type:
-            - prefix: "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration"
+            - prefix: "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.OutsideAWS"
             - prefix: "CredentialAccess:IAMUser"
       Targets:
         - Id: Alert
@@ -152,16 +152,49 @@ resource "aws_cloudwatch_event_rule" "cred_exfil" {
     "detail-type" = ["GuardDuty Finding"]
     detail = {
       type = [
-        { prefix = "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration" },
+        { prefix = "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.OutsideAWS" },
         { prefix = "CredentialAccess:IAMUser" }
       ]
     }
   })
 }
 
+# DLQ for failed events
+resource "aws_sqs_queue" "dlq" {
+  name                      = "credential-exfil-detection-dlq"
+  message_retention_seconds = 1209600  # 14 days
+}
+
+resource "aws_sqs_queue_policy" "dlq" {
+  queue_url = aws_sqs_queue.dlq.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.dlq.arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.cred_exfil.arn
+        }
+      }
+    }]
+  })
+}
+
 resource "aws_cloudwatch_event_target" "sns" {
   rule = aws_cloudwatch_event_rule.cred_exfil.name
   arn  = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
 }
 
 data "aws_caller_identity" "current" {}
@@ -175,9 +208,12 @@ resource "aws_sns_topic_policy" "allow_events" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
-    Condition = {
+      Condition = {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.cred_exfil.arn
         }
       }
     }]

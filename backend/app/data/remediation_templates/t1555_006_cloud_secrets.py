@@ -119,7 +119,7 @@ Resources:
         detail:
           type:
             - prefix: "CredentialAccess:"
-            - prefix: "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration"
+            - prefix: "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.OutsideAWS"
       Targets:
         - Id: SendToSNS
           Arn: !Ref CredentialAlertTopic
@@ -198,7 +198,7 @@ resource "aws_cloudwatch_event_rule" "credential_access" {
     detail = {
       type = [
         { prefix = "CredentialAccess:" },
-        { prefix = "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration" }
+        { prefix = "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.OutsideAWS" }
       ]
     }
   })
@@ -306,6 +306,20 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             implementation=DetectionImplementation(
                 terraform_template="""# Lambda-Based Bulk Secret Access Detection
 # Detects: Bulk access, unusual principals, cross-account access
+
+terraform {
+  required_version = ">= 1.0"
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = ">= 5.0"
+    }
+    archive = {
+      source  = "hashicorp/archive"
+      version = ">= 2.4.0"
+    }
+  }
+}
 
 variable "alert_email" {
   type        = string

@@ -201,6 +201,40 @@ resource "aws_sqs_queue" "dlq" {
   message_retention_seconds = 1209600
 }
 
+# SQS Queue Policy for EventBridge DLQ (CRITICAL)
+# Without this, EventBridge cannot send failed events to the DLQ
+data "aws_iam_policy_document" "eventbridge_dlq_policy" {
+  statement {
+    sid     = "AllowEventBridgeToSendToDLQ"
+    effect  = "Allow"
+    actions = ["sqs:SendMessage"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["events.amazonaws.com"]
+    }
+
+    resources = [aws_sqs_queue.dlq.arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+
+    condition {
+      test     = "ArnEquals"
+      variable = "aws:SourceArn"
+      values   = [aws_cloudwatch_event_rule.guardduty_mod.arn]
+    }
+  }
+}
+
+resource "aws_sqs_queue_policy" "event_dlq" {
+  queue_url = aws_sqs_queue.dlq.url
+  policy    = data.aws_iam_policy_document.eventbridge_dlq_policy.json
+}
+
 resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.guardduty_mod.name
   target_id = "SNSTarget"
@@ -376,6 +410,40 @@ resource "aws_sns_topic_subscription" "email" {
 resource "aws_sqs_queue" "dlq" {
   name                      = "securityhub-modification-alerts-dlq"
   message_retention_seconds = 1209600
+}
+
+# SQS Queue Policy for EventBridge DLQ (CRITICAL)
+# Without this, EventBridge cannot send failed events to the DLQ
+data "aws_iam_policy_document" "securityhub_dlq_policy" {
+  statement {
+    sid     = "AllowEventBridgeToSendToDLQ"
+    effect  = "Allow"
+    actions = ["sqs:SendMessage"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["events.amazonaws.com"]
+    }
+
+    resources = [aws_sqs_queue.dlq.arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+
+    condition {
+      test     = "ArnEquals"
+      variable = "aws:SourceArn"
+      values   = [aws_cloudwatch_event_rule.securityhub_mod.arn]
+    }
+  }
+}
+
+resource "aws_sqs_queue_policy" "securityhub_dlq" {
+  queue_url = aws_sqs_queue.dlq.url
+  policy    = data.aws_iam_policy_document.securityhub_dlq_policy.json
 }
 
 # Step 3: EventBridge rule
@@ -892,6 +960,40 @@ resource "aws_sns_topic_subscription" "email" {
 resource "aws_sqs_queue" "dlq" {
   name                      = "security-service-state-alerts-dlq"
   message_retention_seconds = 1209600
+}
+
+# SQS Queue Policy for EventBridge DLQ (CRITICAL)
+# Without this, EventBridge cannot send failed events to the DLQ
+data "aws_iam_policy_document" "config_dlq_policy" {
+  statement {
+    sid     = "AllowEventBridgeToSendToDLQ"
+    effect  = "Allow"
+    actions = ["sqs:SendMessage"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["events.amazonaws.com"]
+    }
+
+    resources = [aws_sqs_queue.dlq.arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+
+    condition {
+      test     = "ArnEquals"
+      variable = "aws:SourceArn"
+      values   = [aws_cloudwatch_event_rule.config_compliance.arn]
+    }
+  }
+}
+
+resource "aws_sqs_queue_policy" "config_dlq" {
+  queue_url = aws_sqs_queue.dlq.url
+  policy    = data.aws_iam_policy_document.config_dlq_policy.json
 }
 
 # Step 3: Config Rule for GuardDuty

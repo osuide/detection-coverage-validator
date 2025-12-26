@@ -74,7 +74,7 @@ TEMPLATE = RemediationTemplate(
             implementation=DetectionImplementation(
                 guardduty_finding_types=[
                     "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.OutsideAWS",
-                    "Persistence:IAMUser/ResourceCreation.OutsideNormalRegions",
+                    "Persistence:IAMUser/AnomalousBehavior",
                 ],
                 cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect resource creation in unusual regions
@@ -330,6 +330,8 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
+data "aws_caller_identity" "current" {}
+
 # Step 3: EventBridge rule for non-compliant Lambda functions
 resource "aws_cloudwatch_event_rule" "non_compliant_lambda" {
   name = "lambda-logging-violations"
@@ -345,9 +347,24 @@ resource "aws_cloudwatch_event_rule" "non_compliant_lambda" {
   })
 }
 
+# Dead Letter Queue for Lambda logging alerts
+resource "aws_sqs_queue" "lambda_dlq" {
+  name                      = "lambda-logging-dlq"
+  message_retention_seconds = 1209600  # 14 days
+}
+
 resource "aws_cloudwatch_event_target" "sns" {
   rule = aws_cloudwatch_event_rule.non_compliant_lambda.name
   arn  = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.lambda_dlq.arn
+  }
 }
 
 data "aws_caller_identity" "current" {}
@@ -361,9 +378,32 @@ resource "aws_sns_topic_policy" "allow_events" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
-    Condition = {
+      Condition = {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.non_compliant_lambda.arn
+        }
+      }
+    }]
+  })
+}
+
+# SQS queue policy for Lambda logging DLQ
+resource "aws_sqs_queue_policy" "lambda_dlq_policy" {
+  queue_url = aws_sqs_queue.lambda_dlq.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.lambda_dlq.arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.non_compliant_lambda.arn
         }
       }
     }]
@@ -386,6 +426,11 @@ resource "aws_iam_role" "config" {
         Service = "config.amazonaws.com"
       }
       Action = "sts:AssumeRole"
+      Condition = {
+        StringEquals = {
+          "aws:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }
@@ -763,9 +808,24 @@ resource "aws_cloudwatch_event_rule" "non_compliant_tags" {
   })
 }
 
+# Dead Letter Queue for tag compliance alerts
+resource "aws_sqs_queue" "tags_dlq" {
+  name                      = "resource-tag-dlq"
+  message_retention_seconds = 1209600  # 14 days
+}
+
 resource "aws_cloudwatch_event_target" "sns" {
   rule = aws_cloudwatch_event_rule.non_compliant_tags.name
   arn  = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.tags_dlq.arn
+  }
 }
 
 resource "aws_sns_topic_policy" "allow_events" {
@@ -777,9 +837,32 @@ resource "aws_sns_topic_policy" "allow_events" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
-    Condition = {
+      Condition = {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.non_compliant_tags.arn
+        }
+      }
+    }]
+  })
+}
+
+# SQS queue policy for tag compliance DLQ
+resource "aws_sqs_queue_policy" "tags_dlq_policy" {
+  queue_url = aws_sqs_queue.tags_dlq.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.tags_dlq.arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.non_compliant_tags.arn
         }
       }
     }]
@@ -802,6 +885,11 @@ resource "aws_iam_role" "config" {
         Service = "config.amazonaws.com"
       }
       Action = "sts:AssumeRole"
+      Condition = {
+        StringEquals = {
+          "aws:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }

@@ -118,7 +118,7 @@ Resources:
           type:
             - prefix: "Backdoor:EC2/"
             - prefix: "Trojan:EC2/"
-            - prefix: "UnauthorizedAccess:EC2/MaliciousIPCaller"
+            - prefix: "UnauthorizedAccess:EC2/MaliciousIPCaller.Custom"
       Targets:
         - Arn: !Ref GuardDutyAlertTopic
           Id: GuardDutySNSTarget
@@ -167,7 +167,7 @@ resource "aws_cloudwatch_event_rule" "guardduty_malicious" {
       type = [
         { prefix = "Backdoor:EC2/" },
         { prefix = "Trojan:EC2/" },
-        { prefix = "UnauthorizedAccess:EC2/MaliciousIPCaller" }
+        { prefix = "UnauthorizedAccess:EC2/MaliciousIPCaller.Custom" }
       ]
     }
   })
@@ -178,6 +178,38 @@ resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.guardduty_malicious.name
   target_id = "GuardDutySNSTarget"
   arn       = aws_sns_topic.guardduty_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.guardduty_driveby_dlq.arn
+  }
+}
+
+resource "aws_sqs_queue" "guardduty_driveby_dlq" {
+  name                      = "guardduty-driveby-alerts-dlq"
+  message_retention_seconds = 1209600
+}
+
+resource "aws_sqs_queue_policy" "guardduty_driveby_dlq_policy" {
+  queue_url = aws_sqs_queue.guardduty_driveby_dlq.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.guardduty_driveby_dlq.arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.guardduty_malicious.arn
+        }
+      }
+    }]
+  })
 }
 
 data "aws_caller_identity" "current" {}

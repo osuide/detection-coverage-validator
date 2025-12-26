@@ -402,6 +402,40 @@ resource "aws_sqs_queue" "guardduty_dlq" {
   message_retention_seconds = 1209600
 }
 
+# SQS Queue Policy for EventBridge DLQ (CRITICAL)
+# Without this, EventBridge cannot send failed events to the DLQ
+data "aws_iam_policy_document" "eventbridge_dlq_policy" {
+  statement {
+    sid     = "AllowEventBridgeToSendToDLQ"
+    effect  = "Allow"
+    actions = ["sqs:SendMessage"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["events.amazonaws.com"]
+    }
+
+    resources = [aws_sqs_queue.guardduty_dlq.arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+
+    condition {
+      test     = "ArnEquals"
+      variable = "aws:SourceArn"
+      values   = [aws_cloudwatch_event_rule.guardduty_portscan.arn]
+    }
+  }
+}
+
+resource "aws_sqs_queue_policy" "event_dlq" {
+  queue_url = aws_sqs_queue.guardduty_dlq.url
+  policy    = data.aws_iam_policy_document.eventbridge_dlq_policy.json
+}
+
 resource "aws_cloudwatch_event_target" "guardduty_to_sns" {
   rule      = aws_cloudwatch_event_rule.guardduty_portscan.name
   target_id = "SNSTarget"
@@ -519,7 +553,7 @@ resource "aws_sns_topic_policy" "alerts" {
                             "Recon:EC2/PortProbeUnprotectedPort",
                             "Recon:EC2/PortProbeEMRUnprotectedPort",
                             "Recon:EC2/Portscan",
-                            "UnauthorizedAccess:EC2/TorIPCaller",
+                            "UnauthorizedAccess:EC2/TorClient",
                         ]
                     },
                 },
@@ -668,7 +702,7 @@ resource "aws_cloudwatch_event_rule" "guardduty_recon" {
         { prefix = "Recon:EC2/PortProbeUnprotectedPort" },
         { prefix = "Recon:EC2/PortProbeEMRUnprotectedPort" },
         { prefix = "Recon:EC2/Portscan" },
-        { prefix = "UnauthorizedAccess:EC2/TorIPCaller" }
+        { prefix = "UnauthorizedAccess:EC2/TorClient" }
       ]
     }
   })

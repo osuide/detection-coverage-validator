@@ -353,6 +353,38 @@ resource "aws_cloudwatch_event_target" "sns_target" {
   rule      = aws_cloudwatch_event_rule.ssm_time_discovery.name
   target_id = "SecurityAlerts"
   arn       = aws_sns_topic.ssm_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.ssm_time_dlq.arn
+  }
+}
+
+resource "aws_sqs_queue" "ssm_time_dlq" {
+  name                      = "ssm-time-discovery-dlq"
+  message_retention_seconds = 1209600
+}
+
+resource "aws_sqs_queue_policy" "ssm_time_dlq_policy" {
+  queue_url = aws_sqs_queue.ssm_time_dlq.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.ssm_time_dlq.arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.ssm_time_discovery.arn
+        }
+      }
+    }]
+  })
 }
 
 # Step 3: SNS topic policy

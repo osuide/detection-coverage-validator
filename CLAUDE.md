@@ -44,6 +44,34 @@ Every MITRE ATT&CK technique template should provide:
 - Both in simplified 3-step format with clear comments
 - CloudWatch/Cloud Logging queries where applicable
 
+### ReAct Methodology for Template Review
+
+When reviewing or creating remediation templates, follow this ReAct (Reason-Act-Observe-Act) methodology:
+
+**Step 1 - REASON**: Understand the technique
+- What is this MITRE ATT&CK technique?
+- What specific behaviours or API calls should we detect?
+- What are the cloud-specific manifestations (AWS/GCP)?
+
+**Step 2 - ACT**: Research best practices
+- Fetch the MITRE ATT&CK page for the technique
+- Search for current AWS/GCP official documentation on detecting this technique
+- Look for AWS Security Blog posts, GCP security guides, or vendor best practices
+
+**Step 3 - OBSERVE**: Compare template against research
+- Does our template's detection logic match MITRE's recommendations?
+- Are we monitoring the correct API calls, log sources, and event patterns?
+- Are we missing any key detection strategies that AWS/GCP recommends?
+- Are the GuardDuty finding types correct and current?
+- Are the CloudWatch/Cloud Logging queries accurate?
+
+**Step 4 - ACT**: Update both detection logic AND infrastructure
+- **Detection Logic**: Update event patterns, API calls, log queries based on research
+- **Infrastructure Patterns**: Apply EventBridge best practices (DLQ, retry, scoped SNS, input_transformer)
+- Verify Python syntax after each edit
+
+**Important**: Do NOT assume the current template is correct. Always research and validate against official sources before making changes. Do NOT make up detection patterns - only use validated approaches from MITRE, AWS, or GCP documentation.
+
 ### EventBridge Template Best Practices
 
 When creating EventBridge-based detection templates, follow the optimised pattern:
@@ -295,6 +323,52 @@ resource "aws_cognito_identity_provider" "google" {
 **Reference**: https://github.com/hashicorp/terraform-provider-aws/issues/4831
 
 **Location**: `infrastructure/terraform/modules/cognito/main.tf`
+
+## Template Review Progress (December 2025)
+
+### Completed ReAct Reviews
+Templates reviewed with full MITRE research + AWS/GCP best practice validation:
+
+**Session 1 (Previous):**
+- T1007-T1041 (35 templates)
+
+**Session 2 (26 Dec 2025):**
+- T1046, T1047, T1048, T1053 (Network/Scheduled Task)
+- T1059 (Command Scripting) - Added SSM Run Command detection (T1059.009)
+- T1068, T1070 (Priv Esc/Indicator Removal) - Fixed duplicate attributes
+- T1071 (Application Layer Protocol) - Added DoH/DoT GuardDuty findings
+- T1078.004, T1087.004, T1098.001, T1105, T1110, T1136 (Credential/Persistence)
+- T1190 (Exploit Public Facing) - Fixed 4 duplicate treat_missing_data
+- T1485, T1486, T1496.001, T1530, T1537 (Impact/Exfiltration)
+- T1538, T1550.001, T1552, T1552.005, T1562.008, T1566, T1567, T1610 (Discovery/Lateral Movement)
+
+**Session 3 (26 Dec 2025 continued):**
+- T1055 (Process Injection) - Added specific GuardDuty ProcessInjection finding types, DLQ, retry
+- T1056 (Input Capture) - Fixed duplicate attributes, added DLQ/retry/scoped SNS
+- T1057 (Process Discovery) - Added SNS topic policies
+- T1072 (Software Deployment Tools) - Fixed duplicates, added SNS policies
+- T1074, T1074.002 (Data Staged) - Added SNS topic policies
+- T1082, T1083 (System/File Discovery) - Added SNS topic policies
+- T1621 (MFA Request Generation) - Added SNS topic policies
+- T1651 (Cloud Admin Command) - Fixed duplicate treat_missing_data, added aws:SourceArn
+- T1613 (Container Resource Discovery) - Added SNS topic policies
+- T1133 (External Remote Services) - Added SNS topic policies
+- T1606 (Forge Web Credentials) - Added SNS topic policies for SAML/Federation detection
+- T1609 (Container Admin Command) - Fixed duplicate TreatMissingData, added SNS policies
+- T1612 (Build Image on Host) - Already compliant, no fixes needed
+
+### Remaining Templates to Review
+Priority order for next session:
+1. T1606, T1609 (Forge Credentials, Container Admin)
+2. T1088-T1104, T1106-T1135 (Various)
+3. T1137-T1189 (Various)
+4. All remaining T1xxx templates (~200 remaining)
+
+### Key Fixes Applied (Session 3)
+1. Added specific GuardDuty ProcessInjection finding types (T1055)
+2. Added SNS topic policies with AWS:SourceAccount to 15+ templates
+3. Fixed duplicate attributes in T1056, T1072, T1651
+4. Added `data "aws_caller_identity"` declarations where missing
 
 ## Technical Debt / Backlog
 

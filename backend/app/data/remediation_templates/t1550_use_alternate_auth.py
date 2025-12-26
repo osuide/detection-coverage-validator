@@ -93,16 +93,49 @@ resource "aws_cloudwatch_event_rule" "impossible_travel" {
     detail-type = ["GuardDuty Finding"]
     detail = {
       type = [
-        { prefix = "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration" },
-        { prefix = "UnauthorizedAccess:IAMUser/AnomalousBehavior" }
+        { prefix = "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.OutsideAWS" },
+        { prefix = "InitialAccess:IAMUser/AnomalousBehavior" }
       ]
     }
+  })
+}
+
+# DLQ for failed events
+resource "aws_sqs_queue" "dlq" {
+  name                      = "impossible-travel-detection-dlq"
+  message_retention_seconds = 1209600  # 14 days
+}
+
+resource "aws_sqs_queue_policy" "dlq" {
+  queue_url = aws_sqs_queue.dlq.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.dlq.arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.impossible_travel.arn
+        }
+      }
+    }]
   })
 }
 
 resource "aws_cloudwatch_event_target" "sns" {
   rule = aws_cloudwatch_event_rule.impossible_travel.name
   arn  = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
 }
 
 data "aws_caller_identity" "current" {}
@@ -116,9 +149,12 @@ resource "aws_sns_topic_policy" "allow_events" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
-    Condition = {
+      Condition = {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.impossible_travel.arn
         }
       }
     }]
@@ -189,16 +225,49 @@ resource "aws_cloudwatch_event_rule" "token_anomaly" {
     detail-type = ["GuardDuty Finding"]
     detail = {
       type = [
-        { prefix = "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration" },
+        { prefix = "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.OutsideAWS" },
         { prefix = "CredentialAccess:IAMUser/AnomalousBehavior" }
       ]
     }
   })
 }
 
+# DLQ for token anomaly detection
+resource "aws_sqs_queue" "token_dlq" {
+  name                      = "token-anomaly-detection-dlq"
+  message_retention_seconds = 1209600  # 14 days
+}
+
+resource "aws_sqs_queue_policy" "token_dlq" {
+  queue_url = aws_sqs_queue.token_dlq.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.token_dlq.arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.token_anomaly.arn
+        }
+      }
+    }]
+  })
+}
+
 resource "aws_cloudwatch_event_target" "sns" {
   rule = aws_cloudwatch_event_rule.token_anomaly.name
   arn  = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.token_dlq.arn
+  }
 }
 
 resource "aws_sns_topic_policy" "allow_events" {
@@ -210,9 +279,12 @@ resource "aws_sns_topic_policy" "allow_events" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
-    Condition = {
+      Condition = {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.token_anomaly.arn
         }
       }
     }]

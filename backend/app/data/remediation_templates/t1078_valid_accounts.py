@@ -673,6 +673,20 @@ Outputs:
 # Features: timezone-aware filtering, allowlisting, dynamic severity, DLQ, SNS encryption
 # IMPORTANT: Deploy in us-east-1 plus regional sign-in endpoints for full coverage
 
+terraform {
+  required_version = ">= 1.0"
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = ">= 5.0"
+    }
+    archive = {
+      source  = "hashicorp/archive"
+      version = ">= 2.4.0"
+    }
+  }
+}
+
 variable "name_prefix" {
   type        = string
   default     = "t1078-offhours"
@@ -912,6 +926,40 @@ resource "aws_cloudwatch_log_group" "lambda_logs" {
 resource "aws_sqs_queue" "event_dlq" {
   name                      = "${var.name_prefix}-dlq"
   message_retention_seconds = 1209600 # 14 days
+}
+
+# SQS Queue Policy for EventBridge DLQ (CRITICAL)
+# Without this, EventBridge cannot send failed events to the DLQ
+data "aws_iam_policy_document" "eventbridge_dlq_policy" {
+  statement {
+    sid     = "AllowEventBridgeToSendToDLQ"
+    effect  = "Allow"
+    actions = ["sqs:SendMessage"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["events.amazonaws.com"]
+    }
+
+    resources = [aws_sqs_queue.event_dlq.arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+
+    condition {
+      test     = "ArnEquals"
+      variable = "aws:SourceArn"
+      values   = [aws_cloudwatch_event_rule.console_login_success.arn]
+    }
+  }
+}
+
+resource "aws_sqs_queue_policy" "event_dlq" {
+  queue_url = aws_sqs_queue.event_dlq.url
+  policy    = data.aws_iam_policy_document.eventbridge_dlq_policy.json
 }
 
 # Step 6: EventBridge rule
@@ -1812,6 +1860,40 @@ resource "aws_sqs_queue" "event_dlq" {
   message_retention_seconds = 1209600
 }
 
+# SQS Queue Policy for EventBridge DLQ (CRITICAL)
+# Without this, EventBridge cannot send failed events to the DLQ
+data "aws_iam_policy_document" "eventbridge_dlq_policy_federated" {
+  statement {
+    sid     = "AllowEventBridgeToSendToDLQ"
+    effect  = "Allow"
+    actions = ["sqs:SendMessage"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["events.amazonaws.com"]
+    }
+
+    resources = [aws_sqs_queue.event_dlq.arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+
+    condition {
+      test     = "ArnEquals"
+      variable = "aws:SourceArn"
+      values   = [aws_cloudwatch_event_rule.federated_auth.arn]
+    }
+  }
+}
+
+resource "aws_sqs_queue_policy" "event_dlq_federated" {
+  queue_url = aws_sqs_queue.event_dlq.url
+  policy    = data.aws_iam_policy_document.eventbridge_dlq_policy_federated.json
+}
+
 # Step 6: EventBridge rule
 resource "aws_cloudwatch_event_rule" "federated_auth" {
   name        = "${var.name_prefix}-federated-auth"
@@ -2468,6 +2550,40 @@ resource "aws_cloudwatch_log_group" "lambda_logs" {
 resource "aws_sqs_queue" "event_dlq" {
   name                      = "${var.name_prefix}-dlq"
   message_retention_seconds = 1209600
+}
+
+# SQS Queue Policy for EventBridge DLQ (CRITICAL)
+# Without this, EventBridge cannot send failed events to the DLQ
+data "aws_iam_policy_document" "eventbridge_dlq_policy_oidc" {
+  statement {
+    sid     = "AllowEventBridgeToSendToDLQ"
+    effect  = "Allow"
+    actions = ["sqs:SendMessage"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["events.amazonaws.com"]
+    }
+
+    resources = [aws_sqs_queue.event_dlq.arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+
+    condition {
+      test     = "ArnEquals"
+      variable = "aws:SourceArn"
+      values   = [aws_cloudwatch_event_rule.oidc_auth.arn]
+    }
+  }
+}
+
+resource "aws_sqs_queue_policy" "event_dlq_oidc" {
+  queue_url = aws_sqs_queue.event_dlq.url
+  policy    = data.aws_iam_policy_document.eventbridge_dlq_policy_oidc.json
 }
 
 # Step 6: EventBridge rule

@@ -68,9 +68,9 @@ TEMPLATE = RemediationTemplate(
             implementation=DetectionImplementation(
                 guardduty_finding_types=[
                     "Stealth:IAMUser/CloudTrailLoggingDisabled",
-                    "Stealth:IAMUser/S3ServerAccessLoggingDisabled",
+                    "Stealth:S3/ServerAccessLoggingDisabled",
                     "Stealth:IAMUser/PasswordPolicyChange",
-                    "Stealth:IAMUser/LoggingConfigurationModified",
+                    "Stealth:IAMUser/CloudTrailLoggingDisabled",
                     "DefenseEvasion:IAMUser/AnomalousBehavior",
                 ],
                 cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
@@ -161,6 +161,40 @@ resource "aws_sns_topic_subscription" "email" {
 resource "aws_sqs_queue" "event_dlq" {
   name                      = "guardduty-stealth-dlq"
   message_retention_seconds = 1209600
+}
+
+# SQS Queue Policy for EventBridge DLQ (CRITICAL)
+# Without this, EventBridge cannot send failed events to the DLQ
+data "aws_iam_policy_document" "eventbridge_dlq_policy" {
+  statement {
+    sid     = "AllowEventBridgeToSendToDLQ"
+    effect  = "Allow"
+    actions = ["sqs:SendMessage"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["events.amazonaws.com"]
+    }
+
+    resources = [aws_sqs_queue.event_dlq.arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+
+    condition {
+      test     = "ArnEquals"
+      variable = "aws:SourceArn"
+      values   = [aws_cloudwatch_event_rule.stealth_findings.arn]
+    }
+  }
+}
+
+resource "aws_sqs_queue_policy" "event_dlq_policy" {
+  queue_url = aws_sqs_queue.event_dlq.url
+  policy    = data.aws_iam_policy_document.eventbridge_dlq_policy.json
 }
 
 # Step 3: Route stealth/evasion findings to email

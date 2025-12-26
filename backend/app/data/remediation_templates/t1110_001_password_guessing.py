@@ -440,12 +440,39 @@ resource "aws_cloudwatch_event_target" "guardduty_sns" {
   rule      = aws_cloudwatch_event_rule.guardduty_auth.name
   target_id = "SNSTopic"
   arn       = aws_sns_topic.guardduty_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.guardduty_dlq.arn
+  }
 }
 
 # DLQ for failed deliveries
 resource "aws_sqs_queue" "guardduty_dlq" {
   name                      = "guardduty-auth-alerts-dlq"
   message_retention_seconds = 1209600  # 14 days
+}
+
+resource "aws_sqs_queue_policy" "guardduty_dlq_policy" {
+  queue_url = aws_sqs_queue.guardduty_dlq.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.guardduty_dlq.arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.guardduty_auth.arn
+        }
+      }
+    }]
+  })
 }""",
                 cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty authentication anomaly detection
@@ -578,6 +605,20 @@ Resources:
 | sort failures desc""",
                 terraform_template="""# Lambda-based intelligent brute force detection
 # Tracks failure patterns, detects success-after-failure, supports allowlisting
+
+terraform {
+  required_version = ">= 1.0"
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = ">= 5.0"
+    }
+    archive = {
+      source  = "hashicorp/archive"
+      version = ">= 2.4.0"
+    }
+  }
+}
 
 variable "name_prefix" {
   type        = string

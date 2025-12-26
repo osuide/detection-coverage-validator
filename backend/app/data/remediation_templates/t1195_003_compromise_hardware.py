@@ -264,28 +264,64 @@ resource "aws_lambda_function" "verify_attestation" {
   }
 }
 
+# DLQ for failed EventBridge deliveries
+resource "aws_sqs_queue" "dlq" {
+  name                      = "nitro-attestation-dlq"
+  message_retention_seconds = 1209600
+}
+
+resource "aws_sqs_queue_policy" "dlq_policy" {
+  queue_url = aws_sqs_queue.dlq.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.dlq.arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.instance_launch.arn
+        }
+      }
+    }]
+  })
+}
+
 # EventBridge target
 resource "aws_cloudwatch_event_target" "lambda" {
   rule      = aws_cloudwatch_event_rule.instance_launch.name
   target_id = "VerifyAttestation"
   arn       = aws_lambda_function.verify_attestation.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
 }
 
 # Allow EventBridge to publish to SNS
 data "aws_caller_identity" "current" {}
 
 resource "aws_sns_topic_policy" "allow_eventbridge" {
-  arn = aws_sns_topic.boot_alerts.arn
+  arn = aws_sns_topic.nitro_alerts.arn
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
-      Resource  = aws_sns_topic.boot_alerts.arn
-    Condition = {
+      Resource  = aws_sns_topic.nitro_alerts.arn
+      Condition = {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.instance_launch.arn
         }
       }
     }]

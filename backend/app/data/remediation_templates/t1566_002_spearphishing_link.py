@@ -321,7 +321,7 @@ resource "aws_cloudwatch_metric_alarm" "oauth_phishing" {
             implementation=DetectionImplementation(
                 query="""fields @timestamp, detail.type, detail.service.action.actionType
 | filter detail.type = "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.OutsideAWS"
-    or detail.type = "CredentialAccess:IAMUser/AnomalousCloudAccessUsed"
+    or detail.type = "CredentialAccess:IAMUser/AnomalousBehavior"
 | sort @timestamp desc""",
                 cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Alert on GuardDuty credential phishing findings
@@ -390,17 +390,50 @@ resource "aws_cloudwatch_event_rule" "guardduty_phishing" {
     detail-type = ["GuardDuty Finding"]
     detail = {
       type = [
-        { prefix = "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration" },
-        { prefix = "CredentialAccess:IAMUser/AnomalousCloudAccessUsed" }
+        { prefix = "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.OutsideAWS" },
+        { prefix = "CredentialAccess:IAMUser/AnomalousBehavior" }
       ]
     }
   })
+}
+
+resource "aws_sqs_queue" "dlq" {
+  name                      = "guardduty-phishing-dlq"
+  message_retention_seconds = 1209600
 }
 
 resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.guardduty_phishing.name
   target_id = "PhishingAlertTarget"
   arn       = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
+}
+
+resource "aws_sqs_queue_policy" "dlq_policy" {
+  queue_url = aws_sqs_queue.dlq.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.dlq.arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.guardduty_phishing.arn
+        }
+      }
+    }]
+  })
 }
 
 # Allow EventBridge to publish to SNS

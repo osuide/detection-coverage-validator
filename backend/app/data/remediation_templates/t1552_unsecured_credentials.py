@@ -126,7 +126,7 @@ Resources:
           - GuardDuty Finding
         detail:
           type:
-            - prefix: "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration"
+            - prefix: "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.OutsideAWS"
             - prefix: "CredentialAccess:IAMUser"
             - prefix: "UnauthorizedAccess:EC2/MetadataDNSRebind"
       State: ENABLED
@@ -230,7 +230,7 @@ resource "aws_cloudwatch_event_rule" "credential_exposure" {
     "detail-type" = ["GuardDuty Finding"]
     detail = {
       type = [
-        { prefix = "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration" },
+        { prefix = "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.OutsideAWS" },
         { prefix = "CredentialAccess:IAMUser" },
         { prefix = "UnauthorizedAccess:EC2/MetadataDNSRebind" }
       ]

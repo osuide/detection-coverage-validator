@@ -236,6 +236,20 @@ Resources:
       SourceArn: !GetAtt S3MassOperationRule.Arn""",
                 terraform_template="""# Detect S3 mass object replacement (ransomware pattern)
 
+terraform {
+  required_version = ">= 1.0"
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = ">= 5.0"
+    }
+    archive = {
+      source  = "hashicorp/archive"
+      version = ">= 2.4.0"
+    }
+  }
+}
+
 variable "alert_email" {
   type        = string
   description = "Email address for security alerts"

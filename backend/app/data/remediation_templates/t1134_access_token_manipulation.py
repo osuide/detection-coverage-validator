@@ -81,11 +81,11 @@ TEMPLATE = RemediationTemplate(
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
                 guardduty_finding_types=[
-                    "PrivilegeEscalation:Runtime/NewUserCreated",
+                    "PrivilegeEscalation:Runtime/SuspiciousCommand",
                     "PrivilegeEscalation:Runtime/ContainerMountsHostDirectory",
                     "Execution:Runtime/NewBinaryExecuted",
                     "Defense Evasion:Runtime/ProcessInjectionAttempt",
-                    "PrivilegeEscalation:Runtime/AnomalousBehavior",
+                    "PrivilegeEscalation:Runtime/SuspiciousCommand",
                 ],
                 cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty Runtime Monitoring for token manipulation detection
@@ -209,6 +209,38 @@ resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.token_manipulation.name
   target_id = "SendToSNS"
   arn       = aws_sns_topic.token_manipulation_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.token_manipulation_dlq.arn
+  }
+}
+
+resource "aws_sqs_queue" "token_manipulation_dlq" {
+  name                      = "token-manipulation-alerts-dlq"
+  message_retention_seconds = 1209600
+}
+
+resource "aws_sqs_queue_policy" "token_manipulation_dlq_policy" {
+  queue_url = aws_sqs_queue.token_manipulation_dlq.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.token_manipulation_dlq.arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.token_manipulation.arn
+        }
+      }
+    }]
+  })
 }
 
 data "aws_caller_identity" "current" {}

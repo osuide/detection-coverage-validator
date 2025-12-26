@@ -97,7 +97,7 @@ TEMPLATE = RemediationTemplate(
                 guardduty_finding_types=[
                     "Execution:Runtime/NewBinaryExecuted",
                     "Execution:Runtime/ReverseShell",
-                    "CredentialAccess:Runtime/MemoryDumpCreated",
+                    "Execution:Runtime/SuspiciousTool",
                 ],
                 cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect video capture activity on EC2 instances
@@ -208,6 +208,38 @@ resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.runtime_activity.name
   target_id = "SendToSNS"
   arn       = aws_sns_topic.video_capture_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.video_capture_dlq.arn
+  }
+}
+
+resource "aws_sqs_queue" "video_capture_dlq" {
+  name                      = "video-capture-alerts-dlq"
+  message_retention_seconds = 1209600
+}
+
+resource "aws_sqs_queue_policy" "video_capture_dlq_policy" {
+  queue_url = aws_sqs_queue.video_capture_dlq.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.video_capture_dlq.arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.runtime_activity.arn
+        }
+      }
+    }]
+  })
 }
 
 data "aws_caller_identity" "current" {}
@@ -365,11 +397,46 @@ resource "aws_cloudwatch_event_rule" "video_upload" {
 }
 
 resource "aws_cloudwatch_event_target" "sns" {
-  rule = aws_cloudwatch_event_rule.video_upload.name
-  arn  = aws_sns_topic.alerts.arn
+  rule      = aws_cloudwatch_event_rule.video_upload.name
+  target_id = "SendToSNS"
+  arn       = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.video_upload_dlq.arn
+  }
+}
+
+resource "aws_sqs_queue" "video_upload_dlq" {
+  name                      = "video-upload-alerts-dlq"
+  message_retention_seconds = 1209600
+}
+
+resource "aws_sqs_queue_policy" "video_upload_dlq_policy" {
+  queue_url = aws_sqs_queue.video_upload_dlq.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.video_upload_dlq.arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.video_upload.arn
+        }
+      }
+    }]
+  })
 }
 
 # Step 3: SNS topic policy
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "allow_events" {
   arn = aws_sns_topic.alerts.arn
   policy = jsonencode({

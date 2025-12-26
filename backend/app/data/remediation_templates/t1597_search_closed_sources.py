@@ -377,6 +377,28 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
+# Dead Letter Queue for EventBridge targets
+resource "aws_sqs_queue" "events_dlq" {
+  name                      = "macie-events-dlq"
+  message_retention_seconds = 1209600
+}
+
+resource "aws_sqs_queue_policy" "events_dlq" {
+  queue_url = aws_sqs_queue.events_dlq.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Service = "events.amazonaws.com"
+      }
+      Action   = "sqs:SendMessage"
+      Resource = aws_sqs_queue.events_dlq.arn
+    }]
+  })
+}
+
 resource "aws_cloudwatch_event_rule" "macie_findings" {
   name        = "macie-sensitive-data-findings"
   description = "Alert on Macie sensitive data findings"
@@ -395,6 +417,15 @@ resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.macie_findings.name
   target_id = "SendToSNS"
   arn       = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.events_dlq.arn
+  }
 }
 
 # Allow EventBridge to publish to SNS

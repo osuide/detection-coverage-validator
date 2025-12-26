@@ -209,9 +209,43 @@ resource "aws_cloudwatch_event_rule" "lambda_layer" {
   })
 }
 
+# DLQ for failed EventBridge deliveries
+resource "aws_sqs_queue" "dlq" {
+  name                      = "t1195-lambda-layer-dlq"
+  message_retention_seconds = 1209600
+}
+
+resource "aws_sqs_queue_policy" "dlq_policy" {
+  queue_url = aws_sqs_queue.dlq.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.dlq.arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.lambda_layer.arn
+        }
+      }
+    }]
+  })
+}
+
 resource "aws_cloudwatch_event_target" "sns" {
-  rule = aws_cloudwatch_event_rule.lambda_layer.name
-  arn  = aws_sns_topic.supply_chain_alerts.arn
+  rule      = aws_cloudwatch_event_rule.lambda_layer.name
+  target_id = "LambdaLayerSNSTarget"
+  arn       = aws_sns_topic.supply_chain_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
 }
 
 # Step 3: Monitor Lambda function image updates
@@ -395,9 +429,43 @@ resource "aws_cloudwatch_event_rule" "ecr_image" {
   })
 }
 
+# DLQ for failed EventBridge deliveries (ECR)
+resource "aws_sqs_queue" "ecr_dlq" {
+  name                      = "t1195-ecr-dlq"
+  message_retention_seconds = 1209600
+}
+
+resource "aws_sqs_queue_policy" "ecr_dlq_policy" {
+  queue_url = aws_sqs_queue.ecr_dlq.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.ecr_dlq.arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.ecr_image.arn
+        }
+      }
+    }]
+  })
+}
+
 resource "aws_cloudwatch_event_target" "sns" {
-  rule = aws_cloudwatch_event_rule.ecr_image.name
-  arn  = aws_sns_topic.ecr_alerts.arn
+  rule      = aws_cloudwatch_event_rule.ecr_image.name
+  target_id = "ECRImageSNSTarget"
+  arn       = aws_sns_topic.ecr_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.ecr_dlq.arn
+  }
 }
 
 # Step 3: Enable enhanced ECR scanning
@@ -413,6 +481,8 @@ resource "aws_ecr_registry_scanning_configuration" "enhanced" {
   }
 }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "allow_events" {
   arn = aws_sns_topic.ecr_alerts.arn
 
@@ -423,9 +493,12 @@ resource "aws_sns_topic_policy" "allow_events" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.ecr_alerts.arn
-    Condition = {
+      Condition = {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.ecr_image.arn
         }
       }
     }]

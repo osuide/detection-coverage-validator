@@ -73,9 +73,9 @@ TEMPLATE = RemediationTemplate(
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
                 guardduty_finding_types=[
-                    "Execution:EC2/MaliciousFile",
+                    "Execution:Runtime/MaliciousFileExecuted",
                     "Execution:Runtime/NewBinaryExecuted",
-                    "DefenseEvasion:EC2/UnusualProcessName",
+                    "DefenseEvasion:Runtime/SuspiciousCommand",
                     "UnauthorizedAccess:EC2/MaliciousIPCaller.Custom",
                 ],
                 cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
@@ -205,6 +205,40 @@ resource "aws_cloudwatch_event_rule" "masquerading" {
 resource "aws_sqs_queue" "dlq" {
   name                      = "guardduty-masquerading-dlq"
   message_retention_seconds = 1209600
+}
+
+# SQS Queue Policy for EventBridge DLQ (CRITICAL)
+# Without this, EventBridge cannot send failed events to the DLQ
+data "aws_iam_policy_document" "eventbridge_dlq_policy" {
+  statement {
+    sid     = "AllowEventBridgeToSendToDLQ"
+    effect  = "Allow"
+    actions = ["sqs:SendMessage"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["events.amazonaws.com"]
+    }
+
+    resources = [aws_sqs_queue.dlq.arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+
+    condition {
+      test     = "ArnEquals"
+      variable = "aws:SourceArn"
+      values   = [aws_cloudwatch_event_rule.masquerading.arn]
+    }
+  }
+}
+
+resource "aws_sqs_queue_policy" "event_dlq" {
+  queue_url = aws_sqs_queue.dlq.url
+  policy    = data.aws_iam_policy_document.eventbridge_dlq_policy.json
 }
 
 # Step 4: Configure target with DLQ, retry, and input transformer

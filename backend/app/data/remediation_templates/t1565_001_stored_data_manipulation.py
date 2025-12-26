@@ -183,10 +183,43 @@ resource "aws_cloudwatch_event_rule" "s3_modification" {
   })
 }
 
+resource "aws_sqs_queue" "dlq" {
+  name                      = "s3-data-manipulation-dlq"
+  message_retention_seconds = 1209600
+}
+
 resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.s3_modification.name
   target_id = "AlertTarget"
   arn       = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
+}
+
+resource "aws_sqs_queue_policy" "dlq_policy" {
+  queue_url = aws_sqs_queue.dlq.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.dlq.arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.s3_modification.arn
+        }
+      }
+    }]
+  })
 }
 
 data "aws_caller_identity" "current" {}
@@ -319,10 +352,43 @@ resource "aws_cloudwatch_event_rule" "rds_modification" {
   })
 }
 
+resource "aws_sqs_queue" "rds_dlq" {
+  name                      = "rds-manipulation-dlq"
+  message_retention_seconds = 1209600
+}
+
 resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.rds_modification.name
   target_id = "AlertTarget"
   arn       = aws_sns_topic.rds_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.rds_dlq.arn
+  }
+}
+
+resource "aws_sqs_queue_policy" "rds_dlq_policy" {
+  queue_url = aws_sqs_queue.rds_dlq.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.rds_dlq.arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.rds_modification.arn
+        }
+      }
+    }]
+  })
 }
 
 # Enable RDS audit logging (MySQL/MariaDB example)
@@ -474,10 +540,43 @@ resource "aws_cloudwatch_event_rule" "dynamodb_table_modification" {
   })
 }
 
+resource "aws_sqs_queue" "dynamodb_dlq" {
+  name                      = "dynamodb-manipulation-dlq"
+  message_retention_seconds = 1209600
+}
+
 resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.dynamodb_table_modification.name
   target_id = "AlertTarget"
   arn       = aws_sns_topic.dynamodb_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dynamodb_dlq.arn
+  }
+}
+
+resource "aws_sqs_queue_policy" "dynamodb_dlq_policy" {
+  queue_url = aws_sqs_queue.dynamodb_dlq.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.dynamodb_dlq.arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.dynamodb_table_modification.arn
+        }
+      }
+    }]
+  })
 }
 
 # Enable Point-in-Time Recovery for data integrity
@@ -523,6 +622,9 @@ resource "aws_lambda_function" "stream_processor" {
   }
 }
 
+data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
+
 resource "aws_iam_role" "lambda_role" {
   name = "dynamodb-stream-processor-role"
 
@@ -533,6 +635,14 @@ resource "aws_iam_role" "lambda_role" {
       Effect = "Allow"
       Principal = {
         Service = "lambda.amazonaws.com"
+      }
+      Condition = {
+        StringEquals = {
+          "aws:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnLike = {
+          "aws:SourceArn" = "arn:aws:lambda:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:function:*"
+        }
       }
     }]
   })

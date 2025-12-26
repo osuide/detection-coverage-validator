@@ -162,9 +162,42 @@ resource "aws_cloudwatch_event_rule" "mfa_deactivate" {
   })
 }
 
+# Dead Letter Queue for failed events
+resource "aws_sqs_queue" "dlq" {
+  name                      = "mfa-deactivation-dlq"
+  message_retention_seconds = 1209600  # 14 days
+}
+
+resource "aws_sqs_queue_policy" "dlq" {
+  queue_url = aws_sqs_queue.dlq.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.dlq.arn
+      Condition = {
+        ArnEquals = { "aws:SourceArn" = aws_cloudwatch_event_rule.mfa_deactivate.arn }
+      }
+    }]
+  })
+}
+
+# EventBridge target with retry and DLQ
 resource "aws_cloudwatch_event_target" "sns" {
-  rule = aws_cloudwatch_event_rule.mfa_deactivate.name
-  arn  = aws_sns_topic.mfa_alerts.arn
+  rule      = aws_cloudwatch_event_rule.mfa_deactivate.name
+  target_id = "SendToSNS"
+  arn       = aws_sns_topic.mfa_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
 }
 
 # Step 3: Topic policy
@@ -455,9 +488,42 @@ resource "aws_cloudwatch_event_rule" "new_mfa" {
   })
 }
 
+# Dead Letter Queue for new MFA device registration
+resource "aws_sqs_queue" "new_mfa_dlq" {
+  name                      = "new-mfa-device-dlq"
+  message_retention_seconds = 1209600  # 14 days
+}
+
+resource "aws_sqs_queue_policy" "new_mfa_dlq" {
+  queue_url = aws_sqs_queue.new_mfa_dlq.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.new_mfa_dlq.arn
+      Condition = {
+        ArnEquals = { "aws:SourceArn" = aws_cloudwatch_event_rule.new_mfa.arn }
+      }
+    }]
+  })
+}
+
+# EventBridge target with retry and DLQ
 resource "aws_cloudwatch_event_target" "sns" {
-  rule = aws_cloudwatch_event_rule.new_mfa.name
-  arn  = aws_sns_topic.new_mfa_alerts.arn
+  rule      = aws_cloudwatch_event_rule.new_mfa.name
+  target_id = "SendToSNS"
+  arn       = aws_sns_topic.new_mfa_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.new_mfa_dlq.arn
+  }
 }
 
 # Step 3: Topic policy

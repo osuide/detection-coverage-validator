@@ -272,8 +272,8 @@ resource "aws_sns_topic_policy" "interpreter_policy" {
                 guardduty_finding_types=[
                     "Execution:Runtime/NewBinaryExecuted",
                     "Execution:Runtime/ReverseShell",
-                    "Execution:Runtime/SuspiciousCommandExecuted",
-                    "PrivilegeEscalation:Runtime/ContainerMountsWithShadowFile",
+                    "Execution:Runtime/SuspiciousCommand",
+                    "PrivilegeEscalation:Runtime/ContainerMountsHostDirectory",
                     "DefenseEvasion:Runtime/FilelessExecution",
                 ],
                 cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'

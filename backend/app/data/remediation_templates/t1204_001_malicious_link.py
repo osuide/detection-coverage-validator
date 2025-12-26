@@ -164,11 +164,44 @@ resource "aws_cloudwatch_event_rule" "guardduty_malicious_links" {
   })
 }
 
+# DLQ for failed EventBridge deliveries
+resource "aws_sqs_queue" "dlq" {
+  name                      = "malicious-link-dlq"
+  message_retention_seconds = 1209600
+}
+
+resource "aws_sqs_queue_policy" "dlq_policy" {
+  queue_url = aws_sqs_queue.dlq.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.dlq.arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.guardduty_malicious_links.arn
+        }
+      }
+    }]
+  })
+}
+
 # Step 3: Connect EventBridge to SNS
 resource "aws_cloudwatch_event_target" "sns_target" {
   rule      = aws_cloudwatch_event_rule.guardduty_malicious_links.name
   target_id = "SecurityAlertTarget"
   arn       = aws_sns_topic.security_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
 }
 
 data "aws_caller_identity" "current" {}
@@ -183,9 +216,12 @@ resource "aws_sns_topic_policy" "eventbridge_publish" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "SNS:Publish"
       Resource  = aws_sns_topic.security_alerts.arn
-    Condition = {
+      Condition = {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.guardduty_malicious_links.arn
         }
       }
     }]

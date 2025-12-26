@@ -186,9 +186,42 @@ resource "aws_cloudwatch_event_rule" "dhcp_options" {
   })
 }
 
+# Dead Letter Queue for failed events
+resource "aws_sqs_queue" "dlq" {
+  name                      = "dhcp-options-dlq"
+  message_retention_seconds = 1209600  # 14 days
+}
+
+resource "aws_sqs_queue_policy" "dlq" {
+  queue_url = aws_sqs_queue.dlq.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.dlq.arn
+      Condition = {
+        ArnEquals = { "aws:SourceArn" = aws_cloudwatch_event_rule.dhcp_options.arn }
+      }
+    }]
+  })
+}
+
+# EventBridge target with retry and DLQ
 resource "aws_cloudwatch_event_target" "sns" {
-  rule = aws_cloudwatch_event_rule.dhcp_options.name
-  arn  = aws_sns_topic.alerts.arn
+  rule      = aws_cloudwatch_event_rule.dhcp_options.name
+  target_id = "SendToSNS"
+  arn       = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
 }
 
 # Step 3: SNS topic policy
@@ -339,9 +372,42 @@ resource "aws_cloudwatch_event_rule" "resolver_endpoint" {
   })
 }
 
+# Dead Letter Queue for Route 53 Resolver events
+resource "aws_sqs_queue" "resolver_dlq" {
+  name                      = "resolver-endpoint-dlq"
+  message_retention_seconds = 1209600  # 14 days
+}
+
+resource "aws_sqs_queue_policy" "resolver_dlq" {
+  queue_url = aws_sqs_queue.resolver_dlq.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.resolver_dlq.arn
+      Condition = {
+        ArnEquals = { "aws:SourceArn" = aws_cloudwatch_event_rule.resolver_endpoint.arn }
+      }
+    }]
+  })
+}
+
+# EventBridge target with retry and DLQ
 resource "aws_cloudwatch_event_target" "sns" {
-  rule = aws_cloudwatch_event_rule.resolver_endpoint.name
-  arn  = aws_sns_topic.alerts.arn
+  rule      = aws_cloudwatch_event_rule.resolver_endpoint.name
+  target_id = "SendToSNS"
+  arn       = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.resolver_dlq.arn
+  }
 }
 
 # Step 3: SNS topic policy

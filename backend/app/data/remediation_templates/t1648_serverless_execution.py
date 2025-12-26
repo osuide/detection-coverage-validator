@@ -228,10 +228,42 @@ resource "aws_cloudwatch_event_rule" "lambda_findings" {
   })
 }
 
+resource "aws_sqs_queue" "lambda_dlq" {
+  name                      = "guardduty-lambda-dlq"
+  message_retention_seconds = 1209600  # 14 days
+}
+
+resource "aws_sqs_queue_policy" "lambda_dlq_policy" {
+  queue_url = aws_sqs_queue.lambda_dlq.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.lambda_dlq.arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.lambda_findings.arn
+        }
+      }
+    }]
+  })
+}
+
 resource "aws_cloudwatch_event_target" "to_sns" {
   rule      = aws_cloudwatch_event_rule.lambda_findings.name
   target_id = "SendToSNS"
   arn       = aws_sns_topic.lambda_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.lambda_dlq.arn
+  }
 
   input_transformer {
     input_paths = {
@@ -265,9 +297,12 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.lambda_alerts.arn
-    Condition = {
+      Condition = {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.lambda_findings.arn
         }
       }
     }]
@@ -369,6 +404,33 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
+resource "aws_sqs_queue" "lifecycle_dlq" {
+  name                      = "lambda-lifecycle-dlq"
+  message_retention_seconds = 1209600  # 14 days
+}
+
+resource "aws_sqs_queue_policy" "lifecycle_dlq_policy" {
+  queue_url = aws_sqs_queue.lifecycle_dlq.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.lifecycle_dlq.arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = [
+            aws_cloudwatch_event_rule.lambda_create.arn,
+            aws_cloudwatch_event_rule.lambda_update.arn,
+            aws_cloudwatch_event_rule.lambda_permission.arn
+          ]
+        }
+      }
+    }]
+  })
+}
+
 # Step 2: EventBridge rule for function creation
 resource "aws_cloudwatch_event_rule" "lambda_create" {
   name        = "lambda-function-creation"
@@ -387,6 +449,15 @@ resource "aws_cloudwatch_event_target" "create_to_sns" {
   rule      = aws_cloudwatch_event_rule.lambda_create.name
   target_id = "SendToSNS"
   arn       = aws_sns_topic.lambda_lifecycle.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.lifecycle_dlq.arn
+  }
 
   input_transformer {
     input_paths = {
@@ -429,6 +500,15 @@ resource "aws_cloudwatch_event_target" "update_to_sns" {
   target_id = "SendToSNS"
   arn       = aws_sns_topic.lambda_lifecycle.arn
 
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.lifecycle_dlq.arn
+  }
+
   input_transformer {
     input_paths = {
       functionName = "$.detail.requestParameters.functionName"
@@ -466,6 +546,15 @@ resource "aws_cloudwatch_event_target" "permission_to_sns" {
   target_id = "SendToSNS"
   arn       = aws_sns_topic.lambda_lifecycle.arn
 
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.lifecycle_dlq.arn
+  }
+
   input_transformer {
     input_paths = {
       functionName = "$.detail.requestParameters.functionName"
@@ -497,9 +586,16 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.lambda_lifecycle.arn
-    Condition = {
+      Condition = {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = [
+            aws_cloudwatch_event_rule.lambda_create.arn,
+            aws_cloudwatch_event_rule.lambda_update.arn,
+            aws_cloudwatch_event_rule.lambda_permission.arn
+          ]
         }
       }
     }]
@@ -560,6 +656,20 @@ output "alert_topic_arn" {
                 config_rule_identifier="LAMBDA_FUNCTION_SETTINGS_CHECK",
                 terraform_template="""# Lambda IAM Role Privilege Analysis
 # Detects functions with overly permissive roles
+
+terraform {
+  required_version = ">= 1.0"
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = ">= 5.0"
+    }
+    archive = {
+      source  = "hashicorp/archive"
+      version = ">= 2.4.0"
+    }
+  }
+}
 
 variable "alert_email" {
   type        = string
@@ -691,6 +801,9 @@ PYTHON
   }
 }
 
+data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
+
 resource "aws_iam_role" "config_lambda_role" {
   name = "config-lambda-admin-check-role"
 
@@ -700,6 +813,14 @@ resource "aws_iam_role" "config_lambda_role" {
       Action    = "sts:AssumeRole"
       Effect    = "Allow"
       Principal = { Service = "lambda.amazonaws.com" }
+      Condition = {
+        StringEquals = {
+          "aws:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnLike = {
+          "aws:SourceArn" = "arn:aws:lambda:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:function:*"
+        }
+      }
     }]
   })
 }
@@ -756,6 +877,11 @@ resource "aws_iam_role" "config_role" {
       Action    = "sts:AssumeRole"
       Effect    = "Allow"
       Principal = { Service = "config.amazonaws.com" }
+      Condition = {
+        StringEquals = {
+          "aws:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }

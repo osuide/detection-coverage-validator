@@ -386,8 +386,8 @@ resource "aws_cloudwatch_metric_alarm" "reg_tool" {
             implementation=DetectionImplementation(
                 guardduty_finding_types=[
                     "Execution:Runtime/NewBinaryExecuted",
-                    "Discovery:Runtime/RegistryDiscovery",
-                    "Execution:Runtime/SuspiciousCommandExecuted",
+                    "Discovery:Runtime/SuspiciousCommand",
+                    "Execution:Runtime/SuspiciousCommand",
                 ],
                 cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty Runtime Monitoring for Registry reconnaissance
@@ -487,12 +487,55 @@ resource "aws_cloudwatch_event_rule" "registry_discovery" {
   })
 }
 
-resource "aws_cloudwatch_event_target" "sns" {
-  rule = aws_cloudwatch_event_rule.registry_discovery.name
-  arn  = aws_sns_topic.alerts.arn
+resource "aws_sqs_queue" "dlq" {
+  name                      = "registry-discovery-dlq"
+  message_retention_seconds = 1209600
 }
 
 data "aws_caller_identity" "current" {}
+
+data "aws_iam_policy_document" "eventbridge_dlq_policy" {
+  statement {
+    sid     = "AllowEventBridgeToSendToDLQ"
+    effect  = "Allow"
+    actions = ["sqs:SendMessage"]
+    principals {
+      type        = "Service"
+      identifiers = ["events.amazonaws.com"]
+    }
+    resources = [aws_sqs_queue.dlq.arn]
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+    condition {
+      test     = "ArnEquals"
+      variable = "aws:SourceArn"
+      values   = [aws_cloudwatch_event_rule.registry_discovery.arn]
+    }
+  }
+}
+
+resource "aws_sqs_queue_policy" "event_dlq" {
+  queue_url = aws_sqs_queue.dlq.url
+  policy    = data.aws_iam_policy_document.eventbridge_dlq_policy.json
+}
+
+resource "aws_cloudwatch_event_target" "sns" {
+  rule      = aws_cloudwatch_event_rule.registry_discovery.name
+  target_id = "SNSTarget"
+  arn       = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
+}
 
 resource "aws_sns_topic_policy" "allow_events" {
   arn = aws_sns_topic.alerts.arn

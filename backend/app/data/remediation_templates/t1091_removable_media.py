@@ -641,10 +641,41 @@ resource "aws_cloudwatch_event_rule" "runtime_findings" {
   })
 }
 
+# SQS DLQ for failed EventBridge deliveries
+resource "aws_sqs_queue" "dlq_runtime" {
+  name                      = "guardduty-runtime-eventbridge-dlq"
+  message_retention_seconds = 1209600  # 14 days
+}
+
+resource "aws_sqs_queue_policy" "dlq_runtime" {
+  queue_url = aws_sqs_queue.dlq_runtime.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Service = "events.amazonaws.com"
+      }
+      Action   = "sqs:SendMessage"
+      Resource = aws_sqs_queue.dlq_runtime.arn
+    }]
+  })
+}
+
 resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.runtime_findings.name
   target_id = "SNSTarget"
   arn       = aws_sns_topic.runtime_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq_runtime.arn
+  }
 }
 
 resource "aws_sns_topic_policy" "allow_eventbridge" {
@@ -987,10 +1018,41 @@ resource "aws_cloudwatch_event_rule" "s3_upload" {
   })
 }
 
+# SQS DLQ for S3 upload EventBridge deliveries
+resource "aws_sqs_queue" "dlq_s3_upload" {
+  name                      = "s3-upload-anomaly-eventbridge-dlq"
+  message_retention_seconds = 1209600  # 14 days
+}
+
+resource "aws_sqs_queue_policy" "dlq_s3_upload" {
+  queue_url = aws_sqs_queue.dlq_s3_upload.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Service = "events.amazonaws.com"
+      }
+      Action   = "sqs:SendMessage"
+      Resource = aws_sqs_queue.dlq_s3_upload.arn
+    }]
+  })
+}
+
 resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.s3_upload.name
   target_id = "UploadAlert"
   arn       = aws_sns_topic.upload_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq_s3_upload.arn
+  }
 }
 
 resource "aws_sns_topic_policy" "allow_events" {

@@ -556,10 +556,52 @@ resource "aws_cloudwatch_event_rule" "xsl_upload" {
   })
 }
 
+resource "aws_sqs_queue" "dlq" {
+  name                      = "s3-xsl-upload-dlq"
+  message_retention_seconds = 1209600
+}
+
+data "aws_iam_policy_document" "eventbridge_dlq_policy" {
+  statement {
+    sid     = "AllowEventBridgeToSendToDLQ"
+    effect  = "Allow"
+    actions = ["sqs:SendMessage"]
+    principals {
+      type        = "Service"
+      identifiers = ["events.amazonaws.com"]
+    }
+    resources = [aws_sqs_queue.dlq.arn]
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+    condition {
+      test     = "ArnEquals"
+      variable = "aws:SourceArn"
+      values   = [aws_cloudwatch_event_rule.xsl_upload.arn]
+    }
+  }
+}
+
+resource "aws_sqs_queue_policy" "event_dlq" {
+  queue_url = aws_sqs_queue.dlq.url
+  policy    = data.aws_iam_policy_document.eventbridge_dlq_policy.json
+}
+
 resource "aws_cloudwatch_event_target" "xsl_upload_alert" {
   rule      = aws_cloudwatch_event_rule.xsl_upload.name
   target_id = "SendToSNS"
   arn       = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
 }
 
 data "aws_caller_identity" "current" {}
@@ -573,9 +615,12 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
-    Condition = {
+      Condition = {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.xsl_upload.arn
         }
       }
     }]
@@ -635,8 +680,8 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                 guardduty_finding_types=[
                     "Execution:Runtime/NewBinaryExecuted",
                     "Execution:Runtime/ReverseShell",
-                    "DefenseEvasion:Runtime/ProcessInjection",
-                    "PrivilegeEscalation:Runtime/UsersAndGroupsModified",
+                    "DefenseEvasion:Runtime/ProcessInjection.Proc",
+                    "PrivilegeEscalation:Runtime/SuspiciousCommand",
                 ],
                 cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty Runtime Monitoring for XSL script processing detection

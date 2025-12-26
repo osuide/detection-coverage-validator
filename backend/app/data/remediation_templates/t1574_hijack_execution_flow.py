@@ -75,8 +75,8 @@ TEMPLATE = RemediationTemplate(
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
                 guardduty_finding_types=[
-                    "Execution:Runtime/MaliciousFile",
-                    "Execution:Container/SuspiciousProcess",
+                    "Execution:Runtime/MaliciousFileExecuted",
+                    "Execution:Container/SuspiciousFile",
                 ],
                 cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: ECR image scanning with GuardDuty for execution hijacking detection
@@ -179,9 +179,43 @@ resource "aws_cloudwatch_event_rule" "image_scan" {
   })
 }
 
+resource "aws_sqs_queue" "dlq" {
+  name                      = "hijack-execution-dlq"
+  message_retention_seconds = 1209600
+}
+
 resource "aws_cloudwatch_event_target" "sns" {
-  rule = aws_cloudwatch_event_rule.image_scan.name
-  arn  = aws_sns_topic.alerts.arn
+  rule      = aws_cloudwatch_event_rule.image_scan.name
+  target_id = "SendToSNS"
+  arn       = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
+}
+
+resource "aws_sqs_queue_policy" "dlq_policy" {
+  queue_url = aws_sqs_queue.dlq.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.dlq.arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.image_scan.arn
+        }
+      }
+    }]
+  })
 }
 
 data "aws_caller_identity" "current" {}
@@ -349,8 +383,8 @@ resource "aws_cloudwatch_event_target" "sns" {
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
                 guardduty_finding_types=[
-                    "Execution:Runtime/SuspiciousProcess",
-                    "Execution:Runtime/ModifiedBinary",
+                    "Execution:Runtime/SuspiciousCommand",
+                    "Execution:Runtime/NewBinaryExecuted",
                     "Execution:Runtime/NewLibraryLoaded",
                     "PrivilegeEscalation:Runtime/ContainerMountsHostDirectory",
                 ],

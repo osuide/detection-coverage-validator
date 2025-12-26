@@ -149,10 +149,25 @@ resource "aws_cloudwatch_event_rule" "volume_delete" {
   })
 }
 
+# Dead Letter Queue for failed events
+resource "aws_sqs_queue" "dlq" {
+  name                      = "ebs-volume-deletion-dlq"
+  message_retention_seconds = 1209600  # 14 days
+}
+
 resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.volume_delete.name
   target_id = "SendToSNS"
   arn       = aws_sns_topic.volume_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
 }
 
 # Allow EventBridge to publish to SNS
@@ -168,9 +183,32 @@ resource "aws_sns_topic_policy" "allow_events" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.volume_alerts.arn
-    Condition = {
+      Condition = {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.volume_delete.arn
+        }
+      }
+    }]
+  })
+}
+
+# SQS queue policy to allow EventBridge to send to DLQ
+resource "aws_sqs_queue_policy" "dlq_policy" {
+  queue_url = aws_sqs_queue.dlq.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.dlq.arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.volume_delete.arn
         }
       }
     }]
@@ -389,11 +427,28 @@ resource "aws_cloudwatch_event_rule" "instance_termination" {
   })
 }
 
+# Dead Letter Queue for instance termination events
+resource "aws_sqs_queue" "instance_dlq" {
+  name                      = "ec2-termination-dlq"
+  message_retention_seconds = 1209600  # 14 days
+}
+
 resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.instance_termination.name
   target_id = "SendToSNS"
   arn       = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.instance_dlq.arn
+  }
 }
+
+data "aws_caller_identity" "current" {}
 
 resource "aws_sns_topic_policy" "allow_events" {
   arn = aws_sns_topic.alerts.arn
@@ -405,9 +460,32 @@ resource "aws_sns_topic_policy" "allow_events" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
-    Condition = {
+      Condition = {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.instance_termination.arn
+        }
+      }
+    }]
+  })
+}
+
+# SQS queue policy for instance termination DLQ
+resource "aws_sqs_queue_policy" "instance_dlq_policy" {
+  queue_url = aws_sqs_queue.instance_dlq.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.instance_dlq.arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.instance_termination.arn
         }
       }
     }]

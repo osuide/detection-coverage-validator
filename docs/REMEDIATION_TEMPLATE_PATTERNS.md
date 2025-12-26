@@ -1,7 +1,7 @@
 # Remediation Template Patterns
 
-**Document Version:** 1.0
-**Last Updated:** 25 December 2025
+**Document Version:** 1.3
+**Last Updated:** 26 December 2025
 **Classification:** Internal
 
 This document captures lessons learned and best practices for remediation templates in the A13E Detection Coverage Validator.
@@ -10,6 +10,7 @@ This document captures lessons learned and best practices for remediation templa
 
 ## Table of Contents
 
+### Infrastructure Patterns
 1. [VPC Flow Logs Detection Pattern](#1-vpc-flow-logs-detection-pattern)
 2. [GuardDuty Augmentation Pattern](#2-guardduty-augmentation-pattern)
 3. [IAM Role Confused-Deputy Mitigation](#3-iam-role-confused-deputy-mitigation)
@@ -17,6 +18,16 @@ This document captures lessons learned and best practices for remediation templa
 5. [SNS Topic Policy Patterns](#5-sns-topic-policy-patterns)
 6. [EventBridge Best Practices](#6-eventbridge-best-practices)
 7. [CloudWatch Alarm Best Practices](#7-cloudwatch-alarm-best-practices)
+8. [Terraform Provider Pinning](#8-terraform-provider-pinning)
+9. [HCL Syntax for EventBridge Patterns](#9-hcl-syntax-for-eventbridge-patterns)
+
+### Lambda Detection Patterns
+10. [Anomaly Scoring Over Raw Alerting](#10-anomaly-scoring-over-raw-alerting)
+11. [Baseline Storage with TTL](#11-baseline-storage-with-ttl)
+12. [Business Context Filtering](#12-business-context-filtering)
+13. [Principal and Network Allowlisting](#13-principal-and-network-allowlisting)
+14. [Multi-Region Awareness](#14-multi-region-awareness)
+15. [Tunable Thresholds with Guidance](#15-tunable-thresholds-with-guidance)
 
 ---
 
@@ -282,13 +293,50 @@ resource "aws_sns_topic_policy" "alerts" {
 ### Required Components for Production EventBridge Rules
 
 ```hcl
+data "aws_caller_identity" "current" {}
+
 # 1. Dead Letter Queue for failed deliveries
 resource "aws_sqs_queue" "dlq" {
   name                      = "${var.name_prefix}-dlq"
   message_retention_seconds = 1209600  # 14 days
 }
 
-# 2. EventBridge target with retry, DLQ, and input transformer
+# 2. SQS Queue Policy for EventBridge DLQ (CRITICAL)
+# Without this, EventBridge cannot send failed events to the DLQ
+# Reference: https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-rule-dlq.html
+data "aws_iam_policy_document" "eventbridge_dlq_policy" {
+  statement {
+    sid     = "AllowEventBridgeToSendToDLQ"
+    effect  = "Allow"
+    actions = ["sqs:SendMessage"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["events.amazonaws.com"]
+    }
+
+    resources = [aws_sqs_queue.dlq.arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+
+    condition {
+      test     = "ArnEquals"
+      variable = "aws:SourceArn"
+      values   = [aws_cloudwatch_event_rule.detection.arn]
+    }
+  }
+}
+
+resource "aws_sqs_queue_policy" "event_dlq" {
+  queue_url = aws_sqs_queue.dlq.url
+  policy    = data.aws_iam_policy_document.eventbridge_dlq_policy.json
+}
+
+# 3. EventBridge target with retry, DLQ, and input transformer
 resource "aws_cloudwatch_event_target" "to_sns" {
   rule      = aws_cloudwatch_event_rule.detection.name
   target_id = "SNSTarget"
@@ -324,8 +372,18 @@ EOT
 }
 ```
 
+### Why the SQS Queue Policy is Required
+
+When using EventBridge DLQ via API, CLI, or IaC (Terraform/CloudFormation), you **must** manually add a resource-based policy granting EventBridge permission to send messages. The AWS Console does this automatically, but IaC does not.
+
+Without the policy:
+- `InvocationsFailedToBeSentToDLQ` CloudWatch metric will increment
+- Failed events are permanently lost
+- No error is visible in Terraform plan/apply
+
 ### Checklist
 - [ ] Dead Letter Queue with 14-day retention
+- [ ] **SQS Queue Policy for EventBridge** (CRITICAL - often missed)
 - [ ] Retry policy (8 attempts, 3600s max age)
 - [ ] Input transformer for human-readable alerts
 - [ ] Scoped SNS topic policy
@@ -387,6 +445,355 @@ DetectionAlarm:
 
 ---
 
+## 8. Terraform Provider Pinning
+
+### Problem
+Without explicit provider declarations, Terraform may resolve to unexpected provider versions, causing supply-chain drift or deployment failures.
+
+### Best Practice: Pin All Providers Explicitly
+
+For templates using `data "archive_file"` or other non-AWS providers, always declare them explicitly:
+
+```hcl
+terraform {
+  required_version = ">= 1.0"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = ">= 5.0"
+    }
+    archive = {
+      source  = "hashicorp/archive"
+      version = ">= 2.4.0"
+    }
+  }
+}
+```
+
+### Common Providers in Detection Templates
+
+| Provider | Use Case | Minimum Version |
+|----------|----------|-----------------|
+| `hashicorp/aws` | AWS resources | `>= 5.0` |
+| `hashicorp/archive` | Zipping Lambda code | `>= 2.4.0` |
+| `hashicorp/random` | Generating unique names | `>= 3.0` |
+| `hashicorp/external` | Running external scripts | `>= 2.0` |
+
+### When to Apply
+- Any template using `data "archive_file"` for Lambda deployment
+- Any template using `random_id` or `random_string`
+- All production-grade templates
+
+---
+
+## 9. HCL Syntax for EventBridge Patterns
+
+### Problem
+EventBridge event patterns use keys like `detail-type` with hyphens. Questions arise about whether to quote these keys in Terraform `jsonencode`.
+
+### Best Practice: Quote Hyphenated Keys for Clarity
+
+While HCL allows unquoted identifiers with hyphens, quoting hyphenated keys is recommended for:
+- Consistency with JSON semantics
+- Clarity when reading the code
+- Avoiding ambiguity with complex patterns
+
+```hcl
+# Recommended: Quoted keys for clarity
+event_pattern = jsonencode({
+  "source"      = ["aws.guardduty"]
+  "detail-type" = ["GuardDuty Finding"]
+  "detail" = {
+    "type" = [{ "prefix" = "UnauthorizedAccess:" }]
+  }
+})
+
+# Also valid: Unquoted (HCL native syntax)
+event_pattern = jsonencode({
+  source      = ["aws.guardduty"]
+  detail-type = ["GuardDuty Finding"]
+  detail = {
+    type = [{ prefix = "UnauthorizedAccess:" }]
+  }
+})
+```
+
+### Key Points
+- Both forms produce identical JSON output
+- Quoting is required for keys starting with digits or containing special characters beyond hyphens
+- For consistency across templates, prefer the quoted form
+- Reference: [Terraform Syntax Documentation](https://developer.hashicorp.com/terraform/language/syntax/configuration)
+
+---
+
+## 10. Anomaly Scoring Over Raw Alerting
+
+### Problem
+Sending every matching event to SNS creates noise and alert fatigue.
+
+### Solution
+Use a Lambda evaluator that applies scoring logic before alerting.
+
+```python
+# Score events based on multiple risk indicators
+score = 0
+if is_out_of_hours(event_time):
+    score += 20
+if not has_mfa(event):
+    score += 25
+if is_new_source_ip(principal, source_ip):
+    score += 30
+if is_new_user_agent(principal, user_agent):
+    score += 15
+if is_failed_login(event):
+    score += 10
+
+# Only alert if score exceeds threshold
+if score >= ALERT_THRESHOLD:
+    publish_alert(event, score, reasons)
+```
+
+**When to apply**: Any detection where the raw event volume would be high (console logins, API calls, network connections).
+
+---
+
+## 11. Baseline Storage with TTL
+
+### Problem
+Can't distinguish normal from anomalous without knowing historical patterns.
+
+### Solution
+Use DynamoDB with TTL to track per-principal baselines.
+
+```hcl
+resource "aws_dynamodb_table" "baseline" {
+  name         = "${var.name_prefix}-baseline"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "principal_arn"
+
+  attribute {
+    name = "principal_arn"
+    type = "S"
+  }
+
+  ttl {
+    attribute_name = "ttl_epoch"
+    enabled        = true
+  }
+
+  point_in_time_recovery { enabled = true }
+  server_side_encryption { enabled = true }
+}
+```
+
+**Baseline data to track**:
+- Known source IPs (set)
+- Known user agents (set)
+- First seen timestamp
+- Last seen timestamp
+- Login count
+
+**When to apply**: Account access, service access, data access patterns.
+
+---
+
+## 12. Business Context Filtering
+
+### Problem
+Alerting on legitimate business-hours activity from known locations.
+
+### Solution
+Make business hours configurable and apply time-based suppression.
+
+```hcl
+variable "timezone" {
+  type        = string
+  default     = "Europe/London"
+  description = "IANA timezone for out-of-hours logic"
+}
+
+variable "business_start_hour" {
+  type    = number
+  default = 8
+}
+
+variable "business_end_hour" {
+  type    = number
+  default = 18
+}
+
+variable "business_days" {
+  type        = list(number)
+  default     = [0, 1, 2, 3, 4]  # Mon-Fri (Python weekday)
+  description = "Days considered business days"
+}
+```
+
+```python
+# In Lambda handler
+from zoneinfo import ZoneInfo
+
+def is_out_of_hours(event_time: datetime) -> bool:
+    tz = ZoneInfo(os.environ["TZ"])
+    local = event_time.astimezone(tz)
+
+    if local.weekday() not in BUSINESS_DAYS:
+        return True
+    if not (BUSINESS_START <= local.hour < BUSINESS_END):
+        return True
+    return False
+```
+
+**When to apply**: Any user-interactive detection (console access, VPN, SSO).
+
+---
+
+## 13. Principal and Network Allowlisting
+
+### Problem
+Automation accounts, break-glass principals, and corporate VPN egress trigger false positives.
+
+### Solution
+Configurable allowlists with CIDR matching.
+
+```hcl
+variable "allowlisted_principal_arns" {
+  type        = list(string)
+  default     = []
+  description = "Suppress alerts for these principal ARNs (break-glass, automation)"
+}
+
+variable "allowlisted_source_cidrs" {
+  type        = list(string)
+  default     = []
+  description = "Suppress alerts for these CIDR ranges (corporate VPN egress)"
+}
+```
+
+```python
+import ipaddress
+
+def is_allowlisted(principal_arn: str, source_ip: str) -> bool:
+    if principal_arn in ALLOWLIST_ARNS:
+        return True
+
+    ip = ipaddress.ip_address(source_ip)
+    for cidr in ALLOWLIST_CIDRS:
+        if ip in ipaddress.ip_network(cidr):
+            return True
+
+    return False
+```
+
+**When to apply**: Any detection involving identity or network source.
+
+---
+
+## 14. Multi-Region Awareness
+
+### Problem
+Some AWS events (ConsoleLogin, global services) have unpredictable region attribution.
+
+### Solution
+Document region behaviour and provide deployment guidance.
+
+```hcl
+# In module documentation:
+# IMPORTANT: ConsoleLogin Region varies by:
+# - IAM user: recorded in us-east-1
+# - Federated user: recorded in the console endpoint region
+# - Root user: recorded in us-east-1
+#
+# Options:
+# 1. Deploy this module in all regions where users might sign in
+# 2. Use CloudWatch cross-region event forwarding to centralise
+# 3. Use AWS Organizations with delegated admin for org-wide coverage
+```
+
+**When to apply**: Console access, IAM operations, global service APIs (S3, Route53, CloudFront).
+
+---
+
+## 15. Tunable Thresholds with Guidance
+
+### Problem
+One threshold doesn't fit all SOC maturity levels.
+
+### Solution
+Provide configurable thresholds with practical tuning guidance.
+
+```hcl
+variable "alert_threshold" {
+  type        = number
+  default     = 40
+  description = "Anomaly score threshold for alerting (0-100)"
+}
+```
+
+**Practical Tuning Guidance**:
+
+| SOC Tier | Threshold | Notes |
+|----------|-----------|-------|
+| Tier-1 tripwire | 40 | High volume, catch everything |
+| High-confidence | 60 | Low volume, high fidelity |
+| Critical only | 80 | Rely on GuardDuty for most signals |
+
+**When to apply**: Any detection with configurable sensitivity.
+
+---
+
+## Implementation Checklist
+
+When creating or improving a remediation template:
+
+### Infrastructure Patterns
+- [ ] Is VPC Flow Logs using 1-minute aggregation? (Pattern 1)
+- [ ] Is GuardDuty integrated for high-confidence signals? (Pattern 2)
+- [ ] Are IAM roles using confused-deputy mitigation? (Pattern 3)
+- [ ] Are high-cardinality dimensions using metric math? (Pattern 4)
+- [ ] Are SNS policies properly scoped? (Pattern 5)
+- [ ] Are EventBridge targets configured with DLQ and retry? (Pattern 6)
+- [ ] **Does EventBridge DLQ have SQS queue policy?** (Pattern 6 - CRITICAL)
+- [ ] Are CloudWatch alarms using treat_missing_data? (Pattern 7)
+- [ ] Are Terraform providers explicitly pinned? (Pattern 8)
+- [ ] Are hyphenated keys in jsonencode quoted for clarity? (Pattern 9)
+
+### Lambda Detection Patterns
+- [ ] Does raw event volume justify anomaly scoring? (Pattern 10)
+- [ ] Would baseline comparison improve fidelity? (Pattern 11)
+- [ ] Does business context matter? (Pattern 12)
+- [ ] Are there principals/networks to allowlist? (Pattern 13)
+- [ ] Is region behaviour predictable? (Pattern 14)
+- [ ] Are thresholds documented with tuning guidance? (Pattern 15)
+
+---
+
+## Template Quality Tiers
+
+### Tier 1: Basic
+- Raw event → SNS notification
+- Single inline Terraform block
+- No anomaly logic
+
+### Tier 2: Intermediate
+- Event filtering in EventBridge pattern
+- Proper infrastructure patterns (DLQ, retry, scoped policies)
+- Basic threshold configuration
+
+### Tier 3: Advanced (Target State)
+- Lambda-based anomaly scoring
+- DynamoDB baseline storage
+- Business hours + allowlisting
+- GuardDuty integration
+- Multi-region guidance
+- Cost estimation
+- Tuning documentation
+
+**Goal**: Migrate all high-impact techniques to Tier 3.
+
+---
+
 ## Templates Requiring These Patterns
 
 ### VPC Flow Logs + GuardDuty Pattern
@@ -440,10 +847,18 @@ The following templates use VPC Flow Logs and should be reviewed for:
 - T1210 - Exploitation of Remote Services
 - T1570 - Lateral Tool Transfer
 
-### Priority 2: High-Cardinality Dimension Templates
+### Priority 2: High-Cardinality Dimension Templates (UPDATED 26 Dec 2025)
 
-Templates using dimensions like `SourceIP` that need metric math aggregation:
-- T1078.004 - Cloud Accounts (uses SourceIP dimension)
+Templates using dimensions like `SourceIP`, `UserARN`, `UserName` that need metric math aggregation.
+These require `SUM(SEARCH(...))` pattern to properly aggregate across all dimension values.
+
+**COMPLETED:**
+- T1078.004 - Cloud Accounts (Strategy 3: User + SourceIP dimensions) - Fixed with metric_query
+- T1046 - Network Service Discovery (SourceIP dimension) - Already uses SUM(SEARCH(...))
+
+**Remaining:**
+- T1059.009 - Cloud API (UserARN dimension)
+- T1111 - MFA Interception (UserName dimension)
 
 ### Priority 3: IAM Role Templates
 
@@ -460,3 +875,35 @@ Templates with IAM roles that may need confused-deputy mitigation:
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 25 Dec 2025 | Architecture Team | Initial release based on T1046 improvements |
+| 1.1 | 26 Dec 2025 | Architecture Team | P1: Fixed alarm_actions syntax in 201 templates; P2: Applied SUM(SEARCH(...)) pattern to T1078.004, scoped SNS policies |
+| 1.2 | 26 Dec 2025 | Architecture Team | Consolidated docs/architecture/REMEDIATION_TEMPLATE_PATTERNS.md; Added Lambda patterns 8-13, Implementation Checklist, Template Quality Tiers |
+| 1.3 | 26 Dec 2025 | Architecture Team | Comprehensive ReAct review: Fixed duplicate treat_missing_data (95 templates), ReAct reviews for T1001/T1003/T1005 with scoped SNS/DLQ/retry; All 262 templates validated |
+| 1.4 | 26 Dec 2025 | Architecture Team | Added Pattern 8 (Terraform Provider Pinning), Pattern 9 (HCL Syntax for EventBridge); Updated Pattern 6 with **critical SQS Queue Policy for EventBridge DLQ**; Renumbered Lambda patterns to 10-15 |
+
+---
+
+## Remaining Work (Backlog)
+
+The following improvements have been identified but not yet implemented:
+
+### Critical Priority
+- **EventBridge DLQ SQS Queue Policy**: Templates with EventBridge DLQ need `aws_sqs_queue_policy` allowing `events.amazonaws.com` to `sqs:SendMessage`. Without this, failed events are lost silently. Reference: [AWS EventBridge DLQ Documentation](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-rule-dlq.html)
+
+### High Priority
+- **Scoped SNS Policies**: ~168 templates still need `AWS:SourceAccount` conditions added to SNS topic policies
+- **DLQ/Retry for EventBridge**: ~150 templates need dead letter queues and retry policies
+- **Input Transformers**: ~150 templates need human-readable input transformers on EventBridge targets
+- **Terraform Provider Pinning**: Templates using `data "archive_file"` need explicit `hashicorp/archive` provider declaration
+
+### Medium Priority
+- **GuardDuty Integration**: Add GuardDuty finding types where applicable (credential access, reconnaissance, etc.)
+- **CloudFormation TopicPolicy Scoping**: Add `Condition` blocks to CloudFormation SNS topic policies
+
+### Completed This Session
+| Fix | Templates |
+|-----|-----------|
+| `alarm_actions` syntax errors | 201 |
+| Duplicate `treat_missing_data` | 95 |
+| Scoped SNS policies (T1001, T1003, T1005) | 3 |
+| DLQ/retry/input_transformer (T1003) | 1 |
+| All templates syntax validation | 262 ✓ |

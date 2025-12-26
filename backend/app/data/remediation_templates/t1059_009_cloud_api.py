@@ -317,6 +317,20 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
 # Detects enumeration via API call pattern analysis
 # Scoring: unique_apis * 2 + velocity_score + sensitive_api_score
 
+terraform {
+  required_version = ">= 1.0"
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = ">= 5.0"
+    }
+    archive = {
+      source  = "hashicorp/archive"
+      version = ">= 2.4.0"
+    }
+  }
+}
+
 variable "alert_email" {
   type        = string
   description = "Email for security alerts"

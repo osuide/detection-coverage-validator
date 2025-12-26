@@ -171,7 +171,7 @@ Resources:
           - GuardDuty Finding
         detail:
           type:
-            - prefix: "DefenseEvasion:Runtime/ProcessInjection"
+            - prefix: "DefenseEvasion:Runtime/ProcessInjection.Proc"
           severity:
             - numeric:
                 - ">="
@@ -306,7 +306,7 @@ resource "aws_cloudwatch_event_rule" "process_injection" {
     "detail-type" = ["GuardDuty Finding"]
     detail = {
       type = [
-        { prefix = "DefenseEvasion:Runtime/ProcessInjection" }
+        { prefix = "DefenseEvasion:Runtime/ProcessInjection.Proc" }
       ]
       # Severity >= 4 (MEDIUM or above) to filter noise
       severity = [
@@ -320,6 +320,40 @@ resource "aws_cloudwatch_event_rule" "process_injection" {
 resource "aws_sqs_queue" "dlq" {
   name                      = "guardduty-process-injection-dlq"
   message_retention_seconds = 1209600  # 14 days
+}
+
+# SQS Queue Policy for EventBridge DLQ (CRITICAL)
+# Without this, EventBridge cannot send failed events to the DLQ
+data "aws_iam_policy_document" "eventbridge_dlq_policy" {
+  statement {
+    sid     = "AllowEventBridgeToSendToDLQ"
+    effect  = "Allow"
+    actions = ["sqs:SendMessage"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["events.amazonaws.com"]
+    }
+
+    resources = [aws_sqs_queue.dlq.arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+
+    condition {
+      test     = "ArnEquals"
+      variable = "aws:SourceArn"
+      values   = [aws_cloudwatch_event_rule.process_injection.arn]
+    }
+  }
+}
+
+resource "aws_sqs_queue_policy" "event_dlq" {
+  queue_url = aws_sqs_queue.dlq.url
+  policy    = data.aws_iam_policy_document.eventbridge_dlq_policy.json
 }
 
 resource "aws_cloudwatch_event_target" "sns" {

@@ -569,7 +569,7 @@ resource "aws_cloudwatch_event_rule" "guardduty_c2" {
     "detail-type" = ["GuardDuty Finding"]
     detail = {
       type = [
-        { prefix = "Backdoor:EC2/C&CActivity" },
+        { prefix = "Backdoor:EC2/C&CActivity.B" },
         { prefix = "Trojan:EC2/DNSDataExfiltration" },
         { prefix = "Trojan:EC2/BlackholeTraffic" },
         { prefix = "Trojan:EC2/DropPoint" },

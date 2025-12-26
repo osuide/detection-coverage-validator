@@ -287,8 +287,8 @@ output "alarm_name" {
                 guardduty_finding_types=[
                     "Execution:Runtime/NewBinaryExecuted",
                     "DefenseEvasion:Runtime/FilelessExecution",
-                    "Execution:Runtime/SuspiciousProcess",
-                    "Execution:Runtime/AnomalousProcessCommunication",
+                    "Execution:Runtime/SuspiciousCommand",
+                    "Execution:Runtime/SuspiciousCommand",
                 ],
                 cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty Runtime Monitoring for IPC abuse detection
@@ -446,11 +446,28 @@ resource "aws_cloudwatch_event_rule" "ipc_findings" {
   })
 }
 
+# Dead Letter Queue for failed events
+resource "aws_sqs_queue" "dlq" {
+  name                      = "guardduty-ipc-abuse-dlq"
+  message_retention_seconds = 1209600  # 14 days
+}
+
 resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.ipc_findings.name
   target_id = "SNSTarget"
   arn       = aws_sns_topic.ipc_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
 }
+
+data "aws_caller_identity" "current" {}
 
 resource "aws_sns_topic_policy" "allow_eventbridge" {
   arn = aws_sns_topic.ipc_alerts.arn
@@ -462,9 +479,32 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "SNS:Publish"
       Resource  = aws_sns_topic.ipc_alerts.arn
-    Condition = {
+      Condition = {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.ipc_findings.arn
+        }
+      }
+    }]
+  })
+}
+
+# SQS queue policy to allow EventBridge to send to DLQ
+resource "aws_sqs_queue_policy" "dlq_policy" {
+  queue_url = aws_sqs_queue.dlq.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.dlq.arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.ipc_findings.arn
         }
       }
     }]

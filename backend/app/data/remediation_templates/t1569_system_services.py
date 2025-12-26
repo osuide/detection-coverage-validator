@@ -170,10 +170,43 @@ resource "aws_cloudwatch_event_rule" "ssm_execution" {
   })
 }
 
+resource "aws_sqs_queue" "ssm_dlq" {
+  name                      = "ssm-execution-dlq"
+  message_retention_seconds = 1209600
+}
+
 resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.ssm_execution.name
   target_id = "SecurityAlertTopic"
   arn       = aws_sns_topic.ssm_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.ssm_dlq.arn
+  }
+}
+
+resource "aws_sqs_queue_policy" "ssm_dlq_policy" {
+  queue_url = aws_sqs_queue.ssm_dlq.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.ssm_dlq.arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.ssm_execution.arn
+        }
+      }
+    }]
+  })
 }
 
 # Allow EventBridge to publish to SNS
@@ -336,10 +369,43 @@ resource "aws_cloudwatch_event_rule" "ecs_execution" {
   })
 }
 
+resource "aws_sqs_queue" "ecs_dlq" {
+  name                      = "ecs-execution-dlq"
+  message_retention_seconds = 1209600
+}
+
 resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.ecs_execution.name
   target_id = "SecurityAlertTopic"
   arn       = aws_sns_topic.ecs_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.ecs_dlq.arn
+  }
+}
+
+resource "aws_sqs_queue_policy" "ecs_dlq_policy" {
+  queue_url = aws_sqs_queue.ecs_dlq.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.ecs_dlq.arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.ecs_execution.arn
+        }
+      }
+    }]
+  })
 }
 
 # Allow EventBridge to publish to SNS

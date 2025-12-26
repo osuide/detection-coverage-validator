@@ -82,8 +82,8 @@ TEMPLATE = RemediationTemplate(
                 guardduty_finding_types=[
                     "Execution:Runtime/NewBinaryExecuted",
                     "Execution:Runtime/ReverseShell",
-                    "CredentialAccess:Runtime/MemoryDumpCreated",
-                    "Impact:Runtime/MaliciousCommand",
+                    "Execution:Runtime/SuspiciousTool",
+                    "Execution:Runtime/SuspiciousCommand",
                 ],
                 cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty Runtime Monitoring for WMI abuse detection on Windows EC2 instances
@@ -244,6 +244,40 @@ resource "aws_cloudwatch_event_rule" "wmi_execution" {
 resource "aws_sqs_queue" "dlq" {
   name                      = "t1047-wmi-dlq"
   message_retention_seconds = 1209600
+}
+
+# SQS Queue Policy for EventBridge DLQ (CRITICAL)
+# Without this, EventBridge cannot send failed events to the DLQ
+data "aws_iam_policy_document" "eventbridge_dlq_policy" {
+  statement {
+    sid     = "AllowEventBridgeToSendToDLQ"
+    effect  = "Allow"
+    actions = ["sqs:SendMessage"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["events.amazonaws.com"]
+    }
+
+    resources = [aws_sqs_queue.dlq.arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+
+    condition {
+      test     = "ArnEquals"
+      variable = "aws:SourceArn"
+      values   = [aws_cloudwatch_event_rule.wmi_execution.arn]
+    }
+  }
+}
+
+resource "aws_sqs_queue_policy" "event_dlq" {
+  queue_url = aws_sqs_queue.dlq.url
+  policy    = data.aws_iam_policy_document.eventbridge_dlq_policy.json
 }
 
 # Step 5: EventBridge target with DLQ, retry, input transformer

@@ -115,7 +115,7 @@ Resources:
           - GuardDuty Finding
         detail:
           type:
-            - prefix: "UnauthorizedAccess:IAMUser/ConsoleLoginSuccess"
+            - prefix: "UnauthorizedAccess:IAMUser/ConsoleLoginSuccess.B"
             - prefix: "UnauthorizedAccess:IAMUser/TorIPCaller"
             - prefix: "InitialAccess:IAMUser/AnomalousBehavior"
             - prefix: "CredentialAccess:IAMUser/AnomalousBehavior"
@@ -181,7 +181,7 @@ resource "aws_cloudwatch_event_rule" "suspicious_logins" {
     "detail-type" = ["GuardDuty Finding"]
     detail = {
       type = [
-        { prefix = "UnauthorizedAccess:IAMUser/ConsoleLoginSuccess" },
+        { prefix = "UnauthorizedAccess:IAMUser/ConsoleLoginSuccess.B" },
         { prefix = "UnauthorizedAccess:IAMUser/TorIPCaller" },
         { prefix = "InitialAccess:IAMUser/AnomalousBehavior" },
         { prefix = "CredentialAccess:IAMUser/AnomalousBehavior" }
@@ -194,6 +194,40 @@ resource "aws_cloudwatch_event_rule" "suspicious_logins" {
 resource "aws_sqs_queue" "dlq" {
   name                      = "input-capture-alerts-dlq"
   message_retention_seconds = 1209600  # 14 days
+}
+
+# SQS Queue Policy for EventBridge DLQ (CRITICAL)
+# Without this, EventBridge cannot send failed events to the DLQ
+data "aws_iam_policy_document" "eventbridge_dlq_policy" {
+  statement {
+    sid     = "AllowEventBridgeToSendToDLQ"
+    effect  = "Allow"
+    actions = ["sqs:SendMessage"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["events.amazonaws.com"]
+    }
+
+    resources = [aws_sqs_queue.dlq.arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+
+    condition {
+      test     = "ArnEquals"
+      variable = "aws:SourceArn"
+      values   = [aws_cloudwatch_event_rule.suspicious_logins.arn]
+    }
+  }
+}
+
+resource "aws_sqs_queue_policy" "event_dlq" {
+  queue_url = aws_sqs_queue.dlq.url
+  policy    = data.aws_iam_policy_document.eventbridge_dlq_policy.json
 }
 
 resource "aws_cloudwatch_event_target" "sns" {

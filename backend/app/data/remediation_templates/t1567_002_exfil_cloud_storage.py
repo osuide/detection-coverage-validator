@@ -404,7 +404,7 @@ resource "aws_cloudwatch_metric_alarm" "large_upload_alert" {
             implementation=DetectionImplementation(
                 guardduty_finding_types=[
                     "Exfiltration:S3/MaliciousIPCaller",
-                    "Exfiltration:S3/ObjectRead.Unusual",
+                    "Exfiltration:S3/AnomalousBehavior",
                     "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.OutsideAWS",
                 ],
                 cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
@@ -489,16 +489,49 @@ resource "aws_cloudwatch_event_rule" "guardduty_exfil" {
     detail = {
       type = [
         { prefix = "Exfiltration" },
-        "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration"
+        "UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.OutsideAWS"
       ]
     }
   })
+}
+
+resource "aws_sqs_queue" "dlq" {
+  name                      = "guardduty-exfil-dlq"
+  message_retention_seconds = 1209600
 }
 
 resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.guardduty_exfil.name
   target_id = "SNSTopic"
   arn       = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
+}
+
+resource "aws_sqs_queue_policy" "dlq_policy" {
+  queue_url = aws_sqs_queue.dlq.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.dlq.arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.guardduty_exfil.arn
+        }
+      }
+    }]
+  })
 }
 
 # Step 3: SNS topic policy

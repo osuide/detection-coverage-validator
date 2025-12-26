@@ -336,6 +336,28 @@ resource "aws_sns_topic_subscription" "guardduty_email" {
   endpoint  = var.alert_email
 }
 
+# Dead Letter Queue for EventBridge targets
+resource "aws_sqs_queue" "events_dlq" {
+  name                      = "guardduty-credential-dlq"
+  message_retention_seconds = 1209600
+}
+
+resource "aws_sqs_queue_policy" "events_dlq" {
+  queue_url = aws_sqs_queue.events_dlq.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Service = "events.amazonaws.com"
+      }
+      Action   = "sqs:SendMessage"
+      Resource = aws_sqs_queue.events_dlq.arn
+    }]
+  })
+}
+
 # Step 2: Create EventBridge rule for credential access findings
 resource "aws_cloudwatch_event_rule" "guardduty_credential" {
   name        = "guardduty-credential-access"
@@ -358,6 +380,15 @@ resource "aws_cloudwatch_event_target" "guardduty_sns" {
   rule      = aws_cloudwatch_event_rule.guardduty_credential.name
   target_id = "GuardDutyAlertTarget"
   arn       = aws_sns_topic.guardduty_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.events_dlq.arn
+  }
 }
 
 data "aws_caller_identity" "current" {}

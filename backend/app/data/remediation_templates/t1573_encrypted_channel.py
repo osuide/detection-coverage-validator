@@ -169,6 +169,9 @@ resource "aws_cloudwatch_log_group" "flow_logs" {
   retention_in_days = 7
 }
 
+data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
+
 # Step 2: IAM role for VPC Flow Logs
 resource "aws_iam_role" "flow_logs" {
   name = "vpc-flow-logs-tls-detection"
@@ -181,6 +184,14 @@ resource "aws_iam_role" "flow_logs" {
         Service = "vpc-flow-logs.amazonaws.com"
       }
       Action = "sts:AssumeRole"
+      Condition = {
+        StringEquals = {
+          "aws:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnLike = {
+          "aws:SourceArn" = "arn:aws:ec2:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:vpc-flow-log/*"
+        }
+      }
     }]
   })
 }
@@ -339,9 +350,43 @@ resource "aws_cloudwatch_event_rule" "cert_operations" {
   })
 }
 
+resource "aws_sqs_queue" "dlq" {
+  name                      = "encrypted-channel-dlq"
+  message_retention_seconds = 1209600
+}
+
 resource "aws_cloudwatch_event_target" "sns" {
-  rule = aws_cloudwatch_event_rule.cert_operations.name
-  arn  = aws_sns_topic.cert_alerts.arn
+  rule      = aws_cloudwatch_event_rule.cert_operations.name
+  target_id = "SendToSNS"
+  arn       = aws_sns_topic.cert_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
+}
+
+resource "aws_sqs_queue_policy" "dlq_policy" {
+  queue_url = aws_sqs_queue.dlq.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.dlq.arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.cert_operations.arn
+        }
+      }
+    }]
+  })
 }
 
 # Step 3: SNS topic policy
@@ -500,9 +545,9 @@ resource "aws_cloudwatch_event_rule" "guardduty_encrypted_c2" {
     detail-type = ["GuardDuty Finding"]
     detail = {
       type = [
-        { prefix = "Backdoor:EC2/C&CActivity" },
+        { prefix = "Backdoor:EC2/C&CActivity.B" },
         { prefix = "Trojan:EC2/DNSDataExfiltration" },
-        { prefix = "UnauthorizedAccess:EC2/Tor" },
+        { prefix = "UnauthorizedAccess:EC2/TorClient" },
         { prefix = "CryptoCurrency:EC2/" }
       ]
     }

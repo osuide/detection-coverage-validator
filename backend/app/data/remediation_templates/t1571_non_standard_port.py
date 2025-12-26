@@ -332,9 +332,43 @@ resource "aws_cloudwatch_event_rule" "sg_changes" {
   })
 }
 
+resource "aws_sqs_queue" "dlq" {
+  name                      = "non-standard-port-dlq"
+  message_retention_seconds = 1209600
+}
+
 resource "aws_cloudwatch_event_target" "sns" {
-  rule = aws_cloudwatch_event_rule.sg_changes.name
-  arn  = aws_sns_topic.alerts.arn
+  rule      = aws_cloudwatch_event_rule.sg_changes.name
+  target_id = "SendToSNS"
+  arn       = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
+}
+
+resource "aws_sqs_queue_policy" "dlq_policy" {
+  queue_url = aws_sqs_queue.dlq.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.dlq.arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.sg_changes.arn
+        }
+      }
+    }]
+  })
 }
 
 # Step 3: SNS topic policy
@@ -474,6 +508,9 @@ resource "aws_sns_topic_subscription" "email" {
 # Step 2: CloudWatch Log Insights query (run manually or via scheduled Lambda)
 # Use the query provided in the detection strategy description
 
+data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
+
 # Step 3: Optional - Lambda for automated analysis
 resource "aws_iam_role" "lambda" {
   name = "protocol-mismatch-lambda-role"
@@ -486,6 +523,14 @@ resource "aws_iam_role" "lambda" {
         Service = "lambda.amazonaws.com"
       }
       Action = "sts:AssumeRole"
+      Condition = {
+        StringEquals = {
+          "aws:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnLike = {
+          "aws:SourceArn" = "arn:aws:lambda:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:function:*"
+        }
+      }
     }]
   })
 }

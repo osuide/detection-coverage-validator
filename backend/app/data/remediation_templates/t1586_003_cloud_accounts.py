@@ -315,10 +315,25 @@ resource "aws_cloudwatch_event_rule" "guardduty_credential" {
 }
 
 # Step 3: Create EventBridge target to publish to SNS
+# Dead Letter Queue for failed events
+resource "aws_sqs_queue" "dlq" {
+  name                      = "guardduty-credential-dlq"
+  message_retention_seconds = 1209600  # 14 days
+}
+
 resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.guardduty_credential.name
   target_id = "GuardDutyAlertTarget"
   arn       = aws_sns_topic.guardduty_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
 }
 
 data "aws_caller_identity" "current" {}
@@ -335,9 +350,32 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
       }
       Action   = "SNS:Publish"
       Resource = aws_sns_topic.guardduty_alerts.arn
-    Condition = {
+      Condition = {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.guardduty_credential.arn
+        }
+      }
+    }]
+  })
+}
+
+# SQS queue policy to allow EventBridge to send to DLQ
+resource "aws_sqs_queue_policy" "dlq_policy" {
+  queue_url = aws_sqs_queue.dlq.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.dlq.arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.guardduty_credential.arn
         }
       }
     }]
@@ -424,10 +462,25 @@ resource "aws_cloudwatch_event_rule" "external_access" {
   })
 }
 
+# Dead Letter Queue for Access Analyzer events
+resource "aws_sqs_queue" "access_analyzer_dlq" {
+  name                      = "access-analyzer-dlq"
+  message_retention_seconds = 1209600  # 14 days
+}
+
 resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.external_access.name
   target_id = "AccessAnalyzerTarget"
   arn       = aws_sns_topic.access_analyzer_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.access_analyzer_dlq.arn
+  }
 }
 
 resource "aws_sns_topic_policy" "eventbridge_publish" {
@@ -442,9 +495,32 @@ resource "aws_sns_topic_policy" "eventbridge_publish" {
       }
       Action   = "SNS:Publish"
       Resource = aws_sns_topic.access_analyzer_alerts.arn
-    Condition = {
+      Condition = {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.external_access.arn
+        }
+      }
+    }]
+  })
+}
+
+# SQS queue policy for Access Analyzer DLQ
+resource "aws_sqs_queue_policy" "access_analyzer_dlq_policy" {
+  queue_url = aws_sqs_queue.access_analyzer_dlq.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.access_analyzer_dlq.arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.external_access.arn
         }
       }
     }]

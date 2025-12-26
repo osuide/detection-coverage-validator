@@ -101,7 +101,7 @@ TEMPLATE = RemediationTemplate(
                 guardduty_finding_types=[
                     "Execution:Runtime/NewBinaryExecuted",
                     "Execution:Runtime/ReverseShell",
-                    "Execution:Runtime/ProcessInjection",
+                    "DefenseEvasion:Runtime/ProcessInjection.Proc",
                 ],
                 cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Detect audio capture activity via GuardDuty Runtime Monitoring
@@ -210,6 +210,38 @@ resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.audio_capture.name
   target_id = "SendToSNS"
   arn       = aws_sns_topic.audio_capture_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.audio_capture_dlq.arn
+  }
+}
+
+resource "aws_sqs_queue" "audio_capture_dlq" {
+  name                      = "audio-capture-alerts-dlq"
+  message_retention_seconds = 1209600
+}
+
+resource "aws_sqs_queue_policy" "audio_capture_dlq_policy" {
+  queue_url = aws_sqs_queue.audio_capture_dlq.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.audio_capture_dlq.arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.audio_capture.arn
+        }
+      }
+    }]
+  })
 }
 
 data "aws_caller_identity" "current" {}

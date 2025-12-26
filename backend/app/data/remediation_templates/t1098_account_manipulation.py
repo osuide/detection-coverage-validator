@@ -171,6 +171,40 @@ resource "aws_sqs_queue" "alert_dlq" {
   message_retention_seconds = 1209600  # 14 days
 }
 
+# SQS Queue Policy for EventBridge DLQ (CRITICAL)
+# Without this, EventBridge cannot send failed events to the DLQ
+data "aws_iam_policy_document" "eventbridge_dlq_policy" {
+  statement {
+    sid     = "AllowEventBridgeToSendToDLQ"
+    effect  = "Allow"
+    actions = ["sqs:SendMessage"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["events.amazonaws.com"]
+    }
+
+    resources = [aws_sqs_queue.alert_dlq.arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+
+    condition {
+      test     = "ArnEquals"
+      variable = "aws:SourceArn"
+      values   = [aws_cloudwatch_event_rule.iam_findings.arn]
+    }
+  }
+}
+
+resource "aws_sqs_queue_policy" "event_dlq" {
+  queue_url = aws_sqs_queue.alert_dlq.url
+  policy    = data.aws_iam_policy_document.eventbridge_dlq_policy.json
+}
+
 # Step 3: Route IAM findings to email with retry/DLQ
 resource "aws_cloudwatch_event_rule" "iam_findings" {
   name = "guardduty-iam-alerts"
@@ -331,6 +365,40 @@ resource "aws_sqs_queue" "access_key_alert_dlq" {
   message_retention_seconds = 1209600  # 14 days
 }
 
+# SQS Queue Policy for EventBridge DLQ (CRITICAL)
+# Without this, EventBridge cannot send failed events to the DLQ
+data "aws_iam_policy_document" "access_key_dlq_policy" {
+  statement {
+    sid     = "AllowEventBridgeToSendToDLQ"
+    effect  = "Allow"
+    actions = ["sqs:SendMessage"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["events.amazonaws.com"]
+    }
+
+    resources = [aws_sqs_queue.access_key_alert_dlq.arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+
+    condition {
+      test     = "ArnEquals"
+      variable = "aws:SourceArn"
+      values   = [aws_cloudwatch_event_rule.access_key_creation.arn]
+    }
+  }
+}
+
+resource "aws_sqs_queue_policy" "access_key_dlq" {
+  queue_url = aws_sqs_queue.access_key_alert_dlq.url
+  policy    = data.aws_iam_policy_document.access_key_dlq_policy.json
+}
+
 resource "aws_cloudwatch_event_rule" "access_key_creation" {
   name        = "T1098-AccessKeyCreation"
   description = "Detect IAM access key and credential creation"
@@ -479,6 +547,40 @@ variable "sns_topic_arn" {
 resource "aws_sqs_queue" "permission_escalation_dlq" {
   name                      = "t1098-permission-escalation-dlq"
   message_retention_seconds = 1209600  # 14 days
+}
+
+# SQS Queue Policy for EventBridge DLQ (CRITICAL)
+# Without this, EventBridge cannot send failed events to the DLQ
+data "aws_iam_policy_document" "permission_escalation_dlq_policy" {
+  statement {
+    sid     = "AllowEventBridgeToSendToDLQ"
+    effect  = "Allow"
+    actions = ["sqs:SendMessage"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["events.amazonaws.com"]
+    }
+
+    resources = [aws_sqs_queue.permission_escalation_dlq.arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+
+    condition {
+      test     = "ArnEquals"
+      variable = "aws:SourceArn"
+      values   = [aws_cloudwatch_event_rule.permission_escalation.arn]
+    }
+  }
+}
+
+resource "aws_sqs_queue_policy" "permission_escalation_dlq" {
+  queue_url = aws_sqs_queue.permission_escalation_dlq.url
+  policy    = data.aws_iam_policy_document.permission_escalation_dlq_policy.json
 }
 
 resource "aws_cloudwatch_event_rule" "permission_escalation" {

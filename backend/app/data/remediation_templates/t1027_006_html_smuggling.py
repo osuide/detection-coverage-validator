@@ -201,8 +201,8 @@ resource "aws_cloudwatch_metric_alarm" "html_smuggling" {
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
                 guardduty_finding_types=[
-                    "Execution:S3/MaliciousFile",
-                    "Impact:S3/MaliciousFile",
+                    "Object:S3/MaliciousFile",
+                    "Object:S3/MaliciousFile",
                 ],
                 cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Configure GuardDuty for HTML smuggling detection
@@ -232,8 +232,8 @@ Resources:
         detail-type: [GuardDuty Finding]
         detail:
           type:
-            - "Execution:S3/MaliciousFile"
-            - "Impact:S3/MaliciousFile"
+            - "Object:S3/MaliciousFile"
+            - "Object:S3/MaliciousFile"
       State: ENABLED
       Targets:
         - Arn: !Ref AlertTopic
@@ -276,20 +276,62 @@ resource "aws_cloudwatch_event_rule" "guardduty_malware" {
     detail-type = ["GuardDuty Finding"]
     detail = {
       type = [
-        "Execution:S3/MaliciousFile",
-        "Impact:S3/MaliciousFile"
+        "Object:S3/MaliciousFile",
+        "Object:S3/MaliciousFile"
       ]
     }
   })
+}
+
+resource "aws_sqs_queue" "dlq" {
+  name                      = "html-smuggling-dlq"
+  message_retention_seconds = 1209600
+}
+
+data "aws_caller_identity" "current" {}
+
+data "aws_iam_policy_document" "eventbridge_dlq_policy" {
+  statement {
+    sid     = "AllowEventBridgeToSendToDLQ"
+    effect  = "Allow"
+    actions = ["sqs:SendMessage"]
+    principals {
+      type        = "Service"
+      identifiers = ["events.amazonaws.com"]
+    }
+    resources = [aws_sqs_queue.dlq.arn]
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+    condition {
+      test     = "ArnEquals"
+      variable = "aws:SourceArn"
+      values   = [aws_cloudwatch_event_rule.guardduty_malware.arn]
+    }
+  }
+}
+
+resource "aws_sqs_queue_policy" "event_dlq" {
+  queue_url = aws_sqs_queue.dlq.url
+  policy    = data.aws_iam_policy_document.eventbridge_dlq_policy.json
 }
 
 resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.guardduty_malware.name
   target_id = "SendToSNS"
   arn       = aws_sns_topic.alerts.arn
-}
 
-data "aws_caller_identity" "current" {}
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
+}
 
 resource "aws_sns_topic_policy" "allow_eventbridge" {
   arn = aws_sns_topic.alerts.arn

@@ -167,9 +167,43 @@ resource "aws_cloudwatch_event_rule" "ec2_lifecycle" {
 }
 
 # Step 3: EventBridge target
+resource "aws_sqs_queue" "ec2_lifecycle_dlq" {
+  name                      = "ec2-lifecycle-dlq"
+  message_retention_seconds = 1209600
+}
+
 resource "aws_cloudwatch_event_target" "sns" {
-  rule = aws_cloudwatch_event_rule.ec2_lifecycle.name
-  arn  = aws_sns_topic.alerts.arn
+  rule      = aws_cloudwatch_event_rule.ec2_lifecycle.name
+  target_id = "SendToSNS"
+  arn       = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.ec2_lifecycle_dlq.arn
+  }
+}
+
+resource "aws_sqs_queue_policy" "ec2_lifecycle_dlq_policy" {
+  queue_url = aws_sqs_queue.ec2_lifecycle_dlq.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.ec2_lifecycle_dlq.arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.ec2_lifecycle.arn
+        }
+      }
+    }]
+  })
 }
 
 data "aws_caller_identity" "current" {}
@@ -324,9 +358,43 @@ resource "aws_cloudwatch_event_rule" "volume_snapshot" {
 }
 
 # Step 3: EventBridge target
+resource "aws_sqs_queue" "volume_snapshot_dlq" {
+  name                      = "volume-snapshot-dlq"
+  message_retention_seconds = 1209600
+}
+
 resource "aws_cloudwatch_event_target" "sns" {
-  rule = aws_cloudwatch_event_rule.volume_snapshot.name
-  arn  = aws_sns_topic.alerts.arn
+  rule      = aws_cloudwatch_event_rule.volume_snapshot.name
+  target_id = "SendToSNS"
+  arn       = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.volume_snapshot_dlq.arn
+  }
+}
+
+resource "aws_sqs_queue_policy" "volume_snapshot_dlq_policy" {
+  queue_url = aws_sqs_queue.volume_snapshot_dlq.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.volume_snapshot_dlq.arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.volume_snapshot.arn
+        }
+      }
+    }]
+  })
 }
 
 resource "aws_sns_topic_policy" "allow_events" {
@@ -383,9 +451,9 @@ resource "aws_sns_topic_policy" "allow_events" {
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
                 guardduty_finding_types=[
-                    "DefenseEvasion:EC2/UnusualNetworkPortActivity",
-                    "DefenseEvasion:EC2/InstanceConfigModified",
-                    "Stealth:EC2/AnomalousBehavior",
+                    "DefenseEvasion:EC2/UnusualDNSResolver",
+                    "DefenseEvasion:EC2/UnusualDoHActivity",
+                    "Behavior:EC2/NetworkPortUnusual",
                     "Impact:EC2/WinRMBruteForce",
                 ],
                 cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
@@ -476,9 +544,43 @@ resource "aws_cloudwatch_event_rule" "defence_evasion" {
   })
 }
 
+resource "aws_sqs_queue" "defence_evasion_dlq" {
+  name                      = "defence-evasion-dlq"
+  message_retention_seconds = 1209600
+}
+
 resource "aws_cloudwatch_event_target" "sns" {
-  rule = aws_cloudwatch_event_rule.defence_evasion.name
-  arn  = aws_sns_topic.alerts.arn
+  rule      = aws_cloudwatch_event_rule.defence_evasion.name
+  target_id = "SendToSNS"
+  arn       = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.defence_evasion_dlq.arn
+  }
+}
+
+resource "aws_sqs_queue_policy" "defence_evasion_dlq_policy" {
+  queue_url = aws_sqs_queue.defence_evasion_dlq.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.defence_evasion_dlq.arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.defence_evasion.arn
+        }
+      }
+    }]
+  })
 }
 
 resource "aws_sns_topic_policy" "allow_events" {

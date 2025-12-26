@@ -385,9 +385,44 @@ resource "aws_cloudwatch_event_rule" "developer_tools" {
 
 # Step 3: Route to SNS
 resource "aws_cloudwatch_event_target" "sns" {
-  rule = aws_cloudwatch_event_rule.developer_tools.name
-  arn  = var.sns_topic_arn
+  rule      = aws_cloudwatch_event_rule.developer_tools.name
+  target_id = "SendToSNS"
+  arn       = var.sns_topic_arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.developer_tools_dlq.arn
+  }
 }
+
+resource "aws_sqs_queue" "developer_tools_dlq" {
+  name                      = "developer-tools-alerts-dlq"
+  message_retention_seconds = 1209600
+}
+
+resource "aws_sqs_queue_policy" "developer_tools_dlq_policy" {
+  queue_url = aws_sqs_queue.developer_tools_dlq.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.developer_tools_dlq.arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.developer_tools.arn
+        }
+      }
+    }]
+  })
+}
+
+data "aws_caller_identity" "current" {}
 
 resource "aws_sns_topic_policy" "allow_eventbridge" {
   arn = var.sns_topic_arn

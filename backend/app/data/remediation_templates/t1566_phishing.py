@@ -186,6 +186,40 @@ resource "aws_sqs_queue" "dlq" {
   message_retention_seconds = 1209600
 }
 
+# SQS Queue Policy for EventBridge DLQ (CRITICAL)
+# Without this, EventBridge cannot send failed events to the DLQ
+data "aws_iam_policy_document" "eventbridge_dlq_policy" {
+  statement {
+    sid     = "AllowEventBridgeToSendToDLQ"
+    effect  = "Allow"
+    actions = ["sqs:SendMessage"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["events.amazonaws.com"]
+    }
+
+    resources = [aws_sqs_queue.dlq.arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+
+    condition {
+      test     = "ArnEquals"
+      variable = "aws:SourceArn"
+      values   = [aws_cloudwatch_event_rule.suspicious_email.arn]
+    }
+  }
+}
+
+resource "aws_sqs_queue_policy" "event_dlq" {
+  queue_url = aws_sqs_queue.dlq.url
+  policy    = data.aws_iam_policy_document.eventbridge_dlq_policy.json
+}
+
 # Step 4: EventBridge target with DLQ, retry, input transformer
 resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.suspicious_email.name
@@ -290,7 +324,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
                 guardduty_finding_types=[
                     "Discovery:S3/MaliciousIPCaller",
                     "Impact:S3/MaliciousIPCaller",
-                    "Execution:S3/MaliciousFile",
+                    "Object:S3/MaliciousFile",
                 ],
                 cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty malware protection for phishing detection
