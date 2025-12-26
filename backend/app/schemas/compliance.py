@@ -80,6 +80,11 @@ class CloudCoverageMetricsResponse(BaseModel):
     not_assessable_total: int = 0  # Controls that cannot be assessed via cloud scanning
     # Service-aware coverage
     service_coverage: Optional[ServiceCoverageItem] = None
+    # Cloud-only filtering transparency
+    cloud_only_filter: bool = True  # Whether cloud-only filter was applied
+    total_techniques_mapped: int = 0  # Total techniques across all controls
+    cloud_techniques_mapped: int = 0  # Cloud-relevant techniques only
+    non_cloud_techniques_filtered: int = 0  # Non-cloud techniques excluded
 
 
 class ComplianceCoverageSummary(BaseModel):

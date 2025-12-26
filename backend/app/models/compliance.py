@@ -149,6 +149,12 @@ class ControlTechniqueMapping(Base):
     source_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
+    # Cloud relevance flag - True for techniques in IaaS Cloud Matrix
+    # False for Windows/endpoint-only techniques (e.g., T1574.002 DLL Side-Loading)
+    is_cloud_relevant: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default="true", index=True
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow
     )

@@ -18,6 +18,7 @@ import {
   Filter,
   ChevronDown,
   ChevronRight,
+  Info,
 } from 'lucide-react'
 import { complianceApi, CloudApplicability } from '../../services/complianceApi'
 import { FrameworkCard } from './FrameworkCard'
@@ -243,10 +244,31 @@ export function ComplianceCoverageContent({ accountId, initialModalState }: Comp
             {/* Cloud Metrics Summary */}
             {coverage.cloud_metrics && (
               <div className="mt-6 pt-4 border-t border-gray-700">
-                <h4 className="text-sm font-medium text-gray-300 mb-3 flex items-center gap-2">
-                  <Cloud className="w-4 h-4" />
-                  Cloud Detection Analytics
-                </h4>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-medium text-gray-300 flex items-center gap-2">
+                    <Cloud className="w-4 h-4" />
+                    Cloud Detection Analytics
+                  </h4>
+                  {/* Cloud-Only Filtering Transparency Badge */}
+                  {coverage.cloud_metrics.non_cloud_techniques_filtered !== undefined &&
+                    coverage.cloud_metrics.non_cloud_techniques_filtered > 0 && (
+                    <div
+                      className="group relative flex items-center gap-1.5 px-2.5 py-1 bg-slate-700/60 rounded-full text-xs text-slate-400 border border-slate-600/50 hover:bg-slate-700 hover:border-slate-500 transition-all cursor-help"
+                    >
+                      <Info className="w-3 h-3" />
+                      <span>{coverage.cloud_metrics.non_cloud_techniques_filtered} non-cloud filtered</span>
+                      {/* Tooltip */}
+                      <div className="absolute bottom-full right-0 mb-2 w-72 p-3 bg-gray-900 border border-gray-700 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                        <p className="text-xs text-gray-300 leading-relaxed">
+                          Coverage calculations focus on techniques detectable via cloud-native logging
+                          (CloudTrail, Cloud Audit Logs). Non-cloud techniques like DLL Side-Loading
+                          are excluded as they require endpoint detection.
+                        </p>
+                        <div className="absolute bottom-0 right-4 translate-y-1/2 rotate-45 w-2 h-2 bg-gray-900 border-r border-b border-gray-700" />
+                      </div>
+                    </div>
+                  )}
+                </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <button
                     onClick={() => setActiveModal('cloud_detectable')}

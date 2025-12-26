@@ -67,6 +67,11 @@ export interface CloudCoverageMetrics {
   not_assessable_total: number // Controls that cannot be assessed via cloud scanning
   // Service-aware coverage
   service_coverage?: ServiceCoverageItem
+  // Cloud-only filtering transparency
+  cloud_only_filter?: boolean // Whether cloud-only filter was applied
+  total_techniques_mapped?: number // Total techniques across all controls
+  cloud_techniques_mapped?: number // Cloud-relevant techniques only
+  non_cloud_techniques_filtered?: number // Non-cloud techniques excluded
 }
 
 export interface ComplianceCoverageSummary {

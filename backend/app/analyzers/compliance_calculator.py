@@ -129,6 +129,11 @@ class ComplianceCoverageResult:
     top_gaps: list[ControlCoverageInfo]
     # Service-aware coverage metrics
     service_metrics: Optional[ServiceCoverageMetrics] = None
+    # Cloud-only filtering transparency
+    cloud_only_filter: bool = True  # Whether cloud-only filter is applied
+    total_techniques_mapped: int = 0  # Total techniques across all controls
+    cloud_techniques_mapped: int = 0  # Cloud-relevant techniques only
+    non_cloud_techniques_filtered: int = 0  # Non-cloud techniques excluded
 
 
 class ComplianceCoverageCalculator:
@@ -143,6 +148,7 @@ class ComplianceCoverageCalculator:
         framework_id: UUID,
         technique_coverage: dict[str, str],  # technique_id (str) -> status
         cloud_account_id: Optional[UUID] = None,  # For service-aware coverage
+        cloud_only: bool = True,  # Filter to cloud-relevant techniques only
     ) -> ComplianceCoverageResult:
         """Calculate compliance coverage for a framework.
 
@@ -153,6 +159,10 @@ class ComplianceCoverageCalculator:
             cloud_account_id: Optional cloud account UUID for service-aware coverage.
                               When provided, coverage is calculated based on which
                               services have detection coverage, not just techniques.
+            cloud_only: If True (default), only include techniques that are
+                        cloud-relevant (detectable via cloud-native logging).
+                        Non-cloud techniques (e.g., T1574.002 DLL Side-Loading)
+                        are excluded from coverage calculations.
 
         Returns:
             ComplianceCoverageResult with full coverage breakdown
@@ -162,6 +172,7 @@ class ComplianceCoverageCalculator:
             framework_id=str(framework_id),
             technique_count=len(technique_coverage),
             service_aware=cloud_account_id is not None,
+            cloud_only=cloud_only,
         )
 
         # Initialize service coverage calculator if cloud_account_id provided
@@ -186,15 +197,35 @@ class ComplianceCoverageCalculator:
         # Build technique ID lookup (UUID -> technique_id string)
         technique_ids = await self._get_technique_id_map()
 
+        # Track technique filtering metrics
+        total_technique_mappings = 0
+        cloud_technique_mappings = 0
+
         # Calculate coverage for each control
         control_details: list[ControlCoverageInfo] = []
         family_stats: dict[str, dict] = {}
 
         for control in controls:
-            # Get mapped technique IDs
-            mapped_technique_uuids = [
-                m.technique_id for m in control.technique_mappings
-            ]
+            # Get mapped technique IDs, optionally filtering by cloud relevance
+            if cloud_only:
+                # Only include cloud-relevant techniques
+                mapped_technique_uuids = [
+                    m.technique_id
+                    for m in control.technique_mappings
+                    if m.is_cloud_relevant
+                ]
+            else:
+                # Include all techniques
+                mapped_technique_uuids = [
+                    m.technique_id for m in control.technique_mappings
+                ]
+
+            # Track filtering metrics
+            total_technique_mappings += len(control.technique_mappings)
+            cloud_technique_mappings += len(
+                [m for m in control.technique_mappings if m.is_cloud_relevant]
+            )
+
             mapped_technique_ids = [
                 technique_ids.get(str(uuid))
                 for uuid in mapped_technique_uuids
@@ -567,6 +598,9 @@ class ComplianceCoverageCalculator:
                 uncovered_services=all_uncovered,
             )
 
+        # Calculate non-cloud filtered count
+        non_cloud_filtered = total_technique_mappings - cloud_technique_mappings
+
         result = ComplianceCoverageResult(
             framework_id=framework.framework_id,
             framework_name=framework.name,
@@ -581,6 +615,11 @@ class ComplianceCoverageCalculator:
             control_details=control_details,
             top_gaps=top_gaps,
             service_metrics=service_metrics,
+            # Cloud-only filtering transparency
+            cloud_only_filter=cloud_only,
+            total_techniques_mapped=total_technique_mappings,
+            cloud_techniques_mapped=cloud_technique_mappings,
+            non_cloud_techniques_filtered=non_cloud_filtered if cloud_only else 0,
         )
 
         self.logger.info(
@@ -590,6 +629,8 @@ class ComplianceCoverageCalculator:
             covered=covered_controls,
             partial=partial_controls,
             uncovered=uncovered_controls,
+            cloud_only=cloud_only,
+            techniques_filtered=non_cloud_filtered if cloud_only else 0,
             service_coverage_percent=(
                 service_metrics.service_coverage_percent if service_metrics else None
             ),
@@ -609,12 +650,14 @@ class ComplianceCoverageCalculator:
         self,
         technique_coverage: dict[str, str],
         cloud_account_id: Optional[UUID] = None,
+        cloud_only: bool = True,
     ) -> list[ComplianceCoverageResult]:
         """Calculate coverage for all active compliance frameworks.
 
         Args:
             technique_coverage: Dict mapping MITRE technique IDs to coverage status
             cloud_account_id: Optional cloud account UUID for service-aware coverage
+            cloud_only: If True (default), only include cloud-relevant techniques
 
         Returns:
             List of ComplianceCoverageResult for each framework
@@ -628,7 +671,7 @@ class ComplianceCoverageCalculator:
         results = []
         for framework in frameworks:
             coverage = await self.calculate(
-                framework.id, technique_coverage, cloud_account_id
+                framework.id, technique_coverage, cloud_account_id, cloud_only
             )
             results.append(coverage)
 

@@ -19,6 +19,7 @@ from app.models.compliance import (
     ControlTechniqueMapping,
 )
 from app.models.mitre import Technique
+from app.data.cloud_techniques import is_cloud_relevant
 
 logger = structlog.get_logger()
 
@@ -139,6 +140,7 @@ class ComplianceMappingLoader:
                     mapping_source=self._get_mapping_source(framework.framework_id),
                     mapping_type=mapping_data.get("mapping_type", "mitigates"),
                     source_url=framework.source_url,
+                    is_cloud_relevant=is_cloud_relevant(technique_id),
                 )
                 self.db.add(mapping)
                 mappings_created += 1

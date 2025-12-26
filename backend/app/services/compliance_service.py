@@ -114,6 +114,7 @@ class ComplianceService:
         self,
         cloud_account_id: UUID,
         coverage_snapshot_id: UUID,
+        cloud_only: bool = True,
     ) -> list[ComplianceCoverageSnapshot]:
         """Calculate and store compliance coverage for all frameworks.
 
@@ -122,6 +123,8 @@ class ComplianceService:
         Args:
             cloud_account_id: The cloud account UUID
             coverage_snapshot_id: The MITRE coverage snapshot UUID
+            cloud_only: If True (default), only include cloud-relevant techniques
+                        in coverage calculations. Non-cloud techniques are excluded.
 
         Returns:
             List of created ComplianceCoverageSnapshot objects
@@ -161,7 +164,7 @@ class ComplianceService:
         for framework in frameworks:
             try:
                 result = await calculator.calculate(
-                    framework.id, technique_coverage, cloud_account_id
+                    framework.id, technique_coverage, cloud_account_id, cloud_only
                 )
 
                 # Build family coverage dict for storage
@@ -192,6 +195,11 @@ class ComplianceService:
                     "customer_responsibility_covered": result.cloud_metrics.customer_responsibility_covered,
                     "provider_managed_total": result.cloud_metrics.provider_managed_total,
                     "not_assessable_total": result.cloud_metrics.not_assessable_total,
+                    # Cloud-only filtering transparency
+                    "cloud_only_filter": result.cloud_only_filter,
+                    "total_techniques_mapped": result.total_techniques_mapped,
+                    "cloud_techniques_mapped": result.cloud_techniques_mapped,
+                    "non_cloud_techniques_filtered": result.non_cloud_techniques_filtered,
                 }
 
                 # Add service metrics if available
