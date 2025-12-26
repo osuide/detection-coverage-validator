@@ -26,6 +26,29 @@ Common UK English spellings to use:
 - cheque (not check, for payments)
 - programme (not program, for schedules/events)
 
+### Currency Requirements
+
+**All product pricing must use British Pounds (£/GBP).** This applies to:
+- Subscription tier pricing (FREE, Individual £29/mo, Pro £250/mo, Enterprise)
+- User-facing messages about upgrades and pricing
+- Stripe configuration (currency: "gbp")
+- API responses for pricing endpoints
+- Documentation and marketing content
+
+**Exception**: AWS/GCP infrastructure costs in remediation templates can use $ (USD) since those are vendor prices.
+
+#### Pre-Production Currency Checklist
+
+Before going to production, ensure:
+
+| Item | File | Current | Required |
+|------|------|---------|----------|
+| Stripe checkout currency | `stripe_service.py:126,151` | `"usd"` | `"gbp"` |
+| Billing model currency default | `billing.py:664` | `"usd"` | `"gbp"` |
+| Price variable names | `billing.py`, `billing_config.py` | `*_dollars` | `*_pounds` |
+| Pricing comments | `billing.py:215-220` | `$29`, `$250` | `£29`, `£250` |
+| Admin metrics pricing | `admin/metrics.py:144` | `$0`, `$29`, `$499` | `£0`, `£29`, `£499` |
+
 ## Project Context
 
 This is a **multi-cloud security detection coverage validator** that:
