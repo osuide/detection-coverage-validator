@@ -41,9 +41,12 @@ class OrganizationSecuritySettings(Base):
         Integer, nullable=False, default=60
     )
 
-    # Auth Methods
+    # Auth Methods - includes all common providers by default
+    # Users can restrict to specific methods via security settings
     allowed_auth_methods: Mapped[List[str]] = mapped_column(
-        JSONB, nullable=False, default=lambda: ["password"]
+        JSONB,
+        nullable=False,
+        default=lambda: ["password", "google", "github", "cognito"],
     )
 
     # Password Policy
