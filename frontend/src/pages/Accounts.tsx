@@ -69,15 +69,15 @@ export default function Accounts() {
   // Feedback message for scan status
   const [scanFeedback, setScanFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
-  // Direct async handler for responsive scan button (same pattern as MITRE sync)
-  const handleScan = async (accountId: string) => {
-    // Immediate visual feedback
-    setScanningAccountId(accountId)
-    setScanFeedback(null)
-
-    try {
-      await scansApi.create({ cloud_account_id: accountId })
-
+  // Use useMutation for scan to prevent double-click race conditions
+  const scanMutation = useMutation({
+    mutationFn: (accountId: string) => scansApi.create({ cloud_account_id: accountId }),
+    onMutate: (accountId) => {
+      // Immediate visual feedback - set which account is scanning
+      setScanningAccountId(accountId)
+      setScanFeedback(null)
+    },
+    onSuccess: () => {
       // Invalidate queries to refresh data
       queryClient.invalidateQueries({ queryKey: ['scans'] })
       queryClient.invalidateQueries({ queryKey: ['scanStatus'] })
@@ -88,7 +88,8 @@ export default function Accounts() {
       })
       // Auto-dismiss after 5 seconds
       setTimeout(() => setScanFeedback(null), 5000)
-    } catch (error: unknown) {
+    },
+    onError: (error: unknown) => {
       const err = error as { message?: string; response?: { data?: { detail?: string } } }
       setScanFeedback({
         type: 'error',
@@ -96,8 +97,18 @@ export default function Accounts() {
       })
       // Auto-dismiss after 5 seconds
       setTimeout(() => setScanFeedback(null), 5000)
-    } finally {
+    },
+    onSettled: () => {
+      // Reset scanning account ID when done (success or error)
       setScanningAccountId(null)
+    },
+  })
+
+  // Wrapper to prevent double-clicks via mutation's isPending state
+  const handleScan = (accountId: string) => {
+    // useMutation automatically prevents duplicate requests while isPending
+    if (!scanMutation.isPending) {
+      scanMutation.mutate(accountId)
     }
   }
 
@@ -274,7 +285,7 @@ export default function Accounts() {
               onEdit={() => setEditingAccount(account)}
               onScan={() => handleScan(account.id)}
               onDelete={() => deleteMutation.mutate(account.id)}
-              isScanPending={scanningAccountId === account.id}
+              isScanPending={scanningAccountId === account.id || scanMutation.isPending}
               isDeletePending={deleteMutation.isPending}
               scanStatus={scanStatus}
             />
