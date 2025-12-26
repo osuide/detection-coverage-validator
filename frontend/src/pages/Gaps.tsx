@@ -366,6 +366,7 @@ function GapCard({
 }) {
   const queryClient = useQueryClient()
   const mitreUrl = `https://attack.mitre.org/techniques/${gap.technique_id.replace('.', '/')}/`
+  const [isAcknowledged, setIsAcknowledged] = useState(false)
 
   const acknowledgeMutation = useMutation({
     mutationFn: () => {
@@ -373,9 +374,14 @@ function GapCard({
       return gapsApi.acknowledge(gap.technique_id, accountId)
     },
     onSuccess: () => {
+      // Show acknowledged state immediately
+      setIsAcknowledged(true)
       toast.success(`Gap ${gap.technique_id} acknowledged. It will not appear in future scans.`)
-      // Invalidate coverage query to refresh the gaps list
-      queryClient.invalidateQueries({ queryKey: ['coverage'] })
+      // Delay the query invalidation slightly so user sees the "Acknowledged" state
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['coverage'] })
+        queryClient.invalidateQueries({ queryKey: ['acknowledgedGaps'] })
+      }, 1500)
     },
     onError: (error: Error) => {
       toast.error(`Failed to acknowledge gap: ${error.message}`)
@@ -567,15 +573,26 @@ function GapCard({
             <button
               onClick={(e) => {
                 e.stopPropagation()
-                acknowledgeMutation.mutate()
+                if (!isAcknowledged) {
+                  acknowledgeMutation.mutate()
+                }
               }}
-              disabled={acknowledgeMutation.isPending || !accountId}
-              className="btn-secondary text-sm inline-flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={acknowledgeMutation.isPending || !accountId || isAcknowledged}
+              className={`text-sm inline-flex items-center transition-all duration-300 ${
+                isAcknowledged
+                  ? 'bg-green-600/20 text-green-400 border border-green-600 px-3 py-1.5 rounded-lg cursor-default'
+                  : 'btn-secondary disabled:opacity-50 disabled:cursor-not-allowed'
+              }`}
             >
               {acknowledgeMutation.isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-1 animate-spin" />
                   Acknowledging...
+                </>
+              ) : isAcknowledged ? (
+                <>
+                  <CheckCircle className="h-4 w-4 mr-1" />
+                  Acknowledged
                 </>
               ) : (
                 <>

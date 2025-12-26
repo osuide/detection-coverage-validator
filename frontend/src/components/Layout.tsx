@@ -20,6 +20,7 @@ import {
   Shield,
   ClipboardCheck,
   FileBarChart,
+  CheckCircle2,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { useAuth } from '../contexts/AuthContext'
@@ -44,6 +45,7 @@ const navigation = [
 const settingsNavigation = [
   { name: 'Team', href: '/settings/team', icon: Users },
   { name: 'Security', href: '/settings/security', icon: Lock },
+  { name: 'Acknowledged Gaps', href: '/settings/acknowledged-gaps', icon: CheckCircle2, adminOnly: true },
   { name: 'Billing', href: '/settings/billing', icon: CreditCard },
   { name: 'API Keys', href: '/settings/api-keys', icon: Key },
   { name: 'Audit Logs', href: '/settings/audit-logs', icon: FileText },
@@ -133,7 +135,15 @@ export default function Layout({ children }: LayoutProps) {
 
             {showSettingsMenu && (
               <div className="mt-1 ml-4 space-y-1">
-                {settingsNavigation.map((item) => {
+                {settingsNavigation
+                  .filter((item) => {
+                    // Filter out admin-only items for non-admin users
+                    if ('adminOnly' in item && item.adminOnly) {
+                      return user?.role === 'owner' || user?.role === 'admin'
+                    }
+                    return true
+                  })
+                  .map((item) => {
                   const isActive = location.pathname === item.href
                   return (
                     <Link

@@ -20,6 +20,7 @@ import Profile from './pages/Profile'
 import AuthCallback from './pages/AuthCallback'
 import OrgSecurity from './pages/OrgSecurity'
 import Billing from './pages/Billing'
+import AcknowledgedGapsReview from './pages/AcknowledgedGapsReview'
 import Landing from './pages/Landing'
 
 // Organisation pages
@@ -125,6 +126,7 @@ function App() {
                   <Route path="/settings/profile" element={<Profile />} />
                   <Route path="/settings/security" element={<OrgSecurity />} />
                   <Route path="/settings/billing" element={<Billing />} />
+                  <Route path="/settings/acknowledged-gaps" element={<AcknowledgedGapsReview />} />
                 </Routes>
               </Layout>
             </ProtectedRoute>

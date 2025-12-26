@@ -454,6 +454,33 @@ export interface AcknowledgedGapsResponse {
   total: number
 }
 
+// Org-level acknowledged gap (includes cloud account info)
+export interface OrgAcknowledgedGap {
+  id: string
+  technique_id: string
+  technique_name: string
+  tactic_id: string
+  tactic_name: string
+  status: 'acknowledged' | 'risk_accepted'
+  priority: string
+  cloud_account_id: string
+  cloud_account_name: string | null
+  reason: string | null
+  remediation_notes: string | null
+  risk_acceptance_reason: string | null
+  acknowledged_at: string | null
+  acknowledged_by_name: string | null
+}
+
+export interface OrgAcknowledgedGapsResponse {
+  gaps: OrgAcknowledgedGap[]
+  total: number
+  by_status: {
+    acknowledged: number
+    risk_accepted: number
+  }
+}
+
 export const gapsApi = {
   acknowledge: (techniqueId: string, cloudAccountId: string, notes?: string) =>
     api.post<GapAcknowledgeResponse>(
@@ -487,6 +514,13 @@ export const gapsApi = {
       '/gaps',
       { params: { cloud_account_id: cloudAccountId, status } }
     ).then(r => r.data),
+
+  // Org-level endpoints for admins
+  listOrgAcknowledged: () =>
+    api.get<OrgAcknowledgedGapsResponse>('/gaps/org/acknowledged').then(r => r.data),
+
+  reopenOrgGap: (gapId: string) =>
+    api.post<GapAcknowledgeResponse>(`/gaps/org/${gapId}/reopen`, {}).then(r => r.data),
 }
 
 export default api

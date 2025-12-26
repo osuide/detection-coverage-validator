@@ -344,3 +344,153 @@ async def list_acknowledged_gaps(
         "acknowledged_technique_ids": technique_ids,
         "count": len(technique_ids),
     }
+
+
+class OrgAcknowledgedGapResponse(BaseModel):
+    """Response for organisation-level acknowledged gap."""
+
+    id: UUID
+    technique_id: str
+    technique_name: str
+    tactic_id: str
+    tactic_name: str
+    status: str
+    priority: str
+    cloud_account_id: UUID
+    cloud_account_name: Optional[str] = None
+    reason: Optional[str] = None
+    remediation_notes: Optional[str] = None
+    risk_acceptance_reason: Optional[str] = None
+    acknowledged_at: Optional[str] = None
+    acknowledged_by_name: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class OrgAcknowledgedGapsResponse(BaseModel):
+    """Response for organisation-level acknowledged gaps list."""
+
+    gaps: list[OrgAcknowledgedGapResponse]
+    total: int
+    by_status: dict[str, int]
+
+
+@router.get("/org/acknowledged")
+async def list_org_acknowledged_gaps(
+    db: AsyncSession = Depends(get_db),
+    auth: AuthContext = Depends(require_role(UserRole.OWNER, UserRole.ADMIN)),
+) -> OrgAcknowledgedGapsResponse:
+    """List all acknowledged and risk-accepted gaps across the organisation.
+
+    This endpoint is for org owners/admins to review all acknowledged gaps
+    across all cloud accounts. Allows them to manage and revert acknowledgements.
+    """
+    from app.models.cloud_account import CloudAccount
+    from app.models.user import User
+
+    # Get all acknowledged/risk_accepted gaps for this organisation
+    stmt = (
+        select(
+            CoverageGap,
+            CloudAccount.name.label("account_name"),
+            User.full_name.label("user_name"),
+        )
+        .join(CloudAccount, CoverageGap.cloud_account_id == CloudAccount.id)
+        .outerjoin(User, CoverageGap.risk_accepted_by == User.id)
+        .where(
+            and_(
+                CoverageGap.organization_id == auth.organization_id,
+                CoverageGap.status.in_(
+                    [GapStatus.ACKNOWLEDGED, GapStatus.RISK_ACCEPTED]
+                ),
+            )
+        )
+        .order_by(CoverageGap.status_changed_at.desc())
+    )
+
+    result = await db.execute(stmt)
+    rows = result.all()
+
+    # Count by status
+    by_status = {"acknowledged": 0, "risk_accepted": 0}
+    gaps = []
+
+    for row in rows:
+        gap = row[0]
+        account_name = row[1]
+        user_name = row[2]
+
+        by_status[gap.status.value] = by_status.get(gap.status.value, 0) + 1
+
+        gaps.append(
+            OrgAcknowledgedGapResponse(
+                id=gap.id,
+                technique_id=gap.technique_id,
+                technique_name=gap.technique_name,
+                tactic_id=gap.tactic_id,
+                tactic_name=gap.tactic_name,
+                status=gap.status.value,
+                priority=gap.priority.value,
+                cloud_account_id=gap.cloud_account_id,
+                cloud_account_name=account_name,
+                reason=gap.reason,
+                remediation_notes=gap.remediation_notes,
+                risk_acceptance_reason=gap.risk_acceptance_reason,
+                acknowledged_at=(
+                    gap.status_changed_at.isoformat() if gap.status_changed_at else None
+                ),
+                acknowledged_by_name=user_name,
+            )
+        )
+
+    return OrgAcknowledgedGapsResponse(
+        gaps=gaps,
+        total=len(gaps),
+        by_status=by_status,
+    )
+
+
+@router.post("/org/{gap_id}/reopen")
+async def reopen_org_gap(
+    gap_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    auth: AuthContext = Depends(require_role(UserRole.OWNER, UserRole.ADMIN)),
+) -> dict:
+    """Reopen an acknowledged/risk-accepted gap from the org admin view.
+
+    This allows org owners/admins to revert gap acknowledgements.
+    """
+    # Get the gap and verify it belongs to this organisation
+    stmt = select(CoverageGap).where(
+        and_(
+            CoverageGap.id == gap_id,
+            CoverageGap.organization_id == auth.organization_id,
+        )
+    )
+    result = await db.execute(stmt)
+    gap = result.scalar_one_or_none()
+
+    if not gap:
+        raise HTTPException(status_code=404, detail="Gap not found")
+
+    if gap.status not in [GapStatus.ACKNOWLEDGED, GapStatus.RISK_ACCEPTED]:
+        raise HTTPException(
+            status_code=400,
+            detail="Only acknowledged or risk-accepted gaps can be reopened",
+        )
+
+    gap.status = GapStatus.OPEN
+    gap.risk_acceptance_reason = None
+    gap.risk_accepted_by = None
+    gap.risk_accepted_at = None
+
+    await db.commit()
+    await db.refresh(gap)
+
+    return {
+        "message": "Gap reopened",
+        "gap_id": str(gap.id),
+        "technique_id": gap.technique_id,
+        "status": "open",
+    }
