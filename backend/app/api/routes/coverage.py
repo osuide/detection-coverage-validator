@@ -184,9 +184,22 @@ async def get_coverage(
             )
         )
 
-    # Transform top_gaps with enhanced remediation data
+    # Get acknowledged technique IDs to filter them out
+    from app.models.gap import CoverageGap, GapStatus
+
+    acknowledged_stmt = select(CoverageGap.technique_id).where(
+        CoverageGap.cloud_account_id == cloud_account_id,
+        CoverageGap.status.in_([GapStatus.ACKNOWLEDGED, GapStatus.RISK_ACCEPTED]),
+    )
+    acknowledged_result = await db.execute(acknowledged_stmt)
+    acknowledged_technique_ids = {row[0] for row in acknowledged_result.all()}
+
+    # Transform top_gaps with enhanced remediation data (filtering out acknowledged)
     gap_list = []
     for gap in snapshot.top_gaps:
+        # Skip acknowledged gaps
+        if gap.get("technique_id") in acknowledged_technique_ids:
+            continue
         # Build recommended strategies list
         strategies = []
         for s in gap.get("recommended_strategies", []):
