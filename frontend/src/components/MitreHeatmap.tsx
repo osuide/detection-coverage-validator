@@ -112,19 +112,19 @@ export default function MitreHeatmap({ techniques, onTechniqueClick }: MitreHeat
 
       {/* Heatmap Grid */}
       <div className="overflow-x-auto">
-        <div className="inline-flex gap-1 min-w-full">
+        <div className="inline-flex gap-2 min-w-full items-start">
           {TACTICS.map(tactic => {
             const tacticTechniques = techniquesByTactic[tactic.id] || []
 
             return (
-              <div key={tactic.id} className="flex-1 min-w-[100px]">
+              <div key={tactic.id} className="flex-1 min-w-[100px] flex flex-col">
                 {/* Tactic Header */}
-                <div className="text-xs font-semibold text-gray-700 text-center p-2 bg-gray-100 rounded-t border-b border-gray-200">
+                <div className="text-xs font-semibold text-gray-100 text-center py-2.5 px-2 bg-gradient-to-b from-gray-700 to-gray-800 rounded-t-lg border border-gray-600 border-b-0 shadow-sm">
                   {tactic.short}
                 </div>
 
-                {/* Technique Cells */}
-                <div className="space-y-1 p-1 bg-gray-50 rounded-b min-h-[200px]">
+                {/* Technique Cells - height adapts to content */}
+                <div className="space-y-1.5 p-1.5 bg-gray-800/50 rounded-b-lg border border-gray-600 border-t-0 backdrop-blur-sm">
                   {tacticTechniques.length > 0 ? (
                     tacticTechniques.map(technique => (
                       <button
@@ -132,19 +132,19 @@ export default function MitreHeatmap({ techniques, onTechniqueClick }: MitreHeat
                         onClick={() => handleCellClick(technique)}
                         onMouseEnter={(e) => handleMouseEnter(technique, e)}
                         onMouseLeave={handleMouseLeave}
-                        className={`w-full p-2 rounded text-xs font-medium text-center transition-colors cursor-pointer ${getCellColor(technique.status, technique.detection_count)} ${
+                        className={`w-full p-2 rounded-md text-xs font-medium text-center transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md hover:scale-[1.02] ${getCellColor(technique.status, technique.detection_count)} ${
                           selectedTechnique?.technique_id === technique.technique_id
-                            ? 'ring-2 ring-blue-500 ring-offset-1'
+                            ? 'ring-2 ring-cyan-400 ring-offset-1 ring-offset-gray-800'
                             : ''
                         }`}
                       >
-                        <div className="truncate text-gray-800">
+                        <div className="truncate text-gray-900 font-semibold">
                           {technique.technique_id}
                         </div>
                       </button>
                     ))
                   ) : (
-                    <div className="text-xs text-gray-400 text-center py-4">
+                    <div className="text-xs text-gray-500 text-center py-3 italic">
                       No techniques
                     </div>
                   )}
@@ -222,31 +222,33 @@ export default function MitreHeatmap({ techniques, onTechniqueClick }: MitreHeat
 
       {/* Selected Technique Detail */}
       {selectedTechnique && (
-        <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+        <div className="mt-4 p-4 bg-gray-800/80 rounded-lg border border-gray-600 backdrop-blur-sm shadow-lg">
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <h4 className="font-semibold text-gray-900">
-                {selectedTechnique.technique_id} - {selectedTechnique.technique_name}
+              <h4 className="font-semibold text-gray-100">
+                <span className="text-cyan-400">{selectedTechnique.technique_id}</span>
+                <span className="text-gray-400 mx-2">—</span>
+                {selectedTechnique.technique_name}
               </h4>
-              <p className="text-sm text-gray-600 mt-1">
+              <p className="text-sm text-gray-300 mt-1">
                 {selectedTechnique.detection_count > 0 ? (
                   <>
-                    Covered by <span className="font-medium">{selectedTechnique.detection_count}</span> detection(s)
+                    Covered by <span className="font-medium text-green-400">{selectedTechnique.detection_count}</span> detection(s)
                     {' '}&bull;{' '}
-                    Confidence: <span className="font-medium">{(selectedTechnique.max_confidence * 100).toFixed(0)}%</span>
+                    Confidence: <span className="font-medium text-cyan-400">{(selectedTechnique.max_confidence * 100).toFixed(0)}%</span>
                   </>
                 ) : (
-                  <span className="text-red-600">No detections covering this technique</span>
+                  <span className="text-red-400">No detections covering this technique</span>
                 )}
               </p>
               {/* Detection names list */}
               {selectedTechnique.detection_names && selectedTechnique.detection_names.length > 0 && (
                 <div className="mt-3">
-                  <p className="text-xs font-medium text-gray-500 mb-1">Mapped Detections:</p>
+                  <p className="text-xs font-medium text-gray-400 mb-1">Mapped Detections:</p>
                   <ul className="text-sm space-y-1">
                     {selectedTechnique.detection_names.map((name, idx) => (
-                      <li key={idx} className="text-gray-700 flex items-start gap-2">
-                        <span className="text-green-600 flex-shrink-0">✓</span>
+                      <li key={idx} className="text-gray-200 flex items-start gap-2">
+                        <span className="text-green-400 flex-shrink-0">✓</span>
                         <span>{name}</span>
                       </li>
                     ))}
@@ -258,7 +260,7 @@ export default function MitreHeatmap({ techniques, onTechniqueClick }: MitreHeat
               href={`https://attack.mitre.org/techniques/${selectedTechnique.technique_id.replace('.', '/')}/`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center text-sm text-blue-600 hover:text-blue-700 flex-shrink-0 ml-4"
+              className="flex items-center text-sm text-cyan-400 hover:text-cyan-300 transition-colors flex-shrink-0 ml-4"
             >
               View in MITRE
               <ExternalLink className="h-4 w-4 ml-1" />
