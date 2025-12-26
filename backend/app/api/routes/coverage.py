@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc, or_
+from sqlalchemy import select, desc, or_, func
 
 from app.core.database import get_db
 from app.core.security import AuthContext, get_auth_context, require_scope
@@ -40,29 +40,28 @@ router = APIRouter()
 async def _get_security_function_breakdown(
     db: AsyncSession, cloud_account_id: UUID
 ) -> SecurityFunctionBreakdown:
-    """Calculate security function breakdown for a cloud account."""
+    """Calculate security function breakdown for a cloud account.
+
+    Uses SQL GROUP BY aggregation instead of loading all detections
+    for O(1) performance regardless of detection count.
+    """
+    # Use SQL aggregation instead of loading all rows (N+1 fix)
     result = await db.execute(
-        select(Detection).where(Detection.cloud_account_id == cloud_account_id)
+        select(Detection.security_function, func.count(Detection.id))
+        .where(Detection.cloud_account_id == cloud_account_id)
+        .group_by(Detection.security_function)
     )
-    detections = result.scalars().all()
+    counts = {row[0]: row[1] for row in result.all()}
 
     breakdown = SecurityFunctionBreakdown(
-        detect=0, protect=0, identify=0, recover=0, operational=0, total=0
+        detect=counts.get(SecurityFunction.DETECT, 0),
+        protect=counts.get(SecurityFunction.PROTECT, 0),
+        identify=counts.get(SecurityFunction.IDENTIFY, 0),
+        recover=counts.get(SecurityFunction.RECOVER, 0),
+        operational=counts.get(SecurityFunction.OPERATIONAL, 0),
+        total=sum(counts.values()),
     )
 
-    for det in detections:
-        if det.security_function == SecurityFunction.DETECT:
-            breakdown.detect += 1
-        elif det.security_function == SecurityFunction.PROTECT:
-            breakdown.protect += 1
-        elif det.security_function == SecurityFunction.IDENTIFY:
-            breakdown.identify += 1
-        elif det.security_function == SecurityFunction.RECOVER:
-            breakdown.recover += 1
-        else:
-            breakdown.operational += 1
-
-    breakdown.total = len(detections)
     return breakdown
 
 

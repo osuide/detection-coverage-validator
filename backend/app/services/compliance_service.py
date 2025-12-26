@@ -5,6 +5,7 @@ Manages compliance framework coverage calculations and storage.
 
 from typing import Optional
 from uuid import UUID
+from datetime import datetime, timedelta
 
 import structlog
 from sqlalchemy import select, func
@@ -24,6 +25,27 @@ from app.analyzers.compliance_calculator import (
 )
 
 logger = structlog.get_logger()
+
+# In-memory cache for framework IDs (lightweight, rarely changes)
+# Format: {framework_id: (framework_uuid, cached_at)}
+_framework_id_cache: dict[str, tuple[UUID, datetime]] = {}
+_FRAMEWORK_CACHE_TTL = timedelta(hours=1)
+
+
+def _get_cached_framework_uuid(framework_id: str) -> Optional[UUID]:
+    """Get framework UUID from cache if valid."""
+    if framework_id in _framework_id_cache:
+        uuid, cached_at = _framework_id_cache[framework_id]
+        if datetime.utcnow() - cached_at < _FRAMEWORK_CACHE_TTL:
+            return uuid
+        # Expired, remove from cache
+        del _framework_id_cache[framework_id]
+    return None
+
+
+def _cache_framework_uuid(framework_id: str, uuid: UUID) -> None:
+    """Cache framework UUID for quick lookups."""
+    _framework_id_cache[framework_id] = (uuid, datetime.utcnow())
 
 
 class ComplianceService:
@@ -50,7 +72,13 @@ class ComplianceService:
         query = query.order_by(ComplianceFramework.name)
 
         result = await self.db.execute(query)
-        return list(result.scalars().all())
+        frameworks = list(result.scalars().all())
+
+        # Cache framework IDs for faster lookups
+        for fw in frameworks:
+            _cache_framework_uuid(fw.framework_id, fw.id)
+
+        return frameworks
 
     async def get_framework(self, framework_id: str) -> Optional[ComplianceFramework]:
         """Get a framework by its framework_id.

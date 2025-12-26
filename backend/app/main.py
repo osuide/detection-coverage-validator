@@ -400,13 +400,19 @@ async def lifespan(app: FastAPI):
     # Seed compliance framework data if not present
     await seed_compliance_data()
 
-    # Initialise Redis-backed rate limiter
+    # Initialise Redis-backed rate limiter and cache
     from app.api.deps.rate_limit import init_rate_limiter, close_rate_limiter
+    from app.core.cache import init_cache, close_cache
 
     try:
         await init_rate_limiter()
     except Exception as e:
         logger.error("rate_limiter_init_failed", error=str(e))
+
+    try:
+        await init_cache()
+    except Exception as e:
+        logger.warning("cache_init_failed", error=str(e))
 
     try:
         await scheduler_service.start()
@@ -423,6 +429,10 @@ async def lifespan(app: FastAPI):
         await close_rate_limiter()
     except Exception as e:
         logger.error("rate_limiter_close_failed", error=str(e))
+    try:
+        await close_cache()
+    except Exception as e:
+        logger.warning("cache_close_failed", error=str(e))
 
 
 app = FastAPI(

@@ -18,8 +18,10 @@ class Settings(BaseSettings):
 
     # Database
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/dcv"
-    database_pool_size: int = 5
-    database_max_overflow: int = 10
+    database_pool_size: int = 20  # Increased from 5 for better concurrency
+    database_max_overflow: int = 30  # Increased from 10 for burst handling
+    database_pool_pre_ping: bool = True  # Validate connections before use
+    database_pool_recycle: int = 3600  # Recycle connections every hour (seconds)
 
     # Redis
     redis_url: str = "redis://localhost:6379/0"

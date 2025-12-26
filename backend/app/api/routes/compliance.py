@@ -2,13 +2,14 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
 from app.core.security import AuthContext, require_role
+
 from app.models.user import UserRole
 from app.models.cloud_account import CloudAccount
 from app.models.compliance import (
@@ -33,17 +34,25 @@ from app.schemas.compliance import (
 )
 from app.services.compliance_service import ComplianceService
 
+# Cache control for static reference data (frameworks, controls)
+# These rarely change and can be cached aggressively
+STATIC_CACHE_HEADER = "public, max-age=3600"  # 1 hour
+
 router = APIRouter(prefix="/compliance", tags=["compliance"])
 
 
 @router.get("/frameworks", response_model=list[ComplianceFrameworkResponse])
 async def list_frameworks(
+    response: Response,
     db: AsyncSession = Depends(get_db),
     auth: AuthContext = Depends(
         require_role(UserRole.MEMBER, UserRole.VIEWER, UserRole.ADMIN, UserRole.OWNER)
     ),
 ) -> list[ComplianceFrameworkResponse]:
     """List all active compliance frameworks."""
+    # Set cache headers for static reference data
+    response.headers["Cache-Control"] = STATIC_CACHE_HEADER
+
     # Get frameworks with control counts
     result = await db.execute(
         select(
@@ -79,12 +88,16 @@ async def list_frameworks(
 @router.get("/frameworks/{framework_id}", response_model=ComplianceFrameworkResponse)
 async def get_framework(
     framework_id: str,
+    response: Response,
     db: AsyncSession = Depends(get_db),
     auth: AuthContext = Depends(
         require_role(UserRole.MEMBER, UserRole.VIEWER, UserRole.ADMIN, UserRole.OWNER)
     ),
 ) -> ComplianceFrameworkResponse:
     """Get a specific compliance framework."""
+    # Set cache headers for static reference data
+    response.headers["Cache-Control"] = STATIC_CACHE_HEADER
+
     result = await db.execute(
         select(
             ComplianceFramework,
@@ -120,12 +133,16 @@ async def get_framework(
 @router.get("/frameworks/{framework_id}/controls", response_model=list[ControlResponse])
 async def list_controls(
     framework_id: str,
+    response: Response,
     db: AsyncSession = Depends(get_db),
     auth: AuthContext = Depends(
         require_role(UserRole.MEMBER, UserRole.VIEWER, UserRole.ADMIN, UserRole.OWNER)
     ),
 ) -> list[ControlResponse]:
     """List all controls in a framework."""
+    # Set cache headers for static reference data
+    response.headers["Cache-Control"] = STATIC_CACHE_HEADER
+
     # Get framework first
     framework_result = await db.execute(
         select(ComplianceFramework).where(

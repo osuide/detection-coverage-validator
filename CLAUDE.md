@@ -372,6 +372,22 @@ Priority order for next session:
 
 ## Technical Debt / Backlog
 
+### Performance Optimisations (Future)
+
+The following optimisations are documented for future implementation when needed:
+
+| Priority | Optimisation | Expected Gain | Cost | Notes |
+|----------|--------------|---------------|------|-------|
+| 1 | Increase ECS task resources (1024 CPU, 2048 MB) | 5-10ms | +£30/mo | Terraform: `modules/backend/main.tf` |
+| 2 | Upgrade RDS instance (db.t3.medium or higher) | 5-15ms | +£25-95/mo | Terraform: `modules/database/main.tf` |
+| 3 | Add CloudFront for API caching | 20-30ms | +£10-50/mo | New module needed |
+
+**Already Implemented (December 2025):**
+- Database pool size increased to 20 (from 5) with pool_pre_ping and pool_recycle
+- N+1 query fixed in `_get_security_function_breakdown()` using SQL GROUP BY
+- Redis cache module added (`app/core/cache.py`) with framework ID caching
+- HTTP cache headers added to compliance framework endpoints (1 hour TTL)
+
 ### Remediation Templates
 
 #### COMPLETED: Recent Improvements (December 2025)
