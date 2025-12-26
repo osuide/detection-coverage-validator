@@ -660,9 +660,19 @@ def require_feature(feature: str) -> Callable:
             )
 
         if not subscription.has_feature(feature):
+            # Provide feature-specific upgrade messages
+            feature_messages = {
+                "scheduled_scans": "Scheduled scans require Individual tier (£29/mo) or higher. Automate your security coverage analysis with recurring scans.",
+                "org_features": "Organisation features require Pro tier (£250/mo) or higher. Manage teams, delegate scanning, and get org-wide dashboards.",
+                "api_access": "API access requires Individual tier (£29/mo) or higher. Integrate detection coverage into your CI/CD pipeline.",
+            }
+            detail = feature_messages.get(
+                feature,
+                "This feature requires a paid subscription. Upgrade to Individual (£29/mo) to unlock more capabilities.",
+            )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Your subscription tier does not include this feature. Please upgrade to Pro or Enterprise.",
+                detail=detail,
             )
 
         return auth

@@ -108,7 +108,7 @@ class ScanLimitService:
             )
             return (
                 False,
-                f"Weekly scan limit ({weekly_limit}) reached. Upgrade for unlimited scans.",
+                "You've used your weekly scan. Upgrade to Individual (£29/mo) for unlimited scans, historical trends, and scheduled automation.",
                 next_available,
             )
 
@@ -189,7 +189,7 @@ class ScanLimitService:
             await self.db.commit()  # Release the lock
             return (
                 False,
-                f"Weekly scan limit ({weekly_limit}) reached. Upgrade for unlimited scans.",
+                "You've used your weekly scan. Upgrade to Individual (£29/mo) for unlimited scans, historical trends, and scheduled automation.",
                 next_available,
             )
 
