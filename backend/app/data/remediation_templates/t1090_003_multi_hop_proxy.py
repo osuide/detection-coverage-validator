@@ -166,7 +166,7 @@ resource "aws_cloudwatch_metric_alarm" "tor_detection" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.proxy_alerts.arn]
+  alarm_actions       = [aws_sns_topic.proxy_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Multi-hop Proxy Traffic Detected",
@@ -380,6 +380,8 @@ resource "aws_cloudwatch_event_target" "sns" {
   arn       = aws_sns_topic.guardduty_tor_alerts.arn
 }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "guardduty_publish" {
   arn = aws_sns_topic.guardduty_tor_alerts.arn
 
@@ -392,6 +394,11 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
       }
       Action   = "SNS:Publish"
       Resource = aws_sns_topic.guardduty_tor_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",

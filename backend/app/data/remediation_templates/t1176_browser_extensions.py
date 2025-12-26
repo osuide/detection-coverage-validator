@@ -18,7 +18,7 @@ from .template_loader import (
 
 TEMPLATE = RemediationTemplate(
     technique_id="T1176",
-    technique_name="Browser Extensions",
+    technique_name="Software Extensions",
     tactic_ids=["TA0003"],  # Persistence
     mitre_url="https://attack.mitre.org/techniques/T1176/001/",
     threat_context=ThreatContext(
@@ -131,11 +131,26 @@ Resources:
       Threshold: 3
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref ExtensionAlertTopic
-      TreatMissingData: notBreaching
+
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: [!Ref ExtensionAlertTopic]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudWatchPublish
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref ExtensionAlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
 
 Outputs:
   SNSTopicArn:
@@ -191,10 +206,29 @@ resource "aws_cloudwatch_metric_alarm" "extension_activity" {
   threshold           = 3
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.extension_alerts.arn]
-  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.extension_alerts.arn]
+}
+
+data "aws_caller_identity" "current" {}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.extension_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.extension_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="high",
                 alert_title="Suspicious Browser Extension Activity Detected",
@@ -282,7 +316,13 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
-  # Step 3: Route malicious file findings to email
+  # Step 3: Create DLQ for reliability
+  DLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: guardduty-malware-alerts-dlq
+      MessageRetentionPeriod: 1209600
+
   MalwareDetectionRule:
     Type: AWS::Events::Rule
     Properties:
@@ -301,18 +341,30 @@ Resources:
       Targets:
         - Id: AlertTopic
           Arn: !Ref MalwareAlertTopic
+          RetryPolicy:
+            MaximumRetryAttempts: 8
+            MaximumEventAgeInSeconds: 3600
+          DeadLetterConfig:
+            Arn: !GetAtt DLQ.Arn
 
   TopicPolicy:
     Type: AWS::SNS::TopicPolicy
     Properties:
       Topics: [!Ref MalwareAlertTopic]
       PolicyDocument:
+        Version: '2012-10-17'
         Statement:
-          - Effect: Allow
+          - Sid: AllowEventBridgePublish
+            Effect: Allow
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref MalwareAlertTopic""",
+            Resource: !Ref MalwareAlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt MalwareDetectionRule.Arn""",
                 terraform_template="""# AWS: GuardDuty malicious browser extension detection
 
 variable "alert_email" {
@@ -366,21 +418,46 @@ resource "aws_cloudwatch_event_rule" "malware_detection" {
   })
 }
 
+resource "aws_sqs_queue" "dlq" {
+  name                      = "guardduty-malware-alerts-dlq"
+  message_retention_seconds = 1209600
+}
+
 resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.malware_detection.name
   target_id = "SendToSNS"
   arn       = aws_sns_topic.malware_alerts.arn
+
+  retry_policy {
+    maximum_retry_attempts       = 8
+    maximum_event_age_in_seconds = 3600
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
 }
+
+data "aws_caller_identity" "current" {}
 
 resource "aws_sns_topic_policy" "allow_eventbridge" {
   arn = aws_sns_topic.malware_alerts.arn
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowEventBridgePublish"
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.malware_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.malware_detection.arn
+        }
+      }
     }]
   })
 }""",
@@ -491,10 +568,29 @@ resource "aws_cloudwatch_metric_alarm" "config_changes" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
-  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.alerts.arn]
+}
+
+data "aws_caller_identity" "current" {}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="high",
                 alert_title="Browser Configuration Modification Detected",

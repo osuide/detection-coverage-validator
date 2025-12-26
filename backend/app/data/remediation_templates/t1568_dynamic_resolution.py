@@ -200,7 +200,7 @@ resource "aws_cloudwatch_metric_alarm" "dga_detection" {
   threshold           = 50
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.dga_alerts.arn]
+  alarm_actions       = [aws_sns_topic.dga_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Domain Generation Algorithm (DGA) Activity Detected",
@@ -380,7 +380,7 @@ resource "aws_cloudwatch_metric_alarm" "ddns_detection" {
   threshold           = 5
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.ddns_alerts.arn]
+  alarm_actions       = [aws_sns_topic.ddns_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Dynamic DNS Provider Usage Detected",
@@ -486,7 +486,7 @@ resource "aws_cloudwatch_metric_alarm" "fastflux_detection" {
   threshold           = 100
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.fastflux_alerts.arn]
+  alarm_actions       = [aws_sns_topic.fastflux_alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="Fast Flux DNS Activity Detected",
@@ -643,6 +643,8 @@ resource "aws_cloudwatch_event_target" "sns" {
   arn  = aws_sns_topic.guardduty_alerts.arn
 }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "allow_events" {
   arn = aws_sns_topic.guardduty_alerts.arn
 
@@ -653,6 +655,11 @@ resource "aws_sns_topic_policy" "allow_events" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.guardduty_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",

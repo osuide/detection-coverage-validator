@@ -166,7 +166,7 @@ resource "aws_cloudwatch_metric_alarm" "ddos_detected" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }
 
 # Monitor high packet rate
@@ -182,18 +182,27 @@ resource "aws_cloudwatch_metric_alarm" "high_packet_rate" {
   evaluation_periods  = 2
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }
 
+data "aws_caller_identity" "current" {}
+
+# Scoped SNS topic policy
 resource "aws_sns_topic_policy" "allow_cloudwatch" {
   arn = aws_sns_topic.alerts.arn
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowCloudWatchAlarmsPublish"
       Effect    = "Allow"
       Principal = { Service = "cloudwatch.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",
@@ -281,20 +290,27 @@ resource "aws_cloudwatch_metric_alarm" "network_flood" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
-
-  alarm_actions [aws_sns_topic.alerts.arn]
-  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }
 
+data "aws_caller_identity" "current" {}
+
+# Scoped SNS topic policy
 resource "aws_sns_topic_policy" "allow_cloudwatch" {
   arn = aws_sns_topic.alerts.arn
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowCloudWatchAlarmsPublish"
       Effect    = "Allow"
       Principal = { Service = "cloudwatch.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",

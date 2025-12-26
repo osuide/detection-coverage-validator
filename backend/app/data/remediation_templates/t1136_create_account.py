@@ -100,7 +100,14 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
-  # Step 2: EventBridge rule to detect account creation
+  # Step 2: Dead Letter Queue for failed deliveries
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: iam-account-creation-alerts-dlq
+      MessageRetentionPeriod: 1209600
+
+  # Step 3: EventBridge rule to detect account creation
   AccountCreationRule:
     Type: AWS::Events::Rule
     Properties:
@@ -110,7 +117,7 @@ Resources:
         source:
           - aws.iam
         detail-type:
-          - "AWS API Call via CloudTrail"
+          - AWS API Call via CloudTrail
         detail:
           eventSource:
             - iam.amazonaws.com
@@ -119,31 +126,76 @@ Resources:
             - CreateGroup
       State: ENABLED
       Targets:
-        - Id: SNSAlert
+        - Id: SNSTarget
           Arn: !Ref AlertTopic
+          RetryPolicy:
+            MaximumEventAgeInSeconds: 3600
+            MaximumRetryAttempts: 8
+          DeadLetterConfig:
+            Arn: !GetAtt DeadLetterQueue.Arn
+          InputTransformer:
+            InputPathsMap:
+              account: $.account
+              region: $.region
+              time: $.time
+              eventName: $.detail.eventName
+              userName: $.detail.requestParameters.userName
+              userArn: $.detail.userIdentity.arn
+              sourceIp: $.detail.sourceIPAddress
+            InputTemplate: |
+              "IAM Account Creation Alert (T1136)"
+              "Time: <time>"
+              "Account: <account> | Region: <region>"
+              "Event: <eventName>"
+              "New User/Group: <userName>"
+              "Created By: <userArn>"
+              "Source IP: <sourceIp>"
+              "Action: Verify this account creation was authorised"
 
-  # Step 3: SNS topic policy to allow EventBridge
+  # Step 4: SNS topic policy to allow EventBridge
   TopicPolicy:
     Type: AWS::SNS::TopicPolicy
     Properties:
       Topics:
         - !Ref AlertTopic
       PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowEventBridgePublishScoped
+            Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt AccountCreationRule.Arn
+
+  DLQPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref DeadLetterQueue
+      PolicyDocument:
         Statement:
           - Effect: Allow
             Principal:
               Service: events.amazonaws.com
-            Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Action: sqs:SendMessage
+            Resource: !GetAtt DeadLetterQueue.Arn""",
                 terraform_template="""# Detect IAM user and group creation for T1136
 
 variable "alert_email" {
   type = string
 }
 
+data "aws_caller_identity" "current" {}
+
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "alerts" {
-  name = "iam-account-creation-alerts"
+  name              = "iam-account-creation-alerts"
   kms_master_key_id = "alias/aws/sns"
 }
 
@@ -153,14 +205,20 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
-# Step 2: EventBridge rule to detect account creation
+# Step 2: Dead Letter Queue for failed deliveries
+resource "aws_sqs_queue" "dlq" {
+  name                      = "iam-account-creation-alerts-dlq"
+  message_retention_seconds = 1209600
+}
+
+# Step 3: EventBridge rule to detect account creation
 resource "aws_cloudwatch_event_rule" "account_creation" {
   name        = "T1136-IAMAccountCreation"
   description = "Detect IAM user and group creation"
 
   event_pattern = jsonencode({
-    source      = ["aws.iam"]
-    detail-type = ["AWS API Call via CloudTrail"]
+    source        = ["aws.iam"]
+    "detail-type" = ["AWS API Call via CloudTrail"]
     detail = {
       eventSource = ["iam.amazonaws.com"]
       eventName   = ["CreateUser", "CreateGroup"]
@@ -170,21 +228,74 @@ resource "aws_cloudwatch_event_rule" "account_creation" {
 
 resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.account_creation.name
-  target_id = "SNSAlert"
+  target_id = "SNSTarget"
   arn       = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
+
+  input_transformer {
+    input_paths = {
+      account   = "$.account"
+      region    = "$.region"
+      time      = "$.time"
+      eventName = "$.detail.eventName"
+      userName  = "$.detail.requestParameters.userName"
+      userArn   = "$.detail.userIdentity.arn"
+      sourceIp  = "$.detail.sourceIPAddress"
+    }
+
+    input_template = <<-EOT
+"IAM Account Creation Alert (T1136)
+Time: <time>
+Account: <account> | Region: <region>
+Event: <eventName>
+New User/Group: <userName>
+Created By: <userArn>
+Source IP: <sourceIp>
+Action: Verify this account creation was authorised"
+EOT
+  }
 }
 
-# Step 3: SNS topic policy to allow EventBridge
+# Step 4: SNS topic policy to allow EventBridge
 resource "aws_sns_topic_policy" "allow_events" {
   arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowEventBridgePublishScoped"
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.account_creation.arn
+        }
+      }
+    }]
+  })
+}
 
+resource "aws_sqs_queue_policy" "dlq" {
+  queue_url = aws_sqs_queue.dlq.id
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
-      Action    = "sns:Publish"
-      Resource  = aws_sns_topic.alerts.arn
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.dlq.arn
     }]
   })
 }""",
@@ -285,7 +396,6 @@ Resources:
       Threshold: 0
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref AlertTopic""",
@@ -336,9 +446,8 @@ resource "aws_cloudwatch_metric_alarm" "admin_account" {
   threshold           = 0
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="AWS: Administrator Account Created",
@@ -700,7 +809,6 @@ Resources:
       Threshold: 3
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref AlertTopic""",
@@ -751,9 +859,8 @@ resource "aws_cloudwatch_metric_alarm" "rapid_creation" {
   threshold           = 3
   comparison_operator = "GreaterThanOrEqualToThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Suspicious Account Creation Pattern",

@@ -156,8 +156,29 @@ resource "aws_cloudwatch_metric_alarm" "port_scanning" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.alerts.arn]
+}
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+data "aws_caller_identity" "current" {}
+
+# SNS topic policy for CloudWatch alarms
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchAlarmsPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="medium",
                 alert_title="Port Scanning Activity Detected",
@@ -230,21 +251,65 @@ resource "aws_cloudwatch_event_rule" "guardduty_recon" {
   })
 }
 
-resource "aws_cloudwatch_event_target" "sns" {
-  rule      = aws_cloudwatch_event_rule.guardduty_recon.name
-  target_id = "SendToSNS"
-  arn       = aws_sns_topic.alerts.arn
+data "aws_caller_identity" "current" {}
+
+# DLQ for EventBridge
+resource "aws_sqs_queue" "dlq" {
+  name                      = "guardduty-recon-dlq"
+  message_retention_seconds = 1209600
 }
 
+# EventBridge target with DLQ and retry
+resource "aws_cloudwatch_event_target" "sns" {
+  rule      = aws_cloudwatch_event_rule.guardduty_recon.name
+  target_id = "SNSTarget"
+  arn       = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
+
+  input_transformer {
+    input_paths = {
+      account  = "$.account"
+      region   = "$.region"
+      time     = "$.time"
+      type     = "$.detail.type"
+      severity = "$.detail.severity"
+    }
+
+    input_template = <<-EOT
+"GuardDuty Reconnaissance Alert (T1595)
+time=<time> account=<account> region=<region>
+type=<type> severity=<severity>"
+EOT
+  }
+}
+
+# Scoped SNS topic policy
 resource "aws_sns_topic_policy" "guardduty_publish" {
   arn = aws_sns_topic.alerts.arn
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowEventBridgePublishScoped"
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
-      Action    = "SNS:Publish"
+      Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.guardduty_recon.arn
+        }
+      }
     }]
   })
 }""",
@@ -326,8 +391,29 @@ resource "aws_cloudwatch_metric_alarm" "vuln_scanning" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.alerts.arn]
+}
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+data "aws_caller_identity" "current" {}
+
+# Scoped SNS topic policy
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchAlarmsPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="high",
                 alert_title="Web Vulnerability Scanning Detected",

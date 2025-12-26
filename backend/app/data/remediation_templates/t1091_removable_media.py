@@ -215,7 +215,7 @@ resource "aws_cloudwatch_metric_alarm" "usb_connection" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.usb_alerts.arn]
+  alarm_actions       = [aws_sns_topic.usb_alerts.arn]
   treat_missing_data  = "notBreaching"
 }
 
@@ -390,6 +390,8 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "alerts_policy" {
   arn = aws_sns_topic.alerts.arn
   policy = jsonencode({
@@ -399,6 +401,11 @@ resource "aws_sns_topic_policy" "alerts_policy" {
       Principal = { Service = "cloudwatch.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }
@@ -432,9 +439,8 @@ resource "aws_cloudwatch_metric_alarm" "removable_media" {
   namespace           = "Security/RemovableMedia"
   metric_name         = "RemovableMediaConnected"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }
 
 # NOTE: Deploy the SSM Document from T1200 template to enable detection
@@ -651,6 +657,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.runtime_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }
@@ -992,6 +1003,11 @@ resource "aws_sns_topic_policy" "allow_events" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.upload_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }

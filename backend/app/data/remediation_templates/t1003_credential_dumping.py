@@ -201,21 +201,65 @@ resource "aws_cloudwatch_event_rule" "credential_dumping" {
   })
 }
 
+resource "aws_sqs_queue" "dlq" {
+  name                      = "guardduty-credential-dumping-dlq"
+  message_retention_seconds = 1209600
+}
+
 resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.credential_dumping.name
   target_id = "SendToSNS"
   arn       = aws_sns_topic.credential_dumping_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
+
+  input_transformer {
+    input_paths = {
+      account    = "$.account"
+      region     = "$.region"
+      time       = "$.time"
+      type       = "$.detail.type"
+      severity   = "$.detail.severity"
+      instanceId = "$.detail.resource.instanceDetails.instanceId"
+    }
+
+    input_template = <<-EOT
+"GuardDuty Credential Dumping Alert (T1003)
+time=<time> account=<account> region=<region>
+finding=<type> severity=<severity>
+instance=<instanceId>
+Action: Investigate and isolate immediately"
+EOT
+  }
 }
+
+data "aws_caller_identity" "current" {}
 
 resource "aws_sns_topic_policy" "allow_eventbridge" {
   arn = aws_sns_topic.credential_dumping_alerts.arn
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowEventBridgePublishScoped"
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.credential_dumping_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.credential_dumping.arn
+        }
+      }
     }]
   })
 }""",
@@ -307,8 +351,6 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
-
       AlarmActions:
         - !Ref SNSTopicArn
 
@@ -368,9 +410,7 @@ resource "aws_cloudwatch_metric_alarm" "credential_dumping" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
-
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="Credential Dumping Tool Detected",
@@ -461,8 +501,6 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
-
       AlarmActions:
         - !Ref SNSTopicArn
 
@@ -524,9 +562,7 @@ resource "aws_cloudwatch_metric_alarm" "secret_access" {
   threshold           = 5
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
-
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }
 
 # Step 3: Monitor privileged container execution
@@ -767,8 +803,6 @@ Resources:
       Threshold: 10
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
-
       AlarmActions:
         - !Ref SNSTopicArn""",
                 terraform_template="""# Detect unusual Secrets Manager access patterns
@@ -830,9 +864,7 @@ resource "aws_cloudwatch_metric_alarm" "bulk_secrets_access" {
   threshold           = 10
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
-
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Bulk Secrets Access Detected",

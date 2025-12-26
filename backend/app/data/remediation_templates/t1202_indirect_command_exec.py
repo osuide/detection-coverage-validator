@@ -207,9 +207,10 @@ resource "aws_cloudwatch_metric_alarm" "indirect_exec" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.indirect_exec_alerts.arn]
-  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.indirect_exec_alerts.arn]
 }
+
+data "aws_caller_identity" "current" {}
 
 resource "aws_sns_topic_policy" "indirect_exec_alerts" {
   arn = aws_sns_topic.indirect_exec_alerts.arn
@@ -220,6 +221,11 @@ resource "aws_sns_topic_policy" "indirect_exec_alerts" {
       Principal = { Service = "cloudwatch.amazonaws.com" }
       Action    = "SNS:Publish"
       Resource  = aws_sns_topic.indirect_exec_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",
@@ -398,9 +404,10 @@ resource "aws_cloudwatch_metric_alarm" "ssh_config_abuse" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.ssh_config_alerts.arn]
-  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.ssh_config_alerts.arn]
 }
+
+data "aws_caller_identity" "current" {}
 
 resource "aws_sns_topic_policy" "ssh_config_alerts" {
   arn = aws_sns_topic.ssh_config_alerts.arn
@@ -411,6 +418,11 @@ resource "aws_sns_topic_policy" "ssh_config_alerts" {
       Principal = { Service = "cloudwatch.amazonaws.com" }
       Action    = "SNS:Publish"
       Resource  = aws_sns_topic.ssh_config_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",
@@ -729,9 +741,10 @@ resource "aws_cloudwatch_metric_alarm" "wsl_abuse" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.wsl_abuse_alerts.arn]
-  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.wsl_abuse_alerts.arn]
 }
+
+data "aws_caller_identity" "current" {}
 
 resource "aws_sns_topic_policy" "wsl_abuse_alerts" {
   arn = aws_sns_topic.wsl_abuse_alerts.arn
@@ -742,6 +755,11 @@ resource "aws_sns_topic_policy" "wsl_abuse_alerts" {
       Principal = { Service = "cloudwatch.amazonaws.com" }
       Action    = "SNS:Publish"
       Resource  = aws_sns_topic.wsl_abuse_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",

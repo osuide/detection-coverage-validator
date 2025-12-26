@@ -122,7 +122,6 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# AWS: Detect automated scraping of public organisational data
@@ -137,11 +136,32 @@ variable "alert_email" {
   description = "Email address for security alerts"
 }
 
+data "aws_caller_identity" "current" {}
+
 # SNS topic for alerts
 resource "aws_sns_topic" "scraping_alerts" {
   name         = "web-scraping-alerts"
   kms_master_key_id = "alias/aws/sns"
   display_name = "Web Scraping Alerts"
+}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.scraping_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.scraping_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -175,9 +195,8 @@ resource "aws_cloudwatch_metric_alarm" "scraping_activity" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.scraping_alerts.arn]
+  alarm_actions       = [aws_sns_topic.scraping_alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Automated Scraping of Organisational Data Detected",
@@ -232,11 +251,32 @@ variable "alert_email" {
   description = "Email address for security alerts"
 }
 
+data "aws_caller_identity" "current" {}
+
 # SNS topic for alerts
 resource "aws_sns_topic" "phishing_alerts" {
   name         = "reconnaissance-phishing-alerts"
   kms_master_key_id = "alias/aws/sns"
   display_name = "Reconnaissance Phishing Alerts"
+}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.phishing_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.phishing_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -270,9 +310,8 @@ resource "aws_cloudwatch_metric_alarm" "recon_phishing" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.phishing_alerts.arn]
+  alarm_actions       = [aws_sns_topic.phishing_alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Reconnaissance Phishing Attempts Detected",

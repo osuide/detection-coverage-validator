@@ -118,19 +118,33 @@ Resources:
         - Id: PhishingAlerts
           Arn: !Ref PhishingAlertTopic
 
-  # Step 3: Allow EventBridge to publish to SNS
+  # Step 3: Dead letter queue
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: ses-phishing-dlq
+      MessageRetentionPeriod: 1209600
+
+  # Step 4: Allow EventBridge to publish to SNS with scoped policy
   TopicPolicy:
     Type: AWS::SNS::TopicPolicy
     Properties:
       Topics:
         - !Ref PhishingAlertTopic
       PolicyDocument:
+        Version: '2012-10-17'
         Statement:
-          - Effect: Allow
+          - Sid: AllowEventBridgePublishScoped
+            Effect: Allow
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref PhishingAlertTopic""",
+            Resource: !Ref PhishingAlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt SuspiciousEmailRule.Arn""",
                 terraform_template="""# AWS SES phishing detection with alerts
 
 variable "alert_email" {
@@ -164,23 +178,69 @@ resource "aws_cloudwatch_event_rule" "suspicious_email" {
   })
 }
 
+data "aws_caller_identity" "current" {}
+
+# Step 3: Dead letter queue
+resource "aws_sqs_queue" "dlq" {
+  name                      = "ses-phishing-dlq"
+  message_retention_seconds = 1209600
+}
+
+# Step 4: EventBridge target with DLQ, retry, input transformer
 resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.suspicious_email.name
   target_id = "PhishingAlerts"
   arn       = aws_sns_topic.phishing_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
+
+  input_transformer {
+    input_paths = {
+      account   = "$.account"
+      region    = "$.region"
+      time      = "$.time"
+      eventType = "$.detail.eventType"
+      source    = "$.detail.mail.source"
+      dest      = "$.detail.mail.destination"
+    }
+
+    input_template = <<-EOT
+"SES Phishing Alert (T1566)
+time=<time> account=<account> region=<region>
+event=<eventType> source=<source>
+destination=<dest>
+Action: Investigate sender and email content"
+EOT
+  }
 }
 
-# Step 3: Allow EventBridge to publish to SNS
+# Step 5: Allow EventBridge to publish to SNS with scoped policy
 resource "aws_sns_topic_policy" "allow_eventbridge" {
   arn = aws_sns_topic.phishing_alerts.arn
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowEventBridgePublishScoped"
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.phishing_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.suspicious_email.arn
+        }
+      }
     }]
   })
 }""",
@@ -346,6 +406,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.malware_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",
@@ -436,7 +501,7 @@ resource "aws_cloudwatch_metric_alarm" "rule_change" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="WorkMail: Email Rule Modified",

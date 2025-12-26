@@ -133,7 +133,6 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref AlertTopic
@@ -144,12 +143,17 @@ Resources:
       Topics:
         - !Ref AlertTopic
       PolicyDocument:
+        Version: '2012-10-17'
         Statement:
-          - Effect: Allow
+          - Sid: AllowCloudWatchAlarms
+            Effect: Allow
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId""",
                 terraform_template="""# Monitor EBS volume attachments for T1025 detection
 
 variable "cloudtrail_log_group" {
@@ -200,20 +204,27 @@ resource "aws_cloudwatch_metric_alarm" "volume_attach_alarm" {
   threshold           = 5
   comparison_operator = "GreaterThanOrEqualToThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.volume_alerts.arn]
+  alarm_actions       = [aws_sns_topic.volume_alerts.arn]
 }
+
+data "aws_caller_identity" "current" {}
 
 resource "aws_sns_topic_policy" "allow_cloudwatch" {
   arn = aws_sns_topic.volume_alerts.arn
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowCloudWatchAlarms"
       Effect    = "Allow"
       Principal = { Service = "cloudwatch.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.volume_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",
@@ -315,7 +326,6 @@ Resources:
       Threshold: 3
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref AlertTopic
@@ -326,12 +336,17 @@ Resources:
       Topics:
         - !Ref AlertTopic
       PolicyDocument:
+        Version: '2012-10-17'
         Statement:
-          - Effect: Allow
+          - Sid: AllowCloudWatchAlarms
+            Effect: Allow
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId""",
                 terraform_template="""# Detect snapshot import and access for T1025
 
 variable "cloudtrail_log_group" {
@@ -380,20 +395,27 @@ resource "aws_cloudwatch_metric_alarm" "snapshot_import_alarm" {
   threshold           = 3
   comparison_operator = "GreaterThanOrEqualToThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.snapshot_alerts.arn]
+  alarm_actions       = [aws_sns_topic.snapshot_alerts.arn]
 }
+
+data "aws_caller_identity" "current" {}
 
 resource "aws_sns_topic_policy" "allow_cloudwatch" {
   arn = aws_sns_topic.snapshot_alerts.arn
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowCloudWatchAlarms"
       Effect    = "Allow"
       Principal = { Service = "cloudwatch.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.snapshot_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",
@@ -493,7 +515,6 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref AlertTopic
@@ -504,12 +525,17 @@ Resources:
       Topics:
         - !Ref AlertTopic
       PolicyDocument:
+        Version: '2012-10-17'
         Statement:
-          - Effect: Allow
+          - Sid: AllowCloudWatchAlarms
+            Effect: Allow
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId""",
                 terraform_template="""# Monitor SSM Session Manager for file enumeration
 
 variable "cloudtrail_log_group" {
@@ -558,20 +584,27 @@ resource "aws_cloudwatch_metric_alarm" "ssm_session_alarm" {
   threshold           = 5
   comparison_operator = "GreaterThanOrEqualToThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.ssm_alerts.arn]
+  alarm_actions       = [aws_sns_topic.ssm_alerts.arn]
 }
+
+data "aws_caller_identity" "current" {}
 
 resource "aws_sns_topic_policy" "allow_cloudwatch" {
   arn = aws_sns_topic.ssm_alerts.arn
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowCloudWatchAlarms"
       Effect    = "Allow"
       Principal = { Service = "cloudwatch.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.ssm_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",

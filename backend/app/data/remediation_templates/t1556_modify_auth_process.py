@@ -225,6 +225,8 @@ resource "aws_cloudwatch_event_target" "sns" {
 }
 
 # Step 3: Topic policy
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "allow_events" {
   arn = aws_sns_topic.iam_auth_policy_alerts.arn
   policy = jsonencode({
@@ -234,6 +236,11 @@ resource "aws_sns_topic_policy" "allow_events" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.iam_auth_policy_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",
@@ -331,7 +338,6 @@ Resources:
       Threshold: 0
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref AlertTopic""",
@@ -383,7 +389,7 @@ resource "aws_cloudwatch_metric_alarm" "assume_role_no_mfa" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.assume_role_no_mfa_alerts.arn]
+  alarm_actions       = [aws_sns_topic.assume_role_no_mfa_alerts.arn]
   alarm_description   = "Privileged role assumed without MFA authentication"
 }""",
                 alert_severity="high",
@@ -577,6 +583,11 @@ resource "aws_sns_topic_policy" "allow_events" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.idp_change_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",
@@ -878,7 +889,6 @@ Resources:
       Threshold: 0
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref AlertTopic""",
@@ -930,7 +940,7 @@ resource "aws_cloudwatch_metric_alarm" "cognito_auth" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.cognito_auth_alerts.arn]
+  alarm_actions       = [aws_sns_topic.cognito_auth_alerts.arn]
   alarm_description   = "Cognito authentication configuration modified"
 }""",
                 alert_severity="high",

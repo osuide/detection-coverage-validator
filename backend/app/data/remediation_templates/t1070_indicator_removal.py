@@ -101,7 +101,14 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
-  # Step 2: EventBridge rule for CloudTrail log deletion
+  # Step 2: Dead Letter Queue for failed deliveries
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: cloudtrail-log-deletion-alerts-dlq
+      MessageRetentionPeriod: 1209600
+
+  # Step 3: EventBridge rule for CloudTrail log deletion
   CloudTrailLogDeletionRule:
     Type: AWS::Events::Rule
     Properties:
@@ -118,21 +125,62 @@ Resources:
             bucketName: [!Ref CloudTrailBucketName]
       State: ENABLED
       Targets:
-        - Id: AlertTopic
+        - Id: SNSTarget
           Arn: !Ref AlertTopic
+          RetryPolicy:
+            MaximumEventAgeInSeconds: 3600
+            MaximumRetryAttempts: 8
+          DeadLetterConfig:
+            Arn: !GetAtt DeadLetterQueue.Arn
+          InputTransformer:
+            InputPathsMap:
+              account: $.account
+              region: $.region
+              time: $.time
+              bucketName: $.detail.requestParameters.bucketName
+              objectKey: $.detail.requestParameters.key
+              userArn: $.detail.userIdentity.arn
+            InputTemplate: |
+              "CRITICAL: CloudTrail Log Deletion Alert (T1070)"
+              "Time: <time>"
+              "Account: <account> | Region: <region>"
+              "Bucket: <bucketName>"
+              "Object: <objectKey>"
+              "User: <userArn>"
+              "Action: Evidence tampering detected - investigate immediately"
 
-  # Step 3: SNS topic policy
+  # Step 4: SNS topic policy
   TopicPolicy:
     Type: AWS::SNS::TopicPolicy
     Properties:
       Topics: [!Ref AlertTopic]
       PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowEventBridgePublishScoped
+            Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt CloudTrailLogDeletionRule.Arn
+
+  DLQPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref DeadLetterQueue
+      PolicyDocument:
         Statement:
           - Effect: Allow
             Principal:
               Service: events.amazonaws.com
-            Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Action: sqs:SendMessage
+            Resource: !GetAtt DeadLetterQueue.Arn""",
                 terraform_template="""# Detect CloudTrail log file deletion attempts
 
 variable "alert_email" {
@@ -145,11 +193,13 @@ variable "cloudtrail_bucket_name" {
   description = "Name of the CloudTrail S3 bucket to monitor"
 }
 
+data "aws_caller_identity" "current" {}
+
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "cloudtrail_log_deletion_alerts" {
-  name         = "cloudtrail-log-deletion-alerts"
+  name              = "cloudtrail-log-deletion-alerts"
   kms_master_key_id = "alias/aws/sns"
-  display_name = "CloudTrail Log Deletion Alerts"
+  display_name      = "CloudTrail Log Deletion Alerts"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -158,13 +208,19 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
-# Step 2: EventBridge rule for CloudTrail log deletion
+# Step 2: Dead Letter Queue for failed deliveries
+resource "aws_sqs_queue" "dlq" {
+  name                      = "cloudtrail-log-deletion-alerts-dlq"
+  message_retention_seconds = 1209600
+}
+
+# Step 3: EventBridge rule for CloudTrail log deletion
 resource "aws_cloudwatch_event_rule" "cloudtrail_log_deletion" {
   name        = "T1070-CloudTrailLogDeletion"
   description = "Alert on CloudTrail log file deletion attempts"
   event_pattern = jsonencode({
-    source      = ["aws.s3"]
-    detail-type = ["AWS API Call via CloudTrail"]
+    source        = ["aws.s3"]
+    "detail-type" = ["AWS API Call via CloudTrail"]
     detail = {
       eventName = ["DeleteObject", "DeleteObjects"]
       requestParameters = {
@@ -176,20 +232,72 @@ resource "aws_cloudwatch_event_rule" "cloudtrail_log_deletion" {
 
 resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.cloudtrail_log_deletion.name
-  target_id = "SendToSNS"
+  target_id = "SNSTarget"
   arn       = aws_sns_topic.cloudtrail_log_deletion_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
+
+  input_transformer {
+    input_paths = {
+      account    = "$.account"
+      region     = "$.region"
+      time       = "$.time"
+      bucketName = "$.detail.requestParameters.bucketName"
+      objectKey  = "$.detail.requestParameters.key"
+      userArn    = "$.detail.userIdentity.arn"
+    }
+
+    input_template = <<-EOT
+"CRITICAL: CloudTrail Log Deletion Alert (T1070)
+Time: <time>
+Account: <account> | Region: <region>
+Bucket: <bucketName>
+Object: <objectKey>
+User: <userArn>
+Action: Evidence tampering detected - investigate immediately"
+EOT
+  }
 }
 
-# Step 3: SNS topic policy
+# Step 4: SNS topic policy with scoped conditions
 resource "aws_sns_topic_policy" "allow_eventbridge" {
   arn = aws_sns_topic.cloudtrail_log_deletion_alerts.arn
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowEventBridgePublishScoped"
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.cloudtrail_log_deletion_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.cloudtrail_log_deletion.arn
+        }
+      }
+    }]
+  })
+}
+
+resource "aws_sqs_queue_policy" "dlq" {
+  queue_url = aws_sqs_queue.dlq.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.dlq.arn
     }]
   })
 }""",
@@ -280,7 +388,6 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref AlertTopic""",
@@ -332,9 +439,8 @@ resource "aws_cloudwatch_metric_alarm" "history_clear" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.history_clear_alerts.arn]
+  alarm_actions       = [aws_sns_topic.history_clear_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_description_template="Bash history clearing detected on instance {instance_id}. Command: {command_line}",
@@ -435,9 +541,11 @@ variable "alert_email" {
   type = string
 }
 
+data "aws_caller_identity" "current" {}
+
 # Step 1: SNS topic
 resource "aws_sns_topic" "log_deletion_alerts" {
-  name = "container-log-deletion-alerts"
+  name              = "container-log-deletion-alerts"
   kms_master_key_id = "alias/aws/sns"
 }
 
@@ -447,13 +555,19 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
-# Step 2: EventBridge rule for log deletion
+# Step 2: Dead Letter Queue for failed deliveries
+resource "aws_sqs_queue" "dlq" {
+  name                      = "container-log-deletion-alerts-dlq"
+  message_retention_seconds = 1209600
+}
+
+# Step 3: EventBridge rule for log deletion
 resource "aws_cloudwatch_event_rule" "log_deletion" {
   name        = "T1070-ContainerLogDeletion"
   description = "Detect container log deletion"
   event_pattern = jsonencode({
-    source      = ["aws.logs"]
-    detail-type = ["AWS API Call via CloudTrail"]
+    source        = ["aws.logs"]
+    "detail-type" = ["AWS API Call via CloudTrail"]
     detail = {
       eventName = ["DeleteLogGroup", "DeleteLogStream"]
     }
@@ -462,20 +576,72 @@ resource "aws_cloudwatch_event_rule" "log_deletion" {
 
 resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.log_deletion.name
-  target_id = "SendToSNS"
+  target_id = "SNSTarget"
   arn       = aws_sns_topic.log_deletion_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
+
+  input_transformer {
+    input_paths = {
+      account      = "$.account"
+      region       = "$.region"
+      time         = "$.time"
+      logGroupName = "$.detail.requestParameters.logGroupName"
+      userArn      = "$.detail.userIdentity.arn"
+      eventName    = "$.detail.eventName"
+    }
+
+    input_template = <<-EOT
+"Container Log Deletion Alert (T1070)
+Time: <time>
+Account: <account> | Region: <region>
+Event: <eventName>
+Log Group: <logGroupName>
+User: <userArn>
+Action: Evidence tampering detected - investigate immediately"
+EOT
+  }
 }
 
-# Step 3: Topic policy
+# Step 4: Topic policy with scoped conditions
 resource "aws_sns_topic_policy" "allow_eventbridge" {
   arn = aws_sns_topic.log_deletion_alerts.arn
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowEventBridgePublishScoped"
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.log_deletion_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.log_deletion.arn
+        }
+      }
+    }]
+  })
+}
+
+resource "aws_sqs_queue_policy" "dlq" {
+  queue_url = aws_sqs_queue.dlq.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.dlq.arn
     }]
   })
 }""",

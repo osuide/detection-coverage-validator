@@ -104,7 +104,13 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
-  # Step 3: Route unusual network findings to email
+  # Step 3: Create DLQ for reliability
+  DLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: forced-auth-network-alerts-dlq
+      MessageRetentionPeriod: 1209600
+
   NetworkFindingsRule:
     Type: AWS::Events::Rule
     Properties:
@@ -119,18 +125,30 @@ Resources:
       Targets:
         - Id: Email
           Arn: !Ref AlertTopic
+          RetryPolicy:
+            MaximumRetryAttempts: 8
+            MaximumEventAgeInSeconds: 3600
+          DeadLetterConfig:
+            Arn: !GetAtt DLQ.Arn
 
   TopicPolicy:
     Type: AWS::SNS::TopicPolicy
     Properties:
       Topics: [!Ref AlertTopic]
       PolicyDocument:
+        Version: '2012-10-17'
         Statement:
-          - Effect: Allow
+          - Sid: AllowEventBridgePublish
+            Effect: Allow
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt NetworkFindingsRule.Arn""",
                 terraform_template="""# Monitor for unusual outbound authentication traffic
 
 variable "alert_email" {
@@ -169,20 +187,46 @@ resource "aws_cloudwatch_event_rule" "network_findings" {
   })
 }
 
-resource "aws_cloudwatch_event_target" "sns" {
-  rule = aws_cloudwatch_event_rule.network_findings.name
-  arn  = aws_sns_topic.alerts.arn
+resource "aws_sqs_queue" "dlq" {
+  name                      = "forced-auth-network-alerts-dlq"
+  message_retention_seconds = 1209600
 }
+
+resource "aws_cloudwatch_event_target" "sns" {
+  rule      = aws_cloudwatch_event_rule.network_findings.name
+  target_id = "SendToSNS"
+  arn       = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_retry_attempts       = 8
+    maximum_event_age_in_seconds = 3600
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
+}
+
+data "aws_caller_identity" "current" {}
 
 resource "aws_sns_topic_policy" "allow_eventbridge" {
   arn = aws_sns_topic.alerts.arn
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowEventBridgePublish"
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.network_findings.arn
+        }
+      }
     }]
   })
 }""",
@@ -335,7 +379,28 @@ resource "aws_cloudwatch_metric_alarm" "outbound_smb" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
+}
+
+data "aws_caller_identity" "current" {}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="high",
                 alert_title="Outbound SMB Connections to External Hosts Detected",
@@ -485,7 +550,28 @@ resource "aws_cloudwatch_metric_alarm" "imds_abuse" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
+}
+
+data "aws_caller_identity" "current" {}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="critical",
                 alert_title="Unusual EC2 Instance Metadata Service Access",

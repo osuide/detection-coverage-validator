@@ -92,6 +92,23 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: [!Ref AlertTopic]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudWatchPublish
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+
   # Detect EC2 instance launches
   EC2LaunchFilter:
     Type: AWS::Logs::MetricFilter
@@ -148,9 +165,30 @@ Resources:
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic" "alerts" {
   name = "infrastructure-provisioning-alerts"
   kms_master_key_id = "alias/aws/sns"
+}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -183,7 +221,7 @@ resource "aws_cloudwatch_metric_alarm" "ec2_provisioning" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }
 
 # Detect Lambda function creation
@@ -210,7 +248,7 @@ resource "aws_cloudwatch_metric_alarm" "lambda_provisioning" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Unauthorised Infrastructure Provisioning Detected",
@@ -258,9 +296,30 @@ resource "aws_cloudwatch_metric_alarm" "lambda_provisioning" {
 variable "vpc_flow_log_group" { type = string }
 variable "alert_email" { type = string }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic" "alerts" {
   name = "vpc-external-connectivity-alerts"
   kms_master_key_id = "alias/aws/sns"
+}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -293,7 +352,7 @@ resource "aws_cloudwatch_metric_alarm" "suspicious_connectivity" {
   evaluation_periods  = 2
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Suspicious VPC External Connectivity",

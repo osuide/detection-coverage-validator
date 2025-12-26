@@ -107,8 +107,28 @@ resource "aws_cloudwatch_metric_alarm" "lateral_movement" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.alerts.arn]
+}
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+data "aws_caller_identity" "current" {}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchAlarms"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="high",
                 alert_title="Unusual Cloud Service Access",
@@ -181,20 +201,63 @@ resource "aws_cloudwatch_event_rule" "federated" {
   })
 }
 
-resource "aws_cloudwatch_event_target" "sns" {
-  rule = aws_cloudwatch_event_rule.federated.name
-  arn  = aws_sns_topic.alerts.arn
+resource "aws_sqs_queue" "dlq" {
+  name                      = "federated-access-dlq"
+  message_retention_seconds = 1209600
 }
+
+resource "aws_cloudwatch_event_target" "sns" {
+  rule      = aws_cloudwatch_event_rule.federated.name
+  target_id = "SendToSNS"
+  arn       = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
+
+  input_transformer {
+    input_paths = {
+      account  = "$.account"
+      region   = "$.region"
+      time     = "$.time"
+      roleArn  = "$.detail.requestParameters.roleArn"
+      user     = "$.detail.userIdentity.arn"
+      sourceIp = "$.detail.sourceIPAddress"
+    }
+    input_template = <<-EOT
+"Federated Access Alert (T1021.007)
+time=<time> account=<account> region=<region>
+role=<roleArn> user=<user> sourceIp=<sourceIp>
+Action: Verify federated identity legitimacy"
+EOT
+  }
+}
+
+data "aws_caller_identity" "current" {}
 
 resource "aws_sns_topic_policy" "allow_events" {
   arn = aws_sns_topic.alerts.arn
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowEventBridgePublishScoped"
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.federated.arn
+        }
+      }
     }]
   })
 }""",

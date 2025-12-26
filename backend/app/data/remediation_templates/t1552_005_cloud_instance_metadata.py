@@ -107,17 +107,31 @@ Resources:
         - Id: Alert
           Arn: !Ref AlertTopic
 
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: imds-exfil-dlq
+      MessageRetentionPeriod: 1209600
+
   TopicPolicy:
     Type: AWS::SNS::TopicPolicy
     Properties:
-      Topics: [!Ref AlertTopic]
+      Topics:
+        - !Ref AlertTopic
       PolicyDocument:
+        Version: '2012-10-17'
         Statement:
-          - Effect: Allow
+          - Sid: AllowEventBridgePublishScoped
+            Effect: Allow
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt IMDSExfilRule.Arn""",
                 terraform_template="""# Detect IMDS credential exfiltration
 
 variable "alert_email" {
@@ -153,9 +167,47 @@ resource "aws_cloudwatch_event_rule" "imds_exfil" {
   })
 }
 
+data "aws_caller_identity" "current" {}
+
+# DLQ for failed deliveries
+resource "aws_sqs_queue" "dlq" {
+  name                      = "imds-exfil-dlq"
+  message_retention_seconds = 1209600
+}
+
 resource "aws_cloudwatch_event_target" "sns" {
-  rule = aws_cloudwatch_event_rule.imds_exfil.name
-  arn  = aws_sns_topic.alerts.arn
+  rule      = aws_cloudwatch_event_rule.imds_exfil.name
+  target_id = "SNSTarget"
+  arn       = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
+
+  input_transformer {
+    input_paths = {
+      account  = "$.account"
+      region   = "$.region"
+      time     = "$.time"
+      type     = "$.detail.type"
+      severity = "$.detail.severity"
+      instance = "$.detail.resource.instanceDetails.instanceId"
+      role     = "$.detail.resource.accessKeyDetails.userName"
+    }
+
+    input_template = <<-EOT
+"IMDS Credential Exfiltration Alert (T1552.005)
+time=<time> account=<account> region=<region>
+type=<type> severity=<severity>
+instance=<instance> role=<role>
+Action: Revoke instance credentials immediately"
+EOT
+  }
 }
 
 resource "aws_sns_topic_policy" "allow_events" {
@@ -163,10 +215,19 @@ resource "aws_sns_topic_policy" "allow_events" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowEventBridgePublishScoped"
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.imds_exfil.arn
+        }
+      }
     }]
   })
 }""",
@@ -317,6 +378,11 @@ resource "aws_sns_topic_policy" "allow_events" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",
@@ -549,7 +615,7 @@ resource "aws_cloudwatch_metric_alarm" "imds_access" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="High IMDS Access Volume",

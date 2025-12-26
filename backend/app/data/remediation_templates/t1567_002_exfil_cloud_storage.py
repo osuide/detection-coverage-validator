@@ -132,7 +132,6 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref AlertTopic
@@ -199,7 +198,7 @@ resource "aws_cloudwatch_metric_alarm" "upload_tool_alert" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="Cloud Storage Upload Tool Detected",
@@ -297,7 +296,6 @@ Resources:
       Threshold: 1073741824
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref AlertTopic
@@ -364,7 +362,7 @@ resource "aws_cloudwatch_metric_alarm" "large_upload_alert" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Large HTTPS Upload to Cloud Storage",
@@ -504,6 +502,8 @@ resource "aws_cloudwatch_event_target" "sns" {
 }
 
 # Step 3: SNS topic policy
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "allow_events" {
   arn = aws_sns_topic.alerts.arn
 
@@ -514,6 +514,11 @@ resource "aws_sns_topic_policy" "allow_events" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",

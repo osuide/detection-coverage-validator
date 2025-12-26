@@ -19,7 +19,7 @@ from .template_loader import (
 TEMPLATE = RemediationTemplate(
     technique_id="T1040",
     technique_name="Network Sniffing",
-    tactic_ids=["TA0006", "TA0009"],  # Credential Access, Collection
+    tactic_ids=["TA0006", "TA0007"],  # Credential Access, Discovery
     mitre_url="https://attack.mitre.org/techniques/T1040/",
     threat_context=ThreatContext(
         description=(
@@ -95,7 +95,13 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
-  # Step 2: EventBridge rule for traffic mirroring
+  # Step 2: DLQ for EventBridge
+  DLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 1209600
+
+  # Step 3: EventBridge rule for traffic mirroring
   TrafficMirrorRule:
     Type: AWS::Events::Rule
     Properties:
@@ -110,28 +116,41 @@ Resources:
       Targets:
         - Id: Alert
           Arn: !Ref AlertTopic
+          DeadLetterConfig:
+            Arn: !GetAtt DLQ.Arn
+          RetryPolicy:
+            MaximumEventAgeInSeconds: 3600
+            MaximumRetryAttempts: 8
 
-  # Step 3: Topic policy to allow EventBridge
+  # Step 4: Scoped topic policy for EventBridge
   TopicPolicy:
     Type: AWS::SNS::TopicPolicy
     Properties:
       Topics: [!Ref AlertTopic]
       PolicyDocument:
         Statement:
-          - Effect: Allow
+          - Sid: AllowEventBridgePublishScoped
+            Effect: Allow
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt TrafficMirrorRule.Arn""",
                 terraform_template="""# Detect AWS Traffic Mirroring sessions
 
 variable "alert_email" {
   type = string
 }
 
+data "aws_caller_identity" "current" {}
+
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "alerts" {
-  name = "traffic-mirroring-alerts"
+  name              = "traffic-mirroring-alerts"
   kms_master_key_id = "alias/aws/sns"
 }
 
@@ -141,12 +160,18 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
-# Step 2: EventBridge rule
+# Step 2: DLQ for EventBridge
+resource "aws_sqs_queue" "dlq" {
+  name                      = "traffic-mirroring-dlq"
+  message_retention_seconds = 1209600
+}
+
+# Step 3: EventBridge rule
 resource "aws_cloudwatch_event_rule" "traffic_mirror" {
   name = "traffic-mirroring-detection"
   event_pattern = jsonencode({
-    source      = ["aws.ec2"]
-    detail-type = ["AWS API Call via CloudTrail"]
+    source        = ["aws.ec2"]
+    "detail-type" = ["AWS API Call via CloudTrail"]
     detail = {
       eventName = [
         "CreateTrafficMirrorSession",
@@ -157,21 +182,58 @@ resource "aws_cloudwatch_event_rule" "traffic_mirror" {
   })
 }
 
+# Step 4: EventBridge target with DLQ, retry, and input transformer
 resource "aws_cloudwatch_event_target" "sns" {
-  rule = aws_cloudwatch_event_rule.traffic_mirror.name
-  arn  = aws_sns_topic.alerts.arn
+  rule      = aws_cloudwatch_event_rule.traffic_mirror.name
+  target_id = "SNSTarget"
+  arn       = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
+
+  input_transformer {
+    input_paths = {
+      account   = "$.account"
+      region    = "$.region"
+      time      = "$.time"
+      eventName = "$.detail.eventName"
+      principal = "$.detail.userIdentity.arn"
+    }
+
+    input_template = <<-EOT
+"Traffic Mirroring Alert (T1040)
+time=<time> account=<account> region=<region>
+event=<eventName> principal=<principal>
+Action: Investigate potential network sniffing setup"
+EOT
+  }
 }
 
-# Step 3: SNS topic policy
+# Step 5: Scoped SNS topic policy
 resource "aws_sns_topic_policy" "allow_events" {
   arn = aws_sns_topic.alerts.arn
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowEventBridgePublishScoped"
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.traffic_mirror.arn
+        }
+      }
     }]
   })
 }""",
@@ -233,7 +295,13 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
-  # Step 2: EventBridge rule for source/dest check disable
+  # Step 2: DLQ for EventBridge
+  DLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 1209600
+
+  # Step 3: EventBridge rule for source/dest check disable
   SourceDestCheckRule:
     Type: AWS::Events::Rule
     Properties:
@@ -247,28 +315,41 @@ Resources:
       Targets:
         - Id: Alert
           Arn: !Ref AlertTopic
+          DeadLetterConfig:
+            Arn: !GetAtt DLQ.Arn
+          RetryPolicy:
+            MaximumEventAgeInSeconds: 3600
+            MaximumRetryAttempts: 8
 
-  # Step 3: Topic policy
+  # Step 4: Scoped topic policy
   TopicPolicy:
     Type: AWS::SNS::TopicPolicy
     Properties:
       Topics: [!Ref AlertTopic]
       PolicyDocument:
         Statement:
-          - Effect: Allow
+          - Sid: AllowEventBridgePublishScoped
+            Effect: Allow
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt SourceDestCheckRule.Arn""",
                 terraform_template="""# Detect promiscuous mode network configuration
 
 variable "alert_email" {
   type = string
 }
 
+data "aws_caller_identity" "current" {}
+
 # Step 1: SNS topic
 resource "aws_sns_topic" "alerts" {
-  name = "promiscuous-mode-alerts"
+  name              = "promiscuous-mode-alerts"
   kms_master_key_id = "alias/aws/sns"
 }
 
@@ -278,12 +359,18 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
-# Step 2: EventBridge rule
+# Step 2: DLQ for EventBridge
+resource "aws_sqs_queue" "dlq" {
+  name                      = "promiscuous-mode-dlq"
+  message_retention_seconds = 1209600
+}
+
+# Step 3: EventBridge rule
 resource "aws_cloudwatch_event_rule" "source_dest_check" {
   name = "network-promiscuous-mode"
   event_pattern = jsonencode({
-    source      = ["aws.ec2"]
-    detail-type = ["AWS API Call via CloudTrail"]
+    source        = ["aws.ec2"]
+    "detail-type" = ["AWS API Call via CloudTrail"]
     detail = {
       eventName = ["ModifyNetworkInterfaceAttribute"]
       requestParameters = {
@@ -293,21 +380,58 @@ resource "aws_cloudwatch_event_rule" "source_dest_check" {
   })
 }
 
+# Step 4: EventBridge target with DLQ and retry
 resource "aws_cloudwatch_event_target" "sns" {
-  rule = aws_cloudwatch_event_rule.source_dest_check.name
-  arn  = aws_sns_topic.alerts.arn
+  rule      = aws_cloudwatch_event_rule.source_dest_check.name
+  target_id = "SNSTarget"
+  arn       = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
+
+  input_transformer {
+    input_paths = {
+      account     = "$.account"
+      region      = "$.region"
+      time        = "$.time"
+      principal   = "$.detail.userIdentity.arn"
+      interfaceId = "$.detail.requestParameters.networkInterfaceId"
+    }
+
+    input_template = <<-EOT
+"Promiscuous Mode Alert (T1040)
+time=<time> account=<account> region=<region>
+interface=<interfaceId> principal=<principal>
+Action: Investigate source/dest check disabled"
+EOT
+  }
 }
 
-# Step 3: SNS topic policy
+# Step 5: Scoped SNS topic policy
 resource "aws_sns_topic_policy" "allow_events" {
   arn = aws_sns_topic.alerts.arn
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowEventBridgePublishScoped"
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.source_dest_check.arn
+        }
+      }
     }]
   })
 }""",
@@ -360,31 +484,32 @@ Parameters:
     Type: String
   LogGroupName:
     Type: String
-    Default: /aws/vpc/flowlogs
+    Default: /aws/vpc/flowlogs/t1040
 
 Resources:
-  # Step 1: Enable VPC Flow Logs
-  FlowLog:
-    Type: AWS::EC2::FlowLog
+  # Step 1: CloudWatch Log Group
+  FlowLogGroup:
+    Type: AWS::Logs::LogGroup
     Properties:
-      ResourceType: VPC
-      ResourceIds:
-        - !Ref VpcId
-      TrafficType: ALL
-      LogDestinationType: cloud-watch-logs
       LogGroupName: !Ref LogGroupName
-      DeliverLogsPermissionArn: !GetAtt FlowLogRole.Arn
+      RetentionInDays: 7
 
-  # Step 2: IAM role for Flow Logs
+  # Step 2: IAM role with confused-deputy mitigation
   FlowLogRole:
     Type: AWS::IAM::Role
     Properties:
+      RoleName: t1040-vpc-flow-logs-role
       AssumeRolePolicyDocument:
         Statement:
           - Effect: Allow
             Principal:
               Service: vpc-flow-logs.amazonaws.com
             Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+              ArnLike:
+                aws:SourceArn: !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:vpc-flow-log/*
       Policies:
         - PolicyName: CloudWatchLogs
           PolicyDocument:
@@ -394,44 +519,61 @@ Resources:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
+                  - logs:DescribeLogGroups
+                  - logs:DescribeLogStreams
                 Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:${LogGroupName}:*
 
-  # Step 3: CloudWatch Log Group
-  FlowLogGroup:
-    Type: AWS::Logs::LogGroup
+  # Step 3: VPC Flow Log with 1-minute aggregation
+  FlowLog:
+    Type: AWS::EC2::FlowLog
     Properties:
-      LogGroupName: !Ref LogGroupName
-      RetentionInDays: 7""",
-                terraform_template="""# Enable VPC Flow Logs for network monitoring
+      ResourceType: VPC
+      ResourceId: !Ref VpcId
+      TrafficType: ALL
+      LogDestinationType: cloud-watch-logs
+      LogDestination: !GetAtt FlowLogGroup.Arn
+      DeliverLogsPermissionArn: !GetAtt FlowLogRole.Arn
+      MaxAggregationInterval: 60
+      LogFormat: '${version} ${account-id} ${interface-id} ${srcaddr} ${dstaddr} ${srcport} ${dstport} ${protocol} ${packets} ${bytes} ${start} ${end} ${action} ${log-status}'""",
+                terraform_template="""# Enable VPC Flow Logs for network monitoring with best practices
 
 variable "vpc_id" {
   type = string
 }
 
+data "aws_region" "current" {}
+data "aws_caller_identity" "current" {}
+
 # Step 1: CloudWatch Log Group
 resource "aws_cloudwatch_log_group" "flow_logs" {
-  name              = "/aws/vpc/flowlogs"
+  name              = "/aws/vpc/flowlogs/t1040"
   retention_in_days = 7
 }
 
-# Step 2: IAM role for Flow Logs
+# Step 2: IAM role with confused-deputy mitigation
 resource "aws_iam_role" "flow_logs" {
-  name = "vpc-flow-logs-role"
+  name = "t1040-vpc-flow-logs-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Effect = "Allow"
-      Principal = {
-        Service = "vpc-flow-logs.amazonaws.com"
+      Effect    = "Allow"
+      Principal = { Service = "vpc-flow-logs.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+      Condition = {
+        StringEquals = {
+          "aws:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnLike = {
+          "aws:SourceArn" = "arn:aws:ec2:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:vpc-flow-log/*"
+        }
       }
-      Action = "sts:AssumeRole"
     }]
   })
 }
 
 resource "aws_iam_role_policy" "flow_logs" {
-  name = "flow-logs-policy"
+  name = "t1040-flow-logs-policy"
   role = aws_iam_role.flow_logs.id
 
   policy = jsonencode({
@@ -441,19 +583,28 @@ resource "aws_iam_role_policy" "flow_logs" {
       Action = [
         "logs:CreateLogGroup",
         "logs:CreateLogStream",
-        "logs:PutLogEvents"
+        "logs:PutLogEvents",
+        "logs:DescribeLogGroups",
+        "logs:DescribeLogStreams"
       ]
       Resource = "${aws_cloudwatch_log_group.flow_logs.arn}:*"
     }]
   })
 }
 
-# Step 3: VPC Flow Log
+# Step 3: VPC Flow Log with 1-minute aggregation and explicit format
 resource "aws_flow_log" "main" {
-  iam_role_arn    = aws_iam_role.flow_logs.arn
-  log_destination = aws_cloudwatch_log_group.flow_logs.arn
-  traffic_type    = "ALL"
-  vpc_id          = var.vpc_id
+  vpc_id               = var.vpc_id
+  traffic_type         = "ALL"
+  log_destination_type = "cloud-watch-logs"
+  log_destination      = aws_cloudwatch_log_group.flow_logs.arn
+  iam_role_arn         = aws_iam_role.flow_logs.arn
+
+  # 1-minute aggregation for faster detection
+  max_aggregation_interval = 60
+
+  # Explicit log format for reliable parsing
+  log_format = "$${version} $${account-id} $${interface-id} $${srcaddr} $${dstaddr} $${srcport} $${dstport} $${protocol} $${packets} $${bytes} $${start} $${end} $${action} $${log-status}"
 }""",
                 alert_severity="medium",
                 alert_title="Anomalous Network Traffic Detected",

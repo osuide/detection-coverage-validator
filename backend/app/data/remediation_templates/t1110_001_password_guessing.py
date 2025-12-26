@@ -388,6 +388,8 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "allow_eventbridge" {
   arn = aws_sns_topic.guardduty_alerts.arn
   policy = jsonencode({
@@ -397,6 +399,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.guardduty_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }
@@ -629,6 +636,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }
@@ -896,7 +908,6 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions: [!Ref AlertTopic]
 
@@ -959,9 +970,8 @@ resource "aws_cloudwatch_metric_alarm" "console_brute_force" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.console_alerts.arn]
+  alarm_actions       = [aws_sns_topic.console_alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="AWS Console Brute Force Detected",

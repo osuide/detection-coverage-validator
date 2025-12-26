@@ -92,6 +92,23 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: [!Ref AlertTopic]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudWatchPublish
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+
   # Step 2: Create metric filter for beacon patterns
   BeaconFilter:
     Type: AWS::Logs::MetricFilter
@@ -124,10 +141,31 @@ Resources:
 variable "vpc_flow_log_group" { type = string }
 variable "alert_email" { type = string }
 
+data "aws_caller_identity" "current" {}
+
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "alerts" {
   name = "cobalt-strike-alerts"
   kms_master_key_id = "alias/aws/sns"
+}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -162,7 +200,7 @@ resource "aws_cloudwatch_metric_alarm" "beacon_detected" {
   evaluation_periods  = 2
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="Cobalt Strike Beacon Detected",
@@ -222,6 +260,23 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: [!Ref AlertTopic]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudWatchPublish
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+
   # Step 2: Create metric filter for tool execution
   SuspiciousToolFilter:
     Type: AWS::Logs::MetricFilter
@@ -253,10 +308,31 @@ Resources:
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
 
+data "aws_caller_identity" "current" {}
+
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "alerts" {
   name = "suspicious-tool-alerts"
   kms_master_key_id = "alias/aws/sns"
+}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -290,7 +366,7 @@ resource "aws_cloudwatch_metric_alarm" "tool_detected" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="Suspicious Attack Tool Executed",
@@ -424,10 +500,31 @@ resource "google_monitoring_alert_policy" "tool_alerts" {
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
 
+data "aws_caller_identity" "current" {}
+
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "alerts" {
   name = "certificate-anomaly-alerts"
   kms_master_key_id = "alias/aws/sns"
+}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -461,7 +558,7 @@ resource "aws_cloudwatch_metric_alarm" "cert_anomaly" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Unusual Certificate Activity Detected",

@@ -126,7 +126,6 @@ Resources:
       Threshold: 10
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref AlertTopic
@@ -137,12 +136,17 @@ Resources:
       Topics:
         - !Ref AlertTopic
       PolicyDocument:
+        Version: '2012-10-17'
         Statement:
-          - Effect: Allow
+          - Sid: AllowCloudWatchPublishScoped
+            Effect: Allow
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId""",
                 terraform_template="""# Detect suspicious interpreter execution on EC2 instances
 
 variable "alert_email" {
@@ -189,8 +193,10 @@ resource "aws_cloudwatch_metric_alarm" "interpreter_alert" {
   threshold           = 10
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.interpreter_alerts.arn]
+  alarm_actions       = [aws_sns_topic.interpreter_alerts.arn]
 }
+
+data "aws_caller_identity" "current" {}
 
 resource "aws_sns_topic_policy" "interpreter_policy" {
   arn = aws_sns_topic.interpreter_alerts.arn
@@ -201,6 +207,11 @@ resource "aws_sns_topic_policy" "interpreter_policy" {
       Principal = { Service = "cloudwatch.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.interpreter_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",
@@ -293,7 +304,14 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
-  # Step 3: Route execution findings to email
+  # Step 3: Dead Letter Queue for failed deliveries
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: guardduty-execution-alerts-dlq
+      MessageRetentionPeriod: 1209600
+
+  # Step 4: Route execution findings to email
   ExecutionFindingsRule:
     Type: AWS::Events::Rule
     Properties:
@@ -302,6 +320,8 @@ Resources:
       EventPattern:
         source:
           - aws.guardduty
+        detail-type:
+          - GuardDuty Finding
         detail:
           type:
             - prefix: "Execution:Runtime"
@@ -310,6 +330,27 @@ Resources:
       Targets:
         - Id: SNSTarget
           Arn: !Ref AlertTopic
+          RetryPolicy:
+            MaximumEventAgeInSeconds: 3600
+            MaximumRetryAttempts: 8
+          DeadLetterConfig:
+            Arn: !GetAtt DeadLetterQueue.Arn
+          InputTransformer:
+            InputPathsMap:
+              account: $.account
+              region: $.region
+              time: $.time
+              type: $.detail.type
+              severity: $.detail.severity
+              description: $.detail.description
+            InputTemplate: |
+              "GuardDuty Runtime Execution Alert (T1059)"
+              "Time: <time>"
+              "Account: <account> | Region: <region>"
+              "Finding Type: <type>"
+              "Severity: <severity>"
+              "Description: <description>"
+              "Action: Investigate runtime execution immediately"
 
   TopicPolicy:
     Type: AWS::SNS::TopicPolicy
@@ -317,17 +358,39 @@ Resources:
       Topics:
         - !Ref AlertTopic
       PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowEventBridgePublishScoped
+            Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt ExecutionFindingsRule.Arn
+
+  DLQPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref DeadLetterQueue
+      PolicyDocument:
         Statement:
           - Effect: Allow
             Principal:
               Service: events.amazonaws.com
-            Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Action: sqs:SendMessage
+            Resource: !GetAtt DeadLetterQueue.Arn""",
                 terraform_template="""# GuardDuty Runtime Monitoring for T1059 detection
 
 variable "alert_email" {
   type = string
 }
+
+data "aws_caller_identity" "current" {}
 
 # Step 1: Enable GuardDuty with Runtime Monitoring
 resource "aws_guardduty_detector" "main" {
@@ -347,9 +410,9 @@ resource "aws_guardduty_detector" "main" {
 
 # Step 2: Create SNS topic for alerts
 resource "aws_sns_topic" "guardduty_alerts" {
-  name         = "guardduty-runtime-alerts"
+  name              = "guardduty-runtime-alerts"
   kms_master_key_id = "alias/aws/sns"
-  display_name = "GuardDuty Runtime Alerts"
+  display_name      = "GuardDuty Runtime Alerts"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -358,13 +421,19 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
-# Step 3: Route execution findings to email
+# Step 3: Dead Letter Queue for failed deliveries
+resource "aws_sqs_queue" "dlq" {
+  name                      = "guardduty-execution-alerts-dlq"
+  message_retention_seconds = 1209600
+}
+
+# Step 4: Route execution findings to email
 resource "aws_cloudwatch_event_rule" "execution_findings" {
   name        = "T1059-ExecutionFindings"
   description = "Alert on execution-related GuardDuty findings"
 
   event_pattern = jsonencode({
-    source = ["aws.guardduty"]
+    source        = ["aws.guardduty"]
     "detail-type" = ["GuardDuty Finding"]
     detail = {
       type = [
@@ -379,6 +448,36 @@ resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.execution_findings.name
   target_id = "SNSTarget"
   arn       = aws_sns_topic.guardduty_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
+
+  input_transformer {
+    input_paths = {
+      account     = "$.account"
+      region      = "$.region"
+      time        = "$.time"
+      type        = "$.detail.type"
+      severity    = "$.detail.severity"
+      description = "$.detail.description"
+    }
+
+    input_template = <<-EOT
+"GuardDuty Runtime Execution Alert (T1059)
+Time: <time>
+Account: <account> | Region: <region>
+Finding Type: <type>
+Severity: <severity>
+Description: <description>
+Action: Investigate runtime execution immediately"
+EOT
+  }
 }
 
 resource "aws_sns_topic_policy" "guardduty_policy" {
@@ -386,10 +485,32 @@ resource "aws_sns_topic_policy" "guardduty_policy" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowEventBridgePublishScoped"
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.guardduty_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.execution_findings.arn
+        }
+      }
+    }]
+  })
+}
+
+resource "aws_sqs_queue_policy" "dlq" {
+  queue_url = aws_sqs_queue.dlq.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.dlq.arn
     }]
   })
 }""",
@@ -495,7 +616,6 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref LambdaAlertTopic""",
@@ -544,7 +664,7 @@ resource "aws_cloudwatch_metric_alarm" "lambda_execution_alert" {
   threshold           = 5
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.lambda_alerts.arn]
+  alarm_actions       = [aws_sns_topic.lambda_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Suspicious Lambda Function Execution",
@@ -1003,9 +1123,296 @@ resource "google_monitoring_alert_policy" "shell_alert" {
                 "Cloud Shell service enabled in organisation",
             ],
         ),
+        # AWS Strategy 4: SSM Run Command/Session Manager Detection (T1059.009)
+        DetectionStrategy(
+            strategy_id="t1059-aws-ssm",
+            name="AWS SSM Run Command and Session Manager Detection",
+            description=(
+                "Detect AWS Systems Manager Run Command and Session Manager usage for "
+                "command execution on EC2 instances. Attackers use SSM to execute commands "
+                "without requiring direct SSH/RDP access (T1059.009 - Cloud API)."
+            ),
+            detection_type=DetectionType.EVENTBRIDGE_RULE,
+            aws_service="eventbridge",
+            cloud_provider=CloudProvider.AWS,
+            implementation=DetectionImplementation(
+                event_pattern={
+                    "source": ["aws.ssm"],
+                    "detail-type": ["AWS API Call via CloudTrail"],
+                    "detail": {
+                        "eventName": [
+                            "SendCommand",
+                            "StartSession",
+                            "StartAutomationExecution",
+                        ]
+                    },
+                },
+                cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
+Description: Detect AWS SSM Run Command and Session Manager usage (T1059.009)
+
+Parameters:
+  AlertEmail:
+    Type: String
+    Description: Email address for security alerts
+
+Resources:
+  # Step 1: Create SNS topic for alerts
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      KmsMasterKeyId: alias/aws/sns
+      DisplayName: SSM Command Execution Alerts
+      Subscription:
+        - Protocol: email
+          Endpoint: !Ref AlertEmail
+
+  # Step 2: Dead Letter Queue for failed deliveries
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: ssm-command-alerts-dlq
+      MessageRetentionPeriod: 1209600
+
+  # Step 3: EventBridge rule for SSM command execution
+  SSMCommandRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: T1059-SSMCommandExecution
+      Description: Detect SSM Run Command and Session Manager usage
+      EventPattern:
+        source:
+          - aws.ssm
+        detail-type:
+          - AWS API Call via CloudTrail
+        detail:
+          eventName:
+            - SendCommand
+            - StartSession
+            - StartAutomationExecution
+      State: ENABLED
+      Targets:
+        - Id: SNSTarget
+          Arn: !Ref AlertTopic
+          RetryPolicy:
+            MaximumEventAgeInSeconds: 3600
+            MaximumRetryAttempts: 8
+          DeadLetterConfig:
+            Arn: !GetAtt DeadLetterQueue.Arn
+          InputTransformer:
+            InputPathsMap:
+              account: $.account
+              region: $.region
+              time: $.time
+              eventName: $.detail.eventName
+              userArn: $.detail.userIdentity.arn
+              sourceIp: $.detail.sourceIPAddress
+              documentName: $.detail.requestParameters.documentName
+              instanceId: $.detail.requestParameters.target
+            InputTemplate: |
+              "SSM Command Execution Alert (T1059.009)"
+              "Time: <time>"
+              "Account: <account> | Region: <region>"
+              "Event: <eventName>"
+              "User: <userArn>"
+              "Source IP: <sourceIp>"
+              "Document: <documentName>"
+              "Target: <instanceId>"
+              "Action: Verify this SSM command execution is authorised"
+
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref AlertTopic
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowEventBridgePublishScoped
+            Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt SSMCommandRule.Arn
+
+  DLQPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref DeadLetterQueue
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt DeadLetterQueue.Arn""",
+                terraform_template="""# Detect AWS SSM Run Command and Session Manager usage (T1059.009)
+
+variable "alert_email" {
+  type        = string
+  description = "Email address for security alerts"
+}
+
+data "aws_caller_identity" "current" {}
+
+# Step 1: Create SNS topic for alerts
+resource "aws_sns_topic" "ssm_alerts" {
+  name              = "ssm-command-execution-alerts"
+  kms_master_key_id = "alias/aws/sns"
+  display_name      = "SSM Command Execution Alerts"
+}
+
+resource "aws_sns_topic_subscription" "email" {
+  topic_arn = aws_sns_topic.ssm_alerts.arn
+  protocol  = "email"
+  endpoint  = var.alert_email
+}
+
+# Step 2: Dead Letter Queue for failed deliveries
+resource "aws_sqs_queue" "dlq" {
+  name                      = "ssm-command-alerts-dlq"
+  message_retention_seconds = 1209600
+}
+
+# Step 3: EventBridge rule for SSM command execution
+resource "aws_cloudwatch_event_rule" "ssm_commands" {
+  name        = "T1059-SSMCommandExecution"
+  description = "Detect SSM Run Command and Session Manager usage"
+
+  event_pattern = jsonencode({
+    source        = ["aws.ssm"]
+    "detail-type" = ["AWS API Call via CloudTrail"]
+    detail = {
+      eventName = ["SendCommand", "StartSession", "StartAutomationExecution"]
+    }
+  })
+}
+
+resource "aws_cloudwatch_event_target" "sns" {
+  rule      = aws_cloudwatch_event_rule.ssm_commands.name
+  target_id = "SNSTarget"
+  arn       = aws_sns_topic.ssm_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
+
+  input_transformer {
+    input_paths = {
+      account      = "$.account"
+      region       = "$.region"
+      time         = "$.time"
+      eventName    = "$.detail.eventName"
+      userArn      = "$.detail.userIdentity.arn"
+      sourceIp     = "$.detail.sourceIPAddress"
+      documentName = "$.detail.requestParameters.documentName"
+      instanceId   = "$.detail.requestParameters.target"
+    }
+
+    input_template = <<-EOT
+"SSM Command Execution Alert (T1059.009)
+Time: <time>
+Account: <account> | Region: <region>
+Event: <eventName>
+User: <userArn>
+Source IP: <sourceIp>
+Document: <documentName>
+Target: <instanceId>
+Action: Verify this SSM command execution is authorised"
+EOT
+  }
+}
+
+resource "aws_sns_topic_policy" "ssm_policy" {
+  arn = aws_sns_topic.ssm_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowEventBridgePublishScoped"
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.ssm_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.ssm_commands.arn
+        }
+      }
+    }]
+  })
+}
+
+resource "aws_sqs_queue_policy" "dlq" {
+  queue_url = aws_sqs_queue.dlq.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.dlq.arn
+    }]
+  })
+}""",
+                alert_severity="medium",
+                alert_title="AWS SSM Command Execution",
+                alert_description_template=(
+                    "AWS Systems Manager command execution detected. User {userArn} executed "
+                    "{eventName} targeting {instanceId} from {sourceIp}. "
+                    "Verify this SSM activity is authorised (T1059.009)."
+                ),
+                investigation_steps=[
+                    "Verify the user identity and whether they normally use SSM",
+                    "Check the source IP address for anomalies",
+                    "Review the SSM document and commands executed",
+                    "Examine the target instances for suspicious activity",
+                    "Check CloudTrail for other SSM activity from the same user",
+                    "Review session logs if Session Manager was used",
+                ],
+                containment_actions=[
+                    "Terminate active SSM sessions if unauthorised",
+                    "Revoke IAM permissions for SSM access",
+                    "Isolate affected EC2 instances",
+                    "Review and rotate credentials if compromise suspected",
+                    "Enable SSM session logging to S3/CloudWatch",
+                ],
+            ),
+            estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
+            false_positive_tuning=(
+                "Whitelist known automation users and CI/CD pipelines. "
+                "Exclude scheduled maintenance windows. "
+                "Filter by specific SSM documents used legitimately."
+            ),
+            detection_coverage="85% - catches all SSM command executions via CloudTrail",
+            evasion_considerations=(
+                "Attackers with IAM access could use other methods. "
+                "SSM Session Manager provides interactive access without network exposure."
+            ),
+            implementation_effort=EffortLevel.LOW,
+            implementation_time="30 minutes",
+            estimated_monthly_cost="£2-5",
+            prerequisites=[
+                "CloudTrail enabled with management events",
+                "SSM service enabled in the account",
+            ],
+        ),
     ],
     recommended_order=[
         "t1059-aws-guardduty",
+        "t1059-aws-ssm",
         "t1059-gcp-functions",
         "t1059-gcp-shell",
         "t1059-aws-lambda",

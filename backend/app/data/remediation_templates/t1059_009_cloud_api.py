@@ -237,6 +237,8 @@ resource "aws_cloudwatch_event_target" "to_sns" {
   }
 }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "allow_eventbridge" {
   arn = aws_sns_topic.api_recon_alerts.arn
   policy = jsonencode({
@@ -247,6 +249,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.api_recon_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",
@@ -851,6 +858,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.cloudshell_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }
@@ -1235,7 +1247,7 @@ resource "aws_cloudwatch_metric_alarm" "high_cli_usage" {
   threshold           = 500
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.cli_alerts.arn]
+  alarm_actions       = [aws_sns_topic.cli_alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="medium",

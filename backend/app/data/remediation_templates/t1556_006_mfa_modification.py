@@ -168,6 +168,8 @@ resource "aws_cloudwatch_event_target" "sns" {
 }
 
 # Step 3: Topic policy
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "allow_events" {
   arn = aws_sns_topic.mfa_alerts.arn
   policy = jsonencode({
@@ -177,6 +179,11 @@ resource "aws_sns_topic_policy" "allow_events" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.mfa_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",
@@ -268,7 +275,6 @@ Resources:
       Threshold: 0
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref AlertTopic""",
@@ -320,7 +326,7 @@ resource "aws_cloudwatch_metric_alarm" "cognito_mfa" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.cognito_mfa_alerts.arn]
+  alarm_actions       = [aws_sns_topic.cognito_mfa_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Cognito MFA Configuration Changed",
@@ -464,6 +470,11 @@ resource "aws_sns_topic_policy" "allow_events" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.new_mfa_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",

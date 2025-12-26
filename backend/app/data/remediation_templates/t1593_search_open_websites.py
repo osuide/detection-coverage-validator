@@ -205,6 +205,8 @@ resource "aws_cloudwatch_event_target" "codeartifact_sns" {
 }
 
 # SNS Topic Policy
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "repo_alerts_policy" {
   arn = aws_sns_topic.repo_alerts.arn
 
@@ -217,6 +219,11 @@ resource "aws_sns_topic_policy" "repo_alerts_policy" {
       }
       Action   = "SNS:Publish"
       Resource = aws_sns_topic.repo_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",

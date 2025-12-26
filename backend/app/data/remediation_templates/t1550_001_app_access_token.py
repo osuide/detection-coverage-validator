@@ -109,7 +109,6 @@ Resources:
     Properties:
       KmsMasterKeyId: alias/aws/sns
       TopicName: t1550001-golden-saml-alerts
-      KmsMasterKeyId: alias/aws/sns
 
   AlertSubscription:
     Type: AWS::SNS::Subscription
@@ -810,7 +809,7 @@ resource "aws_cloudwatch_metric_alarm" "sts_anomaly" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Unusual STS Token Activity",
@@ -949,7 +948,7 @@ resource "aws_cloudwatch_metric_alarm" "token_reuse" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="OAuth Token Used from Multiple Locations",
@@ -1220,7 +1219,6 @@ Resources:
     Properties:
       KmsMasterKeyId: alias/aws/sns
       TopicName: t1550001-oauth-consent-grant-alerts
-      KmsMasterKeyId: alias/aws/sns
 
   AlertSubscription:
     Type: AWS::SNS::Subscription

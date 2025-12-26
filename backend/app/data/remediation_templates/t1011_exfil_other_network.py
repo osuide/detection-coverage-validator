@@ -118,19 +118,54 @@ Resources:
       Targets:
         - Id: AlertTarget
           Arn: !Ref AlertTopic
+          RetryPolicy:
+            MaximumEventAgeInSeconds: 3600
+            MaximumRetryAttempts: 8
+          DeadLetterConfig:
+            Arn: !GetAtt DeadLetterQueue.Arn
+          InputTransformer:
+            InputPathsMap:
+              account: $.account
+              region: $.region
+              time: $.time
+              eventName: $.detail.eventName
+              instanceId: $.detail.requestParameters.instanceId
+              networkInterfaceId: $.detail.requestParameters.networkInterfaceId
+              user: $.detail.userIdentity.arn
+            InputTemplate: |
+              "Network Interface Alert (T1011)
+              time=<time> account=<account> region=<region>
+              event=<eventName> instance=<instanceId>
+              networkInterface=<networkInterfaceId>
+              user=<user>
+              Action: Investigate alternative exfiltration channel"
 
-  # Step 3: SNS topic policy
+  # Step 3: Dead letter queue for failed deliveries
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: network-interface-dlq
+      MessageRetentionPeriod: 1209600
+
+  # Step 4: SNS topic policy (scoped)
   TopicPolicy:
     Type: AWS::SNS::TopicPolicy
     Properties:
       Topics: [!Ref AlertTopic]
       PolicyDocument:
+        Version: '2012-10-17'
         Statement:
-          - Effect: Allow
+          - Sid: AllowEventBridgePublish
+            Effect: Allow
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt NetworkInterfaceRule.Arn""",
                 terraform_template="""# Detect secondary network interface creation
 
 variable "alert_email" {
@@ -169,23 +204,70 @@ resource "aws_cloudwatch_event_rule" "network_interface" {
   })
 }
 
+# Step 3: Dead letter queue for failed deliveries
+resource "aws_sqs_queue" "dlq" {
+  name                      = "network-interface-dlq"
+  message_retention_seconds = 1209600
+}
+
+# Step 4: EventBridge target with DLQ, retry, and input transformer
 resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.network_interface.name
   target_id = "SendToSNS"
   arn       = aws_sns_topic.network_interface_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
+
+  input_transformer {
+    input_paths = {
+      account            = "$.account"
+      region             = "$.region"
+      time               = "$.time"
+      eventName          = "$.detail.eventName"
+      instanceId         = "$.detail.requestParameters.instanceId"
+      networkInterfaceId = "$.detail.requestParameters.networkInterfaceId"
+      user               = "$.detail.userIdentity.arn"
+    }
+    input_template = <<-EOT
+"Network Interface Alert (T1011)
+time=<time> account=<account> region=<region>
+event=<eventName> instance=<instanceId>
+networkInterface=<networkInterfaceId>
+user=<user>
+Action: Investigate alternative exfiltration channel"
+EOT
+  }
 }
 
-# Step 3: SNS topic policy
+# Step 5: SNS topic policy (scoped to account and rule)
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "allow_events" {
   arn = aws_sns_topic.network_interface_alerts.arn
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowEventBridgePublishScoped"
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.network_interface_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.network_interface.arn
+        }
+      }
     }]
   })
 }""",
@@ -276,8 +358,26 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
+      AlarmActions: [!Ref AlertTopic]
 
-      AlarmActions: [!Ref AlertTopic]""",
+  # Step 4: SNS topic policy (scoped)
+  AlertTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudWatchAlarms
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+      Topics:
+        - !Ref AlertTopic""",
                 terraform_template="""# Monitor network interface traffic patterns
 
 variable "alert_email" {
@@ -325,8 +425,29 @@ resource "aws_cloudwatch_metric_alarm" "large_transfer" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.traffic_alerts.arn]
+}
 
-  alarm_actions [aws_sns_topic.traffic_alerts.arn]
+# Step 4: SNS topic policy (scoped to account)
+data "aws_caller_identity" "current" {}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.traffic_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchAlarms"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.traffic_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="high",
                 alert_title="Unusual Network Interface Traffic Detected",
@@ -413,8 +534,26 @@ Resources:
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
+      AlarmActions: [!Ref AlertTopic]
 
-      AlarmActions: [!Ref AlertTopic]""",
+  # Step 4: SNS topic policy (scoped)
+  AlertTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudWatchAlarms
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+      Topics:
+        - !Ref AlertTopic""",
                 terraform_template="""# Detect network management tool execution
 
 variable "alert_email" {
@@ -462,8 +601,29 @@ resource "aws_cloudwatch_metric_alarm" "network_tools" {
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.network_tool_alerts.arn]
+}
 
-  alarm_actions [aws_sns_topic.network_tool_alerts.arn]
+# Step 4: SNS topic policy (scoped to account)
+data "aws_caller_identity" "current" {}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.network_tool_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchAlarms"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.network_tool_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="medium",
                 alert_title="Network Management Tool Execution Detected",

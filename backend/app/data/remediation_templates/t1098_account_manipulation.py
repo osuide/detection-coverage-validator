@@ -17,7 +17,7 @@ from .template_loader import (
 TEMPLATE = RemediationTemplate(
     technique_id="T1098",
     technique_name="Account Manipulation",
-    tactic_ids=["TA0003"],
+    tactic_ids=["TA0003", "TA0004"],  # Persistence, Privilege Escalation
     mitre_url="https://attack.mitre.org/techniques/T1098/",
     threat_context=ThreatContext(
         description=(
@@ -129,12 +129,19 @@ Resources:
     Properties:
       Topics: [!Ref AlertTopic]
       PolicyDocument:
+        Version: '2012-10-17'
         Statement:
-          - Effect: Allow
+          - Sid: AllowEventBridgePublish
+            Effect: Allow
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt IAMFindingsRule.Arn""",
                 terraform_template="""# GuardDuty + email alerts for IAM anomalies
 
 variable "alert_email" {
@@ -181,12 +188,13 @@ resource "aws_cloudwatch_event_rule" "iam_findings" {
 }
 
 resource "aws_cloudwatch_event_target" "sns" {
-  rule = aws_cloudwatch_event_rule.iam_findings.name
-  arn  = aws_sns_topic.alerts.arn
+  rule      = aws_cloudwatch_event_rule.iam_findings.name
+  target_id = "SNSTarget"
+  arn       = aws_sns_topic.alerts.arn
 
   retry_policy {
-    maximum_retry_attempts = 8
-    maximum_event_age      = 3600
+    maximum_retry_attempts       = 8
+    maximum_event_age_in_seconds = 3600
   }
 
   dead_letter_config {
@@ -194,15 +202,26 @@ resource "aws_cloudwatch_event_target" "sns" {
   }
 }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "allow_eventbridge" {
   arn = aws_sns_topic.alerts.arn
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowEventBridgePublish"
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.iam_findings.arn
+        }
+      }
     }]
   })
 }""",
@@ -331,12 +350,13 @@ resource "aws_cloudwatch_event_rule" "access_key_creation" {
 }
 
 resource "aws_cloudwatch_event_target" "access_key_sns" {
-  rule = aws_cloudwatch_event_rule.access_key_creation.name
-  arn  = var.sns_topic_arn
+  rule      = aws_cloudwatch_event_rule.access_key_creation.name
+  target_id = "SNSAlert"
+  arn       = var.sns_topic_arn
 
   retry_policy {
-    maximum_retry_attempts = 8
-    maximum_event_age      = 3600
+    maximum_retry_attempts       = 8
+    maximum_event_age_in_seconds = 3600
   }
 
   dead_letter_config {
@@ -486,12 +506,13 @@ resource "aws_cloudwatch_event_rule" "permission_escalation" {
 }
 
 resource "aws_cloudwatch_event_target" "permission_escalation_sns" {
-  rule = aws_cloudwatch_event_rule.permission_escalation.name
-  arn  = var.sns_topic_arn
+  rule      = aws_cloudwatch_event_rule.permission_escalation.name
+  target_id = "SNSAlert"
+  arn       = var.sns_topic_arn
 
   retry_policy {
-    maximum_retry_attempts = 8
-    maximum_event_age      = 3600
+    maximum_retry_attempts       = 8
+    maximum_event_age_in_seconds = 3600
   }
 
   dead_letter_config {
@@ -581,7 +602,6 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 5
       ComparisonOperator: GreaterThanOrEqualToThreshold
-      TreatMissingData: notBreaching
       TreatMissingData: notBreaching
 
       AlarmActions:

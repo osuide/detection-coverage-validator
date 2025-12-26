@@ -325,15 +325,26 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "allow_eventbridge" {
   arn = aws_sns_topic.guardduty_persistence.arn
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowEventBridgePublishScoped"
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.guardduty_persistence.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.guardduty_persistence.arn
+        }
+      }
     }]
   })
 }
@@ -359,10 +370,44 @@ resource "aws_cloudwatch_event_rule" "guardduty_persistence" {
   })
 }
 
+# DLQ for failed deliveries
+resource "aws_sqs_queue" "dlq" {
+  name                      = "guardduty-persistence-dlq"
+  message_retention_seconds = 1209600
+}
+
 resource "aws_cloudwatch_event_target" "guardduty_sns" {
   rule      = aws_cloudwatch_event_rule.guardduty_persistence.name
   target_id = "SNSTopic"
   arn       = aws_sns_topic.guardduty_persistence.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
+
+  input_transformer {
+    input_paths = {
+      account  = "$.account"
+      region   = "$.region"
+      time     = "$.time"
+      type     = "$.detail.type"
+      severity = "$.detail.severity"
+      user     = "$.detail.resource.accessKeyDetails.userName"
+    }
+
+    input_template = <<-EOT
+"GuardDuty Persistence Alert (T1098.001)
+time=<time> account=<account> region=<region>
+type=<type> severity=<severity>
+user=<user>
+Action: Investigate credential abuse immediately"
+EOT
+  }
 }""",
                 cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty persistence anomaly detection
@@ -535,15 +580,23 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "allow_eventbridge" {
   arn = aws_sns_topic.alerts.arn
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowLambdaPublish"
       Effect    = "Allow"
-      Principal = { Service = "events.amazonaws.com" }
+      Principal = { Service = "lambda.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }
@@ -906,15 +959,26 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "allow_events" {
   arn = aws_sns_topic.alerts.arn
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowEventBridgePublishScoped"
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.accesskey_create.arn
+        }
+      }
     }]
   })
 }

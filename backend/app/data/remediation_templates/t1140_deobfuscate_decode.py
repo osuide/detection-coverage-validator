@@ -131,7 +131,6 @@ Resources:
       Threshold: 2
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref SecurityAlertTopic
@@ -141,12 +140,17 @@ Resources:
     Properties:
       Topics: [!Ref SecurityAlertTopic]
       PolicyDocument:
+        Version: '2012-10-17'
         Statement:
-          - Effect: Allow
+          - Sid: AllowCloudWatchPublish
+            Effect: Allow
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref SecurityAlertTopic""",
+            Resource: !Ref SecurityAlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId""",
                 terraform_template="""# Detect certutil and decoding utility abuse
 
 variable "cloudwatch_log_group" {
@@ -197,9 +201,29 @@ resource "aws_cloudwatch_metric_alarm" "decoding_activity" {
   threshold           = 2
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.deobfuscation_alerts.arn]
+  alarm_actions       = [aws_sns_topic.deobfuscation_alerts.arn]
+}
+
+data "aws_caller_identity" "current" {}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.deobfuscation_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.deobfuscation_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="high",
                 alert_title="Decoding Utility Abuse Detected",
@@ -295,7 +319,6 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref SNSTopicArn
@@ -358,9 +381,8 @@ resource "aws_cloudwatch_metric_alarm" "powershell_decode" {
   threshold           = 1
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }
 
 # Step 3: Monitor for archive decompression
@@ -374,6 +396,27 @@ resource "aws_cloudwatch_log_metric_filter" "archive_decompression" {
     namespace = "Security/T1140"
     value     = "1"
   }
+}
+
+data "aws_caller_identity" "current" {}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="high",
                 alert_title="PowerShell Decoding Activity Detected",
@@ -477,7 +520,6 @@ Resources:
       Threshold: 3
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref SecurityAlertTopic
@@ -487,12 +529,17 @@ Resources:
     Properties:
       Topics: [!Ref SecurityAlertTopic]
       PolicyDocument:
+        Version: '2012-10-17'
         Statement:
-          - Effect: Allow
+          - Sid: AllowCloudWatchPublish
+            Effect: Allow
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref SecurityAlertTopic""",
+            Resource: !Ref SecurityAlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId""",
                 terraform_template="""# Detect runtime decryption and manual DLL mapping
 
 variable "cloudwatch_log_group" {
@@ -543,9 +590,29 @@ resource "aws_cloudwatch_metric_alarm" "runtime_decryption" {
   threshold           = 3
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.runtime_decrypt_alerts.arn]
+  alarm_actions       = [aws_sns_topic.runtime_decrypt_alerts.arn]
+}
+
+data "aws_caller_identity" "current" {}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.runtime_decrypt_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.runtime_decrypt_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="critical",
                 alert_title="Runtime Decryption Activity Detected",
@@ -768,7 +835,6 @@ Resources:
       Threshold: 2
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref SNSTopicArn
@@ -838,9 +904,8 @@ resource "aws_cloudwatch_metric_alarm" "lambda_decode" {
   threshold           = 2
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }
 
 # Step 3: Monitor Lambda configuration changes
@@ -856,22 +921,61 @@ resource "aws_cloudwatch_event_rule" "lambda_config_changes" {
   })
 }
 
+resource "aws_sqs_queue" "dlq" {
+  name                      = "lambda-config-alerts-dlq"
+  message_retention_seconds = 1209600
+}
+
 resource "aws_cloudwatch_event_target" "lambda_config_alerts" {
   rule      = aws_cloudwatch_event_rule.lambda_config_changes.name
   target_id = "SendToSNS"
   arn       = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_retry_attempts       = 8
+    maximum_event_age_in_seconds = 3600
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
 }
+
+data "aws_caller_identity" "current" {}
 
 resource "aws_sns_topic_policy" "lambda_alerts" {
   arn = aws_sns_topic.alerts.arn
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Effect    = "Allow"
-      Principal = { Service = "events.amazonaws.com" }
-      Action    = "sns:Publish"
-      Resource  = aws_sns_topic.alerts.arn
-    }]
+    Statement = [
+      {
+        Sid       = "AllowEventBridgePublish"
+        Effect    = "Allow"
+        Principal = { Service = "events.amazonaws.com" }
+        Action    = "sns:Publish"
+        Resource  = aws_sns_topic.alerts.arn
+        Condition = {
+          StringEquals = {
+            "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+          }
+          ArnEquals = {
+            "aws:SourceArn" = aws_cloudwatch_event_rule.lambda_config_changes.arn
+          }
+        }
+      },
+      {
+        Sid       = "AllowCloudWatchPublish"
+        Effect    = "Allow"
+        Principal = { Service = "cloudwatch.amazonaws.com" }
+        Action    = "sns:Publish"
+        Resource  = aws_sns_topic.alerts.arn
+        Condition = {
+          StringEquals = {
+            "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+          }
+        }
+      }
+    ]
   })
 }""",
                 alert_severity="medium",

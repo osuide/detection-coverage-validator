@@ -126,7 +126,6 @@ Resources:
       Threshold: 10
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref AlertTopic
@@ -137,12 +136,17 @@ Resources:
       Topics:
         - !Ref AlertTopic
       PolicyDocument:
+        Version: '2012-10-17'
         Statement:
-          - Effect: Allow
+          - Sid: AllowCloudWatchAlarms
+            Effect: Allow
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId""",
                 terraform_template="""# Detect data staging activities in EC2 instances
 
 variable "cloudtrail_log_group" {
@@ -193,10 +197,11 @@ resource "aws_cloudwatch_metric_alarm" "staging_alarm" {
   threshold           = 10
   comparison_operator = "GreaterThanOrEqualToThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.staging_alerts.arn]
+  alarm_actions       = [aws_sns_topic.staging_alerts.arn]
 }
+
+data "aws_caller_identity" "current" {}
 
 resource "aws_sns_topic_policy" "allow_cloudwatch" {
   arn = aws_sns_topic.staging_alerts.arn
@@ -207,6 +212,11 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
       Principal = { Service = "cloudwatch.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.staging_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",
@@ -307,7 +317,6 @@ Resources:
       Threshold: 50
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref AlertTopic
@@ -318,12 +327,17 @@ Resources:
       Topics:
         - !Ref AlertTopic
       PolicyDocument:
+        Version: '2012-10-17'
         Statement:
-          - Effect: Allow
+          - Sid: AllowCloudWatchAlarms
+            Effect: Allow
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId""",
                 terraform_template="""# Detect S3 data staging activity
 
 variable "cloudtrail_log_group" {
@@ -372,20 +386,27 @@ resource "aws_cloudwatch_metric_alarm" "s3_staging" {
   threshold           = 50
   comparison_operator = "GreaterThanOrEqualToThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.s3_staging_alerts.arn]
+  alarm_actions       = [aws_sns_topic.s3_staging_alerts.arn]
 }
+
+data "aws_caller_identity" "current" {}
 
 resource "aws_sns_topic_policy" "allow_cloudwatch" {
   arn = aws_sns_topic.s3_staging_alerts.arn
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowCloudWatchAlarms"
       Effect    = "Allow"
       Principal = { Service = "cloudwatch.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.s3_staging_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",

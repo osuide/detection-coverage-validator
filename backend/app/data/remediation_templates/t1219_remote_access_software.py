@@ -19,7 +19,7 @@ from .template_loader import (
 
 TEMPLATE = RemediationTemplate(
     technique_id="T1219",
-    technique_name="Remote Access Software",
+    technique_name="Remote Access Tools",
     tactic_ids=["TA0011"],
     mitre_url="https://attack.mitre.org/techniques/T1219/",
     threat_context=ThreatContext(
@@ -126,7 +126,6 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref AlertTopic
@@ -181,9 +180,8 @@ resource "aws_cloudwatch_metric_alarm" "remote_tool_alert" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",
@@ -282,9 +280,8 @@ resource "aws_cloudwatch_metric_alarm" "remote_connection_alert" {
   threshold           = 10
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",
@@ -426,6 +423,8 @@ resource "aws_cloudwatch_event_target" "sns" {
   arn       = aws_sns_topic.guardduty_alerts.arn
 }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "guardduty_publish" {
   arn = aws_sns_topic.guardduty_alerts.arn
 
@@ -436,6 +435,11 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "SNS:Publish"
       Resource  = aws_sns_topic.guardduty_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",

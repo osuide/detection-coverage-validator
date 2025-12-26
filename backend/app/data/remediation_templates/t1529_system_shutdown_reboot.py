@@ -226,6 +226,8 @@ resource "aws_cloudwatch_event_target" "ec2_stop_api_sns" {
   arn       = aws_sns_topic.ec2_shutdown_alerts.arn
 }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "allow_eventbridge" {
   arn = aws_sns_topic.ec2_shutdown_alerts.arn
   policy = jsonencode({
@@ -235,6 +237,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.ec2_shutdown_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",
@@ -325,7 +332,6 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref SNSTopicArn
@@ -388,9 +394,8 @@ resource "aws_cloudwatch_metric_alarm" "shutdown_command" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }
 
 # Step 3: Monitor Windows shutdown events (Event IDs 1074, 6006, 6008)
@@ -638,7 +643,6 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref SNSTopicArn""",
@@ -702,9 +706,8 @@ resource "aws_cloudwatch_metric_alarm" "shutdown_event" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Windows System Shutdown Detected",
@@ -805,7 +808,6 @@ Resources:
       Threshold: 3
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref SNSTopicArn
@@ -864,9 +866,8 @@ resource "aws_cloudwatch_metric_alarm" "mass_shutdown" {
   threshold           = var.shutdown_threshold
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.critical_alerts.arn]
+  alarm_actions       = [aws_sns_topic.critical_alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="critical",

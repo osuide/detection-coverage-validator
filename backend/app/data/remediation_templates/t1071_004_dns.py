@@ -264,7 +264,6 @@ Resources:
       Threshold: 10
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref DnsThreatAlertTopic
@@ -504,7 +503,7 @@ resource "aws_cloudwatch_metric_alarm" "blocked_queries" {
   threshold           = 10
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.dns_threats.arn]
+  alarm_actions       = [aws_sns_topic.dns_threats.arn]
   treat_missing_data  = "notBreaching"
 }
 
@@ -518,6 +517,11 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
       Principal = { Service = "cloudwatch.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.dns_threats.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }
@@ -734,7 +738,6 @@ Resources:
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref DnsAnomalyAlertTopic
@@ -926,7 +929,7 @@ resource "aws_cloudwatch_metric_alarm" "dns_tunnelling" {
   threshold           = 50
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.dns_anomalies.arn]
+  alarm_actions       = [aws_sns_topic.dns_anomalies.arn]
   treat_missing_data  = "notBreaching"
 }
 
@@ -940,6 +943,11 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
       Principal = { Service = "cloudwatch.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.dns_anomalies.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }
@@ -1093,7 +1101,6 @@ Resources:
       Threshold: 100
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref BeaconingAlertTopic
@@ -1198,7 +1205,7 @@ resource "aws_cloudwatch_metric_alarm" "beaconing" {
   threshold           = 100
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.dns_beaconing.arn]
+  alarm_actions       = [aws_sns_topic.dns_beaconing.arn]
   treat_missing_data  = "notBreaching"
 }
 
@@ -1212,6 +1219,11 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
       Principal = { Service = "cloudwatch.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.dns_beaconing.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }
@@ -1419,6 +1431,11 @@ resource "aws_sns_topic_policy" "allow_events" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.guardduty_dns.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",

@@ -97,6 +97,23 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: [!Ref AlertTopic]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudWatchPublish
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+
   # Step 2: Create metric filter for snapshot operations
   SnapshotRestoreFilter:
     Type: AWS::Logs::MetricFilter
@@ -124,8 +141,7 @@ Resources:
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
 
-      AlarmActions: [!Ref AlertTopic]
-      TreatMissingData: notBreaching""",
+      AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# AWS: Detect suspicious snapshot restoration activities
 
 variable "cloudtrail_log_group" {
@@ -138,10 +154,31 @@ variable "alert_email" {
   description = "Email for security alerts"
 }
 
+data "aws_caller_identity" "current" {}
+
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "alerts" {
   name = "snapshot-restore-alerts"
   kms_master_key_id = "alias/aws/sns"
+}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -177,8 +214,7 @@ resource "aws_cloudwatch_metric_alarm" "snapshot_restore" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
-  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Suspicious Snapshot Restoration Detected",
@@ -235,10 +271,31 @@ variable "alert_email" {
   description = "Email for security alerts"
 }
 
+data "aws_caller_identity" "current" {}
+
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "alerts" {
   name = "rapid-snapshot-alerts"
   kms_master_key_id = "alias/aws/sns"
+}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -274,8 +331,7 @@ resource "aws_cloudwatch_metric_alarm" "rapid_snapshot" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
-  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Rapid Snapshot Operations Detected",
@@ -330,10 +386,31 @@ variable "alert_email" {
   description = "Email for security alerts"
 }
 
+data "aws_caller_identity" "current" {}
+
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "alerts" {
   name = "unusual-snapshot-location-alerts"
   kms_master_key_id = "alias/aws/sns"
+}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -370,8 +447,7 @@ resource "aws_cloudwatch_metric_alarm" "external_snapshot" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
-  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Snapshot Operation from Unusual Location",

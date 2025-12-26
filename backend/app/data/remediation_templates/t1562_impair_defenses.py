@@ -126,19 +126,37 @@ Resources:
       Targets:
         - Id: AlertTarget
           Arn: !Ref AlertTopic
+          RetryPolicy:
+            MaximumRetryAttempts: 8
+            MaximumEventAgeInSeconds: 3600
+          DeadLetterConfig:
+            Arn: !GetAtt DLQ.Arn
 
-  # Step 3: Allow EventBridge to publish to SNS
+  # Step 3: DLQ for EventBridge
+  DLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 1209600
+
+  # Step 4: Allow EventBridge to publish to SNS
   TopicPolicy:
     Type: AWS::SNS::TopicPolicy
     Properties:
       Topics: [!Ref AlertTopic]
       PolicyDocument:
+        Version: '2012-10-17'
         Statement:
-          - Effect: Allow
+          - Sid: AllowEventBridgePublish
+            Effect: Allow
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt GuardDutyModRule.Arn""",
                 terraform_template="""# Detect GuardDuty modifications
 
 variable "alert_email" {
@@ -177,22 +195,49 @@ resource "aws_cloudwatch_event_rule" "guardduty_mod" {
   })
 }
 
-resource "aws_cloudwatch_event_target" "sns" {
-  rule = aws_cloudwatch_event_rule.guardduty_mod.name
-  arn  = aws_sns_topic.alerts.arn
+# Step 3: DLQ for EventBridge
+resource "aws_sqs_queue" "dlq" {
+  name                      = "guardduty-modification-alerts-dlq"
+  message_retention_seconds = 1209600
 }
 
-# Step 3: Allow EventBridge to publish to SNS
+resource "aws_cloudwatch_event_target" "sns" {
+  rule      = aws_cloudwatch_event_rule.guardduty_mod.name
+  target_id = "SNSTarget"
+  arn       = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_retry_attempts       = 8
+    maximum_event_age_in_seconds = 3600
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
+}
+
+# Step 4: Allow EventBridge to publish to SNS
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "allow_events" {
   arn = aws_sns_topic.alerts.arn
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowEventBridgePublish"
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.guardduty_mod.arn
+        }
+      }
     }]
   })
 }""",
@@ -263,7 +308,13 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
-  # Step 2: EventBridge rule
+  # Step 2: DLQ for EventBridge
+  DLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 1209600
+
+  # Step 3: EventBridge rule
   SecurityHubModRule:
     Type: AWS::Events::Rule
     Properties:
@@ -278,26 +329,40 @@ Resources:
       Targets:
         - Id: Alert
           Arn: !Ref AlertTopic
+          RetryPolicy:
+            MaximumRetryAttempts: 8
+            MaximumEventAgeInSeconds: 3600
+          DeadLetterConfig:
+            Arn: !GetAtt DLQ.Arn
 
-  # Step 3: Topic policy
+  # Step 4: Topic policy with scoped conditions
   TopicPolicy:
     Type: AWS::SNS::TopicPolicy
     Properties:
       Topics: [!Ref AlertTopic]
       PolicyDocument:
+        Version: '2012-10-17'
         Statement:
-          - Effect: Allow
+          - Sid: AllowEventBridgePublish
+            Effect: Allow
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt SecurityHubModRule.Arn""",
                 terraform_template="""# Detect Security Hub modifications
 
 variable "alert_email" { type = string }
 
+data "aws_caller_identity" "current" {}
+
 # Step 1: SNS topic
 resource "aws_sns_topic" "alerts" {
-  name = "securityhub-modification-alerts"
+  name              = "securityhub-modification-alerts"
   kms_master_key_id = "alias/aws/sns"
 }
 
@@ -307,7 +372,13 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
-# Step 2: EventBridge rule
+# Step 2: DLQ for EventBridge
+resource "aws_sqs_queue" "dlq" {
+  name                      = "securityhub-modification-alerts-dlq"
+  message_retention_seconds = 1209600
+}
+
+# Step 3: EventBridge rule
 resource "aws_cloudwatch_event_rule" "securityhub_mod" {
   name = "securityhub-modifications"
   event_pattern = jsonencode({
@@ -324,20 +395,39 @@ resource "aws_cloudwatch_event_rule" "securityhub_mod" {
 }
 
 resource "aws_cloudwatch_event_target" "sns" {
-  rule = aws_cloudwatch_event_rule.securityhub_mod.name
-  arn  = aws_sns_topic.alerts.arn
+  rule      = aws_cloudwatch_event_rule.securityhub_mod.name
+  target_id = "SNSTarget"
+  arn       = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_retry_attempts       = 8
+    maximum_event_age_in_seconds = 3600
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
 }
 
-# Step 3: Topic policy
+# Step 4: Topic policy with scoped conditions
 resource "aws_sns_topic_policy" "allow_events" {
   arn = aws_sns_topic.alerts.arn
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowEventBridgePublish"
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.securityhub_mod.arn
+        }
+      }
     }]
   })
 }""",
@@ -408,21 +498,35 @@ Resources:
       Threshold: 0
       ComparisonOperator: LessThanOrEqualToThreshold
       TreatMissingData: breaching
-      TreatMissingData: notBreaching
-
       AlarmActions:
         - !Ref AlertTopic
 
-Outputs:
-  AlarmName:
-    Value: !Ref AgentStopAlarm""",
+  # Step 3: SNS topic policy
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: [!Ref AlertTopic]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudWatchPublish
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId""",
                 terraform_template="""# Detect CloudWatch agent stops
 
 variable "alert_email" { type = string }
 
+data "aws_caller_identity" "current" {}
+
 # Step 1: SNS topic
 resource "aws_sns_topic" "alerts" {
-  name = "cloudwatch-agent-alerts"
+  name              = "cloudwatch-agent-alerts"
   kms_master_key_id = "alias/aws/sns"
 }
 
@@ -444,9 +548,27 @@ resource "aws_cloudwatch_metric_alarm" "agent_stop" {
   statistic           = "Average"
   threshold           = 0
   treat_missing_data  = "breaching"
-  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.alerts.arn]
+}
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+# Step 3: SNS topic policy
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="high",
                 alert_title="CloudWatch Agent Stopped",
@@ -694,7 +816,13 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
-  # Step 2: Config Rule for GuardDuty
+  # Step 2: DLQ for EventBridge
+  DLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 1209600
+
+  # Step 3: Config Rule for GuardDuty
   GuardDutyEnabledRule:
     Type: AWS::Config::ConfigRule
     Properties:
@@ -703,7 +831,7 @@ Resources:
         Owner: AWS
         SourceIdentifier: GUARDDUTY_ENABLED_CENTRALIZED
 
-  # Step 3: EventBridge for Config compliance changes
+  # Step 4: EventBridge for Config compliance changes
   ConfigComplianceRule:
     Type: AWS::Events::Rule
     Properties:
@@ -717,25 +845,40 @@ Resources:
       Targets:
         - Id: Alert
           Arn: !Ref AlertTopic
+          RetryPolicy:
+            MaximumRetryAttempts: 8
+            MaximumEventAgeInSeconds: 3600
+          DeadLetterConfig:
+            Arn: !GetAtt DLQ.Arn
 
+  # Step 5: SNS topic policy with scoped conditions
   TopicPolicy:
     Type: AWS::SNS::TopicPolicy
     Properties:
       Topics: [!Ref AlertTopic]
       PolicyDocument:
+        Version: '2012-10-17'
         Statement:
-          - Effect: Allow
+          - Sid: AllowEventBridgePublish
+            Effect: Allow
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt ConfigComplianceRule.Arn""",
                 terraform_template="""# Monitor security service state with AWS Config
 
 variable "alert_email" { type = string }
 
+data "aws_caller_identity" "current" {}
+
 # Step 1: SNS topic
 resource "aws_sns_topic" "alerts" {
-  name = "security-service-state-alerts"
+  name              = "security-service-state-alerts"
   kms_master_key_id = "alias/aws/sns"
 }
 
@@ -745,7 +888,13 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
-# Step 2: Config Rule for GuardDuty
+# Step 2: DLQ for EventBridge
+resource "aws_sqs_queue" "dlq" {
+  name                      = "security-service-state-alerts-dlq"
+  message_retention_seconds = 1209600
+}
+
+# Step 3: Config Rule for GuardDuty
 resource "aws_config_config_rule" "guardduty_enabled" {
   name = "guardduty-enabled-check"
 
@@ -757,7 +906,7 @@ resource "aws_config_config_rule" "guardduty_enabled" {
   depends_on = [aws_config_configuration_recorder.main]
 }
 
-# Step 3: EventBridge for Config compliance changes
+# Step 4: EventBridge for Config compliance changes
 resource "aws_cloudwatch_event_rule" "config_compliance" {
   name = "security-service-compliance"
   event_pattern = jsonencode({
@@ -773,19 +922,39 @@ resource "aws_cloudwatch_event_rule" "config_compliance" {
 }
 
 resource "aws_cloudwatch_event_target" "sns" {
-  rule = aws_cloudwatch_event_rule.config_compliance.name
-  arn  = aws_sns_topic.alerts.arn
+  rule      = aws_cloudwatch_event_rule.config_compliance.name
+  target_id = "SNSTarget"
+  arn       = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_retry_attempts       = 8
+    maximum_event_age_in_seconds = 3600
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
 }
 
+# Step 5: SNS topic policy with scoped conditions
 resource "aws_sns_topic_policy" "allow_events" {
   arn = aws_sns_topic.alerts.arn
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowEventBridgePublish"
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.config_compliance.arn
+        }
+      }
     }]
   })
 }""",

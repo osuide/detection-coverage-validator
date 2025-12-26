@@ -97,6 +97,23 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: [!Ref AlertTopic]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudWatchPublish
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+
   # Step 2: Create metric filter for webhook POST requests
   WebhookFilter:
     Type: AWS::Logs::MetricFilter
@@ -128,10 +145,31 @@ Resources:
 variable "alert_email" { type = string }
 variable "vpc_flow_log_group" { type = string }
 
+data "aws_caller_identity" "current" {}
+
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "alerts" {
   name = "webhook-exfil-alerts"
   kms_master_key_id = "alias/aws/sns"
+}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -165,7 +203,7 @@ resource "aws_cloudwatch_metric_alarm" "webhook_exfil" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Webhook Exfiltration Activity Detected",
@@ -230,6 +268,23 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: [!Ref AlertTopic]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudWatchPublish
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+
   # Step 2: Filter for script-based webhook commands
   ScriptWebhookFilter:
     Type: AWS::Logs::MetricFilter
@@ -261,10 +316,31 @@ Resources:
 variable "alert_email" { type = string }
 variable "cloudtrail_log_group" { type = string }
 
+data "aws_caller_identity" "current" {}
+
 # Step 1: Create SNS alert topic
 resource "aws_sns_topic" "alerts" {
   name = "script-webhook-alerts"
   kms_master_key_id = "alias/aws/sns"
+}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -298,7 +374,7 @@ resource "aws_cloudwatch_metric_alarm" "script_webhook" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Script-Based Webhook Exfiltration Detected",
@@ -360,6 +436,23 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: [!Ref AlertTopic]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudWatchPublish
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+
   # Step 2: Monitor webhook configuration changes
   WebhookConfigFilter:
     Type: AWS::Logs::MetricFilter
@@ -391,10 +484,31 @@ Resources:
 variable "alert_email" { type = string }
 variable "cloudtrail_log_group" { type = string }
 
+data "aws_caller_identity" "current" {}
+
 # Step 1: Create alert notification topic
 resource "aws_sns_topic" "alerts" {
   name = "webhook-config-alerts"
   kms_master_key_id = "alias/aws/sns"
+}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -428,7 +542,7 @@ resource "aws_cloudwatch_metric_alarm" "webhook_config" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Unauthorised Webhook Configuration Detected",

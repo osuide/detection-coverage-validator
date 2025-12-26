@@ -132,7 +132,6 @@ Resources:
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref AlertTopic""",
@@ -186,7 +185,7 @@ resource "aws_cloudwatch_metric_alarm" "base64_traffic" {
   threshold           = 50
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.base64_alerts.arn]
+  alarm_actions       = [aws_sns_topic.base64_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="High Volume Base64 Encoded HTTP Traffic Detected",
@@ -284,7 +283,6 @@ Resources:
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref AlertTopic""",
@@ -339,7 +337,7 @@ resource "aws_cloudwatch_metric_alarm" "encoded_dns" {
   threshold           = 50
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.dns_encoding_alerts.arn]
+  alarm_actions       = [aws_sns_topic.dns_encoding_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Encoded DNS Queries Detected",
@@ -497,6 +495,8 @@ resource "aws_cloudwatch_event_target" "sns" {
 }
 
 # Step 3: SNS topic policy
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "allow_events" {
   arn = aws_sns_topic.encoding_tools_alerts.arn
 
@@ -507,6 +507,11 @@ resource "aws_sns_topic_policy" "allow_events" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.encoding_tools_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",

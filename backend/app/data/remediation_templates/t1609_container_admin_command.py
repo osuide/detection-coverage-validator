@@ -560,7 +560,6 @@ Resources:
 
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching
 
   TopicPolicy:
     Type: AWS::SNS::TopicPolicy
@@ -568,12 +567,17 @@ Resources:
       Topics:
         - !Ref AlertTopic
       PolicyDocument:
+        Version: '2012-10-17'
         Statement:
-          - Effect: Allow
+          - Sid: AllowCloudWatchAlarms
+            Effect: Allow
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId""",
                 terraform_template="""# Detect EKS kubectl exec commands
 
 variable "eks_audit_log_group" {
@@ -625,20 +629,27 @@ resource "aws_cloudwatch_metric_alarm" "kubectl_exec" {
   statistic           = "Sum"
   threshold           = 0
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.eks_exec_alerts.arn]
+  alarm_actions       = [aws_sns_topic.eks_exec_alerts.arn]
 }
+
+data "aws_caller_identity" "current" {}
 
 resource "aws_sns_topic_policy" "eks_exec_alerts" {
   arn = aws_sns_topic.eks_exec_alerts.arn
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowCloudWatchAlarms"
       Effect    = "Allow"
       Principal = { Service = "cloudwatch.amazonaws.com" }
-      Action    = "SNS:Publish"
+      Action    = "sns:Publish"
       Resource  = aws_sns_topic.eks_exec_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",
@@ -733,7 +744,6 @@ Resources:
 
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching
 
   TopicPolicy:
     Type: AWS::SNS::TopicPolicy
@@ -741,12 +751,17 @@ Resources:
       Topics:
         - !Ref AlertTopic
       PolicyDocument:
+        Version: '2012-10-17'
         Statement:
-          - Effect: Allow
+          - Sid: AllowCloudWatchAlarms
+            Effect: Allow
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId""",
                 terraform_template="""# Detect docker exec commands (requires audit logging)
 
 variable "system_log_group" {
@@ -798,20 +813,27 @@ resource "aws_cloudwatch_metric_alarm" "docker_exec" {
   statistic           = "Sum"
   threshold           = 0
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.docker_exec_alerts.arn]
+  alarm_actions       = [aws_sns_topic.docker_exec_alerts.arn]
 }
+
+data "aws_caller_identity" "current" {}
 
 resource "aws_sns_topic_policy" "docker_exec_alerts" {
   arn = aws_sns_topic.docker_exec_alerts.arn
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowCloudWatchAlarms"
       Effect    = "Allow"
       Principal = { Service = "cloudwatch.amazonaws.com" }
-      Action    = "SNS:Publish"
+      Action    = "sns:Publish"
       Resource  = aws_sns_topic.docker_exec_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",

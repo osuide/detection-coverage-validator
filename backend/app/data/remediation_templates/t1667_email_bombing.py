@@ -96,6 +96,23 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: [!Ref AlertTopic]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudWatchPublish
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+
   # Metric filter for high email rate
   HighEmailRateFilter:
     Type: AWS::Logs::MetricFilter
@@ -122,7 +139,6 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# AWS: Detect email bombing via SES rate monitoring
@@ -137,11 +153,32 @@ variable "alert_email" {
   description = "Email address for security alerts"
 }
 
+data "aws_caller_identity" "current" {}
+
 # SNS topic for alerts
 resource "aws_sns_topic" "email_bombing_alerts" {
   name         = "email-bombing-alerts"
   kms_master_key_id = "alias/aws/sns"
   display_name = "Email Bombing Alerts"
+}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.email_bombing_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.email_bombing_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -176,9 +213,8 @@ resource "aws_cloudwatch_metric_alarm" "email_bombing" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.email_bombing_alerts.arn]
+  alarm_actions       = [aws_sns_topic.email_bombing_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Email Bombing Attack Detected",
@@ -234,11 +270,32 @@ variable "alert_email" {
   description = "Email address for security alerts"
 }
 
+data "aws_caller_identity" "current" {}
+
 # SNS topic for alerts
 resource "aws_sns_topic" "workmail_bombing_alerts" {
   name         = "workmail-email-bombing-alerts"
   kms_master_key_id = "alias/aws/sns"
   display_name = "WorkMail Email Bombing Alerts"
+}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.workmail_bombing_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.workmail_bombing_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -273,9 +330,8 @@ resource "aws_cloudwatch_metric_alarm" "workmail_bombing" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.workmail_bombing_alerts.arn]
+  alarm_actions       = [aws_sns_topic.workmail_bombing_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="WorkMail Email Bombing Detected",
@@ -450,11 +506,32 @@ variable "alert_email" {
   description = "Email address for security alerts"
 }
 
+data "aws_caller_identity" "current" {}
+
 # SNS topic for pattern-based alerts
 resource "aws_sns_topic" "pattern_alerts" {
   name         = "email-bombing-pattern-alerts"
   kms_master_key_id = "alias/aws/sns"
   display_name = "Email Bombing Pattern Alerts"
+}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.pattern_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.pattern_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }
 
 resource "aws_sns_topic_subscription" "email" {

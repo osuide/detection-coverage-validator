@@ -123,17 +123,31 @@ Resources:
         - Id: Email
           Arn: !Ref AlertTopic
 
+  # Dead Letter Queue for failed event deliveries
+  AlertDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: input-capture-alerts-dlq
+      MessageRetentionPeriod: 1209600  # 14 days
+
   TopicPolicy:
     Type: AWS::SNS::TopicPolicy
     Properties:
       Topics: [!Ref AlertTopic]
       PolicyDocument:
+        Version: '2012-10-17'
         Statement:
-          - Effect: Allow
+          - Sid: AllowEventBridgePublish
+            Effect: Allow
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt SuspiciousLoginRule.Arn""",
                 terraform_template="""# GuardDuty alerts for suspicious login patterns indicating credential capture
 
 variable "alert_email" {
@@ -176,20 +190,47 @@ resource "aws_cloudwatch_event_rule" "suspicious_logins" {
   })
 }
 
-resource "aws_cloudwatch_event_target" "sns" {
-  rule = aws_cloudwatch_event_rule.suspicious_logins.name
-  arn  = aws_sns_topic.alerts.arn
+# Dead Letter Queue for failed event deliveries
+resource "aws_sqs_queue" "dlq" {
+  name                      = "input-capture-alerts-dlq"
+  message_retention_seconds = 1209600  # 14 days
 }
+
+resource "aws_cloudwatch_event_target" "sns" {
+  rule      = aws_cloudwatch_event_rule.suspicious_logins.name
+  target_id = "SNSTarget"
+  arn       = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_retry_attempts       = 8
+    maximum_event_age_in_seconds = 3600
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
+}
+
+data "aws_caller_identity" "current" {}
 
 resource "aws_sns_topic_policy" "allow_eventbridge" {
   arn = aws_sns_topic.alerts.arn
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowEventBridgePublish"
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.suspicious_logins.arn
+        }
+      }
     }]
   })
 }""",
@@ -303,8 +344,7 @@ Resources:
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
 
-      AlarmActions: [!Ref AlertTopic]
-      TreatMissingData: notBreaching""",
+      AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Alert on failed logins followed by success (credential testing pattern)
 
 variable "cloudtrail_log_group" {
@@ -357,8 +397,7 @@ resource "aws_cloudwatch_metric_alarm" "failed_logins" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
-  treat_missing_data  = "notBreaching"
+  alarm_actions = [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Failed Login Attempts with Subsequent Success",
@@ -455,8 +494,7 @@ Resources:
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
 
-      AlarmActions: [!Ref SNSTopicArn]
-      TreatMissingData: notBreaching""",
+      AlarmActions: [!Ref SNSTopicArn]""",
                 terraform_template="""# Detect unusual session token usage patterns
 
 variable "cloudtrail_log_group" {
@@ -496,8 +534,7 @@ resource "aws_cloudwatch_metric_alarm" "session_tokens" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [var.sns_topic_arn]
-  treat_missing_data  = "notBreaching"
+  alarm_actions = [var.sns_topic_arn]
 }""",
                 alert_severity="medium",
                 alert_title="Unusual Session Token Usage Pattern",

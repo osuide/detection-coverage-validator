@@ -120,7 +120,6 @@ Resources:
       Threshold: 20
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref AlertTopic
@@ -182,8 +181,10 @@ resource "aws_cloudwatch_metric_alarm" "assume_role_high" {
   threshold           = 20
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.assume_role_alerts.arn]
+  alarm_actions       = [aws_sns_topic.assume_role_alerts.arn]
 }
+
+data "aws_caller_identity" "current" {}
 
 resource "aws_sns_topic_policy" "assume_role_alerts" {
   arn = aws_sns_topic.assume_role_alerts.arn
@@ -194,6 +195,11 @@ resource "aws_sns_topic_policy" "assume_role_alerts" {
       Principal = { Service = "cloudwatch.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.assume_role_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",
@@ -326,6 +332,11 @@ resource "aws_sns_topic_policy" "allow_events" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",
@@ -411,7 +422,6 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref AlertTopic
@@ -470,7 +480,7 @@ resource "aws_cloudwatch_metric_alarm" "session_token" {
   threshold           = 5
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }
 
 resource "aws_sns_topic_policy" "alerts" {
@@ -482,6 +492,11 @@ resource "aws_sns_topic_policy" "alerts" {
       Principal = { Service = "cloudwatch.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",

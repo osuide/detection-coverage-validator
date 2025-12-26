@@ -137,18 +137,31 @@ Resources:
               "Region: <region>"
               "Action Required: Immediately investigate logging configuration"
 
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: guardduty-stealth-dlq
+      MessageRetentionPeriod: 1209600
+
   TopicPolicy:
     Type: AWS::SNS::TopicPolicy
     Properties:
       Topics:
         - !Ref StealthAlertTopic
       PolicyDocument:
+        Version: '2012-10-17'
         Statement:
-          - Effect: Allow
+          - Sid: AllowEventBridgePublishScoped
+            Effect: Allow
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
             Resource: !Ref StealthAlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt StealthFindingRule.Arn
 
   # Enable GuardDuty if not already enabled
   GuardDutyDetector:
@@ -200,10 +213,28 @@ resource "aws_cloudwatch_event_rule" "stealth_findings" {
   })
 }
 
+data "aws_caller_identity" "current" {}
+
+# Step 4: Dead letter queue
+resource "aws_sqs_queue" "dlq" {
+  name                      = "guardduty-stealth-dlq"
+  message_retention_seconds = 1209600
+}
+
+# Step 5: EventBridge target with DLQ, retry, input transformer
 resource "aws_cloudwatch_event_target" "to_sns" {
   rule      = aws_cloudwatch_event_rule.stealth_findings.name
   target_id = "SendToSNS"
   arn       = aws_sns_topic.stealth_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
 
   input_transformer {
     input_paths = {
@@ -214,27 +245,36 @@ resource "aws_cloudwatch_event_target" "to_sns" {
       region      = "$.detail.region"
     }
     input_template = <<-EOF
-      "CRITICAL: GuardDuty Stealth Finding"
-      "Type: <findingType>"
-      "Severity: <severity>"
-      "Principal: <principal>"
-      "Account: <accountId>"
-      "Region: <region>"
-      "Action Required: Immediately investigate logging configuration"
-    EOF
+"CRITICAL: GuardDuty Stealth Finding (T1562.008)
+Type: <findingType>
+Severity: <severity>
+Principal: <principal>
+Account: <accountId>
+Region: <region>
+Action Required: Immediately investigate logging configuration"
+EOF
   }
 }
 
+# Step 6: Scoped SNS topic policy
 resource "aws_sns_topic_policy" "allow_eventbridge" {
   arn = aws_sns_topic.stealth_alerts.arn
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Sid       = "AllowEventBridgePublish"
+      Sid       = "AllowEventBridgePublishScoped"
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.stealth_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.stealth_findings.arn
+        }
+      }
     }]
   })
 }""",
@@ -491,6 +531,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.compliance_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }
@@ -827,6 +872,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.logging_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }

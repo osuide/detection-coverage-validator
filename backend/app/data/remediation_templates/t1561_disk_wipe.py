@@ -156,6 +156,8 @@ resource "aws_cloudwatch_event_target" "sns" {
 }
 
 # Allow EventBridge to publish to SNS
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "allow_events" {
   arn = aws_sns_topic.volume_alerts.arn
 
@@ -166,6 +168,11 @@ resource "aws_sns_topic_policy" "allow_events" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.volume_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",
@@ -255,7 +262,6 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect bulk EBS volume deletion
@@ -308,9 +314,8 @@ resource "aws_cloudwatch_metric_alarm" "bulk_delete" {
   statistic           = "Sum"
   threshold           = 3
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="Bulk EBS Volume Deletion - Potential Disk Wipe",
@@ -400,6 +405,11 @@ resource "aws_sns_topic_policy" "allow_events" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",

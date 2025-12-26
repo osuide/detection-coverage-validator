@@ -162,7 +162,7 @@ resource "aws_cloudwatch_metric_alarm" "html_smuggling" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Suspicious HTML File Upload Detected",
@@ -289,6 +289,8 @@ resource "aws_cloudwatch_event_target" "sns" {
   arn       = aws_sns_topic.alerts.arn
 }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "allow_eventbridge" {
   arn = aws_sns_topic.alerts.arn
 
@@ -301,6 +303,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       }
       Action   = "SNS:Publish"
       Resource = aws_sns_topic.alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",
@@ -389,7 +396,7 @@ resource "aws_cloudwatch_metric_alarm" "html_smuggling_detected" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="HTML Smuggling Pattern Detected",

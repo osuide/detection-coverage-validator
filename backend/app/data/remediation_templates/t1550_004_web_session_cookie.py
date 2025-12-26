@@ -97,6 +97,23 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: [!Ref SessionAnomalyAlertTopic]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudWatchPublish
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref SessionAnomalyAlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+
   # Step 2: Metric filter for session anomalies
   SessionFromMultipleIPsFilter:
     Type: AWS::Logs::MetricFilter
@@ -123,11 +140,9 @@ Resources:
       Threshold: 15
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
-        - !Ref SessionAnomalyAlertTopic
-      TreatMissingData: notBreaching""",
+        - !Ref SessionAnomalyAlertTopic""",
                 terraform_template="""# Detect stolen AWS session cookie usage
 
 variable "cloudtrail_log_group" {
@@ -140,11 +155,32 @@ variable "alert_email" {
   description = "Email for security alerts"
 }
 
+data "aws_caller_identity" "current" {}
+
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "session_anomaly_alerts" {
   name         = "aws-session-cookie-anomaly-alerts"
   kms_master_key_id = "alias/aws/sns"
   display_name = "AWS Session Cookie Anomaly Alerts"
+}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.session_anomaly_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.session_anomaly_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }
 
 resource "aws_sns_topic_subscription" "email_subscription" {
@@ -179,10 +215,8 @@ resource "aws_cloudwatch_metric_alarm" "session_anomaly" {
   threshold           = 15
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.session_anomaly_alerts.arn]
-  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.session_anomaly_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Potential Stolen Session Cookie Detected",
@@ -249,6 +283,23 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: [!Ref ImpossibleTravelAlertTopic]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudWatchPublish
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref ImpossibleTravelAlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+
   # Step 2: Metric filter for rapid location changes
   RapidLocationChangeFilter:
     Type: AWS::Logs::MetricFilter
@@ -278,11 +329,9 @@ Resources:
       Threshold: 3
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
-        - !Ref ImpossibleTravelAlertTopic
-      TreatMissingData: notBreaching""",
+        - !Ref ImpossibleTravelAlertTopic""",
                 terraform_template="""# Detect impossible travel patterns for AWS sessions
 
 variable "cloudtrail_log_group" {
@@ -295,11 +344,32 @@ variable "alert_email" {
   description = "Email for security alerts"
 }
 
+data "aws_caller_identity" "current" {}
+
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "impossible_travel_alerts" {
   name         = "aws-impossible-travel-alerts"
   kms_master_key_id = "alias/aws/sns"
   display_name = "AWS Impossible Travel Alerts"
+}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.impossible_travel_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.impossible_travel_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }
 
 resource "aws_sns_topic_subscription" "email_subscription" {
@@ -337,10 +407,8 @@ resource "aws_cloudwatch_metric_alarm" "impossible_travel" {
   threshold           = 3
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.impossible_travel_alerts.arn]
-  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.impossible_travel_alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="Impossible Travel Session Detected",

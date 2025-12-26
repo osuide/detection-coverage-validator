@@ -100,6 +100,23 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: [!Ref AlertTopic]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudWatchPublish
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+
   # Metric filter for log enumeration API calls
   LogEnumerationFilter:
     Type: AWS::Logs::MetricFilter
@@ -126,7 +143,6 @@ Resources:
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref AlertTopic
@@ -143,11 +159,32 @@ variable "alert_email" {
   description = "Email for security alerts"
 }
 
+data "aws_caller_identity" "current" {}
+
 # SNS topic for alerts
 resource "aws_sns_topic" "log_enumeration_alerts" {
   name         = "log-enumeration-alerts"
   kms_master_key_id = "alias/aws/sns"
   display_name = "Log Enumeration Alerts"
+}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.log_enumeration_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.log_enumeration_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }
 
 resource "aws_sns_topic_subscription" "email_alerts" {
@@ -182,10 +219,8 @@ resource "aws_cloudwatch_metric_alarm" "excessive_log_enumeration" {
   threshold           = 50
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.log_enumeration_alerts.arn]
-  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.log_enumeration_alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Excessive Log Enumeration Detected",
@@ -254,6 +289,23 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: [!Ref AlertTopic]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudWatchPublish
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+
   # Metric filter for suspicious log file access
   LogFileAccessFilter:
     Type: AWS::Logs::MetricFilter
@@ -280,11 +332,9 @@ Resources:
       Threshold: 20
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
-        - !Ref AlertTopic
-      TreatMissingData: notBreaching""",
+        - !Ref AlertTopic""",
                 terraform_template="""# AWS: Detect unusual system log file access on EC2
 
 variable "system_log_group" {
@@ -297,11 +347,32 @@ variable "alert_email" {
   description = "Email for security alerts"
 }
 
+data "aws_caller_identity" "current" {}
+
 # SNS topic for alerts
 resource "aws_sns_topic" "log_access_alerts" {
   name         = "system-log-access-alerts"
   kms_master_key_id = "alias/aws/sns"
   display_name = "System Log Access Alerts"
+}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.log_access_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.log_access_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }
 
 resource "aws_sns_topic_subscription" "email_alerts" {
@@ -336,10 +407,8 @@ resource "aws_cloudwatch_metric_alarm" "excessive_log_access" {
   threshold           = 20
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.log_access_alerts.arn]
-  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.log_access_alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Suspicious System Log Access",

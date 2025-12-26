@@ -113,7 +113,14 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
-  # Step 3: Route WMI-related findings to alerts
+  # Step 3: Dead letter queue
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: t1047-wmi-dlq
+      MessageRetentionPeriod: 1209600
+
+  # Step 4: Route WMI-related findings to alerts
   WMIExecutionRule:
     Type: AWS::Events::Rule
     Properties:
@@ -130,20 +137,48 @@ Resources:
             - prefix: "CredentialAccess:Runtime"
       State: ENABLED
       Targets:
-        - Id: AlertTopic
+        - Id: SNSTarget
           Arn: !Ref WMIAlertTopic
+          RetryPolicy:
+            MaximumEventAgeInSeconds: 3600
+            MaximumRetryAttempts: 8
+          DeadLetterConfig:
+            Arn: !GetAtt DeadLetterQueue.Arn
+          InputTransformer:
+            InputPathsMap:
+              account: $.account
+              region: $.region
+              time: $.time
+              type: $.detail.type
+              severity: $.detail.severity
+              instanceId: $.detail.resource.instanceDetails.instanceId
+            InputTemplate: |
+              "GuardDuty WMI Execution Alert (T1047)
+              time=<time> account=<account> region=<region>
+              type=<type> severity=<severity>
+              instance=<instanceId>
+              Action: Investigate WMI abuse immediately"
 
+  # Step 5: Scoped SNS topic policy
   TopicPolicy:
     Type: AWS::SNS::TopicPolicy
     Properties:
-      Topics: [!Ref WMIAlertTopic]
+      Topics:
+        - !Ref WMIAlertTopic
       PolicyDocument:
+        Version: '2012-10-17'
         Statement:
-          - Effect: Allow
+          - Sid: AllowEventBridgePublishScoped
+            Effect: Allow
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref WMIAlertTopic""",
+            Resource: !Ref WMIAlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt WMIExecutionRule.Arn""",
                 terraform_template="""# GuardDuty Runtime Monitoring for WMI abuse detection
 
 variable "alert_email" {
@@ -186,6 +221,8 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
+data "aws_caller_identity" "current" {}
+
 # Step 3: Route WMI-related findings to alerts
 resource "aws_cloudwatch_event_rule" "wmi_execution" {
   name        = "guardduty-wmi-execution"
@@ -203,21 +240,66 @@ resource "aws_cloudwatch_event_rule" "wmi_execution" {
   })
 }
 
-resource "aws_cloudwatch_event_target" "sns" {
-  rule      = aws_cloudwatch_event_rule.wmi_execution.name
-  target_id = "SendToSNS"
-  arn       = aws_sns_topic.wmi_alerts.arn
+# Step 4: Dead letter queue
+resource "aws_sqs_queue" "dlq" {
+  name                      = "t1047-wmi-dlq"
+  message_retention_seconds = 1209600
 }
 
+# Step 5: EventBridge target with DLQ, retry, input transformer
+resource "aws_cloudwatch_event_target" "sns" {
+  rule      = aws_cloudwatch_event_rule.wmi_execution.name
+  target_id = "SNSTarget"
+  arn       = aws_sns_topic.wmi_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
+
+  input_transformer {
+    input_paths = {
+      account    = "$.account"
+      region     = "$.region"
+      time       = "$.time"
+      type       = "$.detail.type"
+      severity   = "$.detail.severity"
+      instanceId = "$.detail.resource.instanceDetails.instanceId"
+    }
+
+    input_template = <<-EOT
+"GuardDuty WMI Execution Alert (T1047)
+time=<time> account=<account> region=<region>
+type=<type> severity=<severity>
+instance=<instanceId>
+Action: Investigate WMI abuse immediately"
+EOT
+  }
+}
+
+# Step 6: Scoped SNS topic policy
 resource "aws_sns_topic_policy" "allow_eventbridge" {
   arn = aws_sns_topic.wmi_alerts.arn
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowEventBridgePublishScoped"
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.wmi_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.wmi_execution.arn
+        }
+      }
     }]
   })
 }""",
@@ -312,7 +394,6 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref SNSTopicArn
@@ -375,9 +456,8 @@ resource "aws_cloudwatch_metric_alarm" "wmi_execution" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }
 
 # Step 3: Create filter for shadow copy deletion (critical ransomware indicator)
@@ -495,10 +575,29 @@ resource "aws_cloudwatch_metric_alarm" "remote_wmi_alert" {
   threshold           = 5
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.alerts.arn]
+}
 
-  alarm_actions [aws_sns_topic.alerts.arn]
-  treat_missing_data  = "notBreaching"
+data "aws_caller_identity" "current" {}
+
+# Step 4: Scoped SNS topic policy
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchAlarmsPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }
 
 # Step 3: Create dedicated filter for DCOM port 135 (primary WMI remote access)
@@ -733,7 +832,6 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref SNSTopicArn
@@ -796,9 +894,8 @@ resource "aws_cloudwatch_metric_alarm" "wmi_persistence" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }
 
 # Step 3: Monitor for malicious WMI consumer types

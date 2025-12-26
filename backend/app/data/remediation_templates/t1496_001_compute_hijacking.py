@@ -125,7 +125,7 @@ resource "aws_cloudwatch_metric_alarm" "high_cpu" {
   evaluation_periods  = 12  # 1 hour sustained
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Potential Cryptomining Detected",
@@ -186,6 +186,12 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: guardduty-crypto-alerts-dlq
+      MessageRetentionPeriod: 1209600
+
   CryptoMiningRule:
     Type: AWS::Events::Rule
     Properties:
@@ -197,30 +203,73 @@ Resources:
           type:
             - prefix: "CryptoCurrency:"
       Targets:
-        - Id: Alert
+        - Id: SNSTarget
           Arn: !Ref AlertTopic
+          RetryPolicy:
+            MaximumEventAgeInSeconds: 3600
+            MaximumRetryAttempts: 8
+          DeadLetterConfig:
+            Arn: !GetAtt DeadLetterQueue.Arn
+          InputTransformer:
+            InputPathsMap:
+              account: $.account
+              region: $.region
+              time: $.time
+              type: $.detail.type
+              severity: $.detail.severity
+              instanceId: $.detail.resource.instanceDetails.instanceId
+            InputTemplate: |
+              "CRITICAL: Cryptomining Detected (T1496.001)"
+              "Time: <time>"
+              "Account: <account> | Region: <region>"
+              "Finding Type: <type>"
+              "Severity: <severity>"
+              "Instance: <instanceId>"
+              "Action: Terminate instance and investigate"
 
   TopicPolicy:
     Type: AWS::SNS::TopicPolicy
     Properties:
       Topics: [!Ref AlertTopic]
       PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowEventBridgePublishScoped
+            Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt CryptoMiningRule.Arn
+
+  DLQPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref DeadLetterQueue
+      PolicyDocument:
         Statement:
           - Effect: Allow
             Principal:
               Service: events.amazonaws.com
-            Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Action: sqs:SendMessage
+            Resource: !GetAtt DeadLetterQueue.Arn""",
                 terraform_template="""# GuardDuty cryptomining detection
 
 variable "alert_email" { type = string }
+
+data "aws_caller_identity" "current" {}
 
 resource "aws_guardduty_detector" "main" {
   enable = true
 }
 
 resource "aws_sns_topic" "alerts" {
-  name = "guardduty-crypto-alerts"
+  name              = "guardduty-crypto-alerts"
   kms_master_key_id = "alias/aws/sns"
 }
 
@@ -230,10 +279,15 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
+resource "aws_sqs_queue" "dlq" {
+  name                      = "guardduty-crypto-alerts-dlq"
+  message_retention_seconds = 1209600
+}
+
 resource "aws_cloudwatch_event_rule" "crypto" {
   name = "guardduty-cryptomining"
   event_pattern = jsonencode({
-    source = ["aws.guardduty"]
+    source        = ["aws.guardduty"]
     "detail-type" = ["GuardDuty Finding"]
     detail = {
       type = [{ prefix = "CryptoCurrency:" }]
@@ -242,8 +296,39 @@ resource "aws_cloudwatch_event_rule" "crypto" {
 }
 
 resource "aws_cloudwatch_event_target" "sns" {
-  rule = aws_cloudwatch_event_rule.crypto.name
-  arn  = aws_sns_topic.alerts.arn
+  rule      = aws_cloudwatch_event_rule.crypto.name
+  target_id = "SNSTarget"
+  arn       = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
+
+  input_transformer {
+    input_paths = {
+      account    = "$.account"
+      region     = "$.region"
+      time       = "$.time"
+      type       = "$.detail.type"
+      severity   = "$.detail.severity"
+      instanceId = "$.detail.resource.instanceDetails.instanceId"
+    }
+
+    input_template = <<-EOT
+"CRITICAL: Cryptomining Detected (T1496.001)
+Time: <time>
+Account: <account> | Region: <region>
+Finding Type: <type>
+Severity: <severity>
+Instance: <instanceId>
+Action: Terminate instance and investigate"
+EOT
+  }
 }
 
 resource "aws_sns_topic_policy" "allow_events" {
@@ -251,10 +336,32 @@ resource "aws_sns_topic_policy" "allow_events" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowEventBridgePublishScoped"
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.crypto.arn
+        }
+      }
+    }]
+  })
+}
+
+resource "aws_sqs_queue_policy" "dlq" {
+  queue_url = aws_sqs_queue.dlq.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.dlq.arn
     }]
   })
 }""",

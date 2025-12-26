@@ -117,7 +117,24 @@ Resources:
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
 
-      AlarmActions: [!Ref SAMLAlertTopic]""",
+      AlarmActions: [!Ref SAMLAlertTopic]
+
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: [!Ref SAMLAlertTopic]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudWatchAlarms
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref SAMLAlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId""",
                 terraform_template="""# Detect forged SAML tokens and anomalous federation
 
 variable "cloudtrail_log_group" {
@@ -165,7 +182,28 @@ resource "aws_cloudwatch_metric_alarm" "saml_anomaly" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.saml_alerts.arn]
+  alarm_actions = [aws_sns_topic.saml_alerts.arn]
+}
+
+data "aws_caller_identity" "current" {}
+
+resource "aws_sns_topic_policy" "saml_alerts" {
+  arn = aws_sns_topic.saml_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchAlarms"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.saml_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="critical",
                 alert_title="Suspicious SAML Token Activity Detected",
@@ -252,7 +290,24 @@ Resources:
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
 
-      AlarmActions: [!Ref FederationAlertTopic]""",
+      AlarmActions: [!Ref FederationAlertTopic]
+
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: [!Ref FederationAlertTopic]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudWatchAlarms
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref FederationAlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId""",
                 terraform_template="""# Detect GetFederationToken abuse
 
 variable "cloudtrail_log_group" {
@@ -300,7 +355,28 @@ resource "aws_cloudwatch_metric_alarm" "federation_abuse" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.federation_alerts.arn]
+  alarm_actions = [aws_sns_topic.federation_alerts.arn]
+}
+
+data "aws_caller_identity" "current" {}
+
+resource "aws_sns_topic_policy" "federation_alerts" {
+  arn = aws_sns_topic.federation_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchAlarms"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.federation_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="high",
                 alert_title="Federation Token Abuse Detected",
@@ -387,7 +463,24 @@ Resources:
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
 
-      AlarmActions: [!Ref SessionAlertTopic]""",
+      AlarmActions: [!Ref SessionAlertTopic]
+
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: [!Ref SessionAlertTopic]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudWatchAlarms
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref SessionAlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId""",
                 terraform_template="""# Detect forged console session cookies
 
 variable "cloudtrail_log_group" {
@@ -435,7 +528,28 @@ resource "aws_cloudwatch_metric_alarm" "session_anomaly" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.session_alerts.arn]
+  alarm_actions = [aws_sns_topic.session_alerts.arn]
+}
+
+data "aws_caller_identity" "current" {}
+
+resource "aws_sns_topic_policy" "session_alerts" {
+  arn = aws_sns_topic.session_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchAlarms"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.session_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="high",
                 alert_title="Console Session Anomaly Detected",

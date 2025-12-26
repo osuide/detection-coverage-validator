@@ -134,7 +134,24 @@ Resources:
       TreatMissingData: notBreaching
 
       AlarmActions: [!Ref AlertTopic]
-      TreatMissingData: notBreaching""",
+
+  # Step 4: SNS topic policy (scoped)
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: [!Ref AlertTopic]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudWatchAlarms
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId""",
                 terraform_template="""# Detect chunked S3 uploads
 
 variable "alert_email" {
@@ -187,8 +204,29 @@ resource "aws_cloudwatch_metric_alarm" "chunked_upload" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.chunked_upload_alerts.arn]
-  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.chunked_upload_alerts.arn]
+}
+
+# Step 4: SNS topic policy (scoped)
+data "aws_caller_identity" "current" {}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.chunked_upload_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchAlarms"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.chunked_upload_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="high",
                 alert_title="S3 Chunked Upload Pattern Detected",
@@ -282,7 +320,25 @@ Resources:
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
 
-      AlarmActions: [!Ref AlertTopic]""",
+      AlarmActions: [!Ref AlertTopic]
+
+  # Step 4: SNS topic policy (scoped)
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: [!Ref AlertTopic]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudWatchAlarms
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId""",
                 terraform_template="""# Detect uniform network transfer patterns
 
 variable "alert_email" {
@@ -330,7 +386,29 @@ resource "aws_cloudwatch_metric_alarm" "uniform_transfer" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.network_chunk_alerts.arn]
+  alarm_actions       = [aws_sns_topic.network_chunk_alerts.arn]
+}
+
+# Step 4: SNS topic policy (scoped)
+data "aws_caller_identity" "current" {}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.network_chunk_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchAlarms"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.network_chunk_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="high",
                 alert_title="Network Chunked Transfer Pattern Detected",
@@ -405,19 +483,50 @@ Resources:
       Targets:
         - Id: Alert
           Arn: !Ref AlertTopic
+          RetryPolicy:
+            MaximumEventAgeInSeconds: 3600
+            MaximumRetryAttempts: 8
+          DeadLetterConfig:
+            Arn: !GetAtt DeadLetterQueue.Arn
+          InputTransformer:
+            InputPathsMap:
+              account: $.account
+              region: $.region
+              time: $.time
+              functionName: $.detail.requestParameters.functionName
+              user: $.detail.userIdentity.arn
+            InputTemplate: |
+              "Lambda Scheduled Invocation (T1030)
+              time=<time> account=<account> region=<region>
+              function=<functionName> user=<user>
+              Action: Verify scheduled function legitimacy"
 
-  # Step 3: Topic policy
+  # Step 3: Dead letter queue
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: lambda-scheduled-dlq
+      MessageRetentionPeriod: 1209600
+
+  # Step 4: Topic policy (scoped)
   TopicPolicy:
     Type: AWS::SNS::TopicPolicy
     Properties:
       Topics: [!Ref AlertTopic]
       PolicyDocument:
+        Version: '2012-10-17'
         Statement:
-          - Effect: Allow
+          - Sid: AllowEventBridgePublish
+            Effect: Allow
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt FrequentLambdaRule.Arn""",
                 terraform_template="""# Detect Lambda scheduled chunked transfers
 
 variable "alert_email" {
@@ -450,22 +559,65 @@ resource "aws_cloudwatch_event_rule" "frequent_lambda" {
   })
 }
 
-resource "aws_cloudwatch_event_target" "sns" {
-  rule = aws_cloudwatch_event_rule.frequent_lambda.name
-  arn  = aws_sns_topic.lambda_schedule_alerts.arn
+# Step 3: Dead letter queue
+resource "aws_sqs_queue" "dlq" {
+  name                      = "lambda-scheduled-dlq"
+  message_retention_seconds = 1209600
 }
 
-# Step 3: Topic policy
+resource "aws_cloudwatch_event_target" "sns" {
+  rule      = aws_cloudwatch_event_rule.frequent_lambda.name
+  target_id = "SendToSNS"
+  arn       = aws_sns_topic.lambda_schedule_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
+
+  input_transformer {
+    input_paths = {
+      account      = "$.account"
+      region       = "$.region"
+      time         = "$.time"
+      functionName = "$.detail.requestParameters.functionName"
+      user         = "$.detail.userIdentity.arn"
+    }
+    input_template = <<-EOT
+"Lambda Scheduled Invocation (T1030)
+time=<time> account=<account> region=<region>
+function=<functionName> user=<user>
+Action: Verify scheduled function legitimacy"
+EOT
+  }
+}
+
+# Step 4: Topic policy (scoped)
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "allow_events" {
   arn = aws_sns_topic.lambda_schedule_alerts.arn
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowEventBridgePublishScoped"
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.lambda_schedule_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.frequent_lambda.arn
+        }
+      }
     }]
   })
 }""",

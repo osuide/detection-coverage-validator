@@ -185,6 +185,8 @@ resource "aws_cloudwatch_event_target" "sns" {
 }
 
 # Step 3: Grant EventBridge permission to publish to SNS
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "allow_eventbridge" {
   arn = aws_sns_topic.password_store_alerts.arn
   policy = jsonencode({
@@ -194,6 +196,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.password_store_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",
@@ -287,7 +294,6 @@ Resources:
       Threshold: 10
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref BulkAccessAlertTopic""",
@@ -339,9 +345,8 @@ resource "aws_cloudwatch_metric_alarm" "bulk_access" {
   threshold           = 10
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.bulk_access_alerts.arn]
+  alarm_actions       = [aws_sns_topic.bulk_access_alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="Bulk Password Store Access Detected",
@@ -432,7 +437,6 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref BrowserCredAlertTopic""",
@@ -484,9 +488,8 @@ resource "aws_cloudwatch_metric_alarm" "browser_cred_access" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.browser_cred_alerts.arn]
+  alarm_actions       = [aws_sns_topic.browser_cred_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Browser Password Store Access Detected",
@@ -689,7 +692,6 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref K8sSecretsAlertTopic""",
@@ -742,9 +744,8 @@ resource "aws_cloudwatch_metric_alarm" "k8s_secrets" {
   threshold           = 5
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.k8s_secrets_alerts.arn]
+  alarm_actions       = [aws_sns_topic.k8s_secrets_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Kubernetes Secrets Access Detected",

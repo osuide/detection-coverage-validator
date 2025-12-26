@@ -124,7 +124,6 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref AlertTopic
@@ -179,9 +178,8 @@ resource "aws_cloudwatch_metric_alarm" "transfer_alert" {
   threshold           = 5
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",
@@ -323,6 +321,8 @@ resource "aws_cloudwatch_event_target" "sns" {
   arn       = aws_sns_topic.alerts.arn
 }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "ssm_publish" {
   arn = aws_sns_topic.alerts.arn
 
@@ -333,6 +333,11 @@ resource "aws_sns_topic_policy" "ssm_publish" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "SNS:Publish"
       Resource  = aws_sns_topic.alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",
@@ -428,9 +433,8 @@ resource "aws_cloudwatch_metric_alarm" "transfer_alert" {
   threshold           = 104857600
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="medium",

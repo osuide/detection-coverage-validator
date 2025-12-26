@@ -115,7 +115,6 @@ Resources:
       Threshold: 2
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref SNSTopicArn
@@ -170,7 +169,7 @@ resource "aws_cloudwatch_metric_alarm" "debugger_evasion" {
   threshold           = 2
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [var.sns_topic_arn]
+  alarm_actions       = [var.sns_topic_arn]
 }
 
 # Step 3: Query definition for investigation
@@ -276,7 +275,6 @@ Resources:
       Threshold: 3
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref SNSTopicArn
@@ -331,7 +329,7 @@ resource "aws_cloudwatch_metric_alarm" "container_debug_checks" {
   threshold           = 3
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [var.sns_topic_arn]
+  alarm_actions       = [var.sns_topic_arn]
 }
 
 # Step 3: Investigation query
@@ -438,7 +436,6 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref SNSTopicArn
@@ -493,7 +490,7 @@ resource "aws_cloudwatch_metric_alarm" "debug_api_checks" {
   threshold           = 5
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [var.sns_topic_arn]
+  alarm_actions       = [var.sns_topic_arn]
 }
 
 # Step 3: Investigation query

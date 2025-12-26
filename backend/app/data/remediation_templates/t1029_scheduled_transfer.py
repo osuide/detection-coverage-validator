@@ -131,9 +131,26 @@ Resources:
       EvaluationPeriods: 3
       DatapointsToAlarm: 3
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions: [!Ref AlertTopic]
+
+  # Step 4: SNS topic policy (scoped)
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: [!Ref AlertTopic]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudWatchAlarms
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
 
 Outputs:
   AlertTopicArn:
@@ -191,9 +208,30 @@ resource "aws_cloudwatch_metric_alarm" "recurring_transfer" {
   evaluation_periods  = 3
   datapoints_to_alarm = 3
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.scheduled_transfer_alerts.arn]
+  alarm_actions       = [aws_sns_topic.scheduled_transfer_alerts.arn]
+}
+
+# Step 4: SNS topic policy (scoped)
+data "aws_caller_identity" "current" {}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.scheduled_transfer_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchAlarms"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.scheduled_transfer_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }
 
 output "alert_topic_arn" {
@@ -293,19 +331,52 @@ Resources:
       Targets:
         - Id: AlertTarget
           Arn: !Ref AlertTopic
+          RetryPolicy:
+            MaximumEventAgeInSeconds: 3600
+            MaximumRetryAttempts: 8
+          DeadLetterConfig:
+            Arn: !GetAtt DeadLetterQueue.Arn
+          InputTransformer:
+            InputPathsMap:
+              account: $.account
+              region: $.region
+              time: $.time
+              eventName: $.detail.eventName
+              user: $.detail.userIdentity.arn
+              schedule: $.detail.requestParameters.scheduleExpression
+            InputTemplate: |
+              "Scheduled Task Alert (T1029)
+              time=<time> account=<account> region=<region>
+              event=<eventName> user=<user>
+              schedule=<schedule>
+              Action: Verify scheduled task legitimacy"
 
-  # Step 3: SNS topic policy
+  # Step 3: Dead letter queue
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: scheduled-task-dlq
+      MessageRetentionPeriod: 1209600
+
+  # Step 4: SNS topic policy (scoped)
   TopicPolicy:
     Type: AWS::SNS::TopicPolicy
     Properties:
       Topics: [!Ref AlertTopic]
       PolicyDocument:
+        Version: '2012-10-17'
         Statement:
-          - Effect: Allow
+          - Sid: AllowEventBridgePublish
+            Effect: Allow
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
             Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt ScheduledTaskRule.Arn
 
 Outputs:
   RuleArn:
@@ -351,23 +422,67 @@ resource "aws_cloudwatch_event_rule" "scheduled_task" {
   })
 }
 
+# Step 3: Dead letter queue
+resource "aws_sqs_queue" "dlq" {
+  name                      = "scheduled-task-dlq"
+  message_retention_seconds = 1209600
+}
+
 resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.scheduled_task.name
   target_id = "SendToSNS"
   arn       = aws_sns_topic.scheduled_task_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
+
+  input_transformer {
+    input_paths = {
+      account   = "$.account"
+      region    = "$.region"
+      time      = "$.time"
+      eventName = "$.detail.eventName"
+      user      = "$.detail.userIdentity.arn"
+      schedule  = "$.detail.requestParameters.scheduleExpression"
+    }
+    input_template = <<-EOT
+"Scheduled Task Alert (T1029)
+time=<time> account=<account> region=<region>
+event=<eventName> user=<user>
+schedule=<schedule>
+Action: Verify scheduled task legitimacy"
+EOT
+  }
 }
 
-# Step 3: SNS topic policy
+# Step 4: SNS topic policy (scoped)
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "allow_events" {
   arn = aws_sns_topic.scheduled_task_alerts.arn
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowEventBridgePublishScoped"
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.scheduled_task_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.scheduled_task.arn
+        }
+      }
     }]
   })
 }

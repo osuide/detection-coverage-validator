@@ -163,7 +163,7 @@ resource "aws_cloudwatch_metric_alarm" "iam_enum" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="IAM Enumeration Detected",
@@ -238,25 +238,59 @@ Resources:
         detail:
           eventName: [GetAccountAuthorizationDetails]
       Targets:
-        - Id: Alert
+        - Id: SNSTarget
           Arn: !Ref AlertTopic
           RetryPolicy:
             MaximumRetryAttempts: 8
-            MaximumEventAge: 3600
+            MaximumEventAgeInSeconds: 3600
           DeadLetterConfig:
             Arn: !GetAtt EventDLQ.Arn
+          InputTransformer:
+            InputPathsMap:
+              account: $.account
+              region: $.region
+              time: $.time
+              userArn: $.detail.userIdentity.arn
+              sourceIp: $.detail.sourceIPAddress
+            InputTemplate: |
+              "HIGH: Full IAM Enumeration (T1087.004)"
+              "Time: <time>"
+              "Account: <account> | Region: <region>"
+              "User: <userArn>"
+              "Source IP: <sourceIp>"
+              "Action: GetAccountAuthorizationDetails reveals all IAM policies"
 
   TopicPolicy:
     Type: AWS::SNS::TopicPolicy
     Properties:
       Topics: [!Ref AlertTopic]
       PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowEventBridgePublishScoped
+            Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt AuthDetailsRule.Arn
+
+  DLQPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref EventDLQ
+      PolicyDocument:
         Statement:
           - Effect: Allow
             Principal:
               Service: events.amazonaws.com
-            Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Action: sqs:SendMessage
+            Resource: !GetAtt EventDLQ.Arn""",
                 terraform_template="""# Detect full IAM enumeration
 
 variable "alert_email" {
@@ -294,28 +328,72 @@ resource "aws_cloudwatch_event_rule" "auth_details" {
 }
 
 resource "aws_cloudwatch_event_target" "sns" {
-  rule = aws_cloudwatch_event_rule.auth_details.name
-  arn  = aws_sns_topic.alerts.arn
+  rule      = aws_cloudwatch_event_rule.auth_details.name
+  target_id = "SNSTarget"
+  arn       = aws_sns_topic.alerts.arn
 
   retry_policy {
-    maximum_retry_attempts = 8
-    maximum_event_age      = 3600
+    maximum_retry_attempts       = 8
+    maximum_event_age_in_seconds = 3600
   }
 
   dead_letter_config {
     arn = aws_sqs_queue.event_dlq.arn
   }
+
+  input_transformer {
+    input_paths = {
+      account  = "$.account"
+      region   = "$.region"
+      time     = "$.time"
+      userArn  = "$.detail.userIdentity.arn"
+      sourceIp = "$.detail.sourceIPAddress"
+    }
+
+    input_template = <<-EOT
+"HIGH: Full IAM Enumeration (T1087.004)
+Time: <time>
+Account: <account> | Region: <region>
+User: <userArn>
+Source IP: <sourceIp>
+Action: GetAccountAuthorizationDetails reveals all IAM policies"
+EOT
+  }
 }
+
+data "aws_caller_identity" "current" {}
 
 resource "aws_sns_topic_policy" "allow_events" {
   arn = aws_sns_topic.alerts.arn
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowEventBridgePublishScoped"
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.auth_details.arn
+        }
+      }
+    }]
+  })
+}
+
+resource "aws_sqs_queue_policy" "dlq" {
+  queue_url = aws_sqs_queue.event_dlq.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.event_dlq.arn
     }]
   })
 }""",

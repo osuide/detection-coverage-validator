@@ -136,7 +136,7 @@ resource "aws_cloudwatch_metric_alarm" "kerberos_anomaly" {
   alarm_description   = "Detects potential Golden Ticket or Kerberos ticket forgery"
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.kerberos_alerts.arn]
+  alarm_actions       = [aws_sns_topic.kerberos_alerts.arn]
 }
 
 # EventBridge rule for Directory Service authentication failures
@@ -166,6 +166,8 @@ resource "aws_cloudwatch_event_target" "sns_target" {
 }
 
 # SNS topic policy to allow EventBridge to publish
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "allow_eventbridge" {
   arn = aws_sns_topic.kerberos_alerts.arn
 
@@ -176,6 +178,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.kerberos_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",
@@ -235,7 +242,6 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
-      TreatMissingData: notBreaching
       TreatMissingData: notBreaching
 
       AlarmActions:
@@ -386,7 +392,7 @@ resource "aws_cloudwatch_metric_alarm" "kerberoasting_detected" {
   alarm_description   = "Detects potential Kerberoasting attack - excessive SPN ticket requests"
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.kerberoasting_alerts.arn]
+  alarm_actions       = [aws_sns_topic.kerberoasting_alerts.arn]
   treat_missing_data  = "notBreaching"
 }
 
@@ -418,7 +424,7 @@ resource "aws_cloudwatch_metric_alarm" "asrep_roasting_detected" {
   alarm_description   = "Detects potential AS-REP Roasting attack"
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.kerberoasting_alerts.arn]
+  alarm_actions       = [aws_sns_topic.kerberoasting_alerts.arn]
 }""",
                 cloudformation_template="""# AWS CloudFormation: Detect Kerberoasting attacks
 # Step 1: Create metric filters for excessive SPN ticket requests
@@ -473,7 +479,6 @@ Resources:
       Threshold: 20
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref KerberoastingAlertsTopic
@@ -503,7 +508,6 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 10
       ComparisonOperator: GreaterThanThreshold
-      TreatMissingData: notBreaching
       TreatMissingData: notBreaching
 
       AlarmActions:

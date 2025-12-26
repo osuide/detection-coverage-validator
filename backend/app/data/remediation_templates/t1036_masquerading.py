@@ -117,20 +117,53 @@ Resources:
       Targets:
         - Arn: !Ref GuardDutyAlertTopic
           Id: SNSTarget
+          RetryPolicy:
+            MaximumEventAgeInSeconds: 3600
+            MaximumRetryAttempts: 8
+          DeadLetterConfig:
+            Arn: !GetAtt DeadLetterQueue.Arn
+          InputTransformer:
+            InputPathsMap:
+              account: $.account
+              region: $.region
+              time: $.time
+              type: $.detail.type
+              severity: $.detail.severity
+              instanceId: $.detail.resource.instanceDetails.instanceId
+            InputTemplate: |
+              "GuardDuty Masquerading Alert (T1036)
+              time=<time> account=<account> region=<region>
+              finding=<type> severity=<severity>
+              instance=<instanceId>
+              Action: Investigate execution anomaly immediately"
 
-  # Step 3: Grant EventBridge permission to publish to SNS
+  # Step 3: Dead letter queue
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: guardduty-masquerading-dlq
+      MessageRetentionPeriod: 1209600
+
+  # Step 4: Grant EventBridge permission to publish to SNS (scoped)
   SNSTopicPolicy:
     Type: AWS::SNS::TopicPolicy
     Properties:
       Topics:
         - !Ref GuardDutyAlertTopic
       PolicyDocument:
+        Version: '2012-10-17'
         Statement:
-          - Effect: Allow
+          - Sid: AllowEventBridgePublish
+            Effect: Allow
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref GuardDutyAlertTopic""",
+            Resource: !Ref GuardDutyAlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt MasqueradingEventRule.Arn""",
                 terraform_template="""# AWS: GuardDuty masquerading detection
 
 variable "alert_email" {
@@ -168,12 +201,48 @@ resource "aws_cloudwatch_event_rule" "masquerading" {
   })
 }
 
-# Step 3: Configure target to send alerts to SNS
+# Step 3: Dead letter queue
+resource "aws_sqs_queue" "dlq" {
+  name                      = "guardduty-masquerading-dlq"
+  message_retention_seconds = 1209600
+}
+
+# Step 4: Configure target with DLQ, retry, and input transformer
 resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.masquerading.name
   target_id = "SendToSNS"
   arn       = aws_sns_topic.guardduty_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
+
+  input_transformer {
+    input_paths = {
+      account    = "$.account"
+      region     = "$.region"
+      time       = "$.time"
+      type       = "$.detail.type"
+      severity   = "$.detail.severity"
+      instanceId = "$.detail.resource.instanceDetails.instanceId"
+    }
+    input_template = <<-EOT
+"GuardDuty Masquerading Alert (T1036)
+time=<time> account=<account> region=<region>
+finding=<type> severity=<severity>
+instance=<instanceId>
+Action: Investigate execution anomaly immediately"
+EOT
+  }
 }
+
+# Step 5: SNS topic policy (scoped)
+data "aws_caller_identity" "current" {}
 
 resource "aws_sns_topic_policy" "guardduty_publish" {
   arn = aws_sns_topic.guardduty_alerts.arn
@@ -181,10 +250,19 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowEventBridgePublishScoped"
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
-      Action    = "SNS:Publish"
+      Action    = "sns:Publish"
       Resource  = aws_sns_topic.guardduty_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.masquerading.arn
+        }
+      }
     }]
   })
 }""",
@@ -277,11 +355,9 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref SNSTopicArn
-      TreatMissingData: notBreaching
 
   # Step 3: Create EventBridge rule for real-time detection
   LambdaMasqueradingRule:
@@ -342,10 +418,8 @@ resource "aws_cloudwatch_metric_alarm" "lambda_masquerading" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [var.sns_topic_arn]
-  treat_missing_data  = "notBreaching"
+  alarm_actions       = [var.sns_topic_arn]
 }
 
 # Step 3: Create EventBridge rule for real-time detection
@@ -470,10 +544,30 @@ resource "aws_cloudwatch_metric_alarm" "ecs_alert" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
-  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.alerts.arn]
+}
+
+# Step 4: SNS topic policy (scoped)
+data "aws_caller_identity" "current" {}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchAlarms"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="high",
                 alert_title="Suspicious ECS Task/Container Name Detected",

@@ -243,6 +243,8 @@ resource "aws_cloudwatch_event_target" "sns" {
   arn       = aws_sns_topic.exfil_alerts.arn
 }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "allow_eventbridge" {
   arn = aws_sns_topic.exfil_alerts.arn
 
@@ -253,6 +255,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.exfil_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }
@@ -433,6 +440,11 @@ resource "aws_sns_topic_policy" "alerts_policy" {
       Principal = { Service = "cloudwatch.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.exfil_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }
@@ -466,9 +478,8 @@ resource "aws_cloudwatch_metric_alarm" "exfil_device" {
   namespace           = "Security/DataExfil"
   metric_name         = "ExfiltrationDeviceConnected"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.exfil_alerts.arn]
+  alarm_actions       = [aws_sns_topic.exfil_alerts.arn]
 }
 
 # NOTE: Deploy SSM Document from T1200 template to enable detection
@@ -641,7 +652,7 @@ resource "aws_cloudwatch_metric_alarm" "data_staging" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.staging_alerts.arn]
+  alarm_actions       = [aws_sns_topic.staging_alerts.arn]
 }
 
 # NOTE: This detection monitors SSM commands only.

@@ -117,7 +117,6 @@ Resources:
 
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching
 
   # High 5xx error rate alarm
   High5xxAlarm:
@@ -138,7 +137,6 @@ Resources:
 
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching
 
   # Target response time alarm
   HighResponseTimeAlarm:
@@ -159,7 +157,23 @@ Resources:
 
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching""",
+
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: [!Ref AlertTopic]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudWatchPublish
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId""",
                 terraform_template="""# Detect HTTP flood attacks via ALB metrics
 
 variable "load_balancer_name" { type = string }
@@ -188,8 +202,7 @@ resource "aws_cloudwatch_metric_alarm" "http_flood" {
   threshold           = 10000
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
-  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 
   dimensions = {
     LoadBalancer = var.load_balancer_name
@@ -208,8 +221,7 @@ resource "aws_cloudwatch_metric_alarm" "high_5xx" {
   threshold           = 100
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
-  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 
   dimensions = {
     LoadBalancer = var.load_balancer_name
@@ -228,12 +240,32 @@ resource "aws_cloudwatch_metric_alarm" "high_response_time" {
   threshold           = 5
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
-  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 
   dimensions = {
     LoadBalancer = var.load_balancer_name
   }
+}
+
+data "aws_caller_identity" "current" {}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="high",
                 alert_title="HTTP Flood Attack Detected",
@@ -300,8 +332,7 @@ resource "aws_cloudwatch_metric_alarm" "request_flood" {
   threshold           = 50000
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
-  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 
   dimensions = {
     DistributionId = var.distribution_id
@@ -320,8 +351,7 @@ resource "aws_cloudwatch_metric_alarm" "high_errors" {
   threshold           = 5
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
-  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 
   dimensions = {
     DistributionId = var.distribution_id
@@ -340,12 +370,32 @@ resource "aws_cloudwatch_metric_alarm" "origin_latency" {
   threshold           = 3000
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
-  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 
   dimensions = {
     DistributionId = var.distribution_id
   }
+}
+
+data "aws_caller_identity" "current" {}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="high",
                 alert_title="CloudFront Request Flood",
@@ -412,8 +462,7 @@ resource "aws_cloudwatch_metric_alarm" "connection_flood" {
   threshold           = 5000
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
-  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 
   dimensions = {
     TargetGroup = var.target_group_name
@@ -432,8 +481,7 @@ resource "aws_cloudwatch_metric_alarm" "new_connections" {
   threshold           = 2000
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
-  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 
   dimensions = {
     TargetGroup = var.target_group_name
@@ -452,12 +500,32 @@ resource "aws_cloudwatch_metric_alarm" "rejected_connections" {
   threshold           = 10
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
-  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 
   dimensions = {
     TargetGroup = var.target_group_name
   }
+}
+
+data "aws_caller_identity" "current" {}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="high",
                 alert_title="Connection Exhaustion Attack",

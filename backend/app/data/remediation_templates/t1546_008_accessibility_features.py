@@ -202,6 +202,8 @@ resource "aws_cloudwatch_event_target" "sns" {
 }
 
 # Allow EventBridge to publish to SNS
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "allow_eventbridge" {
   arn = aws_sns_topic.accessibility_alerts.arn
   policy = jsonencode({
@@ -211,6 +213,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.accessibility_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }
@@ -241,7 +248,7 @@ resource "aws_cloudwatch_metric_alarm" "accessibility_tamper" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.accessibility_alerts.arn]
+  alarm_actions       = [aws_sns_topic.accessibility_alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="Windows Accessibility Feature Tampering Detected",
@@ -340,7 +347,7 @@ resource "aws_cloudwatch_metric_alarm" "ifeo_tamper" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.ifeo_alerts.arn]
+  alarm_actions       = [aws_sns_topic.ifeo_alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="critical",

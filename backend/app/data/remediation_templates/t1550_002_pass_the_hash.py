@@ -191,6 +191,8 @@ resource "aws_cloudwatch_event_target" "sns" {
   arn  = aws_sns_topic.pth_alerts.arn
 }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "allow_events" {
   arn = aws_sns_topic.pth_alerts.arn
 
@@ -201,6 +203,11 @@ resource "aws_sns_topic_policy" "allow_events" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.pth_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",
@@ -316,7 +323,6 @@ Resources:
       Threshold: 10
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref AlertTopic""",
@@ -370,7 +376,7 @@ resource "aws_cloudwatch_metric_alarm" "excessive_ntlm" {
   threshold           = 10
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.ntlm_alerts.arn]
+  alarm_actions       = [aws_sns_topic.ntlm_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Excessive NTLM Authentication Activity",

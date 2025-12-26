@@ -119,9 +119,25 @@ Resources:
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
-
       AlarmActions: [!Ref AlertTopic]
-      TreatMissingData: notBreaching""",
+
+  AlertTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudWatchAlarms
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+      Topics:
+        - !Ref AlertTopic""",
                 terraform_template="""# Detect EC2 Instance Connect usage
 
 variable "cloudtrail_log_group" {
@@ -171,9 +187,28 @@ resource "aws_cloudwatch_metric_alarm" "ec2_connect_detection" {
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.ec2_connect_alerts.arn]
+}
 
-  alarm_actions [aws_sns_topic.ec2_connect_alerts.arn]
-  treat_missing_data  = "notBreaching"
+data "aws_caller_identity" "current" {}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.ec2_connect_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchAlarms"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.ec2_connect_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="medium",
                 alert_title="EC2 Instance Connect Session Detected",
@@ -262,9 +297,25 @@ Resources:
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
-
       AlarmActions: [!Ref AlertTopic]
-      TreatMissingData: notBreaching""",
+
+  AlertTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudWatchAlarms
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+      Topics:
+        - !Ref AlertTopic""",
                 terraform_template="""# Detect AWS Systems Manager Session Manager usage
 
 variable "cloudtrail_log_group" {
@@ -314,9 +365,28 @@ resource "aws_cloudwatch_metric_alarm" "ssm_session_detection" {
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.ssm_session_alerts.arn]
+}
 
-  alarm_actions [aws_sns_topic.ssm_session_alerts.arn]
-  treat_missing_data  = "notBreaching"
+data "aws_caller_identity" "current" {}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.ssm_session_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchAlarms"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.ssm_session_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="medium",
                 alert_title="Systems Manager Session Started",

@@ -125,10 +125,28 @@ resource "aws_cloudwatch_event_rule" "exfil_findings" {
   })
 }
 
+data "aws_caller_identity" "current" {}
+
+# Step 4: Dead letter queue
+resource "aws_sqs_queue" "dlq" {
+  name                      = "guardduty-exfil-dlq"
+  message_retention_seconds = 1209600
+}
+
+# Step 5: EventBridge target with DLQ, retry, input transformer
 resource "aws_cloudwatch_event_target" "to_sns" {
   rule      = aws_cloudwatch_event_rule.exfil_findings.name
   target_id = "SendToSNS"
   arn       = aws_sns_topic.exfil_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
 
   input_transformer {
     input_paths = {
@@ -139,27 +157,36 @@ resource "aws_cloudwatch_event_target" "to_sns" {
       accountId   = "$.account"
     }
     input_template = <<-EOF
-      "CRITICAL: GuardDuty Exfiltration Alert"
-      "Type: <findingType>"
-      "Severity: <severity>"
-      "Bucket: <bucket>"
-      "Principal: <principal>"
-      "Account: <accountId>"
-      "Action: Immediately investigate data transfer activity"
-    EOF
+"CRITICAL: GuardDuty Exfiltration Alert (T1537)
+Type: <findingType>
+Severity: <severity>
+Bucket: <bucket>
+Principal: <principal>
+Account: <accountId>
+Action: Immediately investigate data transfer activity"
+EOF
   }
 }
 
+# Step 6: Scoped SNS topic policy
 resource "aws_sns_topic_policy" "allow_eventbridge" {
   arn = aws_sns_topic.exfil_alerts.arn
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Sid       = "AllowEventBridgePublish"
+      Sid       = "AllowEventBridgePublishScoped"
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.exfil_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.exfil_findings.arn
+        }
+      }
     }]
   })
 }""",
@@ -306,6 +333,11 @@ resource "aws_sns_topic_policy" "allow_events" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",
@@ -438,6 +470,11 @@ resource "aws_sns_topic_policy" "allow_events" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",

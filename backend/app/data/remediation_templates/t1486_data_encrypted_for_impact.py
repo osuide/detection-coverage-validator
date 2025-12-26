@@ -88,7 +88,6 @@ Resources:
     Properties:
       KmsMasterKeyId: alias/aws/sns
       TopicName: s3-mass-putobject-alerts
-      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -498,7 +497,6 @@ Resources:
     Properties:
       KmsMasterKeyId: alias/aws/sns
       TopicName: s3-ssec-ransomware-alerts
-      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -568,7 +566,7 @@ resource "aws_cloudwatch_metric_alarm" "ransomware" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="Potential S3 Ransomware - SSE-C Encryption",
@@ -634,7 +632,6 @@ Resources:
     Properties:
       KmsMasterKeyId: alias/aws/sns
       TopicName: kms-manipulation-alerts
-      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -753,6 +750,8 @@ resource "aws_cloudwatch_event_target" "sns" {
   }
 }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "allow_events" {
   arn = aws_sns_topic.kms_alerts.arn
 
@@ -765,6 +764,11 @@ resource "aws_sns_topic_policy" "allow_events" {
       }
       Action   = "sns:Publish"
       Resource = aws_sns_topic.kms_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }
@@ -843,7 +847,6 @@ Resources:
     Properties:
       KmsMasterKeyId: alias/aws/sns
       TopicName: ebs-encryption-anomaly-alerts
-      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -966,6 +969,11 @@ resource "aws_sns_topic_policy" "allow_events" {
       }
       Action   = "sns:Publish"
       Resource = aws_sns_topic.ebs_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }
@@ -1049,7 +1057,6 @@ Resources:
     Properties:
       KmsMasterKeyId: alias/aws/sns
       TopicName: rds-encryption-modification-alerts
-      KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
@@ -1181,6 +1188,11 @@ resource "aws_sns_topic_policy" "allow_events" {
       }
       Action   = "sns:Publish"
       Resource = aws_sns_topic.rds_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }

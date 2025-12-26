@@ -239,8 +239,10 @@ resource "aws_cloudwatch_metric_alarm" "image_updates" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.supply_chain_alerts.arn]
+  alarm_actions       = [aws_sns_topic.supply_chain_alerts.arn]
 }
+
+data "aws_caller_identity" "current" {}
 
 resource "aws_sns_topic_policy" "allow_events" {
   arn = aws_sns_topic.supply_chain_alerts.arn
@@ -421,6 +423,11 @@ resource "aws_sns_topic_policy" "allow_events" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.ecr_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",
@@ -528,7 +535,7 @@ resource "aws_cloudwatch_metric_alarm" "codebuild_compromise" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.codebuild_alerts.arn]
+  alarm_actions       = [aws_sns_topic.codebuild_alerts.arn]
 }
 
 resource "aws_sns_topic_policy" "allow_cloudwatch" {
@@ -541,6 +548,11 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
       Principal = { Service = "cloudwatch.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.codebuild_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",

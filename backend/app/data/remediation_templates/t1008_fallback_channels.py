@@ -124,11 +124,27 @@ Resources:
       Threshold: 10
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
-
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching""",
+
+  # Step 4: SNS topic policy (scoped)
+  AlertTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudWatchAlarms
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+      Topics:
+        - !Ref AlertTopic""",
                 terraform_template="""# AWS: Detect protocol switching for fallback C2 channels
 
 variable "alert_email" {
@@ -179,10 +195,29 @@ resource "aws_cloudwatch_metric_alarm" "protocol_switch" {
   threshold           = 10
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.alerts.arn]
+}
 
-  alarm_actions [aws_sns_topic.alerts.arn]
-  treat_missing_data  = "notBreaching"
+# Step 4: SNS topic policy (scoped to account)
+data "aws_caller_identity" "current" {}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchAlarms"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="high",
                 alert_title="C2 Fallback Channel Detected",
@@ -281,11 +316,27 @@ Resources:
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
-
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching""",
+
+  # Step 4: SNS topic policy (scoped)
+  AlertTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudWatchAlarms
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+      Topics:
+        - !Ref AlertTopic""",
                 terraform_template="""# AWS: Detect DNS fallback C2 channels
 
 variable "alert_email" {
@@ -340,10 +391,29 @@ resource "aws_cloudwatch_metric_alarm" "dns_fallback" {
   threshold           = 50
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.alerts.arn]
+}
 
-  alarm_actions [aws_sns_topic.alerts.arn]
-  treat_missing_data  = "notBreaching"
+# Step 4: SNS topic policy (scoped to account)
+data "aws_caller_identity" "current" {}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchAlarms"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="high",
                 alert_title="DNS Fallback C2 Channel Detected",
@@ -436,10 +506,29 @@ resource "aws_cloudwatch_metric_alarm" "port_hopping" {
   threshold           = 20
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.alerts.arn]
+}
 
-  alarm_actions [aws_sns_topic.alerts.arn]
-  treat_missing_data  = "notBreaching"
+# Step 4: SNS topic policy (scoped to account)
+data "aws_caller_identity" "current" {}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchAlarms"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="high",
                 alert_title="Port Hopping Detected",
@@ -502,7 +591,14 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
-  # Step 2: Create EventBridge rule for C2 findings
+  # Step 2: Dead letter queue for failed deliveries
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: guardduty-c2-dlq
+      MessageRetentionPeriod: 1209600
+
+  # Step 3: Create EventBridge rule for C2 findings
   GuardDutyC2Rule:
     Type: AWS::Events::Rule
     Properties:
@@ -521,20 +617,46 @@ Resources:
       Targets:
         - Arn: !Ref GuardDutyAlertTopic
           Id: SNSTarget
+          RetryPolicy:
+            MaximumEventAgeInSeconds: 3600
+            MaximumRetryAttempts: 8
+          DeadLetterConfig:
+            Arn: !GetAtt DeadLetterQueue.Arn
+          InputTransformer:
+            InputPathsMap:
+              account: $.account
+              region: $.region
+              time: $.time
+              type: $.detail.type
+              severity: $.detail.severity
+              instanceId: $.detail.resource.instanceDetails.instanceId
+            InputTemplate: |
+              "GuardDuty C2 Fallback Alert (T1008)
+              time=<time> account=<account> region=<region>
+              finding=<type> severity=<severity>
+              instance=<instanceId>
+              Action: Immediately isolate and investigate"
 
-  # Step 3: Grant EventBridge permission to publish to SNS
+  # Step 4: Grant EventBridge permission to publish to SNS (scoped)
   SNSTopicPolicy:
     Type: AWS::SNS::TopicPolicy
     Properties:
       Topics:
         - !Ref GuardDutyAlertTopic
       PolicyDocument:
+        Version: '2012-10-17'
         Statement:
-          - Effect: Allow
+          - Sid: AllowEventBridgePublish
+            Effect: Allow
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref GuardDutyAlertTopic""",
+            Resource: !Ref GuardDutyAlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt GuardDutyC2Rule.Arn""",
                 terraform_template="""# AWS: GuardDuty C2 fallback detection
 
 variable "alert_email" {
@@ -554,7 +676,13 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
-# Step 2: Create EventBridge rule for C2 findings
+# Step 2: Dead letter queue for failed deliveries
+resource "aws_sqs_queue" "dlq" {
+  name                      = "guardduty-c2-dlq"
+  message_retention_seconds = 1209600
+}
+
+# Step 3: Create EventBridge rule for C2 findings
 resource "aws_cloudwatch_event_rule" "guardduty_c2" {
   name        = "guardduty-c2-fallback-detection"
   description = "Alert on GuardDuty C2 and fallback channel findings"
@@ -571,12 +699,42 @@ resource "aws_cloudwatch_event_rule" "guardduty_c2" {
   })
 }
 
-# Step 3: Configure target to send alerts to SNS
+# Step 4: Configure target with DLQ, retry, and input transformer
 resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.guardduty_c2.name
   target_id = "SendToSNS"
   arn       = aws_sns_topic.guardduty_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
+
+  input_transformer {
+    input_paths = {
+      account    = "$.account"
+      region     = "$.region"
+      time       = "$.time"
+      type       = "$.detail.type"
+      severity   = "$.detail.severity"
+      instanceId = "$.detail.resource.instanceDetails.instanceId"
+    }
+    input_template = <<-EOT
+"GuardDuty C2 Fallback Alert (T1008)
+time=<time> account=<account> region=<region>
+finding=<type> severity=<severity>
+instance=<instanceId>
+Action: Immediately isolate and investigate"
+EOT
+  }
 }
+
+# Step 5: SNS topic policy (scoped to account and rule)
+data "aws_caller_identity" "current" {}
 
 resource "aws_sns_topic_policy" "guardduty_publish" {
   arn = aws_sns_topic.guardduty_alerts.arn
@@ -584,10 +742,19 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowEventBridgePublishScoped"
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
-      Action    = "SNS:Publish"
+      Action    = "sns:Publish"
       Resource  = aws_sns_topic.guardduty_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.guardduty_c2.arn
+        }
+      }
     }]
   })
 }""",

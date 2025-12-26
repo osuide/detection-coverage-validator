@@ -180,6 +180,8 @@ resource "aws_cloudwatch_event_target" "sns" {
   arn       = aws_sns_topic.guardduty_alerts.arn
 }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "allow_eventbridge" {
   arn = aws_sns_topic.guardduty_alerts.arn
   policy = jsonencode({
@@ -189,6 +191,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.guardduty_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",
@@ -356,7 +363,7 @@ resource "aws_cloudwatch_metric_alarm" "browser_exploitation" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.browser_alerts.arn]
+  alarm_actions       = [aws_sns_topic.browser_alerts.arn]
 }
 
 resource "aws_sns_topic_policy" "allow_cloudwatch" {
@@ -368,6 +375,11 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
       Principal = { Service = "cloudwatch.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.browser_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",
@@ -537,7 +549,7 @@ resource "aws_cloudwatch_metric_alarm" "malvertising" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.malvertising_alerts.arn]
+  alarm_actions       = [aws_sns_topic.malvertising_alerts.arn]
 }
 
 resource "aws_sns_topic_policy" "allow_cloudwatch" {
@@ -549,6 +561,11 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
       Principal = { Service = "cloudwatch.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.malvertising_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",

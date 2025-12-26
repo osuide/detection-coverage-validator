@@ -115,14 +115,22 @@ Resources:
   TopicPolicy:
     Type: AWS::SNS::TopicPolicy
     Properties:
-      Topics: [!Ref AlertTopic]
+      Topics:
+        - !Ref AlertTopic
       PolicyDocument:
+        Version: '2012-10-17'
         Statement:
-          - Effect: Allow
+          - Sid: AllowEventBridgePublishScoped
+            Effect: Allow
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
             Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt S3DeleteRule.Arn
 
   # Allow EventBridge to send failed events to DLQ
   DLQPolicy:
@@ -166,13 +174,16 @@ resource "aws_cloudwatch_event_rule" "s3_delete" {
   })
 }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_cloudwatch_event_target" "sns" {
-  rule = aws_cloudwatch_event_rule.s3_delete.name
-  arn  = aws_sns_topic.alerts.arn
+  rule      = aws_cloudwatch_event_rule.s3_delete.name
+  target_id = "SNSTarget"
+  arn       = aws_sns_topic.alerts.arn
 
   retry_policy {
-    maximum_retry_attempts = 8
-    maximum_event_age      = 3600
+    maximum_retry_attempts       = 8
+    maximum_event_age_in_seconds = 3600
   }
 
   dead_letter_config {
@@ -185,10 +196,19 @@ resource "aws_sns_topic_policy" "allow_events" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowEventBridgePublishScoped"
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.s3_delete.arn
+        }
+      }
     }]
   })
 }
@@ -297,6 +317,11 @@ resource "aws_sns_topic_policy" "allow_events" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }

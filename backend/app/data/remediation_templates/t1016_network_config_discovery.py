@@ -123,10 +123,27 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
-
       AlarmActions:
         - !Ref NetworkDiscoveryAlertTopic
-      TreatMissingData: notBreaching""",
+
+  # Step 4: SNS topic policy (scoped)
+  AlertTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudWatchAlarms
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref NetworkDiscoveryAlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+      Topics:
+        - !Ref NetworkDiscoveryAlertTopic""",
                 terraform_template="""# AWS: Detect network configuration discovery
 
 variable "cloudtrail_log_group" {
@@ -178,9 +195,29 @@ resource "aws_cloudwatch_metric_alarm" "network_discovery" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.network_discovery_alerts.arn]
+}
 
-  alarm_actions [aws_sns_topic.network_discovery_alerts.arn]
-  treat_missing_data  = "notBreaching"
+# Step 4: SNS topic policy (scoped to account)
+data "aws_caller_identity" "current" {}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.network_discovery_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchAlarms"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.network_discovery_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="medium",
                 alert_title="Network Configuration Discovery Detected",
@@ -272,8 +309,26 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
+      AlarmActions: [!Ref ENIDiscoveryAlertTopic]
 
-      AlarmActions: [!Ref ENIDiscoveryAlertTopic]""",
+  # Step 4: SNS topic policy (scoped)
+  AlertTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudWatchAlarms
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref ENIDiscoveryAlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+      Topics:
+        - !Ref ENIDiscoveryAlertTopic""",
                 terraform_template="""# AWS: Detect network interface enumeration
 
 variable "cloudtrail_log_group" {
@@ -321,8 +376,29 @@ resource "aws_cloudwatch_metric_alarm" "eni_discovery" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.eni_discovery_alerts.arn]
+}
 
-  alarm_actions [aws_sns_topic.eni_discovery_alerts.arn]
+# Step 4: SNS topic policy (scoped to account)
+data "aws_caller_identity" "current" {}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.eni_discovery_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchAlarms"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.eni_discovery_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="medium",
                 alert_title="Network Interface Enumeration Detected",

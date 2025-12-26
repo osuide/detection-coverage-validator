@@ -115,7 +115,6 @@ Resources:
       Threshold: 3
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref SNSTopicArn
@@ -170,7 +169,7 @@ resource "aws_cloudwatch_metric_alarm" "sandbox_evasion" {
   threshold           = 3
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [var.sns_topic_arn]
+  alarm_actions       = [var.sns_topic_arn]
 }
 
 # Step 3: Query for investigation
@@ -273,7 +272,6 @@ Resources:
       Threshold: 10
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref SNSTopicArn
@@ -326,7 +324,7 @@ resource "aws_cloudwatch_metric_alarm" "metadata_checks" {
   threshold           = 10
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [var.sns_topic_arn]
+  alarm_actions       = [var.sns_topic_arn]
 }
 
 # Step 3: Investigation query
@@ -442,7 +440,6 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref SNSTopicArn""",
@@ -498,7 +495,7 @@ resource "aws_cloudwatch_metric_alarm" "long_execution" {
   threshold           = 5
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [var.sns_topic_arn]
+  alarm_actions       = [var.sns_topic_arn]
 }""",
                 alert_severity="low",
                 alert_title="Time-Based Evasion Pattern Detected",

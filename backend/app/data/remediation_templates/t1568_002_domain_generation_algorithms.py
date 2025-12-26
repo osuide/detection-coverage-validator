@@ -96,6 +96,23 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: [!Ref AlertTopic]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudWatchPublish
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+
   # Step 2: Create metric filter for high NXDOMAIN rates
   NXDomainFilter:
     Type: AWS::Logs::MetricFilter
@@ -121,7 +138,6 @@ Resources:
       Threshold: 100
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect DGA activity via Route 53 DNS query logs
@@ -136,11 +152,32 @@ variable "alert_email" {
   description = "Email address for security alerts"
 }
 
+data "aws_caller_identity" "current" {}
+
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "dga_alerts" {
   name         = "dga-detection-alerts"
   kms_master_key_id = "alias/aws/sns"
   display_name = "DGA Detection Alerts"
+}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.dga_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.dga_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -174,9 +211,8 @@ resource "aws_cloudwatch_metric_alarm" "dga_detection" {
   threshold           = 100
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.dga_alerts.arn]
+  alarm_actions       = [aws_sns_topic.dga_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Possible DGA Activity Detected",
@@ -235,11 +271,32 @@ variable "alert_email" {
   description = "Email address for security alerts"
 }
 
+data "aws_caller_identity" "current" {}
+
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "dga_pattern_alerts" {
   name         = "dga-pattern-alerts"
   kms_master_key_id = "alias/aws/sns"
   display_name = "DGA Pattern Detection"
+}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.dga_pattern_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.dga_pattern_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -274,9 +331,8 @@ resource "aws_cloudwatch_metric_alarm" "dga_pattern_detection" {
   threshold           = 50
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.dga_pattern_alerts.arn]
+  alarm_actions       = [aws_sns_topic.dga_pattern_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Suspicious Domain Pattern Detected",

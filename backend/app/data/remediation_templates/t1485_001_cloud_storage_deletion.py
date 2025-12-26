@@ -150,6 +150,8 @@ resource "aws_cloudwatch_event_target" "to_sns" {
   }
 }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "allow_eventbridge" {
   arn = aws_sns_topic.impact_alerts.arn
   policy = jsonencode({
@@ -160,6 +162,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.impact_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",
@@ -263,7 +270,6 @@ Resources:
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect S3 lifecycle policy modifications for rapid deletion
@@ -316,9 +322,8 @@ resource "aws_cloudwatch_metric_alarm" "lifecycle_policy" {
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.lifecycle_alerts.arn]
+  alarm_actions       = [aws_sns_topic.lifecycle_alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="S3 Lifecycle Policy Modification Detected",
@@ -410,7 +415,6 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect mass S3 object deletions
@@ -463,9 +467,8 @@ resource "aws_cloudwatch_metric_alarm" "mass_deletion" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.deletion_alerts.arn]
+  alarm_actions       = [aws_sns_topic.deletion_alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="Mass S3 Object Deletion Detected",

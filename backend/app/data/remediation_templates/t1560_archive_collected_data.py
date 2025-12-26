@@ -128,11 +128,9 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching
 
   TopicPolicy:
     Type: AWS::SNS::TopicPolicy
@@ -140,12 +138,17 @@ Resources:
       Topics:
         - !Ref AlertTopic
       PolicyDocument:
+        Version: '2012-10-17'
         Statement:
-          - Effect: Allow
+          - Sid: AllowCloudWatchAlarms
+            Effect: Allow
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId""",
                 terraform_template="""# AWS: Detect archive utility execution on EC2 instances
 
 variable "alert_email" {
@@ -198,20 +201,27 @@ resource "aws_cloudwatch_metric_alarm" "archive_activity" {
   statistic           = "Sum"
   threshold           = 5
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.archive_alerts.arn]
+  alarm_actions       = [aws_sns_topic.archive_alerts.arn]
 }
+
+data "aws_caller_identity" "current" {}
 
 resource "aws_sns_topic_policy" "allow_cloudwatch" {
   arn = aws_sns_topic.archive_alerts.arn
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowCloudWatchAlarms"
       Effect    = "Allow"
       Principal = { Service = "cloudwatch.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.archive_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",
@@ -315,7 +325,28 @@ resource "aws_cloudwatch_metric_alarm" "large_archive" {
   threshold           = 2
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.large_archive_alerts.arn]
+  alarm_actions = [aws_sns_topic.large_archive_alerts.arn]
+}
+
+data "aws_caller_identity" "current" {}
+
+resource "aws_sns_topic_policy" "large_archive_alerts" {
+  arn = aws_sns_topic.large_archive_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchAlarms"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.large_archive_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="high",
                 alert_title="Large Archive Files Created",
@@ -403,7 +434,13 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
-  # Step 2: Create EventBridge rule for archive uploads
+  # Step 2: DLQ for EventBridge
+  DLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 1209600
+
+  # Step 3: Create EventBridge rule for archive uploads
   S3ArchiveUploadRule:
     Type: AWS::Events::Rule
     Properties:
@@ -423,6 +460,11 @@ Resources:
       Targets:
         - Id: SNSTarget
           Arn: !Ref AlertTopic
+          RetryPolicy:
+            MaximumRetryAttempts: 8
+            MaximumEventAgeInSeconds: 3600
+          DeadLetterConfig:
+            Arn: !GetAtt DLQ.Arn
           InputTransformer:
             InputPathsMap:
               bucket: "$.detail.requestParameters.bucketName"
@@ -432,19 +474,26 @@ Resources:
             InputTemplate: |
               "Archive file uploaded to S3: <key> in bucket <bucket> by <user> from IP <ip>"
 
-  # Step 3: Configure SNS topic policy
+  # Step 4: Configure SNS topic policy with scoped conditions
   TopicPolicy:
     Type: AWS::SNS::TopicPolicy
     Properties:
       Topics:
         - !Ref AlertTopic
       PolicyDocument:
+        Version: '2012-10-17'
         Statement:
-          - Effect: Allow
+          - Sid: AllowEventBridgePublish
+            Effect: Allow
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt S3ArchiveUploadRule.Arn""",
                 terraform_template="""# AWS: Detect archive file uploads to S3
 
 variable "alert_email" {
@@ -489,10 +538,25 @@ resource "aws_cloudwatch_event_rule" "s3_archive_upload" {
   })
 }
 
+# Step 3: DLQ for EventBridge
+resource "aws_sqs_queue" "dlq" {
+  name                      = "s3-archive-upload-alerts-dlq"
+  message_retention_seconds = 1209600
+}
+
 resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.s3_archive_upload.name
   target_id = "SNSTarget"
   arn       = aws_sns_topic.s3_archive_alerts.arn
+
+  retry_policy {
+    maximum_retry_attempts       = 8
+    maximum_event_age_in_seconds = 3600
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
 
   input_transformer {
     input_paths = {
@@ -505,17 +569,28 @@ resource "aws_cloudwatch_event_target" "sns" {
   }
 }
 
-# Step 3: Configure SNS topic policy
+# Step 4: Configure SNS topic policy with scoped conditions
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "allow_eventbridge" {
   arn = aws_sns_topic.s3_archive_alerts.arn
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowEventBridgePublish"
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.s3_archive_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.s3_archive_upload.arn
+        }
+      }
     }]
   })
 }""",

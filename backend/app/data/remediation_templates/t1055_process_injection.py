@@ -97,16 +97,18 @@ TEMPLATE = RemediationTemplate(
             aws_service="guardduty",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
-                # NOTE: GuardDuty Runtime Monitoring finding types are behavioural indicators.
-                # There are NO specific "ProcessInjection" finding types - detection is via
-                # suspicious process behaviour patterns (new binaries, fileless execution).
+                # GuardDuty Runtime Monitoring has SPECIFIC process injection finding types
+                # that detect memory manipulation, ptrace, and virtual memory writes.
                 guardduty_finding_types=[
+                    # Primary process injection detections
+                    "DefenseEvasion:Runtime/ProcessInjection.Proc",
+                    "DefenseEvasion:Runtime/ProcessInjection.Ptrace",
+                    "DefenseEvasion:Runtime/ProcessInjection.VirtualMemoryWrite",
+                    # Related behavioural indicators
                     "Execution:Runtime/NewLibraryLoaded",
                     "Execution:Runtime/NewBinaryExecuted",
                     "Execution:Runtime/SuspiciousTool",
                     "DefenseEvasion:Runtime/FilelessExecution",
-                    "DefenseEvasion:Runtime/SuspiciousCommand",
-                    "PrivilegeEscalation:Runtime/ContainerMountsHostFS",
                     "PrivilegeEscalation:Runtime/RuncContainerEscape",
                 ],
                 cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
@@ -314,13 +316,30 @@ resource "aws_cloudwatch_event_rule" "process_injection" {
   })
 }
 
+# Dead Letter Queue for failed event deliveries
+resource "aws_sqs_queue" "dlq" {
+  name                      = "guardduty-process-injection-dlq"
+  message_retention_seconds = 1209600  # 14 days
+}
+
 resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.process_injection.name
   target_id = "SNSTarget"
   arn       = aws_sns_topic.process_injection_alerts.arn
+
+  retry_policy {
+    maximum_retry_attempts       = 8
+    maximum_event_age_in_seconds = 3600
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
 }
 
 # SNS topic policy with aws:SourceArn condition for least privilege
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "allow_eventbridge" {
   arn = aws_sns_topic.process_injection_alerts.arn
 
@@ -454,7 +473,6 @@ Resources:
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref AlertTopic
@@ -526,16 +544,15 @@ resource "aws_cloudwatch_metric_alarm" "process_injection" {
   statistic           = "Sum"
   threshold           = 1
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }
 
 # Step 3: SNS topic for alerts
 resource "aws_sns_topic" "alerts" {
-  name         = "process-injection-alerts"
+  name              = "process-injection-alerts"
   kms_master_key_id = "alias/aws/sns"
-  display_name = "Process Injection Alerts"
+  display_name      = "Process Injection Alerts"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -543,6 +560,8 @@ resource "aws_sns_topic_subscription" "email" {
   protocol  = "email"
   endpoint  = var.alert_email
 }
+
+data "aws_caller_identity" "current" {}
 
 resource "aws_sns_topic_policy" "alerts" {
   arn = aws_sns_topic.alerts.arn
@@ -552,8 +571,13 @@ resource "aws_sns_topic_policy" "alerts" {
     Statement = [{
       Effect    = "Allow"
       Principal = { Service = "cloudwatch.amazonaws.com" }
-      Action    = "SNS:Publish"
+      Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }
@@ -936,10 +960,25 @@ resource "aws_cloudwatch_event_rule" "critical_findings" {
   })
 }
 
+# Dead Letter Queue for failed event deliveries
+resource "aws_sqs_queue" "dlq" {
+  name                      = "securityhub-critical-alerts-dlq"
+  message_retention_seconds = 1209600  # 14 days
+}
+
 resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.critical_findings.name
   target_id = "SNSTarget"
   arn       = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_retry_attempts       = 8
+    maximum_event_age_in_seconds = 3600
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
 }
 
 resource "aws_sns_topic" "alerts" {
@@ -954,7 +993,9 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
-# SNS topic policy with aws:SourceArn condition for least privilege
+data "aws_caller_identity" "current" {}
+
+# SNS topic policy with aws:SourceArn and AWS:SourceAccount for least privilege
 resource "aws_sns_topic_policy" "alerts" {
   arn = aws_sns_topic.alerts.arn
 
@@ -964,9 +1005,12 @@ resource "aws_sns_topic_policy" "alerts" {
       Sid       = "AllowEventBridgeRule"
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
-      Action    = "SNS:Publish"
+      Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
       Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
         ArnEquals = {
           "aws:SourceArn" = aws_cloudwatch_event_rule.critical_findings.arn
         }

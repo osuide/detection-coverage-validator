@@ -129,7 +129,6 @@ Resources:
       Threshold: 3
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref SecurityAlertTopic
@@ -139,12 +138,17 @@ Resources:
     Properties:
       Topics: [!Ref SecurityAlertTopic]
       PolicyDocument:
+        Version: '2012-10-17'
         Statement:
-          - Effect: Allow
+          - Sid: AllowCloudWatchAlarms
+            Effect: Allow
             Principal:
               Service: cloudwatch.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref SecurityAlertTopic""",
+            Resource: !Ref SecurityAlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId""",
                 terraform_template="""# Detect obfuscated files and encoded content
 
 variable "cloudwatch_log_group" {
@@ -195,9 +199,29 @@ resource "aws_cloudwatch_metric_alarm" "encoding_activity" {
   threshold           = 3
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.obfuscation_alerts.arn]
+  alarm_actions       = [aws_sns_topic.obfuscation_alerts.arn]
+}
+
+data "aws_caller_identity" "current" {}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.obfuscation_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchAlarms"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.obfuscation_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="medium",
                 alert_title="Obfuscated File Creation Detected",
@@ -292,7 +316,6 @@ Resources:
       Threshold: 2
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref SNSTopicArn
@@ -355,9 +378,29 @@ resource "aws_cloudwatch_metric_alarm" "obfuscated_scripts" {
   threshold           = 2
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
+}
+
+data "aws_caller_identity" "current" {}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchAlarms"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }
 
 # Step 3: Monitor for environment variable obfuscation
@@ -475,18 +518,50 @@ Resources:
       Targets:
         - Id: MalwareAlertTopic
           Arn: !Ref MalwareAlertTopic
+          RetryPolicy:
+            MaximumEventAgeInSeconds: 3600
+            MaximumRetryAttempts: 8
+          DeadLetterConfig:
+            Arn: !GetAtt DeadLetterQueue.Arn
+          InputTransformer:
+            InputPathsMap:
+              account: $.account
+              region: $.region
+              time: $.time
+              type: $.detail.type
+              severity: $.detail.severity
+              bucket: $.detail.resource.s3BucketDetails.name
+            InputTemplate: |
+              "GuardDuty S3 Malware Alert (T1027)
+              time=<time> account=<account> region=<region>
+              finding=<type> severity=<severity>
+              bucket=<bucket>
+              Action: Isolate and investigate immediately"
+
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: guardduty-malware-dlq
+      MessageRetentionPeriod: 1209600
 
   TopicPolicy:
     Type: AWS::SNS::TopicPolicy
     Properties:
       Topics: [!Ref MalwareAlertTopic]
       PolicyDocument:
+        Version: '2012-10-17'
         Statement:
-          - Effect: Allow
+          - Sid: AllowEventBridgePublish
+            Effect: Allow
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref MalwareAlertTopic""",
+            Resource: !Ref MalwareAlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt MalwareDetectionRule.Arn""",
                 terraform_template="""# GuardDuty Malware Protection for obfuscated files
 
 variable "s3_bucket_name" {
@@ -545,21 +620,64 @@ resource "aws_cloudwatch_event_rule" "malware_detection" {
   })
 }
 
+resource "aws_sqs_queue" "dlq" {
+  name                      = "guardduty-malware-dlq"
+  message_retention_seconds = 1209600
+}
+
 resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.malware_detection.name
   target_id = "SendToSNS"
   arn       = aws_sns_topic.malware_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
+
+  input_transformer {
+    input_paths = {
+      account  = "$.account"
+      region   = "$.region"
+      time     = "$.time"
+      type     = "$.detail.type"
+      severity = "$.detail.severity"
+      bucket   = "$.detail.resource.s3BucketDetails.name"
+    }
+    input_template = <<-EOT
+"GuardDuty S3 Malware Alert (T1027)
+time=<time> account=<account> region=<region>
+finding=<type> severity=<severity>
+bucket=<bucket>
+Action: Isolate and investigate immediately"
+EOT
+  }
 }
+
+data "aws_caller_identity" "current" {}
 
 resource "aws_sns_topic_policy" "allow_eventbridge" {
   arn = aws_sns_topic.malware_alerts.arn
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowEventBridgePublishScoped"
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.malware_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.malware_detection.arn
+        }
+      }
     }]
   })
 }""",
@@ -847,22 +965,64 @@ resource "aws_cloudwatch_event_rule" "lambda_updates" {
   })
 }
 
+# Step 3: Dead letter queue
+resource "aws_sqs_queue" "dlq" {
+  name                      = "lambda-obfuscation-dlq"
+  message_retention_seconds = 1209600
+}
+
 resource "aws_cloudwatch_event_target" "lambda_alerts" {
   rule      = aws_cloudwatch_event_rule.lambda_updates.name
   target_id = "SendToSNS"
   arn       = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
+
+  input_transformer {
+    input_paths = {
+      account      = "$.account"
+      region       = "$.region"
+      time         = "$.time"
+      functionName = "$.detail.requestParameters.functionName"
+      user         = "$.detail.userIdentity.arn"
+    }
+    input_template = <<-EOT
+"Lambda Deployment Alert (T1027)
+time=<time> account=<account> region=<region>
+function=<functionName> user=<user>
+Action: Review function code for obfuscation"
+EOT
+  }
 }
 
-# Step 3: Allow EventBridge to publish to SNS
+# Step 4: Allow EventBridge to publish to SNS (scoped)
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "lambda_alerts" {
   arn = aws_sns_topic.alerts.arn
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowEventBridgePublishScoped"
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.lambda_updates.arn
+        }
+      }
     }]
   })
 }""",

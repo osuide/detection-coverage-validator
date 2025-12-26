@@ -20,7 +20,7 @@ from .template_loader import (
 TEMPLATE = RemediationTemplate(
     technique_id="T1112",
     technique_name="Modify Registry",
-    tactic_ids=["TA0005"],
+    tactic_ids=["TA0003", "TA0005"],  # Persistence, Defense Evasion
     mitre_url="https://attack.mitre.org/techniques/T1112/",
     threat_context=ThreatContext(
         description=(
@@ -115,7 +115,13 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
-  # Step 3: Route defence evasion findings to email
+  # Step 3: DLQ for EventBridge
+  DLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 1209600
+
+  # Step 4: Route defence evasion findings to email
   RegistryModificationRule:
     Type: AWS::Events::Rule
     Properties:
@@ -134,18 +140,31 @@ Resources:
       Targets:
         - Id: AlertTopic
           Arn: !Ref RegistryModAlertTopic
+          RetryPolicy:
+            MaximumRetryAttempts: 8
+            MaximumEventAgeInSeconds: 3600
+          DeadLetterConfig:
+            Arn: !GetAtt DLQ.Arn
 
+  # Step 5: Topic policy with scoped conditions
   TopicPolicy:
     Type: AWS::SNS::TopicPolicy
     Properties:
       Topics: [!Ref RegistryModAlertTopic]
       PolicyDocument:
+        Version: '2012-10-17'
         Statement:
-          - Effect: Allow
+          - Sid: AllowEventBridgePublish
+            Effect: Allow
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref RegistryModAlertTopic""",
+            Resource: !Ref RegistryModAlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt RegistryModificationRule.Arn""",
                 terraform_template="""# GuardDuty Runtime Monitoring for registry modifications
 
 variable "alert_email" {
@@ -188,7 +207,13 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
-# Step 3: Route defence evasion findings to email
+# Step 3: DLQ for EventBridge
+resource "aws_sqs_queue" "dlq" {
+  name                      = "registry-modification-alerts-dlq"
+  message_retention_seconds = 1209600
+}
+
+# Step 4: Route defence evasion findings to email
 resource "aws_cloudwatch_event_rule" "registry_modification" {
   name        = "guardduty-registry-modification"
   description = "Alert on suspicious registry modifications"
@@ -209,17 +234,38 @@ resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.registry_modification.name
   target_id = "SendToSNS"
   arn       = aws_sns_topic.registry_mod_alerts.arn
+
+  retry_policy {
+    maximum_retry_attempts       = 8
+    maximum_event_age_in_seconds = 3600
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
 }
+
+# Step 5: Topic policy with scoped conditions
+data "aws_caller_identity" "current" {}
 
 resource "aws_sns_topic_policy" "allow_eventbridge" {
   arn = aws_sns_topic.registry_mod_alerts.arn
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowEventBridgePublish"
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.registry_mod_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.registry_modification.arn
+        }
+      }
     }]
   })
 }""",
@@ -317,7 +363,6 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref SNSTopicArn
@@ -345,7 +390,6 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
-      TreatMissingData: notBreaching
       TreatMissingData: notBreaching
 
       AlarmActions:
@@ -398,9 +442,8 @@ resource "aws_cloudwatch_metric_alarm" "persistence_registry" {
   threshold           = 1
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }
 
 # Step 3: Monitor security-related registry changes
@@ -427,9 +470,29 @@ resource "aws_cloudwatch_metric_alarm" "security_registry" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.alerts.arn]
+}
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+# Step 4: SNS topic policy
+data "aws_caller_identity" "current" {}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="high",
                 alert_title="Suspicious Registry Modification Detected",
@@ -528,7 +591,6 @@ Resources:
       Threshold: 3
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref SNSTopicArn
@@ -591,9 +653,8 @@ resource "aws_cloudwatch_metric_alarm" "powershell_registry" {
   threshold           = 3
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }
 
 # Step 3: Monitor critical registry key modifications
@@ -607,6 +668,28 @@ resource "aws_cloudwatch_log_metric_filter" "critical_registry_mods" {
     namespace = "Security/T1112"
     value     = "1"
   }
+}
+
+# Step 4: SNS topic policy
+data "aws_caller_identity" "current" {}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="high",
                 alert_title="PowerShell Registry Modification Detected",
@@ -847,7 +930,6 @@ Resources:
       Threshold: 2
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref SNSTopicArn
@@ -909,9 +991,8 @@ resource "aws_cloudwatch_metric_alarm" "registry_tool" {
   threshold           = 2
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }
 
 # Step 3: Monitor critical registry modifications via reg.exe
@@ -925,6 +1006,28 @@ resource "aws_cloudwatch_log_metric_filter" "critical_reg_mods" {
     namespace = "Security/T1112"
     value     = "1"
   }
+}
+
+# Step 4: SNS topic policy
+data "aws_caller_identity" "current" {}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="high",
                 alert_title="Registry Tool Execution Detected",

@@ -161,7 +161,7 @@ resource "aws_cloudwatch_metric_alarm" "amplification_attack" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Potential Reflection Amplification Attack Source Detected",
@@ -262,6 +262,8 @@ resource "aws_cloudwatch_event_target" "sns" {
 }
 
 # Allow EventBridge to publish to SNS
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "allow_eventbridge" {
   arn = aws_sns_topic.alerts.arn
   policy = jsonencode({
@@ -271,6 +273,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",
@@ -348,7 +355,7 @@ resource "aws_cloudwatch_metric_alarm" "ddos_detected" {
   treat_missing_data  = "notBreaching"
 
 
-  alarm_actions [aws_sns_topic.shield_alerts.arn]
+  alarm_actions       = [aws_sns_topic.shield_alerts.arn]
 }
 
 # Alert on high attack volume
@@ -371,7 +378,7 @@ resource "aws_cloudwatch_metric_alarm" "attack_volume" {
   treat_missing_data  = "notBreaching"
 
 
-  alarm_actions [aws_sns_topic.shield_alerts.arn]
+  alarm_actions       = [aws_sns_topic.shield_alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="AWS Shield: DDoS Attack Detected",

@@ -202,6 +202,8 @@ resource "aws_cloudwatch_event_target" "sns" {
   arn       = aws_sns_topic.malicious_documents.arn
 }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "allow_eventbridge" {
   arn = aws_sns_topic.malicious_documents.arn
 
@@ -212,6 +214,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.malicious_documents.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",
@@ -323,7 +330,7 @@ resource "aws_cloudwatch_metric_alarm" "template_fetch_alarm" {
   alarm_description   = "Detects potential template injection activity via network connections"
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.template_fetch_alerts.arn]
+  alarm_actions       = [aws_sns_topic.template_fetch_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="AWS VPC: Suspicious Template Fetch Activity",
@@ -426,7 +433,7 @@ resource "aws_cloudwatch_metric_alarm" "workspaces_alarm" {
   alarm_description   = "Alert on suspicious WorkSpaces activity that may indicate compromise"
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.workspaces_alerts.arn]
+  alarm_actions       = [aws_sns_topic.workspaces_alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="AWS WorkSpaces: Suspicious Activity Detected",

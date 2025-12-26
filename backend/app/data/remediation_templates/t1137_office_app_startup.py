@@ -128,7 +128,6 @@ Resources:
       Threshold: 0
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref OfficePersistenceAlertTopic
@@ -183,10 +182,30 @@ resource "aws_cloudwatch_metric_alarm" "office_persistence" {
   threshold           = 0
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.office_persistence_alerts.arn]
-  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.office_persistence_alerts.arn]
+}
+
+# SNS topic policy
+data "aws_caller_identity" "current" {}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.office_persistence_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.office_persistence_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="high",
                 alert_title="Office Application Startup Persistence Detected",
@@ -299,9 +318,8 @@ resource "aws_cloudwatch_metric_alarm" "m365_macro" {
   threshold           = 2
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.m365_macro_alerts.arn]
+  alarm_actions       = [aws_sns_topic.m365_macro_alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",
@@ -562,9 +580,8 @@ resource "aws_cloudwatch_metric_alarm" "office_registry" {
   threshold           = 0
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.registry_persistence_alerts.arn]
+  alarm_actions       = [aws_sns_topic.registry_persistence_alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",

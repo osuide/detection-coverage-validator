@@ -138,7 +138,6 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref SecurityAlertTopic
@@ -205,9 +204,8 @@ resource "aws_cloudwatch_metric_alarm" "pass_the_ticket" {
   threshold           = 5
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.pass_the_ticket_alerts.arn]
+  alarm_actions       = [aws_sns_topic.pass_the_ticket_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Suspicious Kerberos Ticket Activity Detected",
@@ -371,6 +369,8 @@ resource "aws_cloudwatch_event_target" "sns" {
   arn       = aws_sns_topic.hybrid_auth_alerts.arn
 }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "allow_eventbridge" {
   arn = aws_sns_topic.hybrid_auth_alerts.arn
   policy = jsonencode({
@@ -380,6 +380,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.hybrid_auth_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",
@@ -485,7 +490,6 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref SNSTopicArn""",
@@ -548,9 +552,8 @@ resource "aws_cloudwatch_metric_alarm" "suspicious_directory_ops" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="Suspicious Directory Service Operation",
@@ -792,7 +795,6 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref SNSTopicArn""",
@@ -856,9 +858,8 @@ resource "aws_cloudwatch_metric_alarm" "ticket_injection" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="Kerberos Ticket Injection Detected",

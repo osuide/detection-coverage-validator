@@ -107,7 +107,14 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
-  # Step 3: Route credential exposure findings to alerts
+  # Step 3: Dead Letter Queue for failed deliveries
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: credential-exposure-alerts-dlq
+      MessageRetentionPeriod: 1209600
+
+  # Step 4: Route credential exposure findings to alerts
   CredentialExposureRule:
     Type: AWS::Events::Rule
     Properties:
@@ -126,6 +133,27 @@ Resources:
       Targets:
         - Id: SNSTarget
           Arn: !Ref CredentialAlertTopic
+          RetryPolicy:
+            MaximumEventAgeInSeconds: 3600
+            MaximumRetryAttempts: 8
+          DeadLetterConfig:
+            Arn: !GetAtt DeadLetterQueue.Arn
+          InputTransformer:
+            InputPathsMap:
+              account: $.account
+              region: $.region
+              time: $.time
+              type: $.detail.type
+              severity: $.detail.severity
+              description: $.detail.description
+            InputTemplate: |
+              "CRITICAL: Credential Exposure Alert (T1552)"
+              "Time: <time>"
+              "Account: <account> | Region: <region>"
+              "Finding Type: <type>"
+              "Severity: <severity>"
+              "Description: <description>"
+              "Action: Rotate credentials and investigate immediately"
 
   TopicPolicy:
     Type: AWS::SNS::TopicPolicy
@@ -134,17 +162,38 @@ Resources:
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
-          - Effect: Allow
+          - Sid: AllowEventBridgePublishScoped
+            Effect: Allow
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref CredentialAlertTopic""",
+            Resource: !Ref CredentialAlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt CredentialExposureRule.Arn
+
+  DLQPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref DeadLetterQueue
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt DeadLetterQueue.Arn""",
                 terraform_template="""# Detect credential exfiltration and exposure via GuardDuty
 
 variable "alert_email" {
   type        = string
   description = "Email address for security alerts"
 }
+
+data "aws_caller_identity" "current" {}
 
 # Step 1: Enable GuardDuty to detect credential exfiltration
 resource "aws_guardduty_detector" "main" {
@@ -154,9 +203,9 @@ resource "aws_guardduty_detector" "main" {
 
 # Step 2: SNS topic for alerts
 resource "aws_sns_topic" "credential_alerts" {
-  name         = "credential-exposure-alerts"
+  name              = "credential-exposure-alerts"
   kms_master_key_id = "alias/aws/sns"
-  display_name = "Credential Exposure Alerts"
+  display_name      = "Credential Exposure Alerts"
 }
 
 resource "aws_sns_topic_subscription" "email_subscription" {
@@ -165,13 +214,19 @@ resource "aws_sns_topic_subscription" "email_subscription" {
   endpoint  = var.alert_email
 }
 
-# Step 3: Route credential exposure findings to alerts
+# Step 3: Dead Letter Queue for failed deliveries
+resource "aws_sqs_queue" "dlq" {
+  name                      = "credential-exposure-alerts-dlq"
+  message_retention_seconds = 1209600
+}
+
+# Step 4: Route credential exposure findings to alerts
 resource "aws_cloudwatch_event_rule" "credential_exposure" {
   name        = "T1552-CredentialExposure"
   description = "Alert on credential exposure and exfiltration"
 
   event_pattern = jsonencode({
-    source = ["aws.guardduty"]
+    source        = ["aws.guardduty"]
     "detail-type" = ["GuardDuty Finding"]
     detail = {
       type = [
@@ -187,18 +242,69 @@ resource "aws_cloudwatch_event_target" "sns_target" {
   rule      = aws_cloudwatch_event_rule.credential_exposure.name
   target_id = "SNSTarget"
   arn       = aws_sns_topic.credential_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
+
+  input_transformer {
+    input_paths = {
+      account     = "$.account"
+      region      = "$.region"
+      time        = "$.time"
+      type        = "$.detail.type"
+      severity    = "$.detail.severity"
+      description = "$.detail.description"
+    }
+
+    input_template = <<-EOT
+"CRITICAL: Credential Exposure Alert (T1552)
+Time: <time>
+Account: <account> | Region: <region>
+Finding Type: <type>
+Severity: <severity>
+Description: <description>
+Action: Rotate credentials and investigate immediately"
+EOT
+  }
 }
 
 resource "aws_sns_topic_policy" "credential_alerts_policy" {
   arn = aws_sns_topic.credential_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowEventBridgePublishScoped"
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.credential_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.credential_exposure.arn
+        }
+      }
+    }]
+  })
+}
 
+resource "aws_sqs_queue_policy" "dlq" {
+  queue_url = aws_sqs_queue.dlq.id
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
-      Action    = "sns:Publish"
-      Resource  = aws_sns_topic.credential_alerts.arn
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.dlq.arn
     }]
   })
 }""",
@@ -294,7 +400,6 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Alert on unusual access to credential storage services
@@ -348,9 +453,8 @@ resource "aws_cloudwatch_metric_alarm" "secret_access" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.secret_access_alerts.arn]
+  alarm_actions       = [aws_sns_topic.secret_access_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Unusual Access to Secret Storage",
@@ -607,7 +711,7 @@ resource "aws_cloudwatch_metric_alarm" "metadata_abuse" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.metadata_abuse.arn]
+  alarm_actions       = [aws_sns_topic.metadata_abuse.arn]
 }""",
                 alert_severity="high",
                 alert_title="EC2 Metadata Service Abuse Detected",

@@ -19,7 +19,7 @@ from .template_loader import (
 TEMPLATE = RemediationTemplate(
     technique_id="T1098.004",
     technique_name="Account Manipulation: SSH Authorized Keys",
-    tactic_ids=["TA0003", "TA0006"],
+    tactic_ids=["TA0003", "TA0004"],  # Persistence, Privilege Escalation
     mitre_url="https://attack.mitre.org/techniques/T1098/004/",
     threat_context=ThreatContext(
         description=(
@@ -127,7 +127,6 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref AuthorizedKeysAlertTopic
@@ -194,9 +193,8 @@ resource "aws_cloudwatch_metric_alarm" "authorized_keys" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.authorized_keys_alerts.arn]
+  alarm_actions       = [aws_sns_topic.authorized_keys_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="SSH Authorized Keys File Modified",
@@ -607,7 +605,6 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref SNSTopicArn""",
@@ -672,9 +669,8 @@ resource "aws_cloudwatch_metric_alarm" "ssh_key_modification" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Suspicious SSH Key Modification Process Detected",
@@ -919,7 +915,6 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref SNSTopicArn""",
@@ -985,9 +980,8 @@ resource "aws_cloudwatch_metric_alarm" "correlated_access" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="SSH Key Added and Immediately Used for Authentication",

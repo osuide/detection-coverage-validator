@@ -776,7 +776,7 @@ resource "aws_cloudwatch_metric_alarm" "system_process" {
   threshold           = 2
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Suspicious System Process Creation in EKS",

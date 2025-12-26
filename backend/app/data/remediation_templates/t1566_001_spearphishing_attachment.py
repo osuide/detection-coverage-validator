@@ -173,7 +173,7 @@ resource "aws_cloudwatch_metric_alarm" "suspicious_attachments" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.email_alerts.arn]
+  alarm_actions       = [aws_sns_topic.email_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Suspicious Email Attachment Detected",
@@ -256,6 +256,8 @@ resource "aws_cloudwatch_event_target" "sns" {
   arn       = aws_sns_topic.guardduty_alerts.arn
 }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "guardduty_publish" {
   arn = aws_sns_topic.guardduty_alerts.arn
 
@@ -266,6 +268,11 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "SNS:Publish"
       Resource  = aws_sns_topic.guardduty_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",
@@ -359,7 +366,7 @@ resource "aws_cloudwatch_metric_alarm" "office_spawn" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.process_alerts.arn]
+  alarm_actions       = [aws_sns_topic.process_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Office Application Spawned Suspicious Process",

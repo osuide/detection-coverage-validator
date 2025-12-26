@@ -124,11 +124,26 @@ Resources:
       Threshold: 3
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
-
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching
+
+  # Step 4: SNS topic policy
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: [!Ref AlertTopic]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudWatchPublish
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
 
 Outputs:
   AlertTopicArn:
@@ -185,9 +200,29 @@ resource "aws_cloudwatch_metric_alarm" "mfa_interception" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.mfa_interception_alerts.arn]
+}
 
-  alarm_actions [aws_sns_topic.mfa_interception_alerts.arn]
-  treat_missing_data  = "notBreaching"
+# Step 4: SNS topic policy
+data "aws_caller_identity" "current" {}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.mfa_interception_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.mfa_interception_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }
 
 output "alert_topic_arn" {
@@ -287,9 +322,26 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
-
       AlarmActions:
-        - !Ref AlertTopic""",
+        - !Ref AlertTopic
+
+  # Step 4: SNS topic policy
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: [!Ref AlertTopic]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudWatchPublish
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId""",
                 terraform_template="""# Detect SMS MFA code replay attempts in Cognito
 
 variable "cloudtrail_log_group" { type = string }
@@ -334,8 +386,29 @@ resource "aws_cloudwatch_metric_alarm" "sms_replay" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.cognito_sms_alerts.arn]
+}
 
-  alarm_actions [aws_sns_topic.cognito_sms_alerts.arn]
+# Step 4: SNS topic policy
+data "aws_caller_identity" "current" {}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.cognito_sms_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.cognito_sms_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="high",
                 alert_title="Cognito SMS MFA Code Replay Detected",
@@ -411,7 +484,13 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
-  # Step 2: EventBridge rule for phone number changes
+  # Step 2: DLQ for EventBridge
+  DLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 1209600
+
+  # Step 3: EventBridge rule for phone number changes
   PhoneChangeRule:
     Type: AWS::Events::Rule
     Properties:
@@ -428,28 +507,42 @@ Resources:
       Targets:
         - Id: AlertTarget
           Arn: !Ref AlertTopic
+          RetryPolicy:
+            MaximumRetryAttempts: 8
+            MaximumEventAgeInSeconds: 3600
+          DeadLetterConfig:
+            Arn: !GetAtt DLQ.Arn
 
-  # Step 3: SNS topic policy
+  # Step 4: SNS topic policy with scoped conditions
   TopicPolicy:
     Type: AWS::SNS::TopicPolicy
     Properties:
       Topics: [!Ref AlertTopic]
       PolicyDocument:
+        Version: '2012-10-17'
         Statement:
-          - Effect: Allow
+          - Sid: AllowEventBridgePublish
+            Effect: Allow
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt PhoneChangeRule.Arn""",
                 terraform_template="""# Detect user phone number changes that may facilitate MFA interception
 
 variable "alert_email" { type = string }
 
+data "aws_caller_identity" "current" {}
+
 # Step 1: SNS topic
 resource "aws_sns_topic" "phone_change_alerts" {
-  name         = "phone-number-change-alerts"
+  name              = "phone-number-change-alerts"
   kms_master_key_id = "alias/aws/sns"
-  display_name = "Phone Number Change Alerts"
+  display_name      = "Phone Number Change Alerts"
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -458,7 +551,13 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
-# Step 2: EventBridge rule for phone number changes
+# Step 2: DLQ for EventBridge
+resource "aws_sqs_queue" "dlq" {
+  name                      = "phone-number-change-alerts-dlq"
+  message_retention_seconds = 1209600
+}
+
+# Step 3: EventBridge rule for phone number changes
 resource "aws_cloudwatch_event_rule" "phone_change" {
   name        = "phone-number-modification"
   description = "Detect phone number modifications"
@@ -476,20 +575,39 @@ resource "aws_cloudwatch_event_rule" "phone_change" {
 }
 
 resource "aws_cloudwatch_event_target" "sns" {
-  rule = aws_cloudwatch_event_rule.phone_change.name
-  arn  = aws_sns_topic.phone_change_alerts.arn
+  rule      = aws_cloudwatch_event_rule.phone_change.name
+  target_id = "SNSTarget"
+  arn       = aws_sns_topic.phone_change_alerts.arn
+
+  retry_policy {
+    maximum_retry_attempts       = 8
+    maximum_event_age_in_seconds = 3600
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
 }
 
-# Step 3: SNS topic policy
+# Step 4: SNS topic policy with scoped conditions
 resource "aws_sns_topic_policy" "allow_events" {
   arn = aws_sns_topic.phone_change_alerts.arn
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowEventBridgePublish"
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.phone_change_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.phone_change.arn
+        }
+      }
     }]
   })
 }""",
@@ -813,10 +931,26 @@ Resources:
       Threshold: !Ref MFAAttemptThreshold
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
-
       AlarmActions:
-        - !Ref AlertTopic""",
+        - !Ref AlertTopic
+
+  # Step 4: SNS topic policy
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: [!Ref AlertTopic]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudWatchPublish
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId""",
                 terraform_template="""# AWS MFA Fatigue Detection for T1111
 
 variable "alert_email" {
@@ -881,9 +1015,29 @@ resource "aws_cloudwatch_metric_alarm" "mfa_fatigue" {
   threshold           = var.mfa_attempt_threshold
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.alerts.arn]
+}
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+# Step 5: SNS topic policy
+data "aws_caller_identity" "current" {}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="critical",
                 alert_title="MFA Fatigue Attack Detected",

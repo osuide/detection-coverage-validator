@@ -172,7 +172,7 @@ resource "aws_cloudwatch_metric_alarm" "share_enum_alarm" {
   alarm_description   = "Detects excessive network share enumeration attempts"
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.share_enum_alerts.arn]
+  alarm_actions       = [aws_sns_topic.share_enum_alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Network Share Enumeration Detected",
@@ -317,7 +317,7 @@ resource "aws_cloudwatch_metric_alarm" "smb_enum_alarm" {
   alarm_description   = "Detects excessive SMB connections indicating share enumeration"
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.smb_enum_alerts.arn]
+  alarm_actions       = [aws_sns_topic.smb_enum_alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="SMB Share Enumeration Pattern Detected",
@@ -511,6 +511,8 @@ resource "aws_cloudwatch_event_target" "sns" {
 }
 
 # SNS topic policy for EventBridge
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "guardduty_alerts_policy" {
   arn = aws_sns_topic.guardduty_alerts.arn
 
@@ -523,6 +525,11 @@ resource "aws_sns_topic_policy" "guardduty_alerts_policy" {
       }
       Action   = "SNS:Publish"
       Resource = aws_sns_topic.guardduty_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",

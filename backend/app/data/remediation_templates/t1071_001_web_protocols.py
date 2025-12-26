@@ -188,7 +188,7 @@ resource "aws_cloudwatch_metric_alarm" "http_c2" {
   alarm_description   = "Alert on suspicious HTTP patterns indicative of C2"
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.http_c2_alerts.arn]
+  alarm_actions       = [aws_sns_topic.http_c2_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Suspicious HTTP C2 Pattern Detected",
@@ -334,7 +334,7 @@ resource "aws_cloudwatch_metric_alarm" "beaconing" {
   alarm_description   = "Alert on HTTP beaconing behaviour"
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.beaconing_alerts.arn]
+  alarm_actions       = [aws_sns_topic.beaconing_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="HTTP Beaconing Pattern Detected",
@@ -484,7 +484,7 @@ resource "aws_cloudwatch_metric_alarm" "https_anomaly" {
   alarm_description   = "Alert on unusual HTTPS connection patterns"
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.https_anomaly_alerts.arn]
+  alarm_actions       = [aws_sns_topic.https_anomaly_alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Unusual HTTPS Connection Pattern Detected",
@@ -859,6 +859,8 @@ resource "aws_cloudwatch_event_target" "sns" {
   arn  = aws_sns_topic.c2_alerts.arn
 }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "allow_events" {
   arn = aws_sns_topic.c2_alerts.arn
 
@@ -869,6 +871,11 @@ resource "aws_sns_topic_policy" "allow_events" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.c2_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",

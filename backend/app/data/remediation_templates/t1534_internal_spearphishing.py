@@ -104,6 +104,23 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: [!Ref InternalPhishingAlertTopic]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudWatchPublish
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref InternalPhishingAlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+
   # Step 2: Create metric filter for unusual email sending patterns
   UnusualEmailVolumeFilter:
     Type: AWS::Logs::MetricFilter
@@ -130,7 +147,6 @@ Resources:
       Threshold: 20
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref InternalPhishingAlertTopic""",
@@ -146,11 +162,32 @@ variable "alert_email" {
   description = "Email address for security alerts"
 }
 
+data "aws_caller_identity" "current" {}
+
 # Step 1: Create SNS topic for internal phishing alerts
 resource "aws_sns_topic" "internal_phishing_alerts" {
   name         = "internal-spearphishing-alerts"
   kms_master_key_id = "alias/aws/sns"
   display_name = "Internal Spearphishing Alerts"
+}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.internal_phishing_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.internal_phishing_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -186,7 +223,7 @@ resource "aws_cloudwatch_metric_alarm" "unusual_email_volume" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.internal_phishing_alerts.arn]
+  alarm_actions       = [aws_sns_topic.internal_phishing_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="AWS: Unusual Internal Email Sending Pattern Detected",
@@ -247,10 +284,31 @@ resource "aws_cloudwatch_metric_alarm" "unusual_email_volume" {
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
 
+data "aws_caller_identity" "current" {}
+
 # Step 1: Create SNS topic for attachment alerts
 resource "aws_sns_topic" "attachment_alerts" {
   name = "suspicious-attachment-alerts"
   kms_master_key_id = "alias/aws/sns"
+}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.attachment_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.attachment_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -286,7 +344,7 @@ resource "aws_cloudwatch_metric_alarm" "suspicious_attachments" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.attachment_alerts.arn]
+  alarm_actions       = [aws_sns_topic.attachment_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="WorkMail: Suspicious Attachment in Internal Email",

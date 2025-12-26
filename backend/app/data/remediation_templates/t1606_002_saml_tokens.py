@@ -96,6 +96,23 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: [!Ref AlertTopic]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudWatchPublish
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+
   # Metric filter for SAML authentication
   SAMLAuthFilter:
     Type: AWS::Logs::MetricFilter
@@ -127,9 +144,30 @@ Resources:
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic" "saml_alerts" {
   name = "saml-authentication-alerts"
   kms_master_key_id = "alias/aws/sns"
+}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.saml_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.saml_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -163,7 +201,7 @@ resource "aws_cloudwatch_metric_alarm" "high_saml_activity" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.saml_alerts.arn]
+  alarm_actions       = [aws_sns_topic.saml_alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="Suspicious SAML Authentication Detected",
@@ -213,9 +251,30 @@ resource "aws_cloudwatch_metric_alarm" "high_saml_activity" {
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic" "mfa_bypass_alerts" {
   name = "saml-mfa-bypass-alerts"
   kms_master_key_id = "alias/aws/sns"
+}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.mfa_bypass_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.mfa_bypass_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -249,7 +308,7 @@ resource "aws_cloudwatch_metric_alarm" "saml_mfa_bypass" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.mfa_bypass_alerts.arn]
+  alarm_actions       = [aws_sns_topic.mfa_bypass_alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="Privileged SAML Authentication Without MFA",
@@ -394,9 +453,30 @@ resource "google_monitoring_alert_policy" "saml_anomaly" {
 variable "cloudtrail_log_group" { type = string }
 variable "alert_email" { type = string }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic" "cross_account_alerts" {
   name = "saml-cross-account-alerts"
   kms_master_key_id = "alias/aws/sns"
+}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.cross_account_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.cross_account_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }
 
 resource "aws_sns_topic_subscription" "email" {
@@ -430,7 +510,7 @@ resource "aws_cloudwatch_metric_alarm" "cross_account_saml" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.cross_account_alerts.arn]
+  alarm_actions       = [aws_sns_topic.cross_account_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Cross-Account SAML Authentication Detected",

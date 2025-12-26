@@ -132,7 +132,24 @@ Resources:
       TreatMissingData: notBreaching
 
       AlarmActions:
-        - !Ref UserDataAlertTopic""",
+        - !Ref UserDataAlertTopic
+
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: [!Ref UserDataAlertTopic]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudWatchAlarms
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref UserDataAlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId""",
                 terraform_template="""# AWS: Detect suspicious EC2 user data execution
 
 variable "cloudtrail_log_group" {
@@ -185,7 +202,28 @@ resource "aws_cloudwatch_metric_alarm" "user_data_execution" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.user_data_alerts.arn]
+  alarm_actions = [aws_sns_topic.user_data_alerts.arn]
+}
+
+data "aws_caller_identity" "current" {}
+
+resource "aws_sns_topic_policy" "user_data_alerts" {
+  arn = aws_sns_topic.user_data_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchAlarms"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.user_data_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="high",
                 alert_title="AWS EC2: Instance Launched with User Data Script",
@@ -283,20 +321,38 @@ Resources:
       Targets:
         - Id: LambdaAlerts
           Arn: !Ref LambdaAlertTopic
+          DeadLetterConfig:
+            Arn: !GetAtt DLQ.Arn
+          RetryPolicy:
+            MaximumEventAgeInSeconds: 3600
+            MaximumRetryAttempts: 8
 
-  # Step 3: Allow EventBridge to publish to SNS
+  # Step 3: DLQ for EventBridge
+  DLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 1209600
+
+  # Step 4: Allow EventBridge to publish to SNS with scoped policy
   TopicPolicy:
     Type: AWS::SNS::TopicPolicy
     Properties:
       Topics:
         - !Ref LambdaAlertTopic
       PolicyDocument:
+        Version: '2012-10-17'
         Statement:
-          - Effect: Allow
+          - Sid: AllowEventBridgePublish
+            Effect: Allow
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref LambdaAlertTopic""",
+            Resource: !Ref LambdaAlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt SuspiciousLambdaRule.Arn""",
                 terraform_template="""# AWS: Detect suspicious Lambda function executions
 
 variable "cloudtrail_log_group" { type = string }
@@ -329,23 +385,49 @@ resource "aws_cloudwatch_event_rule" "suspicious_lambda" {
   })
 }
 
+# Step 3: DLQ for EventBridge
+resource "aws_sqs_queue" "dlq" {
+  name                      = "suspicious-lambda-execution-dlq"
+  message_retention_seconds = 1209600
+}
+
 resource "aws_cloudwatch_event_target" "sns" {
   rule      = aws_cloudwatch_event_rule.suspicious_lambda.name
   target_id = "LambdaAlerts"
   arn       = aws_sns_topic.lambda_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
 }
 
-# Step 3: Allow EventBridge to publish to SNS
+# Step 4: Allow EventBridge to publish to SNS with scoped policy
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "allow_eventbridge" {
   arn = aws_sns_topic.lambda_alerts.arn
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowEventBridgePublish"
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.lambda_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.suspicious_lambda.arn
+        }
+      }
     }]
   })
 }""",
@@ -449,7 +531,28 @@ resource "aws_cloudwatch_metric_alarm" "ssm_execution" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.ssm_alerts.arn]
+  alarm_actions = [aws_sns_topic.ssm_alerts.arn]
+}
+
+data "aws_caller_identity" "current" {}
+
+resource "aws_sns_topic_policy" "ssm_alerts" {
+  arn = aws_sns_topic.ssm_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchAlarms"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.ssm_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="high",
                 alert_title="AWS SSM: Remote Command Execution Detected",

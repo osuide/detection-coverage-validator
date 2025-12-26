@@ -204,6 +204,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.credential_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",
@@ -305,7 +310,6 @@ Resources:
       Threshold: 2
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref SNSTopicArn
@@ -349,7 +353,7 @@ resource "aws_cloudwatch_metric_alarm" "impossible_travel" {
   threshold           = 2
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [var.sns_topic_arn]
+  alarm_actions       = [var.sns_topic_arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",
@@ -1094,7 +1098,6 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref SNSTopicArn""",
@@ -1140,7 +1143,7 @@ resource "aws_cloudwatch_metric_alarm" "sensitive_api" {
   threshold           = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [var.sns_topic_arn]
+  alarm_actions       = [var.sns_topic_arn]
 }""",
                 alert_severity="medium",
                 alert_title="First-Time Sensitive API Call",

@@ -113,17 +113,31 @@ Resources:
         - Id: Email
           Arn: !Ref AlertTopic
 
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: guardduty-bruteforce-dlq
+      MessageRetentionPeriod: 1209600
+
   TopicPolicy:
     Type: AWS::SNS::TopicPolicy
     Properties:
-      Topics: [!Ref AlertTopic]
+      Topics:
+        - !Ref AlertTopic
       PolicyDocument:
+        Version: '2012-10-17'
         Statement:
-          - Effect: Allow
+          - Sid: AllowEventBridgePublishScoped
+            Effect: Allow
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt BruteForceFindingsRule.Arn""",
                 terraform_template="""# GuardDuty + email alerts for brute force attacks
 
 variable "alert_email" {
@@ -163,9 +177,47 @@ resource "aws_cloudwatch_event_rule" "brute_force" {
   })
 }
 
+data "aws_caller_identity" "current" {}
+
+# DLQ for failed deliveries
+resource "aws_sqs_queue" "dlq" {
+  name                      = "guardduty-bruteforce-dlq"
+  message_retention_seconds = 1209600
+}
+
 resource "aws_cloudwatch_event_target" "sns" {
-  rule = aws_cloudwatch_event_rule.brute_force.name
-  arn  = aws_sns_topic.alerts.arn
+  rule      = aws_cloudwatch_event_rule.brute_force.name
+  target_id = "SNSTarget"
+  arn       = aws_sns_topic.alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
+
+  input_transformer {
+    input_paths = {
+      account  = "$.account"
+      region   = "$.region"
+      time     = "$.time"
+      type     = "$.detail.type"
+      severity = "$.detail.severity"
+      target   = "$.detail.resource.instanceDetails.instanceId"
+      srcip    = "$.detail.service.action.networkConnectionAction.remoteIpDetails.ipAddressV4"
+    }
+
+    input_template = <<-EOT
+"GuardDuty Brute Force Alert (T1110)
+time=<time> account=<account> region=<region>
+type=<type> severity=<severity>
+target=<target> source_ip=<srcip>
+Action: Block source IP and investigate target"
+EOT
+  }
 }
 
 resource "aws_sns_topic_policy" "allow_eventbridge" {
@@ -173,10 +225,19 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowEventBridgePublishScoped"
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.brute_force.arn
+        }
+      }
     }]
   })
 }""",
@@ -273,8 +334,27 @@ Resources:
       ComparisonOperator: GreaterThanOrEqualToThreshold
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlertTopic
 
-      AlarmActions: [!Ref AlertTopic]""",
+  # Step 4: Scoped SNS topic policy
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref AlertTopic
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudWatchAlarmsPublish
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId""",
                 terraform_template="""# Alert on 5+ failed console logins in 5 minutes
 
 variable "cloudtrail_log_group" {
@@ -321,8 +401,29 @@ resource "aws_cloudwatch_metric_alarm" "failed_logins" {
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.alerts.arn]
+}
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+data "aws_caller_identity" "current" {}
+
+# Step 4: Scoped SNS topic policy
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchAlarmsPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="high",
                 alert_title="Excessive Failed Login Attempts",

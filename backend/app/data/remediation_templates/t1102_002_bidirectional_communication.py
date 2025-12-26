@@ -177,7 +177,7 @@ resource "aws_cloudwatch_metric_alarm" "suspicious_web_service_traffic" {
   evaluation_periods  = 2
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.web_service_c2_alerts.arn]
+  alarm_actions       = [aws_sns_topic.web_service_c2_alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",
@@ -321,6 +321,8 @@ resource "aws_cloudwatch_event_target" "guardduty_sns" {
 }
 
 # SNS topic policy
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "guardduty_publish" {
   arn = aws_sns_topic.guardduty_c2_alerts.arn
 
@@ -333,6 +335,11 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
       }
       Action   = "SNS:Publish"
       Resource = aws_sns_topic.guardduty_c2_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",

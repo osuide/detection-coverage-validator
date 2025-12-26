@@ -392,15 +392,26 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "allow_eventbridge" {
   arn = aws_sns_topic.guardduty_alerts.arn
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowEventBridgePublishScoped"
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.guardduty_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.guardduty_iam.arn
+        }
+      }
     }]
   })
 }
@@ -498,7 +509,6 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
-      KmsMasterKeyId: alias/aws/sns
       DisplayName: GuardDuty Credential Abuse Alerts
       KmsMasterKeyId: alias/aws/sns
       Subscription:
@@ -511,11 +521,17 @@ Resources:
       Topics: [!Ref AlertTopic]
       PolicyDocument:
         Statement:
-          - Effect: Allow
+          - Sid: AllowEventBridgePublishScoped
+            Effect: Allow
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
             Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt IAMFindingsRule.Arn
 
   DLQ:
     Type: AWS::SQS::Queue
@@ -691,15 +707,23 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "allow_eventbridge" {
   arn = aws_sns_topic.alerts.arn
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowEventBridgePublishScoped"
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }
@@ -942,21 +966,46 @@ resource "aws_cloudwatch_log_metric_filter" "multi_ip_login" {
   }
 }
 
-# Alarm for multiple source IPs per user in short window
+# Alarm using metric math to aggregate across all User/SourceIP combinations
+# The SEARCH function finds all metrics with these dimensions and SUM aggregates them
 resource "aws_cloudwatch_metric_alarm" "multi_ip" {
   alarm_name          = "Impossible-Travel-Detected"
   alarm_description   = "Same user logged in from multiple IPs in 1 hour"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
-  metric_name         = "ConsoleLoginSuccess"
-  namespace           = "Security/ImpossibleTravel"
-  period              = 300
-  statistic           = "SampleCount"
   threshold           = 2
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  # Use metric math to aggregate across all high-cardinality dimension values
+  metric_query {
+    id          = "e1"
+    return_data = true
+    label       = "TotalConsoleLogins"
+    expression  = "SUM(SEARCH('{Security/ImpossibleTravel,User,SourceIP} MetricName=\"ConsoleLoginSuccess\"', 'Sum', 300))"
+  }
+}
+
+data "aws_caller_identity" "current" {}
+
+# Scoped SNS topic policy
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchAlarmsPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="high",
                 alert_title="Impossible Travel: Multiple Login Locations",

@@ -121,7 +121,6 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions: [!Ref AlertTopic]""",
                 terraform_template="""# Detect username enumeration via CloudTrail
@@ -176,9 +175,8 @@ resource "aws_cloudwatch_metric_alarm" "username_enum_attack" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.username_enum_alerts.arn]
+  alarm_actions       = [aws_sns_topic.username_enum_alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Username Enumeration Activity Detected",
@@ -274,9 +272,8 @@ resource "aws_cloudwatch_metric_alarm" "auth_recon_attack" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.auth_recon_alerts.arn]
+  alarm_actions       = [aws_sns_topic.auth_recon_alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Suspicious Authentication Pattern Detected",
@@ -539,6 +536,8 @@ resource "aws_cloudwatch_event_target" "sns" {
 }
 
 # Allow EventBridge to publish to SNS
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "allow_eventbridge" {
   arn = aws_sns_topic.username_enum_alerts.arn
   policy = jsonencode({
@@ -548,6 +547,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.username_enum_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",

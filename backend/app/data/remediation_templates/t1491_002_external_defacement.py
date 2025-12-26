@@ -220,6 +220,8 @@ resource "aws_cloudwatch_event_target" "defacement_alert" {
 }
 
 # Step 3: Grant EventBridge permission to publish to SNS
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "allow_eventbridge" {
   arn = aws_sns_topic.defacement_alerts.arn
 
@@ -230,6 +232,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.defacement_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",
@@ -339,7 +346,6 @@ Resources:
       Threshold: 1000
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref AlertTopic""",
@@ -391,9 +397,8 @@ resource "aws_cloudwatch_metric_alarm" "traffic_anomaly" {
   threshold           = 1000
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="CloudFront Unusual Traffic Pattern Detected",
@@ -503,7 +508,6 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref IntegrityAlertTopic
@@ -564,9 +568,8 @@ resource "aws_cloudwatch_metric_alarm" "critical_file_alarm" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.integrity_alerts.arn]
+  alarm_actions       = [aws_sns_topic.integrity_alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="critical",

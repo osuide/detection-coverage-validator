@@ -20,7 +20,11 @@ from .template_loader import (
 TEMPLATE = RemediationTemplate(
     technique_id="T1556.009",
     technique_name="Modify Authentication Process: Conditional Access Policies",
-    tactic_ids=["TA0003", "TA0006"],  # Persistence, Credential Access
+    tactic_ids=[
+        "TA0003",
+        "TA0005",
+        "TA0006",
+    ],  # Persistence, Defense Evasion, Credential Access
     mitre_url="https://attack.mitre.org/techniques/T1556/009/",
     threat_context=ThreatContext(
         description=(
@@ -173,7 +177,7 @@ resource "aws_cloudwatch_metric_alarm" "iam_policy_modifications" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
 }""",
                 alert_severity="high",
@@ -261,6 +265,8 @@ resource "aws_cloudwatch_event_target" "sns" {
 }
 
 # SNS topic policy to allow EventBridge
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "default" {
   arn = aws_sns_topic.alerts.arn
 
@@ -268,12 +274,18 @@ resource "aws_sns_topic_policy" "default" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "AllowEventBridgePublishScoped"
         Effect = "Allow"
         Principal = {
           Service = "events.amazonaws.com"
         }
         Action   = "SNS:Publish"
         Resource = aws_sns_topic.alerts.arn
+        Condition = {
+          StringEquals = {
+            "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+          }
+        }
       }
     ]
   })

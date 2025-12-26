@@ -98,6 +98,23 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: [!Ref AlertTopic]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudWatchPublish
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+
   # Step 2: Create metric filter for MFA bypass attempts
   MFABypassFilter:
     Type: AWS::Logs::MetricFilter
@@ -124,11 +141,9 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
-        - !Ref AlertTopic
-      TreatMissingData: notBreaching""",
+        - !Ref AlertTopic""",
                 terraform_template="""# AWS: Detect authentication bypassing MFA
 
 variable "cloudtrail_log_group" {
@@ -141,10 +156,31 @@ variable "alert_email" {
   description = "Email for security alerts"
 }
 
+data "aws_caller_identity" "current" {}
+
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "auth_alerts" {
   name = "auth-bypass-alerts"
   kms_master_key_id = "alias/aws/sns"
+}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.auth_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublish"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.auth_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }
 
 resource "aws_sns_topic_subscription" "email_alerts" {
@@ -179,10 +215,8 @@ resource "aws_cloudwatch_metric_alarm" "mfa_bypass_alert" {
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.auth_alerts.arn]
-  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.auth_alerts.arn]
 }""",
                 alert_severity="critical",
                 alert_title="Authentication Bypassing MFA Detected",
@@ -326,6 +360,8 @@ resource "aws_cloudwatch_event_target" "guardduty_sns" {
   arn       = aws_sns_topic.guardduty_alerts.arn
 }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "guardduty_publish" {
   arn = aws_sns_topic.guardduty_alerts.arn
 
@@ -338,6 +374,11 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
       }
       Action   = "SNS:Publish"
       Resource = aws_sns_topic.guardduty_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",

@@ -527,6 +527,9 @@ resource "aws_sns_topic_policy" "alerts" {
 Description: Detect network scanning using GuardDuty findings
 
 Parameters:
+  NamePrefix:
+    Type: String
+    Default: t1046-guardduty
   AlertEmail:
     Type: String
 
@@ -538,42 +541,82 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
+      TopicName: !Sub ${NamePrefix}-alerts
       KmsMasterKeyId: alias/aws/sns
       Subscription:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
-  # Step 3: EventBridge rule for GuardDuty findings
+  # Step 3: Dead letter queue
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub ${NamePrefix}-dlq
+      MessageRetentionPeriod: 1209600
+
+  # Step 4: EventBridge rule for GuardDuty findings
   GuardDutyReconRule:
     Type: AWS::Events::Rule
     Properties:
-      Name: guardduty-network-scanning
+      Name: !Sub ${NamePrefix}-network-scanning
       Description: Alert on GuardDuty reconnaissance findings
       EventPattern:
         source: [aws.guardduty]
         detail-type: [GuardDuty Finding]
         detail:
+          severity:
+            - numeric: ['>=', 4]
           type:
-            - Recon:EC2/PortProbeUnprotectedPort
-            - Recon:EC2/PortProbeEMRUnprotectedPort
-            - Recon:EC2/Portscan
-            - UnauthorizedAccess:EC2/TorIPCaller
+            - prefix: 'Recon:EC2/PortProbeUnprotectedPort'
+            - prefix: 'Recon:EC2/PortProbeEMRUnprotectedPort'
+            - prefix: 'Recon:EC2/Portscan'
+            - prefix: 'UnauthorizedAccess:EC2/TorIPCaller'
       State: ENABLED
       Targets:
-        - Id: AlertTopic
+        - Id: SNSTarget
           Arn: !Ref AlertTopic
+          RetryPolicy:
+            MaximumEventAgeInSeconds: 3600
+            MaximumRetryAttempts: 8
+          DeadLetterConfig:
+            Arn: !GetAtt DeadLetterQueue.Arn
+          InputTransformer:
+            InputPathsMap:
+              account: $.account
+              region: $.region
+              time: $.time
+              type: $.detail.type
+              severity: $.detail.severity
+              title: $.detail.title
+              srcip: $.detail.service.action.networkConnectionAction.remoteIpDetails.ipAddressV4
+              dstport: $.detail.service.action.networkConnectionAction.localPortDetails.port
+            InputTemplate: |
+              "GuardDuty Network Reconnaissance Alert (T1046)
+              time=<time> account=<account> region=<region>
+              type=<type> severity=<severity>
+              title=<title>
+              src_ip=<srcip> dst_port=<dstport>"
 
+  # Step 5: Scoped SNS topic policy
   TopicPolicy:
     Type: AWS::SNS::TopicPolicy
     Properties:
-      Topics: [!Ref AlertTopic]
+      Topics:
+        - !Ref AlertTopic
       PolicyDocument:
+        Version: '2012-10-17'
         Statement:
-          - Effect: Allow
+          - Sid: AllowEventBridgePublishScoped
+            Effect: Allow
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt GuardDutyReconRule.Arn""",
                 terraform_template="""# AWS: GuardDuty reconnaissance detection with optimised EventBridge pattern
 
 variable "name_prefix" {

@@ -168,7 +168,7 @@ resource "aws_cloudwatch_metric_alarm" "password_policy_discovery" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.alerts.arn]
+  alarm_actions       = [aws_sns_topic.alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="AWS Password Policy Discovery Detected",
@@ -300,6 +300,8 @@ resource "aws_cloudwatch_event_target" "sns" {
 }
 
 # Step 3: Allow EventBridge to publish to SNS
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "default" {
   arn = aws_sns_topic.alerts.arn
 
@@ -312,6 +314,11 @@ resource "aws_sns_topic_policy" "default" {
       }
       Action   = "SNS:Publish"
       Resource = aws_sns_topic.alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",

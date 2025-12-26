@@ -177,7 +177,7 @@ resource "aws_cloudwatch_metric_alarm" "compromised_account" {
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.compromised_account_alerts.arn]
+  alarm_actions       = [aws_sns_topic.compromised_account_alerts.arn]
 }""",
                 alert_severity="high",
                 alert_title="Potential Compromised AWS Account Detected",
@@ -271,6 +271,8 @@ resource "aws_cloudwatch_event_target" "sns" {
   arn       = aws_sns_topic.guardduty_alerts.arn
 }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "guardduty_publish" {
   arn = aws_sns_topic.guardduty_alerts.arn
 
@@ -283,6 +285,11 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
       }
       Action   = "SNS:Publish"
       Resource = aws_sns_topic.guardduty_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",
@@ -557,6 +564,11 @@ resource "aws_sns_topic_policy" "eventbridge_publish" {
       }
       Action   = "SNS:Publish"
       Resource = aws_sns_topic.access_analyzer_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",

@@ -127,10 +127,27 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
-
       AlarmActions:
         - !Ref InstanceDiscoveryAlertTopic
-      TreatMissingData: notBreaching""",
+
+  # Step 4: SNS topic policy (scoped)
+  AlertTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudWatchAlarms
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref InstanceDiscoveryAlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+      Topics:
+        - !Ref InstanceDiscoveryAlertTopic""",
                 terraform_template="""# AWS: Detect remote system discovery via EC2 enumeration
 
 variable "cloudtrail_log_group" {
@@ -182,9 +199,29 @@ resource "aws_cloudwatch_metric_alarm" "instance_discovery" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.instance_discovery_alerts.arn]
+}
 
-  alarm_actions [aws_sns_topic.instance_discovery_alerts.arn]
-  treat_missing_data  = "notBreaching"
+# Step 4: SNS topic policy (scoped to account)
+data "aws_caller_identity" "current" {}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.instance_discovery_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchAlarms"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.instance_discovery_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="medium",
                 alert_title="EC2 Instance Discovery Activity Detected",
@@ -277,8 +314,26 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       TreatMissingData: notBreaching
+      AlarmActions: [!Ref SSMDiscoveryAlertTopic]
 
-      AlarmActions: [!Ref SSMDiscoveryAlertTopic]""",
+  # Step 4: SNS topic policy (scoped)
+  AlertTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudWatchAlarms
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref SSMDiscoveryAlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+      Topics:
+        - !Ref SSMDiscoveryAlertTopic""",
                 terraform_template="""# AWS: Detect remote discovery via Systems Manager
 
 variable "cloudtrail_log_group" {
@@ -326,8 +381,29 @@ resource "aws_cloudwatch_metric_alarm" "ssm_discovery" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.ssm_discovery_alerts.arn]
+}
 
-  alarm_actions [aws_sns_topic.ssm_discovery_alerts.arn]
+# Step 4: SNS topic policy (scoped to account)
+data "aws_caller_identity" "current" {}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.ssm_discovery_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchAlarms"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.ssm_discovery_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="high",
                 alert_title="Remote Discovery Commands via Systems Manager",

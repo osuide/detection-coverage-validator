@@ -121,11 +121,27 @@ Resources:
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref AlertTopic
-      TreatMissingData: notBreaching""",
+
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref AlertTopic
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudWatchPublishScoped
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId""",
                 terraform_template="""# AWS: Detect suspicious file downloads on EC2
 
 variable "cloudtrail_log_group" {
@@ -175,11 +191,29 @@ resource "aws_cloudwatch_metric_alarm" "download_alert" {
   evaluation_periods  = 1
   threshold           = 5
   comparison_operator = "GreaterThanThreshold"
-  treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
+  treat_missing_data = "notBreaching"
+  alarm_actions      = [aws_sns_topic.alerts.arn]
+}
 
-  alarm_actions [aws_sns_topic.alerts.arn]
-  treat_missing_data  = "notBreaching"
+data "aws_caller_identity" "current" {}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublishScoped"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="high",
                 alert_title="Suspicious File Download Detected on EC2",
@@ -220,9 +254,15 @@ resource "aws_cloudwatch_metric_alarm" "download_alert" {
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
                 guardduty_finding_types=[
+                    # C2 and malicious infrastructure
                     "Backdoor:EC2/C&CActivity.B",
                     "UnauthorizedAccess:EC2/MaliciousIPCaller.Custom",
                     "Trojan:EC2/DropPoint",
+                    # Runtime Monitoring findings (requires Runtime Monitoring enabled)
+                    "Execution:Runtime/MaliciousFileExecuted",
+                    "Execution:Runtime/SuspiciousTool",
+                    "Execution:Runtime/ReverseShell",
+                    "DefenseEvasion:Runtime/FilelessExecution",
                 ],
                 cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: GuardDuty detection for malicious downloads
@@ -256,9 +296,13 @@ Resources:
           - GuardDuty Finding
         detail:
           type:
-            - Backdoor:EC2/C&CActivity.B
-            - UnauthorizedAccess:EC2/MaliciousIPCaller.Custom
-            - Trojan:EC2/DropPoint
+            - prefix: Backdoor:EC2/C&CActivity
+            - prefix: UnauthorizedAccess:EC2/MaliciousIPCaller
+            - prefix: Trojan:EC2/DropPoint
+            - prefix: Execution:Runtime/MaliciousFileExecuted
+            - prefix: Execution:Runtime/SuspiciousTool
+            - prefix: Execution:Runtime/ReverseShell
+            - prefix: DefenseEvasion:Runtime
       State: ENABLED
       Targets:
         - Arn: !Ref GuardDutyAlertTopic
@@ -302,13 +346,17 @@ resource "aws_cloudwatch_event_rule" "guardduty_download" {
   description = "Alert on GuardDuty malicious download findings"
 
   event_pattern = jsonencode({
-    source      = ["aws.guardduty"]
-    detail-type = ["GuardDuty Finding"]
+    source        = ["aws.guardduty"]
+    "detail-type" = ["GuardDuty Finding"]
     detail = {
       type = [
-        "Backdoor:EC2/C&CActivity.B",
-        "UnauthorizedAccess:EC2/MaliciousIPCaller.Custom",
-        "Trojan:EC2/DropPoint"
+        { prefix = "Backdoor:EC2/C&CActivity" },
+        { prefix = "UnauthorizedAccess:EC2/MaliciousIPCaller" },
+        { prefix = "Trojan:EC2/DropPoint" },
+        { prefix = "Execution:Runtime/MaliciousFileExecuted" },
+        { prefix = "Execution:Runtime/SuspiciousTool" },
+        { prefix = "Execution:Runtime/ReverseShell" },
+        { prefix = "DefenseEvasion:Runtime" }
       ]
     }
   })
@@ -321,6 +369,8 @@ resource "aws_cloudwatch_event_target" "sns" {
   arn       = aws_sns_topic.guardduty_alerts.arn
 }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "guardduty_publish" {
   arn = aws_sns_topic.guardduty_alerts.arn
 
@@ -331,6 +381,11 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "SNS:Publish"
       Resource  = aws_sns_topic.guardduty_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",
@@ -359,7 +414,11 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$1-5 (requires GuardDuty)",
-            prerequisites=["AWS GuardDuty enabled"],
+            prerequisites=[
+                "AWS GuardDuty enabled",
+                "GuardDuty Runtime Monitoring for EC2 enabled (for Runtime findings)",
+                "EC2 instances must be SSM-managed for Runtime Monitoring",
+            ],
         ),
         DetectionStrategy(
             strategy_id="t1105-aws-vpc-flows",
@@ -424,11 +483,29 @@ resource "aws_cloudwatch_metric_alarm" "download_alert" {
   evaluation_periods  = 1
   threshold           = 52428800
   comparison_operator = "GreaterThanThreshold"
-  treat_missing_data  = "notBreaching"
-  treat_missing_data  = "notBreaching"
+  treat_missing_data = "notBreaching"
+  alarm_actions      = [aws_sns_topic.alerts.arn]
+}
 
-  alarm_actions [aws_sns_topic.alerts.arn]
-  treat_missing_data  = "notBreaching"
+data "aws_caller_identity" "current" {}
+
+resource "aws_sns_topic_policy" "allow_cloudwatch" {
+  arn = aws_sns_topic.alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudWatchPublishScoped"
+      Effect    = "Allow"
+      Principal = { Service = "cloudwatch.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
 }""",
                 alert_severity="medium",
                 alert_title="Large Download Pattern Detected",

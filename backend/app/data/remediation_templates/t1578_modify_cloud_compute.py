@@ -172,6 +172,8 @@ resource "aws_cloudwatch_event_target" "sns" {
   arn  = aws_sns_topic.alerts.arn
 }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "allow_events" {
   arn = aws_sns_topic.alerts.arn
   policy = jsonencode({
@@ -181,6 +183,11 @@ resource "aws_sns_topic_policy" "allow_events" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",
@@ -331,6 +338,11 @@ resource "aws_sns_topic_policy" "allow_events" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",
@@ -478,6 +490,11 @@ resource "aws_sns_topic_policy" "allow_events" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",
@@ -649,7 +666,6 @@ Resources:
       Threshold: 10
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref SNSTopicArn
@@ -677,7 +693,6 @@ Resources:
       EvaluationPeriods: 1
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
-      TreatMissingData: notBreaching
       TreatMissingData: notBreaching
 
       AlarmActions:
@@ -718,7 +733,7 @@ resource "aws_cloudwatch_metric_alarm" "infra_changes" {
   threshold           = 10
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [var.sns_topic_arn]
+  alarm_actions       = [var.sns_topic_arn]
 }
 
 # Step 3: Metric filter for snapshot deletion
@@ -746,7 +761,7 @@ resource "aws_cloudwatch_metric_alarm" "snapshot_deletion" {
   threshold           = 1
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [var.sns_topic_arn]
+  alarm_actions       = [var.sns_topic_arn]
 }""",
                 alert_severity="high",
                 alert_title="Suspicious Infrastructure Change Pattern",

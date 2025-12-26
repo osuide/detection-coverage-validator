@@ -175,6 +175,8 @@ resource "aws_cloudwatch_event_target" "sns" {
 }
 
 # Step 3: SNS topic policy
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "allow_events" {
   arn = aws_sns_topic.dns_alerts.arn
 
@@ -185,6 +187,11 @@ resource "aws_sns_topic_policy" "allow_events" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.dns_alerts.arn
+    Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
     }]
   })
 }""",
@@ -407,6 +414,9 @@ resource "aws_flow_log" "main" {
                     "Trojan:EC2/BlackholeTraffic",
                     "Trojan:EC2/DropPoint",
                     "CryptoCurrency:EC2/BitcoinTool.B!DNS",
+                    "DefenseEvasion:EC2/UnusualDNSResolver",
+                    "DefenseEvasion:EC2/UnusualDoHActivity",
+                    "DefenseEvasion:EC2/UnusualDoTActivity",
                 ],
                 cloudformation_template="""AWSTemplateFormatVersion: '2010-09-09'
 Description: Configure GuardDuty alerts for C2 detection
@@ -433,7 +443,14 @@ Resources:
         - Protocol: email
           Endpoint: !Ref AlertEmail
 
-  # Step 3: EventBridge rule for C2 findings
+  # Step 3: Dead Letter Queue for failed deliveries
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: guardduty-c2-alerts-dlq
+      MessageRetentionPeriod: 1209600
+
+  # Step 4: EventBridge rule for C2 findings
   GuardDutyC2Rule:
     Type: AWS::Events::Rule
     Properties:
@@ -447,28 +464,76 @@ Resources:
             - prefix: Trojan:EC2/DNSDataExfiltration
             - prefix: Trojan:EC2/BlackholeTraffic
             - prefix: Trojan:EC2/DropPoint
+            - prefix: DefenseEvasion:EC2/UnusualDNSResolver
+            - prefix: DefenseEvasion:EC2/UnusualDoHActivity
+            - prefix: DefenseEvasion:EC2/UnusualDoTActivity
       State: ENABLED
       Targets:
-        - Id: AlertTopic
+        - Id: SNSTarget
           Arn: !Ref AlertTopic
+          RetryPolicy:
+            MaximumEventAgeInSeconds: 3600
+            MaximumRetryAttempts: 8
+          DeadLetterConfig:
+            Arn: !GetAtt DeadLetterQueue.Arn
+          InputTransformer:
+            InputPathsMap:
+              account: $.account
+              region: $.region
+              time: $.time
+              type: $.detail.type
+              severity: $.detail.severity
+              instanceId: $.detail.resource.instanceDetails.instanceId
+              description: $.detail.description
+            InputTemplate: |
+              "CRITICAL: GuardDuty C2 Activity Detected (T1071)"
+              "Time: <time>"
+              "Account: <account> | Region: <region>"
+              "Finding Type: <type>"
+              "Severity: <severity>"
+              "Instance: <instanceId>"
+              "Description: <description>"
+              "Action: Isolate instance and investigate immediately"
 
   TopicPolicy:
     Type: AWS::SNS::TopicPolicy
     Properties:
       Topics: [!Ref AlertTopic]
       PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowEventBridgePublishScoped
+            Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt GuardDutyC2Rule.Arn
+
+  DLQPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref DeadLetterQueue
+      PolicyDocument:
         Statement:
           - Effect: Allow
             Principal:
               Service: events.amazonaws.com
-            Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Action: sqs:SendMessage
+            Resource: !GetAtt DeadLetterQueue.Arn""",
                 terraform_template="""# Configure GuardDuty for C2 detection
 
 variable "alert_email" {
   type        = string
   description = "Email address for security alerts"
 }
+
+data "aws_caller_identity" "current" {}
 
 # Step 1: Enable GuardDuty
 resource "aws_guardduty_detector" "main" {
@@ -478,7 +543,7 @@ resource "aws_guardduty_detector" "main" {
 
 # Step 2: SNS topic for alerts
 resource "aws_sns_topic" "guardduty_alerts" {
-  name = "guardduty-c2-alerts"
+  name              = "guardduty-c2-alerts"
   kms_master_key_id = "alias/aws/sns"
 }
 
@@ -488,40 +553,103 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alert_email
 }
 
-# Step 3: EventBridge rule for C2 findings
+# Step 3: Dead Letter Queue for failed deliveries
+resource "aws_sqs_queue" "dlq" {
+  name                      = "guardduty-c2-alerts-dlq"
+  message_retention_seconds = 1209600
+}
+
+# Step 4: EventBridge rule for C2 findings
 resource "aws_cloudwatch_event_rule" "guardduty_c2" {
   name        = "guardduty-c2-detection"
   description = "Alert on GuardDuty C2 findings"
 
   event_pattern = jsonencode({
-    source      = ["aws.guardduty"]
-    detail-type = ["GuardDuty Finding"]
+    source        = ["aws.guardduty"]
+    "detail-type" = ["GuardDuty Finding"]
     detail = {
       type = [
         { prefix = "Backdoor:EC2/C&CActivity" },
         { prefix = "Trojan:EC2/DNSDataExfiltration" },
         { prefix = "Trojan:EC2/BlackholeTraffic" },
-        { prefix = "Trojan:EC2/DropPoint" }
+        { prefix = "Trojan:EC2/DropPoint" },
+        { prefix = "DefenseEvasion:EC2/UnusualDNSResolver" },
+        { prefix = "DefenseEvasion:EC2/UnusualDoHActivity" },
+        { prefix = "DefenseEvasion:EC2/UnusualDoTActivity" }
       ]
     }
   })
 }
 
 resource "aws_cloudwatch_event_target" "sns" {
-  rule = aws_cloudwatch_event_rule.guardduty_c2.name
-  arn  = aws_sns_topic.guardduty_alerts.arn
+  rule      = aws_cloudwatch_event_rule.guardduty_c2.name
+  target_id = "SNSTarget"
+  arn       = aws_sns_topic.guardduty_alerts.arn
+
+  retry_policy {
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts       = 8
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.dlq.arn
+  }
+
+  input_transformer {
+    input_paths = {
+      account     = "$.account"
+      region      = "$.region"
+      time        = "$.time"
+      type        = "$.detail.type"
+      severity    = "$.detail.severity"
+      instanceId  = "$.detail.resource.instanceDetails.instanceId"
+      description = "$.detail.description"
+    }
+
+    input_template = <<-EOT
+"CRITICAL: GuardDuty C2 Activity Detected (T1071)
+Time: <time>
+Account: <account> | Region: <region>
+Finding Type: <type>
+Severity: <severity>
+Instance: <instanceId>
+Description: <description>
+Action: Isolate instance and investigate immediately"
+EOT
+  }
 }
 
 resource "aws_sns_topic_policy" "allow_events" {
   arn = aws_sns_topic.guardduty_alerts.arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowEventBridgePublishScoped"
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.guardduty_alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.guardduty_c2.arn
+        }
+      }
+    }]
+  })
+}
 
+resource "aws_sqs_queue_policy" "dlq" {
+  queue_url = aws_sqs_queue.dlq.id
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
       Effect    = "Allow"
       Principal = { Service = "events.amazonaws.com" }
-      Action    = "sns:Publish"
-      Resource  = aws_sns_topic.guardduty_alerts.arn
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.dlq.arn
     }]
   })
 }""",
@@ -818,7 +946,6 @@ Resources:
       Threshold: 50
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-      TreatMissingData: notBreaching
 
       AlarmActions:
         - !Ref AlertTopic""",
@@ -874,7 +1001,7 @@ resource "aws_cloudwatch_metric_alarm" "protocol_anomaly" {
   alarm_description   = "Alert on unusual protocol or port usage"
   treat_missing_data  = "notBreaching"
 
-  alarm_actions [aws_sns_topic.protocol_alerts.arn]
+  alarm_actions       = [aws_sns_topic.protocol_alerts.arn]
 }""",
                 alert_severity="medium",
                 alert_title="Unusual Network Protocol or Port Detected",
