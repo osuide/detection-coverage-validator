@@ -65,9 +65,12 @@ class SchedulerService:
         # Load MITRE sync schedule from platform settings
         await self._load_mitre_schedule()
 
-        # Start the scheduler
+        # Start the scheduler FIRST, then update next_run_times
         self._scheduler.start()
         self.logger.info("scheduler_started")
+
+        # Now update next_run_at for all schedules (scheduler must be running)
+        await self._update_schedule_next_run_times()
 
     async def stop(self) -> None:
         """Stop the scheduler."""
@@ -84,15 +87,49 @@ class SchedulerService:
             schedules = result.scalars().all()
 
             for schedule in schedules:
-                await self._add_schedule_job(schedule)
+                await self._add_schedule_job(schedule, update_next_run=False)
 
             self.logger.info(
                 "schedules_loaded",
                 count=len(schedules),
             )
 
-    async def _add_schedule_job(self, schedule: ScanSchedule) -> None:
-        """Add a schedule job to APScheduler."""
+    async def _update_schedule_next_run_times(self) -> None:
+        """Update next_run_at for all loaded schedules after scheduler starts."""
+        async with self._session_factory() as session:
+            result = await session.execute(
+                select(ScanSchedule).where(ScanSchedule.is_active.is_(True))
+            )
+            schedules = result.scalars().all()
+
+            for schedule in schedules:
+                job = self._scheduler.get_job(f"scan_schedule_{schedule.id}")
+                if job:
+                    schedule.next_run_at = self._get_job_next_run_time(job)
+
+            await session.commit()
+
+    def _get_job_next_run_time(self, job) -> Optional[datetime]:
+        """Safely get next run time from a job.
+
+        APScheduler 3.x jobs may not have next_run_time computed
+        until the scheduler is running.
+        """
+        if job is None:
+            return None
+        # Use getattr for safe access - attribute may not exist before scheduler starts
+        return getattr(job, "next_run_time", None)
+
+    async def _add_schedule_job(
+        self, schedule: ScanSchedule, update_next_run: bool = True
+    ) -> None:
+        """Add a schedule job to APScheduler.
+
+        Args:
+            schedule: The schedule to add
+            update_next_run: Whether to update schedule.next_run_at
+                            (only works if scheduler is running)
+        """
         job_id = f"scan_schedule_{schedule.id}"
 
         # Remove existing job if present
@@ -118,6 +155,12 @@ class SchedulerService:
             args=[schedule.id],
             name=f"Scheduled scan: {schedule.name}",
         )
+
+        # Update next_run_at if scheduler is running
+        if update_next_run:
+            job = self._scheduler.get_job(job_id)
+            if job:
+                schedule.next_run_at = self._get_job_next_run_time(job)
 
         self.logger.info(
             "schedule_job_added",
@@ -167,7 +210,7 @@ class SchedulerService:
             # Calculate next run time
             job = self._scheduler.get_job(f"scan_schedule_{schedule_id}")
             if job:
-                schedule.next_run_at = job.next_run_time
+                schedule.next_run_at = self._get_job_next_run_time(job)
 
             await session.commit()
 
@@ -192,10 +235,10 @@ class SchedulerService:
         """Add a new schedule to the scheduler."""
         await self._add_schedule_job(schedule)
 
-        # Calculate and update next run time
+        # Calculate and update next run time (already done in _add_schedule_job)
         job = self._scheduler.get_job(f"scan_schedule_{schedule.id}")
         if job:
-            schedule.next_run_at = job.next_run_time
+            schedule.next_run_at = self._get_job_next_run_time(job)
 
     async def update_schedule(self, schedule: ScanSchedule) -> None:
         """Update an existing schedule."""
@@ -203,7 +246,7 @@ class SchedulerService:
             await self._add_schedule_job(schedule)
             job = self._scheduler.get_job(f"scan_schedule_{schedule.id}")
             if job:
-                schedule.next_run_at = job.next_run_time
+                schedule.next_run_at = self._get_job_next_run_time(job)
         else:
             await self.remove_schedule(schedule.id)
 
@@ -224,9 +267,9 @@ class SchedulerService:
         if job:
             return {
                 "job_id": job.id,
-                "name": job.name,
-                "next_run_time": job.next_run_time,
-                "pending": job.pending,
+                "name": getattr(job, "name", None),
+                "next_run_time": self._get_job_next_run_time(job),
+                "pending": getattr(job, "pending", False),
             }
         return None
 
@@ -327,7 +370,7 @@ class SchedulerService:
         )
 
         job = self._scheduler.get_job(self.MITRE_SYNC_JOB_ID)
-        next_run = job.next_run_time if job else None
+        next_run = self._get_job_next_run_time(job)
 
         self.logger.info(
             "mitre_sync_schedule_updated",
@@ -349,9 +392,9 @@ class SchedulerService:
         if job:
             return {
                 "job_id": job.id,
-                "name": job.name,
-                "next_run_time": job.next_run_time,
-                "pending": job.pending,
+                "name": getattr(job, "name", None),
+                "next_run_time": self._get_job_next_run_time(job),
+                "pending": getattr(job, "pending", False),
             }
         return None
 
