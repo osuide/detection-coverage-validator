@@ -1,16 +1,18 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Cloud, Plus, Trash2, Play, RefreshCw, Link, CheckCircle2, AlertTriangle, Settings, Clock, Globe, MapPin } from 'lucide-react'
+import { Cloud, Plus, Trash2, Play, RefreshCw, Link, CheckCircle2, AlertTriangle, Settings, Clock, Globe, MapPin, Calendar } from 'lucide-react'
 import { Link as RouterLink } from 'react-router-dom'
 import { accountsApi, scansApi, credentialsApi, CloudAccount, scanStatusApi, ScanStatus, RegionConfig } from '../services/api'
 import CredentialWizard from '../components/CredentialWizard'
 import RegionSelector from '../components/RegionSelector'
+import ScheduleModal, { ScheduleIndicator } from '../components/ScheduleModal'
 
 export default function Accounts() {
   const queryClient = useQueryClient()
   const [showForm, setShowForm] = useState(false)
   const [connectingAccount, setConnectingAccount] = useState<CloudAccount | null>(null)
   const [editingAccount, setEditingAccount] = useState<CloudAccount | null>(null)
+  const [schedulingAccount, setSchedulingAccount] = useState<CloudAccount | null>(null)
   const [formData, setFormData] = useState({
     name: '',
     provider: 'aws' as 'aws' | 'gcp',
@@ -283,6 +285,7 @@ export default function Accounts() {
               account={account}
               onConnect={() => setConnectingAccount(account)}
               onEdit={() => setEditingAccount(account)}
+              onSchedule={() => setSchedulingAccount(account)}
               onScan={() => handleScan(account.id)}
               onDelete={() => deleteMutation.mutate(account.id)}
               isScanPending={scanningAccountId === account.id || scanMutation.isPending}
@@ -363,6 +366,15 @@ export default function Accounts() {
           </div>
         </div>
       )}
+
+      {/* Schedule Modal */}
+      {schedulingAccount && (
+        <ScheduleModal
+          cloudAccountId={schedulingAccount.id}
+          accountName={schedulingAccount.name}
+          onClose={() => setSchedulingAccount(null)}
+        />
+      )}
     </div>
   )
 }
@@ -372,6 +384,7 @@ function AccountCard({
   account,
   onConnect,
   onEdit,
+  onSchedule,
   onScan,
   onDelete,
   isScanPending,
@@ -381,6 +394,7 @@ function AccountCard({
   account: CloudAccount
   onConnect: () => void
   onEdit: () => void
+  onSchedule: () => void
   onScan: () => void
   onDelete: () => void
   isScanPending: boolean
@@ -502,6 +516,20 @@ function AccountCard({
             </button>
           )}
 
+          {/* Schedule Button - configure recurring scans */}
+          <button
+            onClick={onSchedule}
+            disabled={!credential || credential.status !== 'valid'}
+            className={`p-2 rounded-lg transition-colors ${
+              credential?.status === 'valid'
+                ? 'text-cyan-400 hover:bg-gray-700'
+                : 'text-gray-500 cursor-not-allowed'
+            }`}
+            title={credential?.status === 'valid' ? 'Configure Schedule' : 'Connect account first'}
+          >
+            <Calendar className="h-5 w-5" />
+          </button>
+
           {/* Scan Button - only enabled if connected and within limits */}
           <button
             onClick={(e) => {
@@ -545,6 +573,9 @@ function AccountCard({
       {/* Additional info row */}
       <div className="mt-3 flex items-center justify-between text-sm text-gray-400">
         <div className="flex items-center space-x-4">
+          {/* Schedule indicator */}
+          <ScheduleIndicator cloudAccountId={account.id} />
+
           {/* Region info */}
           <div className="flex items-center text-xs">
             <Globe className="h-3 w-3 mr-1" />
