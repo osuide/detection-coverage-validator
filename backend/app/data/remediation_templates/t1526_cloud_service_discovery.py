@@ -195,6 +195,7 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             estimated_false_positive_rate=FalsePositiveRate.LOW,
             false_positive_tuning="GuardDuty uses ML baselines; tune suppression rules for known benign patterns",
             detection_coverage="70% - detects anomalous behaviour but may miss attacks that blend with normal activity",
+            evasion_considerations="Slow enumeration over days, using legitimate automation tools, staying within normal API call volumes",
             implementation_effort=EffortLevel.LOW,
             implementation_time="30 minutes",
             estimated_monthly_cost="$4-10 per million events",
