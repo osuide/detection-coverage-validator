@@ -8,7 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.database import get_db
-from app.core.security import AuthContext, get_auth_context, require_scope
+from app.core.security import (
+    AuthContext,
+    get_auth_context,
+    require_scope,
+    require_feature,
+)
 from app.models.schedule import ScanSchedule
 from app.models.cloud_account import CloudAccount
 from app.schemas.schedule import (
@@ -76,7 +81,10 @@ async def list_schedules(
     "",
     response_model=ScheduleResponse,
     status_code=201,
-    dependencies=[Depends(require_scope("write:schedules"))],
+    dependencies=[
+        Depends(require_scope("write:schedules")),
+        Depends(require_feature("scheduled_scans")),
+    ],
 )
 async def create_schedule(
     schedule_in: ScheduleCreate,
@@ -86,6 +94,7 @@ async def create_schedule(
     """Create a new scan schedule.
 
     API keys require 'write:schedules' scope.
+    Requires 'scheduled_scans' feature (INDIVIDUAL tier or higher).
     """
     # Verify cloud account exists and belongs to user's organization
     result = await db.execute(

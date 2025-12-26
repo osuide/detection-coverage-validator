@@ -14,7 +14,9 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from app.core.config import get_settings
 from app.models.schedule import ScanSchedule
 from app.models.scan import Scan, ScanStatus
+from app.models.cloud_account import CloudAccount
 from app.services.scan_service import ScanService
+from app.services.scan_limit_service import ScanLimitService
 
 logger = structlog.get_logger()
 settings = get_settings()
@@ -189,6 +191,43 @@ class SchedulerService:
                     "schedule_inactive",
                     schedule_id=str(schedule_id),
                 )
+                return
+
+            # Get the cloud account to find organization_id
+            account_result = await session.execute(
+                select(CloudAccount).where(CloudAccount.id == schedule.cloud_account_id)
+            )
+            account = account_result.scalar_one_or_none()
+
+            if not account:
+                self.logger.error(
+                    "scheduled_scan_account_not_found",
+                    schedule_id=str(schedule_id),
+                    cloud_account_id=str(schedule.cloud_account_id),
+                )
+                return
+
+            # Check scan limits (respects disable_scan_limits setting)
+            scan_limit_service = ScanLimitService(session)
+            can_scan, reason, next_available = (
+                await scan_limit_service.can_scan_and_record(account.organization_id)
+            )
+
+            if not can_scan:
+                self.logger.warning(
+                    "scheduled_scan_limit_reached",
+                    schedule_id=str(schedule_id),
+                    organization_id=str(account.organization_id),
+                    reason=reason,
+                    next_available=(
+                        next_available.isoformat() if next_available else None
+                    ),
+                )
+                # Update next_run_at but don't execute the scan
+                job = self._scheduler.get_job(f"scan_schedule_{schedule_id}")
+                if job:
+                    schedule.next_run_at = self._get_job_next_run_time(job)
+                await session.commit()
                 return
 
             # Create a new scan
