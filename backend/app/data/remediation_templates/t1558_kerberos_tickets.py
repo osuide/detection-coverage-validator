@@ -321,6 +321,11 @@ Resources:
               Service: events.amazonaws.com
             Action: sns:Publish
             Resource: !Ref KerberosAlertsTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt ADAuthFailuresRule.Arn
 
 Outputs:
   TopicArn:

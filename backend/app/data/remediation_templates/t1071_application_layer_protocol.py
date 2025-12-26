@@ -126,7 +126,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt DnsQueryRule.Arn""",
                 terraform_template="""# Detect unusual DNS query patterns for C2
 
 variable "alert_email" {
@@ -191,6 +196,9 @@ resource "aws_sns_topic_policy" "allow_events" {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
         }
+          ArnEquals = {
+            "aws:SourceArn" = aws_cloudwatch_event_rule.dns_anomaly.arn
+          }
       }
     }]
   })
@@ -525,7 +533,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sqs:SendMessage
-            Resource: !GetAtt DeadLetterQueue.Arn""",
+            Resource: !GetAtt DeadLetterQueue.Arn
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt GuardDutyC2Rule.Arn""",
                 terraform_template="""# Configure GuardDuty for C2 detection
 
 variable "alert_email" {

@@ -291,6 +291,9 @@ resource "aws_sns_topic_policy" "allow_events" {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
         }
+          ArnEquals = {
+            "aws:SourceArn" = aws_cloudwatch_event_rule.public_access.arn
+          }
       }
     }]
   })

@@ -668,9 +668,12 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "sns:Publish"
       Resource  = aws_sns_topic.alerts.arn
-    Condition = {
+      Condition = {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.guardduty_s3.arn
         }
       }
     }]

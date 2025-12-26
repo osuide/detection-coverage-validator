@@ -185,6 +185,11 @@ Resources:
               Service: events.amazonaws.com
             Action: sqs:SendMessage
             Resource: !GetAtt ECSExecDLQ.Arn
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt ECSExecRule.Arn
 
 Outputs:
   AlertTopicArn:

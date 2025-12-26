@@ -362,6 +362,11 @@ Resources:
               Service: events.amazonaws.com
             Action: sns:Publish
             Resource: !Ref IPCAlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt IPCFindingsRule.Arn
 
 Outputs:
   GuardDutyDetectorId:

@@ -472,7 +472,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt LocationDiscoveryRule.Arn""",
                 terraform_template="""# AWS: Detect location discovery via Systems Manager
 
 variable "alert_email" {
@@ -567,6 +572,9 @@ resource "aws_sns_topic_policy" "allow_events" {
     Condition = {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.ssm_location_discovery.arn
         }
       }
     }]

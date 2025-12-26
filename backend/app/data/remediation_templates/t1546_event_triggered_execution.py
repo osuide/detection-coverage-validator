@@ -142,6 +142,11 @@ Resources:
               Service: events.amazonaws.com
             Action: sns:Publish
             Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt LambdaTriggerRule.Arn
 
   # Allow EventBridge to send failed events to DLQ
   DLQPolicy:
@@ -154,7 +159,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sqs:SendMessage
-            Resource: !GetAtt AlertDLQ.Arn""",
+            Resource: !GetAtt AlertDLQ.Arn
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt LambdaTriggerRule.Arn""",
                 terraform_template="""# Detect Lambda event trigger creation
 
 variable "alert_email" {
@@ -224,6 +234,9 @@ resource "aws_sns_topic_policy" "allow_events" {
     Condition = {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.lambda_trigger.arn
         }
       }
     }]
@@ -344,6 +357,11 @@ Resources:
               Service: events.amazonaws.com
             Action: sns:Publish
             Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt EventBridgeModRule.Arn
 
   # Allow EventBridge to send failed events to DLQ
   DLQPolicy:
@@ -356,7 +374,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sqs:SendMessage
-            Resource: !GetAtt AlertDLQ.Arn""",
+            Resource: !GetAtt AlertDLQ.Arn
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt EventBridgeModRule.Arn""",
                 terraform_template="""# Detect EventBridge rule creation
 
 variable "alert_email" {
@@ -424,6 +447,9 @@ resource "aws_sns_topic_policy" "allow_events" {
     Condition = {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.eventbridge_mod.arn
         }
       }
     }]
@@ -539,6 +565,11 @@ Resources:
               Service: events.amazonaws.com
             Action: sns:Publish
             Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt S3NotificationRule.Arn
 
   # Allow EventBridge to send failed events to DLQ
   DLQPolicy:
@@ -551,7 +582,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sqs:SendMessage
-            Resource: !GetAtt AlertDLQ.Arn""",
+            Resource: !GetAtt AlertDLQ.Arn
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt S3NotificationRule.Arn""",
                 terraform_template="""# Detect S3 event notification configuration
 
 variable "alert_email" {
@@ -615,6 +651,9 @@ resource "aws_sns_topic_policy" "allow_events" {
     Condition = {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.s3_notification.arn
         }
       }
     }]
@@ -910,6 +949,11 @@ Resources:
               Service: events.amazonaws.com
             Action: sns:Publish
             Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt LogsSubscriptionRule.Arn
 
   # Allow EventBridge to send failed events to DLQ
   DLQPolicy:
@@ -922,7 +966,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sqs:SendMessage
-            Resource: !GetAtt AlertDLQ.Arn""",
+            Resource: !GetAtt AlertDLQ.Arn
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt LogsSubscriptionRule.Arn""",
                 terraform_template="""# Detect CloudWatch Logs subscription filter creation
 
 variable "alert_email" {
@@ -986,6 +1035,9 @@ resource "aws_sns_topic_policy" "allow_events" {
     Condition = {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.logs_subscription.arn
         }
       }
     }]

@@ -129,7 +129,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt EC2LifecycleRule.Arn""",
                 terraform_template="""# Detect EC2 instance lifecycle changes
 
 variable "alert_email" {
@@ -221,6 +226,13 @@ resource "aws_sns_topic_policy" "allow_events" {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
         }
+          ArnEquals = {
+            "aws:SourceArn" = [
+              aws_cloudwatch_event_rule.ec2_lifecycle.arn,
+              aws_cloudwatch_event_rule.volume_snapshot.arn,
+              aws_cloudwatch_event_rule.defence_evasion.arn,
+            ]
+          }
       }
     }]
   })
@@ -320,7 +332,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt VolumeSnapshotRule.Arn""",
                 terraform_template="""# Detect volume and snapshot manipulation
 
 variable "alert_email" {
@@ -410,6 +427,13 @@ resource "aws_sns_topic_policy" "allow_events" {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
         }
+          ArnEquals = {
+            "aws:SourceArn" = [
+              aws_cloudwatch_event_rule.ec2_lifecycle.arn,
+              aws_cloudwatch_event_rule.volume_snapshot.arn,
+              aws_cloudwatch_event_rule.defence_evasion.arn,
+            ]
+          }
       }
     }]
   })
@@ -505,7 +529,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt DefenceEvasionRule.Arn""",
                 terraform_template="""# GuardDuty defence evasion detection
 
 variable "alert_email" {
@@ -596,6 +625,13 @@ resource "aws_sns_topic_policy" "allow_events" {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
         }
+          ArnEquals = {
+            "aws:SourceArn" = [
+              aws_cloudwatch_event_rule.ec2_lifecycle.arn,
+              aws_cloudwatch_event_rule.volume_snapshot.arn,
+              aws_cloudwatch_event_rule.defence_evasion.arn,
+            ]
+          }
       }
     }]
   })

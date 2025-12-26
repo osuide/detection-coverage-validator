@@ -322,7 +322,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt DDNSDetectionRule.Arn""",
                 terraform_template="""# Detect usage of dynamic DNS providers
 
 variable "alert_email" {
@@ -594,7 +599,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt MaliciousDomainRule.Arn""",
                 terraform_template="""# GuardDuty detection for malicious domains
 
 variable "alert_email" {
@@ -693,6 +703,9 @@ resource "aws_sns_topic_policy" "allow_events" {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
         }
+          ArnEquals = {
+            "aws:SourceArn" = aws_cloudwatch_event_rule.malicious_domain.arn
+          }
       }
     }]
   })

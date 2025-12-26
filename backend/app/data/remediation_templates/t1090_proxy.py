@@ -137,7 +137,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt ProxyDeploymentRule.Arn""",
                 terraform_template="""# Detect proxy tool deployment on EC2 instances
 
 variable "alert_email" {
@@ -233,6 +238,9 @@ resource "aws_sns_topic_policy" "allow_events" {
     Condition = {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.proxy_deployment.arn
         }
       }
     }]

@@ -142,7 +142,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt CredentialFindingsRule.Arn""",
                 terraform_template="""# AWS GuardDuty + email alerts for credential abuse (T1078)
 
 variable "alert_email" {
@@ -208,6 +213,9 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
         }
+          ArnEquals = {
+            "aws:SourceArn" = aws_cloudwatch_event_rule.credential_findings.arn
+          }
       }
     }]
   })
@@ -680,8 +688,7 @@ Outputs:
     Value: |
       1. Deploy in us-east-1 plus regional sign-in endpoints for full coverage
       2. Ensure CloudTrail logs management events
-      3. This covers console sign-ins; add separate controls for programmatic access
-""",
+      3. This covers console sign-ins; add separate controls for programmatic access""",
                 terraform_template="""# T1078 Off-Hours Console Access Detection (Production-Grade)
 # Features: timezone-aware filtering, allowlisting, dynamic severity, DLQ, SNS encryption
 # IMPORTANT: Deploy in us-east-1 plus regional sign-in endpoints for full coverage

@@ -161,7 +161,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref DefacementAlertTopic""",
+            Resource: !Ref DefacementAlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt S3ContentModificationRule.Arn""",
                 terraform_template="""# AWS: Detect S3 website defacement
 
 variable "alert_email" {

@@ -375,7 +375,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref GuardDutyAlertTopic""",
+            Resource: !Ref GuardDutyAlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt GuardDutyEventRule.Arn""",
                 terraform_template="""# AWS: GuardDuty remote access tool C2 detection
 
 variable "alert_email" {

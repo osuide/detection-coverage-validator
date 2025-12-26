@@ -127,7 +127,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt GuardDutyRule.Arn""",
                 terraform_template="""# GuardDuty alerts for T1548
 
 variable "alert_email" {
@@ -441,7 +446,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt CrossAccountRoleRule.Arn""",
                 terraform_template="""# Detect cross-account role assumption
 
 variable "alert_email" {

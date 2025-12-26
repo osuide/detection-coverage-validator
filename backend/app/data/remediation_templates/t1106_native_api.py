@@ -163,6 +163,11 @@ Resources:
               Service: events.amazonaws.com
             Action: sns:Publish
             Resource: !Ref NativeAPIAlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt NativeAPIRule.Arn
 
 Outputs:
   GuardDutyDetectorId:
@@ -304,6 +309,9 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
     Condition = {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.native_api.arn
         }
       }
     }]
@@ -804,6 +812,11 @@ Resources:
               Service: events.amazonaws.com
             Action: sns:Publish
             Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt SuspiciousAPIPatternRule.Arn
 
 Outputs:
   RuleArn:
@@ -892,6 +905,8 @@ resource "aws_cloudwatch_event_target" "sns" {
   }
 }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_sns_topic_policy" "alerts" {
   arn = aws_sns_topic.alerts.arn
 
@@ -902,6 +917,14 @@ resource "aws_sns_topic_policy" "alerts" {
       Principal = { Service = "events.amazonaws.com" }
       Action    = "SNS:Publish"
       Resource  = aws_sns_topic.alerts.arn
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.suspicious_api_pattern.arn
+        }
+      }
     }]
   })
 }

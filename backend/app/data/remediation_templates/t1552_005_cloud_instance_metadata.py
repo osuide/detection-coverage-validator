@@ -352,7 +352,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt NonComplianceRule.Arn""",
                 terraform_template="""# Enforce IMDSv2 on EC2 instances
 
 variable "alert_email" {
@@ -416,6 +421,12 @@ resource "aws_sns_topic_policy" "allow_events" {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
         }
+          ArnEquals = {
+            "aws:SourceArn" = [
+              aws_cloudwatch_event_rule.imds_exfil.arn,
+              aws_cloudwatch_event_rule.non_compliant.arn,
+            ]
+          }
       }
     }]
   })

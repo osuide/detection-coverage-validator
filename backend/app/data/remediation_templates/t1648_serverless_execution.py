@@ -157,6 +157,11 @@ Resources:
               Service: events.amazonaws.com
             Action: sns:Publish
             Resource: !Ref LambdaAlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt LambdaFindingRule.Arn
 
   # Enable GuardDuty with Lambda Protection
   GuardDutyDetector:

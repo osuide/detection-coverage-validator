@@ -290,7 +290,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sqs:SendMessage
-            Resource: !GetAtt EventDLQ.Arn""",
+            Resource: !GetAtt EventDLQ.Arn
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt AuthDetailsRule.Arn""",
                 terraform_template="""# Detect full IAM enumeration
 
 variable "alert_email" {

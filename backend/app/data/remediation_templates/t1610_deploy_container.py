@@ -180,6 +180,11 @@ Resources:
               Service: events.amazonaws.com
             Action: sqs:SendMessage
             Resource: !GetAtt DeployDLQ.Arn
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt ECSDeployRule.Arn
 
 Outputs:
   AlertTopicArn:

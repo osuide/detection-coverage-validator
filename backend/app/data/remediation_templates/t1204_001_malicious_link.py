@@ -125,7 +125,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref SecurityAlertTopic""",
+            Resource: !Ref SecurityAlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt GuardDutyMaliciousLinkRule.Arn""",
                 terraform_template="""# Detect malicious domain connections via GuardDuty
 
 variable "alert_email" {

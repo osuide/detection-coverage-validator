@@ -561,6 +561,9 @@ resource "aws_sns_topic_policy" "guardduty_alerts_policy" {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
         }
+          ArnEquals = {
+            "aws:SourceArn" = aws_cloudwatch_event_rule.guardduty_recon.arn
+          }
       }
     }]
   })

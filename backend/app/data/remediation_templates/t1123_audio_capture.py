@@ -159,7 +159,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AudioCaptureAlertTopic""",
+            Resource: !Ref AudioCaptureAlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt SuspiciousExecutionRule.Arn""",
                 terraform_template="""# AWS: Detect audio capture activity via GuardDuty
 
 variable "alert_email" {
@@ -259,6 +264,9 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
         }
+          ArnEquals = {
+            "aws:SourceArn" = aws_cloudwatch_event_rule.audio_capture.arn
+          }
       }
     }]
   })

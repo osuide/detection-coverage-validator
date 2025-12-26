@@ -160,11 +160,22 @@ Resources:
         Statement:
           - Effect: Allow
             Principal:
-              Service:
-                - events.amazonaws.com
-                - cloudwatch.amazonaws.com
+              Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt LambdaLayerRule.Arn
+          - Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId""",
                 terraform_template="""# AWS: Detect Lambda layer and dependency changes (T1195)
 
 variable "cloudtrail_log_group" {
@@ -396,7 +407,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt ECRImageRule.Arn""",
                 terraform_template="""# AWS: Monitor ECR image integrity (T1195)
 
 variable "alert_email" {

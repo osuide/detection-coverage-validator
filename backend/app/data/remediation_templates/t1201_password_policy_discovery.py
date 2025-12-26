@@ -259,7 +259,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt PasswordCommandRule.Arn""",
                 terraform_template="""# Detect Windows password policy discovery commands
 
 variable "alert_email" {

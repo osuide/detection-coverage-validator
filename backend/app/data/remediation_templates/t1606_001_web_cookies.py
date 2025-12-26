@@ -316,7 +316,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref GuardDutyTopic""",
+            Resource: !Ref GuardDutyTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt GuardDutyEventRule.Arn""",
                 terraform_template="""# AWS: Configure GuardDuty alerts for credential access
 
 variable "alert_email" {
@@ -408,6 +413,9 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
     Condition = {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.guardduty_credential.arn
         }
       }
     }]

@@ -194,6 +194,11 @@ Resources:
               Service: events.amazonaws.com
             Action: sqs:SendMessage
             Resource: !GetAtt DeadLetterQueue.Arn
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt SecurityGroupRule.Arn
 
 Outputs:
   AlertTopicArn:

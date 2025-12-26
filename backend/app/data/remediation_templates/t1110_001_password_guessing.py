@@ -403,6 +403,9 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
         }
+          ArnEquals = {
+            "aws:SourceArn" = aws_cloudwatch_event_rule.guardduty_auth.arn
+          }
       }
     }]
   })
@@ -515,6 +518,11 @@ Resources:
               Service: events.amazonaws.com
             Action: sns:Publish
             Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt GuardDutyAuthRule.Arn
 
   GuardDutyAuthRule:
     Type: AWS::Events::Rule
@@ -680,6 +688,9 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
     Condition = {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.auth_failures.arn
         }
       }
     }]

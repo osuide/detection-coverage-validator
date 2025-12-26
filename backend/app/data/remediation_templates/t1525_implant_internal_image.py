@@ -170,6 +170,9 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
         }
+          ArnEquals = {
+            "aws:SourceArn" = aws_cloudwatch_event_rule.image_scan_findings.arn
+          }
       }
     }]
   })
@@ -246,7 +249,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt ImageScanRule.Arn""",
                 alert_severity="critical",
                 alert_title="ECR Image Scan: Critical Vulnerabilities Found",
                 alert_description_template=(
@@ -341,7 +349,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt ECRPushRule.Arn""",
                 terraform_template="""# Detect ECR image pushes
 
 variable "alert_email" { type = string }
@@ -426,6 +439,9 @@ resource "aws_sns_topic_policy" "allow_events" {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
         }
+          ArnEquals = {
+            "aws:SourceArn" = aws_cloudwatch_event_rule.ecr_push.arn
+          }
       }
     }]
   })

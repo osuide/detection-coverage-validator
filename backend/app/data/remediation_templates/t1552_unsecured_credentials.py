@@ -185,7 +185,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sqs:SendMessage
-            Resource: !GetAtt DeadLetterQueue.Arn""",
+            Resource: !GetAtt DeadLetterQueue.Arn
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt CredentialExposureRule.Arn""",
                 terraform_template="""# Detect credential exfiltration and exposure via GuardDuty
 
 variable "alert_email" {

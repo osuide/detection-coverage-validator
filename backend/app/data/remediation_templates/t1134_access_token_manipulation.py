@@ -145,7 +145,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref SecurityAlertTopic""",
+            Resource: !Ref SecurityAlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt TokenManipulationRule.Arn""",
                 terraform_template="""# GuardDuty Runtime Monitoring for token manipulation
 
 variable "alert_email" {
@@ -258,6 +263,9 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
         }
+          ArnEquals = {
+            "aws:SourceArn" = aws_cloudwatch_event_rule.token_manipulation.arn
+          }
       }
     }]
   })

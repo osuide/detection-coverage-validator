@@ -294,7 +294,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt NonCompliantLambdaRule.Arn""",
                 terraform_template="""# Detect Lambda functions with minimal logging
 
 variable "alert_email" {
@@ -750,7 +755,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt NonCompliantResourceRule.Arn""",
                 terraform_template="""# Detect resources with missing or suspicious tags
 
 variable "alert_email" {

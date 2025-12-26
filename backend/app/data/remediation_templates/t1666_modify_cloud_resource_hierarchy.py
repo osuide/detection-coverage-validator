@@ -118,7 +118,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt LeaveOrgRule.Arn""",
                 terraform_template="""# Detect AWS LeaveOrganization attempts
 
 variable "alert_email" {
@@ -430,7 +435,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt MoveAccountRule.Arn""",
                 terraform_template="""# Detect AWS MoveAccount API calls
 
 variable "alert_email" {

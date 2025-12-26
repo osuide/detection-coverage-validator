@@ -383,7 +383,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sqs:SendMessage
-            Resource: !GetAtt DeadLetterQueue.Arn""",
+            Resource: !GetAtt DeadLetterQueue.Arn
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt ExecutionFindingsRule.Arn""",
                 terraform_template="""# GuardDuty Runtime Monitoring for T1059 detection
 
 variable "alert_email" {
@@ -1250,7 +1255,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sqs:SendMessage
-            Resource: !GetAtt DeadLetterQueue.Arn""",
+            Resource: !GetAtt DeadLetterQueue.Arn
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt SSMCommandRule.Arn""",
                 terraform_template="""# Detect AWS SSM Run Command and Session Manager usage (T1059.009)
 
 variable "alert_email" {

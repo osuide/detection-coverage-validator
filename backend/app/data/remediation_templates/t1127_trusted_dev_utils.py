@@ -211,6 +211,9 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
         }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.developer_tools.arn
+        }
       }
     }]
   })
@@ -329,7 +332,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref SNSTopicArn""",
+            Resource: !Ref SNSTopicArn
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt DeveloperToolsRule.Arn""",
                 terraform_template="""# Systems Manager inventory for developer tools detection
 
 variable "sns_topic_arn" {
@@ -435,6 +443,9 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
     Condition = {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
+        ArnEquals = {
+          "aws:SourceArn" = aws_cloudwatch_event_rule.developer_tools.arn
         }
       }
     }]

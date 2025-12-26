@@ -141,7 +141,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref PasswordStoreAlertTopic""",
+            Resource: !Ref PasswordStoreAlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt SecretsAccessRule.Arn""",
                 terraform_template="""# Monitor access to password stores and secrets
 
 variable "alert_email" {

@@ -115,7 +115,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt VolumeDeleteRule.Arn""",
                 terraform_template="""# Detect EBS volume and snapshot deletion
 
 variable "alert_email" {

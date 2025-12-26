@@ -273,7 +273,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref GuardDutyAlertTopic""",
+            Resource: !Ref GuardDutyAlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt GuardDutyCredentialRule.Arn""",
                 terraform_template="""# AWS: Alert on GuardDuty credential compromise findings
 
 variable "alert_email" {

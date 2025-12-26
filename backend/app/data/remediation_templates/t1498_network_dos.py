@@ -129,7 +129,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt GuardDutyRule.Arn""",
                 terraform_template="""# GuardDuty alerts for T1498
 
 variable "alert_email" {
@@ -169,6 +174,38 @@ resource "aws_cloudwatch_event_rule" "guardduty" {
 resource "aws_sqs_queue" "dlq" {
   name                      = "guardduty-t1498-dlq"
   message_retention_seconds = 1209600
+}
+
+data "aws_iam_policy_document" "eventbridge_dlq_policy" {
+  statement {
+    sid     = "AllowEventBridgeToSendToDLQ"
+    effect  = "Allow"
+    actions = ["sqs:SendMessage"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["events.amazonaws.com"]
+    }
+
+    resources = [aws_sqs_queue.dlq.arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+
+    condition {
+      test     = "ArnEquals"
+      variable = "aws:SourceArn"
+      values   = [aws_cloudwatch_event_rule.guardduty.arn]
+    }
+  }
+}
+
+resource "aws_sqs_queue_policy" "eventbridge_dlq" {
+  queue_url = aws_sqs_queue.dlq.url
+  policy    = data.aws_iam_policy_document.eventbridge_dlq_policy.json
 }
 
 resource "aws_cloudwatch_event_target" "sns" {

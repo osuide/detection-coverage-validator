@@ -463,6 +463,11 @@ Resources:
               Service: events.amazonaws.com
             Action: sns:Publish
             Resource: !Ref ComplianceAlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt ComplianceChangeRule.Arn
 
 Outputs:
   CloudTrailEnabledRuleArn:
@@ -569,6 +574,9 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
         }
+          ArnEquals = {
+            "aws:SourceArn" = aws_cloudwatch_event_rule.compliance_change.arn
+          }
       }
     }]
   })
@@ -910,6 +918,15 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
         }
+          ArnEquals = {
+            "aws:SourceArn" = [
+              aws_cloudwatch_event_rule.cloudtrail_mod.arn,
+              aws_cloudwatch_event_rule.flowlogs_mod.arn,
+              aws_cloudwatch_event_rule.s3_logging_mod.arn,
+              aws_cloudwatch_event_rule.cwlogs_mod.arn,
+              aws_cloudwatch_event_rule.guardduty_mod.arn,
+            ]
+          }
       }
     }]
   })

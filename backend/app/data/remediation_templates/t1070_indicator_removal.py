@@ -130,7 +130,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt GuardDutyRule.Arn""",
                 terraform_template="""# GuardDuty alerts for T1070
 
 variable "alert_email" {
@@ -335,7 +340,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sqs:SendMessage
-            Resource: !GetAtt DeadLetterQueue.Arn""",
+            Resource: !GetAtt DeadLetterQueue.Arn
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt CloudTrailLogDeletionRule.Arn""",
                 terraform_template="""# Detect CloudTrail log file deletion attempts
 
 variable "alert_email" {
@@ -689,7 +699,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt LogDeletionRule.Arn""",
                 terraform_template="""# Detect container log deletion in CloudWatch
 
 variable "alert_email" {

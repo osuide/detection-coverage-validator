@@ -140,7 +140,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref MaliciousDocumentTopic""",
+            Resource: !Ref MaliciousDocumentTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt MalwareDetectionRule.Arn""",
                 terraform_template="""# AWS: Detect malicious documents with template injection in S3
 
 variable "alert_email" {

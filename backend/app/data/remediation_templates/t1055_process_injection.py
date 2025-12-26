@@ -197,6 +197,8 @@ Resources:
             Action: sns:Publish
             Resource: !Ref ProcessInjectionAlertTopic
             Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
               ArnEquals:
                 aws:SourceArn: !GetAtt ProcessInjectionRule.Arn
 
@@ -920,6 +922,8 @@ Resources:
             Action: sns:Publish
             Resource: !Ref AlertTopic
             Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
               ArnEquals:
                 aws:SourceArn: !GetAtt CriticalFindingsRule.Arn
 

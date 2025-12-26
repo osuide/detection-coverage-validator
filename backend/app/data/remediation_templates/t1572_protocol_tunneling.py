@@ -126,7 +126,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt SSHTunnelRule.Arn""",
                 terraform_template="""# Detect AWS SSH tunnelling activity
 
 variable "alert_email" {
@@ -222,6 +227,12 @@ resource "aws_sns_topic_policy" "allow_events" {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
         }
+          ArnEquals = {
+            "aws:SourceArn" = [
+              aws_cloudwatch_event_rule.ssh_tunnel.arn,
+              aws_cloudwatch_event_rule.ssm_port_forward.arn,
+            ]
+          }
       }
     }]
   })
@@ -452,7 +463,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt SSMPortForwardRule.Arn""",
                 terraform_template="""# Detect Systems Manager port forwarding
 
 variable "alert_email" {
@@ -505,6 +521,12 @@ resource "aws_sns_topic_policy" "allow_events" {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
         }
+          ArnEquals = {
+            "aws:SourceArn" = [
+              aws_cloudwatch_event_rule.ssh_tunnel.arn,
+              aws_cloudwatch_event_rule.ssm_port_forward.arn,
+            ]
+          }
       }
     }]
   })

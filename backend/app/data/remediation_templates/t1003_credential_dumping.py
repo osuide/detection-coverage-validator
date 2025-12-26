@@ -140,7 +140,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref SecurityAlertTopic""",
+            Resource: !Ref SecurityAlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt CredentialDumpingRule.Arn""",
                 terraform_template="""# GuardDuty Runtime Monitoring for credential dumping
 
 variable "alert_email" {

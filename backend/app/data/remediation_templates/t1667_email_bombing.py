@@ -568,6 +568,38 @@ resource "aws_sqs_queue" "dlq" {
   message_retention_seconds = 1209600
 }
 
+data "aws_iam_policy_document" "eventbridge_dlq_policy" {
+  statement {
+    sid     = "AllowEventBridgeToSendToDLQ"
+    effect  = "Allow"
+    actions = ["sqs:SendMessage"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["events.amazonaws.com"]
+    }
+
+    resources = [aws_sqs_queue.dlq.arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+
+    condition {
+      test     = "ArnEquals"
+      variable = "aws:SourceArn"
+      values   = [aws_cloudwatch_event_rule.pattern_check.arn]
+    }
+  }
+}
+
+resource "aws_sqs_queue_policy" "eventbridge_dlq" {
+  queue_url = aws_sqs_queue.dlq.url
+  policy    = data.aws_iam_policy_document.eventbridge_dlq_policy.json
+}
+
 # EventBridge target with DLQ and retry policy
 resource "aws_cloudwatch_event_target" "to_sns" {
   rule      = aws_cloudwatch_event_rule.pattern_check.name

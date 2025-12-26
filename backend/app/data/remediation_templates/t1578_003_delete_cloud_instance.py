@@ -113,7 +113,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt EC2TerminateRule.Arn""",
                 terraform_template="""# Detect EC2 instance termination
 
 variable "alert_email" {
@@ -199,6 +204,12 @@ resource "aws_sns_topic_policy" "allow_events" {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
         }
+          ArnEquals = {
+            "aws:SourceArn" = [
+              aws_cloudwatch_event_rule.ec2_terminate.arn,
+              aws_cloudwatch_event_rule.rds_delete.arn,
+            ]
+          }
       }
     }]
   })
@@ -380,7 +391,12 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: sns:Publish
-            Resource: !Ref AlertTopic""",
+            Resource: !Ref AlertTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !GetAtt RDSDeleteRule.Arn""",
                 terraform_template="""# Detect RDS instance deletion
 
 variable "alert_email" {
@@ -464,6 +480,12 @@ resource "aws_sns_topic_policy" "allow_events" {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
         }
+          ArnEquals = {
+            "aws:SourceArn" = [
+              aws_cloudwatch_event_rule.ec2_terminate.arn,
+              aws_cloudwatch_event_rule.rds_delete.arn,
+            ]
+          }
       }
     }]
   })

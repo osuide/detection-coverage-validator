@@ -293,6 +293,12 @@ resource "aws_sns_topic_policy" "repo_alerts_policy" {
         StringEquals = {
           "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
         }
+        ArnEquals = {
+          "aws:SourceArn" = [
+            aws_cloudwatch_event_rule.codecommit_push.arn,
+            aws_cloudwatch_event_rule.codeartifact_package.arn
+          ]
+        }
       }
     }]
   })
