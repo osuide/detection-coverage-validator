@@ -311,22 +311,92 @@ FSBP_MAPPINGS: dict[str, list[tuple[str, float]]] = {
 }
 
 
+def get_techniques_for_cspm_control(
+    control_id: str,
+    standard_associations: Optional[list[dict]] = None,
+) -> list[tuple[str, float]]:
+    """Get MITRE technique mappings for a Security Hub CSPM control.
+
+    CSPM uses standard-agnostic control IDs like 'S3.1', 'IAM.1'.
+    This function maps these to MITRE techniques using FSBP as the
+    primary source (most comprehensive), with fallback to other standards.
+
+    Args:
+        control_id: The CSPM control ID (e.g., 'S3.1', 'IAM.1', 'EC2.18')
+        standard_associations: Optional list of standard associations from
+            the CSPM API (used to determine which standards the control
+            is associated with)
+
+    Returns:
+        List of (technique_id, confidence) tuples
+
+    Example:
+        >>> get_techniques_for_cspm_control('S3.1')
+        [('T1530', 0.9)]
+        >>> get_techniques_for_cspm_control('IAM.1')
+        [('T1098', 0.85)]
+    """
+    techniques = []
+
+    # Normalise control ID: S3.1 -> s3.1
+    normalised_id = control_id.lower().replace("-", ".")
+
+    # Try FSBP first (most comprehensive coverage)
+    fsbp_key = f"fsbp.{normalised_id}"
+    if fsbp_key in FSBP_MAPPINGS:
+        techniques.extend(FSBP_MAPPINGS[fsbp_key])
+
+    # If no FSBP match and we have standard associations, try other standards
+    if not techniques and standard_associations:
+        for assoc in standard_associations:
+            standards_arn = assoc.get("standards_arn", "")
+
+            # Try CIS
+            if "cis" in standards_arn.lower():
+                cis_key = f"cis.{normalised_id}"
+                if cis_key in CIS_BENCHMARK_MAPPINGS:
+                    techniques.extend(CIS_BENCHMARK_MAPPINGS[cis_key])
+
+            # Try PCI-DSS
+            if "pci" in standards_arn.lower():
+                pci_key = f"pci.{normalised_id}"
+                if pci_key in PCI_DSS_MAPPINGS:
+                    techniques.extend(PCI_DSS_MAPPINGS[pci_key])
+
+    # Deduplicate, keeping highest confidence per technique
+    seen: dict[str, float] = {}
+    for tech_id, conf in techniques:
+        if tech_id not in seen or conf > seen[tech_id]:
+            seen[tech_id] = conf
+
+    return list(seen.items())
+
+
 def get_techniques_for_security_hub(
     standard_name: str,
     control_id: Optional[str] = None,
     finding_title: Optional[str] = None,
+    api_version: Optional[str] = None,
 ) -> list[tuple[str, float]]:
     """Get MITRE technique mappings for a Security Hub finding.
 
+    Supports both legacy standards-based API and new CSPM API.
+
     Args:
         standard_name: The security standard (e.g., 'aws-foundational-security-best-practices')
-        control_id: Optional control ID (e.g., 'IAM.1')
+            For CSPM detections, this can be empty or 'cspm'.
+        control_id: Optional control ID (e.g., 'IAM.1', 'S3.1')
         finding_title: Optional finding title for insight matching
+        api_version: Optional API version marker ('cspm' or 'legacy')
 
     Returns:
         List of (technique_id, confidence) tuples
     """
     techniques = []
+
+    # If this is a CSPM detection, use the new mapping function
+    if api_version == "cspm" and control_id:
+        return get_techniques_for_cspm_control(control_id)
 
     # Check for FSBP controls
     if "foundational" in standard_name.lower() or "fsbp" in standard_name.lower():
