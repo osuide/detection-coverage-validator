@@ -20,7 +20,7 @@ Design considerations:
 
 from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import UUID, JSONB, ENUM as PG_ENUM
 
 
 # revision identifiers, used by Alembic.
@@ -97,19 +97,12 @@ def upgrade() -> None:
             # Denormalised for query performance
             sa.Column("cloud_account_id", UUID(as_uuid=True), nullable=False),
             sa.Column("detection_type", sa.String(64), nullable=False),
-            # Evaluation state
+            # Evaluation state - use PG_ENUM to reference existing type
+            # sa.Enum doesn't respect create_type=False with asyncpg
+            # Reference: https://github.com/sqlalchemy/alembic/issues/1347
             sa.Column(
                 "evaluation_type",
-                sa.Enum(
-                    "config_compliance",
-                    "alarm_state",
-                    "eventbridge_state",
-                    "guardduty_state",
-                    "gcp_scc_state",
-                    "gcp_logging_state",
-                    name="evaluationtype",
-                    create_type=False,
-                ),
+                PG_ENUM(name="evaluationtype", create_type=False),
                 nullable=False,
             ),
             sa.Column("previous_state", sa.String(32), nullable=True),
@@ -313,13 +306,7 @@ def upgrade() -> None:
             sa.Column("alert_type", sa.String(64), nullable=False),
             sa.Column(
                 "severity",
-                sa.Enum(
-                    "info",
-                    "warning",
-                    "critical",
-                    name="evaluationalertseverity",
-                    create_type=False,
-                ),
+                PG_ENUM(name="evaluationalertseverity", create_type=False),
                 nullable=False,
             ),
             # State change details
