@@ -541,9 +541,42 @@ class ComplianceService:
                 }
             )
 
+        # Get acknowledged/risk_accepted gaps for this account
+        from app.models.gap import CoverageGap, GapStatus
+        from app.models.user import User
+
+        acknowledged_statuses = [GapStatus.ACKNOWLEDGED, GapStatus.RISK_ACCEPTED]
+        gaps_result = await self.db.execute(
+            select(
+                CoverageGap.technique_id,
+                CoverageGap.status,
+                CoverageGap.risk_acceptance_reason,
+                CoverageGap.risk_accepted_at,
+                User.email.label("accepted_by_email"),
+            )
+            .outerjoin(User, CoverageGap.risk_accepted_by == User.id)
+            .where(
+                CoverageGap.cloud_account_id == cloud_account_id,
+                CoverageGap.status.in_(acknowledged_statuses),
+            )
+        )
+        gap_rows = gaps_result.fetchall()
+
+        # Build gap lookup: technique_id (string) -> gap info
+        acknowledged_gaps: dict[str, dict] = {}
+        for row in gap_rows:
+            tech_id = row[0]  # technique_id is a string like "T1078"
+            acknowledged_gaps[tech_id] = {
+                "status": row[1].value if hasattr(row[1], "value") else str(row[1]),
+                "reason": row[2],
+                "accepted_at": row[3],
+                "accepted_by": row[4],
+            }
+
         # Build technique details
         techniques_detail = []
         covered_count = 0
+        acknowledged_gap_technique_ids: list[str] = []
 
         for mapping in control.technique_mappings:
             technique = mapping.technique
@@ -568,6 +601,18 @@ class ComplianceService:
             # Check for remediation template
             template = get_template(technique.technique_id)
 
+            # Check for acknowledged gap
+            gap_info = acknowledged_gaps.get(technique.technique_id)
+            acknowledged_gap = None
+            if gap_info:
+                acknowledged_gap_technique_ids.append(technique.technique_id)
+                acknowledged_gap = {
+                    "status": gap_info["status"],
+                    "reason": gap_info["reason"],
+                    "accepted_by": gap_info["accepted_by"],
+                    "accepted_at": gap_info["accepted_at"],
+                }
+
             techniques_detail.append(
                 {
                     "technique_id": technique.technique_id,
@@ -586,6 +631,7 @@ class ComplianceService:
                         )
                     ],
                     "has_template": template is not None,
+                    "acknowledged_gap": acknowledged_gap,
                 }
             )
 
@@ -652,6 +698,8 @@ class ComplianceService:
             "cloud_applicability": control.cloud_applicability,
             "cloud_context": cloud_context,
             "techniques": techniques_detail,
+            "acknowledged_gaps_count": len(acknowledged_gap_technique_ids),
+            "acknowledged_gap_techniques": acknowledged_gap_technique_ids,
         }
 
     async def enrich_gap_techniques(self, technique_ids: list[str]) -> list[dict]:

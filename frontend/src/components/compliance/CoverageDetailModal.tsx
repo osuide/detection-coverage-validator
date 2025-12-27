@@ -273,10 +273,27 @@ function ExpandableControlRow({
               <span className="ml-2 text-sm text-gray-400">Loading technique details...</span>
             </div>
           ) : coverageDetail ? (
-            <TechniqueBreakdown
-              techniques={coverageDetail.techniques}
-              rationale={coverageDetail.coverage_rationale}
-            />
+            <>
+              {/* Acknowledged gaps banner */}
+              {coverageDetail.acknowledged_gaps_count > 0 && (
+                <div className="mb-4 p-3 bg-blue-900/30 border border-blue-700/50 rounded-lg">
+                  <div className="flex items-center gap-2 text-blue-300">
+                    <Shield className="w-4 h-4" />
+                    <span className="text-sm font-medium">
+                      {coverageDetail.acknowledged_gaps_count} technique{coverageDetail.acknowledged_gaps_count !== 1 ? 's' : ''} affected by acknowledged MITRE gaps
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1 pl-6">
+                    These gaps have been acknowledged or risk-accepted in your MITRE coverage.
+                    Compliance status reflects actual detection coverage, not acknowledged status.
+                  </p>
+                </div>
+              )}
+              <TechniqueBreakdown
+                techniques={coverageDetail.techniques}
+                rationale={coverageDetail.coverage_rationale}
+              />
+            </>
           ) : (
             <div className="text-sm text-gray-400 text-center py-4">
               Unable to load technique details

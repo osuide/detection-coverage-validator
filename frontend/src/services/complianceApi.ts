@@ -190,6 +190,13 @@ export interface TechniqueServiceCoverage {
   detections_by_service: Record<string, string[]> // service -> detection names
 }
 
+export interface AcknowledgedGapInfo {
+  status: 'acknowledged' | 'risk_accepted'
+  reason: string | null
+  accepted_by: string | null
+  accepted_at: string | null
+}
+
 export interface TechniqueCoverageDetail {
   technique_id: string
   technique_name: string
@@ -199,6 +206,8 @@ export interface TechniqueCoverageDetail {
   has_template: boolean
   // Service-aware coverage
   service_coverage?: TechniqueServiceCoverage
+  // Acknowledged gap info
+  acknowledged_gap?: AcknowledgedGapInfo | null
 }
 
 export interface ControlServiceCoverage {
@@ -224,6 +233,9 @@ export interface ControlCoverageDetail {
   techniques: TechniqueCoverageDetail[]
   // Service-aware coverage
   service_coverage?: ControlServiceCoverage
+  // Acknowledged gaps impact
+  acknowledged_gaps_count: number
+  acknowledged_gap_techniques: string[]
 }
 
 export const complianceApi = {

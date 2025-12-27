@@ -148,6 +148,15 @@ class TechniqueServiceCoverageItem(BaseModel):
     detections_by_service: dict[str, list[str]] = {}  # service -> detection names
 
 
+class AcknowledgedGapInfo(BaseModel):
+    """Information about an acknowledged MITRE gap affecting this technique."""
+
+    status: str  # "acknowledged", "risk_accepted"
+    reason: Optional[str] = None  # Risk acceptance reason
+    accepted_by: Optional[str] = None  # Email of user who accepted
+    accepted_at: Optional[datetime] = None
+
+
 class TechniqueCoverageDetail(BaseModel):
     """Detailed coverage information for a single technique within a control."""
 
@@ -159,6 +168,8 @@ class TechniqueCoverageDetail(BaseModel):
     has_template: bool = False  # Whether a remediation template is available
     # Service-aware coverage
     service_coverage: Optional[TechniqueServiceCoverageItem] = None
+    # Acknowledged gap info - populated if this technique has an acknowledged MITRE gap
+    acknowledged_gap: Optional[AcknowledgedGapInfo] = None
 
 
 class ControlServiceCoverageItem(BaseModel):
@@ -190,6 +201,9 @@ class ControlCoverageDetailResponse(BaseModel):
     techniques: list[TechniqueCoverageDetail] = []
     # Service-aware coverage
     service_coverage: Optional[ControlServiceCoverageItem] = None
+    # Acknowledged gaps impact - techniques with acknowledged MITRE gaps
+    acknowledged_gaps_count: int = 0  # Number of techniques with acknowledged gaps
+    acknowledged_gap_techniques: list[str] = []  # Technique IDs with acknowledged gaps
 
 
 class ControlStatusItem(BaseModel):

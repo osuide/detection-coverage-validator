@@ -14,8 +14,9 @@ import {
   FileCode,
   ExternalLink,
   Shield,
+  CheckCheck,
 } from 'lucide-react'
-import { TechniqueCoverageDetail, DetectionSummary } from '../../services/complianceApi'
+import { TechniqueCoverageDetail, DetectionSummary, AcknowledgedGapInfo } from '../../services/complianceApi'
 
 interface TechniqueBreakdownProps {
   techniques: TechniqueCoverageDetail[]
@@ -66,6 +67,46 @@ function DetectionItem({ detection }: { detection: DetectionSummary }) {
       <span className="text-gray-300">{detection.name}</span>
       <span className="text-gray-500">({formatSource(detection.source)})</span>
       <span className="text-green-400">{Math.round(detection.confidence * 100)}%</span>
+    </div>
+  )
+}
+
+function AcknowledgedGapIndicator({
+  acknowledged_gap,
+}: {
+  acknowledged_gap?: AcknowledgedGapInfo | null
+}) {
+  if (!acknowledged_gap) {
+    return null
+  }
+
+  const isRiskAccepted = acknowledged_gap.status === 'risk_accepted'
+  const statusLabel = isRiskAccepted ? 'Risk Accepted' : 'Acknowledged'
+  const bgColor = isRiskAccepted ? 'bg-purple-900/50' : 'bg-blue-900/50'
+  const borderColor = isRiskAccepted ? 'border-purple-700/50' : 'border-blue-700/50'
+  const textColor = isRiskAccepted ? 'text-purple-300' : 'text-blue-300'
+
+  return (
+    <div className={`mx-3 mb-2 p-2 ${bgColor} border ${borderColor} rounded-lg`}>
+      <div className="flex items-center gap-2">
+        <CheckCheck className={`w-4 h-4 ${textColor}`} />
+        <span className={`text-xs font-medium ${textColor}`}>
+          MITRE Gap {statusLabel}
+        </span>
+      </div>
+      {acknowledged_gap.reason && (
+        <p className="text-xs text-gray-400 mt-1 pl-6">
+          {acknowledged_gap.reason}
+        </p>
+      )}
+      {acknowledged_gap.accepted_by && (
+        <p className="text-xs text-gray-500 mt-1 pl-6">
+          by {acknowledged_gap.accepted_by}
+          {acknowledged_gap.accepted_at && (
+            <span> on {new Date(acknowledged_gap.accepted_at).toLocaleDateString()}</span>
+          )}
+        </p>
+      )}
     </div>
   )
 }
@@ -173,6 +214,9 @@ function TechniqueRow({ technique }: { technique: TechniqueCoverageDetail }) {
 
       {/* Service coverage indicator */}
       <ServiceCoverageIndicator service_coverage={technique.service_coverage} />
+
+      {/* Acknowledged gap indicator */}
+      <AcknowledgedGapIndicator acknowledged_gap={technique.acknowledged_gap} />
 
       {/* Detection details for covered techniques */}
       {technique.detections.length > 0 && (
