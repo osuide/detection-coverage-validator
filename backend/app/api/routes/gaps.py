@@ -1,6 +1,6 @@
 """Gap management API routes."""
 
-from typing import Optional
+from typing import Optional, Tuple
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -11,9 +11,44 @@ from app.core.database import get_db
 from app.core.security import AuthContext, require_role
 from app.models.user import UserRole
 from app.models.gap import GapStatus, GapPriority, CoverageGap
+from app.models.mitre import Technique
 from sqlalchemy import select, and_
 
 router = APIRouter(tags=["gaps"])
+
+
+async def get_technique_info(
+    db: AsyncSession, technique_id: str
+) -> Tuple[str, str, str]:
+    """Look up technique name and tactic from the database.
+
+    Args:
+        db: Database session
+        technique_id: MITRE technique ID (e.g., "T1556.007")
+
+    Returns:
+        Tuple of (technique_name, tactic_id, tactic_name)
+        Returns ("Unknown", "", "Unknown") if technique not found
+    """
+    from sqlalchemy.orm import selectinload
+
+    result = await db.execute(
+        select(Technique)
+        .options(selectinload(Technique.tactic))
+        .where(Technique.technique_id == technique_id)
+    )
+    technique = result.scalar_one_or_none()
+
+    if technique:
+        tactic_id_str = ""
+        tactic_name = "Unknown"
+        if technique.tactic:
+            tactic_id_str = technique.tactic.tactic_id
+            tactic_name = technique.tactic.name
+
+        return technique.name, tactic_id_str, tactic_name
+
+    return "Unknown", "", "Unknown"
 
 
 class AcknowledgeGapRequest(BaseModel):
@@ -101,15 +136,18 @@ async def acknowledge_gap(
         }
     else:
         # Create new gap record with acknowledged status
-        # We need to get the technique info from somewhere
-        # For now, create a minimal record
+        # Look up technique info from the database
+        technique_name, tactic_id, tactic_name = await get_technique_info(
+            db, technique_id
+        )
+
         new_gap = CoverageGap(
             cloud_account_id=cloud_account_id,
             organization_id=auth.organization_id,
             technique_id=technique_id,
-            technique_name="",  # Will be filled by next scan
-            tactic_id="",
-            tactic_name="",
+            technique_name=technique_name,
+            tactic_id=tactic_id,
+            tactic_name=tactic_name,
             status=GapStatus.ACKNOWLEDGED,
             priority=GapPriority.MEDIUM,
             remediation_notes=request.notes if request else None,
@@ -180,13 +218,18 @@ async def accept_risk(
         # Create new gap record with risk_accepted status
         from datetime import datetime
 
+        # Look up technique info from the database
+        technique_name, tactic_id, tactic_name = await get_technique_info(
+            db, technique_id
+        )
+
         new_gap = CoverageGap(
             cloud_account_id=cloud_account_id,
             organization_id=auth.organization_id,
             technique_id=technique_id,
-            technique_name="",
-            tactic_id="",
-            tactic_name="",
+            technique_name=technique_name,
+            tactic_id=tactic_id,
+            tactic_name=tactic_name,
             status=GapStatus.RISK_ACCEPTED,
             priority=GapPriority.MEDIUM,
             risk_acceptance_reason=request.reason,
