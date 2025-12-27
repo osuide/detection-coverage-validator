@@ -46,125 +46,135 @@ class SecurityHubScanner(BaseScanner):
     ) -> list[RawDetection]:
         """Scan all regions for Security Hub configurations.
 
-        CSPM controls are global definitions - they're the same regardless of
-        which region you query. We only scan CSPM controls from the FIRST
-        region where Security Hub is enabled, to avoid duplicates.
+        CSPM control DEFINITIONS are global, but STATUS can vary by region.
+        We:
+        1. Get control definitions from the first region (global)
+        2. Get control STATUS from ALL regions
+        3. Create ONE detection per control with status_by_region map
 
         Insights are scanned per-region as they may differ.
         """
         all_detections = []
-        cspm_scanned = False  # Track if we've already scanned CSPM controls
+
+        # Phase 1: Collect CSPM control data across all regions
+        cspm_control_data: dict[str, dict] = {}  # control_id -> merged data
+        cspm_scanned = False
+        first_cspm_region = None
 
         for region in regions:
             try:
-                # Pass flag to indicate if CSPM should be scanned
-                scan_options = {**(options or {}), "_cspm_scanned": cspm_scanned}
-                region_detections = await self.scan_region(region, scan_options)
-                all_detections.extend(region_detections)
+                client = self.session.client("securityhub", region_name=region)
 
-                # If we got CSPM detections, mark as scanned
-                if any(
-                    d.raw_config.get("api_version") == "cspm" for d in region_detections
-                ):
-                    cspm_scanned = True
+                # Check if Security Hub is enabled
+                try:
+                    hub = client.describe_hub()
+                    hub_arn = hub.get("HubArn", "")
+                except ClientError as e:
+                    error_code = e.response["Error"]["Code"]
+                    if error_code in [
+                        "AccessDeniedException",
+                        "InvalidAccessException",
+                        "ResourceNotFoundException",
+                    ]:
+                        self.logger.info("securityhub_not_enabled", region=region)
+                        continue
+                    raise
+
+                # Get CSPM control status for this region
+                region_status = self._get_cspm_control_status(client, region)
+
+                if region_status:
+                    if not cspm_scanned:
+                        # First region with CSPM - store full control data
+                        first_cspm_region = region
+                        for control_id, control_data in region_status.items():
+                            cspm_control_data[control_id] = {
+                                **control_data,
+                                "hub_arn": hub_arn,
+                                "status_by_region": {region: control_data["status"]},
+                            }
+                        cspm_scanned = True
+                        self.logger.info(
+                            "securityhub_cspm_first_region",
+                            region=region,
+                            control_count=len(region_status),
+                        )
+                    else:
+                        # Subsequent regions - just add status
+                        for control_id, control_data in region_status.items():
+                            if control_id in cspm_control_data:
+                                cspm_control_data[control_id]["status_by_region"][
+                                    region
+                                ] = control_data["status"]
+                        self.logger.info(
+                            "securityhub_cspm_region_status",
+                            region=region,
+                            controls_with_status=len(region_status),
+                        )
+
+                # Scan insights per-region (they can differ)
+                insights_detections = self._scan_insights(client, region, hub_arn)
+                all_detections.extend(insights_detections)
+
+                # If CSPM not available, fall back to legacy for this region
+                if not region_status and not cspm_scanned:
+                    standards_detections = self._scan_enabled_standards(
+                        client, region, hub_arn
+                    )
+                    all_detections.extend(standards_detections)
 
             except ClientError as e:
                 self.logger.warning(
                     "securityhub_scan_error", region=region, error=str(e)
                 )
 
+        # Phase 2: Create CSPM detections with merged status_by_region
+        if cspm_control_data:
+            for control_id, data in cspm_control_data.items():
+                detection = RawDetection(
+                    name=f"SecurityHub-Control-{control_id}",
+                    detection_type=DetectionType.SECURITY_HUB,
+                    source_arn=data.get("control_arn", ""),
+                    region=first_cspm_region,  # Use first region as canonical
+                    raw_config={
+                        "hub_arn": data.get("hub_arn"),
+                        "control_id": control_id,
+                        "control_arn": data.get("control_arn"),
+                        "title": data.get("title"),
+                        "severity": data.get("severity"),
+                        "update_status": data.get("update_status"),
+                        "parameters": data.get("parameters", {}),
+                        "remediation_url": data.get("remediation_url"),
+                        "status_by_region": data.get("status_by_region", {}),
+                        "api_version": "cspm",
+                    },
+                    description=data.get("description", ""),
+                    is_managed=True,
+                )
+                all_detections.append(detection)
+
+            self.logger.info(
+                "securityhub_cspm_complete",
+                total_controls=len(cspm_control_data),
+                regions_scanned=len(regions),
+            )
+
         return all_detections
 
-    async def scan_region(
-        self,
-        region: str,
-        options: Optional[dict[str, Any]] = None,
-    ) -> list[RawDetection]:
-        """Scan a single region for Security Hub configurations.
-
-        Uses the new CSPM consolidated controls API when available,
-        falling back to the legacy standards-based API if CSPM
-        permissions are not granted.
-
-        CSPM controls are only scanned once (from the first region) since
-        they're global definitions. The _cspm_scanned flag in options
-        indicates if CSPM has already been scanned.
-        """
-        detections = []
-        client = self.session.client("securityhub", region_name=region)
-        cspm_already_scanned = (options or {}).get("_cspm_scanned", False)
-
-        try:
-            # Check if Security Hub is enabled
-            hub = client.describe_hub()
-            hub_arn = hub.get("HubArn", "")
-
-            # Only scan CSPM controls if not already scanned (they're global)
-            if not cspm_already_scanned:
-                cspm_detections = self._scan_cspm_controls(client, region, hub_arn)
-
-                if cspm_detections:
-                    # CSPM API worked - use consolidated controls
-                    detections.extend(cspm_detections)
-                    self.logger.info(
-                        "securityhub_cspm_success",
-                        region=region,
-                        control_count=len(cspm_detections),
-                    )
-                else:
-                    # Fall back to legacy standards-based API
-                    self.logger.info(
-                        "securityhub_legacy_fallback",
-                        region=region,
-                        reason="CSPM API not available or returned no controls",
-                    )
-                    standards_detections = self._scan_enabled_standards(
-                        client, region, hub_arn
-                    )
-                    detections.extend(standards_detections)
-            else:
-                self.logger.debug(
-                    "securityhub_cspm_skipped",
-                    region=region,
-                    reason="CSPM controls already scanned from another region",
-                )
-
-            # Scan custom insights (works with both old and new API)
-            # Insights ARE per-region, so we scan them in every region
-            insights_detections = self._scan_insights(client, region, hub_arn)
-            detections.extend(insights_detections)
-
-        except ClientError as e:
-            error_code = e.response["Error"]["Code"]
-            if error_code == "AccessDeniedException":
-                self.logger.warning("securityhub_access_denied", region=region)
-            elif error_code in ["InvalidAccessException", "ResourceNotFoundException"]:
-                # Security Hub not enabled in this region
-                self.logger.info("securityhub_not_enabled", region=region)
-            else:
-                raise
-
-        return detections
-
-    def _scan_cspm_controls(
+    def _get_cspm_control_status(
         self,
         client: Any,
         region: str,
-        hub_arn: str,
-    ) -> list[RawDetection]:
-        """Scan using CSPM consolidated controls API.
+    ) -> dict[str, dict]:
+        """Get CSPM control status for a region.
 
-        Uses the new standard-agnostic control APIs:
-        - ListSecurityControlDefinitions
-        - BatchGetSecurityControls
-        - ListStandardsControlAssociations
-
-        Returns empty list if CSPM API is not available (triggers legacy fallback).
+        Returns a dict of control_id -> control data including status.
+        Returns empty dict if CSPM API is not available.
         """
-        detections = []
+        controls = {}
 
         try:
-            # Step 1: Get all security control definitions
+            # Get control definitions
             control_ids = []
             paginator = client.get_paginator("list_security_control_definitions")
 
@@ -173,21 +183,9 @@ class SecurityHubScanner(BaseScanner):
                     control_ids.append(control_def["SecurityControlId"])
 
             if not control_ids:
-                self.logger.info(
-                    "securityhub_cspm_no_controls",
-                    region=region,
-                )
-                return []
+                return {}
 
-            self.logger.info(
-                "securityhub_cspm_control_definitions",
-                region=region,
-                total_controls=len(control_ids),
-            )
-
-            # Step 2: Batch get control details (max 100 per request)
-            # NOTE: We skip fetching per-control associations to avoid 560+ API
-            # calls per region. MITRE mapping uses FSBP as primary source anyway.
+            # Batch get control details
             for batch in _chunk_list(control_ids, 100):
                 try:
                     response = client.batch_get_security_controls(
@@ -196,67 +194,95 @@ class SecurityHubScanner(BaseScanner):
 
                     for control in response.get("SecurityControls", []):
                         control_id = control.get("SecurityControlId", "")
+                        controls[control_id] = {
+                            "control_id": control_id,
+                            "control_arn": control.get("SecurityControlArn"),
+                            "title": control.get("Title"),
+                            "description": control.get("Description"),
+                            "status": control.get("SecurityControlStatus"),
+                            "severity": control.get("SeverityRating"),
+                            "update_status": control.get("UpdateStatus"),
+                            "parameters": control.get("Parameters", {}),
+                            "remediation_url": control.get("RemediationUrl"),
+                        }
 
-                        detection = RawDetection(
-                            name=f"SecurityHub-Control-{control_id}",
-                            detection_type=DetectionType.SECURITY_HUB,
-                            source_arn=control.get("SecurityControlArn", ""),
-                            region=region,
-                            raw_config={
-                                "hub_arn": hub_arn,
-                                "control_id": control_id,
-                                "control_arn": control.get("SecurityControlArn"),
-                                "title": control.get("Title"),
-                                "status": control.get("SecurityControlStatus"),
-                                "severity": control.get("SeverityRating"),
-                                "update_status": control.get("UpdateStatus"),
-                                "parameters": control.get("Parameters", {}),
-                                "remediation_url": control.get("RemediationUrl"),
-                                "last_update_reason": control.get("LastUpdateReason"),
-                                "api_version": "cspm",
-                            },
-                            description=control.get("Description", ""),
-                            is_managed=True,
-                        )
-                        detections.append(detection)
+                except ClientError:
+                    # If batch fails, continue with next batch
+                    pass
 
-                    # Log any unprocessed IDs (expected for region-specific controls)
-                    unprocessed = response.get("UnprocessedIds", [])
-                    if unprocessed:
-                        # Only log at debug level - these are expected for region-specific services
-                        self.logger.debug(
-                            "securityhub_cspm_unprocessed",
-                            region=region,
-                            count=len(unprocessed),
-                        )
+        except ClientError as e:
+            error_code = e.response["Error"]["Code"]
+            if error_code in ["AccessDeniedException", "InvalidInputException"]:
+                return {}
+            raise
 
-                except ClientError as e:
-                    # If batch fails, log and continue with next batch
-                    self.logger.warning(
-                        "securityhub_cspm_batch_error",
+        return controls
+
+    async def scan_region(
+        self,
+        region: str,
+        options: Optional[dict[str, Any]] = None,
+    ) -> list[RawDetection]:
+        """Scan a single region for Security Hub configurations.
+
+        NOTE: For CSPM controls, use scan() instead which properly
+        aggregates status_by_region across all regions.
+
+        This method is kept for backward compatibility and for scanning
+        insights and legacy standards in a single region.
+        """
+        detections = []
+        client = self.session.client("securityhub", region_name=region)
+
+        try:
+            # Check if Security Hub is enabled
+            hub = client.describe_hub()
+            hub_arn = hub.get("HubArn", "")
+
+            # Get CSPM controls for this region
+            region_status = self._get_cspm_control_status(client, region)
+
+            if region_status:
+                # Create detections (single-region status only)
+                for control_id, data in region_status.items():
+                    detection = RawDetection(
+                        name=f"SecurityHub-Control-{control_id}",
+                        detection_type=DetectionType.SECURITY_HUB,
+                        source_arn=data.get("control_arn", ""),
                         region=region,
-                        batch_size=len(batch),
-                        error=str(e),
+                        raw_config={
+                            "hub_arn": hub_arn,
+                            "control_id": control_id,
+                            "control_arn": data.get("control_arn"),
+                            "title": data.get("title"),
+                            "severity": data.get("severity"),
+                            "update_status": data.get("update_status"),
+                            "parameters": data.get("parameters", {}),
+                            "remediation_url": data.get("remediation_url"),
+                            "status_by_region": {region: data.get("status")},
+                            "api_version": "cspm",
+                        },
+                        description=data.get("description", ""),
+                        is_managed=True,
                     )
+                    detections.append(detection)
+            else:
+                # Fall back to legacy standards-based API
+                standards_detections = self._scan_enabled_standards(
+                    client, region, hub_arn
+                )
+                detections.extend(standards_detections)
+
+            # Scan custom insights
+            insights_detections = self._scan_insights(client, region, hub_arn)
+            detections.extend(insights_detections)
 
         except ClientError as e:
             error_code = e.response["Error"]["Code"]
             if error_code == "AccessDeniedException":
-                # CSPM API not available - will fall back to legacy
-                self.logger.info(
-                    "securityhub_cspm_access_denied",
-                    region=region,
-                    message="CSPM APIs not available, using legacy API",
-                )
-                return []
-            elif error_code == "InvalidInputException":
-                # API might not be fully available yet
-                self.logger.info(
-                    "securityhub_cspm_invalid_input",
-                    region=region,
-                    error=str(e),
-                )
-                return []
+                self.logger.warning("securityhub_access_denied", region=region)
+            elif error_code in ["InvalidAccessException", "ResourceNotFoundException"]:
+                self.logger.info("securityhub_not_enabled", region=region)
             else:
                 raise
 
