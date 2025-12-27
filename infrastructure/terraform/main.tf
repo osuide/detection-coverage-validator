@@ -210,17 +210,30 @@ module "frontend" {
   waf_acl_arn     = var.enable_https && var.domain_name != "" ? module.security[0].waf_acl_arn : ""
 }
 
-# Scanner (Fargate - uses same cluster as backend for staging)
-module "scanner" {
-  source = "./modules/scanner"
-
-  environment        = var.environment
-  vpc_id             = module.vpc.vpc_id
-  private_subnet_ids = module.vpc.private_subnet_ids
-  database_url       = module.database.connection_string
-  redis_url          = module.cache.connection_string
-  ecr_repository_url = module.ecr.repository_url
-}
+# =============================================================================
+# Scanner Module REMOVED (December 2025)
+# =============================================================================
+#
+# The separate scanner ECS cluster was removed because:
+# 1. Scans run inline on the backend ECS tasks via ScanService.execute_scan()
+# 2. The scanner cluster had 0 running services (never deployed)
+# 3. It required VPC endpoints (~$72/mo) that were also unused
+#
+# If dedicated scan workers are needed in future:
+# - Consider running scan tasks on the existing backend cluster
+# - Or use Lambda for short-running scans
+# - Or re-add this module with NAT Gateway for internet access
+#
+# module "scanner" {
+#   source = "./modules/scanner"
+#   environment        = var.environment
+#   vpc_id             = module.vpc.vpc_id
+#   private_subnet_ids = module.vpc.private_subnet_ids
+#   database_url       = module.database.connection_string
+#   redis_url          = module.cache.connection_string
+#   ecr_repository_url = module.ecr.repository_url
+# }
+# =============================================================================
 
 # Cognito (OAuth/SSO)
 module "cognito" {

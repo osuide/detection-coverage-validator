@@ -95,35 +95,11 @@ resource "aws_route_table_association" "private" {
   route_table_id = aws_route_table.private.id
 }
 
-# Security group for VPC Endpoints
-resource "aws_security_group" "vpc_endpoints" {
-  name_prefix = "a13e-${var.environment}-vpce-"
-  vpc_id      = aws_vpc.main.id
+# Security group for VPC Endpoints - REMOVED
+# Previously used for interface VPC endpoints, no longer needed.
+# See comment block below for details on why endpoints were removed.
 
-  ingress {
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidr]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name = "a13e-${var.environment}-vpce-sg"
-  }
-
-  lifecycle {
-    create_before_destroy = true
-  }
-}
-
-# S3 Gateway Endpoint (FREE)
+# S3 Gateway Endpoint (FREE) - Keep this as it has no cost
 resource "aws_vpc_endpoint" "s3" {
   vpc_id            = aws_vpc.main.id
   service_name      = "com.amazonaws.${data.aws_region.current.name}.s3"
@@ -135,75 +111,24 @@ resource "aws_vpc_endpoint" "s3" {
   }
 }
 
-# ECR API Endpoint (Interface)
-resource "aws_vpc_endpoint" "ecr_api" {
-  vpc_id              = aws_vpc.main.id
-  service_name        = "com.amazonaws.${data.aws_region.current.name}.ecr.api"
-  vpc_endpoint_type   = "Interface"
-  subnet_ids          = aws_subnet.private[*].id
-  security_group_ids  = [aws_security_group.vpc_endpoints.id]
-  private_dns_enabled = true
-
-  tags = {
-    Name = "a13e-${var.environment}-ecr-api-endpoint"
-  }
-}
-
-# ECR DKR Endpoint (Interface) - for pulling images
-resource "aws_vpc_endpoint" "ecr_dkr" {
-  vpc_id              = aws_vpc.main.id
-  service_name        = "com.amazonaws.${data.aws_region.current.name}.ecr.dkr"
-  vpc_endpoint_type   = "Interface"
-  subnet_ids          = aws_subnet.private[*].id
-  security_group_ids  = [aws_security_group.vpc_endpoints.id]
-  private_dns_enabled = true
-
-  tags = {
-    Name = "a13e-${var.environment}-ecr-dkr-endpoint"
-  }
-}
-
-# CloudWatch Logs Endpoint (Interface)
-resource "aws_vpc_endpoint" "logs" {
-  vpc_id              = aws_vpc.main.id
-  service_name        = "com.amazonaws.${data.aws_region.current.name}.logs"
-  vpc_endpoint_type   = "Interface"
-  subnet_ids          = aws_subnet.private[*].id
-  security_group_ids  = [aws_security_group.vpc_endpoints.id]
-  private_dns_enabled = true
-
-  tags = {
-    Name = "a13e-${var.environment}-logs-endpoint"
-  }
-}
-
-# Secrets Manager Endpoint (Interface)
-resource "aws_vpc_endpoint" "secretsmanager" {
-  vpc_id              = aws_vpc.main.id
-  service_name        = "com.amazonaws.${data.aws_region.current.name}.secretsmanager"
-  vpc_endpoint_type   = "Interface"
-  subnet_ids          = aws_subnet.private[*].id
-  security_group_ids  = [aws_security_group.vpc_endpoints.id]
-  private_dns_enabled = true
-
-  tags = {
-    Name = "a13e-${var.environment}-secretsmanager-endpoint"
-  }
-}
-
-# SSM Endpoint (Interface) - useful for ECS Exec
-resource "aws_vpc_endpoint" "ssm" {
-  vpc_id              = aws_vpc.main.id
-  service_name        = "com.amazonaws.${data.aws_region.current.name}.ssm"
-  vpc_endpoint_type   = "Interface"
-  subnet_ids          = aws_subnet.private[*].id
-  security_group_ids  = [aws_security_group.vpc_endpoints.id]
-  private_dns_enabled = true
-
-  tags = {
-    Name = "a13e-${var.environment}-ssm-endpoint"
-  }
-}
+# =============================================================================
+# Interface VPC Endpoints REMOVED (December 2025)
+# =============================================================================
+#
+# Previously had 5 interface endpoints costing ~$72/month:
+# - ECR API, ECR DKR, CloudWatch Logs, Secrets Manager, SSM
+#
+# These were removed because:
+# 1. Backend ECS runs in PUBLIC subnets with public IPs (for external API access)
+# 2. Scanner module was never deployed (0 running services)
+# 3. RDS/Redis in private subnets don't need outbound internet access
+#
+# If future workloads need private subnet internet access, options are:
+# - NAT Gateway (~$32/mo + data transfer) - simpler, general internet access
+# - VPC Endpoints - for specific AWS services only, better security isolation
+#
+# See CLAUDE.md "Infrastructure Architecture" section for details.
+# =============================================================================
 
 output "vpc_id" {
   value = aws_vpc.main.id
@@ -217,6 +142,4 @@ output "private_subnet_ids" {
   value = aws_subnet.private[*].id
 }
 
-output "vpc_endpoints_security_group_id" {
-  value = aws_security_group.vpc_endpoints.id
-}
+# output "vpc_endpoints_security_group_id" removed - security group no longer exists

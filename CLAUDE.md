@@ -448,3 +448,76 @@ All 240 templates with CloudWatch metric alarms now include:
 - CloudFormation: `TreatMissingData: notBreaching`
 
 This prevents alarms from showing `INSUFFICIENT_DATA` state when no log data is present.
+
+## Infrastructure Architecture
+
+### Network Topology (December 2025)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         VPC (10.0.0.0/16)                       │
+├─────────────────────────────────────────────────────────────────┤
+│  PUBLIC SUBNETS (10.0.0.0/24, 10.0.1.0/24)                     │
+│  ┌──────────────────┐  ┌──────────────────┐                    │
+│  │  ALB (internet)  │  │  ECS Backend     │ ←── Public IP      │
+│  └────────┬─────────┘  │  (Fargate)       │     Internet via   │
+│           │            └──────────────────┘     IGW            │
+│           │                    │                                │
+├───────────┼────────────────────┼────────────────────────────────┤
+│  PRIVATE SUBNETS (10.0.10.0/24, 10.0.11.0/24)                  │
+│           │                    │                                │
+│           ▼                    ▼                                │
+│  ┌──────────────────┐  ┌──────────────────┐                    │
+│  │  RDS PostgreSQL  │  │  ElastiCache     │                    │
+│  │  (no internet)   │  │  Redis           │                    │
+│  └──────────────────┘  └──────────────────┘                    │
+│                                                                 │
+│  S3 Gateway Endpoint (FREE) ──────────────────────────────────│
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Key Architecture Decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| **Backend in PUBLIC subnets** | Requires internet access for external APIs (GitHub OAuth, Google APIs, HIBP, Cognito, MITRE sync) |
+| **No NAT Gateway** | Backend has public IPs; RDS/Redis don't need internet |
+| **No VPC Interface Endpoints** | Backend bypasses them via public subnets; scanner module unused |
+| **S3 Gateway Endpoint kept** | Free, optimises S3 traffic from private subnets |
+
+### Cost Savings (December 2025)
+
+| Removed Resource | Monthly Savings |
+|------------------|-----------------|
+| ECR API VPC Endpoint | ~$14.40 |
+| ECR DKR VPC Endpoint | ~$14.40 |
+| CloudWatch Logs VPC Endpoint | ~$14.40 |
+| Secrets Manager VPC Endpoint | ~$14.40 |
+| SSM VPC Endpoint | ~$14.40 |
+| **Total** | **~$72/month** |
+
+### External API Dependencies (require internet access)
+
+| Service | URL | Purpose |
+|---------|-----|---------|
+| Have I Been Pwned | `api.pwnedpasswords.com` | Password breach checking |
+| Google APIs | `googleapis.com` | GCP credential validation |
+| GitHub OAuth | `github.com`, `api.github.com` | GitHub SSO |
+| Cognito OAuth | `*.amazoncognito.com` | Social login token exchange |
+| MITRE ATT&CK | `raw.githubusercontent.com` | Threat data sync |
+
+### Security Controls
+
+| Layer | Control |
+|-------|---------|
+| **Network** | Security groups restrict ingress to ALB only |
+| **Application** | WAF with OWASP CRS, rate limiting, anonymous IP blocking |
+| **Data** | RDS/Redis in private subnets, no public access |
+| **Identity** | IAM roles with least privilege, external ID for cross-account |
+
+### Future Considerations
+
+If dedicated scan workers are needed in private subnets:
+1. **NAT Gateway** (~$32/mo + data) - General internet access
+2. **VPC Endpoints** (~$7/mo each) - AWS service-specific, better isolation
+3. **Lambda** - For short-running scans (<15 min), no VPC config needed
