@@ -192,20 +192,68 @@ export default function AdminMitreData() {
     setMessage(null)
 
     try {
+      // Start sync - returns immediately with sync_id
       const result = await mitreApi.triggerSync()
       setMessage({
         type: 'success',
-        text: result.message || 'Sync completed successfully',
+        text: 'Sync started. This may take 1-2 minutes...',
       })
-      // Refresh data after sync
-      await fetchData()
+
+      // Poll for completion
+      const syncId = result.sync_id
+      let attempts = 0
+      const maxAttempts = 60 // 5 minutes max (5s * 60)
+
+      const pollStatus = async (): Promise<void> => {
+        try {
+          const status = await mitreApi.getSyncStatus(syncId)
+
+          if (status.status === 'completed') {
+            setMessage({
+              type: 'success',
+              text: `Sync completed successfully. Version: ${status.mitre_version || 'unknown'}`,
+            })
+            setSyncing(false)
+            await fetchData()
+          } else if (status.status === 'failed') {
+            setMessage({
+              type: 'error',
+              text: status.error_message || 'Sync failed',
+            })
+            setSyncing(false)
+          } else if (attempts < maxAttempts) {
+            attempts++
+            setTimeout(pollStatus, 5000) // Poll every 5 seconds
+          } else {
+            setMessage({
+              type: 'error',
+              text: 'Sync is taking longer than expected. Check history for status.',
+            })
+            setSyncing(false)
+          }
+        } catch {
+          // Error polling - maybe network issue, keep trying
+          if (attempts < maxAttempts) {
+            attempts++
+            setTimeout(pollStatus, 5000)
+          } else {
+            setMessage({
+              type: 'error',
+              text: 'Lost connection while syncing. Check history for status.',
+            })
+            setSyncing(false)
+          }
+        }
+      }
+
+      // Start polling after a short delay to let the sync start
+      setTimeout(pollStatus, 2000)
     } catch (error: unknown) {
       const err = error as { response?: { data?: { detail?: string } } }
       setMessage({
         type: 'error',
-        text: err.response?.data?.detail || 'Sync failed',
+        text: err.response?.data?.detail || 'Failed to start sync',
       })
-    } finally {
       setSyncing(false)
     }
   }

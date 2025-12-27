@@ -95,6 +95,9 @@ export const mitreApi = {
   triggerSync: () =>
     adminApi.post<MitreSyncResponse>('/mitre/sync').then(r => r.data),
 
+  getSyncStatus: (syncId: string) =>
+    adminApi.get<MitreSyncHistory>(`/mitre/sync/${syncId}`).then(r => r.data),
+
   getSyncHistory: (limit = 20) =>
     adminApi.get<MitreSyncHistory[]>('/mitre/sync/history', { params: { limit } }).then(r => r.data),
 

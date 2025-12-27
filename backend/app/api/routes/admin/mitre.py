@@ -79,6 +79,7 @@ async def trigger_sync(
 
     Downloads latest MITRE ATT&CK STIX data and updates the database.
     This operation runs in the background and may take 1-2 minutes.
+    Poll GET /sync/history to check progress.
 
     Requires settings:write permission (SUPER_ADMIN or PLATFORM_ADMIN).
     """
@@ -92,32 +93,22 @@ async def trigger_sync(
             detail="A sync operation is already in progress",
         )
 
-    # Create sync record and start background task
-    try:
-        sync_history = await sync_service.sync_all(
-            admin_id=admin.id,
-            trigger_type=SyncTriggerType.MANUAL.value,
-        )
+    # Create sync record first (commits to DB immediately)
+    sync_history = await sync_service.create_sync_record(
+        admin_id=admin.id,
+        trigger_type=SyncTriggerType.MANUAL.value,
+    )
+    await db.commit()
 
-        return MitreSyncResponse(
-            sync_id=str(sync_history.id),
-            status=(
-                "completed"
-                if sync_history.status == SyncStatus.COMPLETED.value
-                else sync_history.status
-            ),
-            message=(
-                "MITRE data sync completed successfully"
-                if sync_history.status == SyncStatus.COMPLETED.value
-                else "MITRE data sync is running"
-            ),
-            estimated_duration_seconds=60,
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Sync failed: {str(e)}",
-        )
+    # Start sync in background - FastAPI keeps db session alive until background task completes
+    background_tasks.add_task(sync_service.execute_sync, sync_history.id)
+
+    return MitreSyncResponse(
+        sync_id=str(sync_history.id),
+        status="running",
+        message="MITRE data sync started. Poll /sync/history to check progress.",
+        estimated_duration_seconds=90,
+    )
 
 
 @router.get("/sync/history", response_model=list[MitreSyncHistoryResponse])
@@ -150,6 +141,49 @@ async def get_sync_history(
         )
         for h in history
     ]
+
+
+@router.get("/sync/{sync_id}", response_model=MitreSyncHistoryResponse)
+async def get_sync_status(
+    sync_id: str,
+    admin: AdminUser = Depends(require_permission("settings:read")),
+    db: AsyncSession = Depends(get_db),
+) -> MitreSyncHistoryResponse:
+    """
+    Get status of a specific sync operation.
+
+    Use this to poll for completion after triggering a sync.
+    """
+    from sqlalchemy import select
+    from app.models.mitre_threat import MitreSyncHistory
+    import uuid
+
+    try:
+        sync_uuid = uuid.UUID(sync_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid sync ID format")
+
+    result = await db.execute(
+        select(MitreSyncHistory).where(MitreSyncHistory.id == sync_uuid)
+    )
+    h = result.scalar_one_or_none()
+
+    if not h:
+        raise HTTPException(status_code=404, detail="Sync not found")
+
+    return MitreSyncHistoryResponse(
+        id=str(h.id),
+        started_at=h.started_at,
+        completed_at=h.completed_at,
+        status=h.status,
+        mitre_version=h.mitre_version,
+        stix_version=h.stix_version,
+        trigger_type=h.trigger_type,
+        triggered_by_email=h.triggered_by.email if h.triggered_by else None,
+        stats=h.stats or {},
+        error_message=h.error_message,
+        duration_seconds=h.duration_seconds,
+    )
 
 
 @router.get("/schedule", response_model=MitreScheduleResponse)

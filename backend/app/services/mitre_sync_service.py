@@ -92,22 +92,16 @@ class MitreSyncService:
         self.db = db
         self._technique_id_cache: dict[str, uuid.UUID] = {}
 
-    async def sync_all(
+    async def create_sync_record(
         self,
         admin_id: Optional[uuid.UUID] = None,
         trigger_type: str = SyncTriggerType.MANUAL.value,
     ) -> MitreSyncHistory:
         """
-        Perform a full sync of MITRE ATT&CK data.
+        Create a sync history record without starting the sync.
 
-        Args:
-            admin_id: ID of admin who triggered the sync (None for scheduled)
-            trigger_type: How the sync was triggered
-
-        Returns:
-            MitreSyncHistory record with sync details
+        Use this to create the record before starting a background task.
         """
-        # Create sync history record
         sync_history = MitreSyncHistory(
             started_at=datetime.now(timezone.utc),
             status=SyncStatus.RUNNING.value,
@@ -116,6 +110,120 @@ class MitreSyncService:
         )
         self.db.add(sync_history)
         await self.db.flush()
+        return sync_history
+
+    async def execute_sync(self, sync_id: uuid.UUID) -> None:
+        """
+        Execute the actual sync for an existing sync record.
+
+        This is called as a background task after create_sync_record().
+        """
+        # Get the sync record
+        result = await self.db.execute(
+            select(MitreSyncHistory).where(MitreSyncHistory.id == sync_id)
+        )
+        sync_history = result.scalar_one_or_none()
+        if not sync_history:
+            logger.error("sync_record_not_found", sync_id=str(sync_id))
+            return
+
+        logger.info(
+            "mitre_sync_started",
+            sync_id=str(sync_history.id),
+            trigger_type=sync_history.trigger_type,
+        )
+
+        try:
+            await self._perform_sync(sync_history)
+            await self.db.commit()
+        except Exception as e:
+            logger.error(
+                "mitre_sync_failed",
+                sync_id=str(sync_history.id),
+                error=str(e),
+            )
+            sync_history.status = SyncStatus.FAILED.value
+            sync_history.completed_at = datetime.now(timezone.utc)
+            sync_history.error_message = str(e)
+            await self.db.commit()
+
+    async def _perform_sync(self, sync_history: MitreSyncHistory) -> None:
+        """
+        Perform the actual sync work.
+
+        Updates sync_history in place with results.
+        Caller is responsible for committing the transaction.
+        """
+        # Download STIX data
+        stix_path = await self._download_stix_data()
+
+        # Parse with mitreattack-python
+        attack_data = MitreAttackData(str(stix_path))
+
+        # Get version info from raw JSON (more reliable)
+        mitre_version = self._extract_version_from_file(stix_path)
+
+        # Build technique ID cache for relationship mapping
+        await self._build_technique_cache()
+
+        # Sync each entity type
+        stats = FullSyncStats()
+
+        stats.groups = await self._sync_groups(attack_data, mitre_version)
+        stats.campaigns = await self._sync_campaigns(attack_data, mitre_version)
+        stats.software = await self._sync_software(attack_data, mitre_version)
+        stats.relationships = await self._sync_relationships(attack_data, mitre_version)
+
+        # Attribution sync is optional - don't fail entire sync if it errors
+        try:
+            stats.attributions = await self._sync_campaign_attributions(
+                attack_data, mitre_version
+            )
+        except Exception as e:
+            logger.warning(
+                "campaign_attribution_sync_failed",
+                error=str(e),
+            )
+            stats.attributions = SyncStats(errors=1)
+
+        # Update sync history
+        sync_history.status = SyncStatus.COMPLETED.value
+        sync_history.completed_at = datetime.now(timezone.utc)
+        sync_history.mitre_version = mitre_version
+        sync_history.stix_version = "2.0"
+        sync_history.stats = stats.to_dict()
+
+        # Update or create data version record
+        await self._update_data_version(sync_history, stats)
+
+        # Cleanup temp file
+        stix_path.unlink(missing_ok=True)
+
+        logger.info(
+            "mitre_sync_completed",
+            sync_id=str(sync_history.id),
+            mitre_version=mitre_version,
+            stats=stats.to_dict(),
+        )
+
+    async def sync_all(
+        self,
+        admin_id: Optional[uuid.UUID] = None,
+        trigger_type: str = SyncTriggerType.MANUAL.value,
+    ) -> MitreSyncHistory:
+        """
+        Perform a full sync of MITRE ATT&CK data (synchronous version).
+
+        For background execution, use create_sync_record() + execute_sync().
+
+        Args:
+            admin_id: ID of admin who triggered the sync (None for scheduled)
+            trigger_type: How the sync was triggered
+
+        Returns:
+            MitreSyncHistory record with sync details
+        """
+        sync_history = await self.create_sync_record(admin_id, trigger_type)
 
         logger.info(
             "mitre_sync_started",
@@ -124,60 +232,7 @@ class MitreSyncService:
         )
 
         try:
-            # Download STIX data
-            stix_path = await self._download_stix_data()
-
-            # Parse with mitreattack-python
-            attack_data = MitreAttackData(str(stix_path))
-
-            # Get version info from raw JSON (more reliable)
-            mitre_version = self._extract_version_from_file(stix_path)
-
-            # Build technique ID cache for relationship mapping
-            await self._build_technique_cache()
-
-            # Sync each entity type
-            stats = FullSyncStats()
-
-            stats.groups = await self._sync_groups(attack_data, mitre_version)
-            stats.campaigns = await self._sync_campaigns(attack_data, mitre_version)
-            stats.software = await self._sync_software(attack_data, mitre_version)
-            stats.relationships = await self._sync_relationships(
-                attack_data, mitre_version
-            )
-
-            # Attribution sync is optional - don't fail entire sync if it errors
-            try:
-                stats.attributions = await self._sync_campaign_attributions(
-                    attack_data, mitre_version
-                )
-            except Exception as e:
-                logger.warning(
-                    "campaign_attribution_sync_failed",
-                    error=str(e),
-                )
-                stats.attributions = SyncStats(errors=1)
-
-            # Update sync history
-            sync_history.status = SyncStatus.COMPLETED.value
-            sync_history.completed_at = datetime.now(timezone.utc)
-            sync_history.mitre_version = mitre_version
-            sync_history.stix_version = "2.0"
-            sync_history.stats = stats.to_dict()
-
-            # Update or create data version record
-            await self._update_data_version(sync_history, stats)
-
-            # Cleanup temp file
-            stix_path.unlink(missing_ok=True)
-
-            logger.info(
-                "mitre_sync_completed",
-                sync_id=str(sync_history.id),
-                mitre_version=mitre_version,
-                stats=stats.to_dict(),
-            )
-
+            await self._perform_sync(sync_history)
             await self.db.commit()
             return sync_history
 
