@@ -164,6 +164,8 @@ async def list_detections(
             "updated_at": det.updated_at,
             "mapping_count": len(det.mappings),
             "top_techniques": [],
+            "evaluation_summary": det.evaluation_summary,
+            "evaluation_updated_at": det.evaluation_updated_at,
         }
         items.append(DetectionResponse(**det_dict))
 
@@ -217,6 +219,8 @@ async def get_detection(
         updated_at=detection.updated_at,
         mapping_count=len(detection.mappings),
         top_techniques=[],
+        evaluation_summary=detection.evaluation_summary,
+        evaluation_updated_at=detection.evaluation_updated_at,
     )
 
 
