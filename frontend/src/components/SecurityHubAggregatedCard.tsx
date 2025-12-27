@@ -23,11 +23,12 @@ import {
 
 // Types for aggregated Security Hub detection
 export interface SecurityHubControl {
+  control_id: string
   status: 'ENABLED' | 'DISABLED'
-  status_by_region: Record<string, 'ENABLED' | 'DISABLED'>
+  status_by_region?: Record<string, 'ENABLED' | 'DISABLED'>
   severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'INFORMATIONAL'
   title: string
-  techniques: string[]
+  techniques?: string[]  // Optional - not always present from scanner
 }
 
 export interface SecurityHubAggregatedConfig {
@@ -149,7 +150,9 @@ function ControlRow({
   control: SecurityHubControl
 }) {
   const [showRegions, setShowRegions] = useState(false)
-  const regionCount = Object.keys(control.status_by_region).length
+  const statusByRegion = control.status_by_region || {}
+  const regionCount = Object.keys(statusByRegion).length
+  const techniques = control.techniques || []
 
   return (
     <div className="border-b border-gray-700/50 last:border-b-0">
@@ -171,14 +174,14 @@ function ControlRow({
           <p className="text-sm text-gray-400 mt-1 truncate">{control.title}</p>
         </div>
         <div className="flex items-center gap-2 ml-4 flex-shrink-0">
-          {control.techniques.length > 0 && (
+          {techniques.length > 0 && (
             <div className="flex flex-wrap gap-1 max-w-xs">
-              {control.techniques.slice(0, 3).map((techniqueId) => (
+              {techniques.slice(0, 3).map((techniqueId) => (
                 <TechniqueBadge key={techniqueId} techniqueId={techniqueId} />
               ))}
-              {control.techniques.length > 3 && (
+              {techniques.length > 3 && (
                 <span className="text-xs text-gray-500">
-                  +{control.techniques.length - 3} more
+                  +{techniques.length - 3} more
                 </span>
               )}
             </div>
@@ -201,7 +204,7 @@ function ControlRow({
             Status by Region
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-            {Object.entries(control.status_by_region).map(([region, status]) => (
+            {Object.entries(statusByRegion).map(([region, status]) => (
               <div
                 key={region}
                 className="flex items-center justify-between px-2 py-1 bg-gray-700/30 rounded"
@@ -240,27 +243,35 @@ export function SecurityHubAggregatedCard({
     if (!config || config.api_version !== 'cspm_aggregated' || !config.controls) {
       return { filteredControls: [], controlStats: { severities: [], filteredCount: 0 } }
     }
-    const entries = Object.entries(config.controls)
+
+    // Controls is an array of objects, each with control_id field
+    const controlsArray = Array.isArray(config.controls) ? config.controls : []
 
     // Get unique severities for filter
-    const severities = new Set(entries.map(([, c]) => c.severity))
+    const severities = new Set(controlsArray.map((c) => c.severity))
 
     // Filter controls
-    const filtered = entries.filter(([controlId, control]) => {
+    const filtered = controlsArray.filter((control) => {
+      const controlId = control.control_id || ''
+      const techniques = control.techniques || []
+
       // Search filter
       const matchesSearch =
         searchTerm === '' ||
         controlId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        control.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        control.techniques.some((t) =>
+        (control.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        techniques.some((t: string) =>
           t.toLowerCase().includes(searchTerm.toLowerCase())
         )
 
-      // Status filter
+      // Status filter - check status_by_region for any enabled region
+      const isEnabled = control.status_by_region
+        ? Object.values(control.status_by_region).some((s) => s === 'ENABLED')
+        : control.status === 'ENABLED'
       const matchesStatus =
         statusFilter === 'all' ||
-        (statusFilter === 'enabled' && control.status === 'ENABLED') ||
-        (statusFilter === 'disabled' && control.status === 'DISABLED')
+        (statusFilter === 'enabled' && isEnabled) ||
+        (statusFilter === 'disabled' && !isEnabled)
 
       // Severity filter
       const matchesSeverity =
@@ -272,16 +283,22 @@ export function SecurityHubAggregatedCard({
     // Sort: enabled first, then by severity, then by control ID
     filtered.sort((a, b) => {
       // Status: enabled first
-      if (a[1].status !== b[1].status) {
-        return a[1].status === 'ENABLED' ? -1 : 1
+      const aEnabled = a.status_by_region
+        ? Object.values(a.status_by_region).some((s) => s === 'ENABLED')
+        : a.status === 'ENABLED'
+      const bEnabled = b.status_by_region
+        ? Object.values(b.status_by_region).some((s) => s === 'ENABLED')
+        : b.status === 'ENABLED'
+      if (aEnabled !== bEnabled) {
+        return aEnabled ? -1 : 1
       }
       // Severity order
       const severityDiff =
-        (severityConfig[a[1].severity]?.order ?? 5) -
-        (severityConfig[b[1].severity]?.order ?? 5)
+        (severityConfig[a.severity]?.order ?? 5) -
+        (severityConfig[b.severity]?.order ?? 5)
       if (severityDiff !== 0) return severityDiff
       // Control ID alphabetically
-      return a[0].localeCompare(b[0])
+      return (a.control_id || '').localeCompare(b.control_id || '')
     })
 
     return {
@@ -498,10 +515,10 @@ export function SecurityHubAggregatedCard({
           {/* Controls list */}
           <div className="max-h-96 overflow-y-auto">
             {filteredControls.length > 0 ? (
-              filteredControls.map(([controlId, control]) => (
+              filteredControls.map((control) => (
                 <ControlRow
-                  key={controlId}
-                  controlId={controlId}
+                  key={control.control_id}
+                  controlId={control.control_id}
                   control={control}
                 />
               ))
