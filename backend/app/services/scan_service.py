@@ -281,6 +281,7 @@ class ScanService:
                 found=stats["found"],
                 new=stats["new"],
                 updated=stats["updated"],
+                removed=stats.get("removed", 0),
             )
 
         except Exception as e:
@@ -630,11 +631,18 @@ class ScanService:
         cloud_account_id: UUID,
         raw_detections: list[RawDetection],
     ) -> dict[str, int]:
-        """Process raw detections into database records."""
-        stats = {"found": len(raw_detections), "new": 0, "updated": 0}
+        """Process raw detections into database records.
+
+        Also marks detections as REMOVED if they're no longer found in the
+        cloud account (e.g., deleted alarms, rules, etc.).
+        """
+        stats = {"found": len(raw_detections), "new": 0, "updated": 0, "removed": 0}
 
         # Clean up any duplicate detections first (keep oldest by id)
         await self._cleanup_duplicate_detections(cloud_account_id)
+
+        # Track which ARNs are found in this scan (used later for removal detection)
+        found_arns = set(raw.source_arn for raw in raw_detections)
 
         for raw in raw_detections:
             # Check if detection already exists
@@ -690,6 +698,64 @@ class ScanService:
                 )
                 self.db.add(detection)
                 stats["new"] += 1
+
+        # Mark detections no longer found as REMOVED
+        # Safety: Only mark as removed for detection types that were actually scanned
+        # This prevents marking everything as removed if a scanner fails
+        scanned_types = set(raw.detection_type for raw in raw_detections)
+
+        if scanned_types:
+            # Get existing detections that are candidates for removal
+            # (only for detection types we actually scanned)
+            removal_candidates_result = await self.db.execute(
+                select(
+                    Detection.id, Detection.source_arn, Detection.detection_type
+                ).where(
+                    Detection.cloud_account_id == cloud_account_id,
+                    Detection.status != DetectionStatus.REMOVED,
+                    Detection.detection_type.in_(scanned_types),
+                )
+            )
+            removal_candidates = {
+                row.source_arn: row.id for row in removal_candidates_result.fetchall()
+            }
+
+            # Find ARNs that exist but weren't found in this scan
+            missing_arns = set(removal_candidates.keys()) - found_arns
+
+            if missing_arns:
+                # Safety: Don't remove more than 50% of detections in one scan
+                # This prevents catastrophic removal if something goes wrong
+                removal_ratio = (
+                    len(missing_arns) / len(removal_candidates)
+                    if removal_candidates
+                    else 0
+                )
+                if removal_ratio > 0.5 and len(missing_arns) > 5:
+                    self.logger.warning(
+                        "skipping_mass_removal",
+                        cloud_account_id=str(cloud_account_id),
+                        would_remove=len(missing_arns),
+                        total=len(removal_candidates),
+                        ratio=removal_ratio,
+                        reason="Would remove >50% of detections - possible scanner issue",
+                    )
+                else:
+                    missing_ids = [removal_candidates[arn] for arn in missing_arns]
+                    await self.db.execute(
+                        Detection.__table__.update()
+                        .where(Detection.id.in_(missing_ids))
+                        .values(
+                            status=DetectionStatus.REMOVED,
+                            updated_at=datetime.now(timezone.utc),
+                        )
+                    )
+                    stats["removed"] = len(missing_arns)
+                    self.logger.info(
+                        "marked_detections_removed",
+                        cloud_account_id=str(cloud_account_id),
+                        count=len(missing_arns),
+                    )
 
         await self.db.flush()
         return stats

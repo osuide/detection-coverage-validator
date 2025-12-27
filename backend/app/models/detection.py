@@ -49,6 +49,7 @@ class DetectionStatus(str, enum.Enum):
     DISABLED = "disabled"
     ERROR = "error"
     UNKNOWN = "unknown"
+    REMOVED = "removed"  # No longer found in cloud account
 
 
 class HealthStatus(str, enum.Enum):
