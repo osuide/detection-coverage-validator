@@ -174,27 +174,108 @@ class CloudWatchMetricAlarmScanner(BaseScanner):
     async def _scan_alarms(self, region: str) -> list[RawDetection]:
         """Scan for metric alarms in a region."""
         detections = []
+        skipped = 0
         client = self.session.client("cloudwatch", region_name=region)
 
         paginator = client.get_paginator("describe_alarms")
 
         for page in paginator.paginate(AlarmTypes=["MetricAlarm"]):
             for alarm in page.get("MetricAlarms", []):
-                # Include all alarms - MITRE mapping will determine security relevance
+                # Filter out AWS-managed operational alarms
+                if self._is_aws_managed_operational(alarm):
+                    skipped += 1
+                    continue
+
+                # Only include security-relevant alarms
+                if not self._is_security_relevant(alarm):
+                    skipped += 1
+                    continue
+
                 detection = self._parse_alarm(alarm, region)
                 if detection:
                     detections.append(detection)
 
+        if skipped > 0:
+            self.logger.info(
+                "filtered_operational_alarms",
+                region=region,
+                skipped=skipped,
+                included=len(detections),
+            )
+
         return detections
+
+    def _is_aws_managed_operational(self, alarm: dict) -> bool:
+        """Check if alarm is an AWS-managed operational alarm (not security).
+
+        These are automatically created by AWS services like Auto Scaling,
+        and are not security detections.
+        """
+        description = alarm.get("AlarmDescription") or ""
+        name = alarm.get("AlarmName", "")
+        namespace = alarm.get("Namespace", "")
+
+        # Auto-scaling alarms created by DynamoDB, ECS, Application Auto Scaling
+        if "DO NOT EDIT OR DELETE" in description:
+            return True
+        if "TargetTrackingScaling" in description or "TargetTrackingScaling" in name:
+            return True
+
+        # AWS-managed operational namespaces (not security)
+        operational_namespaces = [
+            "AWS/Billing",  # Billing alarms
+            "AWS/AutoScaling",  # EC2 Auto Scaling operational
+            "AWS/ApplicationAutoScaling",  # App Auto Scaling
+            "AWS/ECS",  # ECS service scaling (unless security keyword)
+            "AWS/RDS",  # RDS operational metrics (unless security keyword)
+            "AWS/ElastiCache",  # Cache operational metrics
+            "AWS/Kinesis",  # Kinesis throughput
+            "AWS/SQS",  # Queue depth (operational)
+            "AWS/SNS",  # Topic metrics (operational)
+        ]
+
+        # Check if it's a purely operational namespace
+        # (will be overridden if security keywords present)
+        if namespace in operational_namespaces:
+            # But still include if it has security keywords in the name
+            name_lower = name.lower()
+            security_keywords = [
+                "unauthorized",
+                "security",
+                "threat",
+                "anomaly",
+                "suspicious",
+                "failed",
+                "denied",
+                "breach",
+                "intrusion",
+                "attack",
+                "malicious",
+            ]
+            if not any(kw in name_lower for kw in security_keywords):
+                return True
+
+        return False
 
     def _is_security_relevant(self, alarm: dict) -> bool:
         """Check if alarm is security-relevant based on namespace/metric."""
+        # Security-focused namespaces - always include
         security_namespaces = [
             "AWS/GuardDuty",
             "AWS/SecurityHub",
             "AWS/CloudTrail",
             "AWS/IAM",
+            "AWS/Config",
+            "AWS/Inspector",
+            "AWS/Macie",
+            "AWS/WAF",
+            "AWS/WAFv2",
+            "AWS/Shield",
+            "AWS/NetworkFirewall",
+            "AWS/Detective",
         ]
+
+        # Security-related keywords in alarm names
         security_keywords = [
             "unauthorized",
             "security",
@@ -203,14 +284,54 @@ class CloudWatchMetricAlarmScanner(BaseScanner):
             "suspicious",
             "failed",
             "denied",
+            "breach",
+            "intrusion",
+            "attack",
+            "malicious",
+            "root",
+            "console",
+            "login",
+            "authentication",
+            "credential",
+            "privilege",
+            "escalation",
+            "exfiltration",
+            "encryption",
+            "kms",
+            "secret",
+            "password",
+            "api",
+            "cloudtrail",
+            "guardduty",
+            "securityhub",
+            "config",
+            "compliance",
+            "violation",
+            "policy",
+            "permission",
+            "access",
+            "iam",
+            "role",
+            "user",
+            "mfa",
+            "vpc",
+            "firewall",
+            "network",
+            "egress",
+            "ingress",
         ]
 
-        namespace = alarm.get("Namespace", "").lower()
+        namespace = alarm.get("Namespace", "")
         name = alarm.get("AlarmName", "").lower()
+        description = (alarm.get("AlarmDescription") or "").lower()
 
-        if any(ns.lower() in namespace for ns in security_namespaces):
+        # Always include alarms from security namespaces
+        if namespace in security_namespaces:
             return True
-        if any(kw in name for kw in security_keywords):
+
+        # Include if name or description contains security keywords
+        text_to_check = f"{name} {description}"
+        if any(kw in text_to_check for kw in security_keywords):
             return True
 
         return False
