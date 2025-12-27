@@ -200,6 +200,43 @@ def run_migrations():
     command.upgrade(alembic_cfg, "head")
 ```
 
+### Alembic Migration Best Practices with asyncpg
+
+When writing migrations with asyncpg (async PostgreSQL driver), follow these rules:
+
+1. **Revision IDs must be <= 32 characters** - The `alembic_version.version_num` column is `VARCHAR(32)`. Use short names like `038_add_eval_history` not `038_add_detection_evaluation_history`.
+
+2. **For PostgreSQL ENUMs, use `PG_ENUM` not `sa.Enum`** - The `sa.Enum(..., create_type=False)` doesn't work with asyncpg. Use:
+   ```python
+   from sqlalchemy.dialects.postgresql import ENUM as PG_ENUM
+
+   # WRONG - create_type=False is ignored with asyncpg
+   sa.Column("status", sa.Enum("a", "b", name="myenum", create_type=False))
+
+   # CORRECT - use PG_ENUM to reference existing type
+   sa.Column("status", PG_ENUM(name="myenum", create_type=False))
+   ```
+
+3. **Create ENUMs with raw SQL, not SQLAlchemy** - Use `conn.execute(sa.text("CREATE TYPE ..."))` because `checkfirst=True` doesn't work with asyncpg.
+
+4. **Make migrations idempotent** - Check if tables/types exist before creating. Use `inspector.get_table_names()` (proven to work with asyncpg) to check table existence:
+   ```python
+   conn = op.get_bind()
+   inspector = sa.inspect(conn)
+   if "my_table" in inspector.get_table_names():
+       return  # Already migrated
+   ```
+
+5. **Handle orphaned ENUMs** - If migration fails after creating ENUMs, they persist (CREATE TYPE is auto-committed). Drop orphaned enums before recreating:
+   ```python
+   conn.execute(sa.text("DROP TYPE IF EXISTS myenum CASCADE"))
+   conn.execute(sa.text("CREATE TYPE myenum AS ENUM ('a', 'b')"))
+   ```
+
+References:
+- [Alembic asyncpg Discussion #1208](https://github.com/sqlalchemy/alembic/discussions/1208)
+- [SQLAlchemy Alembic Issue #1347](https://github.com/sqlalchemy/alembic/issues/1347)
+
 ## RBAC (Role-Based Access Control)
 
 **IMPORTANT: `require_role()` uses exact match, NOT hierarchical.**
