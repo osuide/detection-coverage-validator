@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import {
   Shield, Settings, CreditCard, Key, Eye, EyeOff,
   Save, AlertCircle, Check, ChevronLeft, RefreshCw,
-  Lock, Globe, ToggleLeft, ToggleRight, Database
+  Lock, Globe, ToggleLeft, ToggleRight, Database, ExternalLink
 } from 'lucide-react';
 import { useAdminAuthStore, adminApi } from '../../stores/adminAuthStore';
 
@@ -128,6 +128,47 @@ export default function AdminSettings() {
 
   const getSettingsByCategory = (category: string) => {
     return settings.filter(s => s.category === category);
+  };
+
+  /**
+   * Format a cron expression into human-readable text.
+   * E.g., "0 0 * * 0" -> "Weekly on Sunday at 00:00 UTC"
+   */
+  const formatCronExpression = (cron: string | null): string => {
+    if (!cron) return '-';
+    const parts = cron.split(' ');
+    if (parts.length !== 5) return cron;
+
+    const [minute, hour, dayOfMonth, month, dayOfWeek] = parts;
+    const time = `${hour.padStart(2, '0')}:${minute.padStart(2, '0')} UTC`;
+
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+    // Weekly (specific day of week, any day of month)
+    if (dayOfMonth === '*' && month === '*' && dayOfWeek !== '*') {
+      const day = dayNames[parseInt(dayOfWeek)] || dayOfWeek;
+      return `Weekly on ${day} at ${time}`;
+    }
+
+    // Monthly (specific day of month)
+    if (dayOfMonth !== '*' && month === '*' && dayOfWeek === '*') {
+      return `Monthly on day ${dayOfMonth} at ${time}`;
+    }
+
+    // Daily
+    if (dayOfMonth === '*' && month === '*' && dayOfWeek === '*') {
+      return `Daily at ${time}`;
+    }
+
+    // Fallback to raw expression
+    return cron;
+  };
+
+  /**
+   * Check if a setting is a MITRE sync setting.
+   */
+  const isMitreSyncSetting = (key: string): boolean => {
+    return key === 'mitre_sync_enabled' || key === 'mitre_sync_cron';
   };
 
   const seedMitreData = async () => {
@@ -389,28 +430,47 @@ export default function AdminSettings() {
             <div className="space-y-4">
               {getSettingsByCategory('general').map(setting => (
                 <div key={setting.key} className="flex items-center justify-between p-4 bg-gray-700/50 rounded-lg">
-                  <div>
-                    <p className="text-white font-medium">{setting.key.replace('platform_', '').replace(/_/g, ' ')}</p>
+                  <div className="flex-1">
+                    <p className="text-white font-medium">
+                      {setting.key
+                        .replace('platform_', '')
+                        .replace('mitre_', 'MITRE ')
+                        .replace(/_/g, ' ')}
+                    </p>
                     <p className="text-sm text-gray-400">{setting.description}</p>
+                    {/* Add link to MITRE Data page for MITRE sync settings */}
+                    {isMitreSyncSetting(setting.key) && (
+                      <Link
+                        to="/admin/mitre"
+                        className="inline-flex items-center gap-1 text-sm text-indigo-400 hover:text-indigo-300 mt-1"
+                      >
+                        Manage schedule
+                        <ExternalLink className="w-3 h-3" />
+                      </Link>
+                    )}
                   </div>
-                  {setting.value === 'true' || setting.value === 'false' ? (
-                    <button
-                      onClick={() => toggleFeature(setting.key, setting.value)}
-                      className={`p-2 rounded-lg transition-colors ${
-                        setting.value === 'true'
-                          ? 'bg-green-600 text-white'
-                          : 'bg-gray-600 text-gray-400'
-                      }`}
-                    >
-                      {setting.value === 'true' ? (
-                        <ToggleRight className="w-6 h-6" />
-                      ) : (
-                        <ToggleLeft className="w-6 h-6" />
-                      )}
-                    </button>
-                  ) : (
-                    <span className="text-gray-300">{setting.value || '-'}</span>
-                  )}
+                  <div className="flex items-center gap-3">
+                    {setting.value === 'true' || setting.value === 'false' ? (
+                      <button
+                        onClick={() => toggleFeature(setting.key, setting.value)}
+                        className={`p-2 rounded-lg transition-colors ${
+                          setting.value === 'true'
+                            ? 'bg-green-600 text-white'
+                            : 'bg-gray-600 text-gray-400'
+                        }`}
+                      >
+                        {setting.value === 'true' ? (
+                          <ToggleRight className="w-6 h-6" />
+                        ) : (
+                          <ToggleLeft className="w-6 h-6" />
+                        )}
+                      </button>
+                    ) : setting.key === 'mitre_sync_cron' ? (
+                      <span className="text-gray-300">{formatCronExpression(setting.value)}</span>
+                    ) : (
+                      <span className="text-gray-300">{setting.value || '-'}</span>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
