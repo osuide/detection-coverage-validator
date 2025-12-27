@@ -17,7 +17,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = "042_cspm_dedup"
-down_revision = "041_add_removed_status"
+down_revision = "041_add_removed_stat"
 branch_labels = None
 depends_on = None
 
