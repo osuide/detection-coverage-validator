@@ -20,7 +20,7 @@ Design considerations:
 
 from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import UUID, JSONB, ENUM as PG_ENUM
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 
 # revision identifiers, used by Alembic.
@@ -31,33 +31,57 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Create evaluation_type enum using SQLAlchemy's checkfirst=True
-    # This properly handles the case where the enum already exists
-    # Reference: https://roman.pt/posts/alembic-enums/
-    evaluationtype_enum = PG_ENUM(
-        "config_compliance",
-        "alarm_state",
-        "eventbridge_state",
-        "guardduty_state",
-        "gcp_scc_state",
-        "gcp_logging_state",
-        name="evaluationtype",
-    )
-    evaluationtype_enum.create(op.get_bind(), checkfirst=True)
+    """Upgrade with full idempotency handling.
 
-    # Create evaluation alert severity enum
-    evaluationalertseverity_enum = PG_ENUM(
-        "info",
-        "warning",
-        "critical",
-        name="evaluationalertseverity",
-    )
-    evaluationalertseverity_enum.create(op.get_bind(), checkfirst=True)
+    This migration handles the edge case where a previous run partially completed:
+    - PostgreSQL enum creation is auto-committed (not transactional)
+    - If migration fails after enum creation, tables roll back but enums persist
+    - Using inspector.get_table_names() is proven reliable with asyncpg
+    - Enum existence checks (pg_type, checkfirst) have issues with asyncpg
 
-    # Check for existing tables to ensure idempotency
+    Solution: Check if tables exist. If not, drop orphaned enums and recreate fresh.
+    Reference: https://github.com/sqlalchemy/alembic/discussions/1208
+    """
     conn = op.get_bind()
     inspector = sa.inspect(conn)
     existing_tables = inspector.get_table_names()
+
+    # If main table already exists, migration completed successfully - skip all
+    if "detection_evaluation_history" in existing_tables:
+        return
+
+    # Tables don't exist - drop any orphaned enums from previous failed attempts
+    # CASCADE is safe because no tables reference them (they were rolled back)
+    conn.execute(sa.text("DROP TYPE IF EXISTS evaluationtype CASCADE"))
+    conn.execute(sa.text("DROP TYPE IF EXISTS evaluationalertseverity CASCADE"))
+
+    # Create enums fresh
+    conn.execute(
+        sa.text(
+            """
+            CREATE TYPE evaluationtype AS ENUM (
+                'config_compliance',
+                'alarm_state',
+                'eventbridge_state',
+                'guardduty_state',
+                'gcp_scc_state',
+                'gcp_logging_state'
+            )
+            """
+        )
+    )
+
+    conn.execute(
+        sa.text(
+            """
+            CREATE TYPE evaluationalertseverity AS ENUM (
+                'info',
+                'warning',
+                'critical'
+            )
+            """
+        )
+    )
 
     # 1. Create detection_evaluation_history table
     if "detection_evaluation_history" not in existing_tables:
