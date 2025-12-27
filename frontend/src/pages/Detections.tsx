@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Shield, Search, Filter, ChevronDown, Eye, Activity, Zap, CheckCircle, Lock, AlertTriangle, XCircle, HelpCircle } from 'lucide-react'
+import { Shield, Search, Filter, ChevronDown, Eye, Activity, Zap, CheckCircle, Lock, AlertTriangle, XCircle, HelpCircle, Bell } from 'lucide-react'
 import { detectionsApi, Detection, EvaluationSummary } from '../services/api'
 import { useState } from 'react'
 import DetectionDetailModal from '../components/DetectionDetailModal'
@@ -13,6 +13,12 @@ const detectionTypeConfig: Record<string, { label: string; icon: React.ElementTy
     icon: Activity,
     color: 'text-orange-400',
     bgColor: 'bg-orange-900/30'
+  },
+  'cloudwatch_alarm': {
+    label: 'CloudWatch Alarms',
+    icon: Bell,
+    color: 'text-amber-400',
+    bgColor: 'bg-amber-900/30'
   },
   'eventbridge_rule': {
     label: 'EventBridge',

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { X, ExternalLink, Shield, MapPin, Clock, AlertCircle, Activity, Zap, CheckCircle, Lock, Database, XCircle, HelpCircle } from 'lucide-react'
+import { X, ExternalLink, Shield, MapPin, Clock, AlertCircle, Activity, Zap, CheckCircle, Lock, Database, XCircle, HelpCircle, Bell } from 'lucide-react'
 import { detectionsApi, Detection } from '../services/api'
 
 interface DetectionDetailModalProps {
@@ -14,6 +14,13 @@ const detectionTypeConfig: Record<string, { label: string; icon: React.ElementTy
     color: 'text-orange-700',
     bgColor: 'bg-orange-100',
     description: 'Query-based detection using CloudWatch Logs Insights'
+  },
+  'cloudwatch_alarm': {
+    label: 'CloudWatch Alarm',
+    icon: Bell,
+    color: 'text-amber-700',
+    bgColor: 'bg-amber-100',
+    description: 'Metric-based alerting using CloudWatch Alarms'
   },
   'eventbridge_rule': {
     label: 'EventBridge Rule',

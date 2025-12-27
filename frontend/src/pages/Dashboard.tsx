@@ -7,7 +7,8 @@ import {
   Cloud,
   Activity,
   Zap,
-  Lock
+  Lock,
+  Bell
 } from 'lucide-react'
 import { coverageApi, scansApi, detectionsApi, scanStatusApi } from '../services/api'
 import { Link } from 'react-router-dom'
@@ -21,6 +22,12 @@ const detectionSourceConfig: Record<string, { label: string; icon: React.Element
     icon: Activity,
     color: 'text-orange-400',
     bgColor: 'bg-orange-900/30'
+  },
+  'cloudwatch_alarm': {
+    label: 'CloudWatch Alarms',
+    icon: Bell,
+    color: 'text-amber-400',
+    bgColor: 'bg-amber-900/30'
   },
   'eventbridge_rule': {
     label: 'EventBridge',
