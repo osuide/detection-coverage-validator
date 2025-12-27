@@ -233,9 +233,38 @@ When writing migrations with asyncpg (async PostgreSQL driver), follow these rul
    conn.execute(sa.text("CREATE TYPE myenum AS ENUM ('a', 'b')"))
    ```
 
+6. **Adding values to existing ENUMs - use "recreate enum" approach** - `ALTER TYPE ... ADD VALUE` cannot run inside a transaction, and asyncpg has issues with autocommit workarounds. Instead, recreate the enum:
+   ```python
+   def upgrade() -> None:
+       conn = op.get_bind()
+
+       # Check if value already exists (idempotency)
+       result = conn.execute(sa.text(
+           "SELECT 1 FROM pg_enum WHERE enumtypid = 'myenum'::regtype AND enumlabel = 'newvalue'"
+       ))
+       if result.fetchone():
+           return  # Already exists
+
+       # Step 1: Rename existing type
+       conn.execute(sa.text("ALTER TYPE myenum RENAME TO myenum_old"))
+
+       # Step 2: Create new type with all values
+       conn.execute(sa.text("CREATE TYPE myenum AS ENUM ('a', 'b', 'newvalue')"))
+
+       # Step 3: Update column to use new type (cast through text)
+       conn.execute(sa.text(
+           "ALTER TABLE mytable ALTER COLUMN mycolumn TYPE myenum USING mycolumn::text::myenum"
+       ))
+
+       # Step 4: Drop old type
+       conn.execute(sa.text("DROP TYPE myenum_old"))
+   ```
+   Reference: https://blog.yo1.dog/updating-enum-values-in-postgresql-the-safe-and-easy-way/
+
 References:
 - [Alembic asyncpg Discussion #1208](https://github.com/sqlalchemy/alembic/discussions/1208)
 - [SQLAlchemy Alembic Issue #1347](https://github.com/sqlalchemy/alembic/issues/1347)
+- [Alembic ALTER TYPE ADD VALUE Issue #123](https://github.com/sqlalchemy/alembic/issues/123)
 
 ## RBAC (Role-Based Access Control)
 

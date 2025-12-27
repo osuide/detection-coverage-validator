@@ -6,6 +6,10 @@ Create Date: 2025-12-27
 
 Adds 'removed' status for detections that are no longer found in the
 cloud account (e.g., deleted alarms, rules, etc.).
+
+Uses the "recreate enum" approach because ALTER TYPE ... ADD VALUE
+cannot run inside a transaction, and asyncpg has issues with autocommit.
+See: https://blog.yo1.dog/updating-enum-values-in-postgresql-the-safe-and-easy-way/
 """
 
 from alembic import op
@@ -22,13 +26,17 @@ depends_on = None
 def upgrade() -> None:
     """Add 'removed' value to detection_status enum.
 
-    PostgreSQL's ALTER TYPE ... ADD VALUE cannot run inside a transaction.
-    We need to commit the current transaction first, then add the value.
+    Uses the recreate enum approach:
+    1. Rename existing type to _old
+    2. Create new type with all values
+    3. Update column to use new type
+    4. Drop old type
+
+    This works inside a transaction unlike ALTER TYPE ADD VALUE.
     """
-    # Get connection and commit current transaction
     conn = op.get_bind()
 
-    # Check if the value already exists to make this idempotent
+    # Check if 'removed' already exists (idempotency)
     result = conn.execute(
         sa.text(
             """
@@ -42,18 +50,75 @@ def upgrade() -> None:
         # Value already exists, skip
         return
 
-    # Commit current transaction so we can add enum value
-    conn.execute(sa.text("COMMIT"))
+    # Step 1: Rename existing type
+    conn.execute(sa.text("ALTER TYPE detectionstatus RENAME TO detectionstatus_old"))
 
-    # Add the enum value (must be outside transaction)
-    conn.execute(sa.text("ALTER TYPE detectionstatus ADD VALUE 'removed'"))
+    # Step 2: Create new type with all values including 'removed'
+    conn.execute(
+        sa.text(
+            """
+            CREATE TYPE detectionstatus AS ENUM (
+                'active', 'disabled', 'error', 'unknown', 'removed'
+            )
+            """
+        )
+    )
 
-    # Start a new transaction for any subsequent operations
-    conn.execute(sa.text("BEGIN"))
+    # Step 3: Update column to use new type
+    # Need to cast through text to convert between enum types
+    conn.execute(
+        sa.text(
+            """
+            ALTER TABLE detections
+            ALTER COLUMN status TYPE detectionstatus
+            USING status::text::detectionstatus
+            """
+        )
+    )
+
+    # Step 4: Drop old type
+    conn.execute(sa.text("DROP TYPE detectionstatus_old"))
 
 
 def downgrade() -> None:
-    """Cannot remove enum values in PostgreSQL - no-op."""
-    # PostgreSQL doesn't support removing enum values
-    # Detections with 'removed' status would need to be updated first
-    pass
+    """Remove 'removed' value from detection_status enum.
+
+    First updates any 'removed' rows to 'unknown', then recreates
+    the enum without 'removed'.
+    """
+    conn = op.get_bind()
+
+    # Update any 'removed' rows to 'unknown' first
+    conn.execute(
+        sa.text(
+            """
+            UPDATE detections SET status = 'unknown'
+            WHERE status = 'removed'
+            """
+        )
+    )
+
+    # Recreate enum without 'removed'
+    conn.execute(sa.text("ALTER TYPE detectionstatus RENAME TO detectionstatus_old"))
+
+    conn.execute(
+        sa.text(
+            """
+            CREATE TYPE detectionstatus AS ENUM (
+                'active', 'disabled', 'error', 'unknown'
+            )
+            """
+        )
+    )
+
+    conn.execute(
+        sa.text(
+            """
+            ALTER TABLE detections
+            ALTER COLUMN status TYPE detectionstatus
+            USING status::text::detectionstatus
+            """
+        )
+    )
+
+    conn.execute(sa.text("DROP TYPE detectionstatus_old"))
