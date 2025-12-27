@@ -243,6 +243,7 @@ AWS_IAM_POLICY = {
                 "logs:DescribeLogGroups",
                 "logs:DescribeMetricFilters",
                 "logs:DescribeSubscriptionFilters",
+                "logs:DescribeQueryDefinitions",
             ],
             "Resource": "*",
         },
@@ -336,6 +337,11 @@ AWS_REQUIRED_PERMISSIONS = [
         "action": "logs:DescribeSubscriptionFilters",
         "service": "CloudWatch Logs",
         "purpose": "Find log forwarding configurations",
+    },
+    {
+        "action": "logs:DescribeQueryDefinitions",
+        "service": "CloudWatch Logs",
+        "purpose": "Find saved CloudWatch Logs Insights queries for security monitoring",
     },
     # CloudWatch Alarms
     {
