@@ -44,13 +44,30 @@ class SecurityHubScanner(BaseScanner):
         regions: list[str],
         options: Optional[dict[str, Any]] = None,
     ) -> list[RawDetection]:
-        """Scan all regions for Security Hub configurations."""
+        """Scan all regions for Security Hub configurations.
+
+        CSPM controls are global definitions - they're the same regardless of
+        which region you query. We only scan CSPM controls from the FIRST
+        region where Security Hub is enabled, to avoid duplicates.
+
+        Insights are scanned per-region as they may differ.
+        """
         all_detections = []
+        cspm_scanned = False  # Track if we've already scanned CSPM controls
 
         for region in regions:
             try:
-                region_detections = await self.scan_region(region, options)
+                # Pass flag to indicate if CSPM should be scanned
+                scan_options = {**(options or {}), "_cspm_scanned": cspm_scanned}
+                region_detections = await self.scan_region(region, scan_options)
                 all_detections.extend(region_detections)
+
+                # If we got CSPM detections, mark as scanned
+                if any(
+                    d.raw_config.get("api_version") == "cspm" for d in region_detections
+                ):
+                    cspm_scanned = True
+
             except ClientError as e:
                 self.logger.warning(
                     "securityhub_scan_error", region=region, error=str(e)
@@ -68,39 +85,52 @@ class SecurityHubScanner(BaseScanner):
         Uses the new CSPM consolidated controls API when available,
         falling back to the legacy standards-based API if CSPM
         permissions are not granted.
+
+        CSPM controls are only scanned once (from the first region) since
+        they're global definitions. The _cspm_scanned flag in options
+        indicates if CSPM has already been scanned.
         """
         detections = []
         client = self.session.client("securityhub", region_name=region)
+        cspm_already_scanned = (options or {}).get("_cspm_scanned", False)
 
         try:
             # Check if Security Hub is enabled
             hub = client.describe_hub()
             hub_arn = hub.get("HubArn", "")
 
-            # Try CSPM consolidated controls API first
-            cspm_detections = self._scan_cspm_controls(client, region, hub_arn)
+            # Only scan CSPM controls if not already scanned (they're global)
+            if not cspm_already_scanned:
+                cspm_detections = self._scan_cspm_controls(client, region, hub_arn)
 
-            if cspm_detections:
-                # CSPM API worked - use consolidated controls
-                detections.extend(cspm_detections)
-                self.logger.info(
-                    "securityhub_cspm_success",
-                    region=region,
-                    control_count=len(cspm_detections),
-                )
+                if cspm_detections:
+                    # CSPM API worked - use consolidated controls
+                    detections.extend(cspm_detections)
+                    self.logger.info(
+                        "securityhub_cspm_success",
+                        region=region,
+                        control_count=len(cspm_detections),
+                    )
+                else:
+                    # Fall back to legacy standards-based API
+                    self.logger.info(
+                        "securityhub_legacy_fallback",
+                        region=region,
+                        reason="CSPM API not available or returned no controls",
+                    )
+                    standards_detections = self._scan_enabled_standards(
+                        client, region, hub_arn
+                    )
+                    detections.extend(standards_detections)
             else:
-                # Fall back to legacy standards-based API
-                self.logger.info(
-                    "securityhub_legacy_fallback",
+                self.logger.debug(
+                    "securityhub_cspm_skipped",
                     region=region,
-                    reason="CSPM API not available or returned no controls",
+                    reason="CSPM controls already scanned from another region",
                 )
-                standards_detections = self._scan_enabled_standards(
-                    client, region, hub_arn
-                )
-                detections.extend(standards_detections)
 
             # Scan custom insights (works with both old and new API)
+            # Insights ARE per-region, so we scan them in every region
             insights_detections = self._scan_insights(client, region, hub_arn)
             detections.extend(insights_detections)
 
