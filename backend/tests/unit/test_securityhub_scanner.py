@@ -63,7 +63,8 @@ class TestCSPMAPIUsage:
 
     def test_cspm_detection_has_api_version_marker(self, source_content):
         """Test that CSPM detections are marked with api_version."""
-        assert '"api_version": "cspm"' in source_content
+        # Aggregated detections use cspm_aggregated
+        assert '"api_version": "cspm_aggregated"' in source_content
 
     def test_cspm_stores_control_id(self, source_content):
         """Test that CSPM detection stores control_id."""
