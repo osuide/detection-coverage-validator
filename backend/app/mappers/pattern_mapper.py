@@ -340,6 +340,17 @@ class PatternMapper:
         raw_config = detection.raw_config or {}
         controls = raw_config.get("controls", [])
 
+        # Debug: Log sample control IDs being mapped
+        sample_control_ids = (
+            [c.get("control_id", "unknown") for c in controls[:5]] if controls else []
+        )
+        self.logger.debug(
+            "aggregated_securityhub_mapping_start",
+            detection_name=detection.name,
+            total_controls=len(controls),
+            sample_control_ids=sample_control_ids,
+        )
+
         if not controls:
             self.logger.warning(
                 "aggregated_securityhub_no_controls",

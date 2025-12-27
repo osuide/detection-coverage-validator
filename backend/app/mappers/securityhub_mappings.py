@@ -336,6 +336,10 @@ def get_techniques_for_cspm_control(
         >>> get_techniques_for_cspm_control('IAM.1')
         [('T1098', 0.85)]
     """
+    import structlog
+
+    logger = structlog.get_logger()
+
     techniques = []
 
     # Normalise control ID: S3.1 -> s3.1
@@ -343,8 +347,15 @@ def get_techniques_for_cspm_control(
 
     # Try FSBP first (most comprehensive coverage)
     fsbp_key = f"fsbp.{normalised_id}"
-    if fsbp_key in FSBP_MAPPINGS:
+    found_fsbp = fsbp_key in FSBP_MAPPINGS
+    if found_fsbp:
         techniques.extend(FSBP_MAPPINGS[fsbp_key])
+        logger.debug(
+            "cspm_control_fsbp_match",
+            control_id=control_id,
+            fsbp_key=fsbp_key,
+            techniques=techniques,
+        )
 
     # If no FSBP match and we have standard associations, try other standards
     if not techniques and standard_associations:

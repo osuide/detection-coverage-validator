@@ -209,6 +209,14 @@ class SecurityHubScanner(BaseScanner):
             "other": {},  # Controls without standard associations
         }
 
+        # Track sample control IDs for debugging
+        sample_controls = list(cspm_control_data.keys())[:10]
+        self.logger.debug(
+            "grouping_controls_sample",
+            sample_control_ids=sample_controls,
+            total_controls=len(cspm_control_data),
+        )
+
         for control_id, control_data in cspm_control_data.items():
             # Infer standard from control ID prefix
             inferred_standard = self._infer_standard_from_control_id(control_id)
@@ -216,6 +224,16 @@ class SecurityHubScanner(BaseScanner):
                 grouped[inferred_standard][control_id] = control_data
             else:
                 grouped["other"][control_id] = control_data
+
+        # Log grouping results
+        self.logger.info(
+            "controls_grouped_by_standard",
+            fsbp_count=len(grouped["fsbp"]),
+            cis_count=len(grouped["cis"]),
+            pci_count=len(grouped["pci"]),
+            nist_count=len(grouped["nist"]),
+            other_count=len(grouped["other"]),
+        )
 
         # Remove empty standard groups
         return {k: v for k, v in grouped.items() if v}
@@ -369,10 +387,14 @@ class SecurityHubScanner(BaseScanner):
                     }
                 )
 
+            # Use unique source_arn per standard to prevent overwriting
+            # Format: hub_arn#standard_id (e.g., arn:aws:securityhub:...:hub/default#fsbp)
+            unique_source_arn = f"{hub_arn}#{standard_id}"
+
             detection = RawDetection(
                 name=f"SecurityHub-{standard_info['name']}",
                 detection_type=DetectionType.SECURITY_HUB,
-                source_arn=hub_arn,
+                source_arn=unique_source_arn,
                 region=region,
                 raw_config={
                     "hub_arn": hub_arn,
@@ -418,9 +440,10 @@ class SecurityHubScanner(BaseScanner):
                     "description": info["description"],
                 }
 
-        # Default for 'other' or unknown
+        # Default for 'other' or unknown - just use the ID as name
+        # (detection name will add "SecurityHub-" prefix)
         return {
-            "name": f"SecurityHub-{standard_id.upper()}",
+            "name": standard_id.upper(),
             "description": f"Security Hub controls for {standard_id}",
         }
 
