@@ -24,11 +24,11 @@ def upgrade() -> None:
     """Delete operational CloudWatch alarms that aren't security-relevant."""
     conn = op.get_bind()
 
-    # Count before deletion for logging
+    # First, get the IDs of detections to delete
     result = conn.execute(
         sa.text(
             """
-            SELECT COUNT(*) FROM detections
+            SELECT id FROM detections
             WHERE detection_type = 'cloudwatch_alarm'
             AND (
                 description LIKE '%DO NOT EDIT OR DELETE%'
@@ -41,25 +41,35 @@ def upgrade() -> None:
             """
         )
     )
-    count = result.scalar()
+    detection_ids = [row[0] for row in result.fetchall()]
+    count = len(detection_ids)
     print(f"Found {count} operational alarms to delete")
 
-    # Delete operational alarms
+    if count == 0:
+        print("No operational alarms to delete")
+        return
+
+    # Delete related detection_mappings first (foreign key constraint)
+    conn.execute(
+        sa.text(
+            """
+            DELETE FROM detection_mappings
+            WHERE detection_id = ANY(:ids)
+            """
+        ),
+        {"ids": detection_ids},
+    )
+    print(f"Deleted detection_mappings for {count} detections")
+
+    # Now delete the detections
     conn.execute(
         sa.text(
             """
             DELETE FROM detections
-            WHERE detection_type = 'cloudwatch_alarm'
-            AND (
-                description LIKE '%DO NOT EDIT OR DELETE%'
-                OR description LIKE '%TargetTrackingScaling%'
-                OR name LIKE '%TargetTracking%'
-                OR raw_config::text LIKE '%AWS/Billing%'
-                OR raw_config::text LIKE '%AWS/AutoScaling%'
-                OR raw_config::text LIKE '%ApplicationAutoScaling%'
-            )
+            WHERE id = ANY(:ids)
             """
-        )
+        ),
+        {"ids": detection_ids},
     )
 
     print(f"Deleted {count} operational CloudWatch alarms")
