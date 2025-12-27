@@ -37,8 +37,8 @@ const navigation = [
   { name: 'Accounts', href: '/accounts', icon: Cloud },
   { name: 'Detections', href: '/detections', icon: Shield },
   { name: 'Coverage', href: '/coverage', icon: BarChart3 },
-  { name: 'Compliance', href: '/compliance', icon: ClipboardCheck },
   { name: 'Gaps', href: '/gaps', icon: AlertTriangle },
+  { name: 'Compliance', href: '/compliance', icon: ClipboardCheck },
   { name: 'Reports', href: '/reports', icon: FileBarChart },
 ]
 
