@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Cloud, Plus, Trash2, Play, RefreshCw, Link, CheckCircle2, AlertTriangle, Settings, Clock, Globe, MapPin, Calendar } from 'lucide-react'
 import { Link as RouterLink } from 'react-router-dom'
-import { accountsApi, scansApi, credentialsApi, CloudAccount, scanStatusApi, ScanStatus, RegionConfig } from '../services/api'
+import { accountsApi, scansApi, credentialsApi, CloudAccount, scanStatusApi, ScanStatus, RegionConfig, Scan } from '../services/api'
 import CredentialWizard from '../components/CredentialWizard'
 import RegionSelector from '../components/RegionSelector'
 import ScheduleModal, { ScheduleIndicator } from '../components/ScheduleModal'
@@ -66,30 +66,96 @@ export default function Accounts() {
     },
   })
 
-  // Track which account is currently being scanned for per-account loading state
-  const [scanningAccountId, setScanningAccountId] = useState<string | null>(null)
+  // Track active scans per account: accountId -> scanId
+  const [activeScans, setActiveScans] = useState<Record<string, string>>({})
+  // Track scan progress for display: scanId -> Scan object
+  const [scanProgress, setScanProgress] = useState<Record<string, Scan>>({})
   // Feedback message for scan status
   const [scanFeedback, setScanFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+
+  // Poll active scans for completion
+  const pollActiveScan = useCallback(async (accountId: string, scanId: string) => {
+    try {
+      const scan = await scansApi.get(scanId)
+      setScanProgress(prev => ({ ...prev, [scanId]: scan }))
+
+      if (scan.status === 'completed') {
+        // Scan completed successfully
+        setActiveScans(prev => {
+          const next = { ...prev }
+          delete next[accountId]
+          return next
+        })
+        setScanProgress(prev => {
+          const next = { ...prev }
+          delete next[scanId]
+          return next
+        })
+        queryClient.invalidateQueries({ queryKey: ['scans'] })
+        queryClient.invalidateQueries({ queryKey: ['scanStatus'] })
+        queryClient.invalidateQueries({ queryKey: ['coverage'] })
+        queryClient.invalidateQueries({ queryKey: ['accounts'] })
+        setScanFeedback({
+          type: 'success',
+          message: `Scan completed! Found ${scan.detections_found} detections.`
+        })
+        setTimeout(() => setScanFeedback(null), 5000)
+      } else if (scan.status === 'failed') {
+        // Scan failed
+        setActiveScans(prev => {
+          const next = { ...prev }
+          delete next[accountId]
+          return next
+        })
+        setScanProgress(prev => {
+          const next = { ...prev }
+          delete next[scanId]
+          return next
+        })
+        setScanFeedback({
+          type: 'error',
+          message: 'Scan failed. Please check your credentials and try again.'
+        })
+        setTimeout(() => setScanFeedback(null), 5000)
+      }
+      // If still running/pending, polling continues via useEffect
+    } catch (error) {
+      console.error('Failed to poll scan status:', error)
+    }
+  }, [queryClient])
+
+  // Effect to poll active scans every 2 seconds
+  useEffect(() => {
+    const activeScanEntries = Object.entries(activeScans)
+    if (activeScanEntries.length === 0) return
+
+    const pollInterval = setInterval(() => {
+      activeScanEntries.forEach(([accountId, scanId]) => {
+        pollActiveScan(accountId, scanId)
+      })
+    }, 2000)
+
+    // Initial poll immediately
+    activeScanEntries.forEach(([accountId, scanId]) => {
+      pollActiveScan(accountId, scanId)
+    })
+
+    return () => clearInterval(pollInterval)
+  }, [activeScans, pollActiveScan])
 
   // Use useMutation for scan to prevent double-click race conditions
   const scanMutation = useMutation({
     mutationFn: (accountId: string) => scansApi.create({ cloud_account_id: accountId }),
-    onMutate: (accountId) => {
-      // Immediate visual feedback - set which account is scanning
-      setScanningAccountId(accountId)
+    onMutate: () => {
+      // Clear any previous feedback
       setScanFeedback(null)
     },
-    onSuccess: () => {
-      // Invalidate queries to refresh data
-      queryClient.invalidateQueries({ queryKey: ['scans'] })
+    onSuccess: (scan, accountId) => {
+      // Store the scan ID to start polling
+      setActiveScans(prev => ({ ...prev, [accountId]: scan.id }))
+      setScanProgress(prev => ({ ...prev, [scan.id]: scan }))
+      // Invalidate scan status to update limits
       queryClient.invalidateQueries({ queryKey: ['scanStatus'] })
-
-      setScanFeedback({
-        type: 'success',
-        message: 'Scan started successfully! Check the Coverage page for results.'
-      })
-      // Auto-dismiss after 5 seconds
-      setTimeout(() => setScanFeedback(null), 5000)
     },
     onError: (error: unknown) => {
       const err = error as { message?: string; response?: { data?: { detail?: string } } }
@@ -97,21 +163,27 @@ export default function Accounts() {
         type: 'error',
         message: err.response?.data?.detail || err.message || 'Failed to start scan. Please try again.'
       })
-      // Auto-dismiss after 5 seconds
       setTimeout(() => setScanFeedback(null), 5000)
-    },
-    onSettled: () => {
-      // Reset scanning account ID when done (success or error)
-      setScanningAccountId(null)
     },
   })
 
-  // Wrapper to prevent double-clicks via mutation's isPending state
+  // Wrapper to prevent double-clicks - check both mutation pending and active scans
   const handleScan = (accountId: string) => {
-    // useMutation automatically prevents duplicate requests while isPending
-    if (!scanMutation.isPending) {
+    // Prevent if mutation is pending or if there's already an active scan for this account
+    if (!scanMutation.isPending && !activeScans[accountId]) {
       scanMutation.mutate(accountId)
     }
+  }
+
+  // Helper to check if an account has an active scan
+  const isAccountScanning = (accountId: string) => {
+    return !!activeScans[accountId] || (scanMutation.isPending && scanMutation.variables === accountId)
+  }
+
+  // Get scan progress for an account
+  const getAccountScanProgress = (accountId: string): Scan | null => {
+    const scanId = activeScans[accountId]
+    return scanId ? scanProgress[scanId] || null : null
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -288,7 +360,8 @@ export default function Accounts() {
               onSchedule={() => setSchedulingAccount(account)}
               onScan={() => handleScan(account.id)}
               onDelete={() => deleteMutation.mutate(account.id)}
-              isScanPending={scanningAccountId === account.id || scanMutation.isPending}
+              isScanPending={isAccountScanning(account.id)}
+              activeScan={getAccountScanProgress(account.id)}
               isDeletePending={deleteMutation.isPending}
               scanStatus={scanStatus}
             />
@@ -388,6 +461,7 @@ function AccountCard({
   onScan,
   onDelete,
   isScanPending,
+  activeScan,
   isDeletePending,
   scanStatus,
 }: {
@@ -398,6 +472,7 @@ function AccountCard({
   onScan: () => void
   onDelete: () => void
   isScanPending: boolean
+  activeScan: Scan | null
   isDeletePending: boolean
   scanStatus?: ScanStatus
 }) {
@@ -464,22 +539,26 @@ function AccountCard({
 
   return (
     <div className="card">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center">
-          <div className={`p-2 rounded-lg ${providerColor}`}>
+      {/* Main row - responsive layout */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        {/* Account info */}
+        <div className="flex items-center min-w-0">
+          <div className={`p-2 rounded-lg ${providerColor} shrink-0`}>
             <Cloud className="h-6 w-6" />
           </div>
-          <div className="ml-4">
-            <div className="flex items-center space-x-2">
-              <h3 className="font-semibold text-white">{account.name}</h3>
+          <div className="ml-4 min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="font-semibold text-white truncate">{account.name}</h3>
               {getCredentialStatusBadge()}
             </div>
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-gray-400 truncate">
               {account.provider.toUpperCase()} • {account.account_id}
             </p>
           </div>
         </div>
-        <div className="flex items-center space-x-2">
+
+        {/* Action buttons - wrap on mobile */}
+        <div className="flex flex-wrap items-center gap-2 sm:gap-2 sm:shrink-0">
           <span className={`px-2 py-1 text-xs rounded-full ${
             account.is_active
               ? 'bg-green-900/30 text-green-400'
@@ -536,15 +615,17 @@ function AccountCard({
               e.stopPropagation()
               onScan()
             }}
-            disabled={isScanPending || !credential || credential.status !== 'valid' || scanLimitReached}
+            disabled={isScanPending || credentialLoading || !credential || credential.status !== 'valid' || scanLimitReached}
             className={`p-2 rounded-lg transition-all duration-150 ${
-              credential?.status === 'valid' && !scanLimitReached
+              credential?.status === 'valid' && !scanLimitReached && !credentialLoading
                 ? 'text-blue-400 hover:bg-gray-700 hover:scale-110 active:scale-95 active:bg-gray-600'
                 : 'text-gray-400 cursor-not-allowed'
             } ${isScanPending ? 'bg-gray-700' : ''}`}
             title={
-              isScanPending
-                ? 'Scan in progress...'
+              credentialLoading
+                ? 'Loading credentials...'
+                : isScanPending
+                ? activeScan?.current_step || 'Scan in progress...'
                 : scanLimitReached
                 ? 'Weekly scan limit reached - upgrade for unlimited'
                 : credential?.status === 'valid'
@@ -554,6 +635,8 @@ function AccountCard({
           >
             {isScanPending ? (
               <RefreshCw className="h-5 w-5 animate-spin text-blue-400" />
+            ) : credentialLoading ? (
+              <RefreshCw className="h-5 w-5 animate-spin text-gray-400" />
             ) : (
               <Play className="h-5 w-5" />
             )}
@@ -570,9 +653,28 @@ function AccountCard({
         </div>
       </div>
 
-      {/* Additional info row */}
-      <div className="mt-3 flex items-center justify-between text-sm text-gray-400">
-        <div className="flex items-center space-x-4">
+      {/* Scan progress indicator - shown when scan is active */}
+      {isScanPending && activeScan && (
+        <div className="mt-3 p-3 bg-blue-900/20 border border-blue-700/50 rounded-lg">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center text-sm text-blue-300">
+              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              <span>{activeScan.current_step || 'Scanning...'}</span>
+            </div>
+            <span className="text-sm font-medium text-blue-400">{activeScan.progress_percent}%</span>
+          </div>
+          <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-blue-500 rounded-full transition-all duration-500"
+              style={{ width: `${activeScan.progress_percent}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Additional info row - responsive */}
+      <div className="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm text-gray-400">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4">
           {/* Schedule indicator */}
           <ScheduleIndicator cloudAccountId={account.id} />
 
@@ -594,7 +696,7 @@ function AccountCard({
             )}
           </div>
           {account.last_scan_at && (
-            <span>Last scanned: {new Date(account.last_scan_at).toLocaleString()}</span>
+            <span className="text-xs">Last scan: {new Date(account.last_scan_at).toLocaleString()}</span>
           )}
           {credential?.credential_type && (
             <span className="text-xs bg-gray-700/30 px-2 py-0.5 rounded">
@@ -605,7 +707,7 @@ function AccountCard({
           )}
         </div>
         {credential?.last_validated_at && (
-          <span className="text-xs">
+          <span className="text-xs shrink-0">
             Validated: {new Date(credential.last_validated_at).toLocaleDateString()}
           </span>
         )}
