@@ -324,9 +324,9 @@ export default function CredentialWizard({
               Prerequisites - Permissions you need
             </summary>
             <div className="px-4 pb-3">
-              <ul className="text-sm text-amber-800 space-y-1">
-                <li>• <code className="bg-amber-100 px-1 rounded text-xs">iam:CreateRole</code>, <code className="bg-amber-100 px-1 rounded text-xs">iam:CreatePolicy</code>, <code className="bg-amber-100 px-1 rounded text-xs">iam:AttachRolePolicy</code></li>
-                <li>• Or <code className="bg-amber-100 px-1 rounded text-xs">cloudformation:CreateStack</code> for template deployment</li>
+              <ul className="text-sm text-amber-900 space-y-1">
+                <li>• <code className="bg-amber-100 text-amber-900 px-1 rounded text-xs">iam:CreateRole</code>, <code className="bg-amber-100 text-amber-900 px-1 rounded text-xs">iam:CreatePolicy</code>, <code className="bg-amber-100 text-amber-900 px-1 rounded text-xs">iam:AttachRolePolicy</code></li>
+                <li>• Or <code className="bg-amber-100 text-amber-900 px-1 rounded text-xs">cloudformation:CreateStack</code> for template deployment</li>
               </ul>
             </div>
           </details>
@@ -478,10 +478,10 @@ export default function CredentialWizard({
             Prerequisites - Permissions you need
           </summary>
           <div className="px-4 pb-3">
-            <ul className="text-sm text-amber-800 space-y-1">
+            <ul className="text-sm text-amber-900 space-y-1">
               <li>• <strong>Project Owner</strong> or <strong>IAM Admin</strong> role</li>
-              <li>• <code className="bg-amber-100 px-1 rounded text-xs">iam.roles.create</code>, <code className="bg-amber-100 px-1 rounded text-xs">iam.serviceAccounts.create</code></li>
-              <li>• <code className="bg-amber-100 px-1 rounded text-xs">gcloud</code> CLI installed (for script method)</li>
+              <li>• <code className="bg-amber-100 text-amber-900 px-1 rounded text-xs">iam.roles.create</code>, <code className="bg-amber-100 text-amber-900 px-1 rounded text-xs">iam.serviceAccounts.create</code></li>
+              <li>• <code className="bg-amber-100 text-amber-900 px-1 rounded text-xs">gcloud</code> CLI installed (for script method)</li>
             </ul>
           </div>
         </details>
@@ -489,8 +489,8 @@ export default function CredentialWizard({
         {/* Recommendation note */}
         <div className="bg-green-50 border border-green-200 rounded-lg p-3">
           <div className="flex items-start">
-            <Info className="w-4 h-4 text-green-600 mt-0.5 mr-2 flex-shrink-0" />
-            <p className="text-sm text-green-800">
+            <Info className="w-4 h-4 text-green-700 mt-0.5 mr-2 flex-shrink-0" />
+            <p className="text-sm text-green-900">
               <strong>Workload Identity Federation</strong> is recommended for production (no keys to manage).
             </p>
           </div>
@@ -839,10 +839,10 @@ export default function CredentialWizard({
               <span className="font-medium text-gray-900">Credential Status</span>
               <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                 credential.status === 'valid'
-                  ? 'bg-green-100 text-green-800'
+                  ? 'bg-green-100 text-green-900'
                   : credential.status === 'pending'
-                  ? 'bg-yellow-100 text-yellow-800'
-                  : 'bg-red-100 text-red-800'
+                  ? 'bg-yellow-100 text-yellow-900'
+                  : 'bg-red-100 text-red-900'
               }`}>
                 {credential.status.charAt(0).toUpperCase() + credential.status.slice(1)}
               </span>
@@ -883,7 +883,7 @@ export default function CredentialWizard({
                 <div className="text-sm font-medium text-gray-700 mb-1">Granted Permissions ({validation.granted_permissions.length})</div>
                 <div className="flex flex-wrap gap-1">
                   {validation.granted_permissions.slice(0, 10).map((perm, i) => (
-                    <span key={i} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono bg-green-100 text-green-800">
+                    <span key={i} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono bg-green-100 text-green-900">
                       <Check className="w-3 h-3 mr-1" />
                       {perm}
                     </span>

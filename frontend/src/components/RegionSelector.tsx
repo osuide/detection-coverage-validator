@@ -239,7 +239,7 @@ export default function RegionSelector({
           type="button"
           onClick={() => discoverMutation.mutate()}
           disabled={disabled || discoverMutation.isPending}
-          className="flex items-center px-4 py-2 text-sm bg-purple-50 text-purple-700 border border-purple-200 rounded-lg hover:bg-purple-100 disabled:opacity-50"
+          className="flex items-center px-4 py-2 text-sm bg-purple-50 text-purple-900 border border-purple-200 rounded-lg hover:bg-purple-100 disabled:opacity-50"
         >
           <RefreshCw className={`h-4 w-4 mr-2 ${discoverMutation.isPending ? 'animate-spin' : ''}`} />
           {discoverMutation.isPending ? 'Discovering...' : 'Discover Active Regions'}

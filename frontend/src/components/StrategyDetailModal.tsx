@@ -183,12 +183,12 @@ function OverviewTab({ details }: { details: StrategyDetail }) {
 
       {/* Alert Configuration */}
       <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-        <h3 className="text-sm font-medium text-amber-800 mb-2">Alert Configuration</h3>
-        <div className="space-y-2 text-sm">
+        <h3 className="text-sm font-medium text-amber-900 mb-2">Alert Configuration</h3>
+        <div className="space-y-2 text-sm text-amber-900">
           <p><span className="font-medium">Severity:</span> {details.alert_severity}</p>
           <p><span className="font-medium">Title:</span> {details.alert_title}</p>
           <p><span className="font-medium">Description Template:</span></p>
-          <p className="text-amber-700 bg-amber-100 p-2 rounded text-xs font-mono">
+          <p className="text-amber-900 bg-amber-100 p-2 rounded text-xs font-mono">
             {details.alert_description_template}
           </p>
         </div>
@@ -202,8 +202,8 @@ function OverviewTab({ details }: { details: StrategyDetail }) {
 
       {/* Evasion Considerations */}
       <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-        <h3 className="text-sm font-medium text-red-800 mb-2">Evasion Considerations</h3>
-        <p className="text-red-700 text-sm">{details.evasion_considerations}</p>
+        <h3 className="text-sm font-medium text-red-900 mb-2">Evasion Considerations</h3>
+        <p className="text-red-900 text-sm">{details.evasion_considerations}</p>
       </div>
     </div>
   )
@@ -226,10 +226,10 @@ function CodeTab({
     <div className="space-y-4">
       {/* Review Warning */}
       <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-3">
-        <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+        <AlertTriangle className="h-5 w-5 text-amber-700 flex-shrink-0 mt-0.5" />
         <div className="text-sm">
-          <p className="font-medium text-amber-800">Review Before Use</p>
-          <p className="text-amber-700 mt-1">
+          <p className="font-medium text-amber-900">Review Before Use</p>
+          <p className="text-amber-900 mt-1">
             This template is provided as a starting point and should be reviewed and customised
             for your specific environment before deployment. Ensure it aligns with your
             organisation's security policies and infrastructure requirements.
@@ -277,7 +277,7 @@ function ResponseTab({ details }: { details: StrategyDetail }) {
         <ol className="space-y-2">
           {details.investigation_steps.map((step, idx) => (
             <li key={idx} className="flex items-start gap-3">
-              <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-xs font-medium">
+              <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-900 rounded-full flex items-center justify-center text-xs font-medium">
                 {idx + 1}
               </span>
               <span className="text-gray-600">{step}</span>
@@ -288,14 +288,14 @@ function ResponseTab({ details }: { details: StrategyDetail }) {
 
       {/* Containment Actions */}
       <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-        <h3 className="text-sm font-medium text-red-800 mb-3">Containment Actions</h3>
+        <h3 className="text-sm font-medium text-red-900 mb-3">Containment Actions</h3>
         <ol className="space-y-2">
           {details.containment_actions.map((action, idx) => (
             <li key={idx} className="flex items-start gap-3">
-              <span className="flex-shrink-0 w-6 h-6 bg-red-200 text-red-800 rounded-full flex items-center justify-center text-xs font-medium">
+              <span className="flex-shrink-0 w-6 h-6 bg-red-200 text-red-900 rounded-full flex items-center justify-center text-xs font-medium">
                 {idx + 1}
               </span>
-              <span className="text-red-700">{action}</span>
+              <span className="text-red-900">{action}</span>
             </li>
           ))}
         </ol>

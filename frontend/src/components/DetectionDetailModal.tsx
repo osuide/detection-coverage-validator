@@ -11,42 +11,42 @@ const detectionTypeConfig: Record<string, { label: string; icon: React.ElementTy
   'cloudwatch_logs_insights': {
     label: 'CloudWatch Logs Insights',
     icon: Activity,
-    color: 'text-orange-700',
+    color: 'text-orange-900',
     bgColor: 'bg-orange-100',
     description: 'Query-based detection using CloudWatch Logs Insights'
   },
   'cloudwatch_alarm': {
     label: 'CloudWatch Alarm',
     icon: Bell,
-    color: 'text-amber-700',
+    color: 'text-amber-900',
     bgColor: 'bg-amber-100',
     description: 'Metric-based alerting using CloudWatch Alarms'
   },
   'eventbridge_rule': {
     label: 'EventBridge Rule',
     icon: Zap,
-    color: 'text-purple-700',
+    color: 'text-purple-900',
     bgColor: 'bg-purple-100',
     description: 'Event-driven detection using EventBridge rules'
   },
   'guardduty_finding': {
     label: 'GuardDuty Finding',
     icon: Shield,
-    color: 'text-red-700',
+    color: 'text-red-900',
     bgColor: 'bg-red-100',
     description: 'AWS managed threat detection from GuardDuty'
   },
   'config_rule': {
     label: 'AWS Config Rule',
     icon: CheckCircle,
-    color: 'text-green-700',
+    color: 'text-green-900',
     bgColor: 'bg-green-100',
     description: 'Compliance-based detection using AWS Config'
   },
   'security_hub': {
     label: 'Security Hub',
     icon: Lock,
-    color: 'text-blue-700',
+    color: 'text-blue-900',
     bgColor: 'bg-blue-100',
     description: 'Aggregated security findings from Security Hub'
   }
@@ -291,7 +291,7 @@ export default function DetectionDetailModal({ detection, onClose }: DetectionDe
                               {mapping.matched_indicators.map((indicator, idx) => (
                                 <span
                                   key={idx}
-                                  className="px-2 py-0.5 text-xs bg-blue-50 text-blue-700 rounded"
+                                  className="px-2 py-0.5 text-xs bg-blue-100 text-blue-900 rounded"
                                 >
                                   {indicator}
                                 </span>
