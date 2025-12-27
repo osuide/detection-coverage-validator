@@ -116,13 +116,16 @@ Resources:
               - guardduty:GetFindings
             Resource: '*'
 
-          # Security Hub - Read enabled standards
+          # Security Hub - Read enabled standards and insights
           - Sid: SecurityHubAccess
             Effect: Allow
             Action:
               - securityhub:DescribeHub
               - securityhub:GetEnabledStandards
+              - securityhub:DescribeStandards
               - securityhub:DescribeStandardsControls
+              - securityhub:GetInsights
+              - securityhub:ListEnabledProductsForImport
             Resource: '*'
 
           # AWS Config - Read compliance rules

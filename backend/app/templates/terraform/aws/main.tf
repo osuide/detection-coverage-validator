@@ -141,7 +141,10 @@ resource "aws_iam_role_policy" "a13e_scanner" {
         Action = [
           "securityhub:DescribeHub",
           "securityhub:GetEnabledStandards",
-          "securityhub:DescribeStandardsControls"
+          "securityhub:DescribeStandards",
+          "securityhub:DescribeStandardsControls",
+          "securityhub:GetInsights",
+          "securityhub:ListEnabledProductsForImport"
         ]
         Resource = "*"
       },
