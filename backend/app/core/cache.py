@@ -20,6 +20,7 @@ import structlog
 from redis import asyncio as aioredis
 
 from app.core.config import get_settings
+from app.core.metrics import record_cache_hit, record_cache_miss
 
 logger = structlog.get_logger()
 
@@ -100,16 +101,20 @@ async def get_cached(key: str) -> Optional[Any]:
         Cached value or None if not found/cache unavailable
     """
     if not _redis_cache:
+        record_cache_miss()
         return None
 
     try:
         full_key = f"{CACHE_PREFIX}{key}"
         value = await _redis_cache.get(full_key)
         if value:
+            record_cache_hit()
             return json.loads(value)
+        record_cache_miss()
         return None
     except Exception as e:
         logger.warning("cache_get_failed", key=key, error=str(e))
+        record_cache_miss()
         return None
 
 

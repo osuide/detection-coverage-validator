@@ -46,6 +46,7 @@ from app.api.v1.public import router as public_api_router
 from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.middleware.request_id import RequestIDMiddleware
 from app.services.scheduler_service import scheduler_service
+from app.core.metrics import record_request
 
 
 # === Security: Request Logging Middleware ===
@@ -93,6 +94,9 @@ class SecureLoggingMiddleware(BaseHTTPMiddleware):
         duration_ms = (time.time() - start_time) * 1000
         log_data["status_code"] = response.status_code
         log_data["duration_ms"] = round(duration_ms, 2)
+
+        # Record metrics for admin dashboard
+        record_request(duration_ms, response.status_code, request.url.path)
 
         if response.status_code >= 400:
             logger.warning("http_request", **log_data)

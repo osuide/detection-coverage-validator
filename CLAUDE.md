@@ -411,6 +411,20 @@ The following optimisations are documented for future implementation when needed
 - N+1 query fixed in `_get_security_function_breakdown()` using SQL GROUP BY
 - Redis cache module added (`app/core/cache.py`) with framework ID caching
 - HTTP cache headers added to compliance framework endpoints (1 hour TTL)
+- In-memory metrics collector (`app/core/metrics.py`) for real-time admin dashboard stats
+
+### Observability (Future)
+
+| Priority | Feature | Cost | Notes |
+|----------|---------|------|-------|
+| 1 | CloudWatch EMF (Embedded Metrics Format) | ~$1.50/mo | Persistent metrics, historical trends, alerting. Upgrade from in-memory metrics when needed. |
+| 2 | Database connection pool stats | £0 | Expose SQLAlchemy pool.status() in admin metrics |
+| 3 | Prometheus + Grafana | $50-100/mo | Full observability stack. Consider for enterprise customers. |
+
+**Current State (December 2025):**
+- In-memory rolling averages for API latency, error rate, cache hit rate
+- Metrics reset on application restart (ephemeral)
+- Admin dashboard shows real-time stats from `app/core/metrics.py`
 
 ### Remediation Templates
 

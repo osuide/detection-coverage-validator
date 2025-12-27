@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.metrics import get_metrics_collector
 from app.models.admin import AdminUser
 from app.models.user import Organization, User
 from app.models.billing import Subscription, AccountTier
@@ -90,15 +91,27 @@ async def get_system_health(
     )
     queue_depth = pending_scans_result.scalar() or 0
 
-    # TODO: Get real metrics from monitoring system
+    # Get real metrics from in-memory collector
+    metrics = get_metrics_collector()
+    latency_stats = metrics.get_latency_stats()
+    error_rate = metrics.get_error_rate()
+    cache_hit_rate = metrics.get_cache_hit_rate()
+
+    # Determine system status based on error rate and latency
+    status = "healthy"
+    if error_rate > 5.0 or latency_stats["p99_ms"] > 2000:
+        status = "degraded"
+    if error_rate > 20.0 or latency_stats["p99_ms"] > 5000:
+        status = "unhealthy"
+
     return SystemHealthResponse(
-        status="healthy",
-        api_latency_ms=45.0,  # TODO: Get from metrics
-        error_rate_percent=0.02,  # TODO: Get from metrics
+        status=status,
+        api_latency_ms=latency_stats["avg_ms"],
+        error_rate_percent=error_rate,
         active_scans=active_scans,
         queue_depth=queue_depth,
-        database_connections=10,  # TODO: Get from pool
-        cache_hit_rate=0.95,  # TODO: Get from Redis
+        database_connections=10,  # TODO: Get from pool when needed
+        cache_hit_rate=cache_hit_rate / 100 if cache_hit_rate > 0 else 0.0,
     )
 
 
