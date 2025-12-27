@@ -31,39 +31,43 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Create evaluation_type enum if not exists
-    conn = op.get_bind()
-    result = conn.execute(
-        sa.text("SELECT 1 FROM pg_type WHERE typname = 'evaluationtype'")
-    )
-    if not result.fetchone():
-        op.execute(
-            """
-            CREATE TYPE evaluationtype AS ENUM (
-                'config_compliance',
-                'alarm_state',
-                'eventbridge_state',
-                'guardduty_state',
-                'gcp_scc_state',
-                'gcp_logging_state'
-            )
+    # Create evaluation_type enum if not exists using pure SQL
+    # This approach works reliably with asyncpg
+    op.execute(
         """
-        )
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'evaluationtype') THEN
+                CREATE TYPE evaluationtype AS ENUM (
+                    'config_compliance',
+                    'alarm_state',
+                    'eventbridge_state',
+                    'guardduty_state',
+                    'gcp_scc_state',
+                    'gcp_logging_state'
+                );
+            END IF;
+        END
+        $$;
+        """
+    )
 
     # Create evaluation alert severity enum if not exists
-    result = conn.execute(
-        sa.text("SELECT 1 FROM pg_type WHERE typname = 'evaluationalertseverity'")
-    )
-    if not result.fetchone():
-        op.execute(
-            """
-            CREATE TYPE evaluationalertseverity AS ENUM (
-                'info',
-                'warning',
-                'critical'
-            )
+    op.execute(
         """
-        )
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'evaluationalertseverity') THEN
+                CREATE TYPE evaluationalertseverity AS ENUM (
+                    'info',
+                    'warning',
+                    'critical'
+                );
+            END IF;
+        END
+        $$;
+        """
+    )
 
     # Check for existing tables to ensure idempotency
     conn = op.get_bind()
