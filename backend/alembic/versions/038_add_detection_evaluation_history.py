@@ -31,10 +31,14 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Create evaluation_type enum
-    op.execute(
-        """
-        DO $$ BEGIN
+    # Create evaluation_type enum if not exists
+    conn = op.get_bind()
+    result = conn.execute(
+        sa.text("SELECT 1 FROM pg_type WHERE typname = 'evaluationtype'")
+    )
+    if not result.fetchone():
+        op.execute(
+            """
             CREATE TYPE evaluationtype AS ENUM (
                 'config_compliance',
                 'alarm_state',
@@ -42,27 +46,24 @@ def upgrade() -> None:
                 'guardduty_state',
                 'gcp_scc_state',
                 'gcp_logging_state'
-            );
-        EXCEPTION
-            WHEN duplicate_object THEN null;
-        END $$;
-    """
-    )
-
-    # Create evaluation alert severity enum
-    op.execute(
+            )
         """
-        DO $$ BEGIN
+        )
+
+    # Create evaluation alert severity enum if not exists
+    result = conn.execute(
+        sa.text("SELECT 1 FROM pg_type WHERE typname = 'evaluationalertseverity'")
+    )
+    if not result.fetchone():
+        op.execute(
+            """
             CREATE TYPE evaluationalertseverity AS ENUM (
                 'info',
                 'warning',
                 'critical'
-            );
-        EXCEPTION
-            WHEN duplicate_object THEN null;
-        END $$;
-    """
-    )
+            )
+        """
+        )
 
     # Check for existing tables to ensure idempotency
     conn = op.get_bind()
