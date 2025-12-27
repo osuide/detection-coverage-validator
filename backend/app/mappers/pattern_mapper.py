@@ -161,12 +161,14 @@ class PatternMapper:
             standard_name = raw_config.get("standard_name", "")
             control_id = raw_config.get("control_id", "")
             finding_title = detection.description or detection.name or ""
+            api_version = raw_config.get("api_version", "")
 
             # Get official MITRE mappings for this Security Hub finding
             technique_mappings = get_techniques_for_security_hub(
                 standard_name=standard_name,
                 control_id=control_id,
                 finding_title=finding_title,
+                api_version=api_version,
             )
 
             for technique_id, confidence in technique_mappings:
