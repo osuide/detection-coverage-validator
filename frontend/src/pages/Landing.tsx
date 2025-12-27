@@ -520,7 +520,7 @@ export default function Landing() {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
             {/* Free Tier */}
-            <div className="relative bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 rounded-2xl p-6">
+            <div className="relative bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 rounded-2xl p-6 flex flex-col">
               <div className="mb-6">
                 <h3 className="text-xl font-bold text-white mb-2">Free</h3>
                 <div className="flex items-baseline">
@@ -529,7 +529,7 @@ export default function Landing() {
                 </div>
               </div>
 
-              <ul className="space-y-3 mb-8 text-sm">
+              <ul className="space-y-3 mb-8 text-sm flex-1">
                 <li className="flex items-start space-x-2">
                   <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
                   <span className="text-gray-300">1 cloud account (AWS or GCP)</span>
@@ -562,14 +562,14 @@ export default function Landing() {
 
               <Link
                 to="/signup"
-                className="block w-full text-center border border-blue-600 text-blue-400 px-4 py-2.5 rounded-xl font-semibold hover:bg-blue-600/10 transition-all text-sm"
+                className="block w-full text-center border border-blue-600 text-blue-400 px-4 py-2.5 rounded-xl font-semibold hover:bg-blue-600/10 transition-all text-sm mt-auto"
               >
                 Start Free
               </Link>
             </div>
 
             {/* Individual Tier */}
-            <div className="relative bg-gradient-to-br from-blue-600 to-cyan-600 rounded-2xl p-6 shadow-2xl shadow-blue-500/30">
+            <div className="relative bg-gradient-to-br from-blue-600 to-cyan-600 rounded-2xl p-6 shadow-2xl shadow-blue-500/30 flex flex-col">
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-3 py-0.5 rounded-full text-xs font-semibold">
                 Most Popular
               </div>
@@ -582,7 +582,7 @@ export default function Landing() {
                 </div>
               </div>
 
-              <ul className="space-y-3 mb-8 text-sm">
+              <ul className="space-y-3 mb-8 text-sm flex-1">
                 <li className="flex items-start space-x-2">
                   <CheckCircle className="h-4 w-4 text-white mt-0.5 flex-shrink-0" />
                   <span className="text-white">Up to 6 accounts (AWS + GCP)</span>
@@ -615,14 +615,14 @@ export default function Landing() {
 
               <Link
                 to="/signup"
-                className="block w-full text-center bg-white text-blue-600 px-4 py-2.5 rounded-xl font-semibold hover:bg-blue-50 transition-all shadow-lg text-sm"
+                className="block w-full text-center bg-white text-blue-600 px-4 py-2.5 rounded-xl font-semibold hover:bg-blue-50 transition-all shadow-lg text-sm mt-auto"
               >
                 Get Started
               </Link>
             </div>
 
             {/* Pro Tier */}
-            <div className="relative bg-gradient-to-br from-slate-900 to-slate-950 border border-cyan-500/50 rounded-2xl p-6">
+            <div className="relative bg-gradient-to-br from-slate-900 to-slate-950 border border-cyan-500/50 rounded-2xl p-6 flex flex-col">
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white px-3 py-0.5 rounded-full text-xs font-semibold">
                 For Organisations
               </div>
@@ -635,7 +635,7 @@ export default function Landing() {
                 </div>
               </div>
 
-              <ul className="space-y-3 mb-8 text-sm">
+              <ul className="space-y-3 mb-8 text-sm flex-1">
                 <li className="flex items-start space-x-2">
                   <CheckCircle className="h-4 w-4 text-cyan-400 mt-0.5 flex-shrink-0" />
                   <span className="text-gray-300">Up to 500 accounts</span>
@@ -668,14 +668,14 @@ export default function Landing() {
 
               <Link
                 to="/signup"
-                className="block w-full text-center border border-cyan-500 text-cyan-400 px-4 py-2.5 rounded-xl font-semibold hover:bg-cyan-600/10 transition-all text-sm"
+                className="block w-full text-center border border-cyan-500 text-cyan-400 px-4 py-2.5 rounded-xl font-semibold hover:bg-cyan-600/10 transition-all text-sm mt-auto"
               >
                 Get Started
               </Link>
             </div>
 
             {/* Enterprise Tier */}
-            <div className="relative bg-gradient-to-br from-slate-900 to-slate-950 border border-purple-500/50 rounded-2xl p-6">
+            <div className="relative bg-gradient-to-br from-slate-900 to-slate-950 border border-purple-500/50 rounded-2xl p-6 flex flex-col">
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-3 py-0.5 rounded-full text-xs font-semibold">
                 Unlimited
               </div>
@@ -688,7 +688,7 @@ export default function Landing() {
                 <p className="text-gray-400 text-sm mt-1">Contact sales</p>
               </div>
 
-              <ul className="space-y-3 mb-8 text-sm">
+              <ul className="space-y-3 mb-8 text-sm flex-1">
                 <li className="flex items-start space-x-2">
                   <CheckCircle className="h-4 w-4 text-purple-400 mt-0.5 flex-shrink-0" />
                   <span className="text-gray-300">Unlimited accounts</span>
@@ -721,7 +721,7 @@ export default function Landing() {
 
               <Link
                 to="/signup"
-                className="block w-full text-center border border-purple-500 text-purple-400 px-4 py-2.5 rounded-xl font-semibold hover:bg-purple-600/10 transition-all text-sm"
+                className="block w-full text-center border border-purple-500 text-purple-400 px-4 py-2.5 rounded-xl font-semibold hover:bg-purple-600/10 transition-all text-sm mt-auto"
               >
                 Contact Sales
               </Link>
