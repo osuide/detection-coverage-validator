@@ -10,6 +10,12 @@ CSPM API Benefits:
 - Single control ID across all standards
 - Better control parameter support
 - More consistent control metadata
+
+Standard-Level Aggregation:
+- Creates ONE detection per enabled Security Hub standard (FSBP, CIS, PCI-DSS)
+- Instead of 500+ per-control detections, creates 3-5 standard-level detections
+- Each detection contains all controls in raw_config.controls for drill-down
+- Metrics: enabled_controls_count, disabled_controls_count, techniques_covered_count
 """
 
 from typing import Any, Optional
@@ -24,6 +30,31 @@ def _chunk_list(items: list, chunk_size: int) -> list[list]:
     return [items[i : i + chunk_size] for i in range(0, len(items), chunk_size)]
 
 
+# Standard ARN patterns for grouping
+STANDARD_PATTERNS = {
+    "aws-foundational-security-best-practices": {
+        "id": "fsbp",
+        "name": "AWS-Foundational-Best-Practices",
+        "description": "AWS Foundational Security Best Practices - checks for security best practices across AWS services",
+    },
+    "cis-aws-foundations-benchmark": {
+        "id": "cis",
+        "name": "CIS-AWS-Foundations",
+        "description": "CIS AWS Foundations Benchmark - industry best practice security configuration baseline",
+    },
+    "pci-dss": {
+        "id": "pci",
+        "name": "PCI-DSS",
+        "description": "PCI DSS - Payment Card Industry Data Security Standard compliance checks",
+    },
+    "nist-800-53": {
+        "id": "nist",
+        "name": "NIST-800-53",
+        "description": "NIST 800-53 - Security and privacy controls for federal information systems",
+    },
+}
+
+
 class SecurityHubScanner(BaseScanner):
     """Scanner for AWS Security Hub enabled standards and insights.
 
@@ -33,6 +64,9 @@ class SecurityHubScanner(BaseScanner):
     - Custom insights
     - Aggregated finding patterns
     - Consolidated security controls (via CSPM API)
+
+    The scanner groups CSPM controls by security standard, creating one
+    aggregated detection per standard instead of individual control detections.
     """
 
     @property
@@ -50,7 +84,8 @@ class SecurityHubScanner(BaseScanner):
         We:
         1. Get control definitions from the first region (global)
         2. Get control STATUS from ALL regions
-        3. Create ONE detection per control with status_by_region map
+        3. Group controls by security standard
+        4. Create ONE detection per standard with aggregated metrics
 
         Insights are scanned per-region as they may differ.
         """
@@ -60,6 +95,7 @@ class SecurityHubScanner(BaseScanner):
         cspm_control_data: dict[str, dict] = {}  # control_id -> merged data
         cspm_scanned = False
         first_cspm_region = None
+        first_client = None
 
         for region in regions:
             try:
@@ -87,6 +123,7 @@ class SecurityHubScanner(BaseScanner):
                     if not cspm_scanned:
                         # First region with CSPM - store full control data
                         first_cspm_region = region
+                        first_client = client
                         for control_id, control_data in region_status.items():
                             cspm_control_data[control_id] = {
                                 **control_data,
@@ -128,38 +165,290 @@ class SecurityHubScanner(BaseScanner):
                     "securityhub_scan_error", region=region, error=str(e)
                 )
 
-        # Phase 2: Create CSPM detections with merged status_by_region
-        if cspm_control_data:
-            for control_id, data in cspm_control_data.items():
-                detection = RawDetection(
-                    name=f"SecurityHub-Control-{control_id}",
-                    detection_type=DetectionType.SECURITY_HUB,
-                    source_arn=data.get("control_arn", ""),
-                    region=first_cspm_region,  # Use first region as canonical
-                    raw_config={
-                        "hub_arn": data.get("hub_arn"),
-                        "control_id": control_id,
-                        "control_arn": data.get("control_arn"),
-                        "title": data.get("title"),
-                        "severity": data.get("severity"),
-                        "update_status": data.get("update_status"),
-                        "parameters": data.get("parameters", {}),
-                        "remediation_url": data.get("remediation_url"),
-                        "status_by_region": data.get("status_by_region", {}),
-                        "api_version": "cspm",
-                    },
-                    description=data.get("description", ""),
-                    is_managed=True,
-                )
-                all_detections.append(detection)
+        # Phase 2: Group CSPM controls by standard and create aggregated detections
+        if cspm_control_data and first_client:
+            grouped_detections = self._create_grouped_standard_detections(
+                cspm_control_data,
+                first_client,
+                first_cspm_region,
+            )
+            all_detections.extend(grouped_detections)
 
             self.logger.info(
                 "securityhub_cspm_complete",
                 total_controls=len(cspm_control_data),
+                standards_created=len(grouped_detections),
                 regions_scanned=len(regions),
             )
 
         return all_detections
+
+    def _group_controls_by_standard(
+        self,
+        cspm_control_data: dict[str, dict],
+    ) -> dict[str, dict[str, dict]]:
+        """Group CSPM controls by their associated security standard.
+
+        Uses control ID prefix patterns to infer standard:
+        - S3.x, IAM.x, EC2.x -> FSBP (service prefix with number)
+        - 1.x, 2.x, 3.x -> CIS (numeric section.control)
+        - PCI.x -> PCI-DSS (explicit PCI prefix)
+
+        Args:
+            cspm_control_data: Dict of control_id -> control data
+
+        Returns:
+            Dict of standard_id -> {control_id -> control_data}
+            Standard IDs are: 'fsbp', 'cis', 'pci', 'nist', 'other'
+        """
+        grouped: dict[str, dict[str, dict]] = {
+            "fsbp": {},
+            "cis": {},
+            "pci": {},
+            "nist": {},
+            "other": {},  # Controls without standard associations
+        }
+
+        for control_id, control_data in cspm_control_data.items():
+            # Infer standard from control ID prefix
+            inferred_standard = self._infer_standard_from_control_id(control_id)
+            if inferred_standard:
+                grouped[inferred_standard][control_id] = control_data
+            else:
+                grouped["other"][control_id] = control_data
+
+        # Remove empty standard groups
+        return {k: v for k, v in grouped.items() if v}
+
+    def _infer_standard_from_control_id(self, control_id: str) -> Optional[str]:
+        """Infer standard from control ID prefix pattern.
+
+        CSPM control IDs follow patterns like:
+        - S3.1, IAM.1, EC2.18 -> FSBP (service prefix with number)
+        - 1.1, 2.3, 3.14 -> CIS (numeric section.control)
+        - PCI.IAM.1 -> PCI-DSS (explicit PCI prefix)
+
+        Args:
+            control_id: The CSPM control ID
+
+        Returns:
+            Standard ID or None if cannot be inferred
+        """
+        control_upper = control_id.upper()
+
+        # Explicit PCI prefix
+        if control_upper.startswith("PCI."):
+            return "pci"
+
+        # CIS pattern: starts with digit (e.g., 1.1, 2.3)
+        if control_id and control_id[0].isdigit():
+            return "cis"
+
+        # FSBP pattern: service prefix (e.g., S3.1, IAM.1, EC2.18)
+        # Most common pattern for service-based controls
+        if "." in control_id:
+            prefix = control_id.split(".")[0].upper()
+            # Common AWS service prefixes
+            service_prefixes = {
+                "S3",
+                "IAM",
+                "EC2",
+                "RDS",
+                "ECS",
+                "EKS",
+                "EFS",
+                "KMS",
+                "LAMBDA",
+                "DYNAMODB",
+                "REDSHIFT",
+                "ELASTICACHE",
+                "ES",
+                "OPENSEARCH",
+                "APIGATEWAY",
+                "CLOUDTRAIL",
+                "CONFIG",
+                "GUARDDUTY",
+                "SECRETSMANAGER",
+                "SNS",
+                "SQS",
+                "SSM",
+                "WAF",
+                "ELB",
+                "AUTOSCALING",
+                "CODEBUILD",
+                "ACCOUNT",
+                "ACM",
+                "CLOUDFRONT",
+                "CLOUDWATCH",
+                "DOCDB",
+                "ECR",
+                "EMR",
+                "KINESIS",
+                "MACIE",
+                "MQ",
+                "MSK",
+                "NEPTUNE",
+                "NETWORKFIREWALL",
+                "SAGEMAKER",
+                "STEPFUNCTIONS",
+                "TRANSFER",
+            }
+            if prefix in service_prefixes:
+                return "fsbp"
+
+        return None
+
+    def _create_grouped_standard_detections(
+        self,
+        cspm_control_data: dict[str, dict],
+        client: Any,
+        region: str,
+    ) -> list[RawDetection]:
+        """Create one RawDetection per security standard with aggregated controls.
+
+        Args:
+            cspm_control_data: Dict of control_id -> control data
+            client: SecurityHub boto3 client
+            region: The canonical region for these detections
+
+        Returns:
+            List of RawDetection objects, one per standard
+        """
+        detections = []
+
+        # Group controls by standard
+        grouped_controls = self._group_controls_by_standard(cspm_control_data)
+
+        for standard_id, controls in grouped_controls.items():
+            if not controls:
+                continue
+
+            # Get standard metadata
+            standard_info = self._get_standard_info_by_id(standard_id)
+
+            # Calculate metrics - use status_by_region for accurate counts
+            enabled_count = 0
+            disabled_count = 0
+            for control in controls.values():
+                status_by_region = control.get("status_by_region", {})
+                # A control is "enabled" if enabled in ANY region
+                if any(s == "ENABLED" for s in status_by_region.values()):
+                    enabled_count += 1
+                else:
+                    disabled_count += 1
+
+            # Count unique MITRE techniques covered by this standard's controls
+            techniques_covered = self._count_techniques_covered(controls)
+
+            # Get hub ARN from first control
+            hub_arn = next(iter(controls.values())).get("hub_arn", "")
+
+            # Build controls list for raw_config
+            controls_list = []
+            for control_id, control_data in controls.items():
+                # Determine overall status for this control
+                status_by_region = control_data.get("status_by_region", {})
+                overall_status = (
+                    "ENABLED"
+                    if any(s == "ENABLED" for s in status_by_region.values())
+                    else "DISABLED"
+                )
+
+                controls_list.append(
+                    {
+                        "control_id": control_id,
+                        "control_arn": control_data.get("control_arn"),
+                        "title": control_data.get("title"),
+                        "description": control_data.get("description"),
+                        "status": overall_status,
+                        "severity": control_data.get("severity"),
+                        "update_status": control_data.get("update_status"),
+                        "parameters": control_data.get("parameters", {}),
+                        "remediation_url": control_data.get("remediation_url"),
+                        "status_by_region": status_by_region,
+                    }
+                )
+
+            detection = RawDetection(
+                name=f"SecurityHub-{standard_info['name']}",
+                detection_type=DetectionType.SECURITY_HUB,
+                source_arn=hub_arn,
+                region=region,
+                raw_config={
+                    "hub_arn": hub_arn,
+                    "standard_id": standard_id,
+                    "standard_name": standard_info["name"],
+                    "enabled_controls_count": enabled_count,
+                    "disabled_controls_count": disabled_count,
+                    "total_controls_count": len(controls),
+                    "techniques_covered_count": len(techniques_covered),
+                    "techniques_covered": list(techniques_covered),
+                    "controls": controls_list,
+                    "api_version": "cspm_aggregated",
+                },
+                description=standard_info["description"],
+                is_managed=True,
+            )
+            detections.append(detection)
+
+            self.logger.info(
+                "securityhub_standard_grouped",
+                standard=standard_id,
+                total_controls=len(controls),
+                enabled=enabled_count,
+                disabled=disabled_count,
+                techniques=len(techniques_covered),
+            )
+
+        return detections
+
+    def _get_standard_info_by_id(self, standard_id: str) -> dict:
+        """Get standard metadata by standard ID.
+
+        Args:
+            standard_id: The standard identifier (fsbp, cis, pci, nist, other)
+
+        Returns:
+            Dict with name and description
+        """
+        for pattern, info in STANDARD_PATTERNS.items():
+            if info["id"] == standard_id:
+                return {
+                    "name": info["name"],
+                    "description": info["description"],
+                }
+
+        # Default for 'other' or unknown
+        return {
+            "name": f"SecurityHub-{standard_id.upper()}",
+            "description": f"Security Hub controls for {standard_id}",
+        }
+
+    def _count_techniques_covered(self, controls: dict[str, dict]) -> set[str]:
+        """Count unique MITRE techniques covered by a set of controls.
+
+        Uses the securityhub_mappings module to look up technique mappings.
+        Only counts techniques from ENABLED controls.
+
+        Args:
+            controls: Dict of control_id -> control_data
+
+        Returns:
+            Set of unique MITRE technique IDs
+        """
+        from app.mappers.securityhub_mappings import get_techniques_for_cspm_control
+
+        techniques: set[str] = set()
+
+        for control_id, control_data in controls.items():
+            # Only count techniques from enabled controls
+            status_by_region = control_data.get("status_by_region", {})
+            if any(s == "ENABLED" for s in status_by_region.values()):
+                mappings = get_techniques_for_cspm_control(control_id)
+                for tech_id, _ in mappings:
+                    techniques.add(tech_id)
+
+        return techniques
 
     def _get_cspm_control_status(
         self,
@@ -243,29 +532,16 @@ class SecurityHubScanner(BaseScanner):
             region_status = self._get_cspm_control_status(client, region)
 
             if region_status:
-                # Create detections (single-region status only)
+                # Create grouped standard detections (single-region status only)
+                # First, update status_by_region for each control
                 for control_id, data in region_status.items():
-                    detection = RawDetection(
-                        name=f"SecurityHub-Control-{control_id}",
-                        detection_type=DetectionType.SECURITY_HUB,
-                        source_arn=data.get("control_arn", ""),
-                        region=region,
-                        raw_config={
-                            "hub_arn": hub_arn,
-                            "control_id": control_id,
-                            "control_arn": data.get("control_arn"),
-                            "title": data.get("title"),
-                            "severity": data.get("severity"),
-                            "update_status": data.get("update_status"),
-                            "parameters": data.get("parameters", {}),
-                            "remediation_url": data.get("remediation_url"),
-                            "status_by_region": {region: data.get("status")},
-                            "api_version": "cspm",
-                        },
-                        description=data.get("description", ""),
-                        is_managed=True,
-                    )
-                    detections.append(detection)
+                    data["status_by_region"] = {region: data.get("status")}
+                    data["hub_arn"] = hub_arn
+
+                grouped_detections = self._create_grouped_standard_detections(
+                    region_status, client, region
+                )
+                detections.extend(grouped_detections)
             else:
                 # Fall back to legacy standards-based API
                 standards_detections = self._scan_enabled_standards(
@@ -332,7 +608,7 @@ class SecurityHubScanner(BaseScanner):
         region: str,
         hub_arn: str,
     ) -> list[RawDetection]:
-        """Scan enabled security standards."""
+        """Scan enabled security standards (legacy API)."""
         detections = []
 
         try:

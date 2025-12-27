@@ -1,8 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
 import { Shield, Search, Filter, ChevronDown, Eye, Activity, Zap, CheckCircle, Lock, AlertTriangle, XCircle, HelpCircle, Bell } from 'lucide-react'
 import { detectionsApi, Detection, EvaluationSummary } from '../services/api'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import DetectionDetailModal from '../components/DetectionDetailModal'
+import SecurityHubAggregatedCard, {
+  isSecurityHubAggregated,
+  SecurityHubAggregatedConfig,
+} from '../components/SecurityHubAggregatedCard'
 
 type SortField = 'name' | 'detection_type' | 'region' | 'status' | 'mapping_count' | 'discovered_at'
 type SortDirection = 'asc' | 'desc'
@@ -170,8 +174,24 @@ export default function Detections() {
 
   const detections = data?.items ?? []
 
-  // Apply filters
-  let filteredDetections = detections.filter(d =>
+  // Separate aggregated Security Hub detections from regular ones
+  const { aggregatedDetections, regularDetections } = useMemo(() => {
+    const aggregated: Detection[] = []
+    const regular: Detection[] = []
+
+    detections.forEach((d) => {
+      if (isSecurityHubAggregated(d)) {
+        aggregated.push(d)
+      } else {
+        regular.push(d)
+      }
+    })
+
+    return { aggregatedDetections: aggregated, regularDetections: regular }
+  }, [detections])
+
+  // Apply filters to regular detections only (aggregated ones shown separately)
+  let filteredDetections = regularDetections.filter(d =>
     d.name.toLowerCase().includes(search.toLowerCase())
   )
 
@@ -303,21 +323,55 @@ export default function Detections() {
 
       {/* Results count */}
       <p className="text-sm text-gray-400 mb-4">
-        Showing {filteredDetections.length} of {detections.length} detections
+        Showing {filteredDetections.length} of {regularDetections.length} detections
+        {aggregatedDetections.length > 0 && (
+          <span className="ml-2 text-blue-400">
+            + {aggregatedDetections.length} Security Hub standard{aggregatedDetections.length !== 1 ? 's' : ''}
+          </span>
+        )}
       </p>
 
-      {/* Detections Table */}
-      {!filteredDetections.length ? (
+      {/* Aggregated Security Hub Standards */}
+      {aggregatedDetections.length > 0 && (
+        <div className="mb-6 space-y-4">
+          <h2 className="text-lg font-medium text-white flex items-center gap-2">
+            <Lock className="h-5 w-5 text-blue-400" />
+            Security Hub Standards
+          </h2>
+          {aggregatedDetections.map((detection) => (
+            <SecurityHubAggregatedCard
+              key={detection.id}
+              detection={{
+                ...detection,
+                raw_config: detection.raw_config as SecurityHubAggregatedConfig | undefined,
+              }}
+              onViewDetails={() => setSelectedDetection(detection)}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Regular Detections Table */}
+      {regularDetections.length > 0 && aggregatedDetections.length > 0 && (
+        <h2 className="text-lg font-medium text-white mb-4">Individual Detections</h2>
+      )}
+      {!filteredDetections.length && regularDetections.length === 0 && aggregatedDetections.length === 0 ? (
         <div className="text-center py-12 card">
           <Shield className="mx-auto h-12 w-12 text-gray-400" />
           <h3 className="mt-2 text-lg font-medium text-white">No detections found</h3>
           <p className="mt-1 text-sm text-gray-400">
-            {search || typeFilter || statusFilter
-              ? 'Try adjusting your filters.'
-              : 'Run a scan on your cloud accounts to discover detections.'}
+            Run a scan on your cloud accounts to discover detections.
           </p>
         </div>
-      ) : (
+      ) : !filteredDetections.length && regularDetections.length > 0 ? (
+        <div className="text-center py-12 card">
+          <Shield className="mx-auto h-12 w-12 text-gray-400" />
+          <h3 className="mt-2 text-lg font-medium text-white">No detections match your filters</h3>
+          <p className="mt-1 text-sm text-gray-400">
+            Try adjusting your search or filter criteria.
+          </p>
+        </div>
+      ) : filteredDetections.length > 0 ? (
         <div className="card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-700">
@@ -397,7 +451,7 @@ export default function Detections() {
             </table>
           </div>
         </div>
-      )}
+      ) : null}
 
       {/* Detail Modal */}
       {selectedDetection && (

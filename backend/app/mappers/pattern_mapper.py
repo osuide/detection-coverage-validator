@@ -14,7 +14,10 @@ from app.mappers.indicator_library import (
 from app.mappers.technique_metadata import get_technique_metadata
 from app.mappers.guardduty_mappings import get_mitre_mappings_for_finding
 from app.mappers.config_rule_mappings import get_techniques_for_config_rule
-from app.mappers.securityhub_mappings import get_techniques_for_security_hub
+from app.mappers.securityhub_mappings import (
+    get_techniques_for_security_hub,
+    get_techniques_for_cspm_control,
+)
 from app.mappers.gcp_scc_mappings import get_mitre_mappings_for_scc_finding
 from app.mappers.gcp_chronicle_mappings import get_mitre_mappings_for_chronicle_rule
 from app.scanners.base import RawDetection
@@ -158,42 +161,50 @@ class PatternMapper:
         # Security Hub mappings - using official MITRE CTID mappings
         elif detection.detection_type == DetectionType.SECURITY_HUB:
             raw_config = detection.raw_config or {}
-            standard_name = raw_config.get("standard_name", "")
-            control_id = raw_config.get("control_id", "")
-            finding_title = detection.description or detection.name or ""
             api_version = raw_config.get("api_version", "")
 
-            # Get official MITRE mappings for this Security Hub finding
-            technique_mappings = get_techniques_for_security_hub(
-                standard_name=standard_name,
-                control_id=control_id,
-                finding_title=finding_title,
-                api_version=api_version,
-            )
+            # Handle aggregated CSPM detection (single detection with all controls)
+            if api_version == "cspm_aggregated":
+                results.extend(self._map_aggregated_securityhub(detection))
+            else:
+                # Standard single-control mapping
+                standard_name = raw_config.get("standard_name", "")
+                control_id = raw_config.get("control_id", "")
+                finding_title = detection.description or detection.name or ""
 
-            for technique_id, confidence in technique_mappings:
-                metadata = get_technique_metadata(technique_id)
-                if metadata:
-                    matched = (
-                        f"{standard_name}:{control_id}" if control_id else standard_name
-                    )
-                    results.append(
-                        MappingResult(
-                            technique_id=technique_id,
-                            technique_name=metadata.technique_name,
-                            tactic_id=metadata.tactic_id,
-                            tactic_name=metadata.tactic_name,
-                            confidence=confidence,
-                            matched_indicators=[f"securityhub:{matched}"],
-                            rationale=f"Security Hub {matched} - MITRE CTID mapping",
+                # Get official MITRE mappings for this Security Hub finding
+                technique_mappings = get_techniques_for_security_hub(
+                    standard_name=standard_name,
+                    control_id=control_id,
+                    finding_title=finding_title,
+                    api_version=api_version,
+                )
+
+                for technique_id, confidence in technique_mappings:
+                    metadata = get_technique_metadata(technique_id)
+                    if metadata:
+                        matched = (
+                            f"{standard_name}:{control_id}"
+                            if control_id
+                            else standard_name
                         )
-                    )
-                else:
-                    self.logger.warning(
-                        "missing_technique_metadata",
-                        technique_id=technique_id,
-                        source="securityhub",
-                    )
+                        results.append(
+                            MappingResult(
+                                technique_id=technique_id,
+                                technique_name=metadata.technique_name,
+                                tactic_id=metadata.tactic_id,
+                                tactic_name=metadata.tactic_name,
+                                confidence=confidence,
+                                matched_indicators=[f"securityhub:{matched}"],
+                                rationale=f"Security Hub {matched} - MITRE CTID mapping",
+                            )
+                        )
+                    else:
+                        self.logger.warning(
+                            "missing_technique_metadata",
+                            technique_id=technique_id,
+                            source="securityhub",
+                        )
 
         # Config Rule mappings - using official MITRE CTID mappings
         elif detection.detection_type == DetectionType.CONFIG_RULE:
@@ -305,6 +316,120 @@ class PatternMapper:
                 seen[r.technique_id] = r
 
         return list(seen.values())
+
+    def _map_aggregated_securityhub(
+        self,
+        detection: RawDetection,
+    ) -> list[MappingResult]:
+        """Map an aggregated Security Hub CSPM detection to MITRE techniques.
+
+        For aggregated detections (api_version == "cspm_aggregated"), the raw_config
+        contains a 'controls' list with all Security Hub controls. This method:
+        1. Iterates through all controls
+        2. Only maps ENABLED controls (checks status_by_region)
+        3. Calls get_techniques_for_cspm_control() for each enabled control
+        4. Deduplicates techniques, keeping highest confidence
+        5. Returns MappingResult list with contributing controls in rationale
+
+        Args:
+            detection: The aggregated Security Hub detection
+
+        Returns:
+            List of MappingResult objects, one per unique technique
+        """
+        raw_config = detection.raw_config or {}
+        controls = raw_config.get("controls", [])
+
+        if not controls:
+            self.logger.warning(
+                "aggregated_securityhub_no_controls",
+                detection_name=detection.name,
+            )
+            return []
+
+        # Track techniques and their contributing controls
+        # technique_id -> {confidence, control_ids}
+        technique_to_controls: dict[str, dict] = {}
+
+        for control in controls:
+            control_id = control.get("control_id", "")
+            status_by_region = control.get("status_by_region", {})
+
+            # Check if control is ENABLED in any region
+            is_enabled = any(
+                status == "ENABLED" for status in status_by_region.values()
+            )
+
+            if not is_enabled:
+                continue
+
+            # Get MITRE technique mappings for this control
+            technique_mappings = get_techniques_for_cspm_control(
+                control_id=control_id,
+                standard_associations=control.get("standard_associations"),
+            )
+
+            for technique_id, confidence in technique_mappings:
+                if technique_id not in technique_to_controls:
+                    technique_to_controls[technique_id] = {
+                        "confidence": confidence,
+                        "control_ids": [control_id],
+                    }
+                else:
+                    # Keep highest confidence
+                    if confidence > technique_to_controls[technique_id]["confidence"]:
+                        technique_to_controls[technique_id]["confidence"] = confidence
+                    # Track contributing control
+                    if (
+                        control_id
+                        not in technique_to_controls[technique_id]["control_ids"]
+                    ):
+                        technique_to_controls[technique_id]["control_ids"].append(
+                            control_id
+                        )
+
+        # Build MappingResult for each unique technique
+        results = []
+        for technique_id, data in technique_to_controls.items():
+            metadata = get_technique_metadata(technique_id)
+            if metadata:
+                control_ids = data["control_ids"]
+                # Sort controls for consistent output
+                control_ids.sort()
+
+                results.append(
+                    MappingResult(
+                        technique_id=technique_id,
+                        technique_name=metadata.technique_name,
+                        tactic_id=metadata.tactic_id,
+                        tactic_name=metadata.tactic_name,
+                        confidence=data["confidence"],
+                        matched_indicators=[
+                            f"securityhub:{cid}" for cid in control_ids
+                        ],
+                        rationale=f"Security Hub controls: {', '.join(control_ids)}",
+                    )
+                )
+            else:
+                self.logger.warning(
+                    "missing_technique_metadata",
+                    technique_id=technique_id,
+                    source="securityhub_aggregated",
+                )
+
+        self.logger.debug(
+            "aggregated_securityhub_mapped",
+            detection_name=detection.name,
+            total_controls=len(controls),
+            enabled_controls=sum(
+                1
+                for c in controls
+                if any(s == "ENABLED" for s in c.get("status_by_region", {}).values())
+            ),
+            techniques_mapped=len(results),
+        )
+
+        return results
 
     def _calculate_match(
         self,

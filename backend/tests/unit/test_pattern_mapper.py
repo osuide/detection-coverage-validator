@@ -113,3 +113,132 @@ class TestPatternMapper:
         """Test getting techniques for a CloudTrail event."""
         techniques = self.mapper.get_techniques_for_event("CreateAccessKey")
         assert "T1098.001" in techniques
+
+    def test_map_aggregated_securityhub_detection(self):
+        """Test mapping an aggregated Security Hub CSPM detection."""
+        detection = RawDetection(
+            name="SecurityHub-All-Controls",
+            detection_type=DetectionType.SECURITY_HUB,
+            source_arn="arn:aws:securityhub:us-east-1:123456789012:hub/default",
+            region="us-east-1",
+            raw_config={
+                "api_version": "cspm_aggregated",
+                "controls": [
+                    {
+                        "control_id": "S3.1",
+                        "status_by_region": {
+                            "us-east-1": "ENABLED",
+                            "eu-west-1": "ENABLED",
+                        },
+                    },
+                    {
+                        "control_id": "S3.2",
+                        "status_by_region": {
+                            "us-east-1": "ENABLED",
+                            "eu-west-1": "DISABLED",
+                        },
+                    },
+                    {
+                        "control_id": "S3.8",
+                        "status_by_region": {
+                            "us-east-1": "ENABLED",
+                        },
+                    },
+                    {
+                        "control_id": "IAM.1",
+                        "status_by_region": {
+                            "us-east-1": "DISABLED",
+                            "eu-west-1": "DISABLED",
+                        },
+                    },
+                ],
+            },
+            description="Aggregated Security Hub controls",
+            is_managed=True,
+        )
+
+        mappings = self.mapper.map_detection(detection)
+
+        # Should have mappings from the enabled S3 controls
+        technique_ids = [m.technique_id for m in mappings]
+        assert "T1530" in technique_ids  # S3.1, S3.2, S3.8 all map to T1530
+
+        # Find the T1530 mapping and check it consolidates controls
+        t1530_mapping = next(m for m in mappings if m.technique_id == "T1530")
+        assert "S3.1" in t1530_mapping.rationale
+        assert "S3.2" in t1530_mapping.rationale
+        assert "S3.8" in t1530_mapping.rationale
+
+        # IAM.1 should NOT be in any rationale (it's disabled)
+        for mapping in mappings:
+            assert "IAM.1" not in mapping.rationale
+
+    def test_map_aggregated_securityhub_disabled_controls_excluded(self):
+        """Test that disabled controls are excluded from aggregated mapping."""
+        detection = RawDetection(
+            name="SecurityHub-All-Controls",
+            detection_type=DetectionType.SECURITY_HUB,
+            source_arn="arn:aws:securityhub:us-east-1:123456789012:hub/default",
+            region="us-east-1",
+            raw_config={
+                "api_version": "cspm_aggregated",
+                "controls": [
+                    {
+                        "control_id": "EC2.1",
+                        "status_by_region": {
+                            "us-east-1": "DISABLED",
+                        },
+                    },
+                    {
+                        "control_id": "EC2.2",
+                        "status_by_region": {},  # No regions, effectively disabled
+                    },
+                ],
+            },
+            description="Aggregated Security Hub controls - all disabled",
+            is_managed=True,
+        )
+
+        mappings = self.mapper.map_detection(detection)
+
+        # Should have no mappings since all controls are disabled
+        assert len(mappings) == 0
+
+    def test_map_aggregated_securityhub_highest_confidence_kept(self):
+        """Test that highest confidence is kept when multiple controls map to same technique."""
+        detection = RawDetection(
+            name="SecurityHub-IAM-Controls",
+            detection_type=DetectionType.SECURITY_HUB,
+            source_arn="arn:aws:securityhub:us-east-1:123456789012:hub/default",
+            region="us-east-1",
+            raw_config={
+                "api_version": "cspm_aggregated",
+                "controls": [
+                    {
+                        "control_id": "IAM.4",  # Maps to T1078 with 0.9 confidence
+                        "status_by_region": {"us-east-1": "ENABLED"},
+                    },
+                    {
+                        "control_id": "IAM.3",  # Maps to T1078 with 0.85 confidence
+                        "status_by_region": {"us-east-1": "ENABLED"},
+                    },
+                ],
+            },
+            description="Aggregated Security Hub IAM controls",
+            is_managed=True,
+        )
+
+        mappings = self.mapper.map_detection(detection)
+
+        # Find T1078 mapping
+        t1078_mappings = [m for m in mappings if m.technique_id == "T1078"]
+
+        # Should have exactly one T1078 mapping (deduplicated)
+        assert len(t1078_mappings) == 1
+
+        # Confidence should be the highest (0.9 from IAM.4)
+        assert t1078_mappings[0].confidence == 0.9
+
+        # Both controls should be in rationale
+        assert "IAM.3" in t1078_mappings[0].rationale
+        assert "IAM.4" in t1078_mappings[0].rationale

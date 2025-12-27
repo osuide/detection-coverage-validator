@@ -166,6 +166,7 @@ async def list_detections(
             "top_techniques": [],
             "evaluation_summary": det.evaluation_summary,
             "evaluation_updated_at": det.evaluation_updated_at,
+            "raw_config": det.raw_config,
         }
         items.append(DetectionResponse(**det_dict))
 
@@ -221,6 +222,7 @@ async def get_detection(
         top_techniques=[],
         evaluation_summary=detection.evaluation_summary,
         evaluation_updated_at=detection.evaluation_updated_at,
+        raw_config=detection.raw_config,
     )
 
 

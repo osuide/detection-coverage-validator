@@ -153,6 +153,8 @@ export interface Detection {
   // Evaluation/compliance data
   evaluation_summary?: EvaluationSummary
   evaluation_updated_at?: string
+  // Raw configuration (for aggregated detections like Security Hub standards)
+  raw_config?: Record<string, unknown>
 }
 
 export interface TacticCoverage {

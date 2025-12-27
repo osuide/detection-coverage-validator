@@ -57,6 +57,9 @@ class DetectionResponse(BaseModel):
     evaluation_summary: Optional[dict[str, Any]] = None
     evaluation_updated_at: Optional[datetime] = None
 
+    # Raw configuration (for aggregated detections like Security Hub standards)
+    raw_config: Optional[dict[str, Any]] = None
+
     model_config = ConfigDict(from_attributes=True)
 
 
