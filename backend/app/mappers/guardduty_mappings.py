@@ -389,6 +389,69 @@ GUARDDUTY_MITRE_MAPPINGS: dict[str, list[tuple[str, float]]] = {
         ("T1078", 0.75),
         ("T1190", 0.6),
     ],
+    # === RDS Protection ===
+    "CredentialAccess:RDS/AnomalousBehavior.FailedLogin": [
+        ("T1110", 0.85),  # Brute Force
+        ("T1110.001", 0.85),  # Password Guessing
+    ],
+    "CredentialAccess:RDS/AnomalousBehavior.SuccessfulBruteForce": [
+        ("T1110", 0.95),  # Brute Force
+        ("T1110.001", 0.95),  # Password Guessing
+        ("T1078", 0.85),  # Valid Accounts
+    ],
+    "CredentialAccess:RDS/AnomalousBehavior.SuccessfulLogin": [
+        ("T1078", 0.85),  # Valid Accounts
+    ],
+    "CredentialAccess:RDS/MaliciousIPCaller.FailedLogin": [
+        ("T1110", 0.9),  # Brute Force
+        ("T1110.001", 0.9),  # Password Guessing
+    ],
+    "CredentialAccess:RDS/MaliciousIPCaller.SuccessfulLogin": [
+        ("T1078", 0.9),  # Valid Accounts
+        ("T1078.004", 0.85),  # Cloud Accounts
+    ],
+    "CredentialAccess:RDS/TorIPCaller.FailedLogin": [
+        ("T1110", 0.85),  # Brute Force
+        ("T1090.003", 0.8),  # Multi-hop Proxy
+    ],
+    "CredentialAccess:RDS/TorIPCaller.SuccessfulLogin": [
+        ("T1078", 0.85),  # Valid Accounts
+        ("T1090.003", 0.85),  # Multi-hop Proxy
+    ],
+    "Discovery:RDS/MaliciousIPCaller": [
+        ("T1526", 0.85),  # Cloud Service Discovery
+    ],
+    "Discovery:RDS/TorIPCaller": [
+        ("T1526", 0.85),  # Cloud Service Discovery
+        ("T1090.003", 0.8),  # Multi-hop Proxy
+    ],
+    # === Lambda Protection ===
+    "Backdoor:Lambda/C&CActivity.B": [
+        ("T1071", 0.9),  # Application Layer Protocol
+        ("T1071.001", 0.9),  # Web Protocols
+    ],
+    "CryptoCurrency:Lambda/BitcoinTool.B": [
+        ("T1496", 0.95),  # Resource Hijacking
+    ],
+    "Trojan:Lambda/BlackholeTraffic": [
+        ("T1071", 0.85),  # Application Layer Protocol
+    ],
+    "Trojan:Lambda/DropPoint": [
+        ("T1071", 0.85),  # Application Layer Protocol
+        ("T1105", 0.8),  # Ingress Tool Transfer
+    ],
+    "UnauthorizedAccess:Lambda/MaliciousIPCaller.Custom": [
+        ("T1071", 0.75),  # Application Layer Protocol
+    ],
+    "UnauthorizedAccess:Lambda/TorClient": [
+        ("T1090", 0.9),  # Proxy
+        ("T1090.003", 0.9),  # Multi-hop Proxy
+    ],
+    "UnauthorizedAccess:Lambda/TorRelay": [
+        ("T1090", 0.9),  # Proxy
+        ("T1090.003", 0.9),  # Multi-hop Proxy
+        ("T1496", 0.75),  # Resource Hijacking
+    ],
 }
 
 
