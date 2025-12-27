@@ -20,7 +20,7 @@ Design considerations:
 
 from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import UUID, JSONB, ENUM as PG_ENUM
 
 
 # revision identifiers, used by Alembic.
@@ -31,43 +31,28 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Create evaluation_type enum if not exists using pure SQL
-    # This approach works reliably with asyncpg
-    op.execute(
-        """
-        DO $$
-        BEGIN
-            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'evaluationtype') THEN
-                CREATE TYPE evaluationtype AS ENUM (
-                    'config_compliance',
-                    'alarm_state',
-                    'eventbridge_state',
-                    'guardduty_state',
-                    'gcp_scc_state',
-                    'gcp_logging_state'
-                );
-            END IF;
-        END
-        $$;
-        """
+    # Create evaluation_type enum using SQLAlchemy's checkfirst=True
+    # This properly handles the case where the enum already exists
+    # Reference: https://roman.pt/posts/alembic-enums/
+    evaluationtype_enum = PG_ENUM(
+        "config_compliance",
+        "alarm_state",
+        "eventbridge_state",
+        "guardduty_state",
+        "gcp_scc_state",
+        "gcp_logging_state",
+        name="evaluationtype",
     )
+    evaluationtype_enum.create(op.get_bind(), checkfirst=True)
 
-    # Create evaluation alert severity enum if not exists
-    op.execute(
-        """
-        DO $$
-        BEGIN
-            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'evaluationalertseverity') THEN
-                CREATE TYPE evaluationalertseverity AS ENUM (
-                    'info',
-                    'warning',
-                    'critical'
-                );
-            END IF;
-        END
-        $$;
-        """
+    # Create evaluation alert severity enum
+    evaluationalertseverity_enum = PG_ENUM(
+        "info",
+        "warning",
+        "critical",
+        name="evaluationalertseverity",
     )
+    evaluationalertseverity_enum.create(op.get_bind(), checkfirst=True)
 
     # Check for existing tables to ensure idempotency
     conn = op.get_bind()
