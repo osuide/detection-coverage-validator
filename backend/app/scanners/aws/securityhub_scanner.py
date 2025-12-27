@@ -1,10 +1,27 @@
-"""AWS Security Hub scanner for aggregated security findings."""
+"""AWS Security Hub scanner for aggregated security findings.
+
+Supports both the legacy standards-based API and the new CSPM consolidated
+controls API introduced in 2023. The scanner will automatically use the
+CSPM API when available, falling back to the legacy API if permissions
+are not granted.
+
+CSPM API Benefits:
+- Standard-agnostic control IDs (e.g., S3.1 instead of FSBP.S3.1)
+- Single control ID across all standards
+- Better control parameter support
+- More consistent control metadata
+"""
 
 from typing import Any, Optional
 from botocore.exceptions import ClientError
 
 from app.models.detection import DetectionType
 from app.scanners.base import BaseScanner, RawDetection
+
+
+def _chunk_list(items: list, chunk_size: int) -> list[list]:
+    """Split a list into chunks of specified size."""
+    return [items[i : i + chunk_size] for i in range(0, len(items), chunk_size)]
 
 
 class SecurityHubScanner(BaseScanner):
@@ -15,6 +32,7 @@ class SecurityHubScanner(BaseScanner):
     - Enabled security standards (CIS, PCI-DSS, AWS Foundational)
     - Custom insights
     - Aggregated finding patterns
+    - Consolidated security controls (via CSPM API)
     """
 
     @property
@@ -45,7 +63,12 @@ class SecurityHubScanner(BaseScanner):
         region: str,
         options: Optional[dict[str, Any]] = None,
     ) -> list[RawDetection]:
-        """Scan a single region for Security Hub configurations."""
+        """Scan a single region for Security Hub configurations.
+
+        Uses the new CSPM consolidated controls API when available,
+        falling back to the legacy standards-based API if CSPM
+        permissions are not granted.
+        """
         detections = []
         client = self.session.client("securityhub", region_name=region)
 
@@ -54,11 +77,30 @@ class SecurityHubScanner(BaseScanner):
             hub = client.describe_hub()
             hub_arn = hub.get("HubArn", "")
 
-            # Scan enabled standards
-            standards_detections = self._scan_enabled_standards(client, region, hub_arn)
-            detections.extend(standards_detections)
+            # Try CSPM consolidated controls API first
+            cspm_detections = self._scan_cspm_controls(client, region, hub_arn)
 
-            # Scan custom insights
+            if cspm_detections:
+                # CSPM API worked - use consolidated controls
+                detections.extend(cspm_detections)
+                self.logger.info(
+                    "securityhub_cspm_success",
+                    region=region,
+                    control_count=len(cspm_detections),
+                )
+            else:
+                # Fall back to legacy standards-based API
+                self.logger.info(
+                    "securityhub_legacy_fallback",
+                    region=region,
+                    reason="CSPM API not available or returned no controls",
+                )
+                standards_detections = self._scan_enabled_standards(
+                    client, region, hub_arn
+                )
+                detections.extend(standards_detections)
+
+            # Scan custom insights (works with both old and new API)
             insights_detections = self._scan_insights(client, region, hub_arn)
             detections.extend(insights_detections)
 
@@ -73,6 +115,163 @@ class SecurityHubScanner(BaseScanner):
                 raise
 
         return detections
+
+    def _scan_cspm_controls(
+        self,
+        client: Any,
+        region: str,
+        hub_arn: str,
+    ) -> list[RawDetection]:
+        """Scan using CSPM consolidated controls API.
+
+        Uses the new standard-agnostic control APIs:
+        - ListSecurityControlDefinitions
+        - BatchGetSecurityControls
+        - ListStandardsControlAssociations
+
+        Returns empty list if CSPM API is not available (triggers legacy fallback).
+        """
+        detections = []
+
+        try:
+            # Step 1: Get all security control definitions
+            control_ids = []
+            paginator = client.get_paginator("list_security_control_definitions")
+
+            for page in paginator.paginate():
+                for control_def in page.get("SecurityControlDefinitions", []):
+                    control_ids.append(control_def["SecurityControlId"])
+
+            if not control_ids:
+                self.logger.info(
+                    "securityhub_cspm_no_controls",
+                    region=region,
+                )
+                return []
+
+            self.logger.info(
+                "securityhub_cspm_control_definitions",
+                region=region,
+                total_controls=len(control_ids),
+            )
+
+            # Step 2: Batch get control details (max 100 per request)
+            for batch in _chunk_list(control_ids, 100):
+                try:
+                    response = client.batch_get_security_controls(
+                        SecurityControlIds=batch
+                    )
+
+                    for control in response.get("SecurityControls", []):
+                        control_id = control.get("SecurityControlId", "")
+
+                        # Get control associations to see which standards it applies to
+                        associations = self._get_control_associations(
+                            client, control_id
+                        )
+
+                        detection = RawDetection(
+                            name=f"SecurityHub-Control-{control_id}",
+                            detection_type=DetectionType.SECURITY_HUB,
+                            source_arn=control.get("SecurityControlArn", ""),
+                            region=region,
+                            raw_config={
+                                "hub_arn": hub_arn,
+                                "control_id": control_id,
+                                "control_arn": control.get("SecurityControlArn"),
+                                "title": control.get("Title"),
+                                "status": control.get("SecurityControlStatus"),
+                                "severity": control.get("SeverityRating"),
+                                "update_status": control.get("UpdateStatus"),
+                                "parameters": control.get("Parameters", {}),
+                                "remediation_url": control.get("RemediationUrl"),
+                                "last_update_reason": control.get("LastUpdateReason"),
+                                "standard_associations": associations,
+                                "api_version": "cspm",
+                            },
+                            description=control.get("Description", ""),
+                            is_managed=True,
+                        )
+                        detections.append(detection)
+
+                    # Log any unprocessed IDs
+                    unprocessed = response.get("UnprocessedIds", [])
+                    if unprocessed:
+                        self.logger.warning(
+                            "securityhub_cspm_unprocessed",
+                            region=region,
+                            unprocessed_ids=unprocessed,
+                        )
+
+                except ClientError as e:
+                    # If batch fails, log and continue with next batch
+                    self.logger.warning(
+                        "securityhub_cspm_batch_error",
+                        region=region,
+                        batch_size=len(batch),
+                        error=str(e),
+                    )
+
+        except ClientError as e:
+            error_code = e.response["Error"]["Code"]
+            if error_code == "AccessDeniedException":
+                # CSPM API not available - will fall back to legacy
+                self.logger.info(
+                    "securityhub_cspm_access_denied",
+                    region=region,
+                    message="CSPM APIs not available, using legacy API",
+                )
+                return []
+            elif error_code == "InvalidInputException":
+                # API might not be fully available yet
+                self.logger.info(
+                    "securityhub_cspm_invalid_input",
+                    region=region,
+                    error=str(e),
+                )
+                return []
+            else:
+                raise
+
+        return detections
+
+    def _get_control_associations(
+        self,
+        client: Any,
+        control_id: str,
+    ) -> list[dict]:
+        """Get standard associations for a control.
+
+        Returns which standards this control is associated with and
+        whether it's enabled or disabled in each standard.
+        """
+        associations = []
+
+        try:
+            paginator = client.get_paginator("list_standards_control_associations")
+
+            for page in paginator.paginate(SecurityControlId=control_id):
+                for assoc in page.get("StandardsControlAssociationSummaries", []):
+                    associations.append(
+                        {
+                            "standards_arn": assoc.get("StandardsArn"),
+                            "association_status": assoc.get("AssociationStatus"),
+                            "related_requirements": assoc.get(
+                                "RelatedRequirements", []
+                            ),
+                            "updated_at": (
+                                assoc.get("UpdatedAt").isoformat()
+                                if assoc.get("UpdatedAt")
+                                else None
+                            ),
+                        }
+                    )
+
+        except ClientError:
+            # If we can't get associations, continue without them
+            pass
+
+        return associations
 
     def _scan_enabled_standards(
         self,
