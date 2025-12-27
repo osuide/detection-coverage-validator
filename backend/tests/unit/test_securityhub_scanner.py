@@ -77,9 +77,10 @@ class TestCSPMAPIUsage:
         """Test that CSPM detection stores control_arn."""
         assert '"control_arn":' in source_content
 
-    def test_cspm_stores_standard_associations(self, source_content):
-        """Test that CSPM detection stores standard_associations."""
-        assert '"standard_associations":' in source_content
+    def test_cspm_skips_per_control_associations(self, source_content):
+        """Test that CSPM skips per-control association calls for performance."""
+        # We skip associations to avoid 560+ API calls per region
+        assert "skip fetching per-control associations" in source_content.lower()
 
 
 class TestGracefulFallback:

@@ -156,6 +156,8 @@ class SecurityHubScanner(BaseScanner):
             )
 
             # Step 2: Batch get control details (max 100 per request)
+            # NOTE: We skip fetching per-control associations to avoid 560+ API
+            # calls per region. MITRE mapping uses FSBP as primary source anyway.
             for batch in _chunk_list(control_ids, 100):
                 try:
                     response = client.batch_get_security_controls(
@@ -164,11 +166,6 @@ class SecurityHubScanner(BaseScanner):
 
                     for control in response.get("SecurityControls", []):
                         control_id = control.get("SecurityControlId", "")
-
-                        # Get control associations to see which standards it applies to
-                        associations = self._get_control_associations(
-                            client, control_id
-                        )
 
                         detection = RawDetection(
                             name=f"SecurityHub-Control-{control_id}",
@@ -186,7 +183,6 @@ class SecurityHubScanner(BaseScanner):
                                 "parameters": control.get("Parameters", {}),
                                 "remediation_url": control.get("RemediationUrl"),
                                 "last_update_reason": control.get("LastUpdateReason"),
-                                "standard_associations": associations,
                                 "api_version": "cspm",
                             },
                             description=control.get("Description", ""),
@@ -194,13 +190,14 @@ class SecurityHubScanner(BaseScanner):
                         )
                         detections.append(detection)
 
-                    # Log any unprocessed IDs
+                    # Log any unprocessed IDs (expected for region-specific controls)
                     unprocessed = response.get("UnprocessedIds", [])
                     if unprocessed:
-                        self.logger.warning(
+                        # Only log at debug level - these are expected for region-specific services
+                        self.logger.debug(
                             "securityhub_cspm_unprocessed",
                             region=region,
-                            unprocessed_ids=unprocessed,
+                            count=len(unprocessed),
                         )
 
                 except ClientError as e:
