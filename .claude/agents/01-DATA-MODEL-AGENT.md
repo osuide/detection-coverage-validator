@@ -1,3 +1,8 @@
+---
+name: data-model-agent
+description: Transforms the formal problem model entities into a concrete, implementable database schema that supports all required operations efficiently.
+---
+
 # Data Model Design Agent
 
 ## Role

@@ -1,3 +1,8 @@
+---
+name: analysis-agent
+description: Designs the coverage calculation, gap identification, and drift detection systems to turn detection-to-technique mappings into actionable security insights.
+---
+
 # Analysis Agent - Detection Coverage Validator
 
 ## Role

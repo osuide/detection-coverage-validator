@@ -1,3 +1,8 @@
+---
+name: agent-framework-guide
+description: Documentation for the Chain-of-Thought (COT) driven agent framework used to design and implement the Detection Coverage Validator system.
+---
+
 # Detection Coverage Validator - COT Agent Framework
 
 ## Overview

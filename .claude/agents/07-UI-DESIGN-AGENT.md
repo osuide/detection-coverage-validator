@@ -1,3 +1,8 @@
+---
+name: ui-design-agent
+description: Designs user interfaces, visualisations, and user experience to make complex security data accessible and actionable.
+---
+
 # UI Design Agent - Detection Coverage Validator
 
 ## Role

@@ -1,3 +1,8 @@
+---
+name: master-orchestrator
+description: Coordinates the design and implementation process for the Detection Coverage Validator, ensuring all components work together cohesively.
+---
+
 # Master Orchestrator Agent - Detection Coverage Validator
 
 ## Role

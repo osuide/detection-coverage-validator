@@ -1,3 +1,8 @@
+---
+name: mapping-agent
+description: Designs the MITRE ATT&CK mapping engine to automatically and accurately link cloud detection rules to the techniques they can detect.
+---
+
 # Mapping Agent - Detection Coverage Validator
 
 ## Role

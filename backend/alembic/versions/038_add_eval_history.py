@@ -24,7 +24,8 @@ from sqlalchemy.dialects.postgresql import UUID, JSONB, ENUM as PG_ENUM
 
 
 # revision identifiers, used by Alembic.
-revision = "038_add_detection_evaluation_history"
+# Note: revision IDs must be <= 32 chars (alembic_version.version_num is VARCHAR(32))
+revision = "038_add_eval_history"
 down_revision = "037_add_evaluation_summary"
 branch_labels = None
 depends_on = None

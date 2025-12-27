@@ -1,3 +1,8 @@
+---
+name: security-threats-agent
+description: Transforms generic remediation suggestions into actionable, technique-specific detection guidance using adversarial tradecraft and MITRE ATT&CK expertise.
+---
+
 # Security Threats Agent - Detection Coverage Validator
 
 ## Role

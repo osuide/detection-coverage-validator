@@ -1,3 +1,8 @@
+---
+name: parser-agent
+description: Designs the detection ingestion and parsing system to extract structured detection logic from raw cloud-native security configurations across AWS and GCP.
+---
+
 # Parser Agent - Detection Coverage Validator
 
 ## Role

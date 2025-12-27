@@ -1,3 +1,8 @@
+---
+name: architecture-agent
+description: Designs the overall system architecture, chooses technologies, plans deployment, and ensures the system can scale while respecting all constraints.
+---
+
 # Architecture Design Agent
 
 ## Role

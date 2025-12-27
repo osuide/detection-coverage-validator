@@ -1,3 +1,8 @@
+---
+name: api-design-agent
+description: Designs a clean, RESTful API that exposes all functionality of the Detection Coverage Validator to external consumers.
+---
+
 # API Design Agent
 
 ## Role

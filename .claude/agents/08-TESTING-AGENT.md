@@ -1,3 +1,8 @@
+---
+name: testing-agent
+description: Designs the comprehensive testing strategy to ensure quality, reliability, and correctness across all system components.
+---
+
 # Testing Agent - Detection Coverage Validator
 
 ## Role

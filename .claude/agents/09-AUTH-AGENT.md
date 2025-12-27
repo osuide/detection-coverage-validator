@@ -1,3 +1,8 @@
+---
+name: auth-agent
+description: Designs a comprehensive identity and access management system for secure multi-tenant access with role-based access control.
+---
+
 # Authentication & Authorization Design Agent
 
 ## Role
