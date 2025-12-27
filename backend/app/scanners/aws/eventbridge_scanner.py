@@ -128,6 +128,13 @@ class EventBridgeScanner(BaseScanner):
             except json.JSONDecodeError:
                 event_pattern = {"raw": event_pattern_str}
 
+        # Create evaluation summary with rule state
+        # State can be: ENABLED or DISABLED
+        evaluation_summary = {
+            "type": "eventbridge_state",
+            "state": state,
+        }
+
         return RawDetection(
             name=name,
             detection_type=DetectionType.EVENTBRIDGE_RULE,
@@ -145,6 +152,7 @@ class EventBridgeScanner(BaseScanner):
             event_pattern=event_pattern,
             description=description or f"EventBridge rule: {name}",
             target_services=target_services or None,
+            evaluation_summary=evaluation_summary,
         )
 
     def extract_cloudtrail_events(

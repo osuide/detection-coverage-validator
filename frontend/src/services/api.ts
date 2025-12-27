@@ -129,6 +129,18 @@ export interface DiscoverRegionsResponse {
   discovered_at: string
 }
 
+export interface EvaluationSummary {
+  type: 'config_compliance' | 'alarm_state' | 'eventbridge_state'
+  // Config compliance fields
+  compliance_type?: 'COMPLIANT' | 'NON_COMPLIANT' | 'NOT_APPLICABLE' | 'INSUFFICIENT_DATA'
+  non_compliant_count?: number
+  cap_exceeded?: boolean
+  // Alarm state fields
+  state?: string  // OK, ALARM, INSUFFICIENT_DATA or ENABLED/DISABLED
+  state_reason?: string
+  state_updated_at?: string
+}
+
 export interface Detection {
   id: string
   cloud_account_id: string
@@ -138,6 +150,9 @@ export interface Detection {
   region: string
   mapping_count: number
   discovered_at: string
+  // Evaluation/compliance data
+  evaluation_summary?: EvaluationSummary
+  evaluation_updated_at?: string
 }
 
 export interface TacticCoverage {
@@ -521,6 +536,233 @@ export const gapsApi = {
 
   reopenOrgGap: (gapId: string) =>
     api.post<GapAcknowledgeResponse>(`/gaps/org/${gapId}/reopen`, {}).then(r => r.data),
+}
+
+// Evaluation History Types
+export interface DateRange {
+  start_date: string
+  end_date: string
+}
+
+export interface EvaluationHistoryItem {
+  id: string
+  timestamp: string
+  evaluation_status: string
+  previous_status: string | null
+  status_changed: boolean
+  evaluation_summary: Record<string, unknown> | null
+}
+
+export interface EvaluationHistorySummary {
+  total_records: number
+  total_status_changes: number
+  time_in_healthy_percent: number
+  time_in_unhealthy_percent: number
+  most_common_status: string
+}
+
+export interface DetectionEvaluationHistoryResponse {
+  detection_id: string
+  detection_name: string
+  detection_type: string
+  date_range: DateRange
+  total_records: number
+  history: EvaluationHistoryItem[]
+  summary: EvaluationHistorySummary
+  pagination: {
+    offset: number
+    limit: number
+    total: number
+    has_more: boolean
+  }
+}
+
+export interface HealthStatusBreakdown {
+  healthy: number
+  unhealthy: number
+  unknown: number
+}
+
+export interface DetectionTypeStats {
+  detection_type: string
+  total: number
+  healthy_count: number
+  unhealthy_count: number
+  unknown_count: number
+}
+
+export interface AccountEvaluationSummaryResponse {
+  cloud_account_id: string
+  account_name: string
+  date_range: DateRange
+  summary: {
+    total_detections: number
+    detections_with_history: number
+    health_status_breakdown: HealthStatusBreakdown
+    health_percentage: number
+  }
+  trends: {
+    trend: 'improving' | 'stable' | 'declining'
+    health_change_percent: number
+    status_changes_total: number
+  }
+  by_detection_type: DetectionTypeStats[]
+  generated_at: string
+}
+
+export interface TrendDataPoint {
+  date: string
+  total_detections: number
+  healthy_count: number
+  unhealthy_count: number
+  health_percentage: number
+  state_changes: number
+}
+
+export interface EvaluationTrendsResponse {
+  cloud_account_id: string
+  account_name: string
+  date_range: DateRange
+  aggregation: string
+  data_points: TrendDataPoint[]
+  aggregates: {
+    average_health_percentage: number
+    max_unhealthy_count: number
+    min_unhealthy_count: number
+    total_state_changes: number
+  }
+  comparison: {
+    health_change_percent: number
+    unhealthy_count_change: number
+    trend: 'improving' | 'stable' | 'declining'
+  }
+}
+
+export interface EvaluationAlertItem {
+  id: string
+  alert_type: string
+  severity: 'info' | 'warning' | 'critical'
+  title: string
+  message: string
+  detection_id: string | null
+  detection_name: string | null
+  detection_type: string | null
+  previous_state: string | null
+  current_state: string
+  is_acknowledged: boolean
+  acknowledged_at: string | null
+  created_at: string
+  details: Record<string, unknown> | null
+}
+
+export interface EvaluationAlertsResponse {
+  cloud_account_id: string
+  account_name: string
+  alerts: EvaluationAlertItem[]
+  summary: {
+    total_alerts: number
+    unacknowledged: number
+    by_severity: Record<string, number>
+    by_type: Record<string, number>
+  }
+  pagination: {
+    offset: number
+    limit: number
+    total: number
+    has_more: boolean
+  }
+}
+
+export interface OrganisationEvaluationSummaryResponse {
+  organisation_id: string
+  organisation_name: string
+  date_range: DateRange
+  summary: {
+    total_accounts: number
+    total_detections: number
+    overall_health_percentage: number
+    total_alerts: number
+  }
+  by_account: Array<{
+    cloud_account_id: string
+    account_name: string
+    provider: string
+    total_detections: number
+    health_percentage: number
+    unhealthy_count: number
+    trend: 'improving' | 'stable' | 'declining'
+  }>
+  accounts_needing_attention: Array<{
+    cloud_account_id: string
+    account_name: string
+    reason: string
+    health_percentage: number | null
+    critical_alerts: number
+  }>
+  generated_at: string
+}
+
+export const evaluationHistoryApi = {
+  // Detection history
+  getDetectionHistory: (detectionId: string, params?: {
+    start_date?: string
+    end_date?: string
+    limit?: number
+    offset?: number
+  }) =>
+    api.get<DetectionEvaluationHistoryResponse>(
+      `/evaluation-history/detections/${detectionId}/history`,
+      { params }
+    ).then(r => r.data),
+
+  // Account summary
+  getAccountSummary: (accountId: string, params?: {
+    start_date?: string
+    end_date?: string
+  }) =>
+    api.get<AccountEvaluationSummaryResponse>(
+      `/evaluation-history/accounts/${accountId}/summary`,
+      { params }
+    ).then(r => r.data),
+
+  // Account trends
+  getAccountTrends: (accountId: string, params?: {
+    start_date?: string
+    end_date?: string
+  }) =>
+    api.get<EvaluationTrendsResponse>(
+      `/evaluation-history/accounts/${accountId}/trends`,
+      { params }
+    ).then(r => r.data),
+
+  // Account alerts
+  getAccountAlerts: (accountId: string, params?: {
+    severity?: string
+    is_acknowledged?: boolean
+    limit?: number
+    offset?: number
+  }) =>
+    api.get<EvaluationAlertsResponse>(
+      `/evaluation-history/accounts/${accountId}/alerts`,
+      { params }
+    ).then(r => r.data),
+
+  // Acknowledge alert
+  acknowledgeAlert: (alertId: string) =>
+    api.post<{ message: string; alert_id: string; acknowledged_at: string }>(
+      `/evaluation-history/alerts/${alertId}/acknowledge`,
+      {}
+    ).then(r => r.data),
+
+  // Organisation summary
+  getOrgSummary: (params?: {
+    start_date?: string
+    end_date?: string
+  }) =>
+    api.get<OrganisationEvaluationSummaryResponse>(
+      '/evaluation-history/organisation/summary',
+      { params }
+    ).then(r => r.data),
 }
 
 export default api

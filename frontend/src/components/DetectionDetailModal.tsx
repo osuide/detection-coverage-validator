@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { X, ExternalLink, Shield, MapPin, Clock, AlertCircle, Activity, Zap, CheckCircle, Lock, Database } from 'lucide-react'
+import { X, ExternalLink, Shield, MapPin, Clock, AlertCircle, Activity, Zap, CheckCircle, Lock, Database, XCircle, HelpCircle } from 'lucide-react'
 import { detectionsApi, Detection } from '../services/api'
 
 interface DetectionDetailModalProps {
@@ -169,6 +169,56 @@ export default function DetectionDetailModal({ detection, onClose }: DetectionDe
                 <p className="text-sm text-gray-600 bg-gray-50 rounded-lg p-3">
                   {detectionDetail.description}
                 </p>
+              </div>
+            )}
+
+            {/* Compliance Status (for Config rules) */}
+            {detectionDetail?.evaluation_summary?.type === 'config_compliance' && (
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold text-gray-700 mb-2">Compliance Status</h3>
+                <div className={`p-4 rounded-lg border ${
+                  detectionDetail.evaluation_summary.compliance_type === 'COMPLIANT'
+                    ? 'bg-green-50 border-green-200'
+                    : detectionDetail.evaluation_summary.compliance_type === 'NON_COMPLIANT'
+                    ? 'bg-red-50 border-red-200'
+                    : 'bg-gray-50 border-gray-200'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {detectionDetail.evaluation_summary.compliance_type === 'COMPLIANT' && (
+                        <CheckCircle className="h-5 w-5 text-green-600" />
+                      )}
+                      {detectionDetail.evaluation_summary.compliance_type === 'NON_COMPLIANT' && (
+                        <XCircle className="h-5 w-5 text-red-600" />
+                      )}
+                      {detectionDetail.evaluation_summary.compliance_type === 'INSUFFICIENT_DATA' && (
+                        <HelpCircle className="h-5 w-5 text-yellow-600" />
+                      )}
+                      <span className={`font-medium ${
+                        detectionDetail.evaluation_summary.compliance_type === 'COMPLIANT'
+                          ? 'text-green-800'
+                          : detectionDetail.evaluation_summary.compliance_type === 'NON_COMPLIANT'
+                          ? 'text-red-800'
+                          : 'text-gray-800'
+                      }`}>
+                        {detectionDetail.evaluation_summary.compliance_type === 'COMPLIANT' && 'All resources compliant'}
+                        {detectionDetail.evaluation_summary.compliance_type === 'NON_COMPLIANT' && 'Resources non-compliant'}
+                        {detectionDetail.evaluation_summary.compliance_type === 'NOT_APPLICABLE' && 'Not applicable'}
+                        {detectionDetail.evaluation_summary.compliance_type === 'INSUFFICIENT_DATA' && 'Insufficient data'}
+                      </span>
+                    </div>
+                    {(detectionDetail.evaluation_summary.non_compliant_count ?? 0) > 0 && (
+                      <span className="text-red-700 font-medium">
+                        {detectionDetail.evaluation_summary.non_compliant_count} resource{detectionDetail.evaluation_summary.non_compliant_count !== 1 ? 's' : ''} affected
+                      </span>
+                    )}
+                  </div>
+                  {detectionDetail.evaluation_summary.compliance_type === 'NON_COMPLIANT' && (
+                    <p className="mt-2 text-sm text-red-600">
+                      This Config rule is detecting non-compliant resources. Review and remediate the affected resources.
+                    </p>
+                  )}
+                </div>
               </div>
             )}
 

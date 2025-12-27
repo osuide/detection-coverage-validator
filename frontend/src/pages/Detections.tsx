@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
-import { Shield, Search, Filter, ChevronDown, Eye, Activity, Zap, CheckCircle, Lock, AlertTriangle } from 'lucide-react'
-import { detectionsApi, Detection } from '../services/api'
+import { Shield, Search, Filter, ChevronDown, Eye, Activity, Zap, CheckCircle, Lock, AlertTriangle, XCircle, HelpCircle } from 'lucide-react'
+import { detectionsApi, Detection, EvaluationSummary } from '../services/api'
 import { useState } from 'react'
 import DetectionDetailModal from '../components/DetectionDetailModal'
 
@@ -55,6 +55,98 @@ function DetectionTypeBadge({ type }: { type: string }) {
       {config.label}
     </span>
   )
+}
+
+/**
+ * Displays compliance/evaluation status for a detection.
+ * - Config Rules: Shows COMPLIANT/NON_COMPLIANT with resource count
+ * - CloudWatch Alarms: Shows alarm state (OK/ALARM)
+ * - Other types: No indicator shown
+ */
+function ComplianceIndicator({ evaluation }: { evaluation?: EvaluationSummary }) {
+  if (!evaluation) return <span className="text-gray-500 text-sm">-</span>
+
+  // Config rule compliance
+  if (evaluation.type === 'config_compliance') {
+    const { compliance_type, non_compliant_count } = evaluation
+
+    if (compliance_type === 'COMPLIANT') {
+      return (
+        <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-green-900/30 text-green-400">
+          <CheckCircle className="h-3 w-3 mr-1" />
+          Compliant
+        </span>
+      )
+    }
+
+    if (compliance_type === 'NON_COMPLIANT') {
+      return (
+        <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-red-900/30 text-red-400">
+          <XCircle className="h-3 w-3 mr-1" />
+          {non_compliant_count || 0} non-compliant
+        </span>
+      )
+    }
+
+    if (compliance_type === 'NOT_APPLICABLE') {
+      return (
+        <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-gray-700/30 text-gray-400">
+          N/A
+        </span>
+      )
+    }
+
+    // INSUFFICIENT_DATA
+    return (
+      <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-yellow-900/30 text-yellow-400">
+        <HelpCircle className="h-3 w-3 mr-1" />
+        No data
+      </span>
+    )
+  }
+
+  // Alarm state
+  if (evaluation.type === 'alarm_state') {
+    const { state } = evaluation
+
+    if (state === 'OK') {
+      return (
+        <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-green-900/30 text-green-400">
+          OK
+        </span>
+      )
+    }
+
+    if (state === 'ALARM') {
+      return (
+        <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-red-900/30 text-red-400">
+          <AlertTriangle className="h-3 w-3 mr-1" />
+          ALARM
+        </span>
+      )
+    }
+
+    return (
+      <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-gray-700/30 text-gray-400">
+        {state || 'Unknown'}
+      </span>
+    )
+  }
+
+  // EventBridge state
+  if (evaluation.type === 'eventbridge_state') {
+    return (
+      <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${
+        evaluation.state === 'ENABLED'
+          ? 'bg-green-900/30 text-green-400'
+          : 'bg-gray-700/30 text-gray-400'
+      }`}>
+        {evaluation.state || 'Unknown'}
+      </span>
+    )
+  }
+
+  return <span className="text-gray-500 text-sm">-</span>
 }
 
 export default function Detections() {
@@ -229,6 +321,9 @@ export default function Detections() {
                   <SortHeader field="detection_type">Type</SortHeader>
                   <SortHeader field="region">Region</SortHeader>
                   <SortHeader field="status">Status</SortHeader>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    Compliance
+                  </th>
                   <SortHeader field="mapping_count">Mappings</SortHeader>
                   <SortHeader field="discovered_at">Discovered</SortHeader>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
@@ -262,6 +357,9 @@ export default function Detections() {
                       }`}>
                         {detection.status}
                       </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <ComplianceIndicator evaluation={detection.evaluation_summary} />
                     </td>
                     <td className="px-6 py-4">
                       <span className={`text-sm ${

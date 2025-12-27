@@ -49,14 +49,22 @@ class ConfigRulesScanner(BaseScanner):
         client = self.session.client("config", region_name=region)
 
         try:
-            # List all Config Rules
+            # Step 1: Collect all Config Rules
+            rules = []
             paginator = client.get_paginator("describe_config_rules")
 
             for page in paginator.paginate():
                 for rule in page.get("ConfigRules", []):
-                    detection = self._parse_config_rule(rule, region)
-                    if detection:
-                        detections.append(detection)
+                    rules.append(rule)
+
+            # Step 2: Fetch compliance status for all rules (batched)
+            compliance_map = self._fetch_compliance_summary(client, rules)
+
+            # Step 3: Create detections with compliance data
+            for rule in rules:
+                detection = self._parse_config_rule(rule, region, compliance_map)
+                if detection:
+                    detections.append(detection)
 
         except ClientError as e:
             if e.response["Error"]["Code"] == "AccessDeniedException":
@@ -72,12 +80,87 @@ class ConfigRulesScanner(BaseScanner):
 
         return detections
 
+    def _fetch_compliance_summary(
+        self,
+        client: Any,
+        rules: list[dict],
+    ) -> dict[str, dict]:
+        """Fetch compliance summary for config rules.
+
+        Uses describe_compliance_by_config_rule API which returns:
+        - ComplianceType: COMPLIANT, NON_COMPLIANT, NOT_APPLICABLE, INSUFFICIENT_DATA
+        - ComplianceContributorCount: Number of non-compliant resources
+
+        Args:
+            client: boto3 config client
+            rules: List of config rule dicts
+
+        Returns:
+            Dict mapping rule_name -> compliance evaluation summary
+        """
+        compliance_map: dict[str, dict] = {}
+        rule_names = [r.get("ConfigRuleName") for r in rules if r.get("ConfigRuleName")]
+
+        if not rule_names:
+            return compliance_map
+
+        # Batch in groups of 25 (API limit)
+        for i in range(0, len(rule_names), 25):
+            batch = rule_names[i : i + 25]
+            try:
+                # Handle pagination for compliance results
+                next_token = None
+                while True:
+                    kwargs = {"ConfigRuleNames": batch}
+                    if next_token:
+                        kwargs["NextToken"] = next_token
+
+                    response = client.describe_compliance_by_config_rule(**kwargs)
+
+                    for item in response.get("ComplianceByConfigRules", []):
+                        rule_name = item.get("ConfigRuleName")
+                        compliance = item.get("Compliance", {})
+                        contributor_count = compliance.get(
+                            "ComplianceContributorCount", {}
+                        )
+
+                        compliance_map[rule_name] = {
+                            "type": "config_compliance",
+                            "compliance_type": compliance.get(
+                                "ComplianceType", "INSUFFICIENT_DATA"
+                            ),
+                            "non_compliant_count": contributor_count.get(
+                                "CappedCount", 0
+                            ),
+                            "cap_exceeded": contributor_count.get("CapExceeded", False),
+                        }
+
+                    next_token = response.get("NextToken")
+                    if not next_token:
+                        break
+
+            except ClientError as e:
+                self.logger.warning(
+                    "compliance_fetch_error",
+                    batch_size=len(batch),
+                    error=str(e),
+                )
+
+        return compliance_map
+
     def _parse_config_rule(
         self,
         rule: dict,
         region: str,
+        compliance_map: Optional[dict[str, dict]] = None,
     ) -> Optional[RawDetection]:
-        """Parse a Config Rule into a RawDetection."""
+        """Parse a Config Rule into a RawDetection.
+
+        Args:
+            rule: Config rule dict from AWS API
+            region: AWS region
+            compliance_map: Optional dict mapping rule_name -> compliance data
+        """
         rule_name = rule.get("ConfigRuleName", "")
         rule_arn = rule.get("ConfigRuleArn", "")
         rule_state = rule.get("ConfigRuleState", "ACTIVE")
@@ -105,6 +188,11 @@ class ConfigRulesScanner(BaseScanner):
         if not description and is_managed:
             description = self._get_managed_rule_description(source_identifier)
 
+        # Get compliance evaluation summary
+        evaluation_summary = None
+        if compliance_map:
+            evaluation_summary = compliance_map.get(rule_name)
+
         return RawDetection(
             name=rule_name,
             detection_type=DetectionType.CONFIG_RULE,
@@ -127,6 +215,7 @@ class ConfigRulesScanner(BaseScanner):
             description=description,
             is_managed=is_managed,
             target_services=target_services or None,
+            evaluation_summary=evaluation_summary,
         )
 
     def _get_managed_rule_description(self, source_identifier: str) -> str:

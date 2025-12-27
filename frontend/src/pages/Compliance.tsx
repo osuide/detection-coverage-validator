@@ -5,8 +5,8 @@
  * URL params preserve modal state for proper back navigation.
  */
 
-import { useSearchParams } from 'react-router-dom'
-import { BarChart3 } from 'lucide-react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { BarChart3, History } from 'lucide-react'
 import { ComplianceCoverageContent } from '../components/compliance'
 import { useSelectedAccount } from '../hooks/useSelectedAccount'
 
@@ -43,6 +43,23 @@ export default function Compliance() {
 
   return (
     <div className="bg-gray-900 -mx-6 -mb-6 px-6 py-6 rounded-b-lg min-h-[600px]">
+      {/* Header with History Link */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Compliance Coverage</h1>
+          <p className="text-gray-400 mt-1">
+            Framework coverage analysis for {selectedAccount.name}
+          </p>
+        </div>
+        <Link
+          to="/compliance/history"
+          className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+        >
+          <History className="h-4 w-4" />
+          View History
+        </Link>
+      </div>
+
       <ComplianceCoverageContent
         accountId={selectedAccount.id}
         initialModalState={initialModalState}

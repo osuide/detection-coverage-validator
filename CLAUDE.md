@@ -180,6 +180,26 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
 - All API endpoints should be documented with OpenAPI schemas
 - Tests should be placed adjacent to the code they test
 
+## Database & Migrations
+
+**Migrations run automatically on application startup.**
+
+The `run_migrations()` function in `backend/app/main.py` (lines 113-136) automatically runs `alembic upgrade head` when the application starts. This means:
+
+- No manual `alembic upgrade head` command is needed
+- Deploy new code and migrations apply on restart
+- In development, restart the FastAPI server to apply migrations
+- Migration files are in `backend/alembic/versions/`
+
+```python
+# From main.py - migrations run on startup
+def run_migrations():
+    from alembic import command
+    from alembic.config import Config
+    alembic_cfg = Config(str(BASE_DIR / "alembic.ini"))
+    command.upgrade(alembic_cfg, "head")
+```
+
 ## RBAC (Role-Based Access Control)
 
 **IMPORTANT: `require_role()` uses exact match, NOT hierarchical.**

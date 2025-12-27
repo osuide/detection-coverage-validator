@@ -217,6 +217,23 @@ class CloudWatchMetricAlarmScanner(BaseScanner):
 
     def _parse_alarm(self, alarm: dict, region: str) -> Optional[RawDetection]:
         """Parse a CloudWatch alarm."""
+        # Extract evaluation summary from alarm state
+        # StateValue can be: OK, ALARM, INSUFFICIENT_DATA
+        state_value = alarm.get("StateValue", "INSUFFICIENT_DATA")
+        state_reason = alarm.get("StateReason")
+        state_updated = alarm.get("StateUpdatedTimestamp")
+
+        evaluation_summary = {
+            "type": "alarm_state",
+            "state": state_value,
+            "state_reason": state_reason,
+            "state_updated_at": (
+                state_updated.isoformat()
+                if hasattr(state_updated, "isoformat")
+                else state_updated
+            ),
+        }
+
         # Serialize datetime objects in raw_config for JSON storage
         serialized_alarm = _serialize_for_json(alarm)
         return RawDetection(
@@ -226,4 +243,5 @@ class CloudWatchMetricAlarmScanner(BaseScanner):
             region=region,
             raw_config=serialized_alarm,
             description=alarm.get("AlarmDescription"),
+            evaluation_summary=evaluation_summary,
         )

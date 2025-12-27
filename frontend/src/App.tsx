@@ -21,6 +21,7 @@ import AuthCallback from './pages/AuthCallback'
 import OrgSecurity from './pages/OrgSecurity'
 import Billing from './pages/Billing'
 import AcknowledgedGapsReview from './pages/AcknowledgedGapsReview'
+import ComplianceHistory from './pages/ComplianceHistory'
 import Landing from './pages/Landing'
 
 // Organisation pages
@@ -116,6 +117,7 @@ function App() {
                   <Route path="/detections" element={<Detections />} />
                   <Route path="/coverage" element={<Coverage />} />
                   <Route path="/compliance" element={<Compliance />} />
+                  <Route path="/compliance/history" element={<ComplianceHistory />} />
                   <Route path="/gaps" element={<Gaps />} />
                   <Route path="/techniques/:techniqueId" element={<TechniqueDetail />} />
                   <Route path="/reports" element={<Reports />} />

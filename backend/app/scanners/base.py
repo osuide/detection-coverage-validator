@@ -30,6 +30,11 @@ class RawDetection:
     # Service awareness - which cloud services this detection monitors
     target_services: Optional[list[str]] = None  # e.g., ["S3", "RDS", "DynamoDB"]
 
+    # Evaluation/compliance data (type-specific)
+    # For Config Rules: {"type": "config_compliance", "compliance_type": "NON_COMPLIANT", ...}
+    # For CloudWatch Alarms: {"type": "alarm_state", "state": "ALARM", ...}
+    evaluation_summary: Optional[dict[str, Any]] = None
+
     # Metadata
     is_managed: bool = False
     discovered_at: datetime = field(default_factory=datetime.utcnow)

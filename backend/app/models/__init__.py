@@ -70,6 +70,13 @@ from app.models.mitre_threat import (
     RelatedType,
     SoftwareType,
 )
+from app.models.detection_evaluation_history import (
+    DetectionEvaluationHistory,
+    DetectionEvaluationDailySummary,
+    DetectionEvaluationAlert,
+    EvaluationType,
+    EvaluationAlertSeverity,
+)
 
 __all__ = [
     # Cloud accounts
@@ -146,4 +153,10 @@ __all__ = [
     "SyncTriggerType",
     "RelatedType",
     "SoftwareType",
+    # Detection Evaluation History
+    "DetectionEvaluationHistory",
+    "DetectionEvaluationDailySummary",
+    "DetectionEvaluationAlert",
+    "EvaluationType",
+    "EvaluationAlertSeverity",
 ]

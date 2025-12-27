@@ -170,6 +170,15 @@ class Detection(Base):
         JSONB, nullable=True, default=list
     )  # e.g., ["S3", "RDS", "DynamoDB"] - normalised service names
 
+    # Evaluation/compliance summary (type-specific)
+    # For Config Rules: {"type": "config_compliance", "compliance_type": "NON_COMPLIANT", ...}
+    # For CloudWatch Alarms: {"type": "alarm_state", "state": "ALARM", ...}
+    # For EventBridge Rules: {"type": "eventbridge_state", "state": "ENABLED", ...}
+    evaluation_summary: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    evaluation_updated_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     # Health metrics (Phase 3)
     last_triggered_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True

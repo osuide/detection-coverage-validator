@@ -17,6 +17,7 @@ from app.models.scan import Scan, ScanStatus
 from app.models.cloud_account import CloudAccount
 from app.services.scan_service import ScanService
 from app.services.scan_limit_service import ScanLimitService
+from app.services.evaluation_history_service import calculate_daily_summary
 
 logger = structlog.get_logger()
 settings = get_settings()
@@ -66,6 +67,9 @@ class SchedulerService:
 
         # Load MITRE sync schedule from platform settings
         await self._load_mitre_schedule()
+
+        # Load daily compliance summary calculation job
+        await self._load_daily_summary_schedule()
 
         # Start the scheduler FIRST, then update next_run_times
         self._scheduler.start()
@@ -428,6 +432,113 @@ class SchedulerService:
     def get_mitre_sync_job_status(self) -> Optional[dict]:
         """Get the status of the MITRE sync scheduled job."""
         job = self._scheduler.get_job(self.MITRE_SYNC_JOB_ID)
+        if job:
+            return {
+                "job_id": job.id,
+                "name": getattr(job, "name", None),
+                "next_run_time": self._get_job_next_run_time(job),
+                "pending": getattr(job, "pending", False),
+            }
+        return None
+
+    # ============ Daily Compliance Summary Calculation ============
+
+    DAILY_SUMMARY_JOB_ID = "evaluation_daily_summary"
+
+    async def _load_daily_summary_schedule(self) -> None:
+        """Load the daily summary calculation job.
+
+        Runs daily at 02:00 UTC to calculate summaries for the previous day.
+        """
+        # Remove existing job if present
+        if self._scheduler.get_job(self.DAILY_SUMMARY_JOB_ID):
+            self._scheduler.remove_job(self.DAILY_SUMMARY_JOB_ID)
+
+        # Run at 02:00 UTC daily (after midnight to ensure full day data)
+        trigger = CronTrigger(
+            hour=2,
+            minute=0,
+            timezone="UTC",
+        )
+
+        self._scheduler.add_job(
+            self._execute_daily_summary_calculation,
+            trigger=trigger,
+            id=self.DAILY_SUMMARY_JOB_ID,
+            name="Daily Compliance Summary Calculation",
+        )
+
+        job = self._scheduler.get_job(self.DAILY_SUMMARY_JOB_ID)
+        next_run = self._get_job_next_run_time(job)
+
+        self.logger.info(
+            "daily_summary_schedule_loaded",
+            next_run=str(next_run) if next_run else None,
+        )
+
+    async def _execute_daily_summary_calculation(self) -> None:
+        """Execute daily summary calculation for all accounts.
+
+        Calculates summaries for yesterday across all cloud accounts
+        that have evaluation history data.
+        """
+        from datetime import date, timedelta
+        from sqlalchemy import distinct
+
+        self.logger.info("starting_daily_summary_calculation")
+
+        summary_date = date.today() - timedelta(days=1)
+
+        async with self._session_factory() as session:
+            try:
+                # Get all distinct cloud account IDs with evaluation history
+                from app.models.detection_evaluation_history import (
+                    DetectionEvaluationHistory,
+                )
+
+                result = await session.execute(
+                    select(distinct(DetectionEvaluationHistory.cloud_account_id))
+                )
+                account_ids = [row[0] for row in result.all()]
+
+                if not account_ids:
+                    self.logger.info("no_accounts_with_evaluation_history")
+                    return
+
+                # Calculate summary for each account
+                success_count = 0
+                error_count = 0
+
+                for account_id in account_ids:
+                    try:
+                        await calculate_daily_summary(session, account_id, summary_date)
+                        success_count += 1
+                    except Exception as e:
+                        self.logger.warning(
+                            "account_summary_calculation_failed",
+                            cloud_account_id=str(account_id),
+                            error=str(e),
+                        )
+                        error_count += 1
+
+                await session.commit()
+
+                self.logger.info(
+                    "daily_summary_calculation_complete",
+                    summary_date=summary_date.isoformat(),
+                    accounts_processed=success_count,
+                    accounts_failed=error_count,
+                )
+
+            except Exception as e:
+                self.logger.exception(
+                    "daily_summary_calculation_failed",
+                    error=str(e),
+                )
+
+    def get_daily_summary_job_status(self) -> Optional[dict]:
+        """Get the status of the daily summary scheduled job."""
+        job = self._scheduler.get_job(self.DAILY_SUMMARY_JOB_ID)
         if job:
             return {
                 "job_id": job.id,

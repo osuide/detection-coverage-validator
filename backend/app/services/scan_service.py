@@ -31,6 +31,10 @@ from app.mappers.pattern_mapper import PatternMapper
 from app.services.coverage_service import CoverageService
 from app.services.drift_detection_service import DriftDetectionService
 from app.services.notification_service import trigger_scan_alerts
+from app.services.evaluation_history_service import (
+    record_batch_evaluation_snapshots,
+    create_state_change_alert,
+)
 from app.services.aws_credential_service import aws_credential_service
 from app.services.region_discovery_service import region_discovery_service
 from app.core.service_registry import get_all_regions, get_default_regions
@@ -190,6 +194,56 @@ class ScanService:
                     "drift_detection_failed",
                     scan_id=str(scan_id),
                     error=str(drift_error),
+                )
+
+            # Record evaluation history for compliance tracking
+            try:
+                # Get all detections with evaluation data for this account
+                detections_result = await self.db.execute(
+                    select(Detection).where(
+                        Detection.cloud_account_id == account.id,
+                        Detection.evaluation_summary.isnot(None),
+                    )
+                )
+                detections_with_eval = detections_result.scalars().all()
+
+                if detections_with_eval:
+                    history_records = await record_batch_evaluation_snapshots(
+                        self.db, detections_with_eval, scan.id
+                    )
+
+                    # Create alerts for state changes
+                    for record in history_records:
+                        if record.state_changed:
+                            detection = next(
+                                (
+                                    d
+                                    for d in detections_with_eval
+                                    if d.id == record.detection_id
+                                ),
+                                None,
+                            )
+                            if detection:
+                                await create_state_change_alert(
+                                    self.db,
+                                    account.organization_id,
+                                    record,
+                                    detection,
+                                )
+
+                    self.logger.info(
+                        "evaluation_history_recorded",
+                        scan_id=str(scan_id),
+                        records_created=len(history_records),
+                        state_changes=sum(
+                            1 for r in history_records if r.state_changed
+                        ),
+                    )
+            except Exception as eval_history_error:
+                self.logger.warning(
+                    "evaluation_history_failed",
+                    scan_id=str(scan_id),
+                    error=str(eval_history_error),
                 )
 
             # Trigger alerts based on scan results
@@ -602,8 +656,12 @@ class ScanService:
                 detection.log_groups = raw.log_groups
                 detection.description = raw.description
                 detection.target_services = raw.target_services
-                detection.status = DetectionStatus.ACTIVE
+                detection.status = self._determine_detection_status(raw)
                 detection.updated_at = datetime.now(timezone.utc)
+                # Update evaluation summary if provided
+                if raw.evaluation_summary:
+                    detection.evaluation_summary = raw.evaluation_summary
+                    detection.evaluation_updated_at = datetime.now(timezone.utc)
                 stats["updated"] += 1
             else:
                 # Create new
@@ -612,7 +670,7 @@ class ScanService:
                     cloud_account_id=cloud_account_id,
                     name=raw.name,
                     detection_type=raw.detection_type,
-                    status=DetectionStatus.ACTIVE,
+                    status=self._determine_detection_status(raw),
                     source_arn=raw.source_arn,
                     region=raw.region,
                     raw_config=_serialize_for_jsonb(raw.raw_config),
@@ -623,12 +681,39 @@ class ScanService:
                     is_managed=raw.is_managed,
                     discovered_at=raw.discovered_at,
                     target_services=raw.target_services,
+                    evaluation_summary=raw.evaluation_summary,
+                    evaluation_updated_at=(
+                        datetime.now(timezone.utc) if raw.evaluation_summary else None
+                    ),
                 )
                 self.db.add(detection)
                 stats["new"] += 1
 
         await self.db.flush()
         return stats
+
+    def _determine_detection_status(self, raw: RawDetection) -> DetectionStatus:
+        """Determine detection status based on raw config and evaluation data.
+
+        For Config Rules: Check rule_state (ACTIVE, DELETING, etc.)
+        For EventBridge Rules: Check state (ENABLED, DISABLED)
+        For CloudWatch Alarms: Always ACTIVE if exists
+        """
+        from app.models.detection import DetectionType
+
+        # For Config Rules, check if rule is in an active state
+        if raw.detection_type == DetectionType.CONFIG_RULE:
+            rule_state = raw.raw_config.get("rule_state", "ACTIVE")
+            if rule_state not in ("ACTIVE", "EVALUATING"):
+                return DetectionStatus.DISABLED
+
+        # For EventBridge Rules, check state
+        if raw.detection_type == DetectionType.EVENTBRIDGE_RULE:
+            state = raw.raw_config.get("State", "ENABLED")
+            if state != "ENABLED":
+                return DetectionStatus.DISABLED
+
+        return DetectionStatus.ACTIVE
 
     async def _cleanup_duplicate_detections(self, cloud_account_id: UUID) -> None:
         """Remove duplicate detections keeping only the oldest one per source_arn."""
