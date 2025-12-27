@@ -281,9 +281,16 @@ AWS_IAM_POLICY = {
             "Sid": "A13ESecurityHubAccess",
             "Effect": "Allow",
             "Action": [
+                # Core Security Hub APIs
                 "securityhub:DescribeHub",
                 "securityhub:GetEnabledStandards",
+                "securityhub:GetInsights",
+                # Legacy standards-based API (for backward compatibility)
                 "securityhub:DescribeStandardsControls",
+                # New CSPM consolidated controls APIs
+                "securityhub:ListSecurityControlDefinitions",
+                "securityhub:BatchGetSecurityControls",
+                "securityhub:ListStandardsControlAssociations",
             ],
             "Resource": "*",
         },
@@ -403,9 +410,29 @@ AWS_REQUIRED_PERMISSIONS = [
         "purpose": "List enabled compliance standards",
     },
     {
+        "action": "securityhub:GetInsights",
+        "service": "Security Hub",
+        "purpose": "List Security Hub insights",
+    },
+    {
         "action": "securityhub:DescribeStandardsControls",
         "service": "Security Hub",
-        "purpose": "Get control details",
+        "purpose": "Get control details (legacy API)",
+    },
+    {
+        "action": "securityhub:ListSecurityControlDefinitions",
+        "service": "Security Hub CSPM",
+        "purpose": "List all security control definitions",
+    },
+    {
+        "action": "securityhub:BatchGetSecurityControls",
+        "service": "Security Hub CSPM",
+        "purpose": "Get control details and status",
+    },
+    {
+        "action": "securityhub:ListStandardsControlAssociations",
+        "service": "Security Hub CSPM",
+        "purpose": "Check control enablement per standard",
     },
     # Config
     {
