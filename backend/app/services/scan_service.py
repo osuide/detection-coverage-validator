@@ -21,7 +21,10 @@ from app.models.detection import Detection, DetectionStatus
 from app.analyzers.security_function_classifier import classify_detection
 from app.models.mapping import DetectionMapping, MappingSource
 from app.models.scan import Scan, ScanStatus
-from app.scanners.aws.cloudwatch_scanner import CloudWatchLogsInsightsScanner
+from app.scanners.aws.cloudwatch_scanner import (
+    CloudWatchLogsInsightsScanner,
+    CloudWatchMetricAlarmScanner,
+)
 from app.scanners.aws.eventbridge_scanner import EventBridgeScanner
 from app.scanners.aws.guardduty_scanner import GuardDutyScanner
 from app.scanners.aws.config_scanner import ConfigRulesScanner
@@ -571,9 +574,8 @@ class ScanService:
         scanners: list[BaseScanner] = []
         if not detection_types or "cloudwatch_logs_insights" in detection_types:
             scanners.append(CloudWatchLogsInsightsScanner(session))
-        # CloudWatch Alarms scanner disabled until database migration is run
-        # if not detection_types or "cloudwatch_alarm" in detection_types:
-        #     scanners.append(CloudWatchMetricAlarmScanner(session))
+        if not detection_types or "cloudwatch_alarm" in detection_types:
+            scanners.append(CloudWatchMetricAlarmScanner(session))
         if not detection_types or "eventbridge_rule" in detection_types:
             scanners.append(EventBridgeScanner(session))
         if not detection_types or "guardduty_finding" in detection_types:
