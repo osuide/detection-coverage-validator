@@ -123,7 +123,7 @@ export function registrationResponseToJSON(
     response: {
       clientDataJSON: bufferToBase64url(response.clientDataJSON),
       attestationObject: bufferToBase64url(response.attestationObject),
-      transports: response.getTransports?.() || [],
+      transports: (response.getTransports?.() || []) as AuthenticatorTransport[],
     },
     clientExtensionResults: credential.getClientExtensionResults(),
   }
