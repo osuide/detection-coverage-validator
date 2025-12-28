@@ -42,6 +42,7 @@ from app.api.routes import (
     techniques,
     gaps,
     evaluation_history,
+    webauthn,
 )
 from app.api.routes.admin import router as admin_router
 from app.api.v1.public import router as public_api_router
@@ -608,6 +609,7 @@ app.add_middleware(RequestIDMiddleware)
 # Include routers
 app.include_router(health.router, tags=["Health"])
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
+app.include_router(webauthn.router, prefix="/api/v1/auth", tags=["WebAuthn"])
 app.include_router(accounts.router, prefix="/api/v1/accounts", tags=["Cloud Accounts"])
 app.include_router(scans.router, prefix="/api/v1/scans", tags=["Scans"])
 app.include_router(detections.router, prefix="/api/v1/detections", tags=["Detections"])
