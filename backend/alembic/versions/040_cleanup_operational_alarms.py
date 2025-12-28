@@ -29,7 +29,7 @@ def upgrade() -> None:
         sa.text(
             """
             SELECT id FROM detections
-            WHERE detection_type = 'cloudwatch_alarm'
+            WHERE detection_type::text = 'cloudwatch_alarm'
             AND (
                 description LIKE '%DO NOT EDIT OR DELETE%'
                 OR description LIKE '%TargetTrackingScaling%'
