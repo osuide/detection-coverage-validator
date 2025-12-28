@@ -30,29 +30,80 @@ def _chunk_list(items: list, chunk_size: int) -> list[list]:
     return [items[i : i + chunk_size] for i in range(0, len(items), chunk_size)]
 
 
-# Standard ARN patterns for grouping
+# Standard ARN patterns for matching and grouping
+# ARN format: arn:aws:securityhub:{region}::standards/{standard-name}/v/{version}
+# or legacy: arn:aws:securityhub:::ruleset/{standard-name}/v/{version}
 STANDARD_PATTERNS = {
     "aws-foundational-security-best-practices": {
         "id": "fsbp",
         "name": "AWS-Foundational-Best-Practices",
         "description": "AWS Foundational Security Best Practices - checks for security best practices across AWS services",
+        "arn_patterns": [
+            "standards/aws-foundational-security-best-practices",
+        ],
     },
     "cis-aws-foundations-benchmark": {
         "id": "cis",
         "name": "CIS-AWS-Foundations",
         "description": "CIS AWS Foundations Benchmark - industry best practice security configuration baseline",
+        "arn_patterns": [
+            "standards/cis-aws-foundations-benchmark",
+            "ruleset/cis-aws-foundations-benchmark",  # Legacy format
+        ],
     },
     "pci-dss": {
         "id": "pci",
         "name": "PCI-DSS",
         "description": "PCI DSS - Payment Card Industry Data Security Standard compliance checks",
+        "arn_patterns": [
+            "standards/pci-dss",
+        ],
     },
     "nist-800-53": {
         "id": "nist",
         "name": "NIST-800-53",
         "description": "NIST 800-53 - Security and privacy controls for federal information systems",
+        "arn_patterns": [
+            "standards/nist-800-53",
+        ],
+    },
+    "nist-800-171": {
+        "id": "nist171",
+        "name": "NIST-800-171",
+        "description": "NIST 800-171 - Protecting Controlled Unclassified Information in non-federal systems",
+        "arn_patterns": [
+            "standards/nist-800-171",
+        ],
+    },
+    "aws-resource-tagging-standard": {
+        "id": "tagging",
+        "name": "AWS-Resource-Tagging",
+        "description": "AWS Resource Tagging Standard - ensures resources are properly tagged",
+        "arn_patterns": [
+            "standards/aws-resource-tagging-standard",
+        ],
     },
 }
+
+
+def _get_standard_id_from_arn(standards_arn: str) -> Optional[str]:
+    """Extract standard ID from a standards ARN.
+
+    Args:
+        standards_arn: The ARN like 'arn:aws:securityhub:us-east-1::standards/nist-800-53/v/5.0.0'
+
+    Returns:
+        Standard ID (e.g., 'fsbp', 'cis', 'nist') or None if not recognised
+    """
+    if not standards_arn:
+        return None
+
+    for standard_key, info in STANDARD_PATTERNS.items():
+        for pattern in info.get("arn_patterns", []):
+            if pattern in standards_arn:
+                return info["id"]
+
+    return None
 
 
 class SecurityHubScanner(BaseScanner):
@@ -183,74 +234,116 @@ class SecurityHubScanner(BaseScanner):
 
         return all_detections
 
+    def _get_all_control_associations(
+        self,
+        client: Any,
+        control_ids: list[str],
+    ) -> dict[str, list[str]]:
+        """Get standard associations for all controls.
+
+        Calls list_standards_control_associations for each control to determine
+        which standards it belongs to. A single control can belong to multiple
+        standards (e.g., S3.1 may be in FSBP, CIS, NIST, and PCI).
+
+        Args:
+            client: SecurityHub boto3 client
+            control_ids: List of control IDs to look up
+
+        Returns:
+            Dict of control_id -> list of standard_ids (e.g., {"S3.1": ["fsbp", "cis", "nist"]})
+        """
+        control_to_standards: dict[str, list[str]] = {}
+        total = len(control_ids)
+
+        self.logger.info(
+            "fetching_control_associations",
+            total_controls=total,
+            message="Fetching standard associations for controls...",
+        )
+
+        for i, control_id in enumerate(control_ids):
+            if i > 0 and i % 100 == 0:
+                self.logger.debug(
+                    "control_associations_progress",
+                    processed=i,
+                    total=total,
+                    percent=round(i / total * 100),
+                )
+
+            associations = self._get_control_associations(client, control_id)
+            standards = []
+
+            for assoc in associations:
+                standards_arn = assoc.get("standards_arn", "")
+                standard_id = _get_standard_id_from_arn(standards_arn)
+                if standard_id and standard_id not in standards:
+                    standards.append(standard_id)
+
+            control_to_standards[control_id] = standards
+
+        self.logger.info(
+            "control_associations_complete",
+            total_controls=total,
+            controls_with_associations=sum(
+                1 for s in control_to_standards.values() if s
+            ),
+        )
+
+        return control_to_standards
+
     def _group_controls_by_standard(
         self,
         cspm_control_data: dict[str, dict],
+        control_associations: dict[str, list[str]],
     ) -> dict[str, dict[str, dict]]:
-        """Group CSPM controls by their associated security standard.
+        """Group CSPM controls by their actual security standard associations.
 
-        AWS CSPM (introduced 2023) uses STANDARD-AGNOSTIC control IDs. The same
-        control ID (e.g., S3.1) is shared across all standards (FSBP, CIS, NIST,
-        PCI). We group all service-prefixed controls under FSBP as it's the most
-        comprehensive standard and the controls are evaluated identically.
-
-        Pattern matching:
-        - Service.N (e.g., S3.1, IAM.1, EC2.18) -> FSBP (primary)
-        - PCI.Service.N (e.g., PCI.IAM.1) -> PCI (legacy format, rare)
-        - N.N (e.g., 1.1, 2.3) -> CIS (legacy format, rare)
-
-        Note: The legacy numeric CIS format (1.1, 2.3) and PCI.* format are from
-        the pre-CSPM API. Modern CSPM uses service-based IDs for all standards.
+        Uses the real associations from the AWS API to group controls. A single
+        control (e.g., S3.1) can appear in multiple standards (FSBP, CIS, NIST,
+        PCI) if it's associated with all of them.
 
         Args:
             cspm_control_data: Dict of control_id -> control data
+            control_associations: Dict of control_id -> list of standard_ids
 
         Returns:
             Dict of standard_id -> {control_id -> control_data}
-            Standard IDs are: 'fsbp', 'cis', 'pci', 'nist', 'other'
+            Standard IDs are: 'fsbp', 'cis', 'pci', 'nist', 'nist171', 'tagging', 'other'
         """
+        # Initialise all known standard buckets
         grouped: dict[str, dict[str, dict]] = {
-            "fsbp": {},
-            "cis": {},
-            "pci": {},
-            "nist": {},
-            "other": {},  # Controls with unrecognised prefixes - should be empty!
+            info["id"]: {} for info in STANDARD_PATTERNS.values()
         }
-
-        # Track sample control IDs for debugging
-        sample_controls = list(cspm_control_data.keys())[:10]
-        self.logger.debug(
-            "grouping_controls_sample",
-            sample_control_ids=sample_controls,
-            total_controls=len(cspm_control_data),
-        )
+        grouped["other"] = {}  # Controls with no recognised associations
 
         for control_id, control_data in cspm_control_data.items():
-            # Infer standard from control ID prefix
-            inferred_standard = self._infer_standard_from_control_id(control_id)
-            if inferred_standard:
-                grouped[inferred_standard][control_id] = control_data
+            standards = control_associations.get(control_id, [])
+
+            if standards:
+                # Add control to each standard it belongs to
+                for standard_id in standards:
+                    if standard_id in grouped:
+                        grouped[standard_id][control_id] = control_data
             else:
+                # No associations found - put in 'other'
                 grouped["other"][control_id] = control_data
 
         # Log grouping results
+        standard_counts = {k: len(v) for k, v in grouped.items() if v}
         self.logger.info(
             "controls_grouped_by_standard",
-            fsbp_count=len(grouped["fsbp"]),
-            cis_count=len(grouped["cis"]),
-            pci_count=len(grouped["pci"]),
-            nist_count=len(grouped["nist"]),
-            other_count=len(grouped["other"]),
+            standard_counts=standard_counts,
+            total_standards=len([k for k, v in grouped.items() if v]),
         )
 
-        # Warn if any controls fell to 'other' - indicates missing service prefix
+        # Warn if any controls have no associations
         if grouped["other"]:
             other_ids = list(grouped["other"].keys())[:10]
             self.logger.warning(
-                "unrecognised_control_prefixes",
-                message="Controls with unrecognised prefixes found - update service_prefixes set",
+                "controls_without_associations",
+                message="Controls with no standard associations found",
                 sample_control_ids=other_ids,
-                total_unrecognised=len(grouped["other"]),
+                total_unassociated=len(grouped["other"]),
             )
 
         # Remove empty standard groups
@@ -404,6 +497,10 @@ class SecurityHubScanner(BaseScanner):
     ) -> list[RawDetection]:
         """Create one RawDetection per security standard with aggregated controls.
 
+        Fetches actual standard associations from AWS to properly categorise
+        controls. A single control (e.g., S3.1) can appear in multiple standards
+        (FSBP, CIS, NIST, PCI) if it's associated with all of them.
+
         Args:
             cspm_control_data: Dict of control_id -> control data
             client: SecurityHub boto3 client
@@ -414,8 +511,14 @@ class SecurityHubScanner(BaseScanner):
         """
         detections = []
 
-        # Group controls by standard
-        grouped_controls = self._group_controls_by_standard(cspm_control_data)
+        # Fetch actual standard associations for all controls
+        control_ids = list(cspm_control_data.keys())
+        control_associations = self._get_all_control_associations(client, control_ids)
+
+        # Group controls by their actual standard associations
+        grouped_controls = self._group_controls_by_standard(
+            cspm_control_data, control_associations
+        )
 
         for standard_id, controls in grouped_controls.items():
             if not controls:

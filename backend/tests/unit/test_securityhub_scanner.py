@@ -410,3 +410,179 @@ class TestServicePrefixCoverage:
             assert (
                 result == "fsbp"
             ), f"Control ID '{control_id}' should map to 'fsbp', got '{result}'"
+
+
+class TestStandardArnParsing:
+    """Tests for parsing standard ARNs to standard IDs."""
+
+    @pytest.mark.parametrize(
+        "standards_arn,expected_standard_id",
+        [
+            # FSBP
+            (
+                "arn:aws:securityhub:us-east-1::standards/aws-foundational-security-best-practices/v/1.0.0",
+                "fsbp",
+            ),
+            (
+                "arn:aws:securityhub:eu-west-2::standards/aws-foundational-security-best-practices/v/1.0.0",
+                "fsbp",
+            ),
+            # CIS (modern format)
+            (
+                "arn:aws:securityhub:us-east-1::standards/cis-aws-foundations-benchmark/v/1.4.0",
+                "cis",
+            ),
+            (
+                "arn:aws:securityhub:us-east-1::standards/cis-aws-foundations-benchmark/v/3.0.0",
+                "cis",
+            ),
+            # CIS (legacy ruleset format)
+            (
+                "arn:aws:securityhub:::ruleset/cis-aws-foundations-benchmark/v/1.2.0",
+                "cis",
+            ),
+            # NIST 800-53
+            (
+                "arn:aws:securityhub:us-east-1::standards/nist-800-53/v/5.0.0",
+                "nist",
+            ),
+            # NIST 800-171
+            (
+                "arn:aws:securityhub:us-east-1::standards/nist-800-171/v/2.0.0",
+                "nist171",
+            ),
+            # PCI DSS
+            (
+                "arn:aws:securityhub:us-east-1::standards/pci-dss/v/3.2.1",
+                "pci",
+            ),
+            # AWS Resource Tagging
+            (
+                "arn:aws:securityhub:us-east-1::standards/aws-resource-tagging-standard/v/1.0.0",
+                "tagging",
+            ),
+            # Unknown standard
+            (
+                "arn:aws:securityhub:us-east-1::standards/unknown-standard/v/1.0.0",
+                None,
+            ),
+            # Empty ARN
+            ("", None),
+        ],
+    )
+    def test_get_standard_id_from_arn(self, standards_arn, expected_standard_id):
+        """Test that standard ARNs are correctly parsed to standard IDs."""
+        from app.scanners.aws.securityhub_scanner import _get_standard_id_from_arn
+
+        result = _get_standard_id_from_arn(standards_arn)
+        assert result == expected_standard_id, (
+            f"ARN '{standards_arn}' should map to '{expected_standard_id}', "
+            f"but got '{result}'"
+        )
+
+
+class TestAssociationBasedGrouping:
+    """Tests for the new association-based control grouping."""
+
+    @pytest.fixture
+    def scanner_with_logger(self):
+        """Create a scanner instance with a mock logger."""
+        from unittest.mock import MagicMock
+
+        from app.scanners.aws.securityhub_scanner import SecurityHubScanner
+
+        scanner = SecurityHubScanner.__new__(SecurityHubScanner)
+        scanner.logger = MagicMock()
+        return scanner
+
+    def test_group_controls_by_actual_associations(self, scanner_with_logger):
+        """Test that controls are grouped by their actual standard associations."""
+        scanner = scanner_with_logger
+
+        # Sample control data
+        cspm_control_data = {
+            "S3.1": {"control_id": "S3.1", "title": "S3 control 1"},
+            "IAM.1": {"control_id": "IAM.1", "title": "IAM control 1"},
+            "EC2.1": {"control_id": "EC2.1", "title": "EC2 control 1"},
+        }
+
+        # Sample associations - S3.1 is in FSBP and CIS, IAM.1 is in FSBP only
+        control_associations = {
+            "S3.1": ["fsbp", "cis", "nist"],
+            "IAM.1": ["fsbp"],
+            "EC2.1": ["fsbp", "cis"],
+        }
+
+        result = scanner._group_controls_by_standard(
+            cspm_control_data, control_associations
+        )
+
+        # FSBP should have all 3 controls
+        assert "fsbp" in result
+        assert len(result["fsbp"]) == 3
+
+        # CIS should have S3.1 and EC2.1
+        assert "cis" in result
+        assert len(result["cis"]) == 2
+        assert "S3.1" in result["cis"]
+        assert "EC2.1" in result["cis"]
+
+        # NIST should have S3.1 only
+        assert "nist" in result
+        assert len(result["nist"]) == 1
+        assert "S3.1" in result["nist"]
+
+    def test_control_in_multiple_standards(self, scanner_with_logger):
+        """Test that a control can appear in multiple standards."""
+        scanner = scanner_with_logger
+
+        cspm_control_data = {
+            "S3.1": {"control_id": "S3.1", "title": "S3 control 1"},
+        }
+
+        # S3.1 is in all major standards
+        control_associations = {
+            "S3.1": ["fsbp", "cis", "nist", "pci"],
+        }
+
+        result = scanner._group_controls_by_standard(
+            cspm_control_data, control_associations
+        )
+
+        # S3.1 should appear in all 4 standards
+        assert "S3.1" in result.get("fsbp", {})
+        assert "S3.1" in result.get("cis", {})
+        assert "S3.1" in result.get("nist", {})
+        assert "S3.1" in result.get("pci", {})
+
+    def test_control_with_no_associations_goes_to_other(self, scanner_with_logger):
+        """Test that controls with no associations go to 'other' bucket."""
+        scanner = scanner_with_logger
+
+        cspm_control_data = {
+            "S3.1": {"control_id": "S3.1", "title": "S3 control 1"},
+            "Unknown.1": {"control_id": "Unknown.1", "title": "Unknown control"},
+        }
+
+        # Unknown.1 has no associations
+        control_associations = {
+            "S3.1": ["fsbp"],
+            "Unknown.1": [],
+        }
+
+        result = scanner._group_controls_by_standard(
+            cspm_control_data, control_associations
+        )
+
+        # Unknown.1 should be in 'other'
+        assert "other" in result
+        assert "Unknown.1" in result["other"]
+
+    def test_empty_controls_returns_empty_result(self, scanner_with_logger):
+        """Test that empty controls dict returns empty result."""
+        scanner = scanner_with_logger
+
+        result = scanner._group_controls_by_standard({}, {})
+
+        # All buckets should be empty and removed
+        assert result == {}
