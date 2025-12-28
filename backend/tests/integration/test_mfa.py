@@ -19,7 +19,7 @@ import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.admin import AdminUser, AdminRole, AdminIPAllowlist
+from app.models.admin import AdminUser, AdminRole, AdminIPAllowlist, AdminSession
 from app.models.user import (
     User,
     Organization,
@@ -360,6 +360,223 @@ async def admin_ip_allowlist(db_session: AsyncSession) -> AdminIPAllowlist:
     db_session.add(allowlist)
     await db_session.flush()
     return allowlist
+
+
+@pytest_asyncio.fixture(scope="function")
+async def admin_session_no_mfa(
+    db_session: AsyncSession,
+    test_admin_no_mfa: AdminUser,
+    admin_ip_allowlist: AdminIPAllowlist,
+) -> AdminSession:
+    """Create an AdminSession record for the test admin without MFA.
+
+    The session IP is set to match what the test client reports.
+    ASGITransport reports request.client.host as 127.0.0.1, and since
+    this isn't in trusted proxies, X-Forwarded-For is ignored by
+    get_client_ip in app/core/security.py.
+    """
+    import hashlib
+    import secrets
+    from datetime import timedelta
+
+    from app.models.admin import AdminSession
+
+    # Use 127.0.0.1 - this is what ASGITransport reports as request.client.host
+    # and since it's not in trusted proxies, X-Forwarded-For is ignored
+    test_ip = "127.0.0.1"
+
+    refresh_token = secrets.token_urlsafe(32)
+    refresh_token_hash = hashlib.sha256(refresh_token.encode()).hexdigest()
+
+    session = AdminSession(
+        id=uuid.uuid4(),
+        admin_id=test_admin_no_mfa.id,
+        ip_address=test_ip,
+        user_agent="pytest-integration-tests",
+        refresh_token_hash=refresh_token_hash,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=8),
+        last_auth_at=datetime.now(timezone.utc),
+        is_active=True,
+    )
+    db_session.add(session)
+    await db_session.commit()
+
+    session._test_ip = test_ip
+    return session
+
+
+@pytest_asyncio.fixture(scope="function")
+async def admin_session_with_mfa(
+    db_session: AsyncSession,
+    test_admin_with_mfa: AdminUser,
+    admin_ip_allowlist: AdminIPAllowlist,
+) -> AdminSession:
+    """Create an AdminSession record for the test admin with MFA.
+
+    The session IP matches what the test client reports (127.0.0.1).
+    """
+    import hashlib
+    import secrets
+    from datetime import timedelta
+
+    from app.models.admin import AdminSession
+
+    # Use 127.0.0.1 - same as admin_session_no_mfa
+    test_ip = "127.0.0.1"
+
+    refresh_token = secrets.token_urlsafe(32)
+    refresh_token_hash = hashlib.sha256(refresh_token.encode()).hexdigest()
+
+    session = AdminSession(
+        id=uuid.uuid4(),
+        admin_id=test_admin_with_mfa.id,
+        ip_address=test_ip,
+        user_agent="pytest-integration-tests",
+        refresh_token_hash=refresh_token_hash,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=8),
+        last_auth_at=datetime.now(timezone.utc),
+        is_active=True,
+    )
+    db_session.add(session)
+    await db_session.commit()
+
+    session._test_ip = test_ip
+    return session
+
+
+@pytest_asyncio.fixture(scope="function")
+async def admin_auth_headers_no_mfa(
+    test_admin_no_mfa: AdminUser,
+    admin_session_no_mfa: AdminSession,
+) -> dict[str, str]:
+    """Generate auth headers for admin without MFA.
+
+    Includes both the Bearer token and X-Forwarded-For header
+    to match the session IP.
+    """
+    from datetime import timedelta
+
+    from app.core.security import create_access_token
+
+    access_token = create_access_token(
+        data={
+            "sub": str(test_admin_no_mfa.id),
+            "type": "admin",
+            "role": test_admin_no_mfa.role.value,
+            "session_id": str(admin_session_no_mfa.id),
+        },
+        expires_delta=timedelta(minutes=15),
+    )
+
+    return {
+        "Authorization": f"Bearer {access_token}",
+        "X-Forwarded-For": admin_session_no_mfa._test_ip,
+    }
+
+
+@pytest_asyncio.fixture(scope="function")
+async def admin_auth_headers_with_mfa(
+    test_admin_with_mfa: AdminUser,
+    admin_session_with_mfa: AdminSession,
+) -> dict[str, str]:
+    """Generate auth headers for admin with MFA.
+
+    Includes both the Bearer token and X-Forwarded-For header.
+    """
+    from datetime import timedelta
+
+    from app.core.security import create_access_token
+
+    access_token = create_access_token(
+        data={
+            "sub": str(test_admin_with_mfa.id),
+            "type": "admin",
+            "role": test_admin_with_mfa.role.value,
+            "session_id": str(admin_session_with_mfa.id),
+        },
+        expires_delta=timedelta(minutes=15),
+    )
+
+    return {
+        "Authorization": f"Bearer {access_token}",
+        "X-Forwarded-For": admin_session_with_mfa._test_ip,
+    }
+
+
+@pytest_asyncio.fixture(scope="function")
+async def admin_authenticated_client_no_mfa(
+    db_session: AsyncSession,
+    admin_auth_headers_no_mfa: dict[str, str],
+) -> AsyncClient:
+    """Create HTTP client authenticated as admin without MFA."""
+    from redis import asyncio as aioredis
+    from fastapi_limiter import FastAPILimiter
+    from httpx import ASGITransport
+    from app.main import app
+    from app.core.database import get_db
+    from tests.conftest import TEST_REDIS_URL
+
+    redis = await aioredis.from_url(
+        TEST_REDIS_URL,
+        encoding="utf-8",
+        decode_responses=True,
+    )
+    await FastAPILimiter.init(redis)
+
+    async def override_get_db():
+        yield db_session
+
+    app.dependency_overrides[get_db] = override_get_db
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(
+        transport=transport,
+        base_url="http://test",
+        headers=admin_auth_headers_no_mfa,
+    ) as ac:
+        yield ac
+
+    app.dependency_overrides.clear()
+    await FastAPILimiter.close()
+    await redis.aclose()
+
+
+@pytest_asyncio.fixture(scope="function")
+async def admin_authenticated_client_with_mfa(
+    db_session: AsyncSession,
+    admin_auth_headers_with_mfa: dict[str, str],
+) -> AsyncClient:
+    """Create HTTP client authenticated as admin with MFA."""
+    from redis import asyncio as aioredis
+    from fastapi_limiter import FastAPILimiter
+    from httpx import ASGITransport
+    from app.main import app
+    from app.core.database import get_db
+    from tests.conftest import TEST_REDIS_URL
+
+    redis = await aioredis.from_url(
+        TEST_REDIS_URL,
+        encoding="utf-8",
+        decode_responses=True,
+    )
+    await FastAPILimiter.init(redis)
+
+    async def override_get_db():
+        yield db_session
+
+    app.dependency_overrides[get_db] = override_get_db
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(
+        transport=transport,
+        base_url="http://test",
+        headers=admin_auth_headers_with_mfa,
+    ) as ac:
+        yield ac
+
+    app.dependency_overrides.clear()
+    await FastAPILimiter.close()
+    await redis.aclose()
 
 
 # =============================================================================
@@ -712,278 +929,96 @@ class TestUserMFALogin:
 # =============================================================================
 
 
-@pytest.mark.skip(
-    reason="Admin MFA tests need auth fixture fixes - admin token not being recognised"
-)
 class TestAdminMFASetup:
     """Tests for admin MFA setup flow."""
 
     @pytest.mark.asyncio
     async def test_admin_setup_mfa_returns_secret_and_uri(
         self,
-        db_session: AsyncSession,
-        test_admin_no_mfa: AdminUser,
-        admin_ip_allowlist: AdminIPAllowlist,
+        admin_authenticated_client_no_mfa: AsyncClient,
     ):
         """Test that admin MFA setup returns provisioning URI and secret."""
-        from redis import asyncio as aioredis
-        from fastapi_limiter import FastAPILimiter
-        from httpx import ASGITransport
-        from app.main import app
-        from app.core.database import get_db
-        from app.core.security import create_access_token
-        from datetime import timedelta
-        from tests.conftest import TEST_REDIS_URL
-
-        # Create admin access token
-        access_token = create_access_token(
-            data={
-                "sub": str(test_admin_no_mfa.id),
-                "type": "admin",
-                "role": test_admin_no_mfa.role.value,
-                "session_id": str(uuid.uuid4()),
-            },
-            expires_delta=timedelta(minutes=15),
+        response = await admin_authenticated_client_no_mfa.post(
+            "/api/v1/admin/auth/mfa/setup"
         )
 
-        # Initialise rate limiter
-        redis = await aioredis.from_url(
-            TEST_REDIS_URL,
-            encoding="utf-8",
-            decode_responses=True,
+        assert response.status_code == 200
+        data = response.json()
+
+        assert "provisioning_uri" in data
+        assert "secret" in data
+        assert data["provisioning_uri"].startswith("otpauth://totp/")
+        assert (
+            "A13E%20Admin" in data["provisioning_uri"]
+            or "A13E" in data["provisioning_uri"]
         )
-        await FastAPILimiter.init(redis)
-
-        async def override_get_db():
-            yield db_session
-
-        app.dependency_overrides[get_db] = override_get_db
-
-        try:
-            transport = ASGITransport(app=app)
-            async with AsyncClient(
-                transport=transport,
-                base_url="http://test",
-                headers={"Authorization": f"Bearer {access_token}"},
-            ) as client:
-                response = await client.post("/api/v1/admin/auth/mfa/setup")
-
-                assert response.status_code == 200
-                data = response.json()
-
-                assert "provisioning_uri" in data
-                assert "secret" in data
-                assert data["provisioning_uri"].startswith("otpauth://totp/")
-                assert (
-                    "A13E%20Admin" in data["provisioning_uri"]
-                    or "A13E" in data["provisioning_uri"]
-                )
-        finally:
-            app.dependency_overrides.clear()
-            await FastAPILimiter.close()
-            await redis.aclose()
 
     @pytest.mark.asyncio
     async def test_admin_setup_mfa_fails_if_already_enabled(
         self,
-        db_session: AsyncSession,
-        test_admin_with_mfa: AdminUser,
-        admin_ip_allowlist: AdminIPAllowlist,
+        admin_authenticated_client_with_mfa: AsyncClient,
     ):
         """Test that admin MFA setup fails if MFA is already enabled."""
-        from redis import asyncio as aioredis
-        from fastapi_limiter import FastAPILimiter
-        from httpx import ASGITransport
-        from app.main import app
-        from app.core.database import get_db
-        from app.core.security import create_access_token
-        from datetime import timedelta
-        from tests.conftest import TEST_REDIS_URL
-
-        # Create admin access token
-        access_token = create_access_token(
-            data={
-                "sub": str(test_admin_with_mfa.id),
-                "type": "admin",
-                "role": test_admin_with_mfa.role.value,
-                "session_id": str(uuid.uuid4()),
-            },
-            expires_delta=timedelta(minutes=15),
+        response = await admin_authenticated_client_with_mfa.post(
+            "/api/v1/admin/auth/mfa/setup"
         )
 
-        # Initialise rate limiter
-        redis = await aioredis.from_url(
-            TEST_REDIS_URL,
-            encoding="utf-8",
-            decode_responses=True,
-        )
-        await FastAPILimiter.init(redis)
-
-        async def override_get_db():
-            yield db_session
-
-        app.dependency_overrides[get_db] = override_get_db
-
-        try:
-            transport = ASGITransport(app=app)
-            async with AsyncClient(
-                transport=transport,
-                base_url="http://test",
-                headers={"Authorization": f"Bearer {access_token}"},
-            ) as client:
-                response = await client.post("/api/v1/admin/auth/mfa/setup")
-
-                assert response.status_code == 400
-                data = response.json()
-                assert "already enabled" in data["detail"].lower()
-        finally:
-            app.dependency_overrides.clear()
-            await FastAPILimiter.close()
-            await redis.aclose()
+        assert response.status_code == 400
+        data = response.json()
+        assert "already enabled" in data["detail"].lower()
 
 
-@pytest.mark.skip(
-    reason="Admin MFA tests need auth fixture fixes - admin token not being recognised"
-)
 class TestAdminMFAEnable:
     """Tests for admin MFA enable flow."""
 
     @pytest.mark.asyncio
     async def test_admin_enable_mfa_with_valid_code_succeeds(
         self,
-        db_session: AsyncSession,
-        test_admin_no_mfa: AdminUser,
-        admin_ip_allowlist: AdminIPAllowlist,
+        admin_authenticated_client_no_mfa: AsyncClient,
     ):
         """Test that admin can enable MFA with a valid TOTP code after setup."""
-        from redis import asyncio as aioredis
-        from fastapi_limiter import FastAPILimiter
-        from httpx import ASGITransport
-        from app.main import app
-        from app.core.database import get_db
-        from app.core.security import create_access_token
-        from datetime import timedelta
-        from tests.conftest import TEST_REDIS_URL
+        # First, setup MFA to get the secret
+        setup_response = await admin_authenticated_client_no_mfa.post(
+            "/api/v1/admin/auth/mfa/setup"
+        )
+        assert setup_response.status_code == 200
+        secret = setup_response.json()["secret"]
 
-        # Create admin access token
-        access_token = create_access_token(
-            data={
-                "sub": str(test_admin_no_mfa.id),
-                "type": "admin",
-                "role": test_admin_no_mfa.role.value,
-                "session_id": str(uuid.uuid4()),
-            },
-            expires_delta=timedelta(minutes=15),
+        # Generate a valid TOTP code
+        totp = pyotp.TOTP(secret)
+        valid_code = totp.now()
+
+        # Enable MFA with the valid code
+        enable_response = await admin_authenticated_client_no_mfa.post(
+            "/api/v1/admin/auth/mfa/enable",
+            json={"totp_code": valid_code},
         )
 
-        # Initialise rate limiter
-        redis = await aioredis.from_url(
-            TEST_REDIS_URL,
-            encoding="utf-8",
-            decode_responses=True,
-        )
-        await FastAPILimiter.init(redis)
-
-        async def override_get_db():
-            yield db_session
-
-        app.dependency_overrides[get_db] = override_get_db
-
-        try:
-            transport = ASGITransport(app=app)
-            async with AsyncClient(
-                transport=transport,
-                base_url="http://test",
-                headers={"Authorization": f"Bearer {access_token}"},
-            ) as client:
-                # First, setup MFA to get the secret
-                setup_response = await client.post("/api/v1/admin/auth/mfa/setup")
-                assert setup_response.status_code == 200
-                secret = setup_response.json()["secret"]
-
-                # Generate a valid TOTP code
-                totp = pyotp.TOTP(secret)
-                valid_code = totp.now()
-
-                # Enable MFA with the valid code
-                enable_response = await client.post(
-                    "/api/v1/admin/auth/mfa/enable",
-                    json={"totp_code": valid_code},
-                )
-
-                assert enable_response.status_code == 200
-                data = enable_response.json()
-                assert "enabled" in data["message"].lower()
-        finally:
-            app.dependency_overrides.clear()
-            await FastAPILimiter.close()
-            await redis.aclose()
+        assert enable_response.status_code == 200
+        data = enable_response.json()
+        assert "enabled" in data["message"].lower()
 
     @pytest.mark.asyncio
     async def test_admin_enable_mfa_with_invalid_code_fails(
         self,
-        db_session: AsyncSession,
-        test_admin_no_mfa: AdminUser,
-        admin_ip_allowlist: AdminIPAllowlist,
+        admin_authenticated_client_no_mfa: AsyncClient,
     ):
         """Test that admin cannot enable MFA with an invalid TOTP code."""
-        from redis import asyncio as aioredis
-        from fastapi_limiter import FastAPILimiter
-        from httpx import ASGITransport
-        from app.main import app
-        from app.core.database import get_db
-        from app.core.security import create_access_token
-        from datetime import timedelta
-        from tests.conftest import TEST_REDIS_URL
+        # First, setup MFA
+        setup_response = await admin_authenticated_client_no_mfa.post(
+            "/api/v1/admin/auth/mfa/setup"
+        )
+        assert setup_response.status_code == 200
 
-        # Create admin access token
-        access_token = create_access_token(
-            data={
-                "sub": str(test_admin_no_mfa.id),
-                "type": "admin",
-                "role": test_admin_no_mfa.role.value,
-                "session_id": str(uuid.uuid4()),
-            },
-            expires_delta=timedelta(minutes=15),
+        # Try to enable with invalid code
+        enable_response = await admin_authenticated_client_no_mfa.post(
+            "/api/v1/admin/auth/mfa/enable",
+            json={"totp_code": "000000"},  # Invalid
         )
 
-        # Initialise rate limiter
-        redis = await aioredis.from_url(
-            TEST_REDIS_URL,
-            encoding="utf-8",
-            decode_responses=True,
-        )
-        await FastAPILimiter.init(redis)
-
-        async def override_get_db():
-            yield db_session
-
-        app.dependency_overrides[get_db] = override_get_db
-
-        try:
-            transport = ASGITransport(app=app)
-            async with AsyncClient(
-                transport=transport,
-                base_url="http://test",
-                headers={"Authorization": f"Bearer {access_token}"},
-            ) as client:
-                # First, setup MFA
-                setup_response = await client.post("/api/v1/admin/auth/mfa/setup")
-                assert setup_response.status_code == 200
-
-                # Try to enable with invalid code
-                enable_response = await client.post(
-                    "/api/v1/admin/auth/mfa/enable",
-                    json={"totp_code": "000000"},  # Invalid
-                )
-
-                assert enable_response.status_code == 400
-                data = enable_response.json()
-                assert "invalid" in data["detail"].lower()
-        finally:
-            app.dependency_overrides.clear()
-            await FastAPILimiter.close()
-            await redis.aclose()
+        assert enable_response.status_code == 400
+        data = enable_response.json()
+        assert "invalid" in data["detail"].lower()
 
 
 class TestAdminMFALogin:
@@ -1162,9 +1197,6 @@ class TestMFASecurityEdgeCases:
         )
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(
-        reason="Hits rate limit in CI - needs isolated rate limiter per test"
-    )
     async def test_reused_backup_code_fails(
         self,
         client: AsyncClient,
@@ -1173,6 +1205,13 @@ class TestMFASecurityEdgeCases:
         test_membership_with_mfa: OrganizationMember,
     ):
         """Test that a backup code cannot be reused after it's been used."""
+        import random
+
+        # Use a unique IP to avoid rate limiting from other tests
+        # This isolates this test from rate limit counters shared with other tests
+        unique_ip = f"192.168.{random.randint(1, 254)}.{random.randint(1, 254)}"
+        rate_limit_headers = {"X-Forwarded-For": unique_ip}
+
         backup_code = test_user_with_mfa._test_backup_codes[0]
 
         # First use of backup code
@@ -1182,12 +1221,14 @@ class TestMFASecurityEdgeCases:
                 "email": "mfa_enabled_user@example.com",
                 "password": "TestPassword123!",
             },
+            headers=rate_limit_headers,
         )
         mfa_token1 = login_response1.json()["mfa_token"]
 
         verify_response1 = await client.post(
             "/api/v1/auth/login/mfa",
             json={"mfa_token": mfa_token1, "code": backup_code},
+            headers=rate_limit_headers,
         )
         assert verify_response1.status_code == 200
 
@@ -1198,12 +1239,14 @@ class TestMFASecurityEdgeCases:
                 "email": "mfa_enabled_user@example.com",
                 "password": "TestPassword123!",
             },
+            headers=rate_limit_headers,
         )
         mfa_token2 = login_response2.json()["mfa_token"]
 
         verify_response2 = await client.post(
             "/api/v1/auth/login/mfa",
             json={"mfa_token": mfa_token2, "code": backup_code},
+            headers=rate_limit_headers,
         )
 
         # Should fail - code already used
