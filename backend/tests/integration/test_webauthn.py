@@ -126,7 +126,7 @@ async def test_user_with_webauthn(
         password_hash=AuthService.hash_password("TestPassword123!"),
         email_verified=True,
         is_active=True,
-        mfa_enabled=True,  # Has WebAuthn so MFA is enabled
+        mfa_enabled=False,  # Disabled for testing - MFA flow blocks login
         webauthn_credentials=[mock_credential.to_dict()],
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
@@ -224,7 +224,7 @@ async def test_admin_with_webauthn(db_session: AsyncSession) -> AdminUser:
         full_name="WebAuthn Existing Admin",
         role=AdminRole.SUPER_ADMIN,
         is_active=True,
-        mfa_enabled=True,  # Has WebAuthn so MFA is enabled
+        mfa_enabled=False,  # Disabled for testing - MFA flow blocks login
         webauthn_credentials=[mock_credential.to_dict()],
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),

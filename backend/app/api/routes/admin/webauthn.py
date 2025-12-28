@@ -88,7 +88,7 @@ async def get_registration_options(
     # Store challenge for verification
     store_challenge(f"admin_webauthn_reg_{admin.id}", challenge)
 
-    return WebAuthnRegistrationOptionsResponse(options=json.loads(options_json))
+    return WebAuthnRegistrationOptionsResponse(options=options_json)
 
 
 @router.post("/register/verify")

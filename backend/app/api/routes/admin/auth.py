@@ -525,7 +525,6 @@ async def get_webauthn_auth_options(
     This starts the WebAuthn authentication flow. The admin provides their email,
     and we return a challenge for their security key.
     """
-    import json
     from sqlalchemy import select
     from app.services.webauthn_service import get_webauthn_service, store_challenge
     from app.core.security import get_client_ip
@@ -593,7 +592,7 @@ async def get_webauthn_auth_options(
     )
 
     return WebAuthnAuthOptionsResponse(
-        options=json.loads(options_json),
+        options=options_json,
         auth_token=auth_token,
     )
 
