@@ -150,28 +150,20 @@ class AdminAuthService:
         requires_mfa = admin.mfa_enabled
 
         # SECURITY: In staging/production, MFA is mandatory for all admin accounts
-        if not requires_mfa and settings.environment not in ("development",):
-            self.logger.warning(
-                "admin_login_blocked_no_mfa",
+        # If MFA is not enabled, we return a special flag to trigger MFA setup flow
+        # instead of blocking login entirely (which creates a chicken-and-egg problem)
+        mfa_setup_required = not requires_mfa and settings.environment not in (
+            "development",
+        )
+
+        if mfa_setup_required:
+            self.logger.info(
+                "admin_mfa_setup_required",
                 admin_id=str(admin.id),
                 admin_email=admin.email,
             )
-            await self._log_action(
-                admin_id=admin.id,
-                admin_email=admin.email,
-                admin_role=admin.role,
-                action="admin:login_blocked",
-                ip_address=ip_address,
-                user_agent=user_agent,
-                success=False,
-                error_message="MFA required but not configured",
-            )
-            raise ValueError(
-                "MFA is required for admin accounts. "
-                "Please contact another admin to set up MFA."
-            )
 
-        return admin, requires_mfa
+        return admin, requires_mfa, mfa_setup_required
 
     async def verify_totp(
         self,

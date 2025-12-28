@@ -34,7 +34,9 @@ class AdminLoginResponse(BaseModel):
     """Admin login response."""
 
     requires_mfa: bool
+    mfa_setup_required: bool = False  # True if MFA needs to be set up first
     mfa_token: Optional[str] = None  # Temporary token for MFA flow
+    setup_token: Optional[str] = None  # Token for MFA setup (when mfa_setup_required)
     access_token: Optional[str] = None
     refresh_token: Optional[str] = None
 
@@ -110,7 +112,7 @@ async def admin_login(
         )
 
     try:
-        admin, requires_mfa = await auth_service.authenticate(
+        admin, requires_mfa, mfa_setup_required = await auth_service.authenticate(
             email=body.email,
             password=body.password,
             ip_address=ip_address,
@@ -122,38 +124,34 @@ async def admin_login(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials"
         )
 
+    from app.core.security import create_access_token
+    from datetime import timedelta
+
+    # Case 1: MFA setup required (new admin in staging/production)
+    if mfa_setup_required:
+        # Generate a setup token that allows MFA setup
+        setup_token = create_access_token(
+            data={"sub": str(admin.id), "type": "mfa_setup"},
+            expires_delta=timedelta(minutes=10),
+        )
+        return AdminLoginResponse(
+            requires_mfa=False,
+            mfa_setup_required=True,
+            setup_token=setup_token,
+        )
+
+    # Case 2: MFA enabled, need verification
     if requires_mfa:
-        # Generate temporary MFA token
-        import secrets
-
-        mfa_token = secrets.token_urlsafe(32)
-
-        # Store in cache/session (in production, use Redis)
-        # For now, we'll encode admin ID in the token (not secure for production)
-        # TODO: Use Redis to store MFA session
-        from app.core.security import create_access_token
-        from datetime import timedelta
-
         mfa_token = create_access_token(
             data={"sub": str(admin.id), "type": "mfa_pending"},
             expires_delta=timedelta(minutes=5),
         )
-
         return AdminLoginResponse(
             requires_mfa=True,
             mfa_token=mfa_token,
         )
 
-    # MFA not enabled - only allow in development
-    # SECURITY: Defense in depth - service layer should block this in staging/production,
-    # but we double-check here to ensure MFA is enforced
-    if settings.environment not in ("development",):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="MFA is required for admin accounts",
-        )
-
-    # Development only: issue tokens directly
+    # Case 3: MFA not enabled and not required (development only)
     access_token, refresh_token = await auth_service.create_session(
         admin=admin,
         ip_address=ip_address,
@@ -340,3 +338,152 @@ async def enable_mfa(
         )
 
     return {"message": "MFA enabled successfully"}
+
+
+# ============================================================================
+# First-Time MFA Setup Endpoints (using setup_token, not full auth)
+# ============================================================================
+
+
+class AdminSetupMFAWithTokenRequest(BaseModel):
+    """Request to start MFA setup using setup token."""
+
+    setup_token: str
+
+
+class AdminEnableMFAWithTokenRequest(BaseModel):
+    """Request to enable MFA using setup token and TOTP code."""
+
+    setup_token: str
+    totp_code: str
+
+
+@router.post("/mfa/setup-with-token", response_model=AdminSetupMFAResponse)
+async def setup_mfa_with_token(
+    body: AdminSetupMFAWithTokenRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Setup MFA for admin who hasn't configured MFA yet.
+
+    This endpoint uses the setup_token from login response (when mfa_setup_required=true)
+    to allow first-time MFA setup without requiring full authentication.
+    """
+    from app.core.security import decode_token
+    from sqlalchemy import select
+
+    # Validate setup token
+    try:
+        payload = decode_token(body.setup_token)
+        if payload.get("type") != "mfa_setup":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid setup token",
+            )
+        admin_id = UUID(payload["sub"])
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired setup token",
+        )
+
+    # Get admin
+    result = await db.execute(select(AdminUser).where(AdminUser.id == admin_id))
+    admin = result.scalar_one_or_none()
+
+    if not admin:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid setup token",
+        )
+
+    if admin.mfa_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="MFA is already enabled",
+        )
+
+    # Generate TOTP secret
+    auth_service = get_admin_auth_service(db)
+    provisioning_uri = await auth_service.setup_totp(admin)
+
+    # Extract secret for manual entry
+    import re
+
+    secret_match = re.search(r"secret=([A-Z2-7]+)", provisioning_uri)
+    secret = secret_match.group(1) if secret_match else ""
+
+    return AdminSetupMFAResponse(
+        provisioning_uri=provisioning_uri,
+        secret=secret,
+    )
+
+
+@router.post("/mfa/enable-with-token", response_model=AdminTokenResponse)
+async def enable_mfa_with_token(
+    body: AdminEnableMFAWithTokenRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Enable MFA and complete login using setup token and TOTP code.
+
+    After MFA is enabled, this endpoint returns access and refresh tokens
+    to complete the login flow.
+    """
+    from app.core.security import decode_token, get_client_ip
+    from sqlalchemy import select
+
+    # Validate setup token
+    try:
+        payload = decode_token(body.setup_token)
+        if payload.get("type") != "mfa_setup":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid setup token",
+            )
+        admin_id = UUID(payload["sub"])
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired setup token",
+        )
+
+    # Get admin
+    result = await db.execute(select(AdminUser).where(AdminUser.id == admin_id))
+    admin = result.scalar_one_or_none()
+
+    if not admin:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid setup token",
+        )
+
+    # Enable MFA
+    auth_service = get_admin_auth_service(db)
+    if not await auth_service.enable_mfa(admin, body.totp_code):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid TOTP code. Please check your authenticator app.",
+        )
+
+    # Create session and return tokens
+    ip_address = get_client_ip(request) or "unknown"
+    user_agent = request.headers.get("User-Agent")
+
+    access_token, refresh_token = await auth_service.create_session(
+        admin=admin,
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+
+    return AdminTokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        expires_in=auth_service.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        admin={
+            "id": str(admin.id),
+            "email": admin.email,
+            "full_name": admin.full_name,
+            "role": admin.role.value,
+            "mfa_enabled": True,  # Now enabled
+        },
+    )

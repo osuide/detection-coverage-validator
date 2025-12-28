@@ -150,7 +150,16 @@ export const adminAuthActions = {
     const response = await adminAuthApi.post('/login', { email, password })
     const data = response.data
 
-    // Check if MFA is required
+    // Check if MFA setup is required (first-time login in staging/prod)
+    if (data.mfa_setup_required) {
+      return {
+        requiresMfa: false,
+        mfaSetupRequired: true,
+        setupToken: data.setup_token,
+      }
+    }
+
+    // Check if MFA verification is required
     if (data.requires_mfa) {
       return { requiresMfa: true, mfaToken: data.mfa_token }
     }
@@ -167,7 +176,7 @@ export const adminAuthActions = {
       admin: profileResponse.data,
     })
 
-    return { requiresMfa: false }
+    return { requiresMfa: false, mfaSetupRequired: false }
   },
 
   /**
@@ -335,6 +344,37 @@ export const adminAuthActions = {
 
     // Update local state to reflect MFA is now enabled
     store.updateAdmin({ mfa_enabled: true })
+  },
+
+  /**
+   * Start MFA setup using setup token (for first-time setup)
+   */
+  setupMFAWithToken: async (
+    setupToken: string
+  ): Promise<{ provisioning_uri: string; secret: string }> => {
+    const response = await adminAuthApi.post('/mfa/setup-with-token', {
+      setup_token: setupToken,
+    })
+    return response.data
+  },
+
+  /**
+   * Enable MFA and complete login using setup token
+   */
+  enableMFAWithToken: async (setupToken: string, totpCode: string): Promise<void> => {
+    const response = await adminAuthApi.post('/mfa/enable-with-token', {
+      setup_token: setupToken,
+      totp_code: totpCode,
+    })
+
+    const data = response.data
+
+    // Set auth state - user is now fully logged in
+    useAdminAuthStore.getState().setAuth({
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token,
+      admin: data.admin,
+    })
   },
 }
 

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Lock, Mail, AlertCircle, Key } from 'lucide-react';
 import { useAdminAuthStore, adminAuthActions } from '../../stores/adminAuthStore';
+import MFASetupModal from '../../components/MFASetupModal';
 
 export default function AdminLogin() {
   const navigate = useNavigate();
@@ -10,6 +11,8 @@ export default function AdminLogin() {
   const [password, setPassword] = useState('');
   const [mfaCode, setMfaCode] = useState('');
   const [mfaToken, setMfaToken] = useState<string | null>(null);
+  const [setupToken, setSetupToken] = useState<string | null>(null);
+  const [showMfaSetup, setShowMfaSetup] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -28,7 +31,12 @@ export default function AdminLogin() {
     try {
       const result = await adminAuthActions.login(email, password);
 
-      if (result.requiresMfa) {
+      if (result.mfaSetupRequired) {
+        // First-time login - need to set up MFA
+        setSetupToken(result.setupToken || null);
+        setShowMfaSetup(true);
+      } else if (result.requiresMfa) {
+        // MFA already set up - need to verify
         setMfaToken(result.mfaToken || null);
       } else {
         navigate('/admin/dashboard');
@@ -182,6 +190,25 @@ export default function AdminLogin() {
           </p>
         </div>
       </div>
+
+      {/* First-Time MFA Setup Modal */}
+      {setupToken && (
+        <MFASetupModal
+          isOpen={showMfaSetup}
+          onClose={() => {
+            setShowMfaSetup(false);
+            setSetupToken(null);
+          }}
+          onSuccess={() => {
+            navigate('/admin/dashboard');
+          }}
+          type="admin"
+          setupMFA={() => adminAuthActions.setupMFAWithToken(setupToken)}
+          verifyMFA={async (code) => {
+            await adminAuthActions.enableMFAWithToken(setupToken, code);
+          }}
+        />
+      )}
     </div>
   );
 }
