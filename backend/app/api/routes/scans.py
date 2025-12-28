@@ -172,13 +172,20 @@ async def get_scan(
     return scan
 
 
-@router.post("/{scan_id}/cancel", response_model=ScanResponse)
+@router.post(
+    "/{scan_id}/cancel",
+    response_model=ScanResponse,
+    dependencies=[Depends(require_scope("write:scans"))],
+)
 async def cancel_scan(
     scan_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
-    """Cancel a running scan."""
+    """Cancel a running scan.
+
+    API keys require 'write:scans' scope.
+    """
     result = await db.execute(
         select(Scan)
         .join(CloudAccount, Scan.cloud_account_id == CloudAccount.id)

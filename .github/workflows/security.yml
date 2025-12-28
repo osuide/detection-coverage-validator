@@ -154,6 +154,65 @@ jobs:
           name: trivy-results
           path: trivy-results.json
 
+  # Authorization security tests
+  auth-security-tests:
+    name: Authorization Security Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: dcv_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        working-directory: ./backend
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run authorization security tests
+        working-directory: ./backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/dcv_test
+          REDIS_URL: redis://localhost:6379/0
+          SECRET_KEY: test-secret-key-for-ci-at-least-32-chars-long
+          PYTHONPATH: .
+        run: |
+          python -m pytest tests/unit/test_security_acl.py -v --tb=short
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: auth-security-test-results
+          path: backend/pytest-results.xml
+
   # Secret scanning with gitleaks
   gitleaks:
     name: Gitleaks (Secret Scan)
@@ -172,7 +231,7 @@ jobs:
   # Summary job
   security-summary:
     name: Security Summary
-    needs: [bandit, npm-audit, pip-audit, tfsec, trivy, gitleaks]
+    needs: [bandit, npm-audit, pip-audit, tfsec, trivy, auth-security-tests, gitleaks]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -193,6 +252,7 @@ jobs:
           echo "| pip-audit (Python) | ${{ needs.pip-audit.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| tfsec (Terraform) | ${{ needs.tfsec.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Trivy (Container) | ${{ needs.trivy.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Auth Security Tests | ${{ needs.auth-security-tests.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Gitleaks (Secrets) | ${{ needs.gitleaks.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "See artifacts for detailed results." >> $GITHUB_STEP_SUMMARY

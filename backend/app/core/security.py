@@ -128,6 +128,31 @@ class AuthContext:
         )
 
 
+def get_allowed_account_filter(auth: AuthContext) -> Optional[list[UUID]]:
+    """Get list of allowed account IDs for filtering, or None if unrestricted.
+
+    Security: Used to filter list queries by allowed_account_ids ACL.
+
+    Returns:
+        - None if user is admin/owner OR allowed_account_ids is not set (full access)
+        - Empty list if no membership (no access)
+        - List of UUIDs if user has restricted access
+    """
+    if not auth.membership:
+        return []  # No membership = no access
+
+    # Owners and admins have full access
+    if auth.is_admin():
+        return None
+
+    # If allowed_account_ids is not set, member has access to all
+    if auth.membership.allowed_account_ids is None:
+        return None
+
+    # Convert string UUIDs to UUID objects
+    return [UUID(str(aid)) for aid in auth.membership.allowed_account_ids]
+
+
 def _validate_ip(ip_str: str) -> Optional[str]:
     """Validate and return IP address, or None if invalid."""
     import ipaddress

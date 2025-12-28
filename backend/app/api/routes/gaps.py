@@ -12,9 +12,44 @@ from app.core.security import AuthContext, require_role
 from app.models.user import UserRole
 from app.models.gap import GapStatus, GapPriority, CoverageGap
 from app.models.mitre import Technique
+from app.models.cloud_account import CloudAccount
 from sqlalchemy import select, and_
 
 router = APIRouter(tags=["gaps"])
+
+
+async def _validate_cloud_account_access(
+    db: AsyncSession,
+    cloud_account_id: UUID,
+    auth: AuthContext,
+) -> None:
+    """Validate cloud account belongs to user's organisation and user has access.
+
+    Security: Prevents cross-tenant IDOR by ensuring:
+    1. Cloud account belongs to the user's organisation
+    2. User has permission to access this account (via allowed_account_ids ACL)
+
+    Raises:
+        HTTPException 404: If account not found or doesn't belong to user's org
+        HTTPException 403: If user doesn't have access via ACL
+    """
+    result = await db.execute(
+        select(CloudAccount).where(
+            and_(
+                CloudAccount.id == cloud_account_id,
+                CloudAccount.organization_id == auth.organization_id,
+            )
+        )
+    )
+    account = result.scalar_one_or_none()
+    if not account:
+        raise HTTPException(status_code=404, detail="Cloud account not found")
+
+    # Check allowed_account_ids ACL if set
+    if not auth.can_access_account(cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
 
 
 async def get_technique_info(
@@ -103,11 +138,15 @@ async def acknowledge_gap(
     This marks the gap as acknowledged by the team. Acknowledged gaps
     will not appear in future gap analyses.
     """
+    # Security: Validate cloud account belongs to user's org and user has access
+    await _validate_cloud_account_access(db, cloud_account_id, auth)
+
     # Check if gap already exists in the database
     stmt = select(CoverageGap).where(
         and_(
             CoverageGap.cloud_account_id == cloud_account_id,
             CoverageGap.technique_id == technique_id,
+            CoverageGap.organization_id == auth.organization_id,
         )
     )
     result = await db.execute(stmt)
@@ -171,13 +210,16 @@ async def accept_risk(
     cloud_account_id: UUID = Query(..., description="Cloud account ID"),
     request: AcceptRiskRequest = None,
     db: AsyncSession = Depends(get_db),
-    auth: AuthContext = Depends(require_role(UserRole.ADMIN)),
+    auth: AuthContext = Depends(require_role(UserRole.OWNER, UserRole.ADMIN)),
 ) -> dict:
     """Accept risk for a coverage gap.
 
     This marks the gap as risk-accepted. Risk-accepted gaps will not
     appear in future gap analyses. Requires admin role.
     """
+    # Security: Validate cloud account belongs to user's org and user has access
+    await _validate_cloud_account_access(db, cloud_account_id, auth)
+
     if not request or not request.reason:
         raise HTTPException(
             status_code=400,
@@ -189,6 +231,7 @@ async def accept_risk(
         and_(
             CoverageGap.cloud_account_id == cloud_account_id,
             CoverageGap.technique_id == technique_id,
+            CoverageGap.organization_id == auth.organization_id,
         )
     )
     result = await db.execute(stmt)
@@ -262,10 +305,14 @@ async def reopen_gap(
 
     This will make the gap appear in future gap analyses again.
     """
+    # Security: Validate cloud account belongs to user's org and user has access
+    await _validate_cloud_account_access(db, cloud_account_id, auth)
+
     stmt = select(CoverageGap).where(
         and_(
             CoverageGap.cloud_account_id == cloud_account_id,
             CoverageGap.technique_id == technique_id,
+            CoverageGap.organization_id == auth.organization_id,
         )
     )
     result = await db.execute(stmt)
@@ -320,7 +367,15 @@ async def list_gaps(
 
     Returns gaps stored in the database with their status information.
     """
-    stmt = select(CoverageGap).where(CoverageGap.cloud_account_id == cloud_account_id)
+    # Security: Validate cloud account belongs to user's org and user has access
+    await _validate_cloud_account_access(db, cloud_account_id, auth)
+
+    stmt = select(CoverageGap).where(
+        and_(
+            CoverageGap.cloud_account_id == cloud_account_id,
+            CoverageGap.organization_id == auth.organization_id,
+        )
+    )
 
     if status:
         try:
@@ -373,9 +428,13 @@ async def list_acknowledged_gaps(
 
     This is used to filter out these gaps from the coverage analysis.
     """
+    # Security: Validate cloud account belongs to user's org and user has access
+    await _validate_cloud_account_access(db, cloud_account_id, auth)
+
     stmt = select(CoverageGap.technique_id).where(
         and_(
             CoverageGap.cloud_account_id == cloud_account_id,
+            CoverageGap.organization_id == auth.organization_id,
             CoverageGap.status.in_([GapStatus.ACKNOWLEDGED, GapStatus.RISK_ACCEPTED]),
         )
     )

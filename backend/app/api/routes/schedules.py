@@ -13,7 +13,9 @@ from app.core.security import (
     get_auth_context,
     require_scope,
     require_feature,
+    require_role,
 )
+from app.models.user import UserRole
 from app.models.schedule import ScanSchedule
 from app.models.cloud_account import CloudAccount
 from app.schemas.schedule import (
@@ -28,7 +30,11 @@ from app.services.scheduler_service import scheduler_service
 router = APIRouter()
 
 
-@router.get("", response_model=ScheduleListResponse)
+@router.get(
+    "",
+    response_model=ScheduleListResponse,
+    dependencies=[Depends(require_scope("read:schedules"))],
+)
 async def list_schedules(
     cloud_account_id: Optional[UUID] = None,
     is_active: Optional[bool] = None,
@@ -37,7 +43,10 @@ async def list_schedules(
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
-    """List scan schedules."""
+    """List scan schedules.
+
+    API keys require 'read:schedules' scope.
+    """
     # Filter by organization through cloud_account
     query = (
         select(ScanSchedule)
@@ -134,13 +143,20 @@ async def create_schedule(
     return schedule
 
 
-@router.get("/{schedule_id}", response_model=ScheduleResponse)
+@router.get(
+    "/{schedule_id}",
+    response_model=ScheduleResponse,
+    dependencies=[Depends(require_scope("read:schedules"))],
+)
 async def get_schedule(
     schedule_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get a specific schedule."""
+    """Get a specific schedule.
+
+    API keys require 'read:schedules' scope.
+    """
     result = await db.execute(
         select(ScanSchedule)
         .join(CloudAccount, ScanSchedule.cloud_account_id == CloudAccount.id)
@@ -155,13 +171,20 @@ async def get_schedule(
     return schedule
 
 
-@router.get("/{schedule_id}/status", response_model=ScheduleStatusResponse)
+@router.get(
+    "/{schedule_id}/status",
+    response_model=ScheduleStatusResponse,
+    dependencies=[Depends(require_scope("read:schedules"))],
+)
 async def get_schedule_status(
     schedule_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get schedule status including job information."""
+    """Get schedule status including job information.
+
+    API keys require 'read:schedules' scope.
+    """
     result = await db.execute(
         select(ScanSchedule)
         .join(CloudAccount, ScanSchedule.cloud_account_id == CloudAccount.id)
@@ -258,13 +281,24 @@ async def delete_schedule(
     await db.commit()
 
 
-@router.post("/{schedule_id}/activate", response_model=ScheduleResponse)
+@router.post(
+    "/{schedule_id}/activate",
+    response_model=ScheduleResponse,
+    dependencies=[
+        Depends(require_scope("write:schedules")),
+        Depends(require_role(UserRole.OWNER, UserRole.ADMIN)),
+    ],
+)
 async def activate_schedule(
     schedule_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
-    """Activate a schedule."""
+    """Activate a schedule.
+
+    API keys require 'write:schedules' scope.
+    Requires Owner or Admin role.
+    """
     result = await db.execute(
         select(ScanSchedule)
         .join(CloudAccount, ScanSchedule.cloud_account_id == CloudAccount.id)
@@ -288,13 +322,24 @@ async def activate_schedule(
     return schedule
 
 
-@router.post("/{schedule_id}/deactivate", response_model=ScheduleResponse)
+@router.post(
+    "/{schedule_id}/deactivate",
+    response_model=ScheduleResponse,
+    dependencies=[
+        Depends(require_scope("write:schedules")),
+        Depends(require_role(UserRole.OWNER, UserRole.ADMIN)),
+    ],
+)
 async def deactivate_schedule(
     schedule_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
-    """Deactivate a schedule."""
+    """Deactivate a schedule.
+
+    API keys require 'write:schedules' scope.
+    Requires Owner or Admin role.
+    """
     result = await db.execute(
         select(ScanSchedule)
         .join(CloudAccount, ScanSchedule.cloud_account_id == CloudAccount.id)
@@ -319,13 +364,24 @@ async def deactivate_schedule(
     return schedule
 
 
-@router.post("/{schedule_id}/run-now", response_model=ScheduleResponse)
+@router.post(
+    "/{schedule_id}/run-now",
+    response_model=ScheduleResponse,
+    dependencies=[
+        Depends(require_scope("write:schedules")),
+        Depends(require_role(UserRole.OWNER, UserRole.ADMIN)),
+    ],
+)
 async def run_schedule_now(
     schedule_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ):
-    """Trigger an immediate run of a schedule."""
+    """Trigger an immediate run of a schedule.
+
+    API keys require 'write:schedules' scope.
+    Requires Owner or Admin role.
+    """
     result = await db.execute(
         select(ScanSchedule)
         .join(CloudAccount, ScanSchedule.cloud_account_id == CloudAccount.id)

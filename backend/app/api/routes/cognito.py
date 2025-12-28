@@ -97,7 +97,7 @@ class CognitoTokenRequest(BaseModel):
     code: str
     redirect_uri: str
     code_verifier: str  # PKCE - required
-    state: Optional[str] = None
+    state: str  # Security: Required for CSRF protection
 
 
 class CognitoTokenResponse(BaseModel):
@@ -207,8 +207,8 @@ async def exchange_cognito_token(
             detail="SSO is not configured",
         )
 
-    # Validate OAuth state for CSRF protection
-    if body.state and not _cognito_state_store.validate_and_consume(body.state):
+    # Security: Always validate OAuth state for CSRF protection
+    if not _cognito_state_store.validate_and_consume(body.state):
         logger.warning(
             "cognito_oauth_state_invalid",
             ip=get_client_ip(request),
