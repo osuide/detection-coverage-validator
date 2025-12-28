@@ -234,116 +234,56 @@ class SecurityHubScanner(BaseScanner):
 
         return all_detections
 
-    def _get_all_control_associations(
-        self,
-        client: Any,
-        control_ids: list[str],
-    ) -> dict[str, list[str]]:
-        """Get standard associations for all controls.
-
-        Calls list_standards_control_associations for each control to determine
-        which standards it belongs to. A single control can belong to multiple
-        standards (e.g., S3.1 may be in FSBP, CIS, NIST, and PCI).
-
-        Args:
-            client: SecurityHub boto3 client
-            control_ids: List of control IDs to look up
-
-        Returns:
-            Dict of control_id -> list of standard_ids (e.g., {"S3.1": ["fsbp", "cis", "nist"]})
-        """
-        control_to_standards: dict[str, list[str]] = {}
-        total = len(control_ids)
-
-        self.logger.info(
-            "fetching_control_associations",
-            total_controls=total,
-            message="Fetching standard associations for controls...",
-        )
-
-        for i, control_id in enumerate(control_ids):
-            if i > 0 and i % 100 == 0:
-                self.logger.debug(
-                    "control_associations_progress",
-                    processed=i,
-                    total=total,
-                    percent=round(i / total * 100),
-                )
-
-            associations = self._get_control_associations(client, control_id)
-            standards = []
-
-            for assoc in associations:
-                standards_arn = assoc.get("standards_arn", "")
-                standard_id = _get_standard_id_from_arn(standards_arn)
-                if standard_id and standard_id not in standards:
-                    standards.append(standard_id)
-
-            control_to_standards[control_id] = standards
-
-        self.logger.info(
-            "control_associations_complete",
-            total_controls=total,
-            controls_with_associations=sum(
-                1 for s in control_to_standards.values() if s
-            ),
-        )
-
-        return control_to_standards
-
     def _group_controls_by_standard(
         self,
         cspm_control_data: dict[str, dict],
-        control_associations: dict[str, list[str]],
     ) -> dict[str, dict[str, dict]]:
-        """Group CSPM controls by their actual security standard associations.
+        """Group CSPM controls by inferred security standard.
 
-        Uses the real associations from the AWS API to group controls. A single
-        control (e.g., S3.1) can appear in multiple standards (FSBP, CIS, NIST,
-        PCI) if it's associated with all of them.
+        AWS CSPM uses standard-agnostic control IDs. All controls use service-
+        based IDs like S3.1, IAM.1, EC2.18 regardless of which standard they
+        belong to. We categorise all service-prefixed controls under FSBP as
+        it's the most comprehensive standard.
 
         Args:
             cspm_control_data: Dict of control_id -> control data
-            control_associations: Dict of control_id -> list of standard_ids
 
         Returns:
             Dict of standard_id -> {control_id -> control_data}
-            Standard IDs are: 'fsbp', 'cis', 'pci', 'nist', 'nist171', 'tagging', 'other'
         """
-        # Initialise all known standard buckets
         grouped: dict[str, dict[str, dict]] = {
-            info["id"]: {} for info in STANDARD_PATTERNS.values()
+            "fsbp": {},
+            "cis": {},
+            "pci": {},
+            "nist": {},
+            "other": {},
         }
-        grouped["other"] = {}  # Controls with no recognised associations
 
         for control_id, control_data in cspm_control_data.items():
-            standards = control_associations.get(control_id, [])
-
-            if standards:
-                # Add control to each standard it belongs to
-                for standard_id in standards:
-                    if standard_id in grouped:
-                        grouped[standard_id][control_id] = control_data
+            inferred_standard = self._infer_standard_from_control_id(control_id)
+            if inferred_standard:
+                grouped[inferred_standard][control_id] = control_data
             else:
-                # No associations found - put in 'other'
                 grouped["other"][control_id] = control_data
 
         # Log grouping results
-        standard_counts = {k: len(v) for k, v in grouped.items() if v}
         self.logger.info(
             "controls_grouped_by_standard",
-            standard_counts=standard_counts,
-            total_standards=len([k for k, v in grouped.items() if v]),
+            fsbp_count=len(grouped["fsbp"]),
+            cis_count=len(grouped["cis"]),
+            pci_count=len(grouped["pci"]),
+            nist_count=len(grouped["nist"]),
+            other_count=len(grouped["other"]),
         )
 
-        # Warn if any controls have no associations
+        # Warn if any controls fell to 'other' - indicates missing service prefix
         if grouped["other"]:
             other_ids = list(grouped["other"].keys())[:10]
             self.logger.warning(
-                "controls_without_associations",
-                message="Controls with no standard associations found",
+                "unrecognised_control_prefixes",
+                message="Controls with unrecognised prefixes - update service_prefixes",
                 sample_control_ids=other_ids,
-                total_unassociated=len(grouped["other"]),
+                total_unrecognised=len(grouped["other"]),
             )
 
         # Remove empty standard groups
@@ -497,13 +437,12 @@ class SecurityHubScanner(BaseScanner):
     ) -> list[RawDetection]:
         """Create one RawDetection per security standard with aggregated controls.
 
-        Fetches actual standard associations from AWS to properly categorise
-        controls. A single control (e.g., S3.1) can appear in multiple standards
-        (FSBP, CIS, NIST, PCI) if it's associated with all of them.
+        Groups controls by inferred standard (based on control ID pattern) and
+        creates one detection per standard.
 
         Args:
             cspm_control_data: Dict of control_id -> control data
-            client: SecurityHub boto3 client
+            client: SecurityHub boto3 client (unused, kept for interface compat)
             region: The canonical region for these detections
 
         Returns:
@@ -511,14 +450,8 @@ class SecurityHubScanner(BaseScanner):
         """
         detections = []
 
-        # Fetch actual standard associations for all controls
-        control_ids = list(cspm_control_data.keys())
-        control_associations = self._get_all_control_associations(client, control_ids)
-
-        # Group controls by their actual standard associations
-        grouped_controls = self._group_controls_by_standard(
-            cspm_control_data, control_associations
-        )
+        # Group controls by inferred standard
+        grouped_controls = self._group_controls_by_standard(cspm_control_data)
 
         for standard_id, controls in grouped_controls.items():
             if not controls:
@@ -541,8 +474,16 @@ class SecurityHubScanner(BaseScanner):
             # Count unique MITRE techniques covered by this standard's controls
             techniques_covered = self._count_techniques_covered(controls)
 
-            # Get hub ARN from first control
+            # Get hub ARN from first control and extract account ID
             hub_arn = next(iter(controls.values())).get("hub_arn", "")
+
+            # Extract account ID from hub_arn for region-agnostic source_arn
+            # hub_arn format: arn:aws:securityhub:REGION:ACCOUNT:hub/default
+            account_id = "unknown"
+            if hub_arn:
+                arn_parts = hub_arn.split(":")
+                if len(arn_parts) >= 5:
+                    account_id = arn_parts[4]
 
             # Build controls list for raw_config
             controls_list = []
@@ -570,9 +511,11 @@ class SecurityHubScanner(BaseScanner):
                     }
                 )
 
-            # Use unique source_arn per standard to prevent overwriting
-            # Format: hub_arn#standard_id (e.g., arn:aws:securityhub:...:hub/default#fsbp)
-            unique_source_arn = f"{hub_arn}#{standard_id}"
+            # Use account ID + standard_id for region-agnostic source_arn
+            # This ensures ONE detection per standard per account, not per region
+            unique_source_arn = (
+                f"arn:aws:securityhub:::account/{account_id}/standard/{standard_id}"
+            )
 
             detection = RawDetection(
                 name=f"SecurityHub-{standard_info['name']}",

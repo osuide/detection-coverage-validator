@@ -481,8 +481,8 @@ class TestStandardArnParsing:
         )
 
 
-class TestAssociationBasedGrouping:
-    """Tests for the new association-based control grouping."""
+class TestInferenceBasedGrouping:
+    """Tests for inference-based control grouping."""
 
     @pytest.fixture
     def scanner_with_logger(self):
@@ -495,94 +495,67 @@ class TestAssociationBasedGrouping:
         scanner.logger = MagicMock()
         return scanner
 
-    def test_group_controls_by_actual_associations(self, scanner_with_logger):
-        """Test that controls are grouped by their actual standard associations."""
+    def test_group_controls_by_inferred_standard(self, scanner_with_logger):
+        """Test that controls are grouped by inferred standard from control ID."""
         scanner = scanner_with_logger
 
-        # Sample control data
+        # Sample control data with service-based IDs
         cspm_control_data = {
             "S3.1": {"control_id": "S3.1", "title": "S3 control 1"},
             "IAM.1": {"control_id": "IAM.1", "title": "IAM control 1"},
             "EC2.1": {"control_id": "EC2.1", "title": "EC2 control 1"},
         }
 
-        # Sample associations - S3.1 is in FSBP and CIS, IAM.1 is in FSBP only
-        control_associations = {
-            "S3.1": ["fsbp", "cis", "nist"],
-            "IAM.1": ["fsbp"],
-            "EC2.1": ["fsbp", "cis"],
-        }
+        result = scanner._group_controls_by_standard(cspm_control_data)
 
-        result = scanner._group_controls_by_standard(
-            cspm_control_data, control_associations
-        )
-
-        # FSBP should have all 3 controls
+        # All service-based controls should go to FSBP
         assert "fsbp" in result
         assert len(result["fsbp"]) == 3
+        assert "S3.1" in result["fsbp"]
+        assert "IAM.1" in result["fsbp"]
+        assert "EC2.1" in result["fsbp"]
 
-        # CIS should have S3.1 and EC2.1
-        assert "cis" in result
-        assert len(result["cis"]) == 2
-        assert "S3.1" in result["cis"]
-        assert "EC2.1" in result["cis"]
+    def test_service_prefixed_controls_go_to_fsbp(self, scanner_with_logger):
+        """Test that all service-prefixed controls are grouped under FSBP."""
+        scanner = scanner_with_logger
 
-        # NIST should have S3.1 only
-        assert "nist" in result
-        assert len(result["nist"]) == 1
-        assert "S3.1" in result["nist"]
+        cspm_control_data = {
+            "S3.1": {"control_id": "S3.1"},
+            "Backup.1": {"control_id": "Backup.1"},
+            "Glue.1": {"control_id": "Glue.1"},
+            "EventBridge.1": {"control_id": "EventBridge.1"},
+        }
 
-    def test_control_in_multiple_standards(self, scanner_with_logger):
-        """Test that a control can appear in multiple standards."""
+        result = scanner._group_controls_by_standard(cspm_control_data)
+
+        # All should be in FSBP
+        assert "fsbp" in result
+        assert len(result["fsbp"]) == 4
+
+    def test_unrecognised_prefix_goes_to_other(self, scanner_with_logger):
+        """Test that controls with unrecognised prefixes go to 'other'."""
         scanner = scanner_with_logger
 
         cspm_control_data = {
             "S3.1": {"control_id": "S3.1", "title": "S3 control 1"},
+            "FictionalService.1": {
+                "control_id": "FictionalService.1",
+                "title": "Unknown",
+            },
         }
 
-        # S3.1 is in all major standards
-        control_associations = {
-            "S3.1": ["fsbp", "cis", "nist", "pci"],
-        }
+        result = scanner._group_controls_by_standard(cspm_control_data)
 
-        result = scanner._group_controls_by_standard(
-            cspm_control_data, control_associations
-        )
-
-        # S3.1 should appear in all 4 standards
+        # S3.1 should be in FSBP
         assert "S3.1" in result.get("fsbp", {})
-        assert "S3.1" in result.get("cis", {})
-        assert "S3.1" in result.get("nist", {})
-        assert "S3.1" in result.get("pci", {})
-
-    def test_control_with_no_associations_goes_to_other(self, scanner_with_logger):
-        """Test that controls with no associations go to 'other' bucket."""
-        scanner = scanner_with_logger
-
-        cspm_control_data = {
-            "S3.1": {"control_id": "S3.1", "title": "S3 control 1"},
-            "Unknown.1": {"control_id": "Unknown.1", "title": "Unknown control"},
-        }
-
-        # Unknown.1 has no associations
-        control_associations = {
-            "S3.1": ["fsbp"],
-            "Unknown.1": [],
-        }
-
-        result = scanner._group_controls_by_standard(
-            cspm_control_data, control_associations
-        )
-
-        # Unknown.1 should be in 'other'
-        assert "other" in result
-        assert "Unknown.1" in result["other"]
+        # FictionalService.1 should be in 'other'
+        assert "FictionalService.1" in result.get("other", {})
 
     def test_empty_controls_returns_empty_result(self, scanner_with_logger):
         """Test that empty controls dict returns empty result."""
         scanner = scanner_with_logger
 
-        result = scanner._group_controls_by_standard({}, {})
+        result = scanner._group_controls_by_standard({})
 
         # All buckets should be empty and removed
         assert result == {}
