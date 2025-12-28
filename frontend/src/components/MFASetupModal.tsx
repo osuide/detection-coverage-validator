@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import {
   X,
@@ -40,26 +40,26 @@ export default function MFASetupModal({
   const [copied, setCopied] = useState(false)
   const [backupCodesCopied, setBackupCodesCopied] = useState(false)
 
-  // Start setup when modal opens
-  const startSetup = async () => {
-    setStep('loading')
-    setError('')
+  // Start setup when modal opens - use useEffect to avoid state updates during render
+  useEffect(() => {
+    if (isOpen && step === 'loading' && !provisioningUri) {
+      const startSetup = async () => {
+        setError('')
 
-    try {
-      const data = await setupMFA()
-      setProvisioningUri(data.provisioning_uri)
-      setSecret(data.secret)
-      setStep('qr')
-    } catch (err) {
-      setError('Failed to initialise MFA setup. Please try again.')
-      setStep('qr') // Show error state
+        try {
+          const data = await setupMFA()
+          setProvisioningUri(data.provisioning_uri)
+          setSecret(data.secret)
+          setStep('qr')
+        } catch (err) {
+          setError('Failed to initialise MFA setup. Please try again.')
+          setStep('qr') // Show error state
+        }
+      }
+
+      startSetup()
     }
-  }
-
-  // Handle modal open
-  if (isOpen && step === 'loading' && !provisioningUri) {
-    startSetup()
-  }
+  }, [isOpen, step, provisioningUri, setupMFA])
 
   const handleVerify = async () => {
     if (verificationCode.length !== 6) {
