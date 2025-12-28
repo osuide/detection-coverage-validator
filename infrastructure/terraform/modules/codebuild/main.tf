@@ -9,8 +9,9 @@ variable "vpc_id" {
   type = string
 }
 
-variable "private_subnet_ids" {
-  type = list(string)
+variable "public_subnet_ids" {
+  type        = list(string)
+  description = "Public subnets for CodeBuild - needs internet access for GitHub/pip"
 }
 
 variable "database_security_group_id" {
@@ -141,7 +142,7 @@ resource "aws_iam_role_policy" "codebuild" {
         Resource = "arn:aws:ec2:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:network-interface/*"
         Condition = {
           StringEquals = {
-            "ec2:Subnet" = [for subnet_id in var.private_subnet_ids : "arn:aws:ec2:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:subnet/${subnet_id}"]
+            "ec2:Subnet" = [for subnet_id in var.public_subnet_ids : "arn:aws:ec2:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:subnet/${subnet_id}"]
           }
         }
       }
@@ -235,7 +236,7 @@ resource "aws_codebuild_project" "integration_tests" {
 
   vpc_config {
     vpc_id             = var.vpc_id
-    subnets            = var.private_subnet_ids
+    subnets            = var.public_subnet_ids
     security_group_ids = [aws_security_group.codebuild.id]
   }
 

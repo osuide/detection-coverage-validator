@@ -320,7 +320,7 @@ module "codebuild" {
 
   environment                = var.environment
   vpc_id                     = module.vpc.vpc_id
-  private_subnet_ids         = module.vpc.private_subnet_ids
+  public_subnet_ids          = module.vpc.public_subnet_ids # Public subnets have internet access
   database_security_group_id = module.database.security_group_id
   redis_security_group_id    = module.cache.security_group_id
   database_url               = module.database.connection_string
