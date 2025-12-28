@@ -10,8 +10,9 @@ from sqlalchemy import select
 import structlog
 
 from app.core.database import get_db
-from app.core.security import AuthContext, get_auth_context, require_scope
+from app.core.security import AuthContext, get_auth_context, require_scope, require_role
 from app.models.alert import AlertConfig, AlertHistory, AlertSeverity
+from app.models.user import UserRole
 from app.models.cloud_account import CloudAccount
 from app.schemas.alert import (
     AlertConfigCreate,
@@ -90,7 +91,7 @@ async def list_alerts(
     "",
     response_model=AlertConfigResponse,
     status_code=201,
-    dependencies=[Depends(require_scope("write:alerts"))],
+    dependencies=[Depends(require_role(UserRole.OWNER, UserRole.ADMIN))],
 )
 async def create_alert(
     alert_in: AlertConfigCreate,
@@ -99,7 +100,8 @@ async def create_alert(
 ):
     """Create a new alert configuration.
 
-    API keys require 'write:alerts' scope.
+    Requires OWNER or ADMIN role. Webhook/channel configuration
+    is restricted to admins for security (SSRF prevention).
     """
     # Verify cloud account exists and belongs to user's organization if specified
     if alert_in.cloud_account_id:
@@ -160,7 +162,7 @@ async def get_alert(
 @router.put(
     "/{alert_id}",
     response_model=AlertConfigResponse,
-    dependencies=[Depends(require_scope("write:alerts"))],
+    dependencies=[Depends(require_role(UserRole.OWNER, UserRole.ADMIN))],
 )
 async def update_alert(
     alert_id: UUID,
@@ -170,7 +172,8 @@ async def update_alert(
 ):
     """Update an alert configuration.
 
-    API keys require 'write:alerts' scope.
+    Requires OWNER or ADMIN role. Webhook/channel configuration
+    is restricted to admins for security (SSRF prevention).
     """
     result = await db.execute(
         select(AlertConfig).where(
@@ -202,7 +205,7 @@ async def update_alert(
 @router.delete(
     "/{alert_id}",
     status_code=204,
-    dependencies=[Depends(require_scope("write:alerts"))],
+    dependencies=[Depends(require_role(UserRole.OWNER, UserRole.ADMIN))],
 )
 async def delete_alert(
     alert_id: UUID,
@@ -211,7 +214,7 @@ async def delete_alert(
 ):
     """Delete an alert configuration.
 
-    API keys require 'write:alerts' scope.
+    Requires OWNER or ADMIN role.
     """
     result = await db.execute(
         select(AlertConfig).where(
@@ -230,7 +233,7 @@ async def delete_alert(
 @router.post(
     "/{alert_id}/activate",
     response_model=AlertConfigResponse,
-    dependencies=[Depends(require_scope("write:alerts"))],
+    dependencies=[Depends(require_role(UserRole.OWNER, UserRole.ADMIN))],
 )
 async def activate_alert(
     alert_id: UUID,
@@ -258,7 +261,7 @@ async def activate_alert(
 @router.post(
     "/{alert_id}/deactivate",
     response_model=AlertConfigResponse,
-    dependencies=[Depends(require_scope("write:alerts"))],
+    dependencies=[Depends(require_role(UserRole.OWNER, UserRole.ADMIN))],
 )
 async def deactivate_alert(
     alert_id: UUID,
@@ -285,7 +288,7 @@ async def deactivate_alert(
 
 @router.post(
     "/{alert_id}/test",
-    dependencies=[Depends(require_scope("write:alerts"))],
+    dependencies=[Depends(require_role(UserRole.OWNER, UserRole.ADMIN))],
 )
 async def test_alert(
     alert_id: UUID,
@@ -412,7 +415,9 @@ async def list_alert_history(
 @router.post(
     "/history/{history_id}/resolve",
     response_model=AlertHistoryResponse,
-    dependencies=[Depends(require_scope("write:alerts"))],
+    dependencies=[
+        Depends(require_role(UserRole.OWNER, UserRole.ADMIN, UserRole.MEMBER))
+    ],
 )
 async def resolve_alert(
     history_id: UUID,

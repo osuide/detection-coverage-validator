@@ -9,10 +9,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
 from app.core.database import get_db
+from app.core.config import get_settings
 from app.core.security import get_client_ip
 from app.models.admin import AdminUser
 from app.services.admin_auth_service import get_admin_auth_service
 from app.api.deps import get_current_admin
+
+settings = get_settings()
 
 logger = structlog.get_logger()
 
@@ -141,7 +144,16 @@ async def admin_login(
             mfa_token=mfa_token,
         )
 
-    # MFA not enabled - issue tokens directly (dev mode)
+    # MFA not enabled - only allow in development
+    # SECURITY: Defense in depth - service layer should block this in staging/production,
+    # but we double-check here to ensure MFA is enforced
+    if settings.environment not in ("development",):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="MFA is required for admin accounts",
+        )
+
+    # Development only: issue tokens directly
     access_token, refresh_token = await auth_service.create_session(
         admin=admin,
         ip_address=ip_address,

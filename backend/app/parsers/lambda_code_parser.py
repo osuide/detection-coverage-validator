@@ -317,28 +317,80 @@ class LambdaCodeParser:
     ) -> list[SDKCall]:
         """Download function code and parse for SDK calls."""
         import urllib.request
+        import urllib.error
         from urllib.parse import urlparse
 
         sdk_calls = []
 
-        # Security: Validate URL scheme to prevent file:// or other dangerous schemes
+        # SECURITY: Limits for DoS prevention
+        MAX_DOWNLOAD_SIZE = 50 * 1024 * 1024  # 50MB
+        MAX_DECOMPRESSED_SIZE = 200 * 1024 * 1024  # 200MB
+        MAX_FILES = 1000
+
+        # Security: Only allow HTTPS
         parsed_url = urlparse(code_location)
-        if parsed_url.scheme not in ("https", "http"):
+        if parsed_url.scheme != "https":
             raise ValueError(
-                f"Invalid URL scheme: {parsed_url.scheme}. Only https/http allowed."
+                f"Invalid URL scheme: {parsed_url.scheme}. Only HTTPS allowed."
             )
 
-        # Download the deployment package (nosec B310 - scheme validated above)
-        with urllib.request.urlopen(
-            code_location, timeout=30
-        ) as response:  # nosec B310
-            code_bytes = response.read()
+        # Optional: Validate it's from AWS Lambda
+        if not parsed_url.hostname or not parsed_url.hostname.endswith(
+            ".amazonaws.com"
+        ):
+            raise ValueError("Code location must be from AWS Lambda service")
 
-        # Extract and analyze files from zip
+        # Download with size limit
         try:
+            with urllib.request.urlopen(
+                code_location, timeout=30
+            ) as response:  # nosec B310 - scheme and host validated above
+                # Check Content-Length if available
+                content_length = response.headers.get("Content-Length")
+                if content_length and int(content_length) > MAX_DOWNLOAD_SIZE:
+                    raise ValueError(
+                        f"Download too large: {content_length} bytes (max {MAX_DOWNLOAD_SIZE})"
+                    )
+
+                # Read with size limit
+                code_bytes = b""
+                bytes_read = 0
+                while True:
+                    chunk = response.read(8192)
+                    if not chunk:
+                        break
+                    bytes_read += len(chunk)
+                    if bytes_read > MAX_DOWNLOAD_SIZE:
+                        raise ValueError(f"Download exceeded {MAX_DOWNLOAD_SIZE} bytes")
+                    code_bytes += chunk
+        except urllib.error.URLError as e:
+            raise ValueError(f"Failed to download code: {e}")
+
+        # Extract and analyze files from zip with limits
+        try:
+            total_decompressed = 0
+            files_processed = 0
+
             with zipfile.ZipFile(io.BytesIO(code_bytes)) as zf:
                 for file_info in zf.infolist():
+                    files_processed += 1
+                    if files_processed > MAX_FILES:
+                        result.errors.append(f"Too many files (max {MAX_FILES})")
+                        break
+
                     file_path = file_info.filename
+
+                    # Check decompressed size before reading
+                    if file_info.file_size > MAX_DECOMPRESSED_SIZE:
+                        result.errors.append(
+                            f"File {file_path} too large after decompression"
+                        )
+                        continue
+
+                    total_decompressed += file_info.file_size
+                    if total_decompressed > MAX_DECOMPRESSED_SIZE:
+                        result.errors.append("Total decompressed size exceeded limit")
+                        break
 
                     # Skip non-code files
                     if not self._is_code_file(file_path, runtime):

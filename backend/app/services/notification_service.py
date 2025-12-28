@@ -20,6 +20,7 @@ from app.models.alert import (
 from app.models.coverage import CoverageSnapshot
 from app.models.scan import Scan, ScanStatus
 from app.core.config import get_settings
+from app.core.url_validator import validate_webhook_url, SSRFError
 
 logger = structlog.get_logger()
 settings = get_settings()
@@ -275,6 +276,13 @@ class NotificationService:
         if not url:
             raise ValueError("Webhook URL not configured")
 
+        # SECURITY: Validate URL to prevent SSRF
+        try:
+            validated_url = validate_webhook_url(url)
+        except SSRFError as e:
+            self.logger.error("webhook_ssrf_blocked", url=url, error=str(e))
+            raise ValueError(f"Invalid webhook URL: {e}")
+
         payload = {
             "alert_name": alert.name,
             "alert_type": alert.alert_type.value,
@@ -290,14 +298,14 @@ class NotificationService:
 
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                url,
+                validated_url,
                 json=payload,
                 headers=headers,
                 timeout=10.0,
             )
             response.raise_for_status()
 
-        self.logger.info("webhook_sent", url=url)
+        self.logger.info("webhook_sent", url=validated_url)
 
     async def _send_slack(
         self,
@@ -311,6 +319,13 @@ class NotificationService:
         webhook_url = config.get("webhook_url")
         if not webhook_url:
             raise ValueError("Slack webhook URL not configured")
+
+        # SECURITY: Validate URL to prevent SSRF
+        try:
+            validated_url = validate_webhook_url(webhook_url)
+        except SSRFError as e:
+            self.logger.error("slack_ssrf_blocked", url=webhook_url, error=str(e))
+            raise ValueError(f"Invalid Slack webhook URL: {e}")
 
         # Color based on severity
         color = {
@@ -345,13 +360,13 @@ class NotificationService:
 
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                webhook_url,
+                validated_url,
                 json=payload,
                 timeout=10.0,
             )
             response.raise_for_status()
 
-        self.logger.info("slack_notification_sent")
+        self.logger.info("slack_notification_sent", url=validated_url)
 
 
 async def trigger_scan_alerts(

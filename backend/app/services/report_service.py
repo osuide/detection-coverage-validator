@@ -5,6 +5,7 @@ import io
 from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
+from xml.sax.saxutils import escape as xml_escape
 
 import structlog
 from reportlab.lib import colors
@@ -32,6 +33,27 @@ from app.core.config import get_settings
 
 logger = structlog.get_logger()
 settings = get_settings()
+
+
+def _sanitize_csv_cell(value: str) -> str:
+    """Sanitize value to prevent CSV formula injection.
+
+    Prefixes cells starting with formula characters with a single quote.
+    This prevents Excel from interpreting the value as a formula.
+    """
+    if not value:
+        return value
+    if value[0] in ("=", "+", "-", "@", "\t", "\r", "\n"):
+        return f"'{value}"
+    return value
+
+
+def _sanitize_pdf_text(value: str) -> str:
+    """Escape XML-sensitive characters for ReportLab Paragraph.
+
+    ReportLab uses XML-like markup, so we need to escape special characters.
+    """
+    return xml_escape(value) if value else ""
 
 
 class ReportService:
@@ -161,7 +183,9 @@ class ReportService:
 
         # Title
         story.append(Paragraph("Detection Coverage Report", title_style))
-        story.append(Paragraph(f"Account: {account.name}", styles["Normal"]))
+        story.append(
+            Paragraph(f"Account: {_sanitize_pdf_text(account.name)}", styles["Normal"])
+        )
         story.append(
             Paragraph(
                 f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
@@ -555,8 +579,8 @@ class ReportService:
 
             writer.writerow(
                 [
-                    tech.technique_id,
-                    tech.name,
+                    _sanitize_csv_cell(tech.technique_id),
+                    _sanitize_csv_cell(tech.name),
                     tech.tactic_id,  # Would need join for tactic name
                     status,
                     f"{confidence:.2f}" if confidence > 0 else "",
@@ -589,10 +613,10 @@ class ReportService:
                 writer.writerow(
                     [
                         gap.get("priority", 0),
-                        gap.get("technique_id", ""),
-                        gap.get("name", ""),
-                        gap.get("tactic_name", ""),
-                        gap.get("reason", ""),
+                        _sanitize_csv_cell(gap.get("technique_id", "")),
+                        _sanitize_csv_cell(gap.get("name", "")),
+                        _sanitize_csv_cell(gap.get("tactic_name", "")),
+                        _sanitize_csv_cell(gap.get("reason", "")),
                     ]
                 )
 
@@ -623,11 +647,11 @@ class ReportService:
         for det in detections:
             writer.writerow(
                 [
-                    det.name,
+                    _sanitize_csv_cell(det.name),
                     det.detection_type.value,
                     det.status.value,
-                    det.region,
-                    det.source_arn or "",
+                    det.region or "",
+                    _sanitize_csv_cell(det.source_arn or ""),
                     "Yes" if det.is_managed else "No",
                     det.discovered_at.isoformat() if det.discovered_at else "",
                 ]

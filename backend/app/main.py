@@ -269,7 +269,6 @@ def seed_mitre_data():
 
 def seed_admin_user():
     """Seed initial admin user for staging/production if not exists."""
-    import secrets
     import bcrypt
     from sqlalchemy import create_engine, text
 
@@ -293,22 +292,23 @@ def seed_admin_user():
                 logger.info("admin_user_exists", email="admin@a13e.com")
                 return
 
-            # Check for environment variable first, otherwise generate random password
+            # SECURITY: Require password from environment variable - never generate/print
             admin_password = os.environ.get("INITIAL_ADMIN_PASSWORD")
 
             if not admin_password:
-                # Generate cryptographically secure password
-                admin_password = secrets.token_urlsafe(16)
-                # Print to console ONLY (not captured in structured logs)
-                # This is the only time the password will be shown
-                print("\n" + "=" * 60)
-                print("INITIAL ADMIN PASSWORD GENERATED")
-                print("Email: admin@a13e.com")
-                print(f"Password: {admin_password}")
-                print("SAVE THIS IMMEDIATELY - it will not be shown again")
-                print("=" * 60 + "\n")
-                # Log event without sensitive data
-                logger.info("admin_password_generated", email="admin@a13e.com")
+                logger.error(
+                    "admin_seed_failed",
+                    error="INITIAL_ADMIN_PASSWORD environment variable is required",
+                    message="Set via Secrets Manager or Terraform variables",
+                )
+                return  # Don't fail startup, just skip seeding
+
+            if len(admin_password) < 16:
+                logger.error(
+                    "admin_seed_failed",
+                    error="INITIAL_ADMIN_PASSWORD must be at least 16 characters",
+                )
+                return
 
             # Hash the password with bcrypt
             password_hash = bcrypt.hashpw(
@@ -344,7 +344,6 @@ def seed_admin_user():
                 "admin_user_created",
                 email="admin@a13e.com",
                 admin_id=str(admin_id),
-                password_from_env=bool(os.environ.get("INITIAL_ADMIN_PASSWORD")),
             )
     except Exception as e:
         logger.warning("admin_seed_failed", error=str(e))
@@ -413,6 +412,12 @@ async def lifespan(app: FastAPI):
         await init_rate_limiter()
     except Exception as e:
         logger.error("rate_limiter_init_failed", error=str(e))
+        # SECURITY: In staging/production, rate limiting is required
+        if settings.environment not in ("development",):
+            raise RuntimeError(
+                f"Rate limiter initialisation failed: {e}. "
+                "Cannot start without rate limiting in staging/production."
+            )
 
     try:
         await init_cache()
@@ -440,11 +445,22 @@ async def lifespan(app: FastAPI):
         logger.warning("cache_close_failed", error=str(e))
 
 
+# SECURITY: Disable API documentation in production
+# Docs are only available in development and staging for debugging
+docs_url = "/docs" if settings.environment in ("development", "staging") else None
+redoc_url = "/redoc" if settings.environment in ("development", "staging") else None
+openapi_url = (
+    "/openapi.json" if settings.environment in ("development", "staging") else None
+)
+
 app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
     description="Multi-cloud security detection coverage analysis platform",
     lifespan=lifespan,
+    docs_url=docs_url,
+    redoc_url=redoc_url,
+    openapi_url=openapi_url,
 )
 
 

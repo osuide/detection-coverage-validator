@@ -432,6 +432,29 @@ class AuthService:
         if not user or not user.is_active:
             return None, None
 
+        # SECURITY: Validate org membership before issuing new token
+        if session.organization_id:
+            membership_result = await self.db.execute(
+                select(OrganizationMember).where(
+                    and_(
+                        OrganizationMember.user_id == user.id,
+                        OrganizationMember.organization_id == session.organization_id,
+                        OrganizationMember.status == MembershipStatus.ACTIVE,
+                    )
+                )
+            )
+            membership = membership_result.scalar_one_or_none()
+
+            if not membership:
+                self.logger.warning(
+                    "refresh_blocked_no_membership",
+                    user_id=str(user.id),
+                    organization_id=str(session.organization_id),
+                )
+                # Invalidate session - user was removed from org
+                session.is_active = False
+                return None, None
+
         # Check org security settings for IP allowlist and idle timeout
         if session.organization_id:
             org_security_result = await self.db.execute(

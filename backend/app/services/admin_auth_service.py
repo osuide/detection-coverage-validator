@@ -146,15 +146,29 @@ class AdminAuthService:
         admin.failed_login_attempts = 0
         await self.db.commit()
 
-        # Check if MFA is required (always for production)
+        # Check if MFA is required
         requires_mfa = admin.mfa_enabled
 
-        if not requires_mfa:
-            # MFA not enabled - this should be required in production
+        # SECURITY: In staging/production, MFA is mandatory for all admin accounts
+        if not requires_mfa and settings.environment not in ("development",):
             self.logger.warning(
-                "admin_login_without_mfa",
+                "admin_login_blocked_no_mfa",
                 admin_id=str(admin.id),
                 admin_email=admin.email,
+            )
+            await self._log_action(
+                admin_id=admin.id,
+                admin_email=admin.email,
+                admin_role=admin.role,
+                action="admin:login_blocked",
+                ip_address=ip_address,
+                user_agent=user_agent,
+                success=False,
+                error_message="MFA required but not configured",
+            )
+            raise ValueError(
+                "MFA is required for admin accounts. "
+                "Please contact another admin to set up MFA."
             )
 
         return admin, requires_mfa

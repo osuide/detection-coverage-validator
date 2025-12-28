@@ -5,6 +5,7 @@ from typing import Optional, Callable
 from uuid import UUID
 
 import jwt
+import structlog
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy import select, and_
@@ -23,6 +24,7 @@ from app.models.user import (
 from app.services.auth_service import AuthService
 
 settings = get_settings()
+logger = structlog.get_logger()
 security = HTTPBearer(auto_error=False)
 
 
@@ -404,6 +406,16 @@ async def _authenticate_jwt(
                 )
             )
             membership = result.scalar_one_or_none()
+
+            # SECURITY: If membership is not ACTIVE, don't grant org access
+            if not membership:
+                logger.warning(
+                    "jwt_org_access_denied",
+                    user_id=str(user_id),
+                    org_id=str(org_id),
+                    reason="membership_not_active",
+                )
+                organization = None  # Clear org context if no active membership
 
     # Store context in request state
     request.state.auth_context = AuthContext(
