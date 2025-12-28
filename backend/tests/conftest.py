@@ -49,6 +49,8 @@ def event_loop() -> Generator:
 @pytest_asyncio.fixture(scope="function")
 async def db_engine():
     """Create a test database engine."""
+    from sqlalchemy import text
+
     engine = create_async_engine(TEST_DATABASE_URL, echo=False)
 
     async with engine.begin() as conn:
@@ -57,6 +59,11 @@ async def db_engine():
     yield engine
 
     async with engine.begin() as conn:
+        # Drop views first (created by migrations, not known to SQLAlchemy metadata)
+        await conn.execute(
+            text("DROP VIEW IF EXISTS v_recent_evaluation_changes CASCADE")
+        )
+        await conn.execute(text("DROP VIEW IF EXISTS v_daily_compliance_trend CASCADE"))
         await conn.run_sync(Base.metadata.drop_all)
 
     await engine.dispose()
