@@ -72,6 +72,11 @@ class User(Base):
     )  # Column name kept as 'mfa_secret' for backwards compatibility
     mfa_backup_codes: Mapped[Optional[List[str]]] = mapped_column(JSONB, nullable=True)
 
+    # WebAuthn/FIDO2 credentials (passkeys, hardware keys like YubiKey)
+    webauthn_credentials: Mapped[Optional[List[dict]]] = mapped_column(
+        JSONB, default=list, nullable=True
+    )
+
     @staticmethod
     def _get_mfa_encryption_key() -> Optional[bytes]:
         """Get encryption key for MFA secrets.

@@ -5,6 +5,7 @@ import logging
 from fastapi import APIRouter
 
 from app.api.routes.admin.auth import router as auth_router
+from app.api.routes.admin.webauthn import router as webauthn_router
 from app.api.routes.admin.organizations import router as org_router
 from app.api.routes.admin.metrics import router as metrics_router
 from app.api.routes.admin.settings import router as settings_router
@@ -30,6 +31,7 @@ router = APIRouter(tags=["Admin Portal"])
 
 # Include sub-routers
 router.include_router(auth_router)
+router.include_router(webauthn_router)
 router.include_router(org_router)
 router.include_router(metrics_router)
 router.include_router(settings_router)

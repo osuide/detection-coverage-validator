@@ -487,3 +487,222 @@ async def enable_mfa_with_token(
             "mfa_enabled": True,  # Now enabled
         },
     )
+
+
+# ============================================================================
+# WebAuthn/FIDO2 Authentication Endpoints
+# ============================================================================
+
+
+class WebAuthnAuthOptionsRequest(BaseModel):
+    """Request WebAuthn authentication options."""
+
+    email: EmailStr
+
+
+class WebAuthnAuthOptionsResponse(BaseModel):
+    """WebAuthn authentication options for the browser."""
+
+    options: dict
+    auth_token: str  # Temporary token for verification step
+
+
+class WebAuthnAuthVerifyRequest(BaseModel):
+    """WebAuthn authentication verification request."""
+
+    auth_token: str
+    credential: dict
+
+
+@router.post("/webauthn/auth/options", response_model=WebAuthnAuthOptionsResponse)
+async def get_webauthn_auth_options(
+    body: WebAuthnAuthOptionsRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get WebAuthn authentication options for an admin.
+
+    This starts the WebAuthn authentication flow. The admin provides their email,
+    and we return a challenge for their security key.
+    """
+    import json
+    from sqlalchemy import select
+    from app.services.webauthn_service import get_webauthn_service, store_challenge
+    from app.core.security import get_client_ip
+
+    auth_service = get_admin_auth_service(db)
+    ip_address = get_client_ip(request) or "unknown"
+
+    # Check IP allowlist
+    if not await auth_service.check_ip_allowed(ip_address):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied: IP not in allowlist",
+        )
+
+    # Get admin by email
+    result = await db.execute(
+        select(AdminUser).where(AdminUser.email == body.email.lower())
+    )
+    admin = result.scalar_one_or_none()
+
+    if not admin:
+        # Don't reveal if user exists
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials",
+        )
+
+    # Check if admin has WebAuthn credentials
+    credentials = admin.webauthn_credentials or []
+    if not credentials:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No security keys registered. Please use password + TOTP.",
+        )
+
+    # Check if account is active and not locked
+    if not admin.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Account is disabled",
+        )
+
+    if admin.is_locked:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Account is locked. Please try again later.",
+        )
+
+    # Generate authentication options
+    webauthn = get_webauthn_service()
+    options_json, challenge = webauthn.generate_authentication_options_for_user(
+        credentials=credentials
+    )
+
+    # Store challenge with admin ID
+    store_challenge(f"admin_webauthn_auth_{admin.id}", challenge)
+
+    # Create temporary auth token
+    from app.core.security import create_access_token
+    from datetime import timedelta
+
+    auth_token = create_access_token(
+        data={"sub": str(admin.id), "type": "webauthn_pending"},
+        expires_delta=timedelta(minutes=5),
+    )
+
+    return WebAuthnAuthOptionsResponse(
+        options=json.loads(options_json),
+        auth_token=auth_token,
+    )
+
+
+@router.post("/webauthn/auth/verify", response_model=AdminTokenResponse)
+async def verify_webauthn_auth(
+    body: WebAuthnAuthVerifyRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Complete WebAuthn authentication.
+
+    Verifies the security key response and returns access/refresh tokens.
+    """
+    import json
+    from sqlalchemy import select
+    from app.services.webauthn_service import get_webauthn_service, get_challenge
+    from app.core.security import decode_token, get_client_ip
+    from datetime import datetime, timezone
+
+    # Validate auth token
+    try:
+        payload = decode_token(body.auth_token)
+        if payload.get("type") != "webauthn_pending":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid authentication token",
+            )
+        admin_id = UUID(payload["sub"])
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired authentication token",
+        )
+
+    # Get admin
+    result = await db.execute(select(AdminUser).where(AdminUser.id == admin_id))
+    admin = result.scalar_one_or_none()
+
+    if not admin:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication token",
+        )
+
+    # Get stored challenge
+    challenge = get_challenge(f"admin_webauthn_auth_{admin.id}")
+    if not challenge:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Authentication session expired. Please try again.",
+        )
+
+    # Verify the authentication
+    webauthn = get_webauthn_service()
+    try:
+        credential_id, new_sign_count = webauthn.verify_authentication(
+            credential_json=json.dumps(body.credential),
+            expected_challenge=challenge,
+            stored_credentials=admin.webauthn_credentials or [],
+        )
+    except Exception as e:
+        # Increment failed attempts
+        admin.failed_login_attempts += 1
+        if admin.failed_login_attempts >= 3:
+            from datetime import timedelta
+
+            admin.locked_until = datetime.now(timezone.utc) + timedelta(minutes=60)
+        await db.commit()
+
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Authentication failed: {str(e)}",
+        )
+
+    # Update credential sign count and last used
+    credentials = admin.webauthn_credentials or []
+    for cred in credentials:
+        if cred["credential_id"] == credential_id:
+            cred["sign_count"] = new_sign_count
+            cred["last_used_at"] = datetime.now(timezone.utc).isoformat()
+            break
+    admin.webauthn_credentials = credentials
+
+    # Reset failed attempts
+    admin.failed_login_attempts = 0
+
+    await db.commit()
+
+    # Create session
+    auth_service = get_admin_auth_service(db)
+    ip_address = get_client_ip(request) or "unknown"
+    user_agent = request.headers.get("User-Agent")
+
+    access_token, refresh_token = await auth_service.create_session(
+        admin=admin,
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+
+    return AdminTokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        expires_in=auth_service.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        admin={
+            "id": str(admin.id),
+            "email": admin.email,
+            "full_name": admin.full_name,
+            "role": admin.role.value,
+            "mfa_enabled": admin.mfa_enabled,
+        },
+    )

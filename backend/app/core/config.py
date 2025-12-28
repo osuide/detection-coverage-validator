@@ -58,6 +58,12 @@ class Settings(BaseSettings):
     # Note: IP blocking is handled by AWS WAF at the edge, not application code
     fraud_prevention_enabled: bool = True
 
+    # WebAuthn/FIDO2 (Passkeys, YubiKey, Touch ID, Windows Hello)
+    # RP ID must match the domain name (e.g., 'a13e.com' or 'staging.a13e.com')
+    # For local development, use 'localhost'
+    webauthn_rp_id: str = "localhost"
+    webauthn_rp_name: str = "A13E Detection Coverage Validator"
+
     @staticmethod
     def _calculate_entropy(s: str) -> float:
         """Calculate Shannon entropy of a string (bits per character)."""
