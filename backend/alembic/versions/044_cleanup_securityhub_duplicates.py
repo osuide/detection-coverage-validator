@@ -26,33 +26,33 @@ depends_on = None
 
 
 def upgrade() -> None:
-    """Delete all Security Hub aggregated detections."""
+    """Delete all Security Hub standard detections (including 'OTHER')."""
     conn = op.get_bind()
 
-    # Count aggregated Security Hub detections
+    # Count ALL Security Hub standard detections (broader filter)
     count_result = conn.execute(
         sa.text(
             """
             SELECT COUNT(*) FROM detections
             WHERE detection_type = 'security_hub'
-            AND raw_config->>'api_version' = 'cspm_aggregated'
+            AND name LIKE 'SecurityHub-%'
             """
         )
     )
     count = count_result.scalar()
-    logger.info(f"Found {count} Security Hub aggregated detections to delete")
+    logger.info(f"Found {count} Security Hub standard detections to delete")
 
     if count == 0:
-        logger.info("No Security Hub aggregated detections to delete")
+        logger.info("No Security Hub standard detections to delete")
         return
 
-    # Get IDs to delete
+    # Get IDs to delete - ALL SecurityHub standard detections
     result = conn.execute(
         sa.text(
             """
             SELECT id FROM detections
             WHERE detection_type = 'security_hub'
-            AND raw_config->>'api_version' = 'cspm_aggregated'
+            AND name LIKE 'SecurityHub-%'
             """
         )
     )
@@ -81,8 +81,8 @@ def upgrade() -> None:
         {"ids": detection_ids},
     )
 
-    logger.info(f"Deleted {count} Security Hub aggregated detections")
-    logger.info("Run a new scan to create clean detections with correct source_arn")
+    logger.info(f"Deleted {count} Security Hub standard detections")
+    logger.info("Run a new scan to create clean detections")
 
 
 def downgrade() -> None:
