@@ -1,11 +1,12 @@
 name: Staging Integration Tests
 
 on:
-  # Run after deploy workflow completes on staging
-  workflow_run:
-    workflows: ["Deploy"]
-    types: [completed]
-    branches: [main]
+  # Manual trigger only - automatic runs disabled until VPC access configured
+  # TODO: Re-enable workflow_run trigger once self-hosted runner or bastion is set up
+  # workflow_run:
+  #   workflows: ["Deploy"]
+  #   types: [completed]
+  #   branches: [main]
 
   # Allow manual trigger
   workflow_dispatch:
