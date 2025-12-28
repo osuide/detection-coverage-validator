@@ -720,14 +720,17 @@ class SecurityHubScanner(BaseScanner):
 
             for page in paginator.paginate(StandardsSubscriptionArn=subscription_arn):
                 for control in page.get("Controls", []):
-                    # Extract control ID from ARN
-                    # Format: arn:aws:securityhub:region:account:control/standard/rule-id
                     control_arn = control.get("StandardsControlArn", "")
-                    control_id = ""
-                    if control_arn:
+
+                    # Use ControlId field directly (consolidated control ID like "IAM.6")
+                    # This is the unified ID that matches CSPM control IDs
+                    # Fallback to ARN parsing for legacy compatibility
+                    control_id = control.get("ControlId", "")
+                    if not control_id and control_arn:
+                        # Legacy fallback: parse from ARN
                         parts = control_arn.split("/")
                         if len(parts) >= 3:
-                            control_id = parts[-1]  # e.g., "CIS.1.1" or "IAM.1"
+                            control_id = parts[-1]
 
                     controls.append(
                         {
