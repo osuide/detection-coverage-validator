@@ -235,21 +235,38 @@ async def test_admin_with_webauthn(db_session: AsyncSession) -> AdminUser:
 
 
 async def get_user_token(client: AsyncClient, user: User) -> str:
-    """Login and get an access token for a user."""
+    """Login and get an access token for a user.
+
+    Uses a unique IP address per call to avoid rate limiting between tests.
+    """
+    # Generate unique IP to avoid rate limiting (5 attempts per 30 min)
+    unique_ip = (
+        f"10.{uuid.uuid4().int % 256}.{uuid.uuid4().int % 256}.{uuid.uuid4().int % 256}"
+    )
+
     response = await client.post(
         "/api/v1/auth/login",
         json={"email": user.email, "password": "TestPassword123!"},
+        headers={"X-Forwarded-For": unique_ip},
     )
     assert response.status_code == 200, f"Login failed: {response.text}"
     return response.json()["access_token"]
 
 
 async def get_admin_token(client: AsyncClient, admin: AdminUser) -> str:
-    """Login and get an access token for an admin."""
+    """Login and get an access token for an admin.
+
+    Uses a unique IP address per call to avoid rate limiting between tests.
+    """
+    # Generate unique IP to avoid rate limiting (5 attempts per 30 min)
+    unique_ip = (
+        f"10.{uuid.uuid4().int % 256}.{uuid.uuid4().int % 256}.{uuid.uuid4().int % 256}"
+    )
+
     response = await client.post(
         "/api/v1/admin/auth/login",
         json={"email": admin.email, "password": "AdminPassword123!"},
-        headers={"X-Forwarded-For": "127.0.0.1"},
+        headers={"X-Forwarded-For": unique_ip},
     )
     assert response.status_code == 200, f"Admin login failed: {response.text}"
     return response.json()["access_token"]
