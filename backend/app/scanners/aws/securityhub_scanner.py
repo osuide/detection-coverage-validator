@@ -229,22 +229,38 @@ class SecurityHubScanner(BaseScanner):
                     "securityhub_scan_error", region=region, error=str(e)
                 )
 
-        # Phase 2: Create detections per ENABLED STANDARD (not inferred)
-        if cspm_control_data and enabled_standards:
-            grouped_detections = self._create_detections_per_enabled_standard(
-                cspm_control_data,
-                enabled_standards,
-                hub_arn,
-                first_cspm_region or regions[0],
-            )
-            all_detections.extend(grouped_detections)
+        # Phase 2: Create detections per standard
+        if cspm_control_data:
+            if enabled_standards:
+                # Best path: Use actual enabled standards from GetEnabledStandards API
+                grouped_detections = self._create_detections_per_enabled_standard(
+                    cspm_control_data,
+                    enabled_standards,
+                    hub_arn,
+                    first_cspm_region or regions[0],
+                )
+                all_detections.extend(grouped_detections)
 
-            self.logger.info(
-                "securityhub_cspm_complete",
-                total_controls=len(cspm_control_data),
-                standards_created=len(grouped_detections),
-                regions_scanned=len(regions),
-            )
+                self.logger.info(
+                    "securityhub_cspm_complete",
+                    total_controls=len(cspm_control_data),
+                    standards_created=len(grouped_detections),
+                    regions_scanned=len(regions),
+                    method="enabled_standards_api",
+                )
+            else:
+                # Fallback: GetEnabledStandards failed (permissions?), use inference
+                self.logger.warning(
+                    "securityhub_enabled_standards_fallback",
+                    message="GetEnabledStandards returned empty, falling back to inference",
+                    total_controls=len(cspm_control_data),
+                )
+                grouped_detections = self._create_grouped_standard_detections(
+                    cspm_control_data,
+                    None,  # client not needed for inference
+                    first_cspm_region or regions[0],
+                )
+                all_detections.extend(grouped_detections)
 
         return all_detections
 
