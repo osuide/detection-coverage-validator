@@ -306,3 +306,25 @@ resource "aws_guardduty_detector" "main" {
     Environment = var.environment
   }
 }
+
+# ============================================================================
+# CodeBuild Integration Tests
+# ============================================================================
+# Runs integration tests inside VPC with access to RDS/Redis.
+# Triggered manually or on schedule via GitHub Actions.
+# Cost: ~$0 (within free tier of 100 build-minutes/month)
+
+module "codebuild" {
+  count  = var.enable_codebuild_tests ? 1 : 0
+  source = "./modules/codebuild"
+
+  environment                = var.environment
+  vpc_id                     = module.vpc.vpc_id
+  private_subnet_ids         = module.vpc.private_subnet_ids
+  database_security_group_id = module.database.security_group_id
+  redis_security_group_id    = module.cache.security_group_id
+  database_url               = module.database.connection_string
+  redis_url                  = module.cache.connection_string
+  secret_key                 = local.jwt_secret_key
+  github_repo                = var.github_repo
+}

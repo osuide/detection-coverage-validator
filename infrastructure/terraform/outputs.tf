@@ -91,3 +91,14 @@ output "cognito_enabled_providers" {
   value       = var.enable_cognito ? module.cognito[0].enabled_providers : []
   sensitive   = true
 }
+
+# CodeBuild outputs (only when enabled)
+output "codebuild_project_name" {
+  description = "CodeBuild project name for integration tests"
+  value       = var.enable_codebuild_tests ? module.codebuild[0].project_name : null
+}
+
+output "codebuild_project_arn" {
+  description = "CodeBuild project ARN"
+  value       = var.enable_codebuild_tests ? module.codebuild[0].project_arn : null
+}

@@ -180,3 +180,19 @@ variable "guardduty_finding_publishing_frequency" {
     error_message = "guardduty_finding_publishing_frequency must be FIFTEEN_MINUTES, ONE_HOUR, or SIX_HOURS."
   }
 }
+
+# ============================================================================
+# CodeBuild Integration Tests
+# ============================================================================
+
+variable "enable_codebuild_tests" {
+  description = "Enable CodeBuild for running integration tests inside VPC"
+  type        = bool
+  default     = false
+}
+
+variable "github_repo" {
+  description = "GitHub repository in format owner/repo for CodeBuild source"
+  type        = string
+  default     = "osuide/detection-coverage-validator"
+}

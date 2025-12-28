@@ -1,43 +1,33 @@
 name: Staging Integration Tests
 
 on:
-  # Manual trigger only - automatic runs disabled until VPC access configured
-  # TODO: Re-enable workflow_run trigger once self-hosted runner or bastion is set up
-  # workflow_run:
-  #   workflows: ["Deploy"]
-  #   types: [completed]
-  #   branches: [main]
-
-  # Allow manual trigger
+  # Manual trigger - use this when you want to run integration tests
   workflow_dispatch:
+    inputs:
+      test_path:
+        description: 'Test path to run (e.g., tests/integration/ or tests/integration/test_mfa.py)'
+        required: false
+        default: 'tests/integration/'
+        type: string
+
+  # Weekly scheduled run (Sunday 2am UTC) for regression testing
+  schedule:
+    - cron: '0 2 * * 0'
 
 env:
   AWS_REGION: eu-west-2
+  CODEBUILD_PROJECT: a13e-staging-integration-tests
 
 jobs:
   integration-tests:
-    name: Run Integration Tests on Staging
+    name: Run Integration Tests via CodeBuild
     runs-on: ubuntu-latest
     environment: staging
 
-    # Only run if deploy succeeded (or manual trigger)
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    # Don't run on forks
+    if: github.repository == 'osuide/detection-coverage-validator'
 
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-          cache: 'pip'
-
-      - name: Install dependencies
-        working-directory: ./backend
-        run: |
-          pip install -r requirements.txt
-          pip install pytest pytest-asyncio httpx
-
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -45,93 +35,105 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Get staging secrets from AWS Secrets Manager
-        id: secrets
+      - name: Start CodeBuild
+        id: codebuild
         run: |
-          # Get database URL from Secrets Manager
-          DB_SECRET=$(aws secretsmanager get-secret-value \
-            --secret-id a13e-staging-database-url \
-            --query SecretString --output text 2>/dev/null || echo "")
+          echo "Starting CodeBuild project: $CODEBUILD_PROJECT"
 
-          if [ -n "$DB_SECRET" ]; then
-            echo "database_url=$DB_SECRET" >> $GITHUB_OUTPUT
-          fi
+          # Determine test path
+          TEST_PATH="${{ inputs.test_path || 'tests/integration/' }}"
+          echo "Test path: $TEST_PATH"
 
-          # Get Redis URL from Secrets Manager
-          REDIS_SECRET=$(aws secretsmanager get-secret-value \
-            --secret-id a13e-staging-redis-url \
-            --query SecretString --output text 2>/dev/null || echo "")
+          # Start the build with environment variable override
+          BUILD_ID=$(aws codebuild start-build \
+            --project-name "$CODEBUILD_PROJECT" \
+            --source-version "refs/heads/main" \
+            --environment-variables-override "name=TEST_PATH,value=$TEST_PATH,type=PLAINTEXT" \
+            --query 'build.id' \
+            --output text)
 
-          if [ -n "$REDIS_SECRET" ]; then
-            echo "redis_url=$REDIS_SECRET" >> $GITHUB_OUTPUT
-          fi
+          echo "Build started: $BUILD_ID"
+          echo "build_id=$BUILD_ID" >> $GITHUB_OUTPUT
 
-          # Get Secret Key from Secrets Manager
-          SECRET_KEY=$(aws secretsmanager get-secret-value \
-            --secret-id a13e-staging-secret-key \
-            --query SecretString --output text 2>/dev/null || echo "")
+          # Get build URL
+          BUILD_URL="https://${AWS_REGION}.console.aws.amazon.com/codesuite/codebuild/projects/${CODEBUILD_PROJECT}/build/${BUILD_ID}"
+          echo "Build URL: $BUILD_URL"
+          echo "build_url=$BUILD_URL" >> $GITHUB_OUTPUT
 
-          if [ -n "$SECRET_KEY" ]; then
-            echo "secret_key=$SECRET_KEY" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Run integration tests
-        working-directory: ./backend
-        env:
-          # Use secrets from AWS Secrets Manager (primary) or GitHub secrets (fallback)
-          DATABASE_URL: ${{ steps.secrets.outputs.database_url || secrets.STAGING_DATABASE_URL }}
-          REDIS_URL: ${{ steps.secrets.outputs.redis_url || secrets.STAGING_REDIS_URL }}
-          SECRET_KEY: ${{ steps.secrets.outputs.secret_key || secrets.STAGING_SECRET_KEY }}
-          ENVIRONMENT: staging
-          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
-          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
-          API_URL: ${{ secrets.API_URL }}
+      - name: Wait for CodeBuild completion
+        id: wait
         run: |
-          echo "Running integration tests against staging..."
+          BUILD_ID="${{ steps.codebuild.outputs.build_id }}"
+          echo "Waiting for build: $BUILD_ID"
 
-          # Run integration tests with verbose output
-          PYTHONPATH=. pytest tests/integration/ -v --tb=short \
-            --junitxml=integration-test-results.xml \
-            2>&1 | tee integration-test-output.txt
+          MAX_WAIT=900  # 15 minutes max
+          WAITED=0
+          POLL_INTERVAL=30
 
-          # Check exit code
-          TEST_EXIT_CODE=${PIPESTATUS[0]}
+          while [ $WAITED -lt $MAX_WAIT ]; do
+            STATUS=$(aws codebuild batch-get-builds \
+              --ids "$BUILD_ID" \
+              --query 'builds[0].buildStatus' \
+              --output text)
 
-          if [ $TEST_EXIT_CODE -ne 0 ]; then
-            echo "::error::Integration tests failed"
-            exit $TEST_EXIT_CODE
-          fi
+            echo "Build status: $STATUS (waited ${WAITED}s)"
 
-          echo "Integration tests passed!"
+            case $STATUS in
+              SUCCEEDED)
+                echo "Build succeeded!"
+                echo "status=success" >> $GITHUB_OUTPUT
+                exit 0
+                ;;
+              FAILED|FAULT|STOPPED|TIMED_OUT)
+                echo "Build failed with status: $STATUS"
+                echo "status=failure" >> $GITHUB_OUTPUT
+                exit 1
+                ;;
+              IN_PROGRESS)
+                sleep $POLL_INTERVAL
+                WAITED=$((WAITED + POLL_INTERVAL))
+                ;;
+              *)
+                echo "Unknown status: $STATUS"
+                sleep $POLL_INTERVAL
+                WAITED=$((WAITED + POLL_INTERVAL))
+                ;;
+            esac
+          done
 
-      - name: Upload test results
-        uses: actions/upload-artifact@v4
+          echo "Build timed out after ${MAX_WAIT}s"
+          echo "status=timeout" >> $GITHUB_OUTPUT
+          exit 1
+
+      - name: Get build logs
         if: always()
-        with:
-          name: integration-test-results
-          path: |
-            backend/integration-test-results.xml
-            backend/integration-test-output.txt
-
-      - name: Post test summary
-        if: always()
         run: |
-          echo "## Integration Test Results" >> $GITHUB_STEP_SUMMARY
+          BUILD_ID="${{ steps.codebuild.outputs.build_id }}"
+
+          echo "## Build Logs" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Build ID: \`$BUILD_ID\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "[View full logs in AWS Console](${{ steps.codebuild.outputs.build_url }})" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          if [ -f backend/integration-test-results.xml ]; then
-            # Extract test counts from JUnit XML
-            TESTS=$(grep -oP 'tests="\K[^"]+' backend/integration-test-results.xml | head -1 || echo "0")
-            FAILURES=$(grep -oP 'failures="\K[^"]+' backend/integration-test-results.xml | head -1 || echo "0")
-            ERRORS=$(grep -oP 'errors="\K[^"]+' backend/integration-test-results.xml | head -1 || echo "0")
+          # Get last 100 lines of build output
+          LOG_GROUP="/aws/codebuild/$CODEBUILD_PROJECT"
+          LOG_STREAM=$(aws codebuild batch-get-builds \
+            --ids "$BUILD_ID" \
+            --query 'builds[0].logs.streamName' \
+            --output text 2>/dev/null || echo "")
 
-            echo "| Metric | Count |" >> $GITHUB_STEP_SUMMARY
-            echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
-            echo "| Total Tests | $TESTS |" >> $GITHUB_STEP_SUMMARY
-            echo "| Failures | $FAILURES |" >> $GITHUB_STEP_SUMMARY
-            echo "| Errors | $ERRORS |" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "No test results file found" >> $GITHUB_STEP_SUMMARY
+          if [ -n "$LOG_STREAM" ] && [ "$LOG_STREAM" != "None" ]; then
+            echo "### Test Output (last 100 lines)" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            aws logs get-log-events \
+              --log-group-name "$LOG_GROUP" \
+              --log-stream-name "$LOG_STREAM" \
+              --limit 100 \
+              --query 'events[*].message' \
+              --output text 2>/dev/null >> $GITHUB_STEP_SUMMARY || echo "Unable to fetch logs" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
           fi
 
   notify-on-failure:
