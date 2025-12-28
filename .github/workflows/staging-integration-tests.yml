@@ -83,7 +83,8 @@ jobs:
           echo "PostgreSQL is ready"
 
           echo "Waiting for Redis..."
-          until redis-cli -h localhost ping; do sleep 1; done
+          # Use netcat to check Redis port since redis-cli isn't installed on runner
+          until nc -z localhost 6379; do sleep 1; done
           echo "Redis is ready"
 
       - name: Run database migrations
