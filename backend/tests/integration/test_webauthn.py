@@ -595,7 +595,7 @@ class TestAdminWebAuthnAPI:
         token = await get_admin_token(client, test_admin_no_webauthn)
 
         response = await client.get(
-            "/api/v1/admin/auth/webauthn/credentials",
+            "/api/v1/admin/webauthn/credentials",
             headers={
                 "Authorization": f"Bearer {token}",
                 "X-Forwarded-For": "127.0.0.1",
@@ -620,7 +620,7 @@ class TestAdminWebAuthnAPI:
         token = await get_admin_token(client, test_admin_with_webauthn)
 
         response = await client.get(
-            "/api/v1/admin/auth/webauthn/credentials",
+            "/api/v1/admin/webauthn/credentials",
             headers={
                 "Authorization": f"Bearer {token}",
                 "X-Forwarded-For": "127.0.0.1",
@@ -647,7 +647,7 @@ class TestAdminWebAuthnAPI:
         token = await get_admin_token(client, test_admin_no_webauthn)
 
         response = await client.post(
-            "/api/v1/admin/auth/webauthn/register/options",
+            "/api/v1/admin/webauthn/register/options",
             headers={
                 "Authorization": f"Bearer {token}",
                 "X-Forwarded-For": "127.0.0.1",
@@ -719,5 +719,5 @@ class TestAdminWebAuthnAPI:
             json={"email": "nonexistent@example.com"},
         )
 
-        # Should fail with generic error (don't reveal if email exists)
-        assert response.status_code == 400
+        # Should fail with 401 (don't reveal if email exists)
+        assert response.status_code == 401
