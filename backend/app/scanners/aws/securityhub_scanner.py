@@ -1117,41 +1117,6 @@ class SecurityHubScanner(BaseScanner):
 
         return detections
 
-    def _get_standard_controls(
-        self,
-        client: Any,
-        standards_subscription_arn: str,
-    ) -> list[dict]:
-        """Get all controls for an enabled standard."""
-        controls = []
-
-        try:
-            paginator = client.get_paginator("describe_standards_controls")
-
-            for page in paginator.paginate(
-                StandardsSubscriptionArn=standards_subscription_arn
-            ):
-                for control in page.get("Controls", []):
-                    controls.append(
-                        {
-                            "control_id": control.get("ControlId"),
-                            "control_arn": control.get("StandardsControlArn"),
-                            "title": control.get("Title"),
-                            "description": control.get("Description"),
-                            "status": control.get("ControlStatus"),
-                            "severity": control.get("SeverityRating"),
-                            "disabled_reason": control.get("DisabledReason"),
-                            "related_requirements": control.get(
-                                "RelatedRequirements", []
-                            ),
-                        }
-                    )
-
-        except ClientError:
-            pass
-
-        return controls
-
     def _get_standard_info(self, standard_arn: str) -> dict:
         """Get human-readable info for a security standard."""
         standards = {
