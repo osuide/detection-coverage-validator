@@ -1,15 +1,24 @@
 import { useState } from 'react'
-import { User, Mail, Building, Shield, Save, Key, Smartphone } from 'lucide-react'
+import { User, Mail, Building, Shield, Save, Key, Smartphone, ShieldCheck, ShieldOff } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import { useAuthStore } from '../stores/authStore'
+import { authApi } from '../services/authApi'
+import MFASetupModal from '../components/MFASetupModal'
+import DisableMFAModal from '../components/DisableMFAModal'
 
 export default function Profile() {
   const { user, organization, token } = useAuth()
+  const updateUser = useAuthStore((state) => state.updateUser)
   const [fullName, setFullName] = useState(user?.full_name || '')
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  // MFA modal state
+  const [showMFASetup, setShowMFASetup] = useState(false)
+  const [showDisableMFA, setShowDisableMFA] = useState(false)
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -164,6 +173,58 @@ export default function Profile() {
         </div>
       </div>
 
+      {/* Two-Factor Authentication */}
+      <div className="bg-gray-800 rounded-xl shadow-sm border border-gray-700 p-6 mb-6">
+        <h2 className="text-lg font-semibold text-white mb-4 flex items-center">
+          <Shield className="h-5 w-5 mr-2 text-gray-400" />
+          Two-Factor Authentication
+        </h2>
+
+        {user?.mfa_enabled ? (
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-green-900/30 rounded-lg">
+                <ShieldCheck className="h-6 w-6 text-green-400" />
+              </div>
+              <div>
+                <p className="font-medium text-green-400">MFA is enabled</p>
+                <p className="text-sm text-gray-400">
+                  Your account is protected with two-factor authentication
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowDisableMFA(true)}
+              className="px-4 py-2 text-red-400 hover:text-red-300 font-medium rounded-lg hover:bg-red-900/20 transition-colors flex items-center gap-2"
+            >
+              <ShieldOff className="h-4 w-4" />
+              Disable MFA
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-yellow-900/30 rounded-lg">
+                <Smartphone className="h-6 w-6 text-yellow-400" />
+              </div>
+              <div>
+                <p className="font-medium text-yellow-400">MFA is not enabled</p>
+                <p className="text-sm text-gray-400">
+                  Add an extra layer of security to your account
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowMFASetup(true)}
+              className="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+            >
+              <ShieldCheck className="h-4 w-4" />
+              Enable MFA
+            </button>
+          </div>
+        )}
+      </div>
+
       {/* Update Profile */}
       <div className="bg-gray-800 rounded-xl shadow-sm border border-gray-700 p-6 mb-6">
         <h2 className="text-lg font-semibold text-white mb-4 flex items-center">
@@ -258,6 +319,33 @@ export default function Profile() {
           </button>
         </form>
       </div>
+
+      {/* MFA Setup Modal */}
+      <MFASetupModal
+        isOpen={showMFASetup}
+        onClose={() => setShowMFASetup(false)}
+        onSuccess={() => {
+          setMessage({ type: 'success', text: 'Two-factor authentication has been enabled' })
+          // Update user state to reflect MFA is now enabled
+          updateUser({ mfa_enabled: true })
+        }}
+        type="user"
+        setupMFA={() => authApi.setupMFA(token!)}
+        verifyMFA={(code) => authApi.verifyMFASetup(token!, code)}
+      />
+
+      {/* Disable MFA Modal */}
+      <DisableMFAModal
+        isOpen={showDisableMFA}
+        onClose={() => setShowDisableMFA(false)}
+        onConfirm={async () => {
+          await authApi.disableMFA(token!)
+          setMessage({ type: 'success', text: 'Two-factor authentication has been disabled' })
+          // Update user state to reflect MFA is now disabled
+          updateUser({ mfa_enabled: false })
+        }}
+        orgRequiresMFA={organization?.require_mfa}
+      />
     </div>
   )
 }

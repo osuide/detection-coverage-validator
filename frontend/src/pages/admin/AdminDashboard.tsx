@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
   Shield, Users, Building2, CreditCard, Activity,
   AlertTriangle, Settings, LogOut, TrendingUp,
-  Server, Database, Clock, ChevronRight, FileText, UserCog, Fingerprint
+  Server, Database, Clock, ChevronRight, FileText, UserCog, Fingerprint,
+  User, ShieldAlert
 } from 'lucide-react';
 import { useAdminAuthStore, adminAuthActions, adminApi } from '../../stores/adminAuthStore';
 
@@ -124,12 +125,30 @@ export default function AdminDashboard() {
             </div>
 
             <div className="flex items-center gap-4">
+              {/* MFA Warning */}
+              {admin && !admin.mfa_enabled && (
+                <Link
+                  to="/admin/profile"
+                  className="flex items-center gap-2 px-3 py-1.5 bg-red-900/50 border border-red-700 rounded-lg text-red-400 hover:bg-red-900/70 transition-colors"
+                >
+                  <ShieldAlert className="w-4 h-4" />
+                  <span className="text-sm">Enable MFA</span>
+                </Link>
+              )}
               <span className="text-sm text-gray-400">
                 {admin?.email} ({admin?.role.replace('_', ' ')})
               </span>
+              <Link
+                to="/admin/profile"
+                className="p-2 text-gray-400 hover:text-white transition-colors"
+                title="My Profile"
+              >
+                <User className="w-5 h-5" />
+              </Link>
               <button
                 onClick={handleLogout}
                 className="p-2 text-gray-400 hover:text-white transition-colors"
+                title="Logout"
               >
                 <LogOut className="w-5 h-5" />
               </button>

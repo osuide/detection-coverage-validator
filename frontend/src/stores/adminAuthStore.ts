@@ -298,6 +298,44 @@ export const adminAuthActions = {
     store.updateAdmin(response.data)
     return response.data
   },
+
+  /**
+   * Start MFA setup - get provisioning URI for QR code
+   */
+  setupMFA: async (): Promise<{ provisioning_uri: string; secret: string }> => {
+    const store = useAdminAuthStore.getState()
+
+    if (!store.accessToken) {
+      throw new Error('Not authenticated')
+    }
+
+    const response = await adminAuthApi.post(
+      '/auth/mfa/setup',
+      {},
+      { headers: { Authorization: `Bearer ${store.accessToken}` } }
+    )
+    return response.data
+  },
+
+  /**
+   * Enable MFA after verifying TOTP code
+   */
+  enableMFA: async (totpCode: string): Promise<void> => {
+    const store = useAdminAuthStore.getState()
+
+    if (!store.accessToken) {
+      throw new Error('Not authenticated')
+    }
+
+    await adminAuthApi.post(
+      '/auth/mfa/enable',
+      { totp_code: totpCode },
+      { headers: { Authorization: `Bearer ${store.accessToken}` } }
+    )
+
+    // Update local state to reflect MFA is now enabled
+    store.updateAdmin({ mfa_enabled: true })
+  },
 }
 
 // Create an axios instance that automatically handles token refresh

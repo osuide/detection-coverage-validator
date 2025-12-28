@@ -45,6 +45,7 @@ import AdminAuditLogs from './pages/admin/AdminAuditLogs'
 import AdminBilling from './pages/admin/AdminBilling'
 import AdminAdmins from './pages/admin/AdminAdmins'
 import AdminMitreData from './pages/admin/AdminMitreData'
+import AdminProfile from './pages/admin/AdminProfile'
 import AdminAuthProvider from './components/AdminAuthProvider'
 
 function App() {
@@ -97,6 +98,7 @@ function App() {
               <Route path="billing" element={<AdminBilling />} />
               <Route path="admins" element={<AdminAdmins />} />
               <Route path="mitre" element={<AdminMitreData />} />
+              <Route path="profile" element={<AdminProfile />} />
             </Routes>
           </AdminAuthProvider>
         } />
