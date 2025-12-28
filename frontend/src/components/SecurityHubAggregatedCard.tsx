@@ -32,7 +32,7 @@ export interface SecurityHubControl {
 }
 
 export interface SecurityHubAggregatedConfig {
-  api_version: 'cspm_aggregated'
+  api_version: 'cspm_aggregated' | 'cspm_per_enabled_standard'
   standard_name: string
   enabled_controls_count: number
   disabled_controls_count: number
@@ -240,7 +240,9 @@ export function SecurityHubAggregatedCard({
   // Parse and filter controls - must be before early return for hooks rules
   const { filteredControls, controlStats } = useMemo(() => {
     // Handle missing/invalid config
-    if (!config || config.api_version !== 'cspm_aggregated' || !config.controls) {
+    const validApiVersion = config?.api_version === 'cspm_aggregated' ||
+                            config?.api_version === 'cspm_per_enabled_standard'
+    if (!config || !validApiVersion || !config.controls) {
       return { filteredControls: [], controlStats: { severities: [], filteredCount: 0 } }
     }
 
@@ -311,7 +313,9 @@ export function SecurityHubAggregatedCard({
   }, [config, searchTerm, statusFilter, severityFilter])
 
   // If no aggregated config, render nothing (let parent handle it)
-  if (!config || config.api_version !== 'cspm_aggregated') {
+  const isAggregated = config?.api_version === 'cspm_aggregated' ||
+                       config?.api_version === 'cspm_per_enabled_standard'
+  if (!config || !isAggregated) {
     return null
   }
 
@@ -561,7 +565,8 @@ export function isSecurityHubAggregated(detection: {
 }): boolean {
   if (detection.detection_type !== 'security_hub') return false
   const config = detection.raw_config as SecurityHubAggregatedConfig | undefined
-  return config?.api_version === 'cspm_aggregated'
+  return config?.api_version === 'cspm_aggregated' ||
+         config?.api_version === 'cspm_per_enabled_standard'
 }
 
 export default SecurityHubAggregatedCard

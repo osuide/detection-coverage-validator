@@ -886,7 +886,7 @@ class SecurityHubScanner(BaseScanner):
                     "techniques_covered_count": len(techniques_covered),
                     "techniques_covered": list(techniques_covered),
                     "controls": controls_list,
-                    "api_version": "cspm_per_enabled_standard",
+                    "api_version": "cspm_aggregated",
                 },
                 description=standard_description,
                 is_managed=True,
