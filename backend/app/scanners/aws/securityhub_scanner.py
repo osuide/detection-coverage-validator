@@ -150,6 +150,7 @@ class SecurityHubScanner(BaseScanner):
         enabled_standards: list[dict] = []  # List of enabled standard subscriptions
         cspm_scanned = False
         first_cspm_region = None
+        first_client = None  # Store client for per-standard control queries
         hub_arn = ""
 
         for region in regions:
@@ -171,9 +172,10 @@ class SecurityHubScanner(BaseScanner):
                         continue
                     raise
 
-                # Get enabled standards (only once, from first region)
+                # Get enabled standards (only once, from first region with Security Hub)
                 if not enabled_standards:
                     enabled_standards = self._get_enabled_standards(client, region)
+                    first_client = client  # Store for later per-standard queries
                     self.logger.info(
                         "securityhub_enabled_standards",
                         region=region,
@@ -238,6 +240,7 @@ class SecurityHubScanner(BaseScanner):
                     enabled_standards,
                     hub_arn,
                     first_cspm_region or regions[0],
+                    client=first_client,  # Pass client for per-standard control queries
                 )
                 all_detections.extend(grouped_detections)
 
@@ -693,27 +696,89 @@ class SecurityHubScanner(BaseScanner):
 
         return enabled
 
+    def _get_standard_controls(
+        self,
+        client: Any,
+        subscription_arn: str,
+    ) -> list[dict]:
+        """Get controls for a specific Security Hub standard.
+
+        Uses the DescribeStandardsControls API to get the ACTUAL controls
+        for a specific standard (CIS, NIST, FSBP, etc. each have different controls).
+
+        Args:
+            client: SecurityHub boto3 client
+            subscription_arn: The StandardsSubscriptionArn for the standard
+
+        Returns:
+            List of control dicts with control_id, title, status, severity, etc.
+        """
+        controls = []
+
+        try:
+            paginator = client.get_paginator("describe_standards_controls")
+
+            for page in paginator.paginate(StandardsSubscriptionArn=subscription_arn):
+                for control in page.get("Controls", []):
+                    # Extract control ID from ARN
+                    # Format: arn:aws:securityhub:region:account:control/standard/rule-id
+                    control_arn = control.get("StandardsControlArn", "")
+                    control_id = ""
+                    if control_arn:
+                        parts = control_arn.split("/")
+                        if len(parts) >= 3:
+                            control_id = parts[-1]  # e.g., "CIS.1.1" or "IAM.1"
+
+                    controls.append(
+                        {
+                            "control_id": control_id,
+                            "control_arn": control_arn,
+                            "title": control.get("Title"),
+                            "description": control.get("Description"),
+                            "status": control.get("ControlStatus"),  # ENABLED/DISABLED
+                            "severity": control.get("SeverityRating"),
+                            "disabled_reason": control.get("DisabledReason"),
+                            "related_requirements": control.get(
+                                "RelatedRequirements", []
+                            ),
+                            "remediation_url": control.get("RemediationUrl"),
+                        }
+                    )
+
+            self.logger.info(
+                "securityhub_standard_controls_fetched",
+                subscription_arn=subscription_arn[:80],  # Truncate for logging
+                control_count=len(controls),
+            )
+
+        except ClientError as e:
+            self.logger.warning(
+                "securityhub_describe_standards_controls_error",
+                subscription_arn=subscription_arn[:80],
+                error=str(e),
+            )
+
+        return controls
+
     def _create_detections_per_enabled_standard(
         self,
         cspm_control_data: dict[str, dict],
         enabled_standards: list[dict],
         hub_arn: str,
         region: str,
+        client: Any = None,
     ) -> list[RawDetection]:
         """Create ONE detection per ENABLED Security Hub standard.
 
-        Unlike inference-based grouping, this uses the actual enabled standards
-        from GetEnabledStandards API. Each enabled standard (CIS, NIST, PCI, FSBP)
-        gets its own detection.
-
-        All CSPM controls apply to all enabled standards since AWS uses
-        standard-agnostic control IDs.
+        Uses the DescribeStandardsControls API to get the ACTUAL controls for
+        each standard (they differ between CIS, NIST, FSBP, etc.).
 
         Args:
             cspm_control_data: Dict of control_id -> control data from CSPM API
             enabled_standards: List of enabled standards from GetEnabledStandards
             hub_arn: The Security Hub ARN
             region: The canonical region for these detections
+            client: SecurityHub boto3 client (optional, for getting per-standard controls)
 
         Returns:
             List of RawDetection objects, one per enabled standard
@@ -734,46 +799,69 @@ class SecurityHubScanner(BaseScanner):
             standard_description = standard.get(
                 "description", f"Security Hub {standard_name}"
             )
+            subscription_arn = standard.get("subscription_arn", "")
 
-            # Calculate metrics - use status_by_region for accurate counts
+            # Get controls for THIS specific standard using legacy API
+            standard_controls = []
+            if client and subscription_arn:
+                standard_controls = self._get_standard_controls(
+                    client, subscription_arn
+                )
+
+            # Calculate metrics from the actual controls for this standard
             enabled_count = 0
             disabled_count = 0
-            for control in cspm_control_data.values():
-                status_by_region = control.get("status_by_region", {})
-                # A control is "enabled" if enabled in ANY region
-                if any(s == "ENABLED" for s in status_by_region.values()):
-                    enabled_count += 1
-                else:
-                    disabled_count += 1
-
-            # Count unique MITRE techniques covered by this standard's controls
-            techniques_covered = self._count_techniques_covered(cspm_control_data)
-
-            # Build controls list for raw_config
             controls_list = []
-            for control_id, control_data in cspm_control_data.items():
-                # Determine overall status for this control
-                status_by_region = control_data.get("status_by_region", {})
-                overall_status = (
-                    "ENABLED"
-                    if any(s == "ENABLED" for s in status_by_region.values())
-                    else "DISABLED"
-                )
 
-                controls_list.append(
-                    {
-                        "control_id": control_id,
-                        "control_arn": control_data.get("control_arn"),
-                        "title": control_data.get("title"),
-                        "description": control_data.get("description"),
-                        "status": overall_status,
-                        "severity": control_data.get("severity"),
-                        "update_status": control_data.get("update_status"),
-                        "parameters": control_data.get("parameters", {}),
-                        "remediation_url": control_data.get("remediation_url"),
-                        "status_by_region": status_by_region,
-                    }
-                )
+            if standard_controls:
+                # Use the per-standard controls from DescribeStandardsControls
+                for control in standard_controls:
+                    if control.get("status") == "ENABLED":
+                        enabled_count += 1
+                    else:
+                        disabled_count += 1
+
+                    # Extract control ID for CSPM enrichment
+                    control_id = control.get("control_id", "")
+                    # Try to get CSPM data for this control (enhanced details)
+                    cspm_data = cspm_control_data.get(control_id, {})
+
+                    controls_list.append(
+                        {
+                            "control_id": control_id,
+                            "control_arn": control.get("control_arn"),
+                            "title": control.get("title"),
+                            "description": control.get("description"),
+                            "status": control.get("status"),
+                            "severity": control.get("severity"),
+                            "disabled_reason": control.get("disabled_reason"),
+                            "related_requirements": control.get(
+                                "related_requirements", []
+                            ),
+                            # Enrich with CSPM data if available
+                            "parameters": cspm_data.get("parameters", {}),
+                            "remediation_url": cspm_data.get("remediation_url"),
+                        }
+                    )
+
+                # Count techniques from this standard's controls only
+                standard_control_ids = {c.get("control_id") for c in standard_controls}
+                filtered_cspm = {
+                    k: v
+                    for k, v in cspm_control_data.items()
+                    if k in standard_control_ids
+                }
+                techniques_covered = self._count_techniques_covered(filtered_cspm)
+            else:
+                # Fallback: no per-standard data, use all CSPM controls
+                for control in cspm_control_data.values():
+                    status_by_region = control.get("status_by_region", {})
+                    if any(s == "ENABLED" for s in status_by_region.values()):
+                        enabled_count += 1
+                    else:
+                        disabled_count += 1
+                techniques_covered = self._count_techniques_covered(cspm_control_data)
+                controls_list = []  # Don't include all controls in fallback
 
             # Use account ID + standard_id for region-agnostic source_arn
             # This ensures ONE detection per standard per account, not per region
@@ -791,10 +879,10 @@ class SecurityHubScanner(BaseScanner):
                     "standard_id": standard_id,
                     "standard_name": standard_name,
                     "standards_arn": standard.get("standards_arn"),
-                    "subscription_arn": standard.get("subscription_arn"),
+                    "subscription_arn": subscription_arn,
                     "enabled_controls_count": enabled_count,
                     "disabled_controls_count": disabled_count,
-                    "total_controls_count": len(cspm_control_data),
+                    "total_controls_count": enabled_count + disabled_count,
                     "techniques_covered_count": len(techniques_covered),
                     "techniques_covered": list(techniques_covered),
                     "controls": controls_list,
