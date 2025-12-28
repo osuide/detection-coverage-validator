@@ -144,7 +144,11 @@ resource "aws_iam_role_policy" "a13e_scanner" {
           "securityhub:DescribeStandards",
           "securityhub:DescribeStandardsControls",
           "securityhub:GetInsights",
-          "securityhub:ListEnabledProductsForImport"
+          "securityhub:ListEnabledProductsForImport",
+          # CSPM (Consolidated Security Posture Management) APIs
+          "securityhub:ListSecurityControlDefinitions",
+          "securityhub:BatchGetSecurityControls",
+          "securityhub:ListStandardsControlAssociations"
         ]
         Resource = "*"
       },

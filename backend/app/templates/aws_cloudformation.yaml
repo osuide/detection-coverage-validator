@@ -116,7 +116,7 @@ Resources:
               - guardduty:GetFindings
             Resource: '*'
 
-          # Security Hub - Read enabled standards and insights
+          # Security Hub - Read enabled standards, insights, and CSPM controls
           - Sid: SecurityHubAccess
             Effect: Allow
             Action:
@@ -126,6 +126,10 @@ Resources:
               - securityhub:DescribeStandardsControls
               - securityhub:GetInsights
               - securityhub:ListEnabledProductsForImport
+              # CSPM (Consolidated Security Posture Management) APIs
+              - securityhub:ListSecurityControlDefinitions
+              - securityhub:BatchGetSecurityControls
+              - securityhub:ListStandardsControlAssociations
             Resource: '*'
 
           # AWS Config - Read compliance rules
