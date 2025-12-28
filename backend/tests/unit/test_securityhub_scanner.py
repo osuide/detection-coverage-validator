@@ -215,3 +215,198 @@ class TestChunkListHelper:
 
         assert len(chunks) == 1
         assert len(chunks[0]) == 50
+
+
+class TestServicePrefixCoverage:
+    """Tests to ensure all AWS Security Hub service prefixes are recognised.
+
+    This prevents "OTHER" category from appearing in the Detections Dashboard.
+    Complete list from: https://docs.aws.amazon.com/securityhub/latest/userguide/securityhub-controls-reference.html
+    """
+
+    # Complete list of AWS service prefixes (December 2025)
+    # Source: AWS Security Hub CSPM Control Reference
+    AWS_SERVICE_PREFIXES = [
+        # A
+        "Account",
+        "ACM",
+        "Amplify",
+        "APIGateway",
+        "AppConfig",
+        "AppFlow",
+        "AppRunner",
+        "AppSync",
+        "Athena",
+        "AutoScaling",
+        # B
+        "Backup",
+        "Batch",
+        # C
+        "CloudFormation",
+        "CloudFront",
+        "CloudTrail",
+        "CloudWatch",
+        "CodeArtifact",
+        "CodeBuild",
+        "CodeGuruProfiler",
+        "CodeGuruReviewer",
+        "Cognito",
+        "Config",
+        "Connect",
+        # D
+        "DataFirehose",
+        "DataSync",
+        "Detective",
+        "DMS",
+        "DocumentDB",
+        "DynamoDB",
+        # E
+        "EC2",
+        "ECR",
+        "ECS",
+        "EFS",
+        "EKS",
+        "ElastiCache",
+        "ElasticBeanstalk",
+        "ELB",
+        "EMR",
+        "ES",
+        "EventBridge",
+        # F
+        "FraudDetector",
+        "FSx",
+        # G
+        "Glue",
+        "GlobalAccelerator",
+        "GuardDuty",
+        # I
+        "IAM",
+        "Inspector",
+        "IoT",
+        "IoTEvents",
+        "IoTSiteWise",
+        "IoTTwinMaker",
+        "IoTWireless",
+        "IVS",
+        # K
+        "Keyspaces",
+        "Kinesis",
+        "KMS",
+        # L
+        "Lambda",
+        # M
+        "Macie",
+        "MQ",
+        "MSK",
+        # N
+        "Neptune",
+        "NetworkFirewall",
+        # O
+        "Opensearch",
+        # P
+        "PCA",
+        # R
+        "RDS",
+        "Redshift",
+        "Route53",
+        # S
+        "S3",
+        "SageMaker",
+        "SecretsManager",
+        "SecurityHub",
+        "SNS",
+        "SQS",
+        "SSM",
+        "StepFunctions",
+        # T
+        "Transfer",
+        # W
+        "WAF",
+    ]
+
+    @pytest.fixture
+    def source_content(self):
+        """Load the source file content."""
+        return read_scanner_source()
+
+    def test_all_service_prefixes_in_scanner(self, source_content):
+        """Test that all AWS service prefixes are in the scanner's service_prefixes set.
+
+        This test ensures no controls fall to the "OTHER" category due to
+        missing service prefixes.
+        """
+        # Extract the service_prefixes set from the source
+        # The prefixes are stored as uppercase strings
+        missing_prefixes = []
+
+        for prefix in self.AWS_SERVICE_PREFIXES:
+            # Check for the uppercase version in quotes
+            if f'"{prefix.upper()}"' not in source_content:
+                missing_prefixes.append(prefix)
+
+        assert not missing_prefixes, (
+            f"Missing service prefixes in scanner: {missing_prefixes}. "
+            f"Add these to the service_prefixes set in _infer_standard_from_control_id()"
+        )
+
+    def test_service_prefixes_return_fsbp(self, source_content):
+        """Test that service-prefixed control IDs return 'fsbp' standard.
+
+        The _infer_standard_from_control_id method should return 'fsbp' for
+        all service-prefixed controls since AWS CSPM uses standard-agnostic IDs.
+        """
+        # Verify the method returns 'fsbp' for service prefixes
+        assert 'return "fsbp"' in source_content
+        assert "if prefix in service_prefixes:" in source_content
+
+    @pytest.mark.parametrize(
+        "control_id,expected_standard",
+        [
+            # Standard CSPM format (should return 'fsbp')
+            ("S3.1", "fsbp"),
+            ("IAM.6", "fsbp"),
+            ("EC2.18", "fsbp"),
+            ("Backup.1", "fsbp"),
+            ("EventBridge.3", "fsbp"),
+            ("DocumentDB.1", "fsbp"),
+            ("Glue.1", "fsbp"),
+            # Legacy PCI format (should return 'pci')
+            ("PCI.IAM.1", "pci"),
+            ("PCI.S3.1", "pci"),
+            # Legacy CIS format (should return 'cis')
+            ("1.1", "cis"),
+            ("2.3", "cis"),
+            ("3.14", "cis"),
+        ],
+    )
+    def test_control_id_pattern_matching(self, control_id, expected_standard):
+        """Test that control IDs are correctly mapped to standards."""
+        from app.scanners.aws.securityhub_scanner import SecurityHubScanner
+
+        # Create a minimal scanner instance for testing
+        scanner = SecurityHubScanner.__new__(SecurityHubScanner)
+
+        result = scanner._infer_standard_from_control_id(control_id)
+        assert result == expected_standard, (
+            f"Control ID '{control_id}' should map to '{expected_standard}', "
+            f"but got '{result}'"
+        )
+
+    def test_no_other_category_for_known_prefixes(self):
+        """Test that known prefixes never fall to 'other' category."""
+        from app.scanners.aws.securityhub_scanner import SecurityHubScanner
+
+        scanner = SecurityHubScanner.__new__(SecurityHubScanner)
+
+        # Test all known prefixes with a sample control number
+        for prefix in self.AWS_SERVICE_PREFIXES:
+            control_id = f"{prefix}.1"
+            result = scanner._infer_standard_from_control_id(control_id)
+
+            assert result is not None, (
+                f"Control ID '{control_id}' returned None - "
+                f"prefix '{prefix}' is missing from service_prefixes set"
+            )
+            assert (
+                result == "fsbp"
+            ), f"Control ID '{control_id}' should map to 'fsbp', got '{result}'"

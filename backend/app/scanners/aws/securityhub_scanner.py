@@ -189,10 +189,18 @@ class SecurityHubScanner(BaseScanner):
     ) -> dict[str, dict[str, dict]]:
         """Group CSPM controls by their associated security standard.
 
-        Uses control ID prefix patterns to infer standard:
-        - S3.x, IAM.x, EC2.x -> FSBP (service prefix with number)
-        - 1.x, 2.x, 3.x -> CIS (numeric section.control)
-        - PCI.x -> PCI-DSS (explicit PCI prefix)
+        AWS CSPM (introduced 2023) uses STANDARD-AGNOSTIC control IDs. The same
+        control ID (e.g., S3.1) is shared across all standards (FSBP, CIS, NIST,
+        PCI). We group all service-prefixed controls under FSBP as it's the most
+        comprehensive standard and the controls are evaluated identically.
+
+        Pattern matching:
+        - Service.N (e.g., S3.1, IAM.1, EC2.18) -> FSBP (primary)
+        - PCI.Service.N (e.g., PCI.IAM.1) -> PCI (legacy format, rare)
+        - N.N (e.g., 1.1, 2.3) -> CIS (legacy format, rare)
+
+        Note: The legacy numeric CIS format (1.1, 2.3) and PCI.* format are from
+        the pre-CSPM API. Modern CSPM uses service-based IDs for all standards.
 
         Args:
             cspm_control_data: Dict of control_id -> control data
@@ -206,7 +214,7 @@ class SecurityHubScanner(BaseScanner):
             "cis": {},
             "pci": {},
             "nist": {},
-            "other": {},  # Controls without standard associations
+            "other": {},  # Controls with unrecognised prefixes - should be empty!
         }
 
         # Track sample control IDs for debugging
@@ -235,81 +243,153 @@ class SecurityHubScanner(BaseScanner):
             other_count=len(grouped["other"]),
         )
 
+        # Warn if any controls fell to 'other' - indicates missing service prefix
+        if grouped["other"]:
+            other_ids = list(grouped["other"].keys())[:10]
+            self.logger.warning(
+                "unrecognised_control_prefixes",
+                message="Controls with unrecognised prefixes found - update service_prefixes set",
+                sample_control_ids=other_ids,
+                total_unrecognised=len(grouped["other"]),
+            )
+
         # Remove empty standard groups
         return {k: v for k, v in grouped.items() if v}
 
     def _infer_standard_from_control_id(self, control_id: str) -> Optional[str]:
         """Infer standard from control ID prefix pattern.
 
-        CSPM control IDs follow patterns like:
-        - S3.1, IAM.1, EC2.18 -> FSBP (service prefix with number)
-        - 1.1, 2.3, 3.14 -> CIS (numeric section.control)
-        - PCI.IAM.1 -> PCI-DSS (explicit PCI prefix)
+        AWS CSPM uses standard-agnostic control IDs. All standards (FSBP, CIS,
+        NIST, PCI) share the same service-based IDs like S3.1, IAM.1, EC2.18.
+        We categorise all service-prefixed controls under FSBP.
+
+        Pattern matching order:
+        1. PCI.* prefix -> PCI (legacy format from pre-CSPM API)
+        2. Numeric prefix (1.x, 2.x) -> CIS (legacy format from pre-CSPM API)
+        3. Service prefix (S3.x, IAM.x) -> FSBP (standard CSPM format)
 
         Args:
-            control_id: The CSPM control ID
+            control_id: The CSPM control ID (e.g., "S3.1", "IAM.6", "EC2.18")
 
         Returns:
-            Standard ID or None if cannot be inferred
+            Standard ID ('fsbp', 'cis', 'pci') or None if prefix unrecognised
         """
         control_upper = control_id.upper()
 
-        # Explicit PCI prefix
+        # Legacy PCI prefix (pre-CSPM API format)
         if control_upper.startswith("PCI."):
             return "pci"
 
-        # CIS pattern: starts with digit (e.g., 1.1, 2.3)
+        # Legacy CIS pattern: starts with digit (pre-CSPM API format)
+        # Modern CSPM uses service-based IDs for CIS too (e.g., S3.1 not 1.1)
         if control_id and control_id[0].isdigit():
             return "cis"
 
         # FSBP pattern: service prefix (e.g., S3.1, IAM.1, EC2.18)
-        # Most common pattern for service-based controls
+        # AWS CSPM uses standard-agnostic control IDs - all standards (FSBP, CIS,
+        # NIST, PCI) share the same service-based IDs. We categorise all service-
+        # prefixed controls under FSBP as it's the most comprehensive standard.
+        # Complete list from: https://docs.aws.amazon.com/securityhub/latest/userguide/securityhub-controls-reference.html
         if "." in control_id:
             prefix = control_id.split(".")[0].upper()
-            # Common AWS service prefixes
+            # Complete AWS service prefixes (as of December 2025)
+            # Organised alphabetically for maintainability
             service_prefixes = {
-                "S3",
-                "IAM",
-                "EC2",
-                "RDS",
-                "ECS",
-                "EKS",
-                "EFS",
-                "KMS",
-                "LAMBDA",
-                "DYNAMODB",
-                "REDSHIFT",
-                "ELASTICACHE",
-                "ES",
-                "OPENSEARCH",
-                "APIGATEWAY",
-                "CLOUDTRAIL",
-                "CONFIG",
-                "GUARDDUTY",
-                "SECRETSMANAGER",
-                "SNS",
-                "SQS",
-                "SSM",
-                "WAF",
-                "ELB",
-                "AUTOSCALING",
-                "CODEBUILD",
+                # A
                 "ACCOUNT",
                 "ACM",
+                "AMPLIFY",
+                "APIGATEWAY",
+                "APPCONFIG",
+                "APPFLOW",
+                "APPRUNNER",
+                "APPSYNC",
+                "ATHENA",
+                "AUTOSCALING",
+                # B
+                "BACKUP",
+                "BATCH",
+                # C
+                "CLOUDFORMATION",
                 "CLOUDFRONT",
+                "CLOUDTRAIL",
                 "CLOUDWATCH",
-                "DOCDB",
+                "CODEARTIFACT",
+                "CODEBUILD",
+                "CODEGURUPROFILER",
+                "CODEGURUREVIEWER",
+                "COGNITO",
+                "CONFIG",
+                "CONNECT",
+                # D
+                "DATAFIREHOSE",
+                "DATASYNC",
+                "DETECTIVE",
+                "DMS",
+                "DOCUMENTDB",
+                "DYNAMODB",
+                # E
+                "EC2",
                 "ECR",
+                "ECS",
+                "EFS",
+                "EKS",
+                "ELASTICACHE",
+                "ELASTICBEANSTALK",
+                "ELB",
                 "EMR",
+                "ES",
+                "EVENTBRIDGE",
+                # F
+                "FRAUDDETECTOR",
+                "FSX",
+                # G
+                "GLUE",
+                "GLOBALACCELERATOR",
+                "GUARDDUTY",
+                # I
+                "IAM",
+                "INSPECTOR",
+                "IOT",
+                "IOTEVENTS",
+                "IOTSITEWISE",
+                "IOTTWINMAKER",
+                "IOTWIRELESS",
+                "IVS",
+                # K
+                "KEYSPACES",
                 "KINESIS",
+                "KMS",
+                # L
+                "LAMBDA",
+                # M
                 "MACIE",
                 "MQ",
                 "MSK",
+                # N
                 "NEPTUNE",
                 "NETWORKFIREWALL",
+                # O
+                "OPENSEARCH",
+                # P
+                "PCA",
+                # R
+                "RDS",
+                "REDSHIFT",
+                "ROUTE53",
+                # S
+                "S3",
                 "SAGEMAKER",
+                "SECRETSMANAGER",
+                "SECURITYHUB",
+                "SNS",
+                "SQS",
+                "SSM",
                 "STEPFUNCTIONS",
+                # T
                 "TRANSFER",
+                # W
+                "WAF",
             }
             if prefix in service_prefixes:
                 return "fsbp"
