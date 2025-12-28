@@ -1,8 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Lock, Mail, AlertCircle, Key } from 'lucide-react';
+import { Shield, Lock, Mail, AlertCircle, Key, Fingerprint, Loader2 } from 'lucide-react';
 import { useAdminAuthStore, adminAuthActions } from '../../stores/adminAuthStore';
 import MFASetupModal from '../../components/MFASetupModal';
+import {
+  isWebAuthnSupported,
+  getCredential,
+  PublicKeyCredentialRequestOptionsJSON,
+} from '../../utils/webauthn';
 
 export default function AdminLogin() {
   const navigate = useNavigate();
@@ -15,6 +20,13 @@ export default function AdminLogin() {
   const [showMfaSetup, setShowMfaSetup] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [webauthnLoading, setWebauthnLoading] = useState(false);
+  const [showWebAuthnOption, setShowWebAuthnOption] = useState(false);
+
+  // Check WebAuthn support
+  useEffect(() => {
+    setShowWebAuthnOption(isWebAuthnSupported());
+  }, []);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -68,6 +80,43 @@ export default function AdminLogin() {
       setError(axiosError.response?.data?.detail || message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleWebAuthnLogin = async () => {
+    if (!email) {
+      setError('Please enter your email address first');
+      return;
+    }
+
+    setError('');
+    setWebauthnLoading(true);
+
+    try {
+      // Get authentication options from server
+      const { options, auth_token } = await adminAuthActions.getWebAuthnLoginOptions(email);
+
+      // Get credential from browser
+      const credential = await getCredential(options as PublicKeyCredentialRequestOptionsJSON);
+
+      // Verify with server
+      await adminAuthActions.verifyWebAuthnLogin(auth_token, credential);
+
+      navigate('/admin/dashboard');
+    } catch (err) {
+      console.error('WebAuthn login error:', err);
+      if (err instanceof Error) {
+        if (err.name === 'NotAllowedError') {
+          setError('Authentication was cancelled or timed out. Please try again.');
+        } else {
+          const axiosError = err as { response?: { data?: { detail?: string } } };
+          setError(axiosError.response?.data?.detail || err.message || 'Authentication failed');
+        }
+      } else {
+        setError('Authentication failed. Please try again.');
+      }
+    } finally {
+      setWebauthnLoading(false);
     }
   };
 
@@ -131,11 +180,44 @@ export default function AdminLogin() {
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || webauthnLoading}
                 className="w-full py-2.5 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {loading ? 'Signing in...' : 'Sign In'}
               </button>
+
+              {/* WebAuthn Login Option */}
+              {showWebAuthnOption && (
+                <>
+                  <div className="relative my-4">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-gray-600"></div>
+                    </div>
+                    <div className="relative flex justify-center text-sm">
+                      <span className="px-2 bg-gray-800 text-gray-400">or</span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleWebAuthnLogin}
+                    disabled={loading || webauthnLoading || !email}
+                    className="w-full py-2.5 bg-gray-700 text-white rounded-lg font-medium hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                  >
+                    {webauthnLoading ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Waiting for security key...
+                      </>
+                    ) : (
+                      <>
+                        <Fingerprint className="w-5 h-5" />
+                        Sign in with Security Key
+                      </>
+                    )}
+                  </button>
+                </>
+              )}
             </form>
           ) : (
             // MFA Form

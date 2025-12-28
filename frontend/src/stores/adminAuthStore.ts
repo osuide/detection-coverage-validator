@@ -376,6 +376,75 @@ export const adminAuthActions = {
       admin: data.admin,
     })
   },
+
+  /**
+   * Get WebAuthn authentication options for login
+   */
+  getWebAuthnLoginOptions: async (
+    email: string
+  ): Promise<{ options: unknown; auth_token: string }> => {
+    const response = await adminAuthApi.post('/webauthn/auth/options', { email })
+    return response.data
+  },
+
+  /**
+   * Complete WebAuthn login with credential response
+   */
+  verifyWebAuthnLogin: async (authToken: string, credential: unknown): Promise<void> => {
+    const response = await adminAuthApi.post('/webauthn/auth/verify', {
+      auth_token: authToken,
+      credential,
+    })
+
+    const data = response.data
+
+    useAdminAuthStore.getState().setAuth({
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token,
+      admin: data.admin,
+    })
+  },
+
+  /**
+   * Get WebAuthn registration options for adding a new key
+   */
+  getWebAuthnRegisterOptions: async (
+    deviceName: string,
+    authenticatorType?: string
+  ): Promise<{ options: unknown }> => {
+    const store = useAdminAuthStore.getState()
+
+    if (!store.accessToken) {
+      throw new Error('Not authenticated')
+    }
+
+    const response = await adminAuthApi.post(
+      '/webauthn/register/options',
+      { device_name: deviceName, authenticator_type: authenticatorType },
+      { headers: { Authorization: `Bearer ${store.accessToken}` } }
+    )
+    return response.data
+  },
+
+  /**
+   * Verify WebAuthn registration
+   */
+  verifyWebAuthnRegister: async (credential: unknown, deviceName: string): Promise<void> => {
+    const store = useAdminAuthStore.getState()
+
+    if (!store.accessToken) {
+      throw new Error('Not authenticated')
+    }
+
+    await adminAuthApi.post(
+      '/webauthn/register/verify',
+      { credential, device_name: deviceName },
+      { headers: { Authorization: `Bearer ${store.accessToken}` } }
+    )
+
+    // Update MFA status
+    store.updateAdmin({ mfa_enabled: true })
+  },
 }
 
 // Create an axios instance that automatically handles token refresh
