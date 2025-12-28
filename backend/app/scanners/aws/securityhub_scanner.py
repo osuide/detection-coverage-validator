@@ -131,22 +131,26 @@ class SecurityHubScanner(BaseScanner):
     ) -> list[RawDetection]:
         """Scan all regions for Security Hub configurations.
 
-        CSPM control DEFINITIONS are global, but STATUS can vary by region.
-        We:
-        1. Get control definitions from the first region (global)
-        2. Get control STATUS from ALL regions
-        3. Group controls by security standard
-        4. Create ONE detection per standard with aggregated metrics
+        We use the GetEnabledStandards API to discover which standards are
+        enabled, then create ONE detection per enabled standard. This ensures
+        we get proper standard names (CIS, NIST, PCI, FSBP) rather than trying
+        to infer them from control IDs.
+
+        For each enabled standard, we:
+        1. Get enabled standards from the first region
+        2. Get CSPM control data for detailed control info
+        3. Create ONE detection per enabled standard
 
         Insights are scanned per-region as they may differ.
         """
         all_detections = []
 
-        # Phase 1: Collect CSPM control data across all regions
+        # Phase 1: Collect CSPM control data and enabled standards
         cspm_control_data: dict[str, dict] = {}  # control_id -> merged data
+        enabled_standards: list[dict] = []  # List of enabled standard subscriptions
         cspm_scanned = False
         first_cspm_region = None
-        first_client = None
+        hub_arn = ""
 
         for region in regions:
             try:
@@ -167,6 +171,16 @@ class SecurityHubScanner(BaseScanner):
                         continue
                     raise
 
+                # Get enabled standards (only once, from first region)
+                if not enabled_standards:
+                    enabled_standards = self._get_enabled_standards(client, region)
+                    self.logger.info(
+                        "securityhub_enabled_standards",
+                        region=region,
+                        standards_count=len(enabled_standards),
+                        standards=[s.get("standard_id") for s in enabled_standards],
+                    )
+
                 # Get CSPM control status for this region
                 region_status = self._get_cspm_control_status(client, region)
 
@@ -174,7 +188,6 @@ class SecurityHubScanner(BaseScanner):
                     if not cspm_scanned:
                         # First region with CSPM - store full control data
                         first_cspm_region = region
-                        first_client = client
                         for control_id, control_data in region_status.items():
                             cspm_control_data[control_id] = {
                                 **control_data,
@@ -216,12 +229,13 @@ class SecurityHubScanner(BaseScanner):
                     "securityhub_scan_error", region=region, error=str(e)
                 )
 
-        # Phase 2: Group CSPM controls by standard and create aggregated detections
-        if cspm_control_data and first_client:
-            grouped_detections = self._create_grouped_standard_detections(
+        # Phase 2: Create detections per ENABLED STANDARD (not inferred)
+        if cspm_control_data and enabled_standards:
+            grouped_detections = self._create_detections_per_enabled_standard(
                 cspm_control_data,
-                first_client,
-                first_cspm_region,
+                enabled_standards,
+                hub_arn,
+                first_cspm_region or regions[0],
             )
             all_detections.extend(grouped_detections)
 
@@ -598,6 +612,194 @@ class SecurityHubScanner(BaseScanner):
                     techniques.add(tech_id)
 
         return techniques
+
+    def _get_enabled_standards(
+        self,
+        client: Any,
+        region: str,
+    ) -> list[dict]:
+        """Get enabled Security Hub standards using GetEnabledStandards API.
+
+        This is the authoritative source for which standards are enabled.
+        Returns a list of enabled standards with their metadata.
+
+        Args:
+            client: SecurityHub boto3 client
+            region: AWS region
+
+        Returns:
+            List of dicts with standard_id, name, description, subscription_arn
+        """
+        enabled = []
+
+        try:
+            paginator = client.get_paginator("get_enabled_standards")
+
+            for page in paginator.paginate():
+                for subscription in page.get("StandardsSubscriptions", []):
+                    standards_arn = subscription.get("StandardsArn", "")
+                    status = subscription.get("StandardsStatus", "")
+
+                    if status != "READY":
+                        continue
+
+                    # Determine standard ID from ARN
+                    standard_id = _get_standard_id_from_arn(standards_arn)
+                    if not standard_id:
+                        # Unknown standard - create ID from ARN
+                        if "/" in standards_arn:
+                            standard_id = standards_arn.split("/")[-2].replace("-", "_")
+                        else:
+                            standard_id = "unknown"
+
+                    # Get standard metadata
+                    standard_info = self._get_standard_info_by_id(standard_id)
+
+                    enabled.append(
+                        {
+                            "standard_id": standard_id,
+                            "standards_arn": standards_arn,
+                            "subscription_arn": subscription.get(
+                                "StandardsSubscriptionArn", ""
+                            ),
+                            "name": standard_info["name"],
+                            "description": standard_info["description"],
+                            "status": status,
+                        }
+                    )
+
+        except ClientError as e:
+            self.logger.warning(
+                "securityhub_get_enabled_standards_error",
+                region=region,
+                error=str(e),
+            )
+
+        return enabled
+
+    def _create_detections_per_enabled_standard(
+        self,
+        cspm_control_data: dict[str, dict],
+        enabled_standards: list[dict],
+        hub_arn: str,
+        region: str,
+    ) -> list[RawDetection]:
+        """Create ONE detection per ENABLED Security Hub standard.
+
+        Unlike inference-based grouping, this uses the actual enabled standards
+        from GetEnabledStandards API. Each enabled standard (CIS, NIST, PCI, FSBP)
+        gets its own detection.
+
+        All CSPM controls apply to all enabled standards since AWS uses
+        standard-agnostic control IDs.
+
+        Args:
+            cspm_control_data: Dict of control_id -> control data from CSPM API
+            enabled_standards: List of enabled standards from GetEnabledStandards
+            hub_arn: The Security Hub ARN
+            region: The canonical region for these detections
+
+        Returns:
+            List of RawDetection objects, one per enabled standard
+        """
+        detections = []
+
+        # Extract account ID from hub_arn for region-agnostic source_arn
+        # hub_arn format: arn:aws:securityhub:REGION:ACCOUNT:hub/default
+        account_id = "unknown"
+        if hub_arn:
+            arn_parts = hub_arn.split(":")
+            if len(arn_parts) >= 5:
+                account_id = arn_parts[4]
+
+        for standard in enabled_standards:
+            standard_id = standard.get("standard_id", "unknown")
+            standard_name = standard.get("name", standard_id.upper())
+            standard_description = standard.get(
+                "description", f"Security Hub {standard_name}"
+            )
+
+            # Calculate metrics - use status_by_region for accurate counts
+            enabled_count = 0
+            disabled_count = 0
+            for control in cspm_control_data.values():
+                status_by_region = control.get("status_by_region", {})
+                # A control is "enabled" if enabled in ANY region
+                if any(s == "ENABLED" for s in status_by_region.values()):
+                    enabled_count += 1
+                else:
+                    disabled_count += 1
+
+            # Count unique MITRE techniques covered by this standard's controls
+            techniques_covered = self._count_techniques_covered(cspm_control_data)
+
+            # Build controls list for raw_config
+            controls_list = []
+            for control_id, control_data in cspm_control_data.items():
+                # Determine overall status for this control
+                status_by_region = control_data.get("status_by_region", {})
+                overall_status = (
+                    "ENABLED"
+                    if any(s == "ENABLED" for s in status_by_region.values())
+                    else "DISABLED"
+                )
+
+                controls_list.append(
+                    {
+                        "control_id": control_id,
+                        "control_arn": control_data.get("control_arn"),
+                        "title": control_data.get("title"),
+                        "description": control_data.get("description"),
+                        "status": overall_status,
+                        "severity": control_data.get("severity"),
+                        "update_status": control_data.get("update_status"),
+                        "parameters": control_data.get("parameters", {}),
+                        "remediation_url": control_data.get("remediation_url"),
+                        "status_by_region": status_by_region,
+                    }
+                )
+
+            # Use account ID + standard_id for region-agnostic source_arn
+            # This ensures ONE detection per standard per account, not per region
+            unique_source_arn = (
+                f"arn:aws:securityhub:::account/{account_id}/standard/{standard_id}"
+            )
+
+            detection = RawDetection(
+                name=f"SecurityHub-{standard_name}",
+                detection_type=DetectionType.SECURITY_HUB,
+                source_arn=unique_source_arn,
+                region=region,
+                raw_config={
+                    "hub_arn": hub_arn,
+                    "standard_id": standard_id,
+                    "standard_name": standard_name,
+                    "standards_arn": standard.get("standards_arn"),
+                    "subscription_arn": standard.get("subscription_arn"),
+                    "enabled_controls_count": enabled_count,
+                    "disabled_controls_count": disabled_count,
+                    "total_controls_count": len(cspm_control_data),
+                    "techniques_covered_count": len(techniques_covered),
+                    "techniques_covered": list(techniques_covered),
+                    "controls": controls_list,
+                    "api_version": "cspm_per_enabled_standard",
+                },
+                description=standard_description,
+                is_managed=True,
+            )
+            detections.append(detection)
+
+            self.logger.info(
+                "securityhub_standard_detection_created",
+                standard=standard_id,
+                name=standard_name,
+                total_controls=len(cspm_control_data),
+                enabled=enabled_count,
+                disabled=disabled_count,
+                techniques=len(techniques_covered),
+            )
+
+        return detections
 
     def _get_cspm_control_status(
         self,
