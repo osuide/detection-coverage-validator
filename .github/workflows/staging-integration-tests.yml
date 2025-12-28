@@ -1,0 +1,148 @@
+name: Staging Integration Tests
+
+on:
+  # Run after deploy workflow completes on staging
+  workflow_run:
+    workflows: ["Deploy"]
+    types: [completed]
+    branches: [main]
+
+  # Allow manual trigger
+  workflow_dispatch:
+
+env:
+  AWS_REGION: eu-west-2
+
+jobs:
+  integration-tests:
+    name: Run Integration Tests on Staging
+    runs-on: ubuntu-latest
+    environment: staging
+
+    # Only run if deploy succeeded (or manual trigger)
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        working-directory: ./backend
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio httpx
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Get staging secrets from AWS Secrets Manager
+        id: secrets
+        run: |
+          # Get database URL from Secrets Manager
+          DB_SECRET=$(aws secretsmanager get-secret-value \
+            --secret-id a13e-staging-database-url \
+            --query SecretString --output text 2>/dev/null || echo "")
+
+          if [ -n "$DB_SECRET" ]; then
+            echo "database_url=$DB_SECRET" >> $GITHUB_OUTPUT
+          fi
+
+          # Get Redis URL from Secrets Manager
+          REDIS_SECRET=$(aws secretsmanager get-secret-value \
+            --secret-id a13e-staging-redis-url \
+            --query SecretString --output text 2>/dev/null || echo "")
+
+          if [ -n "$REDIS_SECRET" ]; then
+            echo "redis_url=$REDIS_SECRET" >> $GITHUB_OUTPUT
+          fi
+
+          # Get Secret Key from Secrets Manager
+          SECRET_KEY=$(aws secretsmanager get-secret-value \
+            --secret-id a13e-staging-secret-key \
+            --query SecretString --output text 2>/dev/null || echo "")
+
+          if [ -n "$SECRET_KEY" ]; then
+            echo "secret_key=$SECRET_KEY" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run integration tests
+        working-directory: ./backend
+        env:
+          # Use secrets from AWS Secrets Manager (primary) or GitHub secrets (fallback)
+          DATABASE_URL: ${{ steps.secrets.outputs.database_url || secrets.STAGING_DATABASE_URL }}
+          REDIS_URL: ${{ steps.secrets.outputs.redis_url || secrets.STAGING_REDIS_URL }}
+          SECRET_KEY: ${{ steps.secrets.outputs.secret_key || secrets.STAGING_SECRET_KEY }}
+          ENVIRONMENT: staging
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          API_URL: ${{ secrets.API_URL }}
+        run: |
+          echo "Running integration tests against staging..."
+
+          # Run integration tests with verbose output
+          PYTHONPATH=. pytest tests/integration/ -v --tb=short \
+            --junitxml=integration-test-results.xml \
+            2>&1 | tee integration-test-output.txt
+
+          # Check exit code
+          TEST_EXIT_CODE=${PIPESTATUS[0]}
+
+          if [ $TEST_EXIT_CODE -ne 0 ]; then
+            echo "::error::Integration tests failed"
+            exit $TEST_EXIT_CODE
+          fi
+
+          echo "Integration tests passed!"
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: integration-test-results
+          path: |
+            backend/integration-test-results.xml
+            backend/integration-test-output.txt
+
+      - name: Post test summary
+        if: always()
+        run: |
+          echo "## Integration Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -f backend/integration-test-results.xml ]; then
+            # Extract test counts from JUnit XML
+            TESTS=$(grep -oP 'tests="\K[^"]+' backend/integration-test-results.xml | head -1 || echo "0")
+            FAILURES=$(grep -oP 'failures="\K[^"]+' backend/integration-test-results.xml | head -1 || echo "0")
+            ERRORS=$(grep -oP 'errors="\K[^"]+' backend/integration-test-results.xml | head -1 || echo "0")
+
+            echo "| Metric | Count |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+            echo "| Total Tests | $TESTS |" >> $GITHUB_STEP_SUMMARY
+            echo "| Failures | $FAILURES |" >> $GITHUB_STEP_SUMMARY
+            echo "| Errors | $ERRORS |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "No test results file found" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  notify-on-failure:
+    name: Notify on Failure
+    needs: integration-tests
+    runs-on: ubuntu-latest
+    if: failure()
+
+    steps:
+      - name: Send failure notification
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          echo "::warning::Staging integration tests failed!"
+          echo "Check the workflow run for details: $RUN_URL"
