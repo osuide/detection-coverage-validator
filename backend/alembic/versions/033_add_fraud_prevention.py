@@ -105,6 +105,8 @@ def upgrade() -> None:
 
     # Backfill global registry for existing FREE tier cloud accounts
     # This prevents existing free accounts from being locked out
+    # NOTE: Use tier::text to avoid asyncpg enum validation issue when
+    # 'free' value was added in same transaction (migration 015)
     op.execute(
         """
         INSERT INTO cloud_account_global_registry (
@@ -124,7 +126,7 @@ def upgrade() -> None:
             NOW()
         FROM cloud_accounts ca
         JOIN subscriptions s ON s.organization_id = ca.organization_id
-        WHERE s.tier = 'free'
+        WHERE s.tier::text = 'free'
         ON CONFLICT (account_hash) DO NOTHING
     """
     )
