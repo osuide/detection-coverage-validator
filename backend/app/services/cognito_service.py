@@ -5,6 +5,7 @@ import hashlib
 import base64
 import secrets
 from typing import Optional, Dict, Any, Tuple
+from urllib.parse import urlencode
 import jwt
 from jwt import PyJWKClient, ExpiredSignatureError, InvalidTokenError
 import structlog
@@ -234,7 +235,8 @@ class CognitoService:
         if identity_provider:
             params["identity_provider"] = identity_provider
 
-        query = "&".join(f"{k}={v}" for k, v in params.items())
+        # Security: Use urlencode to properly encode special characters
+        query = urlencode(params)
         return f"{self.authorization_url}?{query}"
 
     def is_configured(self) -> bool:

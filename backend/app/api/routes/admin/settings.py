@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.security import get_client_ip
 from app.models.admin import AdminUser, AdminRole
 from app.models.platform_settings import SettingCategory, SettingKeys
 from app.services.platform_settings_service import get_platform_settings_service
@@ -80,14 +81,6 @@ class SettingAuditResponse(BaseModel):
     changed_at: str
     ip_address: Optional[str]
     reason: Optional[str]
-
-
-def get_client_ip(request: Request) -> str:
-    """Get client IP from request."""
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
 
 
 def _setting_to_response(setting) -> SettingResponse:
@@ -188,7 +181,7 @@ async def update_setting(
                 detail="Only super_admin can modify billing/auth secrets",
             )
 
-    ip_address = get_client_ip(request)
+    ip_address = get_client_ip(request) or "unknown"
 
     updated = await service.set_setting(
         key=key,
@@ -236,7 +229,7 @@ async def create_setting(
                 detail="Only super_admin can create billing/auth secrets",
             )
 
-    ip_address = get_client_ip(request)
+    ip_address = get_client_ip(request) or "unknown"
 
     setting = await service.set_setting(
         key=body.key,
@@ -271,7 +264,7 @@ async def delete_setting(
         )
 
     service = get_platform_settings_service(db)
-    ip_address = get_client_ip(request)
+    ip_address = get_client_ip(request) or "unknown"
 
     deleted = await service.delete_setting(
         key=key,
@@ -327,7 +320,7 @@ async def update_stripe_config(
         )
 
     service = get_platform_settings_service(db)
-    ip_address = get_client_ip(request)
+    ip_address = get_client_ip(request) or "unknown"
     updated = {}
 
     if body.publishable_key is not None:

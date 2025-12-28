@@ -79,7 +79,7 @@ def _is_dev_mode_allowed() -> bool:
     environment = os.environ.get("ENVIRONMENT", "development")
 
     # DEV_MODE only allowed in development/local environments
-    if dev_mode_requested and environment in ("production", "staging"):
+    if dev_mode_requested and environment in ("production", "prod", "staging"):
         logger.warning(
             "dev_mode_blocked",
             environment=environment,

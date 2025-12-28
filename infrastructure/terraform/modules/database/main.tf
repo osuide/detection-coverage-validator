@@ -27,15 +27,8 @@ resource "aws_security_group" "db" {
   name_prefix = "dcv-${var.environment}-db-"
   vpc_id      = var.vpc_id
 
-  # Inline ingress is kept for state compatibility but managed externally
-  # The actual restrictive rule is aws_security_group_rule.ecs_to_rds in backend module
-  # which uses source_security_group_id instead of CIDR blocks
-  ingress {
-    from_port   = 5432
-    to_port     = 5432
-    protocol    = "tcp"
-    cidr_blocks = ["10.0.0.0/8"]
-  }
+  # Security: No inline ingress rules - managed by aws_security_group_rule in backend module
+  # This uses source_security_group_id for proper SG-to-SG rules instead of broad CIDR blocks
 
   egress {
     from_port   = 0
@@ -46,12 +39,6 @@ resource "aws_security_group" "db" {
 
   tags = {
     Name = "dcv-${var.environment}-db-sg"
-  }
-
-  lifecycle {
-    # Ingress rules are also managed by backend module via aws_security_group_rule
-    # Ignore inline changes to prevent recreation of in-use security groups
-    ignore_changes = [ingress]
   }
 }
 

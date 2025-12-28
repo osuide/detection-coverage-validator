@@ -109,14 +109,14 @@ class Settings(BaseSettings):
                     f"CRITICAL: CREDENTIAL_ENCRYPTION_KEY is invalid: {e}. "
                     'Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"'
                 )
-        elif self.environment == "production":
+        elif self.environment in ("production", "prod"):
             # Fail in production - cloud credential storage is a core feature
             raise ValueError(
                 "CRITICAL: CREDENTIAL_ENCRYPTION_KEY is required in production. "
                 "Cloud credential storage will not work without it. "
                 'Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"'
             )
-        elif self.environment not in ("development", "test"):
+        elif self.environment not in ("development", "dev", "test"):
             # Warn in staging - should be configured but not fatal
             import logging
 
@@ -126,7 +126,7 @@ class Settings(BaseSettings):
             )
 
         # Validate DATABASE_URL doesn't use default credentials in production/staging
-        if self.environment in ("production", "staging"):
+        if self.environment in ("production", "prod", "staging"):
             if "postgres:postgres" in self.database_url:
                 raise ValueError(
                     "CRITICAL: Default database credentials detected in production/staging. "

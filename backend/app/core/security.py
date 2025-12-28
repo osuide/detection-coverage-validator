@@ -158,9 +158,13 @@ def _is_trusted_proxy(peer_ip: str) -> bool:
         return False
 
     if not settings.trusted_proxy_cidrs:
-        # If trust_proxy_headers is True but no CIDRs configured,
-        # trust all proxies (backwards compatibility for simple deployments)
-        return True
+        # Security: No CIDRs configured - don't trust any proxy headers
+        # This is fail-closed behaviour to prevent XFF spoofing
+        logger.warning(
+            "trust_proxy_headers_without_cidrs",
+            message="trust_proxy_headers is True but no trusted_proxy_cidrs configured - ignoring proxy headers",
+        )
+        return False
 
     try:
         peer = ipaddress.ip_address(peer_ip)

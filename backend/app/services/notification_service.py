@@ -277,8 +277,12 @@ class NotificationService:
             raise ValueError("Webhook URL not configured")
 
         # SECURITY: Validate URL to prevent SSRF
+        # Enforce allowlist in non-dev environments to mitigate DNS rebinding
+        require_allowlist = settings.environment in ("production", "prod", "staging")
         try:
-            validated_url = validate_webhook_url(url)
+            validated_url = validate_webhook_url(
+                url, require_allowlist=require_allowlist
+            )
         except SSRFError as e:
             self.logger.error("webhook_ssrf_blocked", url=url, error=str(e))
             raise ValueError(f"Invalid webhook URL: {e}")
@@ -321,8 +325,12 @@ class NotificationService:
             raise ValueError("Slack webhook URL not configured")
 
         # SECURITY: Validate URL to prevent SSRF
+        # Enforce allowlist in non-dev environments to mitigate DNS rebinding
+        require_allowlist = settings.environment in ("production", "prod", "staging")
         try:
-            validated_url = validate_webhook_url(webhook_url)
+            validated_url = validate_webhook_url(
+                webhook_url, require_allowlist=require_allowlist
+            )
         except SSRFError as e:
             self.logger.error("slack_ssrf_blocked", url=webhook_url, error=str(e))
             raise ValueError(f"Invalid Slack webhook URL: {e}")

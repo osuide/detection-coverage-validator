@@ -13,6 +13,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 import structlog
 
 from app.core.config import get_settings
+from app.core.security import get_client_ip
 from app.api.routes import (
     accounts,
     scans,
@@ -81,9 +82,7 @@ class SecureLoggingMiddleware(BaseHTTPMiddleware):
         log_data = {
             "method": request.method,
             "path": request.url.path,
-            "client_ip": request.headers.get(
-                "X-Forwarded-For", request.client.host if request.client else "unknown"
-            ),
+            "client_ip": get_client_ip(request) or "unknown",
         }
 
         if is_sensitive:

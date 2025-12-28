@@ -479,6 +479,109 @@ resource "aws_iam_role_policy" "ecs_task" {
   })
 }
 
+# Secrets Manager - Store sensitive values securely
+# These secrets are injected into the ECS container at runtime
+resource "aws_secretsmanager_secret" "jwt_secret" {
+  name = "a13e/${var.environment}/jwt-secret"
+
+  tags = {
+    Name        = "a13e-${var.environment}-jwt-secret"
+    Environment = var.environment
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "jwt_secret" {
+  secret_id     = aws_secretsmanager_secret.jwt_secret.id
+  secret_string = var.jwt_secret_key
+}
+
+resource "aws_secretsmanager_secret" "credential_encryption_key" {
+  count = var.credential_encryption_key != "" ? 1 : 0
+  name  = "a13e/${var.environment}/credential-encryption-key"
+
+  tags = {
+    Name        = "a13e-${var.environment}-credential-encryption-key"
+    Environment = var.environment
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "credential_encryption_key" {
+  count         = var.credential_encryption_key != "" ? 1 : 0
+  secret_id     = aws_secretsmanager_secret.credential_encryption_key[0].id
+  secret_string = var.credential_encryption_key
+}
+
+resource "aws_secretsmanager_secret" "stripe_secret_key" {
+  count = var.stripe_secret_key != "" ? 1 : 0
+  name  = "a13e/${var.environment}/stripe-secret-key"
+
+  tags = {
+    Name        = "a13e-${var.environment}-stripe-secret-key"
+    Environment = var.environment
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "stripe_secret_key" {
+  count         = var.stripe_secret_key != "" ? 1 : 0
+  secret_id     = aws_secretsmanager_secret.stripe_secret_key[0].id
+  secret_string = var.stripe_secret_key
+}
+
+resource "aws_secretsmanager_secret" "stripe_webhook_secret" {
+  count = var.stripe_webhook_secret != "" ? 1 : 0
+  name  = "a13e/${var.environment}/stripe-webhook-secret"
+
+  tags = {
+    Name        = "a13e-${var.environment}-stripe-webhook-secret"
+    Environment = var.environment
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "stripe_webhook_secret" {
+  count         = var.stripe_webhook_secret != "" ? 1 : 0
+  secret_id     = aws_secretsmanager_secret.stripe_webhook_secret[0].id
+  secret_string = var.stripe_webhook_secret
+}
+
+resource "aws_secretsmanager_secret" "github_client_secret" {
+  count = var.github_client_secret != "" ? 1 : 0
+  name  = "a13e/${var.environment}/github-client-secret"
+
+  tags = {
+    Name        = "a13e-${var.environment}-github-client-secret"
+    Environment = var.environment
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "github_client_secret" {
+  count         = var.github_client_secret != "" ? 1 : 0
+  secret_id     = aws_secretsmanager_secret.github_client_secret[0].id
+  secret_string = var.github_client_secret
+}
+
+# IAM Policy for ECS Execution Role to read secrets
+resource "aws_iam_role_policy" "ecs_execution_secrets" {
+  name = "a13e-${var.environment}-ecs-secrets-policy"
+  role = aws_iam_role.ecs_execution.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "secretsmanager:GetSecretValue"
+      ]
+      Resource = concat(
+        [aws_secretsmanager_secret.jwt_secret.arn],
+        var.credential_encryption_key != "" ? [aws_secretsmanager_secret.credential_encryption_key[0].arn] : [],
+        var.stripe_secret_key != "" ? [aws_secretsmanager_secret.stripe_secret_key[0].arn] : [],
+        var.stripe_webhook_secret != "" ? [aws_secretsmanager_secret.stripe_webhook_secret[0].arn] : [],
+        var.github_client_secret != "" ? [aws_secretsmanager_secret.github_client_secret[0].arn] : []
+      )
+    }]
+  })
+}
+
 # ECS Task Definition
 resource "aws_ecs_task_definition" "backend" {
   family                   = "a13e-${var.environment}-backend"
@@ -499,6 +602,7 @@ resource "aws_ecs_task_definition" "backend" {
       protocol      = "tcp"
     }]
 
+    # Non-sensitive environment variables
     environment = concat([
       { name = "DATABASE_URL", value = var.database_url },
       { name = "REDIS_URL", value = var.redis_url },
@@ -507,10 +611,6 @@ resource "aws_ecs_task_definition" "backend" {
       { name = "DISABLE_SCAN_LIMITS", value = var.environment == "prod" ? "false" : "true" },
       { name = "HIBP_FAIL_CLOSED", value = var.environment == "prod" ? "true" : "false" },
       { name = "A13E_DEV_MODE", value = "false" },
-      { name = "SECRET_KEY", value = var.jwt_secret_key },
-      { name = "CREDENTIAL_ENCRYPTION_KEY", value = var.credential_encryption_key },
-      { name = "STRIPE_SECRET_KEY", value = var.stripe_secret_key },
-      { name = "STRIPE_WEBHOOK_SECRET", value = var.stripe_webhook_secret },
       { name = "STRIPE_PRICE_ID_SUBSCRIBER", value = var.stripe_price_ids.subscriber },
       { name = "STRIPE_PRICE_ID_ENTERPRISE", value = var.stripe_price_ids.enterprise },
       { name = "STRIPE_PRICE_ID_ADDITIONAL_ACCOUNT", value = var.stripe_price_ids.additional_account },
@@ -528,15 +628,40 @@ resource "aws_ecs_task_definition" "backend" {
       ] : [],
       # Google OAuth (via Cognito)
       var.google_client_id != "" ? [{ name = "GOOGLE_CLIENT_ID", value = var.google_client_id }] : [],
-      # GitHub OAuth (handled by backend directly, not Cognito)
+      # GitHub OAuth Client ID (not secret)
       var.github_client_id != "" ? [{ name = "GITHUB_CLIENT_ID", value = var.github_client_id }] : [],
-      var.github_client_secret != "" ? [{ name = "GITHUB_CLIENT_SECRET", value = var.github_client_secret }] : [],
       # SES Email configuration
       [
         { name = "SES_ENABLED", value = "true" },
         { name = "SES_FROM_EMAIL", value = "noreply@a13e.com" },
         { name = "APP_URL", value = var.frontend_url }
     ])
+
+    # Sensitive values loaded from Secrets Manager
+    # ECS will inject these as environment variables at container startup
+    secrets = concat([
+      {
+        name      = "SECRET_KEY"
+        valueFrom = aws_secretsmanager_secret.jwt_secret.arn
+      }
+      ],
+      var.credential_encryption_key != "" ? [{
+        name      = "CREDENTIAL_ENCRYPTION_KEY"
+        valueFrom = aws_secretsmanager_secret.credential_encryption_key[0].arn
+      }] : [],
+      var.stripe_secret_key != "" ? [{
+        name      = "STRIPE_SECRET_KEY"
+        valueFrom = aws_secretsmanager_secret.stripe_secret_key[0].arn
+      }] : [],
+      var.stripe_webhook_secret != "" ? [{
+        name      = "STRIPE_WEBHOOK_SECRET"
+        valueFrom = aws_secretsmanager_secret.stripe_webhook_secret[0].arn
+      }] : [],
+      var.github_client_secret != "" ? [{
+        name      = "GITHUB_CLIENT_SECRET"
+        valueFrom = aws_secretsmanager_secret.github_client_secret[0].arn
+      }] : []
+    )
 
     logConfiguration = {
       logDriver = "awslogs"
