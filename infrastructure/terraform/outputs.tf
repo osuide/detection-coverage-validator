@@ -102,3 +102,8 @@ output "codebuild_project_arn" {
   description = "CodeBuild project ARN"
   value       = var.enable_codebuild_tests ? module.codebuild[0].project_arn : null
 }
+
+output "codebuild_github_actions_policy_arn" {
+  description = "IAM policy ARN to attach to GitHub Actions user for CodeBuild access"
+  value       = var.enable_codebuild_tests ? module.codebuild[0].github_actions_policy_arn : null
+}

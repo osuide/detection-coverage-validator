@@ -317,6 +317,36 @@ resource "aws_codebuild_project" "integration_tests" {
   }
 }
 
+# IAM Policy for GitHub Actions to trigger CodeBuild
+# Attach this policy to your GitHub Actions IAM user
+resource "aws_iam_policy" "github_actions_codebuild" {
+  name        = "a13e-${var.environment}-github-actions-codebuild"
+  description = "Allows GitHub Actions to trigger CodeBuild integration tests"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "StartBuild"
+        Effect = "Allow"
+        Action = [
+          "codebuild:StartBuild",
+          "codebuild:BatchGetBuilds"
+        ]
+        Resource = aws_codebuild_project.integration_tests.arn
+      },
+      {
+        Sid    = "ReadBuildLogs"
+        Effect = "Allow"
+        Action = [
+          "logs:GetLogEvents"
+        ]
+        Resource = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/codebuild/a13e-${var.environment}-integration-tests:*"
+      }
+    ]
+  })
+}
+
 # Outputs
 output "project_name" {
   value = aws_codebuild_project.integration_tests.name
@@ -328,4 +358,9 @@ output "project_arn" {
 
 output "security_group_id" {
   value = aws_security_group.codebuild.id
+}
+
+output "github_actions_policy_arn" {
+  value       = aws_iam_policy.github_actions_codebuild.arn
+  description = "Attach this policy to your GitHub Actions IAM user"
 }
