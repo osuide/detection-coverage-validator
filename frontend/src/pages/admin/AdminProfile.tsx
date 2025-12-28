@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   User,
@@ -10,8 +10,17 @@ import {
   Smartphone,
   AlertCircle,
 } from 'lucide-react'
-import { useAdminAuthStore, adminAuthActions } from '../../stores/adminAuthStore'
+import { useAdminAuthStore, adminAuthActions, adminApi } from '../../stores/adminAuthStore'
 import MFASetupModal from '../../components/MFASetupModal'
+import PasskeyList from '../../components/PasskeyList'
+import { PublicKeyCredentialCreationOptionsJSON } from '../../utils/webauthn'
+
+interface WebAuthnCredential {
+  credential_id: string
+  device_name: string
+  created_at: string
+  last_used_at: string | null
+}
 
 export default function AdminProfile() {
   const navigate = useNavigate()
@@ -20,6 +29,24 @@ export default function AdminProfile() {
 
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [showMFASetup, setShowMFASetup] = useState(false)
+  const [webauthnCredentials, setWebauthnCredentials] = useState<WebAuthnCredential[]>([])
+
+  // Fetch WebAuthn credentials
+  const fetchWebAuthnCredentials = useCallback(async () => {
+    try {
+      const response = await adminApi.get<WebAuthnCredential[]>('/auth/webauthn/credentials')
+      setWebauthnCredentials(response.data)
+    } catch (err) {
+      console.error('Failed to fetch WebAuthn credentials:', err)
+    }
+  }, [])
+
+  // Load WebAuthn credentials on mount
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchWebAuthnCredentials()
+    }
+  }, [isAuthenticated, fetchWebAuthnCredentials])
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -228,6 +255,29 @@ export default function AdminProfile() {
               </div>
             </div>
           )}
+        </div>
+
+        {/* Security Keys & Passkeys */}
+        <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 mb-6">
+          <PasskeyList
+            credentials={webauthnCredentials}
+            hasTotp={admin.mfa_enabled}
+            onAdd={() => {}}
+            onDelete={async (credentialId) => {
+              await adminApi.post('/auth/webauthn/credentials/delete', {
+                credential_id: credentialId,
+              })
+            }}
+            getOptions={async (deviceName, authenticatorType) => {
+              return adminAuthActions.getWebAuthnRegisterOptions(deviceName, authenticatorType) as Promise<{ options: PublicKeyCredentialCreationOptionsJSON }>
+            }}
+            verifyCredential={async (credential, deviceName) => {
+              await adminAuthActions.verifyWebAuthnRegister(credential, deviceName)
+              // Update MFA status since adding a security key enables MFA
+              updateAdmin({ mfa_enabled: true })
+            }}
+            onRefresh={fetchWebAuthnCredentials}
+          />
         </div>
 
         {/* Password Change Notice */}

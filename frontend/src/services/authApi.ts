@@ -77,6 +77,13 @@ export interface MFABackupCodesResponse {
   backup_codes: string[]
 }
 
+export interface WebAuthnCredential {
+  credential_id: string
+  device_name: string
+  created_at: string
+  last_used_at: string | null
+}
+
 export interface Session {
   id: string
   user_agent: string | null
@@ -259,6 +266,47 @@ export const authApi = {
 
   revokeAllSessions: async (token: string): Promise<void> => {
     await api.delete('/me/sessions', { headers: { Authorization: `Bearer ${token}` } })
+  },
+
+  // WebAuthn/Passkeys
+  getWebAuthnCredentials: async (token: string): Promise<WebAuthnCredential[]> => {
+    const response = await api.get<WebAuthnCredential[]>('/me/webauthn/credentials', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    return response.data
+  },
+
+  getWebAuthnRegisterOptions: async (
+    token: string,
+    deviceName: string,
+    authenticatorType?: string
+  ): Promise<{ options: unknown }> => {
+    const response = await api.post<{ options: unknown }>(
+      '/me/webauthn/register/options',
+      { device_name: deviceName, authenticator_type: authenticatorType },
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+    return response.data
+  },
+
+  verifyWebAuthnRegister: async (
+    token: string,
+    credential: unknown,
+    deviceName: string
+  ): Promise<void> => {
+    await api.post(
+      '/me/webauthn/register/verify',
+      { credential, device_name: deviceName },
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+  },
+
+  deleteWebAuthnCredential: async (token: string, credentialId: string): Promise<void> => {
+    await api.post(
+      '/me/webauthn/credentials/delete',
+      { credential_id: credentialId },
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
   },
 }
 

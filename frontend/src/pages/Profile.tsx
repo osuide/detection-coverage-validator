@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { User, Mail, Building, Shield, Save, Key, Smartphone, ShieldCheck, ShieldOff } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useAuthStore } from '../stores/authStore'
-import { authApi } from '../services/authApi'
+import { authApi, WebAuthnCredential } from '../services/authApi'
 import MFASetupModal from '../components/MFASetupModal'
 import DisableMFAModal from '../components/DisableMFAModal'
+import PasskeyList from '../components/PasskeyList'
+import { PublicKeyCredentialCreationOptionsJSON } from '../utils/webauthn'
 
 export default function Profile() {
   const { user, organization, token } = useAuth()
@@ -19,6 +21,25 @@ export default function Profile() {
   // MFA modal state
   const [showMFASetup, setShowMFASetup] = useState(false)
   const [showDisableMFA, setShowDisableMFA] = useState(false)
+
+  // WebAuthn/Passkey state
+  const [webauthnCredentials, setWebauthnCredentials] = useState<WebAuthnCredential[]>([])
+
+  // Fetch WebAuthn credentials
+  const fetchWebAuthnCredentials = useCallback(async () => {
+    if (!token) return
+    try {
+      const credentials = await authApi.getWebAuthnCredentials(token)
+      setWebauthnCredentials(credentials)
+    } catch (err) {
+      console.error('Failed to fetch WebAuthn credentials:', err)
+    }
+  }, [token])
+
+  // Load WebAuthn credentials on mount
+  useEffect(() => {
+    fetchWebAuthnCredentials()
+  }, [fetchWebAuthnCredentials])
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -223,6 +244,30 @@ export default function Profile() {
             </button>
           </div>
         )}
+      </div>
+
+      {/* Security Keys & Passkeys */}
+      <div className="bg-gray-800 rounded-xl shadow-sm border border-gray-700 p-6 mb-6">
+        <PasskeyList
+          credentials={webauthnCredentials}
+          hasTotp={user?.mfa_enabled}
+          onAdd={() => {}}
+          onDelete={async (credentialId) => {
+            if (!token) throw new Error('Not authenticated')
+            await authApi.deleteWebAuthnCredential(token, credentialId)
+          }}
+          getOptions={async (deviceName, authenticatorType) => {
+            if (!token) throw new Error('Not authenticated')
+            return authApi.getWebAuthnRegisterOptions(token, deviceName, authenticatorType) as Promise<{ options: PublicKeyCredentialCreationOptionsJSON }>
+          }}
+          verifyCredential={async (credential, deviceName) => {
+            if (!token) throw new Error('Not authenticated')
+            await authApi.verifyWebAuthnRegister(token, credential, deviceName)
+            // Update MFA status since adding a security key enables MFA
+            updateUser({ mfa_enabled: true })
+          }}
+          onRefresh={fetchWebAuthnCredentials}
+        />
       </div>
 
       {/* Update Profile */}
