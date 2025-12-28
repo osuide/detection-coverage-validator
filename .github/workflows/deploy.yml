@@ -170,12 +170,49 @@ jobs:
             --service $ECS_SERVICE \
             --force-new-deployment
 
-          echo "Waiting for deployment to stabilize..."
-          aws ecs wait services-stable \
-            --cluster $ECS_CLUSTER \
-            --services $ECS_SERVICE
+          echo "Waiting for deployment to stabilize (up to 15 minutes)..."
 
-          echo "Backend deployment completed successfully!"
+          # Use custom max attempts (60 attempts * 15s = 15 minutes)
+          # Default is 40 attempts which can timeout on slower deployments
+          MAX_ATTEMPTS=60
+          ATTEMPT=0
+
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            ATTEMPT=$((ATTEMPT + 1))
+
+            # Check if service is stable
+            DEPLOYMENTS=$(aws ecs describe-services \
+              --cluster $ECS_CLUSTER \
+              --services $ECS_SERVICE \
+              --query 'services[0].deployments' \
+              --output json)
+
+            # Count deployments and check primary status
+            DEPLOYMENT_COUNT=$(echo "$DEPLOYMENTS" | jq 'length')
+            PRIMARY_STATE=$(echo "$DEPLOYMENTS" | jq -r '.[] | select(.status=="PRIMARY") | .rolloutState')
+            RUNNING_COUNT=$(echo "$DEPLOYMENTS" | jq -r '.[] | select(.status=="PRIMARY") | .runningCount')
+            DESIRED_COUNT=$(echo "$DEPLOYMENTS" | jq -r '.[] | select(.status=="PRIMARY") | .desiredCount')
+
+            echo "Attempt $ATTEMPT/$MAX_ATTEMPTS: Deployments=$DEPLOYMENT_COUNT, Primary=$PRIMARY_STATE, Running=$RUNNING_COUNT/$DESIRED_COUNT"
+
+            # Check if deployment completed
+            if [ "$DEPLOYMENT_COUNT" -eq 1 ] && [ "$PRIMARY_STATE" = "COMPLETED" ] && [ "$RUNNING_COUNT" -eq "$DESIRED_COUNT" ]; then
+              echo "Backend deployment completed successfully!"
+              exit 0
+            fi
+
+            # Check for failed deployment
+            FAILED_TASKS=$(echo "$DEPLOYMENTS" | jq -r '.[] | select(.status=="PRIMARY") | .failedTasks')
+            if [ "$FAILED_TASKS" -gt 0 ]; then
+              echo "Deployment failed with $FAILED_TASKS failed tasks"
+              exit 1
+            fi
+
+            sleep 15
+          done
+
+          echo "Deployment timed out after $MAX_ATTEMPTS attempts"
+          exit 1
 
   deploy-frontend:
     name: Deploy Frontend
