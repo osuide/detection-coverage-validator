@@ -25,13 +25,17 @@ class LoginRequest(BaseModel):
 
 
 class LoginResponse(BaseModel):
-    """Login response."""
+    """Login response.
+
+    When requires_mfa=True, user/organization are None and mfa_token is set.
+    Client must call /auth/mfa/verify with the mfa_token to complete login.
+    """
 
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
     expires_in: int
-    user: "UserResponse"
+    user: Optional["UserResponse"] = None  # None when requires_mfa=True
     organization: Optional["OrganizationResponse"] = None
     requires_mfa: bool = False
     mfa_token: Optional[str] = None  # Partial token for MFA flow
