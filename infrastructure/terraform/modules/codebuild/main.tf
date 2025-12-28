@@ -41,12 +41,6 @@ variable "github_repo" {
   description = "GitHub repository in format owner/repo"
 }
 
-variable "github_token_secret_arn" {
-  type        = string
-  description = "ARN of Secrets Manager secret containing GitHub token"
-  default     = ""
-}
-
 data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
@@ -150,70 +144,13 @@ resource "aws_iam_role_policy" "codebuild" {
             "ec2:Subnet" = [for subnet_id in var.private_subnet_ids : "arn:aws:ec2:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:subnet/${subnet_id}"]
           }
         }
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "secretsmanager:GetSecretValue"
-        ]
-        Resource = var.github_token_secret_arn != "" ? [var.github_token_secret_arn] : []
       }
     ]
   })
 }
 
-# Store secrets in SSM Parameter Store for CodeBuild
-resource "aws_ssm_parameter" "database_url" {
-  name  = "/a13e/${var.environment}/codebuild/database-url"
-  type  = "SecureString"
-  value = var.database_url
-
-  tags = {
-    Name = "a13e-${var.environment}-codebuild-database-url"
-  }
-}
-
-resource "aws_ssm_parameter" "redis_url" {
-  name  = "/a13e/${var.environment}/codebuild/redis-url"
-  type  = "SecureString"
-  value = var.redis_url
-
-  tags = {
-    Name = "a13e-${var.environment}-codebuild-redis-url"
-  }
-}
-
-resource "aws_ssm_parameter" "secret_key" {
-  name  = "/a13e/${var.environment}/codebuild/secret-key"
-  type  = "SecureString"
-  value = var.secret_key
-
-  tags = {
-    Name = "a13e-${var.environment}-codebuild-secret-key"
-  }
-}
-
-# Allow CodeBuild to read SSM parameters
-resource "aws_iam_role_policy" "codebuild_ssm" {
-  name = "a13e-${var.environment}-codebuild-ssm"
-  role = aws_iam_role.codebuild.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Action = [
-        "ssm:GetParameters",
-        "ssm:GetParameter"
-      ]
-      Resource = [
-        aws_ssm_parameter.database_url.arn,
-        aws_ssm_parameter.redis_url.arn,
-        aws_ssm_parameter.secret_key.arn
-      ]
-    }]
-  })
-}
+# Note: Secrets are passed directly as environment variables to CodeBuild.
+# CodeBuild encrypts environment variables at rest using AWS-managed keys.
 
 # CodeBuild Project
 resource "aws_codebuild_project" "integration_tests" {
@@ -239,20 +176,17 @@ resource "aws_codebuild_project" "integration_tests" {
 
     environment_variable {
       name  = "DATABASE_URL"
-      value = aws_ssm_parameter.database_url.name
-      type  = "PARAMETER_STORE"
+      value = var.database_url
     }
 
     environment_variable {
       name  = "REDIS_URL"
-      value = aws_ssm_parameter.redis_url.name
-      type  = "PARAMETER_STORE"
+      value = var.redis_url
     }
 
     environment_variable {
       name  = "SECRET_KEY"
-      value = aws_ssm_parameter.secret_key.name
-      type  = "PARAMETER_STORE"
+      value = var.secret_key
     }
   }
 

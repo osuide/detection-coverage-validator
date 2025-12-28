@@ -62,3 +62,10 @@ force_reload_compliance = false
 # Required when frontend (staging.a13e.com) and API (api.staging.a13e.com) are
 # on different subdomains. The leading dot makes cookies accessible to all subdomains.
 cookie_domain = ".a13e.com"
+
+# ============================================================================
+# CodeBuild Integration Tests
+# ============================================================================
+# Enables CodeBuild project for running integration tests inside VPC.
+# Triggered manually via GitHub Actions or weekly scheduled runs.
+enable_codebuild_tests = true
