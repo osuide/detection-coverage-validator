@@ -20,8 +20,8 @@ from webauthn import (
     verify_registration_response,
     generate_authentication_options,
     verify_authentication_response,
-    options_to_json,
 )
+from webauthn.helpers.options_to_json_dict import options_to_json_dict
 from webauthn.helpers import bytes_to_base64url, base64url_to_bytes
 from webauthn.helpers.structs import (
     AuthenticatorSelectionCriteria,
@@ -31,12 +31,55 @@ from webauthn.helpers.structs import (
     PublicKeyCredentialDescriptor,
     RegistrationCredential,
     AuthenticationCredential,
+    AuthenticatorTransport,
 )
 
 from app.core.config import get_settings
 
 logger = structlog.get_logger()
 settings = get_settings()
+
+
+def _str_to_transport(transport_str: str) -> AuthenticatorTransport | None:
+    """Convert a transport string to AuthenticatorTransport enum.
+
+    Args:
+        transport_str: Transport string like 'usb', 'nfc', 'ble', etc.
+
+    Returns:
+        AuthenticatorTransport enum or None if not recognised
+    """
+    transport_map = {
+        "usb": AuthenticatorTransport.USB,
+        "nfc": AuthenticatorTransport.NFC,
+        "ble": AuthenticatorTransport.BLE,
+        "smart-card": AuthenticatorTransport.SMART_CARD,
+        "internal": AuthenticatorTransport.INTERNAL,
+        "cable": AuthenticatorTransport.CABLE,
+        "hybrid": AuthenticatorTransport.HYBRID,
+    }
+    return transport_map.get(transport_str.lower())
+
+
+def _parse_transports(
+    transports: list[str] | None,
+) -> list[AuthenticatorTransport] | None:
+    """Parse a list of transport strings to AuthenticatorTransport enums.
+
+    Args:
+        transports: List of transport strings or None
+
+    Returns:
+        List of AuthenticatorTransport enums or None
+    """
+    if not transports:
+        return None
+    result = []
+    for t in transports:
+        parsed = _str_to_transport(t)
+        if parsed:
+            result.append(parsed)
+    return result if result else None
 
 
 class WebAuthnCredential:
@@ -146,7 +189,7 @@ class WebAuthnService:
         exclude_credentials = [
             PublicKeyCredentialDescriptor(
                 id=base64url_to_bytes(cred["credential_id"]),
-                transports=cred.get("transports"),
+                transports=_parse_transports(cred.get("transports")),
             )
             for cred in existing_credentials
         ]
@@ -187,7 +230,7 @@ class WebAuthnService:
             exclude_count=len(exclude_credentials),
         )
 
-        return options_to_json(options), options.challenge
+        return options_to_json_dict(options), options.challenge
 
     def verify_registration(
         self,
@@ -256,7 +299,7 @@ class WebAuthnService:
         allow_credentials = [
             PublicKeyCredentialDescriptor(
                 id=base64url_to_bytes(cred["credential_id"]),
-                transports=cred.get("transports"),
+                transports=_parse_transports(cred.get("transports")),
             )
             for cred in credentials
         ]
@@ -273,7 +316,7 @@ class WebAuthnService:
             credential_count=len(allow_credentials),
         )
 
-        return options_to_json(options), options.challenge
+        return options_to_json_dict(options), options.challenge
 
     def verify_authentication(
         self,
