@@ -50,57 +50,67 @@ SECURITYHUB_INSIGHT_MAPPINGS: dict[str, list[tuple[str, float]]] = {
 # Based on official MITRE CTID mappings
 
 CIS_BENCHMARK_MAPPINGS: dict[str, list[tuple[str, float]]] = {
+    # Confidence scores based on MITRE CTID Security Stack Mappings
+    # T1078.004 (Cloud Accounts) and T1562.008 (Disable Cloud Logs) rated "Significant"
+    #
     # Section 3 - Monitoring
-    "cis.3.1": [("T1078", 0.85)],  # Unauthorized API calls monitoring
-    "cis.3.2": [("T1078", 0.85)],  # Console sign-in without MFA
-    "cis.3.3": [("T1078", 0.9)],  # Root account usage monitoring
+    "cis.3.1": [
+        ("T1078", 0.85),
+        ("T1078.004", 0.85),
+    ],  # Unauthorized API calls monitoring
+    "cis.3.2": [("T1078", 0.85), ("T1078.004", 0.85)],  # Console sign-in without MFA
+    "cis.3.3": [("T1078", 0.9), ("T1078.004", 0.9)],  # Root account usage monitoring
     "cis.3.4": [
         ("T1531", 0.75),  # Account Access Removal
-        ("T1098.001", 0.8),  # Additional Cloud Credentials
+        ("T1098.001", 0.85),  # Additional Cloud Credentials - Significant
     ],  # IAM policy changes
-    "cis.3.5": [("T1562", 0.9)],  # CloudTrail config changes
-    "cis.3.6": [("T1110", 0.85)],  # Console auth failures
-    "cis.3.7": [("T1562", 0.85)],  # Disabling CMKs
+    "cis.3.5": [("T1562", 0.9), ("T1562.008", 0.9)],  # CloudTrail config changes
+    "cis.3.6": [
+        ("T1110", 0.85),
+        ("T1110.001", 0.8),
+        ("T1110.003", 0.8),
+    ],  # Console auth failures
+    "cis.3.7": [("T1562", 0.85), ("T1562.001", 0.85)],  # Disabling CMKs
     "cis.3.8": [
         ("T1530", 0.85),
         ("T1580", 0.8),
     ],  # S3 bucket policy changes
-    "cis.3.9": [("T1562", 0.9)],  # AWS Config changes
-    "cis.3.10": [("T1562", 0.85)],  # Security group changes
-    "cis.3.11": [("T1562", 0.85)],  # NACL changes
-    "cis.3.12": [("T1562", 0.85)],  # Network gateway changes
-    "cis.3.13": [("T1562", 0.85)],  # Route table changes
-    "cis.3.14": [("T1562", 0.85)],  # VPC changes
-    # Section 1 - IAM
-    "cis.1.1": [("T1078", 0.85)],  # Root account access key
-    "cis.1.2": [("T1078", 0.9)],  # MFA for root
-    "cis.1.3": [("T1078", 0.8)],  # Credentials unused 90 days
-    "cis.1.4": [("T1078", 0.8)],  # Access keys rotated
-    "cis.1.5": [("T1110", 0.85)],  # Password policy - uppercase
-    "cis.1.6": [("T1110", 0.85)],  # Password policy - lowercase
-    "cis.1.7": [("T1110", 0.85)],  # Password policy - symbol
-    "cis.1.8": [("T1110", 0.85)],  # Password policy - number
-    "cis.1.9": [("T1110", 0.85)],  # Password policy - length
-    "cis.1.10": [("T1110", 0.85)],  # Password policy - reuse
+    "cis.3.9": [("T1562", 0.9), ("T1562.001", 0.9)],  # AWS Config changes
+    "cis.3.10": [("T1562", 0.85), ("T1562.007", 0.85)],  # Security group changes
+    "cis.3.11": [("T1562", 0.85), ("T1562.007", 0.85)],  # NACL changes
+    "cis.3.12": [("T1562", 0.85), ("T1562.007", 0.85)],  # Network gateway changes
+    "cis.3.13": [("T1562", 0.85), ("T1562.007", 0.85)],  # Route table changes
+    "cis.3.14": [("T1562", 0.85), ("T1562.007", 0.85)],  # VPC changes
+    # Section 1 - IAM - T1078.004 rated "Significant"
+    "cis.1.1": [("T1078", 0.85), ("T1078.004", 0.9)],  # Root account access key
+    "cis.1.2": [("T1078", 0.9), ("T1078.004", 0.9)],  # MFA for root
+    "cis.1.3": [("T1078", 0.8), ("T1078.004", 0.8)],  # Credentials unused 90 days
+    "cis.1.4": [("T1078", 0.8), ("T1078.004", 0.8)],  # Access keys rotated
+    "cis.1.5": [("T1110", 0.85), ("T1110.001", 0.8)],  # Password policy - uppercase
+    "cis.1.6": [("T1110", 0.85), ("T1110.001", 0.8)],  # Password policy - lowercase
+    "cis.1.7": [("T1110", 0.85), ("T1110.001", 0.8)],  # Password policy - symbol
+    "cis.1.8": [("T1110", 0.85), ("T1110.001", 0.8)],  # Password policy - number
+    "cis.1.9": [("T1110", 0.85), ("T1110.001", 0.8)],  # Password policy - length
+    "cis.1.10": [("T1110", 0.85), ("T1110.004", 0.8)],  # Password policy - reuse
     "cis.1.11": [("T1110", 0.85)],  # Password policy - expiry
-    "cis.1.12": [("T1078", 0.8)],  # Root hardware MFA
-    "cis.1.13": [("T1078", 0.85)],  # MFA enabled for console
-    "cis.1.14": [("T1098", 0.8)],  # No policies with admin access
-    # Section 2 - Logging
+    "cis.1.12": [("T1078", 0.85), ("T1078.004", 0.9)],  # Root hardware MFA
+    "cis.1.13": [("T1078", 0.85), ("T1078.004", 0.85)],  # MFA enabled for console
+    "cis.1.14": [("T1098", 0.8), ("T1098.001", 0.85)],  # No policies with admin access
+    # Section 2 - Logging - T1562.008 rated "Significant"
     "cis.2.1": [("T1562.008", 0.9)],  # CloudTrail enabled
     "cis.2.2": [("T1562.008", 0.9)],  # CloudTrail log validation
     "cis.2.3": [("T1562.008", 0.85)],  # CloudTrail S3 bucket not public
     "cis.2.4": [("T1562.008", 0.9)],  # CloudTrail to CloudWatch
-    "cis.2.5": [("T1562.008", 0.85)],  # AWS Config enabled
+    "cis.2.5": [("T1562.008", 0.85), ("T1562.001", 0.85)],  # AWS Config enabled
     "cis.2.6": [("T1562.008", 0.85)],  # S3 bucket logging
     "cis.2.7": [("T1562.008", 0.85)],  # CloudTrail KMS encrypted
-    "cis.2.8": [("T1078", 0.8)],  # KMS key rotation
+    "cis.2.8": [("T1078", 0.8), ("T1078.004", 0.8)],  # KMS key rotation
     "cis.2.9": [("T1562.008", 0.85)],  # VPC flow logs enabled
-    # Section 4 - Networking
+    # Section 4 - Networking - T1562.007 rated "Significant"
     "cis.4.1": [("T1562.007", 0.85)],  # No SSH from 0.0.0.0/0
     "cis.4.2": [("T1562.007", 0.85)],  # No RDP from 0.0.0.0/0
-    "cis.4.3": [("T1562.007", 0.8)],  # Default VPC SG restricts all
-    "cis.4.4": [("T1562.007", 0.8)],  # VPC peering least privilege
+    "cis.4.3": [("T1562.007", 0.85)],  # Default VPC SG restricts all
+    "cis.4.4": [("T1562.007", 0.85)],  # VPC peering least privilege
 }
 
 # PCI-DSS controls to MITRE techniques
@@ -141,9 +151,12 @@ PCI_DSS_MAPPINGS: dict[str, list[tuple[str, float]]] = {
 }
 
 # AWS Foundational Security Best Practices (FSBP) to MITRE techniques
+# Confidence scores based on MITRE CTID Security Stack Mappings:
+# https://center-for-threat-informed-defense.github.io/security-stack-mappings/AWS/AWSSecurityHub.yaml
+# Significant = 0.85-0.9, Partial = 0.65-0.8, Minimal = 0.5-0.6
 FSBP_MAPPINGS: dict[str, list[tuple[str, float]]] = {
     # Account
-    "fsbp.account.1": [("T1078", 0.8)],  # Security contact
+    "fsbp.account.1": [("T1078", 0.8), ("T1078.004", 0.8)],  # Security contact
     # API Gateway
     "fsbp.apigateway.1": [("T1562.008", 0.8)],  # Logging enabled
     "fsbp.apigateway.2": [("T1190", 0.75)],  # SSL
@@ -220,16 +233,30 @@ FSBP_MAPPINGS: dict[str, list[tuple[str, float]]] = {
     "fsbp.elb.14": [("T1040", 0.8)],  # Secure SSL cipher
     # GuardDuty
     "fsbp.guardduty.1": [("T1562.001", 0.9)],  # Enabled
-    # IAM
-    "fsbp.iam.1": [("T1098", 0.85)],  # No policies with admin access
-    "fsbp.iam.2": [("T1078", 0.85)],  # No attached policies to users
-    "fsbp.iam.3": [("T1078", 0.85)],  # Access keys rotated
-    "fsbp.iam.4": [("T1078", 0.9)],  # No root access key
-    "fsbp.iam.5": [("T1078", 0.9)],  # Virtual MFA for root
-    "fsbp.iam.6": [("T1078", 0.9)],  # Hardware MFA for root
-    "fsbp.iam.7": [("T1110", 0.85)],  # Password policy
-    "fsbp.iam.8": [("T1078", 0.8)],  # Unused credentials
-    "fsbp.iam.21": [("T1078", 0.85)],  # No full admin
+    # IAM - T1078.004 (Cloud Accounts) rated "Significant" by MITRE CTID
+    "fsbp.iam.1": [
+        ("T1098", 0.85),
+        ("T1098.001", 0.85),
+    ],  # No policies with admin access
+    "fsbp.iam.2": [
+        ("T1078", 0.85),
+        ("T1078.004", 0.85),
+    ],  # No attached policies to users
+    "fsbp.iam.3": [("T1078", 0.85), ("T1078.004", 0.85)],  # Access keys rotated
+    "fsbp.iam.4": [("T1078", 0.9), ("T1078.004", 0.9)],  # No root access key
+    "fsbp.iam.5": [("T1078", 0.9), ("T1078.004", 0.9)],  # Virtual MFA for root
+    "fsbp.iam.6": [("T1078", 0.9), ("T1078.004", 0.9)],  # Hardware MFA for root
+    "fsbp.iam.7": [
+        ("T1110", 0.85),
+        ("T1110.001", 0.8),
+        ("T1110.003", 0.8),
+    ],  # Password policy
+    "fsbp.iam.8": [("T1078", 0.8), ("T1078.004", 0.8)],  # Unused credentials
+    "fsbp.iam.21": [
+        ("T1078", 0.85),
+        ("T1078.004", 0.85),
+        ("T1098.001", 0.85),
+    ],  # No full admin
     # KMS
     "fsbp.kms.1": [("T1486", 0.8)],  # CMK key rotation
     "fsbp.kms.2": [("T1486", 0.85)],  # No * principals

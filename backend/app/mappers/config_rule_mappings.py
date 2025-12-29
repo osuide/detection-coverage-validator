@@ -360,7 +360,17 @@ CONFIG_RULE_TECHNIQUES: dict[str, list[tuple[str, float]]] = {
     "REDSHIFT_DEFAULT_ADMIN_CHECK": [("T1078.004", 0.5)],
     "REDSHIFT_DEFAULT_DB_NAME_CHECK": [("T1078.004", 0.5)],
     # === Network/Firewall Rules ===
-    "FMS_SHIELD_RESOURCE_POLICY_CHECK": [("T1498", 0.65), ("T1499", 0.65)],
+    # AWS Shield mappings per MITRE CTID: "Significant" response coverage
+    # https://center-for-threat-informed-defense.github.io/security-stack-mappings/AWS/AWSShield.yaml
+    "FMS_SHIELD_RESOURCE_POLICY_CHECK": [
+        ("T1498", 0.85),  # Network Denial of Service
+        ("T1498.001", 0.85),  # Direct Network Flood
+        ("T1498.002", 0.85),  # Reflection Amplification
+        ("T1499", 0.85),  # Endpoint Denial of Service
+        ("T1499.001", 0.85),  # OS Exhaustion Flood
+        ("T1499.002", 0.85),  # Service Exhaustion Flood
+        ("T1499.003", 0.85),  # Application Exhaustion Flood
+    ],
     "NETFW_POLICY_DEFAULT_ACTION_FRAGMENT_PACKETS": [("T1562.001", 0.65)],
     "NETFW_POLICY_DEFAULT_ACTION_FULL_PACKETS": [("T1562.001", 0.65)],
     "NETFW_POLICY_RULE_GROUP_ASSOCIATED": [("T1562.001", 0.65)],
@@ -418,8 +428,21 @@ CONFIG_RULE_TECHNIQUES: dict[str, list[tuple[str, float]]] = {
     # === Secrets/Credentials Rules ===
     "SECRETSMANAGER_SECRET_UNUSED": [("T1552.001", 0.5)],
     # === Shield/DDoS Rules ===
-    "SHIELD_ADVANCED_ENABLED_AUTORENEW": [("T1498", 0.65), ("T1499", 0.65)],
-    "SHIELD_DRT_ACCESS": [("T1498", 0.65)],
+    # AWS Shield mappings per MITRE CTID: "Significant" response coverage
+    "SHIELD_ADVANCED_ENABLED_AUTORENEW": [
+        ("T1498", 0.85),  # Network Denial of Service
+        ("T1498.001", 0.85),  # Direct Network Flood
+        ("T1498.002", 0.85),  # Reflection Amplification
+        ("T1499", 0.85),  # Endpoint Denial of Service
+        ("T1499.001", 0.85),  # OS Exhaustion Flood
+        ("T1499.002", 0.85),  # Service Exhaustion Flood
+        ("T1499.003", 0.85),  # Application Exhaustion Flood
+    ],
+    "SHIELD_DRT_ACCESS": [
+        ("T1498", 0.85),  # Network Denial of Service
+        ("T1498.001", 0.85),  # Direct Network Flood
+        ("T1498.002", 0.85),  # Reflection Amplification
+    ],
     # === Organisation/Account Rules ===
     "ACCOUNT_PART_OF_ORGANIZATIONS": [("T1078.004", 0.5)],
     "REQUIRED_TAGS": [("T1078.004", 0.5)],
