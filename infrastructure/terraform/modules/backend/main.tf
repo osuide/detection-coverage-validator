@@ -583,13 +583,14 @@ resource "aws_iam_role_policy" "ecs_execution_secrets" {
 }
 
 # ECS Task Definition
-# Production uses more resources to handle concurrent scans and API traffic
+# All environments need adequate resources to handle concurrent scans and API traffic
+# Staging was hitting 100% CPU with 512 units, causing 504 timeouts during scans
 resource "aws_ecs_task_definition" "backend" {
   family                   = "a13e-${var.environment}-backend"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = var.environment == "prod" ? "1024" : "512"
-  memory                   = var.environment == "prod" ? "2048" : "1024"
+  cpu                      = "1024"
+  memory                   = "2048"
   execution_role_arn       = aws_iam_role.ecs_execution.arn
   task_role_arn            = aws_iam_role.ecs_task.arn
 

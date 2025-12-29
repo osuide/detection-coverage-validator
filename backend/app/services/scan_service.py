@@ -1,5 +1,6 @@
 """Scan orchestration service."""
 
+import asyncio
 import os
 from dataclasses import dataclass
 from datetime import datetime, timezone, date
@@ -727,7 +728,12 @@ class ScanService:
         # Track which ARNs are found in this scan (used later for removal detection)
         found_arns = set(raw.source_arn for raw in raw_detections)
 
-        for raw in raw_detections:
+        for idx, raw in enumerate(raw_detections):
+            # Yield control every 20 detections to prevent event loop blocking
+            # This allows HTTP requests to be processed during long scans
+            if idx > 0 and idx % 20 == 0:
+                await asyncio.sleep(0)
+
             # Check if detection already exists
             existing = await self.db.execute(
                 select(Detection)
@@ -944,7 +950,12 @@ class ScanService:
         detection_mappings_list = []  # [(detection, [mappings])]
         technique_ids_needed = set()
 
-        for detection in detections:
+        for idx, detection in enumerate(detections):
+            # Yield control every 10 detections during CPU-intensive mapping
+            # Pattern matching is the most CPU-heavy operation in the scan
+            if idx > 0 and idx % 10 == 0:
+                await asyncio.sleep(0)
+
             raw = RawDetection(
                 name=detection.name,
                 detection_type=detection.detection_type,
