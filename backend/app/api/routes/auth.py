@@ -849,7 +849,7 @@ async def forgot_password(
     request: Request,
     body: ForgotPasswordRequest,
     db: AsyncSession = Depends(get_db),
-) -> dict:
+) -> Response:
     """
     Request password reset.
 
