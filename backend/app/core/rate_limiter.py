@@ -46,7 +46,7 @@ class InMemoryRateLimiter:
     For production, use Redis-based rate limiting.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._requests: dict[str, list[datetime]] = {}
 
     def _get_key(self, api_key: str) -> str:

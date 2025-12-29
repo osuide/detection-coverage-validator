@@ -189,7 +189,7 @@ DISPOSABLE_PATTERNS = [
 class EmailQualityService:
     """Service for validating email quality and blocking disposable addresses."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._compiled_patterns = [re.compile(p, re.I) for p in DISPOSABLE_PATTERNS]
 
     def is_disposable_domain(self, domain: str) -> bool:

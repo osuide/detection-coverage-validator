@@ -52,12 +52,12 @@ class GCPCredentialService:
         "https://www.googleapis.com/auth/monitoring.read",
     ]
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize GCP credential service."""
         self._source_credentials = None
 
     @property
-    def source_credentials(self) -> None:
+    def source_credentials(self) -> Any:
         """Get A13E's source credentials for impersonation.
 
         In production, these come from Workload Identity on GKE

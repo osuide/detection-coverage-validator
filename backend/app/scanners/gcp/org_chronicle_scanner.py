@@ -11,10 +11,13 @@ https://pypi.org/project/secops/
 https://github.com/google/secops-wrapper
 """
 
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from app.models.detection import DetectionType
 from app.scanners.base import BaseScanner, RawDetection
+
+if TYPE_CHECKING:
+    from secops import SecOpsClient
 
 
 class OrgChronicleScanner(BaseScanner):
@@ -130,7 +133,7 @@ class OrgChronicleScanner(BaseScanner):
         return detections
 
     async def _scan_detection_rules(
-        self, chronicle, org_id: Optional[str], customer_id: str
+        self, chronicle: "SecOpsClient", org_id: Optional[str], customer_id: str
     ) -> list[RawDetection]:
         """Scan for YARA-L 2.0 detection rules."""
         detections = []
@@ -154,7 +157,7 @@ class OrgChronicleScanner(BaseScanner):
         return detections
 
     def _create_rule_detection(
-        self, rule, org_id: Optional[str], customer_id: str
+        self, rule: Any, org_id: Optional[str], customer_id: str
     ) -> Optional[RawDetection]:
         """Create a RawDetection from a Chronicle detection rule.
 
@@ -225,7 +228,7 @@ class OrgChronicleScanner(BaseScanner):
         return techniques
 
     async def _scan_reference_lists(
-        self, chronicle, org_id: Optional[str], customer_id: str
+        self, chronicle: "SecOpsClient", org_id: Optional[str], customer_id: str
     ) -> list[RawDetection]:
         """Scan for reference lists (IOC lists, allow/block lists)."""
         detections = []
@@ -250,7 +253,7 @@ class OrgChronicleScanner(BaseScanner):
         return detections
 
     def _create_reference_list_detection(
-        self, ref_list, org_id: Optional[str], customer_id: str
+        self, ref_list: Any, org_id: Optional[str], customer_id: str
     ) -> Optional[RawDetection]:
         """Create a RawDetection from a reference list."""
         list_name = getattr(ref_list, "name", None) or ref_list.get("name", "")
@@ -283,7 +286,7 @@ class OrgChronicleScanner(BaseScanner):
         )
 
     async def _scan_parsers(
-        self, chronicle, org_id: Optional[str], customer_id: str
+        self, chronicle: "SecOpsClient", org_id: Optional[str], customer_id: str
     ) -> list[RawDetection]:
         """Scan for log parsers.
 
@@ -310,7 +313,7 @@ class OrgChronicleScanner(BaseScanner):
         return detections
 
     def _create_parser_detection(
-        self, parser, org_id: Optional[str], customer_id: str
+        self, parser: Any, org_id: Optional[str], customer_id: str
     ) -> Optional[RawDetection]:
         """Create a RawDetection from a parser configuration."""
         parser_name = (
@@ -437,7 +440,7 @@ class ChronicleRuleAlertsScanner(BaseScanner):
         return detections
 
     def _create_active_rule_detection(
-        self, rule, alert_count: int, org_id: Optional[str], customer_id: str
+        self, rule: Any, alert_count: int, org_id: Optional[str], customer_id: str
     ) -> Optional[RawDetection]:
         """Create a detection for an actively alerting rule."""
         rule_id = getattr(rule, "rule_id", None) or rule.get("ruleId", "")

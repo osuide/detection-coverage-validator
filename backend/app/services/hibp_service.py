@@ -36,7 +36,7 @@ class HIBPService:
     # Timeout for API requests
     TIMEOUT = 5.0
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._enabled = getattr(settings, "hibp_password_check_enabled", True)
         # Fail-closed mode: reject passwords when API is unavailable (more secure)
         self._fail_closed = getattr(settings, "hibp_fail_closed", False)

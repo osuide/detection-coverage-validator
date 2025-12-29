@@ -535,7 +535,7 @@ class SDKPatternLibrary:
         ),
     ]
 
-    def __init__(self):
+    def __init__(self) -> None:
         # Build lookup index by service
         self._by_service: dict[str, list[SDKPattern]] = {}
         for pattern in self.PATTERNS:

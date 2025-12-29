@@ -108,7 +108,7 @@ TEAM_INVITE_TEMPLATE = """
 class EmailService:
     """AWS SES Email Service."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.logger = logger.bind(service="EmailService")
         self._client = None
         # Use config as single source of truth for email sender

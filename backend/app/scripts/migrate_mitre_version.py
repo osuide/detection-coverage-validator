@@ -16,7 +16,7 @@ import tempfile
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 import structlog
 
@@ -65,9 +65,9 @@ class MITREMigration:
 
     def __init__(
         self,
-        db_session=None,
+        db_session: Any = None,
         backup_dir: Optional[str] = None,
-    ):
+    ) -> None:
         self.db = db_session
         # Use system temp directory instead of hardcoded /tmp for security
         if backup_dir is None:
@@ -510,7 +510,7 @@ class MITREMigration:
         return "\n".join(lines)
 
 
-def main() -> None:
+def main() -> int:
     """CLI entry point for MITRE migration."""
     parser = argparse.ArgumentParser(description="MITRE ATT&CK version migration tool")
     parser.add_argument(

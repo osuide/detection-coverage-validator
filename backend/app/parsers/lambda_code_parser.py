@@ -15,7 +15,7 @@ import io
 import re
 import zipfile
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Any, Optional
 
 import structlog
 from botocore.exceptions import ClientError
@@ -117,7 +117,7 @@ class LambdaCodeParser:
     )
     AWS_SDK_V2_REQUIRE = re.compile(r"require\(['\"]aws-sdk['\"]\)", re.IGNORECASE)
 
-    def __init__(self, session=None):
+    def __init__(self, session: Any = None) -> None:
         """Initialize parser with AWS session.
 
         Args:

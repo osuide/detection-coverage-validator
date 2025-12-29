@@ -129,7 +129,7 @@ class TemplateValidator:
         ("detection_strategies", "DETECTION_STRATEGIES"),
     ]
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.results: List[TemplateValidationResult] = []
 
     def validate_template(self, template_path: Path) -> TemplateValidationResult:

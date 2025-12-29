@@ -7,10 +7,21 @@ Scans for organisation-level SCC configurations including:
 - Security posture (if enabled)
 """
 
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from app.models.detection import DetectionType
 from app.scanners.base import BaseScanner, RawDetection
+
+if TYPE_CHECKING:
+    from google.cloud.securitycenter_v1 import SecurityCenterClient
+    from google.cloud.securitycenter_v1.types import (
+        BigQueryExport,
+        MuteConfig,
+        NotificationConfig,
+        Source,
+    )
+
+    # securityposture_v1 not available on PyPI yet - use Any for those types
 
 
 class OrgSecurityCommandCenterScanner(BaseScanner):
@@ -104,7 +115,7 @@ class OrgSecurityCommandCenterScanner(BaseScanner):
         return detections
 
     async def _scan_notification_configs(
-        self, client, parent: str, org_id: str
+        self, client: "SecurityCenterClient", parent: str, org_id: str
     ) -> list[RawDetection]:
         """Scan for organisation-level notification configurations."""
         detections = []
@@ -127,7 +138,7 @@ class OrgSecurityCommandCenterScanner(BaseScanner):
         return detections
 
     def _create_notification_detection(
-        self, config, org_id: str
+        self, config: "NotificationConfig", org_id: str
     ) -> Optional[RawDetection]:
         """Create a RawDetection from an SCC notification config."""
         config_name = config.name
@@ -165,7 +176,7 @@ class OrgSecurityCommandCenterScanner(BaseScanner):
         )
 
     async def _scan_finding_sources(
-        self, client, parent: str, org_id: str
+        self, client: "SecurityCenterClient", parent: str, org_id: str
     ) -> list[RawDetection]:
         """Scan for SCC finding sources at organisation level."""
         detections = []
@@ -187,7 +198,9 @@ class OrgSecurityCommandCenterScanner(BaseScanner):
 
         return detections
 
-    def _create_source_detection(self, source, org_id: str) -> Optional[RawDetection]:
+    def _create_source_detection(
+        self, source: "Source", org_id: str
+    ) -> Optional[RawDetection]:
         """Create a RawDetection from an SCC finding source."""
         source_name = source.name
         display_name = source.display_name or source_name.split("/")[-1]
@@ -225,7 +238,7 @@ class OrgSecurityCommandCenterScanner(BaseScanner):
         )
 
     async def _scan_bigquery_exports(
-        self, client, parent: str, org_id: str
+        self, client: "SecurityCenterClient", parent: str, org_id: str
     ) -> list[RawDetection]:
         """Scan for BigQuery export configurations."""
         detections = []
@@ -247,7 +260,9 @@ class OrgSecurityCommandCenterScanner(BaseScanner):
 
         return detections
 
-    def _create_export_detection(self, export, org_id: str) -> Optional[RawDetection]:
+    def _create_export_detection(
+        self, export: "BigQueryExport", org_id: str
+    ) -> Optional[RawDetection]:
         """Create a RawDetection from a BigQuery export config."""
         export_name = export.name
         short_name = export_name.split("/")[-1]
@@ -285,7 +300,7 @@ class OrgSecurityCommandCenterScanner(BaseScanner):
         )
 
     async def _scan_mute_configs(
-        self, client, parent: str, org_id: str
+        self, client: "SecurityCenterClient", parent: str, org_id: str
     ) -> list[RawDetection]:
         """Scan for mute configurations (finding suppression rules)."""
         detections = []
@@ -308,7 +323,7 @@ class OrgSecurityCommandCenterScanner(BaseScanner):
         return detections
 
     def _create_mute_detection(
-        self, mute_config, org_id: str
+        self, mute_config: "MuteConfig", org_id: str
     ) -> Optional[RawDetection]:
         """Create a RawDetection from a mute configuration.
 
@@ -429,7 +444,9 @@ class SCCSecurityPostureScanner(BaseScanner):
 
         return detections
 
-    def _create_posture_detection(self, posture, org_id: str) -> Optional[RawDetection]:
+    def _create_posture_detection(
+        self, posture: Any, org_id: str
+    ) -> Optional[RawDetection]:
         """Create a RawDetection from a security posture."""
         posture_name = posture.name
         short_name = posture_name.split("/")[-1]
@@ -459,7 +476,7 @@ class SCCSecurityPostureScanner(BaseScanner):
         )
 
     def _create_deployment_detection(
-        self, deployment, org_id: str
+        self, deployment: Any, org_id: str
     ) -> Optional[RawDetection]:
         """Create a RawDetection from a posture deployment."""
         deployment_name = deployment.name

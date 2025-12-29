@@ -1,7 +1,7 @@
 """Application configuration."""
 
 from functools import lru_cache
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -84,7 +84,7 @@ class Settings(BaseSettings):
 
         return entropy
 
-    def model_post_init(self, __context) -> None:
+    def model_post_init(self, __context: Any) -> None:
         """Validate critical security settings after initialization."""
         # M16: Get secret value for validation
         secret_key_value = self.secret_key.get_secret_value()

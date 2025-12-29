@@ -1,6 +1,6 @@
 """Admin platform settings routes."""
 
-from typing import Optional
+from typing import Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -83,7 +83,7 @@ class SettingAuditResponse(BaseModel):
     reason: Optional[str]
 
 
-def _setting_to_response(setting) -> SettingResponse:
+def _setting_to_response(setting: Any) -> SettingResponse:
     """Convert setting model to response."""
     if setting.is_secret:
         value = setting.masked_value

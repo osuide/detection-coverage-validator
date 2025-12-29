@@ -1,7 +1,7 @@
 """Pydantic schemas for scan schedules."""
 
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator, ConfigDict
@@ -33,7 +33,7 @@ class ScheduleBase(BaseModel):
 
     @field_validator("cron_expression")
     @classmethod
-    def validate_cron(cls, v: Optional[str], info) -> Optional[str]:
+    def validate_cron(cls, v: Optional[str], info: Any) -> Optional[str]:
         """Validate cron expression format."""
         if v is None:
             return v

@@ -53,7 +53,7 @@ class OAuthStateStore:
         self._expiry_seconds = expiry_seconds
         self._last_cleanup = time.time()
 
-    def _cleanup(self) -> dict:
+    def _cleanup(self) -> None:
         """Remove expired states."""
         now = time.time()
         if now - self._last_cleanup < 60:  # Cleanup every minute

@@ -43,7 +43,7 @@ class HealthCalculator:
     HEALTHY_THRESHOLD = 0.8
     DEGRADED_THRESHOLD = 0.5
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.logger = logger.bind(component="HealthCalculator")
 
     def calculate(

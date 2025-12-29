@@ -126,7 +126,7 @@ class OrgGuardDutyScanner(BaseScanner):
         return detections
 
     async def _get_org_configuration(
-        self, client, detector_id: str, region: str
+        self, client: Any, detector_id: str, region: str
     ) -> Optional[dict]:
         """Get organisation configuration for a detector."""
         try:
@@ -149,7 +149,7 @@ class OrgGuardDutyScanner(BaseScanner):
                 return None
             raise
 
-    async def _list_members(self, client, detector_id: str) -> list[dict]:
+    async def _list_members(self, client: Any, detector_id: str) -> list[dict]:
         """List member accounts for a detector."""
         members = []
         try:

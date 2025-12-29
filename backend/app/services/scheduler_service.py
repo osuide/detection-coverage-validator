@@ -1,7 +1,7 @@
 """Scheduler service for automated scans using APScheduler."""
 
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Any, Optional
 from uuid import UUID
 
 import structlog
@@ -29,14 +29,14 @@ class SchedulerService:
     _instance: Optional["SchedulerService"] = None
     _scheduler: Optional[AsyncIOScheduler] = None
 
-    def __new__(cls):
+    def __new__(cls) -> "SchedulerService":
         """Singleton pattern for scheduler service."""
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls._instance._initialized = False
         return cls._instance
 
-    def __init__(self):
+    def __init__(self) -> None:
         if self._initialized:
             return
 
@@ -115,7 +115,7 @@ class SchedulerService:
 
             await session.commit()
 
-    def _get_job_next_run_time(self, job) -> Optional[datetime]:
+    def _get_job_next_run_time(self, job: Any) -> Optional[datetime]:
         """Safely get next run time from a job.
 
         APScheduler 3.x jobs may not have next_run_time computed

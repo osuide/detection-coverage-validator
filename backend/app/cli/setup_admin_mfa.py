@@ -217,7 +217,7 @@ async def disable_mfa(email: str) -> None:
     return True
 
 
-async def list_admins() -> list[Any]:
+async def list_admins() -> None:
     """List all admin users."""
     from sqlalchemy import text
     from app.core.database import engine

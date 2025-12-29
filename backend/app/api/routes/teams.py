@@ -318,7 +318,7 @@ async def invite_member(
     # Send invite email in background
     from app.services.email_service import get_email_service
 
-    def send_invite_email_task() -> dict:
+    def send_invite_email_task() -> None:
         email_service = get_email_service()
         email_service.send_team_invite_email(
             to_email=body.email,

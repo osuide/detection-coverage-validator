@@ -1,7 +1,7 @@
 """Gap analyzer following 06-ANALYSIS-AGENT.md design."""
 
 from dataclasses import dataclass, field
-from typing import Optional, List
+from typing import Any, List, Optional
 import structlog
 
 from app.analyzers.coverage_calculator import TechniqueCoverageInfo
@@ -80,7 +80,7 @@ class GapAnalyzer:
         "TA0043": 4,  # Reconnaissance - low
     }
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.logger = logger.bind(component="GapAnalyzer")
 
     def analyze_gaps(
@@ -226,7 +226,7 @@ class GapAnalyzer:
         self,
         tech: TechniqueCoverageInfo,
         indicator: Optional[TechniqueIndicator],
-        template=None,
+        template: Any = None,
     ) -> str:
         """Generate a human-readable reason for why this gap matters."""
         reasons = []
@@ -283,7 +283,7 @@ class GapAnalyzer:
     def _get_recommendations(
         self,
         indicator: Optional[TechniqueIndicator],
-        template=None,
+        template: Any = None,
     ) -> list[str]:
         """Get recommended detection approaches."""
         recommendations = []

@@ -16,7 +16,7 @@ IMPORTANT: This parser only runs when:
 import json
 import re
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Any, Optional
 
 import structlog
 import yaml
@@ -147,7 +147,7 @@ class CloudFormationParser:
         "violation",
     }
 
-    def __init__(self, session=None):
+    def __init__(self, session: Any = None) -> None:
         """Initialize parser with AWS session."""
         self.session = session
         self.logger = logger.bind(component="CloudFormationParser")

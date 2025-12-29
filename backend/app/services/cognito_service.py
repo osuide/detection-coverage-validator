@@ -37,7 +37,7 @@ def generate_pkce() -> Tuple[str, str]:
 class CognitoService:
     """Service for AWS Cognito authentication."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.region = settings.aws_region or "us-east-1"
         self.user_pool_id = settings.cognito_user_pool_id
         self.client_id = settings.cognito_client_id

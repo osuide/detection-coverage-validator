@@ -66,7 +66,7 @@ class CampaignInfo:
     relationship_description: Optional[str] = None
     attributed_groups: list[AttributedGroupSummary] = None  # type: ignore
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.attributed_groups is None:
             self.attributed_groups = []
 

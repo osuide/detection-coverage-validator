@@ -4,6 +4,8 @@ This middleware adds security headers to all API responses to prevent
 common web vulnerabilities like clickjacking, XSS, and MIME-sniffing.
 """
 
+from typing import Any
+
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
@@ -22,7 +24,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     - Permissions-Policy: Restricts browser features
     """
 
-    async def dispatch(self, request: Request, call_next) -> Response:
+    async def dispatch(self, request: Request, call_next: Any) -> Response:
         response = await call_next(request)
 
         # Prevent clickjacking - deny all framing

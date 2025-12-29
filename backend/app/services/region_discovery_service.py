@@ -5,7 +5,7 @@ services enabled, allowing for intelligent multi-region scanning.
 """
 
 import asyncio
-from typing import Optional
+from typing import Any, Optional
 
 import boto3
 import structlog
@@ -18,7 +18,7 @@ logger = structlog.get_logger()
 class RegionDiscoveryService:
     """Discovers active regions for cloud accounts."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.logger = logger.bind(service="RegionDiscoveryService")
 
     async def discover_aws_active_regions(
@@ -256,7 +256,7 @@ class RegionDiscoveryService:
 
     async def discover_gcp_active_regions(
         self,
-        credentials,
+        credentials: Any,
         project_id: str,
     ) -> list[str]:
         """Discover GCP regions with active resources.

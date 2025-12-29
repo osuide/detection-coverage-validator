@@ -4,10 +4,16 @@ Scans for organisation policies that enforce security constraints
 across the entire GCP organisation.
 """
 
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from app.models.detection import DetectionType
 from app.scanners.base import BaseScanner, RawDetection
+
+if TYPE_CHECKING:
+    from google.cloud.orgpolicy_v2 import OrgPolicyClient
+    from google.cloud.orgpolicy_v2.types import Policy
+    from google.cloud.resourcemanager_v3 import FoldersClient
+    from google.cloud.resourcemanager_v3.types import Folder
 
 
 # Security-relevant organisation policy constraints
@@ -182,7 +188,7 @@ class OrgPolicyScanner(BaseScanner):
 
     async def _scan_resource_policies(
         self,
-        client,
+        client: "OrgPolicyClient",
         resource_type: str,
         resource_id: str,
         org_id: str,
@@ -215,7 +221,7 @@ class OrgPolicyScanner(BaseScanner):
         return detections
 
     async def _scan_all_folder_policies(
-        self, client, org_id: str
+        self, client: "OrgPolicyClient", org_id: str
     ) -> list[RawDetection]:
         """Discover and scan policies for all folders in the organisation."""
         detections = []
@@ -247,11 +253,13 @@ class OrgPolicyScanner(BaseScanner):
 
         return detections
 
-    async def _list_all_folders(self, rm_client, org_id: str) -> list:
+    async def _list_all_folders(
+        self, rm_client: "FoldersClient", org_id: str
+    ) -> list["Folder"]:
         """List all folders in the organisation recursively."""
-        all_folders = []
+        all_folders: list["Folder"] = []
 
-        async def list_children(parent: str) -> list[Any]:
+        async def list_children(parent: str) -> None:
             try:
                 request = {"parent": parent}
                 for folder in rm_client.list_folders(request=request):
@@ -265,7 +273,7 @@ class OrgPolicyScanner(BaseScanner):
 
     def _create_policy_detection(
         self,
-        policy,
+        policy: "Policy",
         resource_type: str,
         resource_id: str,
         org_id: str,
@@ -446,7 +454,7 @@ class EffectiveOrgPolicyScanner(BaseScanner):
         return detections
 
     async def _get_effective_policy(
-        self, client, project_id: str, constraint: str
+        self, client: "OrgPolicyClient", project_id: str, constraint: str
     ) -> Optional[RawDetection]:
         """Get the effective policy for a specific constraint on a project."""
         try:

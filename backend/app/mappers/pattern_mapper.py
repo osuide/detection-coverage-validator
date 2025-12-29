@@ -49,7 +49,7 @@ class PatternMapper:
     4. Log group patterns for CloudWatch queries
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.logger = logger.bind(mapper="PatternMapper")
         self.indicators = TECHNIQUE_INDICATORS
 

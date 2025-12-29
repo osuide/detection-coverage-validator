@@ -4,10 +4,16 @@ Scans for organisation-level and folder-level log sinks that
 aggregate logs across multiple projects.
 """
 
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from app.models.detection import DetectionType
 from app.scanners.base import BaseScanner, RawDetection
+
+if TYPE_CHECKING:
+    from google.cloud.logging_v2 import ConfigServiceV2Client
+    from google.cloud.logging_v2.types import LogSink
+    from google.cloud.resourcemanager_v3 import FoldersClient
+    from google.cloud.resourcemanager_v3.types import Folder
 
 
 class OrgLogSinkScanner(BaseScanner):
@@ -100,7 +106,9 @@ class OrgLogSinkScanner(BaseScanner):
 
         return detections
 
-    async def _scan_org_sinks(self, client, org_id: str) -> list[RawDetection]:
+    async def _scan_org_sinks(
+        self, client: "ConfigServiceV2Client", org_id: str
+    ) -> list[RawDetection]:
         """Scan for organisation-level log sinks."""
         detections = []
 
@@ -128,7 +136,7 @@ class OrgLogSinkScanner(BaseScanner):
         return detections
 
     async def _scan_folder_sinks_recursive(
-        self, client, org_id: str
+        self, client: "ConfigServiceV2Client", org_id: str
     ) -> list[RawDetection]:
         """Discover and scan all folder-level sinks in the organisation."""
         detections = []
@@ -157,11 +165,13 @@ class OrgLogSinkScanner(BaseScanner):
 
         return detections
 
-    async def _list_all_folders(self, rm_client, org_id: str) -> list:
+    async def _list_all_folders(
+        self, rm_client: "FoldersClient", org_id: str
+    ) -> list["Folder"]:
         """List all folders in the organisation recursively."""
-        all_folders = []
+        all_folders: list["Folder"] = []
 
-        async def list_children(parent: str) -> list[Any]:
+        async def list_children(parent: str) -> None:
             try:
                 request = {"parent": parent}
                 for folder in rm_client.list_folders(request=request):
@@ -178,7 +188,7 @@ class OrgLogSinkScanner(BaseScanner):
         return all_folders
 
     async def _scan_folder_sinks(
-        self, client, folder_id: str, org_id: Optional[str]
+        self, client: "ConfigServiceV2Client", folder_id: str, org_id: Optional[str]
     ) -> list[RawDetection]:
         """Scan for folder-level log sinks."""
         detections = []
@@ -208,7 +218,7 @@ class OrgLogSinkScanner(BaseScanner):
 
     def _create_sink_detection(
         self,
-        sink,
+        sink: "LogSink",
         parent_type: str,
         parent_id: str,
         org_id: Optional[str],
@@ -331,7 +341,9 @@ class OrgLogBucketScanner(BaseScanner):
 
         return detections
 
-    def _create_bucket_detection(self, bucket, org_id: str) -> Optional[RawDetection]:
+    def _create_bucket_detection(
+        self, bucket: Any, org_id: str
+    ) -> Optional[RawDetection]:
         """Create a RawDetection from a log bucket."""
         bucket_name = bucket.name.split("/")[-1]
 

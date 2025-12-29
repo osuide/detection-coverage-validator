@@ -20,7 +20,7 @@ class GitHubOAuthService:
     USER_URL = "https://api.github.com/user"
     EMAILS_URL = "https://api.github.com/user/emails"
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.client_id = settings.github_client_id
         self.client_secret = settings.github_client_secret
 

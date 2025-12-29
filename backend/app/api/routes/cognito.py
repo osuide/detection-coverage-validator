@@ -54,7 +54,7 @@ class CognitoOAuthStateStore:
         self._expiry_seconds = expiry_seconds
         self._last_cleanup = time.time()
 
-    def _cleanup(self) -> dict:
+    def _cleanup(self) -> None:
         """Remove expired states."""
         now = time.time()
         if now - self._last_cleanup < 60:
@@ -62,7 +62,7 @@ class CognitoOAuthStateStore:
         self._last_cleanup = now
         self._states = {s: exp for s, exp in self._states.items() if exp > now}
 
-    def store_state(self, state: str) -> dict:
+    def store_state(self, state: str) -> None:
         """Store a state token."""
         self._cleanup()
         self._states[state] = time.time() + self._expiry_seconds

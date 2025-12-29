@@ -3,7 +3,7 @@
 import csv
 import io
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Any, Optional
 from uuid import UUID
 from xml.sax.saxutils import escape as xml_escape
 
@@ -220,7 +220,7 @@ class ReportService:
         # Build PDF with optional watermark
         if add_watermark:
 
-            def add_watermark_to_page(canvas_obj: canvas.Canvas, doc_obj) -> None:
+            def add_watermark_to_page(canvas_obj: canvas.Canvas, doc_obj: Any) -> None:
                 """Draw watermark on each page."""
                 canvas_obj.saveState()
                 # Draw diagonal "FREE TIER" watermark

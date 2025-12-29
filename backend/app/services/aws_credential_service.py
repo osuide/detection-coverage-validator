@@ -62,13 +62,13 @@ class AWSCredentialService:
     # A13E's AWS account ID (for trust relationship)
     A13E_AWS_ACCOUNT_ID = "123080274263"  # A13E production AWS account
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize with base AWS client."""
         # This uses the credentials of A13E's infrastructure
         self._sts_client = None
 
     @property
-    def sts_client(self) -> None:
+    def sts_client(self) -> Any:
         """Lazy load STS client."""
         if self._sts_client is None:
             self._sts_client = boto3.client("sts")

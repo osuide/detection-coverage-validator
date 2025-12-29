@@ -74,7 +74,7 @@ class GCPOrganizationDiscoveryService:
     - Organisation policies
     """
 
-    def __init__(self, credentials):
+    def __init__(self, credentials: Any) -> None:
         """Initialise with GCP credentials.
 
         Args:
@@ -182,7 +182,9 @@ class GCPOrganizationDiscoveryService:
 
         return folders
 
-    async def _list_folders_recursive(self, client, parent: str) -> list[GCPFolder]:
+    async def _list_folders_recursive(
+        self, client: Any, parent: str
+    ) -> list[GCPFolder]:
         """Recursively list folders under a parent."""
         folders = []
 
@@ -273,7 +275,7 @@ class GCPOrganizationDiscoveryService:
         return projects
 
     async def _discover_projects_in_folders(
-        self, client, org_id: str
+        self, client: Any, org_id: str
     ) -> list[GCPProject]:
         """Discover projects nested within folders."""
         projects = []

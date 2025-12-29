@@ -9,7 +9,7 @@ This service handles:
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 from uuid import UUID
 
 import structlog
@@ -77,7 +77,7 @@ class OrgDiscoveryResult:
 class AWSOrganizationDiscoveryService:
     """Service for discovering AWS Organisation structure."""
 
-    def __init__(self, session):
+    def __init__(self, session: Any) -> None:
         """
         Initialise with a boto3 session.
 

@@ -9,7 +9,7 @@ import json
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 import numpy as np
 import structlog
@@ -256,7 +256,7 @@ class NLPMapper:
             technique_count=len(self._embeddings) if self._embeddings else 0,
         )
 
-    def _get_model(self) -> None:
+    def _get_model(self) -> Any:
         """Lazy load the sentence transformer model."""
         if self._model is None:
             try:

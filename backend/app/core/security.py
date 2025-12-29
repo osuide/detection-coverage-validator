@@ -1,7 +1,7 @@
 """Security middleware and dependencies for RBAC."""
 
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Callable
+from typing import Any, Callable, Optional
 from uuid import UUID
 
 import jwt
@@ -745,7 +745,7 @@ def require_org_features() -> Callable:
     return require_feature("org_features")
 
 
-def require_tier(*tiers) -> Callable:
+def require_tier(*tiers: Any) -> Callable:
     """
     Dependency that requires a specific subscription tier.
 

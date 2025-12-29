@@ -152,7 +152,7 @@ class DetectionStrategy:
     pricing_basis: Optional[str] = None
     pricing_url: Optional[str] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Auto-populate cost fields from service if not explicitly set."""
         service = (self.gcp_service or self.aws_service or "").lower()
 

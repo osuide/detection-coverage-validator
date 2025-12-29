@@ -81,7 +81,7 @@ class BaseValidator(ABC):
     - References: Do referenced resources exist?
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.logger = logger.bind(validator=self.__class__.__name__)
 
     @property
