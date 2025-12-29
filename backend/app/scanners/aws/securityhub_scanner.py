@@ -490,6 +490,17 @@ class SecurityHubScanner(BaseScanner):
             if not controls:
                 continue
 
+            # Skip "other" category - these are unrecognised controls that shouldn't
+            # create a separate detection. They're likely new AWS services not yet
+            # added to service_prefixes.
+            if standard_id == "other":
+                self.logger.info(
+                    "securityhub_skipping_other_category",
+                    control_count=len(controls),
+                    sample_ids=list(controls.keys())[:5],
+                )
+                continue
+
             # Get standard metadata
             standard_info = self._get_standard_info_by_id(standard_id)
 
@@ -626,6 +637,43 @@ class SecurityHubScanner(BaseScanner):
             # Only count techniques from enabled controls
             status_by_region = control_data.get("status_by_region", {})
             if any(s == "ENABLED" for s in status_by_region.values()):
+                mappings = get_techniques_for_cspm_control(control_id)
+                for tech_id, _ in mappings:
+                    techniques.add(tech_id)
+
+        return techniques
+
+    def _count_techniques_from_control_ids(
+        self,
+        control_ids: set[str],
+        controls_list: list[dict],
+    ) -> set[str]:
+        """Count unique MITRE techniques from a set of control IDs.
+
+        This method counts techniques directly from control IDs, using the
+        controls_list to determine which controls are enabled. This is more
+        reliable than filtering cspm_control_data when control IDs might differ
+        between APIs (e.g., DescribeStandardsControls vs CSPM).
+
+        Args:
+            control_ids: Set of control IDs to look up techniques for
+            controls_list: List of control dicts with status information
+
+        Returns:
+            Set of unique MITRE technique IDs
+        """
+        from app.mappers.securityhub_mappings import get_techniques_for_cspm_control
+
+        techniques: set[str] = set()
+
+        # Build a map of control_id -> enabled status from the controls list
+        enabled_controls = {
+            c.get("control_id") for c in controls_list if c.get("status") == "ENABLED"
+        }
+
+        for control_id in control_ids:
+            # Only count techniques from enabled controls
+            if control_id in enabled_controls:
                 mappings = get_techniques_for_cspm_control(control_id)
                 for tech_id, _ in mappings:
                     techniques.add(tech_id)
@@ -848,13 +896,24 @@ class SecurityHubScanner(BaseScanner):
                     )
 
                 # Count techniques from this standard's controls only
+                # We count techniques directly from control IDs rather than filtering
+                # cspm_control_data, because the control IDs might not match exactly
+                # (e.g., CIS returns different IDs than CSPM)
                 standard_control_ids = {c.get("control_id") for c in standard_controls}
-                filtered_cspm = {
-                    k: v
-                    for k, v in cspm_control_data.items()
-                    if k in standard_control_ids
-                }
-                techniques_covered = self._count_techniques_covered(filtered_cspm)
+                techniques_covered = self._count_techniques_from_control_ids(
+                    standard_control_ids, standard_controls
+                )
+
+                # Debug logging for technique counting
+                if not techniques_covered:
+                    sample_ids = list(standard_control_ids)[:5]
+                    self.logger.warning(
+                        "securityhub_no_techniques_for_standard",
+                        standard=standard_id,
+                        enabled_controls=enabled_count,
+                        sample_control_ids=sample_ids,
+                        message="No MITRE techniques found for this standard's controls",
+                    )
             else:
                 # Fallback: no per-standard data, use all CSPM controls
                 for control in cspm_control_data.values():
