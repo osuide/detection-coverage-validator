@@ -73,12 +73,6 @@ jobs:
         run: |
           pytest tests/ -v --cov=app --cov-report=xml
 
-      - name: Upload coverage
-        uses: codecov/codecov-action@v3
-        with:
-          files: ./backend/coverage.xml
-          flags: backend
-
   frontend-test:
     name: Frontend Tests
     runs-on: ubuntu-latest
