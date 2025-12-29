@@ -261,6 +261,30 @@ When writing migrations with asyncpg (async PostgreSQL driver), follow these rul
    ```
    Reference: https://blog.yo1.dog/updating-enum-values-in-postgresql-the-safe-and-easy-way/
 
+7. **Data deletion migrations must respect FK constraints** - When deleting data from multiple tables, delete from child tables (those with foreign keys pointing TO a table) before deleting from parent tables. Use `\d+ tablename` in psql or check the models to find FK constraints:
+   ```python
+   def upgrade() -> None:
+       conn = op.get_bind()
+
+       # Delete from tables that have FK to 'scans' FIRST
+       conn.execute(sa.text("DELETE FROM coverage_snapshots"))  # FK to scans
+       conn.execute(sa.text("DELETE FROM coverage_gaps"))        # FK to scans
+
+       # Then delete from tables that have FK to 'detections'
+       conn.execute(sa.text("DELETE FROM detection_mappings"))   # FK to detections
+
+       # Now safe to delete parent tables
+       conn.execute(sa.text("DELETE FROM detections"))
+       conn.execute(sa.text("DELETE FROM scans"))
+   ```
+
+   **Key FK relationships in this codebase:**
+   - `coverage_snapshots` → `scans.id`
+   - `coverage_gaps` → `scans.id`
+   - `coverage_history` → `scans.id` (SET NULL)
+   - `detection_evaluation_history` → `scans.id` (SET NULL), `detections.id`
+   - `detection_mappings` → `detections.id`
+
 References:
 - [Alembic asyncpg Discussion #1208](https://github.com/sqlalchemy/alembic/discussions/1208)
 - [SQLAlchemy Alembic Issue #1347](https://github.com/sqlalchemy/alembic/issues/1347)

@@ -29,9 +29,9 @@ def upgrade() -> None:
     result = conn.execute(sa.text("DELETE FROM coverage_snapshots"))
     print(f"Deleted {result.rowcount} coverage snapshots")
 
-    # 2. Delete gaps (FK to scans)
-    result = conn.execute(sa.text("DELETE FROM gaps"))
-    print(f"Deleted {result.rowcount} gaps")
+    # 2. Delete coverage gaps (FK to scans)
+    result = conn.execute(sa.text("DELETE FROM coverage_gaps"))
+    print(f"Deleted {result.rowcount} coverage gaps")
 
     # 3. Delete coverage history (FK to scans with SET NULL, but clean anyway)
     result = conn.execute(sa.text("DELETE FROM coverage_history"))
