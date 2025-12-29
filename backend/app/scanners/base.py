@@ -1,14 +1,23 @@
 """Base scanner interface following 04-PARSER-AGENT.md design."""
 
+import asyncio
 from abc import ABC, abstractmethod
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Optional
+from functools import partial
+from typing import Any, Callable, Optional, TypeVar
 import structlog
 
 from app.models.detection import DetectionType
 
 logger = structlog.get_logger()
+
+# Shared thread pool for boto3 calls across all scanners
+# This prevents blocking the async event loop during AWS API calls
+_boto3_executor = ThreadPoolExecutor(max_workers=8, thread_name_prefix="boto3-")
+
+T = TypeVar("T")
 
 
 @dataclass
@@ -57,6 +66,32 @@ class BaseScanner(ABC):
         """Initialize scanner with boto3/cloud session."""
         self.session = session
         self.logger = logger.bind(scanner=self.__class__.__name__)
+
+    async def run_sync(self, func: Callable[..., T], *args: Any, **kwargs: Any) -> T:
+        """Run a synchronous function (like boto3 calls) without blocking the event loop.
+
+        This offloads the synchronous call to a thread pool, allowing the async
+        event loop to continue processing HTTP requests during long AWS API calls.
+
+        Usage:
+            # Instead of: response = client.list_rules()
+            response = await self.run_sync(client.list_rules)
+
+            # With arguments:
+            response = await self.run_sync(client.get_rule, Name=rule_name)
+
+        Args:
+            func: The synchronous function to call
+            *args: Positional arguments to pass to the function
+            **kwargs: Keyword arguments to pass to the function
+
+        Returns:
+            The result from the synchronous function
+        """
+        loop = asyncio.get_event_loop()
+        if kwargs:
+            func = partial(func, **kwargs)
+        return await loop.run_in_executor(_boto3_executor, func, *args)
 
     @property
     @abstractmethod

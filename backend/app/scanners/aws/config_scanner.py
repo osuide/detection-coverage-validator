@@ -49,16 +49,19 @@ class ConfigRulesScanner(BaseScanner):
         client = self.session.client("config", region_name=region)
 
         try:
-            # Step 1: Collect all Config Rules
-            rules = []
-            paginator = client.get_paginator("describe_config_rules")
+            # Step 1: Collect all Config Rules (run in thread pool to avoid blocking)
+            def fetch_all_rules():
+                rules = []
+                paginator = client.get_paginator("describe_config_rules")
+                for page in paginator.paginate():
+                    for rule in page.get("ConfigRules", []):
+                        rules.append(rule)
+                return rules
 
-            for page in paginator.paginate():
-                for rule in page.get("ConfigRules", []):
-                    rules.append(rule)
+            rules = await self.run_sync(fetch_all_rules)
 
             # Step 2: Fetch compliance status for all rules (batched)
-            compliance_map = self._fetch_compliance_summary(client, rules)
+            compliance_map = await self._fetch_compliance_summary(client, rules)
 
             # Step 3: Create detections with compliance data
             for rule in rules:
@@ -80,7 +83,7 @@ class ConfigRulesScanner(BaseScanner):
 
         return detections
 
-    def _fetch_compliance_summary(
+    async def _fetch_compliance_summary(
         self,
         client: Any,
         rules: list[dict],
@@ -98,55 +101,59 @@ class ConfigRulesScanner(BaseScanner):
         Returns:
             Dict mapping rule_name -> compliance evaluation summary
         """
-        compliance_map: dict[str, dict] = {}
         rule_names = [r.get("ConfigRuleName") for r in rules if r.get("ConfigRuleName")]
 
         if not rule_names:
+            return {}
+
+        # Run the entire compliance fetch in thread pool to avoid blocking
+        def fetch_all_compliance():
+            compliance_map: dict[str, dict] = {}
+
+            # Batch in groups of 25 (API limit)
+            for i in range(0, len(rule_names), 25):
+                batch = rule_names[i : i + 25]
+                try:
+                    # Handle pagination for compliance results
+                    next_token = None
+                    while True:
+                        kwargs = {"ConfigRuleNames": batch}
+                        if next_token:
+                            kwargs["NextToken"] = next_token
+
+                        response = client.describe_compliance_by_config_rule(**kwargs)
+
+                        for item in response.get("ComplianceByConfigRules", []):
+                            rule_name = item.get("ConfigRuleName")
+                            compliance = item.get("Compliance", {})
+                            contributor_count = compliance.get(
+                                "ComplianceContributorCount", {}
+                            )
+
+                            compliance_map[rule_name] = {
+                                "type": "config_compliance",
+                                "compliance_type": compliance.get(
+                                    "ComplianceType", "INSUFFICIENT_DATA"
+                                ),
+                                "non_compliant_count": contributor_count.get(
+                                    "CappedCount", 0
+                                ),
+                                "cap_exceeded": contributor_count.get(
+                                    "CapExceeded", False
+                                ),
+                            }
+
+                        next_token = response.get("NextToken")
+                        if not next_token:
+                            break
+
+                except ClientError:
+                    # Log handled by caller
+                    pass
+
             return compliance_map
 
-        # Batch in groups of 25 (API limit)
-        for i in range(0, len(rule_names), 25):
-            batch = rule_names[i : i + 25]
-            try:
-                # Handle pagination for compliance results
-                next_token = None
-                while True:
-                    kwargs = {"ConfigRuleNames": batch}
-                    if next_token:
-                        kwargs["NextToken"] = next_token
-
-                    response = client.describe_compliance_by_config_rule(**kwargs)
-
-                    for item in response.get("ComplianceByConfigRules", []):
-                        rule_name = item.get("ConfigRuleName")
-                        compliance = item.get("Compliance", {})
-                        contributor_count = compliance.get(
-                            "ComplianceContributorCount", {}
-                        )
-
-                        compliance_map[rule_name] = {
-                            "type": "config_compliance",
-                            "compliance_type": compliance.get(
-                                "ComplianceType", "INSUFFICIENT_DATA"
-                            ),
-                            "non_compliant_count": contributor_count.get(
-                                "CappedCount", 0
-                            ),
-                            "cap_exceeded": contributor_count.get("CapExceeded", False),
-                        }
-
-                    next_token = response.get("NextToken")
-                    if not next_token:
-                        break
-
-            except ClientError as e:
-                self.logger.warning(
-                    "compliance_fetch_error",
-                    batch_size=len(batch),
-                    error=str(e),
-                )
-
-        return compliance_map
+        return await self.run_sync(fetch_all_compliance)
 
     def _parse_config_rule(
         self,

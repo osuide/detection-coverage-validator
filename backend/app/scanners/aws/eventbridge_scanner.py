@@ -59,9 +59,10 @@ class EventBridgeScanner(BaseScanner):
         client = self.session.client("events", region_name=region)
 
         # List all event buses (including custom)
+        # Use run_sync to avoid blocking the event loop during AWS API calls
         event_buses = ["default"]
         try:
-            buses_response = client.list_event_buses()
+            buses_response = await self.run_sync(client.list_event_buses)
             for bus in buses_response.get("EventBuses", []):
                 bus_name = bus.get("Name")
                 if bus_name and bus_name != "default":
@@ -93,13 +94,24 @@ class EventBridgeScanner(BaseScanner):
         """Scan rules on a specific event bus."""
         detections = []
 
+        # Fetch all rules using pagination, running in thread pool to avoid blocking
+        all_rules = []
         paginator = client.get_paginator("list_rules")
 
-        for page in paginator.paginate(EventBusName=bus_name):
-            for rule in page.get("Rules", []):
-                detection = self._parse_rule(rule, bus_name, region)
-                if detection:
-                    detections.append(detection)
+        # Paginator.paginate() returns an iterator that makes blocking API calls
+        # We run the iteration in the thread pool
+        def fetch_all_pages():
+            pages_rules = []
+            for page in paginator.paginate(EventBusName=bus_name):
+                pages_rules.extend(page.get("Rules", []))
+            return pages_rules
+
+        all_rules = await self.run_sync(fetch_all_pages)
+
+        for rule in all_rules:
+            detection = self._parse_rule(rule, bus_name, region)
+            if detection:
+                detections.append(detection)
 
         return detections
 
