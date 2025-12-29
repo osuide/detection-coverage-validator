@@ -583,12 +583,13 @@ resource "aws_iam_role_policy" "ecs_execution_secrets" {
 }
 
 # ECS Task Definition
+# Production uses more resources to handle concurrent scans and API traffic
 resource "aws_ecs_task_definition" "backend" {
   family                   = "a13e-${var.environment}-backend"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = "512"
-  memory                   = "1024"
+  cpu                      = var.environment == "prod" ? "1024" : "512"
+  memory                   = var.environment == "prod" ? "2048" : "1024"
   execution_role_arn       = aws_iam_role.ecs_execution.arn
   task_role_arn            = aws_iam_role.ecs_task.arn
 

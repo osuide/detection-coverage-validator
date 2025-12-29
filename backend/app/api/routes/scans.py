@@ -1,5 +1,6 @@
 """Scan endpoints."""
 
+from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
@@ -9,6 +10,7 @@ from sqlalchemy import select
 
 from app.core.database import get_db
 from app.core.security import AuthContext, get_auth_context, require_scope
+from app.core.cache import get_cached_scan_status
 from app.models.scan import Scan, ScanStatus
 from app.models.cloud_account import CloudAccount
 from app.schemas.scan import ScanCreate, ScanResponse, ScanListResponse
@@ -157,7 +159,40 @@ async def get_scan(
     """Get a specific scan job.
 
     API keys require 'read:scans' scope.
+
+    Performance: For active scans (pending/running), this endpoint first checks
+    Redis cache to avoid database queries during frequent polling. The scan
+    service updates Redis after each status change.
     """
+    # Try Redis cache first for fast polling during active scans
+    cached = await get_cached_scan_status(str(scan_id))
+    if cached:
+        # Verify the cached scan belongs to the user's organization
+        # by checking cloud_account ownership
+        cloud_account_id = cached.get("cloud_account_id")
+        if cloud_account_id:
+            result = await db.execute(
+                select(CloudAccount.id).where(
+                    CloudAccount.id == UUID(cloud_account_id),
+                    CloudAccount.organization_id == auth.organization_id,
+                )
+            )
+            if result.scalar_one_or_none():
+                # Parse datetime strings back to datetime objects for response
+                if cached.get("started_at"):
+                    cached["started_at"] = datetime.fromisoformat(cached["started_at"])
+                if cached.get("completed_at"):
+                    cached["completed_at"] = datetime.fromisoformat(
+                        cached["completed_at"]
+                    )
+                if cached.get("created_at"):
+                    cached["created_at"] = datetime.fromisoformat(cached["created_at"])
+                # Convert string ID to UUID
+                cached["id"] = UUID(cached["id"])
+                cached["cloud_account_id"] = UUID(cached["cloud_account_id"])
+                return ScanResponse(**cached)
+
+    # Fall back to database query
     result = await db.execute(
         select(Scan)
         .join(CloudAccount, Scan.cloud_account_id == CloudAccount.id)

@@ -276,3 +276,109 @@ def mitre_techniques_key() -> str:
 def mitre_tactics_key() -> str:
     """Cache key for MITRE tactics."""
     return "mitre:tactics"
+
+
+# Scan status caching - for reducing database load during polling
+# Uses a separate prefix to distinguish from static data caching
+SCAN_STATUS_PREFIX = "dcv:scan:"
+SCAN_STATUS_TTL = 60  # 60 seconds - short TTL for active scans
+
+
+def scan_status_key(scan_id: str) -> str:
+    """Cache key for scan status.
+
+    Args:
+        scan_id: Scan UUID as string
+
+    Returns:
+        Cache key for the scan status
+    """
+    return f"status:{_sanitize_identifier(scan_id)}"
+
+
+async def cache_scan_status(scan_data: dict) -> bool:
+    """Cache scan status for fast polling.
+
+    This is used during active scans to avoid database queries
+    for status polling. Uses a short TTL since scan status changes frequently.
+
+    Args:
+        scan_data: Dictionary with scan status fields:
+            - id: Scan UUID
+            - status: ScanStatus value
+            - progress_percent: 0-100
+            - current_step: Current operation description
+            - detections_found, detections_new, etc.
+            - started_at, completed_at (ISO format strings)
+
+    Returns:
+        True if cached successfully, False otherwise
+
+    Security:
+        - Only caches non-sensitive scan metadata
+        - Short TTL prevents stale data accumulation
+        - Scan ID is sanitized to prevent key injection
+    """
+    if not _redis_cache:
+        return False
+
+    scan_id = str(scan_data.get("id", ""))
+    if not scan_id:
+        return False
+
+    try:
+        key = f"{SCAN_STATUS_PREFIX}{scan_status_key(scan_id)}"
+        serialized = json.dumps(scan_data)
+
+        # Use short TTL for scan status
+        await _redis_cache.setex(key, SCAN_STATUS_TTL, serialized)
+        return True
+    except Exception as e:
+        logger.warning("scan_status_cache_set_failed", scan_id=scan_id, error=str(e))
+        return False
+
+
+async def get_cached_scan_status(scan_id: str) -> Optional[dict]:
+    """Get cached scan status.
+
+    Args:
+        scan_id: Scan UUID as string
+
+    Returns:
+        Cached scan status dict or None if not found/cache unavailable
+    """
+    if not _redis_cache:
+        return None
+
+    try:
+        key = f"{SCAN_STATUS_PREFIX}{scan_status_key(scan_id)}"
+        value = await _redis_cache.get(key)
+        if value:
+            return json.loads(value)
+        return None
+    except Exception as e:
+        logger.warning("scan_status_cache_get_failed", scan_id=scan_id, error=str(e))
+        return None
+
+
+async def delete_scan_status_cache(scan_id: str) -> bool:
+    """Delete cached scan status.
+
+    Should be called when a scan completes or fails to clean up.
+
+    Args:
+        scan_id: Scan UUID as string
+
+    Returns:
+        True if deleted successfully, False otherwise
+    """
+    if not _redis_cache:
+        return False
+
+    try:
+        key = f"{SCAN_STATUS_PREFIX}{scan_status_key(scan_id)}"
+        await _redis_cache.delete(key)
+        return True
+    except Exception as e:
+        logger.warning("scan_status_cache_delete_failed", scan_id=scan_id, error=str(e))
+        return False

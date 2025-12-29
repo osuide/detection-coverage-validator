@@ -41,6 +41,10 @@ from app.services.evaluation_history_service import (
 from app.services.aws_credential_service import aws_credential_service
 from app.services.region_discovery_service import region_discovery_service
 from app.core.service_registry import get_all_regions, get_default_regions
+from app.core.cache import (
+    cache_scan_status,
+    delete_scan_status_cache,
+)
 from app.models.cloud_account import RegionScanMode
 
 logger = structlog.get_logger()
@@ -101,6 +105,45 @@ class ScanService:
         self.logger = logger.bind(service="ScanService")
         self.mapper = PatternMapper()
 
+    async def _cache_scan_status(self, scan: Scan) -> None:
+        """Cache scan status to Redis for fast polling.
+
+        Called after each db.commit() to keep Redis in sync with database.
+        Failures are logged but don't affect scan execution.
+        """
+        try:
+            scan_data = {
+                "id": str(scan.id),
+                "cloud_account_id": str(scan.cloud_account_id),
+                "status": scan.status.value,
+                "regions": scan.regions or [],
+                "detection_types": scan.detection_types or [],
+                "progress_percent": scan.progress_percent,
+                "current_step": scan.current_step,
+                "detections_found": scan.detections_found,
+                "detections_new": scan.detections_new,
+                "detections_updated": scan.detections_updated,
+                "detections_removed": scan.detections_removed,
+                "errors": scan.errors,
+                "started_at": (
+                    scan.started_at.isoformat() if scan.started_at else None
+                ),
+                "completed_at": (
+                    scan.completed_at.isoformat() if scan.completed_at else None
+                ),
+                "created_at": (
+                    scan.created_at.isoformat() if scan.created_at else None
+                ),
+            }
+            await cache_scan_status(scan_data)
+        except Exception as e:
+            # Log but don't fail scan - cache is optional optimisation
+            self.logger.warning(
+                "scan_status_cache_failed",
+                scan_id=str(scan.id),
+                error=str(e),
+            )
+
     async def execute_scan(self, scan_id: UUID) -> None:
         """Execute a scan job.
 
@@ -129,6 +172,7 @@ class ScanService:
             scan.started_at = datetime.now(timezone.utc)
             scan.current_step = "Initializing"
             await self.db.commit()
+            await self._cache_scan_status(scan)
 
             # Get boto3 session (with assumed role credentials)
             session = await self._get_boto3_session(account)
@@ -153,6 +197,7 @@ class ScanService:
             scan.current_step = "Scanning for detections"
             scan.progress_percent = 10
             await self.db.commit()
+            await self._cache_scan_status(scan)
 
             raw_detections, scanner_errors = await self._scan_detections(
                 session, region_config, scan.detection_types
@@ -168,6 +213,7 @@ class ScanService:
             scan.current_step = "Processing detections"
             scan.progress_percent = 50
             await self.db.commit()
+            await self._cache_scan_status(scan)
 
             stats = await self._process_detections(account.id, raw_detections)
 
@@ -175,6 +221,7 @@ class ScanService:
             scan.current_step = "Mapping to MITRE ATT&CK"
             scan.progress_percent = 80
             await self.db.commit()
+            await self._cache_scan_status(scan)
 
             await self._map_detections(account.id)
 
@@ -182,6 +229,7 @@ class ScanService:
             scan.current_step = "Calculating coverage"
             scan.progress_percent = 90
             await self.db.commit()
+            await self._cache_scan_status(scan)
 
             coverage_service = CoverageService(self.db)
             coverage_snapshot = await coverage_service.calculate_coverage(
@@ -274,6 +322,9 @@ class ScanService:
             account.last_scan_at = datetime.now(timezone.utc)
 
             await self.db.commit()
+            # Cache final status then clean up - TTL ensures eventual cleanup
+            await self._cache_scan_status(scan)
+            await delete_scan_status_cache(str(scan.id))
 
             self.logger.info(
                 "scan_complete",
@@ -931,3 +982,6 @@ class ScanService:
         scan.completed_at = datetime.now(timezone.utc)
         scan.errors = [{"message": error}]
         await self.db.commit()
+        # Cache final status then clean up
+        await self._cache_scan_status(scan)
+        await delete_scan_status_cache(str(scan.id))
