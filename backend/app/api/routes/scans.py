@@ -37,6 +37,12 @@ async def list_scans(
 
     API keys require 'read:scans' scope.
     """
+    # Security: Check account-level ACL if filtering by specific account
+    if cloud_account_id and not auth.can_access_account(cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
+
     # Filter by organization through cloud_account
     query = (
         select(Scan)
@@ -101,6 +107,12 @@ async def create_scan(
     account = result.scalar_one_or_none()
     if not account:
         raise HTTPException(status_code=404, detail="Cloud account not found")
+
+    # Security: Check account-level ACL
+    if not auth.can_access_account(scan_in.cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
 
     # H6: Atomically check scan limits and record the scan to prevent race conditions
     # This uses row-level locking to ensure concurrent requests cannot bypass limits
@@ -178,6 +190,11 @@ async def get_scan(
                 )
             )
             if result.scalar_one_or_none():
+                # Security: Check account-level ACL
+                if not auth.can_access_account(UUID(cloud_account_id)):
+                    raise HTTPException(
+                        status_code=403, detail="Access denied to this cloud account"
+                    )
                 # Parse datetime strings back to datetime objects for response
                 if cached.get("started_at"):
                     cached["started_at"] = datetime.fromisoformat(cached["started_at"])
@@ -204,6 +221,13 @@ async def get_scan(
     scan = result.scalar_one_or_none()
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")
+
+    # Security: Check account-level ACL
+    if not auth.can_access_account(scan.cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
+
     return scan
 
 
@@ -232,6 +256,12 @@ async def cancel_scan(
     scan = result.scalar_one_or_none()
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")
+
+    # Security: Check account-level ACL
+    if not auth.can_access_account(scan.cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
 
     if scan.status not in [ScanStatus.PENDING, ScanStatus.RUNNING]:
         raise HTTPException(

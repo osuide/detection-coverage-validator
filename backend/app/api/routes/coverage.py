@@ -143,6 +143,12 @@ async def get_coverage(
     db: AsyncSession = Depends(get_db),
 ):
     """Get the latest coverage snapshot for a cloud account."""
+    # Security: Check account-level ACL
+    if not auth.can_access_account(cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
+
     # Verify account exists and belongs to user's organization
     account_result = await db.execute(
         select(CloudAccount).where(
@@ -301,6 +307,12 @@ async def get_coverage_history(
     db: AsyncSession = Depends(get_db),
 ):
     """Get coverage history for trend analysis."""
+    # Security: Check account-level ACL
+    if not auth.can_access_account(cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
+
     # Verify account exists and belongs to user's organization
     account_result = await db.execute(
         select(CloudAccount).where(
@@ -372,6 +384,12 @@ async def get_technique_coverage(
     IaaS, SaaS, etc.) from the MITRE ATT&CK Cloud Matrix. Set cloud_only=false to
     return all Enterprise techniques.
     """
+    # Security: Check account-level ACL
+    if not auth.can_access_account(cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
+
     # Verify account exists and belongs to user's organization
     account_result = await db.execute(
         select(CloudAccount).where(
@@ -471,6 +489,12 @@ async def calculate_coverage(
     db: AsyncSession = Depends(get_db),
 ):
     """Manually trigger coverage calculation."""
+    # Security: Check account-level ACL
+    if not auth.can_access_account(cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
+
     # Verify account exists and belongs to user's organization
     account_result = await db.execute(
         select(CloudAccount).where(
@@ -798,6 +822,12 @@ async def get_drift_history(
     if not auth.organization_id:
         raise HTTPException(status_code=401, detail="Organisation context required")
 
+    # Security: Check account-level ACL
+    if not auth.can_access_account(cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
+
     service = DriftDetectionService(db)
     history = await service.get_coverage_history(
         cloud_account_id, auth.organization_id, days
@@ -819,6 +849,12 @@ async def record_drift_snapshot(
     db: AsyncSession = Depends(get_db),
 ):
     """Manually record a coverage snapshot for drift tracking."""
+    # Security: Check account-level ACL
+    if not auth.can_access_account(cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
+
     # Verify account belongs to organization
     account_result = await db.execute(
         select(CloudAccount).where(
@@ -858,6 +894,12 @@ async def get_drift_alerts(
     """Get coverage drift alerts for the organization."""
     if not auth.organization_id:
         raise HTTPException(status_code=401, detail="Organisation context required")
+
+    # Security: Check account-level ACL if filtering by specific account
+    if cloud_account_id and not auth.can_access_account(cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
 
     service = DriftDetectionService(db)
     alerts = await service.get_drift_alerts(
@@ -907,6 +949,12 @@ async def get_drift_summary(
     """Get drift summary statistics for the organization."""
     if not auth.organization_id:
         raise HTTPException(status_code=401, detail="Organisation context required")
+
+    # Security: Check account-level ACL if filtering by specific account
+    if cloud_account_id and not auth.can_access_account(cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
 
     service = DriftDetectionService(db)
     summary = await service.get_drift_summary(auth.organization_id, cloud_account_id)

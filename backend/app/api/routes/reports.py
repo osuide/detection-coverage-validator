@@ -84,6 +84,12 @@ async def download_coverage_csv(
     # Require paid subscription for reports
     await _require_paid_subscription(db, auth.organization_id)
 
+    # Security: Check account-level ACL
+    if not auth.can_access_account(cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
+
     # Verify account exists and belongs to user's organization
     result = await db.execute(
         select(CloudAccount).where(
@@ -123,6 +129,12 @@ async def download_gaps_csv(
     # Require paid subscription for reports
     await _require_paid_subscription(db, auth.organization_id)
 
+    # Security: Check account-level ACL
+    if not auth.can_access_account(cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
+
     result = await db.execute(
         select(CloudAccount).where(
             CloudAccount.id == cloud_account_id,
@@ -160,6 +172,12 @@ async def download_detections_csv(
     """
     # Require paid subscription for reports
     await _require_paid_subscription(db, auth.organization_id)
+
+    # Security: Check account-level ACL
+    if not auth.can_access_account(cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
 
     result = await db.execute(
         select(CloudAccount).where(
@@ -200,6 +218,12 @@ async def download_executive_pdf(
     """
     # Require paid subscription for reports
     await _require_paid_subscription(db, auth.organization_id)
+
+    # Security: Check account-level ACL
+    if not auth.can_access_account(cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
 
     result = await db.execute(
         select(CloudAccount).where(
@@ -248,6 +272,12 @@ async def download_full_pdf(
     """
     # Require paid subscription for reports
     await _require_paid_subscription(db, auth.organization_id)
+
+    # Security: Check account-level ACL
+    if not auth.can_access_account(cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
 
     result = await db.execute(
         select(CloudAccount).where(

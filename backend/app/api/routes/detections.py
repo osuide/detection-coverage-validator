@@ -99,6 +99,12 @@ async def list_detections(
 
     API keys require 'read:detections' scope.
     """
+    # Security: Check account-level ACL if filtering by specific account
+    if cloud_account_id and not auth.can_access_account(cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
+
     # Filter detections by organization through cloud_account
     query = (
         select(Detection)
@@ -201,6 +207,12 @@ async def get_detection(
     if not detection:
         raise HTTPException(status_code=404, detail="Detection not found")
 
+    # Security: Check account-level ACL
+    if not auth.can_access_account(detection.cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
+
     return DetectionResponse(
         id=detection.id,
         cloud_account_id=detection.cloud_account_id,
@@ -252,6 +264,12 @@ async def get_detection_mappings(
     if not detection:
         raise HTTPException(status_code=404, detail="Detection not found")
 
+    # Security: Check account-level ACL
+    if not auth.can_access_account(detection.cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
+
     # Get mappings with technique details
     mappings_result = await db.execute(
         select(DetectionMapping, Technique)
@@ -301,6 +319,12 @@ async def delete_detection(
     if not detection:
         raise HTTPException(status_code=404, detail="Detection not found")
 
+    # Security: Check account-level ACL
+    if not auth.can_access_account(detection.cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
+
     await db.delete(detection)
     await db.commit()
 
@@ -349,6 +373,12 @@ async def validate_all_detections(
     This is a synchronous operation that may take time for large numbers
     of detections. Consider using background tasks for production use.
     """
+    # Security: Check account-level ACL if filtering by specific account
+    if cloud_account_id and not auth.can_access_account(cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
+
     service = DetectionHealthService(db)
     result = await service.validate_all_detections(
         auth.organization_id,
@@ -365,6 +395,12 @@ async def get_health_summary(
     db: AsyncSession = Depends(get_db),
 ):
     """Get health summary for all detections."""
+    # Security: Check account-level ACL if filtering by specific account
+    if cloud_account_id and not auth.can_access_account(cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
+
     service = DetectionHealthService(db)
     result = await service.get_health_summary(
         auth.organization_id,
