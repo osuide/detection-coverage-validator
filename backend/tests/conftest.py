@@ -54,6 +54,14 @@ async def db_engine():
     engine = create_async_engine(TEST_DATABASE_URL, echo=False)
 
     async with engine.begin() as conn:
+        # Clean up any leftover state from previous test runs (CI database persistence)
+        # Drop backup tables created by migrations (not in SQLAlchemy metadata)
+        await conn.execute(
+            text("DROP TABLE IF EXISTS subscriptions_backup_015 CASCADE")
+        )
+
+        # Drop all tables and recreate for clean state
+        await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
 
     yield engine
@@ -64,6 +72,13 @@ async def db_engine():
             text("DROP VIEW IF EXISTS v_recent_evaluation_changes CASCADE")
         )
         await conn.execute(text("DROP VIEW IF EXISTS v_daily_compliance_trend CASCADE"))
+
+        # Drop backup tables created by migrations (not in SQLAlchemy metadata)
+        # These reference enum types and block drop_all() from completing
+        await conn.execute(
+            text("DROP TABLE IF EXISTS subscriptions_backup_015 CASCADE")
+        )
+
         await conn.run_sync(Base.metadata.drop_all)
 
     await engine.dispose()
