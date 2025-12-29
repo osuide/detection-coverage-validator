@@ -8,8 +8,11 @@ Security Best Practices:
 5. Validates permissions before accepting connection
 """
 
+import asyncio
 import os
-from typing import Optional
+from concurrent.futures import ThreadPoolExecutor
+from functools import partial
+from typing import Any, Callable, Optional, TypeVar
 
 import boto3
 from botocore.exceptions import ClientError, NoCredentialsError
@@ -20,6 +23,11 @@ from app.models.cloud_credential import (
     CredentialStatus,
     CredentialType,
 )
+
+# Shared thread pool for boto3 calls - prevents blocking the async event loop
+_credential_executor = ThreadPoolExecutor(max_workers=10, thread_name_prefix="cred-")
+
+T = TypeVar("T")
 
 logger = structlog.get_logger()
 
@@ -65,6 +73,28 @@ class AWSCredentialService:
         if self._sts_client is None:
             self._sts_client = boto3.client("sts")
         return self._sts_client
+
+    async def _run_sync(self, func: Callable[..., T], *args: Any, **kwargs: Any) -> T:
+        """Run a synchronous boto3 call without blocking the event loop.
+
+        Offloads the call to a thread pool to prevent blocking.
+        """
+        loop = asyncio.get_event_loop()
+        if kwargs:
+            func = partial(func, **kwargs)
+        return await loop.run_in_executor(_credential_executor, func, *args)
+
+    async def assume_role_async(
+        self,
+        role_arn: str,
+        external_id: str,
+        session_name: Optional[str] = None,
+        duration_seconds: int = 3600,
+    ) -> dict:
+        """Async version of assume_role that doesn't block the event loop."""
+        return await self._run_sync(
+            self.assume_role, role_arn, external_id, session_name, duration_seconds
+        )
 
     def assume_role(
         self,
@@ -237,8 +267,8 @@ class AWSCredentialService:
             }
 
         try:
-            # First, verify we can assume the role
-            creds = self.assume_role(
+            # First, verify we can assume the role (non-blocking)
+            creds = await self.assume_role_async(
                 credential.aws_role_arn,
                 credential.aws_external_id,
             )
@@ -250,186 +280,25 @@ class AWSCredentialService:
                 aws_session_token=creds["session_token"],
             )
 
-            # Check each permission
+            # Run all permission checks IN PARALLEL for faster validation
+            # Each check returns (granted_perms, missing_perms) tuple
+            results = await asyncio.gather(
+                self._check_logs_permissions(session),
+                self._check_cloudwatch_permissions(session),
+                self._check_eventbridge_permissions(session),
+                self._check_guardduty_permissions(session),
+                self._check_securityhub_permissions(session),
+                self._check_config_permissions(session),
+                self._check_cloudtrail_permissions(session),
+                self._check_lambda_permissions(session),
+            )
+
+            # Combine results from all checks
             granted = []
             missing = []
-
-            # Test CloudWatch Logs
-            try:
-                logs_client = session.client("logs", region_name="us-east-1")
-                logs_client.describe_log_groups(limit=1)
-                granted.extend(
-                    [
-                        "logs:DescribeLogGroups",
-                        "logs:DescribeMetricFilters",
-                        "logs:DescribeSubscriptionFilters",
-                    ]
-                )
-            except ClientError as e:
-                if "AccessDenied" in str(e):
-                    missing.extend(
-                        [
-                            "logs:DescribeLogGroups",
-                            "logs:DescribeMetricFilters",
-                            "logs:DescribeSubscriptionFilters",
-                        ]
-                    )
-
-            # Test CloudWatch Alarms
-            try:
-                cw_client = session.client("cloudwatch", region_name="us-east-1")
-                cw_client.describe_alarms(MaxRecords=1)
-                granted.extend(
-                    [
-                        "cloudwatch:DescribeAlarms",
-                        "cloudwatch:DescribeAlarmsForMetric",
-                    ]
-                )
-            except ClientError as e:
-                if "AccessDenied" in str(e):
-                    missing.extend(
-                        [
-                            "cloudwatch:DescribeAlarms",
-                            "cloudwatch:DescribeAlarmsForMetric",
-                        ]
-                    )
-
-            # Test EventBridge
-            try:
-                events_client = session.client("events", region_name="us-east-1")
-                events_client.list_rules(Limit=1)
-                granted.extend(
-                    [
-                        "events:ListRules",
-                        "events:DescribeRule",
-                        "events:ListTargetsByRule",
-                    ]
-                )
-            except ClientError as e:
-                if "AccessDenied" in str(e):
-                    missing.extend(
-                        [
-                            "events:ListRules",
-                            "events:DescribeRule",
-                            "events:ListTargetsByRule",
-                        ]
-                    )
-
-            # Test GuardDuty
-            try:
-                gd_client = session.client("guardduty", region_name="us-east-1")
-                gd_client.list_detectors()
-                granted.extend(
-                    [
-                        "guardduty:ListDetectors",
-                        "guardduty:GetDetector",
-                        "guardduty:ListFindings",
-                        "guardduty:GetFindings",
-                    ]
-                )
-            except ClientError as e:
-                if "AccessDenied" in str(e):
-                    missing.extend(
-                        [
-                            "guardduty:ListDetectors",
-                            "guardduty:GetDetector",
-                            "guardduty:ListFindings",
-                            "guardduty:GetFindings",
-                        ]
-                    )
-
-            # Test Security Hub
-            try:
-                sh_client = session.client("securityhub", region_name="us-east-1")
-                sh_client.describe_hub()
-                granted.extend(
-                    [
-                        "securityhub:DescribeHub",
-                        "securityhub:GetEnabledStandards",
-                        "securityhub:DescribeStandardsControls",
-                    ]
-                )
-            except ClientError as e:
-                if "AccessDenied" in str(e):
-                    missing.extend(
-                        [
-                            "securityhub:DescribeHub",
-                            "securityhub:GetEnabledStandards",
-                            "securityhub:DescribeStandardsControls",
-                        ]
-                    )
-                elif "not subscribed" in str(e).lower():
-                    # Security Hub not enabled - that's OK
-                    granted.extend(
-                        [
-                            "securityhub:DescribeHub",
-                            "securityhub:GetEnabledStandards",
-                            "securityhub:DescribeStandardsControls",
-                        ]
-                    )
-
-            # Test Config
-            try:
-                config_client = session.client("config", region_name="us-east-1")
-                config_client.describe_config_rules()
-                granted.extend(
-                    [
-                        "config:DescribeConfigRules",
-                        "config:DescribeComplianceByConfigRule",
-                    ]
-                )
-            except ClientError as e:
-                if "AccessDenied" in str(e):
-                    missing.extend(
-                        [
-                            "config:DescribeConfigRules",
-                            "config:DescribeComplianceByConfigRule",
-                        ]
-                    )
-
-            # Test CloudTrail
-            try:
-                ct_client = session.client("cloudtrail", region_name="us-east-1")
-                ct_client.describe_trails()
-                granted.extend(
-                    [
-                        "cloudtrail:DescribeTrails",
-                        "cloudtrail:GetTrailStatus",
-                        "cloudtrail:GetEventSelectors",
-                    ]
-                )
-            except ClientError as e:
-                if "AccessDenied" in str(e):
-                    missing.extend(
-                        [
-                            "cloudtrail:DescribeTrails",
-                            "cloudtrail:GetTrailStatus",
-                            "cloudtrail:GetEventSelectors",
-                        ]
-                    )
-
-            # Test Lambda
-            try:
-                lambda_client = session.client("lambda", region_name="us-east-1")
-                lambda_client.list_functions(MaxItems=1)
-                granted.extend(
-                    [
-                        "lambda:ListFunctions",
-                        "lambda:ListEventSourceMappings",
-                        "lambda:GetFunction",
-                        "lambda:GetFunctionConfiguration",
-                    ]
-                )
-            except ClientError as e:
-                if "AccessDenied" in str(e):
-                    missing.extend(
-                        [
-                            "lambda:ListFunctions",
-                            "lambda:ListEventSourceMappings",
-                            "lambda:GetFunction",
-                            "lambda:GetFunctionConfiguration",
-                        ]
-                    )
+            for check_granted, check_missing in results:
+                granted.extend(check_granted)
+                missing.extend(check_missing)
 
             # Determine status
             if missing:
@@ -461,6 +330,151 @@ class AWSCredentialService:
                 "granted_permissions": [],
                 "missing_permissions": [],
             }
+
+    async def _check_logs_permissions(
+        self, session: boto3.Session
+    ) -> tuple[list[str], list[str]]:
+        """Check CloudWatch Logs permissions."""
+        permissions = [
+            "logs:DescribeLogGroups",
+            "logs:DescribeMetricFilters",
+            "logs:DescribeSubscriptionFilters",
+        ]
+        try:
+            client = session.client("logs", region_name="us-east-1")
+            await self._run_sync(client.describe_log_groups, limit=1)
+            return (permissions, [])
+        except ClientError as e:
+            if "AccessDenied" in str(e):
+                return ([], permissions)
+            return (permissions, [])  # Other errors = permission OK
+
+    async def _check_cloudwatch_permissions(
+        self, session: boto3.Session
+    ) -> tuple[list[str], list[str]]:
+        """Check CloudWatch Alarms permissions."""
+        permissions = [
+            "cloudwatch:DescribeAlarms",
+            "cloudwatch:DescribeAlarmsForMetric",
+        ]
+        try:
+            client = session.client("cloudwatch", region_name="us-east-1")
+            await self._run_sync(client.describe_alarms, MaxRecords=1)
+            return (permissions, [])
+        except ClientError as e:
+            if "AccessDenied" in str(e):
+                return ([], permissions)
+            return (permissions, [])
+
+    async def _check_eventbridge_permissions(
+        self, session: boto3.Session
+    ) -> tuple[list[str], list[str]]:
+        """Check EventBridge permissions."""
+        permissions = [
+            "events:ListRules",
+            "events:DescribeRule",
+            "events:ListTargetsByRule",
+        ]
+        try:
+            client = session.client("events", region_name="us-east-1")
+            await self._run_sync(client.list_rules, Limit=1)
+            return (permissions, [])
+        except ClientError as e:
+            if "AccessDenied" in str(e):
+                return ([], permissions)
+            return (permissions, [])
+
+    async def _check_guardduty_permissions(
+        self, session: boto3.Session
+    ) -> tuple[list[str], list[str]]:
+        """Check GuardDuty permissions."""
+        permissions = [
+            "guardduty:ListDetectors",
+            "guardduty:GetDetector",
+            "guardduty:ListFindings",
+            "guardduty:GetFindings",
+        ]
+        try:
+            client = session.client("guardduty", region_name="us-east-1")
+            await self._run_sync(client.list_detectors)
+            return (permissions, [])
+        except ClientError as e:
+            if "AccessDenied" in str(e):
+                return ([], permissions)
+            return (permissions, [])
+
+    async def _check_securityhub_permissions(
+        self, session: boto3.Session
+    ) -> tuple[list[str], list[str]]:
+        """Check Security Hub permissions."""
+        permissions = [
+            "securityhub:DescribeHub",
+            "securityhub:GetEnabledStandards",
+            "securityhub:DescribeStandardsControls",
+        ]
+        try:
+            client = session.client("securityhub", region_name="us-east-1")
+            await self._run_sync(client.describe_hub)
+            return (permissions, [])
+        except ClientError as e:
+            if "AccessDenied" in str(e):
+                return ([], permissions)
+            # Security Hub not enabled - that's OK, permission exists
+            return (permissions, [])
+
+    async def _check_config_permissions(
+        self, session: boto3.Session
+    ) -> tuple[list[str], list[str]]:
+        """Check AWS Config permissions."""
+        permissions = [
+            "config:DescribeConfigRules",
+            "config:DescribeComplianceByConfigRule",
+        ]
+        try:
+            client = session.client("config", region_name="us-east-1")
+            await self._run_sync(client.describe_config_rules)
+            return (permissions, [])
+        except ClientError as e:
+            if "AccessDenied" in str(e):
+                return ([], permissions)
+            return (permissions, [])
+
+    async def _check_cloudtrail_permissions(
+        self, session: boto3.Session
+    ) -> tuple[list[str], list[str]]:
+        """Check CloudTrail permissions."""
+        permissions = [
+            "cloudtrail:DescribeTrails",
+            "cloudtrail:GetTrailStatus",
+            "cloudtrail:GetEventSelectors",
+        ]
+        try:
+            client = session.client("cloudtrail", region_name="us-east-1")
+            await self._run_sync(client.describe_trails)
+            return (permissions, [])
+        except ClientError as e:
+            if "AccessDenied" in str(e):
+                return ([], permissions)
+            return (permissions, [])
+
+    async def _check_lambda_permissions(
+        self, session: boto3.Session
+    ) -> tuple[list[str], list[str]]:
+        """Check Lambda permissions."""
+        permissions = [
+            "lambda:ListFunctions",
+            "lambda:ListEventSourceMappings",
+            "lambda:GetFunction",
+            "lambda:GetFunctionConfiguration",
+        ]
+        try:
+            client = session.client("lambda", region_name="us-east-1")
+            await self._run_sync(client.list_functions, MaxItems=1)
+            return (permissions, [])
+        except ClientError as e:
+            if "AccessDenied" in str(e):
+                return ([], permissions)
+            return (permissions, [])
 
     def generate_cloudformation_url(
         self, external_id: str, region: str = "us-east-1"

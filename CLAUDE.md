@@ -526,24 +526,33 @@ response = await self.run_sync(client.get_rule, Name=rule_name)
 | Component | Configuration | Notes |
 |-----------|---------------|-------|
 | Uvicorn | 2 workers | `--workers 2` in Dockerfile |
-| boto3 ThreadPool | 8 workers | `_boto3_executor` in `base.py` |
+| boto3 ThreadPool (scanners) | 8 workers | `_boto3_executor` in `base.py` |
+| boto3 ThreadPool (credentials) | 10 workers | `_credential_executor` in `aws_credential_service.py` |
 | Database pool | 20 connections | `pool_size=20, max_overflow=30` |
 | HTTP clients | Async (httpx) | All use `httpx.AsyncClient` |
 
-**Scanners Using `run_sync()` (Non-Blocking)**:
-- ✅ `eventbridge_scanner.py`
-- ✅ `config_scanner.py`
+**Services Using Thread Pool (Non-Blocking)**:
+- ✅ `eventbridge_scanner.py` - `run_sync()` for all boto3 calls
+- ✅ `config_scanner.py` - `run_sync()` for all boto3 calls
+- ✅ `aws_credential_service.py` - `_run_sync()` for all boto3 calls, 8 permission checks run in parallel
+- ✅ `region_discovery_service.py` - Already uses `run_in_executor()` for all boto3 calls
 
-**Services Still Using Blocking boto3 (Potential Improvement)**:
+**aws_credential_service.py Optimisation** (December 2025):
+- Added dedicated thread pool (`_credential_executor`, 10 workers)
+- STS assume_role runs in thread pool via `assume_role_async()`
+- All 8 permission checks run IN PARALLEL via `asyncio.gather()`:
+  - CloudWatch Logs, CloudWatch Alarms, EventBridge, GuardDuty
+  - Security Hub, Config, CloudTrail, Lambda
+- Expected speedup: ~8x faster credential validation (was sequential, now parallel)
+
+**Services Still Using Blocking boto3 (Low Priority)**:
 
 | Service | Blocking Calls | Impact | Priority |
 |---------|----------------|--------|----------|
-| `aws_credential_service.py` | 8 sequential API calls in `validate_permissions()` | Blocks during account setup | Medium |
 | `email_service.py` | `client.send_email()` | Blocks during email sends | Low |
-| `region_discovery_service.py` | Multiple EC2/GuardDuty/CloudWatch calls | Blocks during region discovery | Medium |
 | Other scanners (CloudWatch, GuardDuty, SecurityHub, Lambda) | Various | Already in thread pool via scan context | Low |
 
-**Recommendation**: If credential validation or region discovery causes timeouts, wrap their boto3 calls using `asyncio.run_in_executor()` with the shared `_boto3_executor` from `base.py`.
+**Note**: All medium-priority services have been optimised. Remaining services have minimal impact.
 
 ### Observability (Future)
 
