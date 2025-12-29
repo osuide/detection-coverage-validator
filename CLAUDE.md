@@ -498,6 +498,52 @@ The following optimisations are documented for future implementation when needed
 - Redis cache module added (`app/core/cache.py`) with framework ID caching
 - HTTP cache headers added to compliance framework endpoints (1 hour TTL)
 - In-memory metrics collector (`app/core/metrics.py`) for real-time admin dashboard stats
+- ECS task resources doubled to 1024 CPU, 2048 MB (commit `3d6f98f`)
+
+### Async Event Loop & Threading (December 2025)
+
+**Problem Solved**: 504 Gateway Timeouts during scans caused by synchronous boto3 calls blocking the asyncio event loop.
+
+**Root Cause**: boto3 is synchronous. When AWS API calls run in an `async def` function, they block the entire event loop, preventing HTTP requests from being processed. This caused requests to queue up and timeout after 60 seconds.
+
+**Solution Implemented** (commit `775c812`):
+- Added `run_sync()` helper method to `BaseScanner` that offloads boto3 calls to a `ThreadPoolExecutor` (8 workers)
+- Updated EventBridge and Config scanners to use `run_sync()` for all AWS API calls
+
+**Usage Pattern**:
+```python
+# BLOCKING - Don't do this in async functions
+response = client.list_event_buses()
+
+# NON-BLOCKING - Use this pattern instead
+response = await self.run_sync(client.list_event_buses)
+
+# With arguments:
+response = await self.run_sync(client.get_rule, Name=rule_name)
+```
+
+**Current Threading Configuration**:
+| Component | Configuration | Notes |
+|-----------|---------------|-------|
+| Uvicorn | 2 workers | `--workers 2` in Dockerfile |
+| boto3 ThreadPool | 8 workers | `_boto3_executor` in `base.py` |
+| Database pool | 20 connections | `pool_size=20, max_overflow=30` |
+| HTTP clients | Async (httpx) | All use `httpx.AsyncClient` |
+
+**Scanners Using `run_sync()` (Non-Blocking)**:
+- ✅ `eventbridge_scanner.py`
+- ✅ `config_scanner.py`
+
+**Services Still Using Blocking boto3 (Potential Improvement)**:
+
+| Service | Blocking Calls | Impact | Priority |
+|---------|----------------|--------|----------|
+| `aws_credential_service.py` | 8 sequential API calls in `validate_permissions()` | Blocks during account setup | Medium |
+| `email_service.py` | `client.send_email()` | Blocks during email sends | Low |
+| `region_discovery_service.py` | Multiple EC2/GuardDuty/CloudWatch calls | Blocks during region discovery | Medium |
+| Other scanners (CloudWatch, GuardDuty, SecurityHub, Lambda) | Various | Already in thread pool via scan context | Low |
+
+**Recommendation**: If credential validation or region discovery causes timeouts, wrap their boto3 calls using `asyncio.run_in_executor()` with the shared `_boto3_executor` from `base.py`.
 
 ### Observability (Future)
 
