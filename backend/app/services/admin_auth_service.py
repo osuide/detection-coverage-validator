@@ -154,6 +154,7 @@ class AdminAuthService:
         # instead of blocking login entirely (which creates a chicken-and-egg problem)
         mfa_setup_required = not requires_mfa and settings.environment not in (
             "development",
+            "test",
         )
 
         if mfa_setup_required:
