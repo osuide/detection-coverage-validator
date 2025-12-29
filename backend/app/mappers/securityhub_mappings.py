@@ -342,10 +342,30 @@ def get_techniques_for_cspm_control(
 
     techniques = []
 
-    # Normalise control ID: S3.1 -> s3.1
+    # Normalise control ID: S3.1 -> s3.1, CIS.3.2 -> cis.3.2
     normalised_id = control_id.lower().replace("-", ".")
 
-    # Try FSBP first (most comprehensive coverage)
+    # Check if this is a CIS-specific control ID (e.g., CIS.3.2, cis.1.11)
+    # These need to be looked up directly in CIS_BENCHMARK_MAPPINGS
+    if normalised_id.startswith("cis."):
+        # CIS control ID format: cis.X.Y -> look up as "cis.X.Y"
+        cis_key = normalised_id  # Already in correct format: cis.3.2
+        if cis_key in CIS_BENCHMARK_MAPPINGS:
+            techniques.extend(CIS_BENCHMARK_MAPPINGS[cis_key])
+            logger.debug(
+                "cspm_control_cis_match",
+                control_id=control_id,
+                cis_key=cis_key,
+                techniques=techniques,
+            )
+            # Deduplicate and return early
+            seen: dict[str, float] = {}
+            for tech_id, conf in techniques:
+                if tech_id not in seen or conf > seen[tech_id]:
+                    seen[tech_id] = conf
+            return list(seen.items())
+
+    # Try FSBP first (most comprehensive coverage for service-based IDs)
     fsbp_key = f"fsbp.{normalised_id}"
     found_fsbp = fsbp_key in FSBP_MAPPINGS
     if found_fsbp:
