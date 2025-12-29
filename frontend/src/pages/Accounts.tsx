@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Cloud, Plus, Trash2, Play, RefreshCw, Link, CheckCircle2, AlertTriangle, Settings, Clock, Globe, MapPin, Calendar } from 'lucide-react'
 import { Link as RouterLink } from 'react-router-dom'
@@ -73,14 +73,35 @@ export default function Accounts() {
   // Feedback message for scan status
   const [scanFeedback, setScanFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
+  // Track consecutive poll failures per scan (for silent retry on transient errors)
+  const pollFailures = useRef<Record<string, number>>({})
+
+  // Helper to detect transient errors (network, 504, etc.) that should be retried silently
+  const isTransientError = (error: unknown): boolean => {
+    if (!error || typeof error !== 'object') return false
+    const err = error as { code?: string; response?: { status?: number } }
+    // Network errors (CORS blocked due to 504, connection refused, etc.)
+    if (err.code === 'ERR_NETWORK' || err.code === 'ECONNABORTED') return true
+    // Gateway timeout (504), bad gateway (502), service unavailable (503)
+    const status = err.response?.status
+    if (status && status >= 500) return true
+    return false
+  }
+
+  // Maximum silent retries before showing error
+  const MAX_SILENT_RETRIES = 5
+
   // Poll active scans for completion
   const pollActiveScan = useCallback(async (accountId: string, scanId: string) => {
     try {
       const scan = await scansApi.get(scanId)
+      // Reset failure count on success
+      pollFailures.current[scanId] = 0
       setScanProgress(prev => ({ ...prev, [scanId]: scan }))
 
       if (scan.status === 'completed') {
-        // Scan completed successfully
+        // Scan completed successfully - clean up tracking
+        delete pollFailures.current[scanId]
         setActiveScans(prev => {
           const next = { ...prev }
           delete next[accountId]
@@ -101,7 +122,8 @@ export default function Accounts() {
         })
         setTimeout(() => setScanFeedback(null), 5000)
       } else if (scan.status === 'failed') {
-        // Scan failed
+        // Scan failed - clean up tracking
+        delete pollFailures.current[scanId]
         setActiveScans(prev => {
           const next = { ...prev }
           delete next[accountId]
@@ -120,7 +142,23 @@ export default function Accounts() {
       }
       // If still running/pending, polling continues via useEffect
     } catch (error) {
-      console.error('Failed to poll scan status:', error)
+      // Track consecutive failures
+      const failures = (pollFailures.current[scanId] || 0) + 1
+      pollFailures.current[scanId] = failures
+
+      // For transient errors (network, 504), silently continue polling
+      if (isTransientError(error) && failures < MAX_SILENT_RETRIES) {
+        // Silently retry - don't log or show error yet
+        return
+      }
+
+      // After max retries or for non-transient errors, log and potentially show error
+      if (failures >= MAX_SILENT_RETRIES) {
+        // Only log after multiple failures to avoid console spam
+        console.warn(`Poll failed ${failures} times for scan ${scanId}, continuing...`)
+      }
+      // Note: We don't stop polling - the scan may still complete
+      // The polling will stop naturally when the scan completes or fails on the server side
     }
   }, [queryClient])
 
