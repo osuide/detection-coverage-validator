@@ -106,6 +106,10 @@ class AuthContext:
 
         M3: Uses consistent string comparison with normalised UUID format.
         """
+        # API keys have org-level access (can access all accounts in their org)
+        if self.api_key:
+            return True
+
         if not self.membership:
             return False
 
@@ -135,9 +139,14 @@ def get_allowed_account_filter(auth: AuthContext) -> Optional[list[UUID]]:
 
     Returns:
         - None if user is admin/owner OR allowed_account_ids is not set (full access)
+        - None if API key (org-level access)
         - Empty list if no membership (no access)
         - List of UUIDs if user has restricted access
     """
+    # API keys have org-level access (can access all accounts in their org)
+    if auth.api_key:
+        return None
+
     if not auth.membership:
         return []  # No membership = no access
 

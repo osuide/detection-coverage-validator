@@ -7,6 +7,7 @@ Tests cover:
 4. Cache is cleaned up after scan completion
 """
 
+import hashlib
 import uuid
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
@@ -18,6 +19,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.cloud_account import CloudAccount, CloudProvider
 from app.models.scan import Scan, ScanStatus
+
+
+def _make_global_hash(provider: str, account_id: str) -> str:
+    """Create global account hash for fraud prevention."""
+    return hashlib.sha256(f"{provider}:{account_id}".encode()).hexdigest()
 
 
 @pytest_asyncio.fixture
@@ -32,6 +38,7 @@ async def test_cloud_account(
         name="Test AWS Account",
         provider=CloudProvider.AWS,
         account_id="123456789012",
+        global_account_hash=_make_global_hash("aws", "123456789012"),
         is_active=True,
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),

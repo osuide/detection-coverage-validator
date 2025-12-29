@@ -3,6 +3,7 @@
 These tests verify that authorization controls are properly enforced.
 """
 
+import hashlib
 import pytest
 import pytest_asyncio
 import uuid
@@ -24,6 +25,11 @@ from app.models.billing import AccountTier, Subscription
 from app.models.schedule import ScanSchedule, ScheduleFrequency
 from app.models.scan import Scan, ScanStatus
 from app.services.auth_service import AuthService
+
+
+def _make_global_hash(provider: str, account_id: str) -> str:
+    """Create global account hash for fraud prevention."""
+    return hashlib.sha256(f"{provider}:{account_id}".encode()).hexdigest()
 
 
 # ============================================================================
@@ -66,6 +72,7 @@ class TestCrossTenantIDOR:
             name="Account A",
             provider="aws",
             account_id="111111111111",
+            global_account_hash=_make_global_hash("aws", "111111111111"),
             created_at=datetime.now(timezone.utc),
         )
         db_session.add(account_a)
@@ -113,6 +120,7 @@ class TestCrossTenantIDOR:
             name="Account B",
             provider="aws",
             account_id="222222222222",
+            global_account_hash=_make_global_hash("aws", "222222222222"),
             created_at=datetime.now(timezone.utc),
         )
         db_session.add(account_b)
@@ -169,14 +177,15 @@ class TestCrossTenantIDOR:
             "account_b": account_b,
         }
 
-    async def _get_token(self, client: AsyncClient, email: str) -> str:
-        """Helper to get auth token."""
-        response = await client.post(
-            "/api/v1/auth/login",
-            json={"email": email, "password": "Password123!"},
+    def _generate_token(self, user: User, org: Organization) -> str:
+        """Generate auth token directly without hitting login endpoint.
+
+        This avoids rate limiting issues when running multiple tests.
+        """
+        return AuthService.generate_access_token(
+            user_id=user.id,
+            organization_id=org.id,
         )
-        assert response.status_code == 200, f"Login failed: {response.text}"
-        return response.json()["access_token"]
 
     @pytest.mark.asyncio
     async def test_cannot_list_other_org_gaps(
@@ -185,8 +194,8 @@ class TestCrossTenantIDOR:
         """User B cannot list gaps for Org A's cloud account."""
         setup = two_orgs_setup
 
-        # Login as User B
-        token = await self._get_token(client, setup["user_b"].email)
+        # Generate token for User B (org B)
+        token = self._generate_token(setup["user_b"], setup["org_b"])
 
         # Try to list gaps for Org A's account
         response = await client.get(
@@ -205,7 +214,7 @@ class TestCrossTenantIDOR:
         """User B cannot acknowledge a gap in Org A's account."""
         setup = two_orgs_setup
 
-        token = await self._get_token(client, setup["user_b"].email)
+        token = self._generate_token(setup["user_b"], setup["org_b"])
 
         response = await client.post(
             f"/api/v1/gaps/T1078/acknowledge?cloud_account_id={setup['account_a'].id}",
@@ -223,7 +232,7 @@ class TestCrossTenantIDOR:
         """User B cannot accept risk for a gap in Org A's account."""
         setup = two_orgs_setup
 
-        token = await self._get_token(client, setup["user_b"].email)
+        token = self._generate_token(setup["user_b"], setup["org_b"])
 
         response = await client.post(
             f"/api/v1/gaps/T1078/accept-risk?cloud_account_id={setup['account_a'].id}",
@@ -242,7 +251,7 @@ class TestCrossTenantIDOR:
         """User A can manage gaps in their own org."""
         setup = two_orgs_setup
 
-        token = await self._get_token(client, setup["user_a"].email)
+        token = self._generate_token(setup["user_a"], setup["org_a"])
 
         # List gaps - should work
         response = await client.get(
@@ -266,7 +275,7 @@ class TestCognitoStateValidation:
     async def test_token_exchange_requires_state(self, client: AsyncClient):
         """Token exchange without state should fail with 422."""
         response = await client.post(
-            "/api/v1/cognito/token",
+            "/api/v1/auth/cognito/token",
             json={
                 "code": "test-code",
                 "redirect_uri": "http://localhost:3000/callback",
@@ -287,7 +296,7 @@ class TestCognitoStateValidation:
     async def test_token_exchange_rejects_invalid_state(self, client: AsyncClient):
         """Token exchange with invalid state should fail with 401."""
         response = await client.post(
-            "/api/v1/cognito/token",
+            "/api/v1/auth/cognito/token",
             json={
                 "code": "test-code",
                 "redirect_uri": "http://localhost:3000/callback",
@@ -343,6 +352,7 @@ class TestAPIKeyScopeEnforcement:
             name="Test Account",
             provider="aws",
             account_id="123456789012",
+            global_account_hash=_make_global_hash("aws", "123456789012"),
             created_at=datetime.now(timezone.utc),
         )
         db_session.add(cloud_account)
@@ -367,7 +377,8 @@ class TestAPIKeyScopeEnforcement:
             id=uuid.uuid4(),
             cloud_account_id=cloud_account.id,
             status=ScanStatus.RUNNING,
-            scan_type="full",
+            regions=["eu-west-2"],
+            detection_types=[],
             created_at=datetime.now(timezone.utc),
         )
         db_session.add(scan)
@@ -615,6 +626,13 @@ class TestAPIKeyScopeEnforcement:
     # Role enforcement tests (activate/deactivate/run-now require ADMIN/OWNER)
     # -------------------------------------------------------------------------
 
+    def _generate_member_token(self, setup: dict) -> str:
+        """Generate token for member user without hitting login endpoint."""
+        return AuthService.generate_access_token(
+            user_id=setup["member_user"].id,
+            organization_id=setup["org"].id,
+        )
+
     @pytest.mark.asyncio
     async def test_activate_schedule_requires_admin_role(
         self, client: AsyncClient, api_key_setup
@@ -622,13 +640,8 @@ class TestAPIKeyScopeEnforcement:
         """MEMBER role cannot activate schedules even with write:schedules scope."""
         setup = api_key_setup
 
-        # Login as member user
-        response = await client.post(
-            "/api/v1/auth/login",
-            json={"email": setup["member_user"].email, "password": "Password123!"},
-        )
-        assert response.status_code == 200
-        token = response.json()["access_token"]
+        # Generate token for member user
+        token = self._generate_member_token(setup)
 
         # Try to activate schedule
         response = await client.post(
@@ -646,13 +659,8 @@ class TestAPIKeyScopeEnforcement:
         """MEMBER role cannot deactivate schedules."""
         setup = api_key_setup
 
-        # Login as member user
-        response = await client.post(
-            "/api/v1/auth/login",
-            json={"email": setup["member_user"].email, "password": "Password123!"},
-        )
-        assert response.status_code == 200
-        token = response.json()["access_token"]
+        # Generate token for member user
+        token = self._generate_member_token(setup)
 
         # Try to deactivate schedule
         response = await client.post(
@@ -670,13 +678,8 @@ class TestAPIKeyScopeEnforcement:
         """MEMBER role cannot trigger run-now."""
         setup = api_key_setup
 
-        # Login as member user
-        response = await client.post(
-            "/api/v1/auth/login",
-            json={"email": setup["member_user"].email, "password": "Password123!"},
-        )
-        assert response.status_code == 200
-        token = response.json()["access_token"]
+        # Generate token for member user
+        token = self._generate_member_token(setup)
 
         # Try to run schedule now
         response = await client.post(
@@ -704,12 +707,7 @@ class TestAccountLevelACL:
     @pytest_asyncio.fixture
     async def acl_setup(self, db_session: AsyncSession):
         """Create org with multiple accounts and users with different ACL restrictions."""
-        import hashlib
         from app.models.detection import Detection, DetectionType, DetectionStatus
-
-        def make_global_hash(provider: str, account_id: str) -> str:
-            """Create global account hash for fraud prevention."""
-            return hashlib.sha256(f"{provider}:{account_id}".encode()).hexdigest()
 
         # Create organisation
         org = Organization(
@@ -741,7 +739,7 @@ class TestAccountLevelACL:
             name="Account A",
             provider="aws",
             account_id="111111111111",
-            global_account_hash=make_global_hash("aws", "111111111111"),
+            global_account_hash=_make_global_hash("aws", "111111111111"),
             created_at=datetime.now(timezone.utc),
         )
         account_b = CloudAccount(
@@ -750,7 +748,7 @@ class TestAccountLevelACL:
             name="Account B",
             provider="aws",
             account_id="222222222222",
-            global_account_hash=make_global_hash("aws", "222222222222"),
+            global_account_hash=_make_global_hash("aws", "222222222222"),
             created_at=datetime.now(timezone.utc),
         )
         account_c = CloudAccount(
@@ -759,7 +757,7 @@ class TestAccountLevelACL:
             name="Account C",
             provider="aws",
             account_id="333333333333",
-            global_account_hash=make_global_hash("aws", "333333333333"),
+            global_account_hash=_make_global_hash("aws", "333333333333"),
             created_at=datetime.now(timezone.utc),
         )
         db_session.add_all([account_a, account_b, account_c])
