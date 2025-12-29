@@ -22,45 +22,32 @@ def upgrade() -> None:
     """Delete all detection data to allow fresh scan."""
     conn = op.get_bind()
 
+    # Get list of existing tables to avoid errors for non-existent tables
+    inspector = sa.inspect(conn)
+    existing_tables = set(inspector.get_table_names())
+
+    def safe_delete(table_name: str, description: str) -> None:
+        """Delete from table only if it exists."""
+        if table_name in existing_tables:
+            result = conn.execute(sa.text(f"DELETE FROM {table_name}"))
+            print(f"Deleted {result.rowcount} {description}")
+        else:
+            print(f"Table '{table_name}' does not exist, skipping")
+
     # Delete scan-related data first (FK constraints point TO scans table)
     # These must be deleted/nullified before scans can be deleted
+    safe_delete("coverage_snapshots", "coverage snapshots")
+    safe_delete("coverage_gaps", "coverage gaps")
+    safe_delete("coverage_history", "coverage history records")
 
-    # 1. Delete coverage snapshots (FK to scans)
-    result = conn.execute(sa.text("DELETE FROM coverage_snapshots"))
-    print(f"Deleted {result.rowcount} coverage snapshots")
+    # Delete detection-related data (order matters due to FK constraints)
+    safe_delete("detection_evaluation_alerts", "detection evaluation alerts")
+    safe_delete("detection_evaluation_history", "detection evaluation history records")
+    safe_delete("detection_mappings", "detection mappings")
+    safe_delete("detections", "detections")
 
-    # 2. Delete coverage gaps (FK to scans)
-    result = conn.execute(sa.text("DELETE FROM coverage_gaps"))
-    print(f"Deleted {result.rowcount} coverage gaps")
-
-    # 3. Delete coverage history (FK to scans with SET NULL, but clean anyway)
-    result = conn.execute(sa.text("DELETE FROM coverage_history"))
-    print(f"Deleted {result.rowcount} coverage history records")
-
-    # Now delete detection-related data (order matters due to FK constraints)
-    # 4. Delete detection evaluation alerts
-    result = conn.execute(sa.text("DELETE FROM detection_evaluation_alerts"))
-    print(f"Deleted {result.rowcount} detection evaluation alerts")
-
-    # 5. Delete detection evaluation history (FK to scans with SET NULL)
-    result = conn.execute(sa.text("DELETE FROM detection_evaluation_history"))
-    print(f"Deleted {result.rowcount} detection evaluation history records")
-
-    # 6. Delete detection mappings (FK to detections)
-    result = conn.execute(sa.text("DELETE FROM detection_mappings"))
-    print(f"Deleted {result.rowcount} detection mappings")
-
-    # 7. Delete detections
-    result = conn.execute(sa.text("DELETE FROM detections"))
-    print(f"Deleted {result.rowcount} detections")
-
-    # 8. Delete scans (now safe - all FK references cleared)
-    result = conn.execute(sa.text("DELETE FROM scans"))
-    print(f"Deleted {result.rowcount} scans")
-
-    # 9. Delete scan usage records to reset limits
-    result = conn.execute(sa.text("DELETE FROM scan_usage"))
-    print(f"Deleted {result.rowcount} scan usage records")
+    # Delete scans (now safe - all FK references cleared)
+    safe_delete("scans", "scans")
 
     print("\nCleanup complete! Run a fresh scan to populate data.")
 
