@@ -283,6 +283,10 @@ resource "aws_lb" "main" {
   security_groups    = [aws_security_group.alb.id]
   subnets            = var.public_subnet_ids
 
+  # Idle timeout - how long to keep connections open waiting for data
+  # Default is 60s, keeping it explicit for clarity
+  idle_timeout = 60
+
   enable_deletion_protection = var.environment == "prod"
 
   tags = {
@@ -297,6 +301,14 @@ resource "aws_lb_target_group" "main" {
   protocol    = "HTTP"
   vpc_id      = var.vpc_id
   target_type = "ip"
+
+  # Reduce deregistration delay from default 300s to 30s
+  # This speeds up deployments and reduces 504s during target draining
+  deregistration_delay = 30
+
+  # Give new targets 30 seconds to warm up before receiving full traffic
+  # This helps prevent 504s when new tasks are starting
+  slow_start = 30
 
   health_check {
     enabled             = true
