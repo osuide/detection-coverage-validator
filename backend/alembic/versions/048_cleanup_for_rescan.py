@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = "048_cleanup_rescan"
-down_revision = "047_add_user_webauthn"
+down_revision = "047_add_webauthn"
 branch_labels = None
 depends_on = None
 
