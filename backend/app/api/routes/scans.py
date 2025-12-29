@@ -9,12 +9,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.database import get_db
-from app.core.security import AuthContext, get_auth_context, require_scope
+from app.core.security import (
+    AuthContext,
+    get_auth_context,
+    require_scope,
+    get_allowed_account_filter,
+)
 from app.core.cache import get_cached_scan_status
 from app.models.scan import Scan, ScanStatus
 from app.models.cloud_account import CloudAccount
 from app.schemas.scan import ScanCreate, ScanResponse, ScanListResponse
-from app.services.scan_service import ScanService
+from app.services.scan_service import execute_scan_background
 from app.services.scan_limit_service import ScanLimitService
 
 router = APIRouter()
@@ -37,6 +42,13 @@ async def list_scans(
 
     API keys require 'read:scans' scope.
     """
+    # Security: Get allowed accounts for ACL filtering
+    allowed_accounts = get_allowed_account_filter(auth)
+
+    # If user has restricted access with empty list, return empty result
+    if allowed_accounts is not None and len(allowed_accounts) == 0:
+        return ScanListResponse(items=[], total=0, page=1, page_size=limit)
+
     # Security: Check account-level ACL if filtering by specific account
     if cloud_account_id and not auth.can_access_account(cloud_account_id):
         raise HTTPException(
@@ -49,8 +61,14 @@ async def list_scans(
         .join(CloudAccount, Scan.cloud_account_id == CloudAccount.id)
         .where(CloudAccount.organization_id == auth.organization_id)
     )
+
+    # Security: Apply ACL filter when no specific account requested
     if cloud_account_id:
         query = query.where(Scan.cloud_account_id == cloud_account_id)
+    elif allowed_accounts is not None:
+        # Restricted user without specific account - filter to allowed accounts
+        query = query.where(Scan.cloud_account_id.in_(allowed_accounts))
+
     if status:
         query = query.where(Scan.status == status)
 
@@ -60,8 +78,13 @@ async def list_scans(
         .join(CloudAccount, Scan.cloud_account_id == CloudAccount.id)
         .where(CloudAccount.organization_id == auth.organization_id)
     )
+
+    # Security: Apply same ACL filter to count query
     if cloud_account_id:
         count_query = count_query.where(Scan.cloud_account_id == cloud_account_id)
+    elif allowed_accounts is not None:
+        count_query = count_query.where(Scan.cloud_account_id.in_(allowed_accounts))
+
     if status:
         count_query = count_query.where(Scan.status == status)
 
@@ -151,9 +174,9 @@ async def create_scan(
     await db.flush()
     await db.refresh(scan)
 
-    # Start scan in background
-    scan_service = ScanService(db)
-    background_tasks.add_task(scan_service.execute_scan, scan.id)
+    # Start scan in background with its own database session
+    # This prevents holding the request's DB connection during the long-running scan
+    background_tasks.add_task(execute_scan_background, scan.id, auth.organization_id)
 
     return scan
 
@@ -175,39 +198,81 @@ async def get_scan(
     Performance: For active scans (pending/running), this endpoint first checks
     Redis cache to avoid database queries during frequent polling. The scan
     service updates Redis after each status change.
+
+    When organization_id is present in the cache (added after account is fetched
+    during scan execution), ownership can be verified without a database query.
     """
     # Try Redis cache first for fast polling during active scans
     cached = await get_cached_scan_status(str(scan_id))
     if cached:
-        # Verify the cached scan belongs to the user's organization
-        # by checking cloud_account ownership
         cloud_account_id = cached.get("cloud_account_id")
+        cached_org_id = cached.get("organization_id")
+
         if cloud_account_id:
-            result = await db.execute(
-                select(CloudAccount.id).where(
-                    CloudAccount.id == UUID(cloud_account_id),
-                    CloudAccount.organization_id == auth.organization_id,
+            # If organization_id is in cache, verify ownership without DB query
+            if cached_org_id:
+                if UUID(cached_org_id) != auth.organization_id:
+                    # Not owned by this organization - fall through to DB query
+                    # (don't reveal scan exists via 403)
+                    pass
+                else:
+                    # Ownership verified via cache - check account-level ACL
+                    if not auth.can_access_account(UUID(cloud_account_id)):
+                        raise HTTPException(
+                            status_code=403,
+                            detail="Access denied to this cloud account",
+                        )
+                    # Parse datetime strings back to datetime objects for response
+                    if cached.get("started_at"):
+                        cached["started_at"] = datetime.fromisoformat(
+                            cached["started_at"]
+                        )
+                    if cached.get("completed_at"):
+                        cached["completed_at"] = datetime.fromisoformat(
+                            cached["completed_at"]
+                        )
+                    if cached.get("created_at"):
+                        cached["created_at"] = datetime.fromisoformat(
+                            cached["created_at"]
+                        )
+                    # Convert string ID to UUID
+                    cached["id"] = UUID(cached["id"])
+                    cached["cloud_account_id"] = UUID(cached["cloud_account_id"])
+                    # Remove organization_id from response (not in ScanResponse schema)
+                    cached.pop("organization_id", None)
+                    return ScanResponse(**cached)
+            else:
+                # Legacy cache entry without organization_id - verify via DB
+                result = await db.execute(
+                    select(CloudAccount.id).where(
+                        CloudAccount.id == UUID(cloud_account_id),
+                        CloudAccount.organization_id == auth.organization_id,
+                    )
                 )
-            )
-            if result.scalar_one_or_none():
-                # Security: Check account-level ACL
-                if not auth.can_access_account(UUID(cloud_account_id)):
-                    raise HTTPException(
-                        status_code=403, detail="Access denied to this cloud account"
-                    )
-                # Parse datetime strings back to datetime objects for response
-                if cached.get("started_at"):
-                    cached["started_at"] = datetime.fromisoformat(cached["started_at"])
-                if cached.get("completed_at"):
-                    cached["completed_at"] = datetime.fromisoformat(
-                        cached["completed_at"]
-                    )
-                if cached.get("created_at"):
-                    cached["created_at"] = datetime.fromisoformat(cached["created_at"])
-                # Convert string ID to UUID
-                cached["id"] = UUID(cached["id"])
-                cached["cloud_account_id"] = UUID(cached["cloud_account_id"])
-                return ScanResponse(**cached)
+                if result.scalar_one_or_none():
+                    # Security: Check account-level ACL
+                    if not auth.can_access_account(UUID(cloud_account_id)):
+                        raise HTTPException(
+                            status_code=403,
+                            detail="Access denied to this cloud account",
+                        )
+                    # Parse datetime strings back to datetime objects for response
+                    if cached.get("started_at"):
+                        cached["started_at"] = datetime.fromisoformat(
+                            cached["started_at"]
+                        )
+                    if cached.get("completed_at"):
+                        cached["completed_at"] = datetime.fromisoformat(
+                            cached["completed_at"]
+                        )
+                    if cached.get("created_at"):
+                        cached["created_at"] = datetime.fromisoformat(
+                            cached["created_at"]
+                        )
+                    # Convert string ID to UUID
+                    cached["id"] = UUID(cached["id"])
+                    cached["cloud_account_id"] = UUID(cached["cloud_account_id"])
+                    return ScanResponse(**cached)
 
     # Fall back to database query
     result = await db.execute(

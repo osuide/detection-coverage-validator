@@ -10,7 +10,12 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
-from app.core.security import AuthContext, get_auth_context, require_scope
+from app.core.security import (
+    AuthContext,
+    get_auth_context,
+    require_scope,
+    get_allowed_account_filter,
+)
 from app.models.cloud_account import CloudAccount
 from app.models.detection import Detection, DetectionType, DetectionStatus
 from app.models.mapping import DetectionMapping
@@ -99,6 +104,15 @@ async def list_detections(
 
     API keys require 'read:detections' scope.
     """
+    # Security: Get allowed accounts for ACL filtering
+    allowed_accounts = get_allowed_account_filter(auth)
+
+    # If user has restricted access with empty list, return empty result
+    if allowed_accounts is not None and len(allowed_accounts) == 0:
+        return DetectionListResponse(
+            items=[], total=0, page=1, page_size=limit, pages=0
+        )
+
     # Security: Check account-level ACL if filtering by specific account
     if cloud_account_id and not auth.can_access_account(cloud_account_id):
         raise HTTPException(
@@ -113,8 +127,13 @@ async def list_detections(
         .where(CloudAccount.organization_id == auth.organization_id)
     )
 
+    # Security: Apply ACL filter when no specific account requested
     if cloud_account_id:
         query = query.where(Detection.cloud_account_id == cloud_account_id)
+    elif allowed_accounts is not None:
+        # Restricted user without specific account - filter to allowed accounts
+        query = query.where(Detection.cloud_account_id.in_(allowed_accounts))
+
     if detection_type:
         query = query.where(Detection.detection_type == detection_type)
     if status:
@@ -130,8 +149,15 @@ async def list_detections(
         .join(CloudAccount, Detection.cloud_account_id == CloudAccount.id)
         .where(CloudAccount.organization_id == auth.organization_id)
     )
+
+    # Security: Apply same ACL filter to count query
     if cloud_account_id:
         count_query = count_query.where(Detection.cloud_account_id == cloud_account_id)
+    elif allowed_accounts is not None:
+        count_query = count_query.where(
+            Detection.cloud_account_id.in_(allowed_accounts)
+        )
+
     if detection_type:
         count_query = count_query.where(Detection.detection_type == detection_type)
     if status:
@@ -337,13 +363,34 @@ async def validate_detection(
     db: AsyncSession = Depends(get_db),
 ):
     """Validate a detection and update its health status."""
+    # Security: Fetch detection and verify ACL access
+    result = await db.execute(
+        select(Detection)
+        .join(CloudAccount, Detection.cloud_account_id == CloudAccount.id)
+        .where(
+            Detection.id == detection_id,
+            CloudAccount.organization_id == auth.organization_id,
+        )
+    )
+    detection = result.scalar_one_or_none()
+    if not detection:
+        raise HTTPException(status_code=404, detail="Detection not found")
+
+    # Security: Check account-level ACL
+    if not auth.can_access_account(detection.cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
+
     service = DetectionHealthService(db)
-    result = await service.validate_detection(detection_id, auth.organization_id)
+    validation_result = await service.validate_detection(
+        detection_id, auth.organization_id
+    )
 
-    if "error" in result:
-        raise HTTPException(status_code=404, detail=result["error"])
+    if "error" in validation_result:
+        raise HTTPException(status_code=404, detail=validation_result["error"])
 
-    return ValidationResponse(**result)
+    return ValidationResponse(**validation_result)
 
 
 @router.get("/{detection_id}/health", response_model=DetectionHealthResponse)
@@ -353,13 +400,34 @@ async def get_detection_health(
     db: AsyncSession = Depends(get_db),
 ):
     """Get current health status for a detection."""
-    service = DetectionHealthService(db)
-    result = await service.get_detection_health(detection_id, auth.organization_id)
-
-    if not result:
+    # Security: Fetch detection and verify ACL access
+    result = await db.execute(
+        select(Detection)
+        .join(CloudAccount, Detection.cloud_account_id == CloudAccount.id)
+        .where(
+            Detection.id == detection_id,
+            CloudAccount.organization_id == auth.organization_id,
+        )
+    )
+    detection = result.scalar_one_or_none()
+    if not detection:
         raise HTTPException(status_code=404, detail="Detection not found")
 
-    return DetectionHealthResponse(**result)
+    # Security: Check account-level ACL
+    if not auth.can_access_account(detection.cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
+
+    service = DetectionHealthService(db)
+    health_result = await service.get_detection_health(
+        detection_id, auth.organization_id
+    )
+
+    if not health_result:
+        raise HTTPException(status_code=404, detail="Detection not found")
+
+    return DetectionHealthResponse(**health_result)
 
 
 @router.post("/validate-all", response_model=BulkValidationResponse)
@@ -373,6 +441,22 @@ async def validate_all_detections(
     This is a synchronous operation that may take time for large numbers
     of detections. Consider using background tasks for production use.
     """
+    # Security: Get allowed accounts for ACL filtering
+    allowed_accounts = get_allowed_account_filter(auth)
+
+    # If user has restricted access with empty list, return empty result
+    if allowed_accounts is not None and len(allowed_accounts) == 0:
+        return BulkValidationResponse(
+            total=0, validated=0, healthy=0, degraded=0, broken=0, unknown=0, errors=[]
+        )
+
+    # Security: Restricted users must specify a cloud_account_id
+    if allowed_accounts is not None and cloud_account_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail="cloud_account_id is required for users with restricted account access",
+        )
+
     # Security: Check account-level ACL if filtering by specific account
     if cloud_account_id and not auth.can_access_account(cloud_account_id):
         raise HTTPException(
@@ -395,6 +479,27 @@ async def get_health_summary(
     db: AsyncSession = Depends(get_db),
 ):
     """Get health summary for all detections."""
+    # Security: Get allowed accounts for ACL filtering
+    allowed_accounts = get_allowed_account_filter(auth)
+
+    # If user has restricted access with empty list, return empty result
+    if allowed_accounts is not None and len(allowed_accounts) == 0:
+        return HealthSummaryResponse(
+            total_detections=0,
+            by_status={},
+            stale_count=0,
+            never_validated=0,
+            average_health_score=0.0,
+            overall_health="unknown",
+        )
+
+    # Security: Restricted users must specify a cloud_account_id
+    if allowed_accounts is not None and cloud_account_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail="cloud_account_id is required for users with restricted account access",
+        )
+
     # Security: Check account-level ACL if filtering by specific account
     if cloud_account_id and not auth.can_access_account(cloud_account_id):
         raise HTTPException(

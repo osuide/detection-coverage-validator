@@ -222,3 +222,124 @@ class TestAuthContextCanAccessAccount:
 
         # Query with lowercase - should still match
         assert auth.can_access_account(allowed_id) is True
+
+
+class TestACLFilteringBehavior:
+    """Tests for ACL filtering behavior in API layer (logic tests)."""
+
+    def test_restricted_user_empty_list_returns_no_access(self):
+        """User with empty allowed_account_ids should have no access."""
+        auth = AuthContext(
+            user=_create_mock_user(),
+            organization=_create_mock_org(),
+            membership=_create_mock_membership(UserRole.MEMBER, allowed_account_ids=[]),
+        )
+
+        allowed = get_allowed_account_filter(auth)
+        # Should return empty list (no access)
+        assert allowed is not None
+        assert len(allowed) == 0
+
+    def test_restricted_user_needs_specific_account_for_bulk(self):
+        """Restricted user should require cloud_account_id for bulk operations.
+
+        This tests the logic: if user has restricted access (allowed_accounts not None)
+        and doesn't provide a cloud_account_id, bulk operations should fail.
+        """
+        account_id = uuid4()
+        auth = AuthContext(
+            user=_create_mock_user(),
+            organization=_create_mock_org(),
+            membership=_create_mock_membership(
+                UserRole.MEMBER, allowed_account_ids=[str(account_id)]
+            ),
+        )
+
+        allowed = get_allowed_account_filter(auth)
+        # Should return list of allowed accounts
+        assert allowed is not None
+        assert len(allowed) == 1
+
+        # API logic: when allowed_accounts is not None and cloud_account_id is None,
+        # bulk endpoints should return 400 error
+        cloud_account_id = None
+        should_require_account = allowed is not None and cloud_account_id is None
+        assert should_require_account is True
+
+    def test_unrestricted_user_can_use_bulk_operations(self):
+        """Owner/admin can use bulk operations without specifying account."""
+        auth = AuthContext(
+            user=_create_mock_user(),
+            organization=_create_mock_org(),
+            membership=_create_mock_membership(UserRole.OWNER),
+        )
+
+        allowed = get_allowed_account_filter(auth)
+        # Should return None (unrestricted)
+        assert allowed is None
+
+        # API logic: when allowed_accounts is None, bulk operations work
+        cloud_account_id = None
+        should_require_account = allowed is not None and cloud_account_id is None
+        assert should_require_account is False
+
+    def test_member_null_acl_can_use_bulk_operations(self):
+        """Member with null ACL can use bulk operations."""
+        auth = AuthContext(
+            user=_create_mock_user(),
+            organization=_create_mock_org(),
+            membership=_create_mock_membership(
+                UserRole.MEMBER, allowed_account_ids=None
+            ),
+        )
+
+        allowed = get_allowed_account_filter(auth)
+        # Should return None (unrestricted)
+        assert allowed is None
+
+    def test_list_filtering_for_restricted_user(self):
+        """Restricted user list queries should be filtered to allowed accounts."""
+        account_a = uuid4()
+        account_b = uuid4()
+        auth = AuthContext(
+            user=_create_mock_user(),
+            organization=_create_mock_org(),
+            membership=_create_mock_membership(
+                UserRole.MEMBER, allowed_account_ids=[str(account_a), str(account_b)]
+            ),
+        )
+
+        allowed = get_allowed_account_filter(auth)
+        assert allowed is not None
+        assert account_a in allowed
+        assert account_b in allowed
+
+        # Random account should not be in allowed
+        account_c = uuid4()
+        assert account_c not in allowed
+
+    def test_can_access_account_integration_with_filter(self):
+        """Verify can_access_account and get_allowed_account_filter are consistent."""
+        account_a = uuid4()
+        account_b = uuid4()
+        account_c = uuid4()
+
+        auth = AuthContext(
+            user=_create_mock_user(),
+            organization=_create_mock_org(),
+            membership=_create_mock_membership(
+                UserRole.MEMBER, allowed_account_ids=[str(account_a), str(account_b)]
+            ),
+        )
+
+        allowed = get_allowed_account_filter(auth)
+
+        # Both methods should agree
+        assert auth.can_access_account(account_a) is True
+        assert auth.can_access_account(account_b) is True
+        assert auth.can_access_account(account_c) is False
+
+        # And filter should contain the same accounts
+        assert account_a in allowed
+        assert account_b in allowed
+        assert account_c not in allowed

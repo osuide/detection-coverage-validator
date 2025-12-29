@@ -10,7 +10,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, or_, func
 
 from app.core.database import get_db
-from app.core.security import AuthContext, get_auth_context, require_scope
+from app.core.security import (
+    AuthContext,
+    get_auth_context,
+    require_scope,
+    get_allowed_account_filter,
+)
 from app.models.coverage import CoverageSnapshot, OrgCoverageSnapshot
 from app.models.cloud_account import CloudAccount
 from app.models.cloud_organization import CloudOrganization
@@ -895,6 +900,20 @@ async def get_drift_alerts(
     if not auth.organization_id:
         raise HTTPException(status_code=401, detail="Organisation context required")
 
+    # Security: Get allowed accounts for ACL filtering
+    allowed_accounts = get_allowed_account_filter(auth)
+
+    # If user has restricted access with empty list, return empty result
+    if allowed_accounts is not None and len(allowed_accounts) == 0:
+        return DriftAlertsResponse(alerts=[], total=0)
+
+    # Security: Restricted users must specify a cloud_account_id
+    if allowed_accounts is not None and cloud_account_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail="cloud_account_id is required for users with restricted account access",
+        )
+
     # Security: Check account-level ACL if filtering by specific account
     if cloud_account_id and not auth.can_access_account(cloud_account_id):
         raise HTTPException(
@@ -925,6 +944,25 @@ async def acknowledge_drift_alert(
     if not auth.organization_id or not auth.user_id:
         raise HTTPException(status_code=401, detail="Authentication required")
 
+    # Security: Verify alert exists and user has access to its cloud account
+    from app.models.coverage import DriftAlert
+
+    result = await db.execute(
+        select(DriftAlert).where(
+            DriftAlert.id == alert_id,
+            DriftAlert.organization_id == auth.organization_id,
+        )
+    )
+    alert = result.scalar_one_or_none()
+    if not alert:
+        raise HTTPException(status_code=404, detail="Alert not found")
+
+    # Security: Check account-level ACL if alert is associated with a cloud account
+    if alert.cloud_account_id and not auth.can_access_account(alert.cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
+
     service = DriftDetectionService(db)
     success = await service.acknowledge_alert(
         alert_id, auth.organization_id, auth.user_id
@@ -949,6 +987,25 @@ async def get_drift_summary(
     """Get drift summary statistics for the organization."""
     if not auth.organization_id:
         raise HTTPException(status_code=401, detail="Organisation context required")
+
+    # Security: Get allowed accounts for ACL filtering
+    allowed_accounts = get_allowed_account_filter(auth)
+
+    # If user has restricted access with empty list, return empty result
+    if allowed_accounts is not None and len(allowed_accounts) == 0:
+        return DriftSummaryResponse(
+            unacknowledged_alerts={},
+            total_unacknowledged=0,
+            coverage_trend_7d=0.0,
+            snapshots_last_7d=0,
+        )
+
+    # Security: Restricted users must specify a cloud_account_id
+    if allowed_accounts is not None and cloud_account_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail="cloud_account_id is required for users with restricted account access",
+        )
 
     # Security: Check account-level ACL if filtering by specific account
     if cloud_account_id and not auth.can_access_account(cloud_account_id):
