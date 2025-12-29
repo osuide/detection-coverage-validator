@@ -92,7 +92,7 @@ async def list_audit_logs(
     ),
     auth: AuthContext = Depends(require_role(UserRole.OWNER, UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
-):
+) -> AuditLogListResponse:
     """
     List audit logs for the organization.
 
@@ -187,7 +187,7 @@ async def list_audit_logs(
 )
 async def list_action_types(
     auth: AuthContext = Depends(get_auth_context),
-):
+) -> dict:
     """List all available audit log action types."""
     actions = []
     for action in AuditLogAction:
@@ -210,7 +210,7 @@ async def list_action_types(
 async def get_audit_stats(
     auth: AuthContext = Depends(require_role(UserRole.OWNER, UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Get audit log statistics for the organization."""
     if not auth.organization_id:
         raise HTTPException(
@@ -328,7 +328,7 @@ async def get_audit_log(
     log_id: UUID,
     auth: AuthContext = Depends(require_role(UserRole.OWNER, UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Get a specific audit log entry."""
     if not auth.organization_id:
         raise HTTPException(

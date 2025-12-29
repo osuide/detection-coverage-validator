@@ -66,7 +66,7 @@ async def get_registration_options(
     body: WebAuthnRegistrationOptionsRequest,
     admin: AdminUser = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
-):
+) -> WebAuthnRegistrationOptionsResponse:
     """Start WebAuthn credential registration.
 
     Returns PublicKeyCredentialCreationOptions to pass to navigator.credentials.create()
@@ -96,7 +96,7 @@ async def verify_registration(
     body: WebAuthnRegistrationVerifyRequest,
     admin: AdminUser = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Complete WebAuthn credential registration.
 
     Verifies the credential and stores it for future authentication.
@@ -144,7 +144,7 @@ async def verify_registration(
 @router.get("/credentials", response_model=WebAuthnCredentialsListResponse)
 async def list_credentials(
     admin: AdminUser = Depends(get_current_admin),
-):
+) -> WebAuthnCredentialsListResponse:
     """List registered WebAuthn credentials."""
     credentials = admin.webauthn_credentials or []
 
@@ -166,7 +166,7 @@ async def delete_credential(
     body: WebAuthnDeleteRequest,
     admin: AdminUser = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
-):
+) -> None:
     """Delete a registered WebAuthn credential."""
     credentials = admin.webauthn_credentials or []
 

@@ -59,7 +59,7 @@ async def list_users(
     search: Optional[str] = None,
     admin: AdminUser = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
-):
+) -> UsersListResponse:
     """List all platform users with pagination and search."""
     # Build query
     query = select(User)
@@ -132,7 +132,7 @@ async def get_user(
     user_id: UUID,
     admin: AdminUser = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
-):
+) -> UserResponse:
     """Get user details."""
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
@@ -178,7 +178,7 @@ async def update_user_status(
     body: UserStatusRequest,
     admin: AdminUser = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Update user status (suspend/activate)."""
     # Check permissions
     if admin.role not in [

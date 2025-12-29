@@ -895,7 +895,7 @@ class ComplianceService:
                 by_cloud["cloud_detectable"].append(control_item)
 
         # Sort each group by priority then control_id
-        def sort_key(c):
+        def sort_key(c) -> None:
             priority_order = {"P1": 0, "P2": 1, "P3": 2, None: 3}
             return (priority_order.get(c.get("priority"), 3), c.get("control_id", ""))
 

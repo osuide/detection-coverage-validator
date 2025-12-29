@@ -93,7 +93,7 @@ async def admin_login(
     body: AdminLoginRequest,
     request: Request,
     db: AsyncSession = Depends(get_db),
-):
+) -> AdminLoginResponse:
     """Admin login endpoint.
 
     Step 1: Verify email/password
@@ -170,7 +170,7 @@ async def verify_mfa(
     body: AdminMFARequest,
     request: Request,
     db: AsyncSession = Depends(get_db),
-):
+) -> AdminTokenResponse:
     """Verify MFA code and issue tokens."""
     auth_service = get_admin_auth_service(db)
     ip_address = get_client_ip(request) or "unknown"
@@ -235,7 +235,7 @@ async def refresh_token(
     body: AdminRefreshRequest,
     request: Request,
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Refresh access token."""
     auth_service = get_admin_auth_service(db)
     ip_address = get_client_ip(request) or "unknown"
@@ -262,7 +262,7 @@ async def logout(
     request: Request,
     admin: AdminUser = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Logout and terminate session."""
     auth_service = get_admin_auth_service(db)
     ip_address = get_client_ip(request) or "unknown"
@@ -284,7 +284,7 @@ async def logout(
 @router.get("/me", response_model=AdminProfileResponse)
 async def get_current_admin_profile(
     admin: AdminUser = Depends(get_current_admin),
-):
+) -> AdminProfileResponse:
     """Get current admin profile."""
     return AdminProfileResponse(
         id=str(admin.id),
@@ -301,7 +301,7 @@ async def get_current_admin_profile(
 async def setup_mfa(
     admin: AdminUser = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
-):
+) -> AdminSetupMFAResponse:
     """Setup MFA for admin account."""
     if admin.mfa_enabled:
         raise HTTPException(
@@ -328,7 +328,7 @@ async def enable_mfa(
     body: AdminEnableMFARequest,
     admin: AdminUser = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Enable MFA after verifying TOTP code."""
     auth_service = get_admin_auth_service(db)
 
@@ -362,7 +362,7 @@ class AdminEnableMFAWithTokenRequest(BaseModel):
 async def setup_mfa_with_token(
     body: AdminSetupMFAWithTokenRequest,
     db: AsyncSession = Depends(get_db),
-):
+) -> AdminSetupMFAResponse:
     """Setup MFA for admin who hasn't configured MFA yet.
 
     This endpoint uses the setup_token from login response (when mfa_setup_required=true)
@@ -423,7 +423,7 @@ async def enable_mfa_with_token(
     body: AdminEnableMFAWithTokenRequest,
     request: Request,
     db: AsyncSession = Depends(get_db),
-):
+) -> AdminTokenResponse:
     """Enable MFA and complete login using setup token and TOTP code.
 
     After MFA is enabled, this endpoint returns access and refresh tokens
@@ -519,7 +519,7 @@ async def get_webauthn_auth_options(
     body: WebAuthnAuthOptionsRequest,
     request: Request,
     db: AsyncSession = Depends(get_db),
-):
+) -> WebAuthnAuthOptionsResponse:
     """Get WebAuthn authentication options for an admin.
 
     This starts the WebAuthn authentication flow. The admin provides their email,
@@ -602,7 +602,7 @@ async def verify_webauthn_auth(
     body: WebAuthnAuthVerifyRequest,
     request: Request,
     db: AsyncSession = Depends(get_db),
-):
+) -> AdminTokenResponse:
     """Complete WebAuthn authentication.
 
     Verifies the security key response and returns access/refresh tokens.

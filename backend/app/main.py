@@ -2,11 +2,13 @@
 
 import os
 import time
+from collections.abc import AsyncGenerator, Callable
 from contextlib import asynccontextmanager
 
 import uuid
 
 from fastapi import FastAPI, Request
+from starlette.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -70,7 +72,7 @@ class SecureLoggingMiddleware(BaseHTTPMiddleware):
         "/api/v1/credentials/aws",  # Contains role ARNs
     }
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
         start_time = time.time()
         logger = structlog.get_logger()
 
@@ -111,7 +113,7 @@ settings = get_settings()
 logger = structlog.get_logger()
 
 
-def run_migrations():
+def run_migrations() -> None:
     """Run database migrations on startup using subprocess."""
     import subprocess
 
@@ -137,7 +139,7 @@ def run_migrations():
         logger.warning("migrations_failed", error=str(e))
 
 
-def seed_mitre_data():
+def seed_mitre_data() -> None:
     """Seed MITRE ATT&CK data if not already present."""
     import json
     from uuid import uuid4
@@ -267,7 +269,7 @@ def seed_mitre_data():
         logger.warning("mitre_seed_failed", error=str(e))
 
 
-def seed_admin_user():
+def seed_admin_user() -> None:
     """Seed initial admin user for staging/production if not exists."""
     import bcrypt
     from sqlalchemy import create_engine, text
@@ -349,7 +351,7 @@ def seed_admin_user():
         logger.warning("admin_seed_failed", error=str(e))
 
 
-async def seed_compliance_data():
+async def seed_compliance_data() -> None:
     """Seed compliance framework data if not present.
 
     Set FORCE_RELOAD_COMPLIANCE=true to clear and reload all compliance data.
@@ -387,7 +389,7 @@ async def seed_compliance_data():
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan events."""
     # Startup
     logger.info("starting_application")
@@ -468,7 +470,7 @@ app = FastAPI(
 # Catches unhandled exceptions and returns generic error messages
 # to prevent information disclosure while logging full details server-side
 @app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
+async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """Catch unhandled exceptions and return generic error.
 
     Security: Prevents internal error details from being exposed to clients.
@@ -672,7 +674,7 @@ app.include_router(public_api_router, prefix="/api/v1")
 
 
 @app.get("/")
-async def root():
+async def root() -> dict[str, str]:
     """Root endpoint."""
     return {
         "name": settings.app_name,

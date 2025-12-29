@@ -1,7 +1,7 @@
 """API dependencies for authentication and authorization."""
 
 from functools import wraps
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, Request, status
@@ -128,7 +128,7 @@ def require_reauth(func: Callable) -> Callable:
     """
 
     @wraps(func)
-    async def wrapper(*args, **kwargs):
+    async def wrapper(*args: Any, **kwargs: Any) -> Any:
         request = kwargs.get("request")
         admin = kwargs.get("admin")
 

@@ -53,7 +53,7 @@ class OAuthStateStore:
         self._expiry_seconds = expiry_seconds
         self._last_cleanup = time.time()
 
-    def _cleanup(self):
+    def _cleanup(self) -> dict:
         """Remove expired states."""
         now = time.time()
         if now - self._last_cleanup < 60:  # Cleanup every minute
@@ -105,7 +105,7 @@ class GitHubTokenResponse(BaseModel):
 
 
 @router.get("/config")
-async def get_github_config():
+async def get_github_config() -> dict:
     """Get GitHub OAuth configuration."""
     return {
         "enabled": github_oauth_service.is_configured(),
@@ -142,7 +142,7 @@ async def exchange_github_token(
     body: GitHubTokenRequest,
     request: Request,
     db: AsyncSession = Depends(get_db),
-):
+) -> GitHubTokenResponse:
     """Exchange GitHub authorization code for tokens."""
     if not github_oauth_service.is_configured():
         raise HTTPException(

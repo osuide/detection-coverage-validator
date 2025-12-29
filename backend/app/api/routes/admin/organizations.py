@@ -78,7 +78,7 @@ async def list_organizations(
     is_active: Optional[bool] = None,
     admin: AdminUser = Depends(require_permission("org:read")),
     db: AsyncSession = Depends(get_db),
-):
+) -> OrganizationListResponse:
     """List all organizations with filtering and pagination."""
     # Build query
     query = select(Organization)
@@ -148,7 +148,7 @@ async def get_organization(
     org_id: UUID,
     admin: AdminUser = Depends(require_permission("org:read")),
     db: AsyncSession = Depends(get_db),
-):
+) -> OrganizationDetailResponse:
     """Get organization details."""
     result = await db.execute(select(Organization).where(Organization.id == org_id))
     org = result.scalar_one_or_none()
@@ -240,7 +240,7 @@ async def suspend_organization(
     body: SuspendOrgRequest,
     admin: AdminUser = Depends(require_permission("org:suspend")),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Suspend an organization."""
     result = await db.execute(select(Organization).where(Organization.id == org_id))
     org = result.scalar_one_or_none()
@@ -273,7 +273,7 @@ async def unsuspend_organization(
     org_id: UUID,
     admin: AdminUser = Depends(require_permission("org:suspend")),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Unsuspend an organization."""
     result = await db.execute(select(Organization).where(Organization.id == org_id))
     org = result.scalar_one_or_none()

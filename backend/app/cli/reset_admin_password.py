@@ -6,7 +6,7 @@ import sys
 import bcrypt
 
 
-async def reset_admin_password(email: str, new_password: str):
+async def reset_admin_password(email: str, new_password: str) -> None:
     """Reset an admin user's password."""
     from sqlalchemy import text
     from app.core.database import engine
@@ -51,7 +51,7 @@ async def reset_admin_password(email: str, new_password: str):
         return True
 
 
-def main():
+def main() -> None:
     if len(sys.argv) < 3:
         print("Usage: python -m app.cli.reset_admin_password <email> <new_password>")
         print(

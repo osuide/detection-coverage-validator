@@ -97,7 +97,7 @@ class FeatureStatusResponse(BaseModel):
 
 
 @router.get("/disclosure", response_model=DisclosureResponse)
-async def get_disclosure():
+async def get_disclosure() -> DisclosureResponse:
     """Get the disclosure information for code analysis feature.
 
     This endpoint is public and returns all the information users need
@@ -118,7 +118,7 @@ async def get_feature_status(
     cloud_account_id: UUID,
     auth_ctx: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Get the overall status of code analysis feature for an account.
 
     Returns whether the feature is available, consent status, and
@@ -187,7 +187,7 @@ async def give_consent(
     request: ConsentRequest,
     auth_ctx: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Give consent for code analysis on a cloud account.
 
     Requires:
@@ -303,7 +303,7 @@ async def revoke_consent(
     reason: Optional[str] = None,
     auth_ctx: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Revoke consent for code analysis.
 
     Users can revoke consent at any time. This will:
@@ -354,7 +354,7 @@ async def get_consent(
     cloud_account_id: UUID,
     auth_ctx: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Get current consent status for a cloud account."""
     org = auth_ctx.organization
 
@@ -385,7 +385,7 @@ async def get_consent(
 
 
 @router.get("/iam-policy")
-async def get_iam_policy():
+async def get_iam_policy() -> dict:
     """Get the IAM policy required for code analysis.
 
     Returns a ready-to-use IAM policy document that users can

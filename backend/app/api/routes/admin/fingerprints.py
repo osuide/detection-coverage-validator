@@ -117,7 +117,7 @@ def _fingerprint_to_response(fp: DeviceFingerprint) -> FingerprintResponse:
 async def get_fingerprint_stats(
     admin: AdminUser = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
-):
+) -> FingerprintStatsResponse:
     """Get fingerprint abuse statistics."""
     from datetime import timedelta, timezone
 
@@ -199,7 +199,7 @@ async def list_fingerprints(
     ),
     admin: AdminUser = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
-):
+) -> FingerprintsListResponse:
     """List fingerprints with pagination and filtering."""
     # Build query
     query = select(DeviceFingerprint)
@@ -251,7 +251,7 @@ async def list_suspicious_fingerprints(
     per_page: int = Query(20, ge=1, le=100),
     admin: AdminUser = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
-):
+) -> FingerprintsListResponse:
     """List suspicious fingerprints (abuse_score >= 50 or flagged)."""
     from sqlalchemy import or_
 
@@ -294,7 +294,7 @@ async def get_fingerprint_detail(
     fingerprint_id: UUID,
     admin: AdminUser = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
-):
+) -> FingerprintDetailResponse:
     """Get fingerprint details with associations."""
     # Get fingerprint
     result = await db.execute(
@@ -365,7 +365,7 @@ async def flag_fingerprint(
     body: FlagFingerprintRequest,
     admin: AdminUser = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Flag a fingerprint as suspicious/abusive."""
     # Check permissions
     if admin.role not in [
@@ -407,7 +407,7 @@ async def unflag_fingerprint(
     body: UnflagFingerprintRequest,
     admin: AdminUser = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Remove flag from a fingerprint."""
     # Check permissions
     if admin.role not in [

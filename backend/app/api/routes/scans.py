@@ -37,7 +37,7 @@ async def list_scans(
     limit: int = Query(20, ge=1, le=100),
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """List scan jobs.
 
     API keys require 'read:scans' scope.
@@ -114,7 +114,7 @@ async def create_scan(
     background_tasks: BackgroundTasks,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Create and start a new scan job.
 
     API keys require 'write:scans' scope.
@@ -190,7 +190,7 @@ async def get_scan(
     scan_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Get a specific scan job.
 
     API keys require 'read:scans' scope.
@@ -305,7 +305,7 @@ async def cancel_scan(
     scan_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Cancel a running scan.
 
     API keys require 'write:scans' scope.

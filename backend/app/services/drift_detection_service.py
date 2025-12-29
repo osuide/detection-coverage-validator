@@ -226,7 +226,7 @@ class DriftDetectionService:
         cloud_account_id: UUID,
         snapshot: CoverageHistory,
         drift_info: dict,
-    ):
+    ) -> None:
         """Create an alert for significant coverage drift."""
         # Get organization ID from account
         account_result = await self.db.execute(

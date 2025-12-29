@@ -981,7 +981,7 @@ TECHNIQUES = [
 ]
 
 
-def seed_mitre_sync():
+def seed_mitre_sync() -> None:
     """Seed MITRE data using synchronous database connection."""
     database_url = os.environ.get("DATABASE_URL", "").replace("+asyncpg", "")
     if not database_url:

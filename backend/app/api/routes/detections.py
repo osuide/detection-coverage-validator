@@ -99,7 +99,7 @@ async def list_detections(
     limit: int = Query(50, ge=1, le=500),
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """List detections with optional filters.
 
     API keys require 'read:detections' scope.
@@ -218,7 +218,7 @@ async def get_detection(
     detection_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> DetectionResponse:
     """Get a specific detection."""
     result = await db.execute(
         select(Detection)
@@ -272,7 +272,7 @@ async def get_detection_mappings(
     detection_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Get technique mappings for a detection.
 
     API keys require 'read:detections' scope.
@@ -331,7 +331,7 @@ async def delete_detection(
     detection_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> None:
     """Delete a detection."""
     result = await db.execute(
         select(Detection)
@@ -361,7 +361,7 @@ async def validate_detection(
     detection_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> ValidationResponse:
     """Validate a detection and update its health status."""
     # Security: Fetch detection and verify ACL access
     result = await db.execute(
@@ -398,7 +398,7 @@ async def get_detection_health(
     detection_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> DetectionHealthResponse:
     """Get current health status for a detection."""
     # Security: Fetch detection and verify ACL access
     result = await db.execute(
@@ -435,7 +435,7 @@ async def validate_all_detections(
     cloud_account_id: Optional[UUID] = None,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> BulkValidationResponse:
     """Validate all detections for the organization.
 
     This is a synchronous operation that may take time for large numbers
@@ -477,7 +477,7 @@ async def get_health_summary(
     cloud_account_id: Optional[UUID] = None,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> HealthSummaryResponse:
     """Get health summary for all detections."""
     # Security: Get allowed accounts for ACL filtering
     allowed_accounts = get_allowed_account_filter(auth)

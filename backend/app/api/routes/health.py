@@ -14,13 +14,13 @@ logger = structlog.get_logger()
 
 
 @router.get("/health")
-async def health_check():
+async def health_check() -> dict:
     """Basic health check."""
     return {"status": "healthy", "version": settings.app_version}
 
 
 @router.get("/health/ready")
-async def readiness_check(db: AsyncSession = Depends(get_db)):
+async def readiness_check(db: AsyncSession = Depends(get_db)) -> dict:
     """Readiness check including database connectivity."""
     try:
         await db.execute(text("SELECT 1"))

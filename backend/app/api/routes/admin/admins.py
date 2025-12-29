@@ -66,7 +66,7 @@ class ChangePasswordRequest(BaseModel):
 async def list_admins(
     admin: AdminUser = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
-):
+) -> AdminsListResponse:
     """List all admin users. Only super_admin can view."""
     # Check permissions - only super_admin can view admin list
     if admin.role != AdminRole.SUPER_ADMIN:
@@ -113,7 +113,7 @@ async def create_admin(
     body: CreateAdminRequest,
     admin: AdminUser = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
-):
+) -> AdminUserResponse:
     """Create a new admin user. Only super_admin can create."""
     # Check permissions
     if admin.role != AdminRole.SUPER_ADMIN:
@@ -166,7 +166,7 @@ async def update_admin_status(
     body: AdminStatusRequest,
     admin: AdminUser = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Update admin status (enable/disable). Only super_admin can modify."""
     # Check permissions
     if admin.role != AdminRole.SUPER_ADMIN:
@@ -223,7 +223,7 @@ async def change_admin_password(
     body: ChangePasswordRequest,
     admin: AdminUser = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Change admin password. Only super_admin can modify."""
     # Check permissions
     if admin.role != AdminRole.SUPER_ADMIN:

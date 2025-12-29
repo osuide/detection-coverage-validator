@@ -70,7 +70,7 @@ async def list_account_detections(
     page_size: int = Query(50, ge=1, le=200),
     ctx: APIKeyContext = Depends(get_api_key_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """List detections for a cloud account.
 
     Returns paginated list of discovered security detections
@@ -173,7 +173,7 @@ async def get_detection(
     response: Response,
     ctx: APIKeyContext = Depends(get_api_key_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> DetectionDetailResponse:
     """Get detection details.
 
     Returns full details of a specific detection including

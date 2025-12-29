@@ -328,7 +328,7 @@ async def login(
     response: Response,
     body: LoginRequest,
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """
     Authenticate user with email and password.
 
@@ -469,7 +469,7 @@ async def verify_mfa(
     response: Response,
     body: MFAVerifyRequest,
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Verify MFA code and complete login."""
     auth_service = AuthService(db)
     ip_address = get_client_ip(request)
@@ -578,7 +578,7 @@ async def signup(
     response: Response,
     body: SignupRequest,
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Register a new user and create their organization."""
     auth_service = AuthService(db)
     fingerprint_service = FingerprintService(db)
@@ -714,7 +714,7 @@ async def refresh_token(
     request: Request,
     body: RefreshRequest,
     db: AsyncSession = Depends(get_db),
-):
+) -> RefreshResponse:
     """Refresh access token using refresh token."""
     auth_service = AuthService(db)
     ip_address = get_client_ip(request)
@@ -746,7 +746,7 @@ async def refresh_session_cookie(
     _csrf: None = Depends(
         validate_csrf_token
     ),  # CSRF validation with constant-time comparison
-):
+) -> CookieRefreshResponse:
     """Refresh access token using httpOnly cookie.
 
     This is the secure version that reads the refresh token from an httpOnly
@@ -795,7 +795,7 @@ async def logout_session_cookie(
     current_user: Optional[User] = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_db),
     _csrf: None = Depends(validate_csrf_token),  # CSRF validation
-):
+) -> None:
     """Logout using httpOnly cookie-based session.
 
     Clears the httpOnly cookie and invalidates the session.
@@ -824,7 +824,7 @@ async def logout(
     body: RefreshRequest,
     current_user: Optional[User] = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_db),
-):
+) -> None:
     """Logout and invalidate the refresh token."""
     auth_service = AuthService(db)
     ip_address = get_client_ip(request)
@@ -849,7 +849,7 @@ async def forgot_password(
     request: Request,
     body: ForgotPasswordRequest,
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """
     Request password reset.
 
@@ -880,7 +880,7 @@ async def reset_password(
     request: Request,
     body: ResetPasswordRequest,
     db: AsyncSession = Depends(get_db),
-):
+) -> None:
     """Reset password using reset token.
 
     Enforces organisation password policy if the user belongs to an organisation
@@ -953,7 +953,7 @@ async def reset_password(
 @router.get("/me", response_model=UserResponse)
 async def get_me(
     auth: AuthContext = Depends(get_auth_context),
-):
+) -> UserResponse:
     """Get current user profile."""
     if not auth.user:
         raise HTTPException(
@@ -972,7 +972,7 @@ async def update_me(
     body: UserUpdateRequest,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> UserResponse:
     """Update current user profile."""
     if not auth.user:
         raise HTTPException(
@@ -1000,7 +1000,7 @@ async def change_password(
     body: ChangePasswordRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> None:
     """Change current user's password.
 
     Enforces organisation password policy if configured.
@@ -1054,7 +1054,7 @@ async def change_password(
 async def setup_mfa(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> MFASetupResponse:
     """Start MFA setup - returns secret and provisioning URI."""
     if current_user.mfa_enabled:
         raise HTTPException(
@@ -1081,7 +1081,7 @@ async def verify_mfa_setup(
     body: MFASetupRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> MFABackupCodesResponse:
     """Verify MFA code and enable MFA."""
     if current_user.mfa_enabled:
         raise HTTPException(
@@ -1119,7 +1119,7 @@ async def disable_mfa(
     request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> None:
     """Disable MFA for current user."""
     if not current_user.mfa_enabled:
         raise HTTPException(
@@ -1138,7 +1138,7 @@ async def disable_mfa(
 async def get_my_organizations(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> list[OrganizationResponse]:
     """Get organizations the current user belongs to."""
     auth_service = AuthService(db)
     organizations = await auth_service.get_user_organizations(current_user.id)
@@ -1151,7 +1151,7 @@ async def switch_organization(
     body: SwitchOrganizationRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> SwitchOrganizationResponse:
     """Switch to a different organization."""
     auth_service = AuthService(db)
 
@@ -1193,7 +1193,7 @@ async def get_my_sessions(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> list[SessionResponse]:
     """Get all active sessions for current user."""
     from sqlalchemy import select, and_
     from app.models.user import UserSession
@@ -1224,7 +1224,7 @@ async def revoke_session(
     session_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> None:
     """Revoke a specific session."""
     from sqlalchemy import select, and_
     from app.models.user import UserSession
@@ -1253,7 +1253,7 @@ async def revoke_session(
 async def revoke_all_sessions(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> None:
     """Revoke all sessions except current."""
     auth_service = AuthService(db)
     await auth_service.logout_all_sessions(current_user.id)
@@ -1269,7 +1269,7 @@ async def create_organization(
     body: OrganizationCreateRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Create a new organization."""
     auth_service = AuthService(db)
 
@@ -1293,7 +1293,7 @@ async def create_organization(
 async def check_slug_availability(
     slug: str,
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Check if an organization slug is available."""
     auth_service = AuthService(db)
     available = await auth_service.check_slug_available(slug)

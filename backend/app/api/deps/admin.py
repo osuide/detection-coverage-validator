@@ -129,7 +129,7 @@ def require_reauth(func: Callable) -> Callable:
     """
 
     @wraps(func)
-    async def wrapper(*args, **kwargs):
+    async def wrapper(*args, **kwargs) -> dict:
         request = kwargs.get("request")
         admin = kwargs.get("admin")
 

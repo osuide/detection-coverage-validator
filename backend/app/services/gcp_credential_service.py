@@ -9,7 +9,7 @@ Security Best Practices:
 """
 
 import json
-from typing import Optional
+from typing import Any, Optional
 
 from google.auth import impersonated_credentials
 from google.oauth2 import service_account
@@ -57,7 +57,7 @@ class GCPCredentialService:
         self._source_credentials = None
 
     @property
-    def source_credentials(self):
+    def source_credentials(self) -> None:
         """Get A13E's source credentials for impersonation.
 
         In production, these come from Workload Identity on GKE
@@ -73,7 +73,7 @@ class GCPCredentialService:
         self,
         target_service_account: str,
         lifetime: int = 3600,
-    ):
+    ) -> Any:
         """Get credentials by impersonating a target service account.
 
         This is the recommended approach - A13E's service account
@@ -93,7 +93,7 @@ class GCPCredentialService:
             lifetime=min(lifetime, 3600),
         )
 
-    def get_credentials_from_key(self, key_json: str):
+    def get_credentials_from_key(self, key_json: str) -> Any:
         """Get credentials from a service account key.
 
         WARNING: This is less secure than impersonation.
@@ -112,7 +112,7 @@ class GCPCredentialService:
             scopes=self.REQUIRED_SCOPES,
         )
 
-    def get_credentials(self, credential: CloudCredential):
+    def get_credentials(self, credential: CloudCredential) -> Any:
         """Get appropriate credentials for a CloudCredential.
 
         Args:

@@ -68,7 +68,7 @@ class AWSCredentialService:
         self._sts_client = None
 
     @property
-    def sts_client(self):
+    def sts_client(self) -> None:
         """Lazy load STS client."""
         if self._sts_client is None:
             self._sts_client = boto3.client("sts")
@@ -184,7 +184,7 @@ class AWSCredentialService:
         role_arn: str,
         external_id: str,
         region: str = "us-east-1",
-    ):
+    ) -> Any:
         """Get a boto3 client using assumed role credentials.
 
         Args:

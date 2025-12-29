@@ -172,7 +172,7 @@ class MITREEmbeddingsCache:
 
         return " ".join(filter(None, parts))
 
-    def _save_to_cache(self):
+    def _save_to_cache(self) -> None:
         """Save embeddings to cache files."""
         if not self._embeddings or not self._technique_metadata:
             return
@@ -198,7 +198,7 @@ class MITREEmbeddingsCache:
         except Exception as e:
             self.logger.error("cache_save_failed", error=str(e))
 
-    def invalidate(self):
+    def invalidate(self) -> None:
         """Invalidate the cache."""
         self._embeddings = None
         self._technique_metadata = None
@@ -243,7 +243,7 @@ class NLPMapper:
         self._technique_metadata: Optional[dict[str, dict]] = None
         self.logger = logger.bind(component="NLPMapper")
 
-    def initialize(self, techniques: list[dict]):
+    def initialize(self, techniques: list[dict]) -> None:
         """Initialize the mapper with MITRE techniques.
 
         Should be called once during application startup.
@@ -256,7 +256,7 @@ class NLPMapper:
             technique_count=len(self._embeddings) if self._embeddings else 0,
         )
 
-    def _get_model(self):
+    def _get_model(self) -> None:
         """Lazy load the sentence transformer model."""
         if self._model is None:
             try:

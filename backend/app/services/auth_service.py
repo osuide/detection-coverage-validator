@@ -715,7 +715,7 @@ class AuthService:
         details: Optional[dict] = None,
         success: bool = True,
         error_message: Optional[str] = None,
-    ):
+    ) -> None:
         """Log an audit event."""
         log = AuditLog(
             action=action,

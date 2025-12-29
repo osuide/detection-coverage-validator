@@ -60,7 +60,7 @@ class ValidationResult:
         severity: ValidationSeverity,
         code: str,
         details: Optional[dict[str, Any]] = None,
-    ):
+    ) -> Any:
         """Add a validation issue."""
         self.issues.append(
             ValidationIssue(

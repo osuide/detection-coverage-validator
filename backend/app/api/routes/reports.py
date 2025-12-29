@@ -76,7 +76,7 @@ async def download_coverage_csv(
     cloud_account_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Download coverage report as CSV.
 
     Requires paid subscription (Individual tier or higher).
@@ -121,7 +121,7 @@ async def download_gaps_csv(
     cloud_account_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Download gaps report as CSV.
 
     Requires paid subscription (Individual tier or higher).
@@ -165,7 +165,7 @@ async def download_detections_csv(
     cloud_account_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Download detections report as CSV.
 
     Requires paid subscription (Individual tier or higher).
@@ -211,7 +211,7 @@ async def download_executive_pdf(
     include_detections: bool = Query(False, description="Include detection details"),
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Download executive summary PDF report.
 
     Requires paid subscription (Individual tier or higher).
@@ -265,7 +265,7 @@ async def download_full_pdf(
     cloud_account_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Download full coverage PDF report with all sections.
 
     Requires paid subscription (Individual tier or higher).

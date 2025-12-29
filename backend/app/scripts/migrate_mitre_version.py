@@ -347,7 +347,7 @@ class MITREMigration:
         self,
         report: MigrationReport,
         new_techniques: list[dict],
-    ):
+    ) -> None:
         """Apply migration changes to database."""
         from app.models.mitre import Technique
         from app.models.detection_mapping import DetectionMapping
@@ -510,7 +510,7 @@ class MITREMigration:
         return "\n".join(lines)
 
 
-def main():
+def main() -> None:
     """CLI entry point for MITRE migration."""
     parser = argparse.ArgumentParser(description="MITRE ATT&CK version migration tool")
     parser.add_argument(

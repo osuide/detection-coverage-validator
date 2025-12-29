@@ -110,7 +110,7 @@ async def log_api_key_action(
 @router.get("/scopes")
 async def list_available_scopes(
     auth: AuthContext = Depends(get_auth_context),
-):
+) -> dict:
     """List all available API key scopes."""
     return {
         "scopes": AVAILABLE_SCOPES,
@@ -134,7 +134,7 @@ async def list_available_scopes(
 async def list_api_keys(
     auth: AuthContext = Depends(require_role(UserRole.OWNER, UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
-):
+) -> list[APIKeyResponse]:
     """List all API keys for the organization."""
     if not auth.organization_id:
         raise HTTPException(
@@ -177,7 +177,7 @@ async def create_api_key(
     body: APIKeyCreateRequest,
     auth: AuthContext = Depends(require_role(UserRole.OWNER, UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """
     Create a new API key.
 
@@ -271,7 +271,7 @@ async def get_api_key(
     key_id: UUID,
     auth: AuthContext = Depends(require_role(UserRole.OWNER, UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
-):
+) -> APIKeyResponse:
     """Get a specific API key's details."""
     if not auth.organization_id:
         raise HTTPException(
@@ -320,7 +320,7 @@ async def update_api_key(
     body: APIKeyUpdateRequest,
     auth: AuthContext = Depends(require_role(UserRole.OWNER, UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
-):
+) -> APIKeyResponse:
     """Update an API key's properties."""
     if not auth.organization_id:
         raise HTTPException(
@@ -389,7 +389,7 @@ async def revoke_api_key(
     key_id: UUID,
     auth: AuthContext = Depends(require_role(UserRole.OWNER, UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
-):
+) -> None:
     """Revoke an API key."""
     if not auth.organization_id:
         raise HTTPException(

@@ -54,7 +54,7 @@ class CognitoOAuthStateStore:
         self._expiry_seconds = expiry_seconds
         self._last_cleanup = time.time()
 
-    def _cleanup(self):
+    def _cleanup(self) -> dict:
         """Remove expired states."""
         now = time.time()
         if now - self._last_cleanup < 60:
@@ -62,7 +62,7 @@ class CognitoOAuthStateStore:
         self._last_cleanup = now
         self._states = {s: exp for s, exp in self._states.items() if exp > now}
 
-    def store_state(self, state: str):
+    def store_state(self, state: str) -> dict:
         """Store a state token."""
         self._cleanup()
         self._states[state] = time.time() + self._expiry_seconds
@@ -119,7 +119,7 @@ class SSOInitiateResponse(BaseModel):
 
 
 @router.get("/config", response_model=CognitoConfigResponse)
-async def get_cognito_config():
+async def get_cognito_config() -> CognitoConfigResponse:
     """Get Cognito configuration for frontend."""
     if not cognito_service.is_configured():
         return CognitoConfigResponse(configured=False)
@@ -199,7 +199,7 @@ async def exchange_cognito_token(
     request: Request,
     body: CognitoTokenRequest,
     db: AsyncSession = Depends(get_db),
-):
+) -> CognitoTokenResponse:
     """Exchange Cognito authorization code for app tokens."""
     if not cognito_service.is_configured():
         raise HTTPException(
@@ -468,7 +468,7 @@ async def exchange_cognito_token(
 async def list_linked_identities(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """List linked federated identities for current user."""
     result = await db.execute(
         select(FederatedIdentity).where(FederatedIdentity.user_id == user.id)
@@ -498,7 +498,7 @@ async def unlink_identity(
     provider: str,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Unlink a federated identity."""
     # Check if user has a password set (can't unlink last auth method)
     if not user.password_hash:

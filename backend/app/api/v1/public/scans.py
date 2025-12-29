@@ -76,7 +76,7 @@ async def create_scan(
     response: Response,
     ctx: APIKeyContext = Depends(get_api_key_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> ScanCreateResponse:
     """Trigger a new scan for a cloud account.
 
     Creates a new scan job that will discover security detections
@@ -164,7 +164,7 @@ async def list_account_scans(
     limit: int = Query(20, ge=1, le=100),
     ctx: APIKeyContext = Depends(get_api_key_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> ScansListResponse:
     """List scans for a cloud account.
 
     Returns most recent scans with optional status filtering.
@@ -235,7 +235,7 @@ async def get_scan(
     response: Response,
     ctx: APIKeyContext = Depends(get_api_key_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> ScanDetailResponse:
     """Get scan details and status.
 
     Returns full details of a specific scan including
@@ -283,7 +283,7 @@ async def get_scan_results(
     response: Response,
     ctx: APIKeyContext = Depends(get_api_key_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Get scan results summary.
 
     Returns a summary of detection changes from this scan.

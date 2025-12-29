@@ -42,7 +42,7 @@ async def list_schedules(
     limit: int = Query(20, ge=1, le=100),
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """List scan schedules.
 
     API keys require 'read:schedules' scope.
@@ -99,7 +99,7 @@ async def create_schedule(
     schedule_in: ScheduleCreate,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Create a new scan schedule.
 
     API keys require 'write:schedules' scope.
@@ -152,7 +152,7 @@ async def get_schedule(
     schedule_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Get a specific schedule.
 
     API keys require 'read:schedules' scope.
@@ -180,7 +180,7 @@ async def get_schedule_status(
     schedule_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Get schedule status including job information.
 
     API keys require 'read:schedules' scope.
@@ -215,7 +215,7 @@ async def update_schedule(
     schedule_in: ScheduleUpdate,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Update a schedule.
 
     API keys require 'write:schedules' scope.
@@ -256,7 +256,7 @@ async def delete_schedule(
     schedule_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> None:
     """Delete a schedule.
 
     API keys require 'write:schedules' scope.
@@ -293,7 +293,7 @@ async def activate_schedule(
     schedule_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Activate a schedule.
 
     API keys require 'write:schedules' scope.
@@ -334,7 +334,7 @@ async def deactivate_schedule(
     schedule_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Deactivate a schedule.
 
     API keys require 'write:schedules' scope.
@@ -376,7 +376,7 @@ async def run_schedule_now(
     schedule_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Trigger an immediate run of a schedule.
 
     API keys require 'write:schedules' scope.

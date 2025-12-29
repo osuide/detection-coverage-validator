@@ -50,7 +50,7 @@ class ConfigRulesScanner(BaseScanner):
 
         try:
             # Step 1: Collect all Config Rules (run in thread pool to avoid blocking)
-            def fetch_all_rules():
+            def fetch_all_rules() -> Any:
                 rules = []
                 paginator = client.get_paginator("describe_config_rules")
                 for page in paginator.paginate():
@@ -107,7 +107,7 @@ class ConfigRulesScanner(BaseScanner):
             return {}
 
         # Run the entire compliance fetch in thread pool to avoid blocking
-        def fetch_all_compliance():
+        def fetch_all_compliance() -> Any:
             compliance_map: dict[str, dict] = {}
 
             # Batch in groups of 25 (API limit)

@@ -108,7 +108,7 @@ async def list_settings(
     category: Optional[str] = None,
     admin: AdminUser = Depends(require_permission("settings:read")),
     db: AsyncSession = Depends(get_db),
-):
+) -> SettingListResponse:
     """List all platform settings.
 
     Secrets are masked - only shows if configured, not the actual value.
@@ -137,7 +137,7 @@ async def get_setting(
     key: str,
     admin: AdminUser = Depends(require_permission("settings:read")),
     db: AsyncSession = Depends(get_db),
-):
+) -> SettingResponse:
     """Get a single setting by key."""
     service = get_platform_settings_service(db)
     setting = await service.get_setting(key)
@@ -157,7 +157,7 @@ async def update_setting(
     request: Request,
     admin: AdminUser = Depends(require_permission("settings:write")),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Update a setting value.
 
     For secrets in billing/auth categories, requires super_admin role.
@@ -203,7 +203,7 @@ async def create_setting(
     request: Request,
     admin: AdminUser = Depends(require_permission("settings:write")),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Create a new setting.
 
     Requires super_admin for secrets in billing/auth categories.
@@ -252,7 +252,7 @@ async def delete_setting(
     reason: Optional[str] = None,
     admin: AdminUser = Depends(require_permission("settings:delete")),
     db: AsyncSession = Depends(get_db),
-):
+) -> None:
     """Delete a setting.
 
     Requires super_admin role.
@@ -286,7 +286,7 @@ async def delete_setting(
 async def get_stripe_config(
     admin: AdminUser = Depends(require_permission("settings:read")),
     db: AsyncSession = Depends(get_db),
-):
+) -> StripeConfigResponse:
     """Get Stripe configuration status."""
     service = get_platform_settings_service(db)
 
@@ -308,7 +308,7 @@ async def update_stripe_config(
     request: Request,
     admin: AdminUser = Depends(require_permission("settings:write")),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Update Stripe configuration.
 
     Requires super_admin role.
@@ -371,7 +371,7 @@ async def get_settings_audit(
     limit: int = 100,
     admin: AdminUser = Depends(require_permission("settings:audit")),
     db: AsyncSession = Depends(get_db),
-):
+) -> list[SettingAuditResponse]:
     """Get audit history for settings changes."""
     service = get_platform_settings_service(db)
     audits = await service.get_audit_history(key=key, limit=limit)
@@ -394,7 +394,7 @@ async def get_settings_audit(
 async def seed_default_settings(
     admin: AdminUser = Depends(require_permission("settings:write")),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Seed default platform settings.
 
     Creates default settings entries if they don't exist.
@@ -416,7 +416,7 @@ async def seed_default_settings(
 async def seed_mitre_data(
     admin: AdminUser = Depends(require_permission("settings:write")),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Seed MITRE ATT&CK tactics and techniques.
 
     Populates the database with MITRE ATT&CK framework data.
@@ -514,7 +514,7 @@ async def seed_compliance_data(
     force_reload: bool = False,
     admin: AdminUser = Depends(require_permission("settings:write")),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Seed or reload compliance framework data.
 
     Loads NIST 800-53 and CIS Controls v8 from JSON files.

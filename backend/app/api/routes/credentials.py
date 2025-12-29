@@ -144,7 +144,7 @@ async def get_setup_instructions(
     cloud_account_id: UUID,
     auth: AuthContext = Depends(require_role(UserRole.ADMIN, UserRole.OWNER)),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Get setup instructions for connecting a cloud account.
 
     Returns provider-specific instructions including:
@@ -261,7 +261,7 @@ async def create_aws_credential(
     body: AWSCredentialCreate,
     auth: AuthContext = Depends(require_role(UserRole.ADMIN, UserRole.OWNER)),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Create or update AWS credential with role ARN."""
     # Verify account belongs to org
     result = await db.execute(
@@ -335,7 +335,7 @@ async def create_gcp_credential(
     body: GCPCredentialCreate,
     auth: AuthContext = Depends(require_role(UserRole.ADMIN, UserRole.OWNER)),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Create or update GCP credential."""
     # Verify account belongs to org
     result = await db.execute(
@@ -418,7 +418,7 @@ async def validate_credential(
     request: Request,
     auth: AuthContext = Depends(require_role(UserRole.ADMIN, UserRole.OWNER)),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Validate a credential and check permissions."""
     # Get credential
     result = await db.execute(
@@ -490,7 +490,7 @@ async def get_credential(
         require_role(UserRole.MEMBER, UserRole.ADMIN, UserRole.OWNER)
     ),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Get credential status for a cloud account."""
     result = await db.execute(
         select(CloudCredential).where(
@@ -514,7 +514,7 @@ async def delete_credential(
     request: Request,
     auth: AuthContext = Depends(require_role(UserRole.ADMIN, UserRole.OWNER)),
     db: AsyncSession = Depends(get_db),
-):
+) -> None:
     """Delete a credential."""
     result = await db.execute(
         select(CloudCredential).where(
@@ -611,25 +611,25 @@ def _read_template(relative_path: str) -> str:
 
 
 @router.get("/templates/aws/cloudformation", response_class=PlainTextResponse)
-async def get_aws_cloudformation_template():
+async def get_aws_cloudformation_template() -> dict:
     """Download AWS CloudFormation template."""
     return _read_template("aws_cloudformation.yaml")
 
 
 @router.get("/templates/aws/terraform", response_class=PlainTextResponse)
-async def get_aws_terraform_template():
+async def get_aws_terraform_template() -> dict:
     """Download AWS Terraform module."""
     return _read_template("terraform/aws/main.tf")
 
 
 @router.get("/templates/gcp/terraform", response_class=PlainTextResponse)
-async def get_gcp_terraform_template():
+async def get_gcp_terraform_template() -> dict:
     """Download GCP Terraform module."""
     return _read_template("terraform/gcp/main.tf")
 
 
 @router.get("/templates/gcp/setup-script", response_class=PlainTextResponse)
-async def get_gcp_setup_script():
+async def get_gcp_setup_script() -> dict:
     """Download GCP setup shell script."""
     return _read_template("gcp_setup.sh")
 

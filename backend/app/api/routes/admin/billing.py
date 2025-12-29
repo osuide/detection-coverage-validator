@@ -59,7 +59,7 @@ TIER_PRICING = {
 async def get_billing_stats(
     admin: AdminUser = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
-):
+) -> BillingStatsResponse:
     """Get billing statistics."""
     now = datetime.now(timezone.utc)
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -118,7 +118,7 @@ async def list_subscriptions(
     limit: int = Query(20, ge=1, le=100),
     admin: AdminUser = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
-):
+) -> SubscriptionsListResponse:
     """List recent subscriptions."""
     query = (
         select(Subscription, Organization)

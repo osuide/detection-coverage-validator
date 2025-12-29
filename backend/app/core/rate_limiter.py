@@ -53,7 +53,7 @@ class InMemoryRateLimiter:
         """Hash the API key for privacy."""
         return hashlib.sha256(api_key.encode()).hexdigest()[:16]
 
-    def _clean_old_requests(self, key: str, window: timedelta):
+    def _clean_old_requests(self, key: str, window: timedelta) -> None:
         """Remove requests outside the time window."""
         if key not in self._requests:
             return

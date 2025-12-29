@@ -103,7 +103,7 @@ def fix_template(template_path: Path) -> bool:
     return False
 
 
-def main():
+def main() -> None:
     """Fix all templates with duplicate issues."""
     templates_dir = Path(__file__).parent.parent
 

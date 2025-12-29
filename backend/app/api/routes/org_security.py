@@ -140,7 +140,7 @@ def _domain_to_response(domain: VerifiedDomain) -> VerifiedDomainResponse:
 async def get_security_settings(
     auth: AuthContext = Depends(require_role(UserRole.ADMIN, UserRole.OWNER)),
     db: AsyncSession = Depends(get_db),
-):
+) -> SecuritySettingsResponse:
     """Get organization security settings."""
     result = await db.execute(
         select(OrganizationSecuritySettings).where(
@@ -167,7 +167,7 @@ async def update_security_settings(
     body: SecuritySettingsUpdateRequest,
     auth: AuthContext = Depends(require_role(UserRole.OWNER)),
     db: AsyncSession = Depends(get_db),
-):
+) -> SecuritySettingsResponse:
     """Update organization security settings. Owner only."""
     result = await db.execute(
         select(OrganizationSecuritySettings).where(
@@ -222,7 +222,7 @@ async def update_security_settings(
 async def list_domains(
     auth: AuthContext = Depends(require_role(UserRole.ADMIN, UserRole.OWNER)),
     db: AsyncSession = Depends(get_db),
-):
+) -> List[VerifiedDomainResponse]:
     """List organization's verified domains."""
     result = await db.execute(
         select(VerifiedDomain)
@@ -244,7 +244,7 @@ async def add_domain(
     body: AddDomainRequest,
     auth: AuthContext = Depends(require_role(UserRole.OWNER)),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Add a domain for verification. Owner only."""
     # Normalize domain
     domain = body.domain.lower().strip()
@@ -312,7 +312,7 @@ async def verify_domain(
     domain_id: UUID,
     auth: AuthContext = Depends(require_role(UserRole.OWNER)),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Check domain verification status."""
     result = await db.execute(
         select(VerifiedDomain).where(
@@ -362,7 +362,7 @@ async def confirm_domain_verification(
     domain_id: UUID,
     auth: AuthContext = Depends(require_role(UserRole.OWNER)),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Confirm domain verification (check DNS and mark verified)."""
     result = await db.execute(
         select(VerifiedDomain).where(
@@ -431,7 +431,7 @@ async def update_domain(
     body: UpdateDomainRequest,
     auth: AuthContext = Depends(require_role(UserRole.OWNER)),
     db: AsyncSession = Depends(get_db),
-):
+) -> VerifiedDomainResponse:
     """Update domain settings."""
     result = await db.execute(
         select(VerifiedDomain).where(
@@ -483,7 +483,7 @@ async def remove_domain(
     domain_id: UUID,
     auth: AuthContext = Depends(require_role(UserRole.OWNER)),
     db: AsyncSession = Depends(get_db),
-):
+) -> None:
     """Remove a domain."""
     result = await db.execute(
         select(VerifiedDomain).where(

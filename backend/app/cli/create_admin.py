@@ -2,12 +2,15 @@
 
 import asyncio
 import sys
+from typing import Any
 from uuid import uuid4
 
 import bcrypt
 
 
-async def create_super_admin(email: str, password: str, full_name: str = "Super Admin"):
+async def create_super_admin(
+    email: str, password: str, full_name: str = "Super Admin"
+) -> Any:
     """Create a super admin user directly in the database."""
     from sqlalchemy import text
     from app.core.database import engine
@@ -57,7 +60,7 @@ async def create_super_admin(email: str, password: str, full_name: str = "Super 
         return admin_id
 
 
-def main():
+def main() -> None:
     if len(sys.argv) < 3:
         print("Usage: python -m app.cli.create_admin <email> <password> [full_name]")
         print(

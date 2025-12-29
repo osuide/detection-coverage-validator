@@ -110,7 +110,7 @@ async def create_custom_detection(
     request: CustomDetectionCreate,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Upload a single custom detection rule.
 
     The detection will be automatically mapped to MITRE ATT&CK techniques
@@ -166,7 +166,7 @@ async def upload_batch(
     format: CustomDetectionFormat = Form(...),
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Upload a batch of detection rules from a file.
 
     Supports SIGMA YAML files (multiple documents), YARA files
@@ -232,7 +232,7 @@ async def list_custom_detections(
     offset: int = Query(0, ge=0),
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> CustomDetectionListResponse:
     """List custom detections with optional filtering."""
     if not auth.organization_id:
         raise HTTPException(status_code=401, detail="Organisation context required")
@@ -279,7 +279,7 @@ async def get_mapping_summary(
     cloud_account_id: Optional[UUID] = None,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> MappingSummaryResponse:
     """Get summary statistics for custom detection mappings."""
     if not auth.organization_id:
         raise HTTPException(status_code=401, detail="Organisation context required")
@@ -295,7 +295,7 @@ async def get_custom_detection(
     detection_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> CustomDetectionDetailResponse:
     """Get details of a specific custom detection."""
     if not auth.organization_id:
         raise HTTPException(status_code=401, detail="Organisation context required")
@@ -341,7 +341,7 @@ async def update_mapping(
     request: MappingUpdate,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Manually update the MITRE technique mapping for a detection.
 
     Use this when automatic mapping was unsuccessful or needs refinement.
@@ -391,7 +391,7 @@ async def delete_custom_detection(
     detection_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> None:
     """Delete a custom detection.
 
     API keys require 'write:detections' scope.
@@ -409,7 +409,7 @@ async def delete_custom_detection(
 
 
 @router.get("/formats/supported")
-async def get_supported_formats():
+async def get_supported_formats() -> dict:
     """Get list of supported detection rule formats."""
     return {
         "formats": [

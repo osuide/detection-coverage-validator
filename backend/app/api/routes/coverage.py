@@ -146,7 +146,7 @@ async def get_coverage(
     cloud_account_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Get the latest coverage snapshot for a cloud account."""
     # Security: Check account-level ACL
     if not auth.can_access_account(cloud_account_id):
@@ -310,7 +310,7 @@ async def get_coverage_history(
     days: int = Query(30, ge=1, le=365),
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Get coverage history for trend analysis."""
     # Security: Check account-level ACL
     if not auth.can_access_account(cloud_account_id):
@@ -382,7 +382,7 @@ async def get_technique_coverage(
     ),
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Get per-technique coverage details for heatmap visualization.
 
     By default, only returns techniques relevant to cloud platforms (AWS, GCP, Azure,
@@ -492,7 +492,7 @@ async def calculate_coverage(
     cloud_account_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Manually trigger coverage calculation."""
     # Security: Check account-level ACL
     if not auth.can_access_account(cloud_account_id):
@@ -633,7 +633,7 @@ async def get_org_coverage(
     cloud_organization_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Get the latest aggregate coverage for a cloud organisation."""
     # Verify org exists and belongs to user's organization
     org_result = await db.execute(
@@ -732,7 +732,7 @@ async def calculate_org_coverage(
     cloud_organization_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Manually trigger aggregate coverage calculation for an organisation."""
     # Verify org exists and belongs to user's organization
     org_result = await db.execute(
@@ -822,7 +822,7 @@ async def get_drift_history(
     days: int = Query(30, ge=1, le=365),
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Get coverage drift history for trend analysis."""
     if not auth.organization_id:
         raise HTTPException(status_code=401, detail="Organisation context required")
@@ -852,7 +852,7 @@ async def record_drift_snapshot(
     cloud_account_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Manually record a coverage snapshot for drift tracking."""
     # Security: Check account-level ACL
     if not auth.can_access_account(cloud_account_id):
@@ -895,7 +895,7 @@ async def get_drift_alerts(
     days: int = Query(30, ge=1, le=365),
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Get coverage drift alerts for the organization."""
     if not auth.organization_id:
         raise HTTPException(status_code=401, detail="Organisation context required")
@@ -939,7 +939,7 @@ async def acknowledge_drift_alert(
     alert_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Acknowledge a coverage drift alert."""
     if not auth.organization_id or not auth.user_id:
         raise HTTPException(status_code=401, detail="Authentication required")
@@ -983,7 +983,7 @@ async def get_drift_summary(
     cloud_account_id: Optional[UUID] = None,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Get drift summary statistics for the organization."""
     if not auth.organization_id:
         raise HTTPException(status_code=401, detail="Organisation context required")

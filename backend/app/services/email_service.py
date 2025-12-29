@@ -117,7 +117,7 @@ class EmailService:
         self.enabled = os.environ.get("SES_ENABLED", "true").lower() == "true"
 
     @property
-    def client(self):
+    def client(self) -> None:
         """Lazy-load SES client."""
         if self._client is None:
             region = os.environ.get("AWS_REGION", "us-east-1")

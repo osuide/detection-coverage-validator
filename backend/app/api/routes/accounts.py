@@ -59,7 +59,7 @@ async def list_accounts(
     is_active: Optional[bool] = None,
     auth: AuthContext = Depends(get_auth_context),  # Security: Require authentication
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """
     List cloud accounts for the authenticated user's organisation.
 
@@ -104,7 +104,7 @@ async def create_account(
     account_in: CloudAccountCreate,
     auth: AuthContext = Depends(require_role(UserRole.OWNER, UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """
     Create a new cloud account.
 
@@ -208,7 +208,7 @@ async def get_account(
     account_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Get a specific cloud account.
 
     API keys require 'read:accounts' scope.
@@ -242,7 +242,7 @@ async def update_account(
     account_in: CloudAccountUpdate,
     auth: AuthContext = Depends(require_role(UserRole.OWNER, UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """
     Update a cloud account.
 
@@ -281,7 +281,7 @@ async def delete_account(
     account_id: UUID,
     auth: AuthContext = Depends(require_role(UserRole.OWNER, UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
-):
+) -> None:
     """
     Delete a cloud account and all associated data.
 
@@ -403,7 +403,7 @@ async def delete_account(
 async def list_available_regions(
     provider: CloudProvider,
     auth: AuthContext = Depends(get_auth_context),
-):
+) -> AvailableRegionsResponse:
     """
     Get list of available regions for a cloud provider.
 
@@ -422,7 +422,7 @@ async def discover_regions(
     account_id: UUID,
     auth: AuthContext = Depends(require_role(UserRole.OWNER, UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
-):
+) -> DiscoverRegionsResponse:
     """
     Discover active regions for a cloud account.
 

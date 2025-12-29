@@ -48,7 +48,7 @@ async def list_audit_logs(
     admin_email: Optional[str] = None,
     admin: AdminUser = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
-):
+) -> AuditLogsListResponse:
     """List admin audit logs with filtering."""
     # Build query
     query = select(AdminAuditLog)

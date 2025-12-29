@@ -137,7 +137,7 @@ class ImplementationPlanResponse(BaseModel):
 )
 async def list_available_techniques(
     auth: AuthContext = Depends(get_auth_context),
-):
+) -> dict:
     """
     List all MITRE ATT&CK techniques that have remediation templates.
 
@@ -156,7 +156,7 @@ async def get_technique_remediation(
     technique_id: str,
     db: AsyncSession = Depends(get_db),
     auth: AuthContext = Depends(get_auth_context),
-):
+) -> dict:
     """
     Get complete remediation guidance for a MITRE ATT&CK technique.
 
@@ -223,7 +223,7 @@ async def get_strategy_details(
     technique_id: str,
     strategy_id: str,
     auth: AuthContext = Depends(get_auth_context),
-):
+) -> dict:
     """
     Get detailed implementation guidance for a specific detection strategy.
 
@@ -272,7 +272,7 @@ async def get_strategy_details(
 async def get_techniques_by_tactic(
     tactic_id: str,
     auth: AuthContext = Depends(get_auth_context),
-):
+) -> dict:
     """
     Get all techniques with remediation templates for a specific MITRE tactic.
     """
@@ -291,7 +291,7 @@ async def get_quick_wins(
     limit: int = Query(10, ge=1, le=50),
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """
     Get quick-win detection strategies for a cloud account's coverage gaps.
 
@@ -343,7 +343,7 @@ async def get_implementation_plan(
     ),
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """
     Generate a prioritised implementation plan for addressing coverage gaps.
 

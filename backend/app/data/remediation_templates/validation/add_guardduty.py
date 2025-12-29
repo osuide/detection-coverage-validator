@@ -329,7 +329,7 @@ def add_guardduty_to_template(template_path: Path, info: dict) -> bool:
     return True
 
 
-def main():
+def main() -> None:
     """Add GuardDuty to templates that need it."""
     templates_dir = Path(__file__).parent.parent
 

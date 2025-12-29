@@ -186,7 +186,7 @@ async def get_subscription(
         require_role(UserRole.MEMBER, UserRole.VIEWER, UserRole.ADMIN, UserRole.OWNER)
     ),
     db: AsyncSession = Depends(get_db),
-):
+) -> SubscriptionResponse:
     """Get current subscription info."""
     info = await stripe_service.get_subscription_info(db, auth.organization_id)
     return SubscriptionResponse(**info)
@@ -198,7 +198,7 @@ async def get_scan_status(
         require_role(UserRole.MEMBER, UserRole.VIEWER, UserRole.ADMIN, UserRole.OWNER)
     ),
     db: AsyncSession = Depends(get_db),
-):
+) -> ScanStatusResponse:
     """Get scan usage status for the current organisation.
 
     Returns weekly scan usage and limits for FREE tier users.
@@ -224,7 +224,7 @@ async def get_scan_status(
 
 
 @router.get("/pricing", response_model=PricingResponse)
-async def get_pricing():
+async def get_pricing() -> PricingResponse:
     """Get pricing info with new simplified tier structure."""
     from app.models.billing import (
         STRIPE_PRICES,
@@ -333,7 +333,9 @@ async def get_pricing():
 
 
 @router.post("/pricing/calculate", response_model=PricingCalculatorResponse)
-async def calculate_pricing(body: PricingCalculatorRequest):
+async def calculate_pricing(
+    body: PricingCalculatorRequest,
+) -> PricingCalculatorResponse:
     """Calculate pricing for a given number of accounts and tier."""
     from app.models.billing import AccountTier, calculate_account_cost
 
@@ -432,7 +434,7 @@ async def create_checkout(
     body: CreateCheckoutRequest,
     auth: AuthContext = Depends(require_role(UserRole.OWNER)),
     db: AsyncSession = Depends(get_db),
-):
+) -> CheckoutResponse:
     """Create a Stripe Checkout session for subscription."""
     if not settings.stripe_secret_key:
         raise HTTPException(
@@ -487,7 +489,7 @@ async def create_portal(
     body: PortalRequest,
     auth: AuthContext = Depends(require_role(UserRole.OWNER)),
     db: AsyncSession = Depends(get_db),
-):
+) -> PortalResponse:
     """Create a Stripe Customer Portal session for managing subscription."""
     if not settings.stripe_secret_key:
         raise HTTPException(
@@ -535,7 +537,7 @@ async def list_invoices(
     auth: AuthContext = Depends(require_role(UserRole.ADMIN, UserRole.OWNER)),
     db: AsyncSession = Depends(get_db),
     limit: int = 10,
-):
+) -> list[InvoiceResponse]:
     """List recent invoices."""
     invoices = await stripe_service.get_invoices(db, auth.organization_id, limit)
     return [InvoiceResponse(**inv) for inv in invoices]
@@ -545,7 +547,7 @@ async def list_invoices(
 async def stripe_webhook(
     request: Request,
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Handle Stripe webhook events."""
     from app.models.billing import ProcessedWebhookEvent
 

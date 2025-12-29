@@ -74,7 +74,7 @@ async def get_account_coverage(
     response: Response,
     ctx: APIKeyContext = Depends(get_api_key_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> PublicCoverageResponse:
     """Get coverage summary for a cloud account.
 
     Returns the latest coverage snapshot including total techniques,
@@ -140,7 +140,7 @@ async def get_technique_coverage(
     offset: int = Query(0, ge=0),
     ctx: APIKeyContext = Depends(get_api_key_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Get per-technique coverage details.
 
     Returns coverage status for each MITRE ATT&CK technique
@@ -248,7 +248,7 @@ async def get_coverage_gaps(
     offset: int = Query(0, ge=0),
     ctx: APIKeyContext = Depends(get_api_key_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> GapsResponse:
     """Get coverage gaps for a cloud account.
 
     Returns uncovered techniques prioritised by importance.

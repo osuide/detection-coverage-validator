@@ -68,27 +68,27 @@ async def close_rate_limiter() -> None:
 # These are FastAPI dependencies that can be used with Depends()
 
 
-def auth_rate_limit():
+def auth_rate_limit() -> dict:
     """Rate limit for login endpoint: 10 requests per minute per IP."""
     return RateLimiter(times=10, seconds=60)
 
 
-def signup_rate_limit():
+def signup_rate_limit() -> dict:
     """Rate limit for signup endpoint: 5 requests per 5 minutes per IP."""
     return RateLimiter(times=5, seconds=300)
 
 
-def password_reset_rate_limit():
+def password_reset_rate_limit() -> dict:
     """Rate limit for password reset: 3 requests per hour per IP."""
     return RateLimiter(times=3, seconds=3600)
 
 
-def mfa_rate_limit():
+def mfa_rate_limit() -> dict:
     """Rate limit for MFA verification: 5 attempts per minute per IP."""
     return RateLimiter(times=5, seconds=60)
 
 
-def api_key_rate_limit():
+def api_key_rate_limit() -> dict:
     """Rate limit for API key authentication: 100 requests per minute per IP.
 
     M1: Add rate limiting for API key authentication to prevent brute force attacks.

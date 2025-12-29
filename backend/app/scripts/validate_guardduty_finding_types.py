@@ -142,7 +142,7 @@ def fix_template(filepath: Path, corrections: list[tuple[int, str, str]]) -> int
     return fixed_count
 
 
-def main():
+def main() -> None:
     """Main entry point."""
     fix_mode = "--fix" in sys.argv
 

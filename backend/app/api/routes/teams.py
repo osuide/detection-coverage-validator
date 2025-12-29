@@ -137,7 +137,7 @@ async def log_team_action(
 async def list_members(
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """List all members of the current organization.
 
     API keys require 'read:teams' scope.
@@ -180,7 +180,7 @@ async def list_members(
 async def list_pending_invites(
     auth: AuthContext = Depends(require_role(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
-):
+) -> list[PendingInviteResponse]:
     """List pending invites for the current organization."""
     if not auth.organization_id:
         raise HTTPException(
@@ -227,7 +227,7 @@ async def invite_member(
     background_tasks: BackgroundTasks,
     auth: AuthContext = Depends(require_role(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """
     Invite a new member to the organization.
 
@@ -318,7 +318,7 @@ async def invite_member(
     # Send invite email in background
     from app.services.email_service import get_email_service
 
-    def send_invite_email_task():
+    def send_invite_email_task() -> dict:
         email_service = get_email_service()
         email_service.send_team_invite_email(
             to_email=body.email,
@@ -353,7 +353,7 @@ async def cancel_invite(
     invite_id: UUID,
     auth: AuthContext = Depends(require_role(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
-):
+) -> None:
     """Cancel a pending invite."""
     if not auth.organization_id:
         raise HTTPException(
@@ -403,7 +403,7 @@ async def accept_invite(
     body: AcceptInviteRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> MemberResponse:
     """Accept an organization invite.
 
     This endpoint requires user authentication (not API keys) because
@@ -492,7 +492,7 @@ async def update_member_role(
     body: UpdateMemberRoleRequest,
     auth: AuthContext = Depends(require_role(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
-):
+) -> MemberResponse:
     """
     Update a member's role.
 
@@ -601,7 +601,7 @@ async def remove_member(
     member_id: UUID,
     auth: AuthContext = Depends(require_role(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
-):
+) -> None:
     """
     Remove a member from the organization.
 
@@ -683,7 +683,7 @@ async def leave_organization(
     request: Request,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> None:
     """
     Leave the current organization.
 

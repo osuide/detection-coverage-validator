@@ -43,7 +43,7 @@ async def list_alerts(
     limit: int = Query(20, ge=1, le=100),
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """List alert configurations."""
     query = select(AlertConfig).where(
         AlertConfig.organization_id == auth.organization_id
@@ -97,7 +97,7 @@ async def create_alert(
     alert_in: AlertConfigCreate,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Create a new alert configuration.
 
     Requires OWNER or ADMIN role. Webhook/channel configuration
@@ -145,7 +145,7 @@ async def get_alert(
     alert_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Get a specific alert configuration."""
     result = await db.execute(
         select(AlertConfig).where(
@@ -169,7 +169,7 @@ async def update_alert(
     alert_in: AlertConfigUpdate,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Update an alert configuration.
 
     Requires OWNER or ADMIN role. Webhook/channel configuration
@@ -211,7 +211,7 @@ async def delete_alert(
     alert_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> None:
     """Delete an alert configuration.
 
     Requires OWNER or ADMIN role.
@@ -239,7 +239,7 @@ async def activate_alert(
     alert_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Activate an alert."""
     result = await db.execute(
         select(AlertConfig).where(
@@ -267,7 +267,7 @@ async def deactivate_alert(
     alert_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Deactivate an alert."""
     result = await db.execute(
         select(AlertConfig).where(
@@ -295,7 +295,7 @@ async def test_alert(
     request: TestAlertRequest,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Test an alert by sending a test notification."""
     result = await db.execute(
         select(AlertConfig).where(
@@ -368,7 +368,7 @@ async def list_alert_history(
     limit: int = Query(20, ge=1, le=100),
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """List alert history."""
     query = select(AlertHistory).where(
         AlertHistory.organization_id == auth.organization_id
@@ -423,7 +423,7 @@ async def resolve_alert(
     history_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Mark an alert as resolved."""
     result = await db.execute(
         select(AlertHistory).where(

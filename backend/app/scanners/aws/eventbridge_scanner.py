@@ -100,7 +100,7 @@ class EventBridgeScanner(BaseScanner):
 
         # Paginator.paginate() returns an iterator that makes blocking API calls
         # We run the iteration in the thread pool
-        def fetch_all_pages():
+        def fetch_all_pages() -> Any:
             pages_rules = []
             for page in paginator.paginate(EventBusName=bus_name):
                 pages_rules.extend(page.get("Rules", []))

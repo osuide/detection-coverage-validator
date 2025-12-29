@@ -36,7 +36,7 @@ router = APIRouter()
 async def list_cloud_organizations(
     auth: AuthContext = Depends(require_org_features()),
     db: AsyncSession = Depends(get_db),
-):
+) -> list[CloudOrganizationSummary]:
     """List all cloud organisations for the current tenant."""
     result = await db.execute(
         select(CloudOrganization).where(
@@ -64,7 +64,7 @@ async def get_cloud_organization(
     cloud_org_id: UUID,
     auth: AuthContext = Depends(require_org_features()),
     db: AsyncSession = Depends(get_db),
-):
+) -> CloudOrganizationResponse:
     """Get a specific cloud organisation."""
     result = await db.execute(
         select(CloudOrganization).where(
@@ -91,7 +91,7 @@ async def list_organization_members(
     status_filter: Optional[CloudOrganizationMemberStatus] = None,
     auth: AuthContext = Depends(require_org_features()),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """List member accounts for a cloud organisation."""
     # Verify org belongs to tenant
     org_result = await db.execute(
@@ -138,7 +138,7 @@ async def discover_organization(
     background_tasks: BackgroundTasks,
     auth: AuthContext = Depends(require_org_features()),
     db: AsyncSession = Depends(get_db),
-):
+) -> DiscoverOrganizationResponse:
     """
     Discover accounts in a cloud organisation.
 
@@ -349,7 +349,7 @@ async def connect_members(
     body: ConnectMembersRequest,
     auth: AuthContext = Depends(require_org_features()),
     db: AsyncSession = Depends(get_db),
-):
+) -> ConnectMembersResponse:
     """
     Connect selected member accounts for scanning.
 
@@ -452,7 +452,7 @@ async def sync_organization(
     background_tasks: BackgroundTasks,
     auth: AuthContext = Depends(require_org_features()),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """
     Re-sync the organisation to discover new accounts.
 
@@ -494,7 +494,7 @@ async def disconnect_organization(
     cloud_org_id: UUID,
     auth: AuthContext = Depends(require_role(UserRole.OWNER, UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """
     Disconnect a cloud organisation.
 

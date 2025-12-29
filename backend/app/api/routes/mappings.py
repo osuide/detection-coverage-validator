@@ -37,7 +37,7 @@ async def list_mappings(
     limit: int = Query(50, ge=1, le=100),
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """List detection mappings with optional filters."""
     from app.models.detection import Detection
 
@@ -130,7 +130,7 @@ async def list_techniques(
     platform: Optional[str] = Query(None, description="Filter by platform (AWS, GCP)"),
     search: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """List MITRE ATT&CK techniques."""
     query = select(Technique).options(selectinload(Technique.tactic))
 
@@ -172,7 +172,7 @@ async def list_techniques(
 )
 async def list_tactics(
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """List MITRE ATT&CK tactics."""
     result = await db.execute(select(Tactic).order_by(Tactic.display_order))
     tactics = result.scalars().all()
@@ -195,7 +195,7 @@ async def delete_mapping(
     mapping_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> None:
     """Delete a detection mapping."""
     from app.models.detection import Detection
 
@@ -224,7 +224,7 @@ async def remap_all_detections(
     cloud_account_id: Optional[UUID] = None,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Re-map all detections to MITRE techniques.
 
     Use this after seeding MITRE data or to refresh mappings.

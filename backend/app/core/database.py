@@ -1,5 +1,6 @@
 """Database connection and session management."""
 
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
@@ -46,7 +47,7 @@ async def get_db() -> AsyncSession:
 
 
 @asynccontextmanager
-async def get_db_session():
+async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
     """Context manager for database sessions outside of FastAPI dependency injection."""
     async with AsyncSessionLocal() as session:
         try:

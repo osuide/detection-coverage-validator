@@ -21,6 +21,16 @@ repos:
         files: ^backend/
         args: [--fix, --exit-non-zero-on-fix]
 
+  # Check for untyped functions (all functions must have return type annotations)
+  - repo: local
+    hooks:
+      - id: check-type-hints
+        name: check type hints (Python)
+        entry: python backend/scripts/check_type_hints.py
+        language: python
+        files: ^backend/app/.*\.py$
+        pass_filenames: true
+
   # Terraform formatting
   - repo: https://github.com/antonbabenko/pre-commit-terraform
     rev: v1.96.2

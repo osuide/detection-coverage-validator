@@ -140,7 +140,7 @@ async def get_coverage_trends(
     days: int = Query(30, ge=1, le=365),
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Get coverage trend analysis over time.
 
     Provides historical coverage data with statistics including
@@ -179,7 +179,7 @@ async def get_gap_prioritization(
     limit: int = Query(20, ge=1, le=100),
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Get prioritised gap analysis with impact scores.
 
     Returns uncovered techniques sorted by impact score,
@@ -208,7 +208,7 @@ async def get_detection_effectiveness(
     cloud_account_id: Optional[UUID] = None,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Analyse detection effectiveness by type and coverage.
 
     Provides breakdown of detection effectiveness by type
@@ -238,7 +238,7 @@ async def get_recommendations(
     limit: int = Query(10, ge=1, le=50),
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Generate actionable security recommendations.
 
     Analyses coverage trends, effectiveness, and gaps to provide
@@ -266,7 +266,7 @@ async def get_tactic_breakdown(
     cloud_account_id: Optional[UUID] = None,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Get coverage breakdown by MITRE ATT&CK tactic.
 
     Returns per-tactic coverage with priority scores based on
@@ -293,7 +293,7 @@ async def get_analytics_summary(
     cloud_account_id: Optional[UUID] = None,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Get a comprehensive analytics summary.
 
     Combines trends, effectiveness, and top recommendations

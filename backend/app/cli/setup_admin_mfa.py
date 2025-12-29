@@ -11,12 +11,13 @@ Usage:
 
 import asyncio
 import sys
+from typing import Any
 
 import pyotp
 from cryptography.fernet import Fernet
 
 
-async def get_admin_by_email(email: str):
+async def get_admin_by_email(email: str) -> Any:
     """Get admin user by email."""
     from sqlalchemy import text
     from app.core.database import engine
@@ -44,7 +45,7 @@ async def get_admin_by_email(email: str):
         return None
 
 
-def get_encryption_key():
+def get_encryption_key() -> Any:
     """Get the credential encryption key."""
     from app.core.config import get_settings
 
@@ -82,7 +83,7 @@ def decrypt_secret(encrypted: bytes) -> str:
         return encrypted.decode()
 
 
-async def setup_mfa(email: str):
+async def setup_mfa(email: str) -> None:
     """Generate MFA secret and provisioning URI for an admin."""
     from sqlalchemy import text
     from app.core.database import engine
@@ -138,7 +139,7 @@ async def setup_mfa(email: str):
     return secret
 
 
-async def verify_and_enable_mfa(email: str, totp_code: str):
+async def verify_and_enable_mfa(email: str, totp_code: str) -> None:
     """Verify TOTP code and enable MFA."""
     from sqlalchemy import text
     from app.core.database import engine
@@ -189,7 +190,7 @@ async def verify_and_enable_mfa(email: str, totp_code: str):
     return True
 
 
-async def disable_mfa(email: str):
+async def disable_mfa(email: str) -> None:
     """Disable MFA for an admin (for resetting)."""
     from sqlalchemy import text
     from app.core.database import engine
@@ -216,7 +217,7 @@ async def disable_mfa(email: str):
     return True
 
 
-async def list_admins():
+async def list_admins() -> list[Any]:
     """List all admin users."""
     from sqlalchemy import text
     from app.core.database import engine
@@ -252,7 +253,7 @@ async def list_admins():
     print("=" * 80)
 
 
-def main():
+def main() -> None:
     if len(sys.argv) < 2:
         print("Usage:")
         print("  python -m app.cli.setup_admin_mfa <email>           # Setup MFA")

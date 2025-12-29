@@ -77,7 +77,7 @@ class SecurityMetricsResponse(BaseModel):
 async def get_system_health(
     admin: AdminUser = Depends(require_permission("system:health")),
     db: AsyncSession = Depends(get_db),
-):
+) -> SystemHealthResponse:
     """Get system health metrics."""
     # Get active scans
     active_scans_result = await db.execute(
@@ -119,7 +119,7 @@ async def get_system_health(
 async def get_business_metrics(
     admin: AdminUser = Depends(require_permission("metrics:read")),
     db: AsyncSession = Depends(get_db),
-):
+) -> BusinessMetricsResponse:
     """Get business metrics."""
     now = datetime.now(timezone.utc)
     seven_days_ago = now - timedelta(days=7)
@@ -182,7 +182,7 @@ async def get_business_metrics(
 async def get_usage_metrics(
     admin: AdminUser = Depends(require_permission("metrics:read")),
     db: AsyncSession = Depends(get_db),
-):
+) -> UsageMetricsResponse:
     """Get platform usage metrics."""
     now = datetime.now(timezone.utc)
     one_day_ago = now - timedelta(days=1)
@@ -247,7 +247,7 @@ async def get_usage_metrics(
 async def get_security_metrics(
     admin: AdminUser = Depends(require_permission("metrics:security")),
     db: AsyncSession = Depends(get_db),
-):
+) -> SecurityMetricsResponse:
     """Get security metrics."""
     now = datetime.now(timezone.utc)
     one_day_ago = now - timedelta(days=1)

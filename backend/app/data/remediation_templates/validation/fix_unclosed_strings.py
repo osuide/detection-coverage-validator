@@ -9,6 +9,7 @@ all instances where AlarmActions references are not properly closed.
 
 import re
 from pathlib import Path
+from typing import Any
 
 
 def fix_unclosed_cfn_strings(content: str) -> tuple[str, int]:
@@ -22,7 +23,7 @@ def fix_unclosed_cfn_strings(content: str) -> tuple[str, int]:
     # We need to add the closing """ after the !Ref line
     pattern = r'(        - !Ref \w+)\n(\s+terraform_template=""")'
 
-    def add_closing_quote(match):
+    def add_closing_quote(match) -> Any:
         nonlocal fix_count
         fix_count += 1
         return match.group(1) + '""",\n' + match.group(2)
@@ -32,7 +33,7 @@ def fix_unclosed_cfn_strings(content: str) -> tuple[str, int]:
     # Also fix similar patterns with !GetAtt
     pattern2 = r'(        - !GetAtt \w+\.\w+)\n(\s+terraform_template=""")'
 
-    def add_closing_quote2(match):
+    def add_closing_quote2(match) -> Any:
         nonlocal fix_count
         fix_count += 1
         return match.group(1) + '""",\n' + match.group(2)
@@ -42,7 +43,7 @@ def fix_unclosed_cfn_strings(content: str) -> tuple[str, int]:
     return fixed, fix_count
 
 
-def main():
+def main() -> None:
     templates_dir = Path(__file__).parent.parent
 
     fixed_files = []

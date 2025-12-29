@@ -296,6 +296,6 @@ class HybridMapperFactory:
         return cls._instance
 
     @classmethod
-    def set_instance(cls, mapper: HybridMapper):
+    def set_instance(cls, mapper: HybridMapper) -> None:
         """Set the singleton instance."""
         cls._instance = mapper

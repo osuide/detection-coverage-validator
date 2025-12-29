@@ -13,10 +13,13 @@ AccountTier enum is defined in app.models.billing to avoid circular imports
 with SQLAlchemy models. Use get_account_tier() to safely import it.
 """
 
-from typing import Optional, Any
+from typing import TYPE_CHECKING, Optional, Any, Type
+
+if TYPE_CHECKING:
+    from app.models.billing import AccountTier
 
 
-def get_account_tier():
+def get_account_tier() -> Type["AccountTier"]:
     """Lazy import of AccountTier to avoid circular imports."""
     from app.models.billing import AccountTier
 
@@ -219,7 +222,9 @@ def get_tier_config(tier: Any) -> dict:
     return _TIER_CONFIG_BY_VALUE.get(tier_value, _TIER_CONFIG_BY_VALUE["free"])
 
 
-def get_required_tier(account_count: int, wants_org_features: bool = False):
+def get_required_tier(
+    account_count: int, wants_org_features: bool = False
+) -> "AccountTier":
     """
     Determine the minimum required tier based on usage.
 
@@ -248,7 +253,7 @@ def get_required_tier(account_count: int, wants_org_features: bool = False):
 
 def get_upgrade_recommendation(
     current_tier: Any, account_count: int, wants_org_features: bool = False
-):
+) -> Optional["AccountTier"]:
     """
     Get upgrade recommendation if current tier is insufficient.
 
@@ -309,7 +314,7 @@ def is_legacy_tier(tier: Any) -> bool:
     return config.get("_deprecated", False)
 
 
-def get_migration_tier(tier: Any):
+def get_migration_tier(tier: Any) -> Optional["AccountTier"]:
     """Get the new tier that a legacy tier should migrate to."""
     AccountTier = get_account_tier()
     config = get_tier_config(tier)

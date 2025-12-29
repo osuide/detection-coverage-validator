@@ -90,7 +90,7 @@ class AWSOrganizationDiscoveryService:
         self._org_client = None
 
     @property
-    def org_client(self):
+    def org_client(self) -> None:
         """Lazy-initialise the Organizations client."""
         if self._org_client is None:
             self._org_client = self.session.client("organizations")

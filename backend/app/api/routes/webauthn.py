@@ -74,7 +74,7 @@ async def get_registration_options(
     body: WebAuthnRegistrationOptionsRequest,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> WebAuthnRegistrationOptionsResponse:
     """Start WebAuthn credential registration.
 
     Returns PublicKeyCredentialCreationOptions to pass to navigator.credentials.create()
@@ -113,7 +113,7 @@ async def verify_registration(
     body: WebAuthnRegistrationVerifyRequest,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Complete WebAuthn credential registration.
 
     Verifies the credential and stores it for future authentication.
@@ -170,7 +170,7 @@ async def verify_registration(
 @router.get("/credentials", response_model=WebAuthnCredentialsListResponse)
 async def list_credentials(
     auth: AuthContext = Depends(get_auth_context),
-):
+) -> WebAuthnCredentialsListResponse:
     """List registered WebAuthn credentials."""
     if not auth.user:
         raise HTTPException(
@@ -200,7 +200,7 @@ async def delete_credential(
     body: WebAuthnDeleteRequest,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
-):
+) -> None:
     """Delete a registered WebAuthn credential."""
     if not auth.user:
         raise HTTPException(
@@ -271,7 +271,7 @@ async def get_webauthn_login_options(
     body: WebAuthnLoginOptionsRequest,
     request: Request,
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Get WebAuthn authentication options for a user.
 
     This starts the WebAuthn login flow. The user provides their email,
@@ -333,7 +333,7 @@ async def verify_webauthn_login(
     request: Request,
     response: Response,
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     """Complete WebAuthn authentication and login.
 
     Verifies the security key response and returns access/refresh tokens.

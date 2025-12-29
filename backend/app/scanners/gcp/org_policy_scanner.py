@@ -251,7 +251,7 @@ class OrgPolicyScanner(BaseScanner):
         """List all folders in the organisation recursively."""
         all_folders = []
 
-        async def list_children(parent: str):
+        async def list_children(parent: str) -> list[Any]:
             try:
                 request = {"parent": parent}
                 for folder in rm_client.list_folders(request=request):

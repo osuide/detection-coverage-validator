@@ -38,7 +38,7 @@ def fix_template(template_path: Path, evasion_text: str) -> bool:
     return False
 
 
-def main():
+def main() -> None:
     templates_dir = Path(__file__).parent.parent
 
     for template_name, evasion_text in EVASION_FIXES.items():

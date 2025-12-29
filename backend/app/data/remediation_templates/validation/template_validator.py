@@ -178,7 +178,9 @@ class TemplateValidator:
             return technique
         return "UNKNOWN"
 
-    def _validate_python_syntax(self, content: str, result: TemplateValidationResult):
+    def _validate_python_syntax(
+        self, content: str, result: TemplateValidationResult
+    ) -> None:
         """Check Python syntax is valid."""
         try:
             ast.parse(content)
@@ -192,7 +194,9 @@ class TemplateValidator:
                 )
             )
 
-    def _validate_required_fields(self, content: str, result: TemplateValidationResult):
+    def _validate_required_fields(
+        self, content: str, result: TemplateValidationResult
+    ) -> None:
         """Check required fields are present."""
         for field_tuple in self.REQUIRED_FIELDS:
             attr_name, const_name = field_tuple
@@ -210,7 +214,7 @@ class TemplateValidator:
 
     def _validate_guardduty_findings(
         self, content: str, result: TemplateValidationResult
-    ):
+    ) -> None:
         """Validate GuardDuty finding types referenced in template."""
         # Find all GuardDuty finding types in guardduty_finding_types lists
         # Pattern handles special chars like & in C&CActivity
@@ -244,7 +248,7 @@ class TemplateValidator:
 
     def _validate_cloudtrail_events(
         self, content: str, result: TemplateValidationResult
-    ):
+    ) -> None:
         """Validate CloudTrail event names."""
         # Find event names in patterns
         event_pattern = r'eventName\s*[=:]\s*["\']?(\w+)["\']?'
@@ -263,7 +267,7 @@ class TemplateValidator:
 
     def _validate_detection_logic(
         self, content: str, result: TemplateValidationResult, technique_id: str
-    ):
+    ) -> None:
         """Check for flawed detection logic patterns."""
         for pattern, info in self.FLAWED_DETECTION_PATTERNS.items():
             if technique_id in info.get("affected_techniques", []):
@@ -279,7 +283,7 @@ class TemplateValidator:
 
     def _validate_terraform_patterns(
         self, content: str, result: TemplateValidationResult
-    ):
+    ) -> None:
         """Validate Terraform resource patterns."""
         # Check for duplicate attributes (common mistake)
         duplicate_attrs = [
@@ -345,7 +349,7 @@ class TemplateValidator:
 
     def _validate_cloudformation_patterns(
         self, content: str, result: TemplateValidationResult
-    ):
+    ) -> None:
         """Validate CloudFormation resource patterns."""
         # Check for duplicate properties within the same CloudWatch Alarm resource
         # Split by alarm resource declarations and check each one
@@ -367,7 +371,7 @@ class TemplateValidator:
 
     def _check_guardduty_coverage(
         self, technique_id: str, content: str, result: TemplateValidationResult
-    ):
+    ) -> None:
         """Check if technique has GuardDuty coverage we should use."""
         if technique_has_guardduty_coverage(technique_id):
             recommended = get_recommended_guardduty_findings(technique_id)
@@ -462,7 +466,7 @@ class TemplateValidator:
         return "\n".join(lines)
 
 
-def main():
+def main() -> None:
     """Main entry point."""
     import argparse
 
