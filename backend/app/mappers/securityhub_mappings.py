@@ -359,11 +359,11 @@ def get_techniques_for_cspm_control(
                 techniques=techniques,
             )
             # Deduplicate and return early
-            seen: dict[str, float] = {}
+            cis_seen: dict[str, float] = {}
             for tech_id, conf in techniques:
-                if tech_id not in seen or conf > seen[tech_id]:
-                    seen[tech_id] = conf
-            return list(seen.items())
+                if tech_id not in cis_seen or conf > cis_seen[tech_id]:
+                    cis_seen[tech_id] = conf
+            return list(cis_seen.items())
 
     # Try FSBP first (most comprehensive coverage for service-based IDs)
     fsbp_key = f"fsbp.{normalised_id}"
