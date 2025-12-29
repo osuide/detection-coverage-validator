@@ -15,6 +15,12 @@ on:
           - staging
           - prod
 
+# Ensure only one deployment runs at a time per environment
+# New deployments will wait for the previous one to complete
+concurrency:
+  group: deploy-${{ github.event.inputs.environment || 'staging' }}
+  cancel-in-progress: false
+
 env:
   AWS_REGION: eu-west-2
 
