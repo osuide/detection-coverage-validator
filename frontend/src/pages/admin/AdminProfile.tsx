@@ -34,8 +34,8 @@ export default function AdminProfile() {
   // Fetch WebAuthn credentials
   const fetchWebAuthnCredentials = useCallback(async () => {
     try {
-      const response = await adminApi.get<WebAuthnCredential[]>('/auth/webauthn/credentials')
-      setWebauthnCredentials(response.data)
+      const response = await adminApi.get<{ credentials: WebAuthnCredential[] }>('/webauthn/credentials')
+      setWebauthnCredentials(response.data.credentials)
     } catch (err) {
       console.error('Failed to fetch WebAuthn credentials:', err)
     }
@@ -264,7 +264,7 @@ export default function AdminProfile() {
             hasTotp={admin.mfa_enabled}
             onAdd={() => {}}
             onDelete={async (credentialId) => {
-              await adminApi.post('/auth/webauthn/credentials/delete', {
+              await adminApi.post('/webauthn/credentials/delete', {
                 credential_id: credentialId,
               })
             }}

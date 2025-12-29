@@ -407,6 +407,7 @@ export const adminAuthActions = {
 
   /**
    * Get WebAuthn registration options for adding a new key
+   * Note: Uses adminApi (not adminAuthApi) as WebAuthn routes are at /admin/webauthn, not /admin/auth/webauthn
    */
   getWebAuthnRegisterOptions: async (
     deviceName: string,
@@ -418,8 +419,9 @@ export const adminAuthActions = {
       throw new Error('Not authenticated')
     }
 
-    const response = await adminAuthApi.post(
-      '/webauthn/register/options',
+    // Create a one-off request with the correct base URL
+    const response = await axios.post(
+      `${API_BASE_URL}/api/v1/admin/webauthn/register/options`,
       { device_name: deviceName, authenticator_type: authenticatorType },
       { headers: { Authorization: `Bearer ${store.accessToken}` } }
     )
@@ -428,6 +430,7 @@ export const adminAuthActions = {
 
   /**
    * Verify WebAuthn registration
+   * Note: Uses adminApi (not adminAuthApi) as WebAuthn routes are at /admin/webauthn, not /admin/auth/webauthn
    */
   verifyWebAuthnRegister: async (credential: unknown, deviceName: string): Promise<void> => {
     const store = useAdminAuthStore.getState()
@@ -436,8 +439,8 @@ export const adminAuthActions = {
       throw new Error('Not authenticated')
     }
 
-    await adminAuthApi.post(
-      '/webauthn/register/verify',
+    await axios.post(
+      `${API_BASE_URL}/api/v1/admin/webauthn/register/verify`,
       { credential, device_name: deviceName },
       { headers: { Authorization: `Bearer ${store.accessToken}` } }
     )
