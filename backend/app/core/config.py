@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     database_max_overflow: int = 30  # Increased from 10 for burst handling
     database_pool_pre_ping: bool = True  # Validate connections before use
     database_pool_recycle: int = 3600  # Recycle connections every hour (seconds)
+    database_pool_timeout: int = 30  # Fail fast if pool exhausted (seconds)
 
     # Redis
     redis_url: str = "redis://localhost:6379/0"

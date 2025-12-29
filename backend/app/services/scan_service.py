@@ -44,10 +44,31 @@ from app.core.service_registry import get_all_regions, get_default_regions
 from app.core.cache import (
     cache_scan_status,
     delete_scan_status_cache,
+    invalidate_billing_scan_status,
 )
+from app.core.database import get_db_session
 from app.models.cloud_account import RegionScanMode
 
 logger = structlog.get_logger()
+
+
+async def execute_scan_background(scan_id: UUID, organization_id: UUID) -> None:
+    """Execute a scan in a background task with its own database session.
+
+    This is the entry point for background scan execution. It creates a fresh
+    database session to avoid holding connections from the request handler.
+
+    Args:
+        scan_id: The scan ID to execute
+        organization_id: The organisation ID (for cache invalidation)
+    """
+    async with get_db_session() as db:
+        service = ScanService(db)
+        try:
+            await service.execute_scan(scan_id)
+        finally:
+            # Invalidate billing cache so next poll gets fresh data
+            await invalidate_billing_scan_status(str(organization_id))
 
 
 def _serialize_for_jsonb(obj: Any) -> Any:
@@ -104,12 +125,17 @@ class ScanService:
         self.db = db
         self.logger = logger.bind(service="ScanService")
         self.mapper = PatternMapper()
+        # Set when account is fetched, used for cache ownership verification
+        self._current_organization_id: Optional[UUID] = None
 
     async def _cache_scan_status(self, scan: Scan) -> None:
         """Cache scan status to Redis for fast polling.
 
         Called after each db.commit() to keep Redis in sync with database.
         Failures are logged but don't affect scan execution.
+
+        Includes organization_id when available to enable ownership verification
+        without database queries on cache hits.
         """
         try:
             scan_data = {
@@ -135,6 +161,9 @@ class ScanService:
                     scan.created_at.isoformat() if scan.created_at else None
                 ),
             }
+            # Include organization_id for ownership verification on cache hits
+            if self._current_organization_id:
+                scan_data["organization_id"] = str(self._current_organization_id)
             await cache_scan_status(scan_data)
         except Exception as e:
             # Log but don't fail scan - cache is optional optimisation
@@ -165,6 +194,9 @@ class ScanService:
         if not account:
             await self._fail_scan(scan, "Cloud account not found")
             return
+
+        # Store organization_id for cache ownership verification
+        self._current_organization_id = account.organization_id
 
         try:
             # Update to running

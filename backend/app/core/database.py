@@ -15,6 +15,7 @@ engine = create_async_engine(
     max_overflow=settings.database_max_overflow,
     pool_pre_ping=settings.database_pool_pre_ping,  # Validate connections before use
     pool_recycle=settings.database_pool_recycle,  # Recycle stale connections
+    pool_timeout=settings.database_pool_timeout,  # Fail fast if pool exhausted
     echo=settings.debug,
 )
 

@@ -382,3 +382,125 @@ async def delete_scan_status_cache(scan_id: str) -> bool:
     except Exception as e:
         logger.warning("scan_status_cache_delete_failed", scan_id=scan_id, error=str(e))
         return False
+
+
+# Billing scan status caching - for reducing database load during polling
+# This caches the organisation's scan limit status (can_scan, scans_used, etc.)
+BILLING_STATUS_PREFIX = "dcv:billing:"
+BILLING_STATUS_TTL = 10  # 10 seconds - short TTL as this changes when scans start
+
+
+def billing_status_key(organization_id: str) -> str:
+    """Cache key for billing scan status.
+
+    Args:
+        organization_id: Organisation UUID as string
+
+    Returns:
+        Cache key for the billing status
+    """
+    return f"scan-status:{_sanitize_identifier(organization_id)}"
+
+
+async def cache_billing_scan_status(organization_id: str, status_data: dict) -> bool:
+    """Cache billing scan status for fast polling.
+
+    This caches the organisation's scan limit status to avoid database
+    queries during frequent polling. Uses a short TTL since status
+    changes when scans are initiated.
+
+    Args:
+        organization_id: Organisation UUID as string
+        status_data: Dictionary with scan status fields:
+            - can_scan: bool
+            - scans_used: int
+            - scans_allowed: int | None
+            - unlimited: bool
+            - next_available_at: str | None
+            - week_resets_at: str | None
+            - total_scans: int
+
+    Returns:
+        True if cached successfully, False otherwise
+
+    Security:
+        - Only caches non-sensitive scan limit metadata
+        - Short TTL prevents stale data accumulation
+        - Organisation ID is sanitized to prevent key injection
+    """
+    if not _redis_cache:
+        return False
+
+    if not organization_id:
+        return False
+
+    try:
+        key = f"{BILLING_STATUS_PREFIX}{billing_status_key(organization_id)}"
+        serialized = json.dumps(status_data)
+
+        await _redis_cache.setex(key, BILLING_STATUS_TTL, serialized)
+        return True
+    except Exception as e:
+        logger.warning(
+            "billing_status_cache_set_failed",
+            organization_id=organization_id,
+            error=str(e),
+        )
+        return False
+
+
+async def get_cached_billing_scan_status(organization_id: str) -> Optional[dict]:
+    """Get cached billing scan status.
+
+    Args:
+        organization_id: Organisation UUID as string
+
+    Returns:
+        Cached billing status dict or None if not found/cache unavailable
+    """
+    if not _redis_cache:
+        return None
+
+    try:
+        key = f"{BILLING_STATUS_PREFIX}{billing_status_key(organization_id)}"
+        value = await _redis_cache.get(key)
+        if value:
+            record_cache_hit()
+            return json.loads(value)
+        record_cache_miss()
+        return None
+    except Exception as e:
+        logger.warning(
+            "billing_status_cache_get_failed",
+            organization_id=organization_id,
+            error=str(e),
+        )
+        record_cache_miss()
+        return None
+
+
+async def invalidate_billing_scan_status(organization_id: str) -> bool:
+    """Invalidate cached billing scan status.
+
+    Should be called when a scan is initiated to ensure fresh data.
+
+    Args:
+        organization_id: Organisation UUID as string
+
+    Returns:
+        True if invalidated successfully, False otherwise
+    """
+    if not _redis_cache:
+        return False
+
+    try:
+        key = f"{BILLING_STATUS_PREFIX}{billing_status_key(organization_id)}"
+        await _redis_cache.delete(key)
+        return True
+    except Exception as e:
+        logger.warning(
+            "billing_status_cache_invalidate_failed",
+            organization_id=organization_id,
+            error=str(e),
+        )
+        return False

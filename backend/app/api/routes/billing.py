@@ -12,6 +12,10 @@ import structlog
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.security import AuthContext, require_role
+from app.core.cache import (
+    get_cached_billing_scan_status,
+    cache_billing_scan_status,
+)
 from app.models.user import UserRole, AuditLog, AuditLogAction
 from app.services.stripe_service import stripe_service
 from app.services.scan_limit_service import ScanLimitService
@@ -199,9 +203,23 @@ async def get_scan_status(
 
     Returns weekly scan usage and limits for FREE tier users.
     Paid tiers have unlimited scans (is_limited=False).
+
+    Performance: Uses Redis cache with 10s TTL to reduce database load
+    during frequent polling. Cache is invalidated when scans are initiated.
     """
+    # Try Redis cache first to avoid database queries during polling
+    org_id_str = str(auth.organization_id)
+    cached = await get_cached_billing_scan_status(org_id_str)
+    if cached:
+        return ScanStatusResponse(**cached)
+
+    # Cache miss - query database and cache result
     scan_limit_service = ScanLimitService(db)
     status_data = await scan_limit_service.get_scan_status(auth.organization_id)
+
+    # Cache for subsequent polls
+    await cache_billing_scan_status(org_id_str, status_data)
+
     return ScanStatusResponse(**status_data)
 
 
