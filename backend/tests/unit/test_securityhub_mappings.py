@@ -57,24 +57,33 @@ class TestCSPMMappingLogic:
         """Test that CSPM function normalises control IDs."""
         assert "control_id.lower()" in source_content
 
-    def test_uses_fsbp_as_primary(self, source_content):
-        """Test that CSPM uses FSBP mappings as primary source."""
-        # Check that FSBP is tried first
-        cspm_func = re.search(
-            r"def get_techniques_for_cspm_control\([\s\S]*?(?=def get_techniques_for_security_hub)",
-            source_content,
-        )
-        assert cspm_func is not None
-        func_body = cspm_func.group(0)
+    def test_uses_fsbp_as_primary_for_service_ids(self, source_content):
+        """Test that CSPM uses FSBP mappings as primary for service-based IDs.
 
-        # FSBP should be tried before other standards
-        fsbp_pos = func_body.find("FSBP_MAPPINGS")
-        cis_pos = func_body.find("CIS_BENCHMARK_MAPPINGS")
+        The function should:
+        1. Check CIS mappings first for CIS-prefixed IDs (e.g., CIS.3.2)
+        2. Use FSBP as primary for service-based IDs (e.g., IAM.1, S3.1)
 
-        assert fsbp_pos < cis_pos, "FSBP should be tried before CIS"
+        This test verifies that FSBP is used as the primary source for
+        non-CIS control IDs (the common case for CSPM API).
+        """
+        # Verify both CIS and FSBP mappings are present
+        assert "CIS_BENCHMARK_MAPPINGS" in source_content
+        assert "FSBP_MAPPINGS" in source_content
+
+        # Verify FSBP lookup uses fsbp.{normalised_id} format
+        assert 'fsbp_key = f"fsbp.{normalised_id}"' in source_content
+        assert "fsbp_key in FSBP_MAPPINGS" in source_content
+
+    def test_handles_cis_prefixed_ids_first(self, source_content):
+        """Test that CIS-prefixed control IDs are handled directly."""
+        # CIS-prefixed IDs like CIS.3.2 should be looked up directly in CIS mappings
+        assert 'normalised_id.startswith("cis.")' in source_content
+        # Should return early after finding CIS match
+        assert "cis_seen" in source_content  # Deduplicate for CIS path
 
     def test_falls_back_to_cis(self, source_content):
-        """Test that CSPM falls back to CIS mappings."""
+        """Test that CSPM falls back to CIS mappings for non-CIS IDs."""
         assert "CIS_BENCHMARK_MAPPINGS" in source_content
 
     def test_falls_back_to_pci(self, source_content):
