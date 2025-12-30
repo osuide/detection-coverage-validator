@@ -620,6 +620,10 @@ response = await self.run_sync(client.get_rule, Name=rule_name)
 **Services Using Thread Pool (Non-Blocking)**:
 - ✅ `eventbridge_scanner.py` - `run_sync()` for all boto3 calls
 - ✅ `config_scanner.py` - `run_sync()` for all boto3 calls
+- ✅ `cloudwatch_scanner.py` - `run_sync()` for all boto3 calls (both classes)
+- ✅ `guardduty_scanner.py` - `run_sync()` for all boto3 calls
+- ✅ `lambda_scanner.py` - `run_sync()` for all boto3 calls
+- ✅ `securityhub_scanner.py` - `run_sync()` for all boto3 calls
 - ✅ `aws_credential_service.py` - `_run_sync()` for all boto3 calls, 8 permission checks run in parallel
 - ✅ `region_discovery_service.py` - Already uses `run_in_executor()` for all boto3 calls
 
@@ -636,9 +640,127 @@ response = await self.run_sync(client.get_rule, Name=rule_name)
 | Service | Blocking Calls | Impact | Priority |
 |---------|----------------|--------|----------|
 | `email_service.py` | `client.send_email()` | Blocks during email sends | Low |
-| Other scanners (CloudWatch, GuardDuty, SecurityHub, Lambda) | Various | Already in thread pool via scan context | Low |
 
-**Note**: All medium-priority services have been optimised. Remaining services have minimal impact.
+**Note**: All scanners now use non-blocking boto3 calls via `run_sync()`.
+
+### Scanner Performance Optimisation (December 2025)
+
+**Key Lesson**: `asyncio.gather()` alone doesn't make boto3 calls parallel. boto3 is synchronous - it blocks the event loop even inside `async def` functions. You MUST use `run_sync()` for true parallelism.
+
+**What DOESN'T work** (looks parallel but runs sequentially):
+```python
+async def scan(self, regions):
+    # This runs SEQUENTIALLY because boto3 blocks!
+    results = await asyncio.gather(*[
+        self.scan_region(region) for region in regions
+    ])
+
+async def scan_region(self, region):
+    client = self.session.client("guardduty", region_name=region)
+    response = client.list_detectors()  # BLOCKS the event loop!
+    return response
+```
+
+**What WORKS** (true parallel execution):
+```python
+async def scan(self, regions):
+    # This runs IN PARALLEL because boto3 calls are offloaded
+    return await self.scan_regions_parallel(regions)
+
+async def scan_region(self, region):
+    client = self.session.client("guardduty", region_name=region)
+    # Offload to thread pool - doesn't block event loop
+    response = await self.run_sync(client.list_detectors)
+    return response
+```
+
+**Paginator Pattern**:
+```python
+# WRONG - blocks event loop
+for page in paginator.paginate():
+    process(page)
+
+# CORRECT - non-blocking
+pages = await self.run_sync(lambda: list(paginator.paginate()))
+for page in pages:
+    process(page)
+```
+
+**Method Signature Pattern**:
+When converting a method to async, you must:
+1. Add `async` to the method definition
+2. Wrap all boto3 calls with `await self.run_sync(...)`
+3. Update ALL callers to use `await`
+4. If caller is sync, make it async too (propagate up the call chain)
+
+**Parallel Region Scanning**:
+`BaseScanner.scan_regions_parallel()` provides:
+- Concurrent region scanning with semaphore (max 5 regions at once)
+- Rate limiting per AWS service
+- Automatic error handling per region
+
+### Redis Caching Best Practices (December 2025)
+
+**Key Lesson**: Creating cache functions is not enough - you must INTEGRATE them into the code that needs caching!
+
+**Cache Integration Checklist**:
+1. ✅ Create cache get/set functions in `app/core/cache.py`
+2. ✅ Import and CALL them in the scanner/service
+3. ✅ Log cache hits/misses for debugging
+4. ✅ Handle cache unavailability gracefully (fallback to API)
+
+**What to Cache vs What to Fetch Fresh**:
+
+| Cache (Static) | Fetch Fresh (Dynamic) |
+|----------------|----------------------|
+| Control titles | Control status (ENABLED/DISABLED) |
+| Control descriptions | Compliance state |
+| Severity ratings | Finding counts |
+| Remediation URLs | Last updated timestamps |
+
+**SecurityHub Control Caching Pattern**:
+```python
+# In _get_cspm_control_status():
+
+# 1. Check cache first
+cached_metadata = await get_cached_securityhub_controls(account_id)
+if cached_metadata:
+    self.logger.info("securityhub_using_cached_metadata", cached_controls=len(cached_metadata))
+
+# 2. Fetch from API (for fresh status)
+response = await self.run_sync(client.batch_get_security_controls, ...)
+
+# 3. Merge cached static data with fresh dynamic data
+control_data = {
+    "title": cached.get("title") if cached else control.get("Title"),  # Use cache
+    "status": control.get("SecurityControlStatus"),  # Always fresh
+}
+
+# 4. Cache static metadata for future scans
+if not cached_metadata:
+    await cache_securityhub_controls(account_id, metadata_to_cache)
+    self.logger.info("securityhub_cached_metadata", controls_cached=len(metadata_to_cache))
+```
+
+**Cache Key Security**:
+- Always use `_sanitize_identifier()` for cache keys from external input
+- Account IDs, UUIDs are safe but still sanitize for consistency
+- Never put user-controlled strings directly in cache keys
+
+**Cache TTLs in Use**:
+| Cache | TTL | Rationale |
+|-------|-----|-----------|
+| SecurityHub control metadata | 24 hours | Control definitions rarely change |
+| Compliance frameworks | 1 hour | Reference data, HTTP cached too |
+| Scan status | 30 seconds | Fast polling during active scans |
+| Billing status | 10 seconds | Changes when scans start |
+| Full scan timestamp | 7 days | Tracks weekly full scan fallback |
+
+**Debugging Cache Issues**:
+Look for these log entries:
+- `securityhub_using_cached_metadata` - Cache hit
+- `securityhub_cached_metadata` - Cache populated
+- `cache_get_failed` / `cache_set_failed` - Redis issues
 
 ### Observability (Future)
 
