@@ -74,3 +74,25 @@ logs/
 # Local development
 docker-compose.override.yml
 .venv312/
+
+# Claude Code / AI Development Files
+.claude/
+agents/
+plans/
+design/
+docs/
+backend/docs/
+CLAUDE.md
+CODE-QUALITY-ANALYSIS.md
+DELIVERY-SUMMARY.md
+DEPLOYMENT.md
+detection-coverage-validator-model.md
+MVP-COMPLETION-ROADMAP.md
+MVP-STATUS.md
+QUICK-START.md
+ROADMAP.md
+add_template_registration.py
+backend/T1036_TEMPLATE_SUMMARY.md
+backend/TYPE_HINTS_PLAN.md
+
+# Keep README.md (explicitly not ignored)
