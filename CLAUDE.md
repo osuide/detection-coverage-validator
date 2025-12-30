@@ -706,8 +706,28 @@ When converting a method to async, you must:
 **Cache Integration Checklist**:
 1. ✅ Create cache get/set functions in `app/core/cache.py`
 2. ✅ Import and CALL them in the scanner/service
-3. ✅ Log cache hits/misses for debugging
-4. ✅ Handle cache unavailability gracefully (fallback to API)
+3. ✅ **On cache hit, SKIP the API calls entirely** (don't just use cached data in response)
+4. ✅ Log cache hits/misses for debugging
+5. ✅ Handle cache unavailability gracefully (fallback to API)
+
+**CRITICAL: Caching must SKIP API calls, not just merge cached data**
+
+This is WRONG (cache doesn't save any time):
+```python
+cached = await get_cached_data(key)
+response = await api_call()  # Still makes API call!
+return merge(cached, response)  # Useless - API call was the slow part
+```
+
+This is CORRECT (cache skips expensive operations):
+```python
+cached = await get_cached_data(key)
+if cached:
+    return cached  # Skip API call entirely!
+response = await api_call()  # Only called on cache miss
+await cache_data(key, response)
+return response
+```
 
 **What to Cache vs What to Fetch Fresh**:
 
@@ -750,7 +770,7 @@ if not cached_metadata:
 **Cache TTLs in Use**:
 | Cache | TTL | Rationale |
 |-------|-----|-----------|
-| SecurityHub control metadata | 24 hours | Control definitions rarely change |
+| SecurityHub control data | 5 minutes | Full response cached, skips all API calls on hit |
 | Compliance frameworks | 1 hour | Reference data, HTTP cached too |
 | Scan status | 30 seconds | Fast polling during active scans |
 | Billing status | 10 seconds | Changes when scans start |
@@ -758,8 +778,9 @@ if not cached_metadata:
 
 **Debugging Cache Issues**:
 Look for these log entries:
-- `securityhub_using_cached_metadata` - Cache hit
-- `securityhub_cached_metadata` - Cache populated
+- `securityhub_cache_hit_skipping_api` - Cache hit, API calls skipped (FAST!)
+- `securityhub_cache_miss_fetching` - Cache miss, fetching from AWS
+- `securityhub_cached_full_response` - Response cached for next scan
 - `cache_get_failed` / `cache_set_failed` - Redis issues
 
 ### Observability (Future)

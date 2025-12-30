@@ -506,10 +506,11 @@ async def invalidate_billing_scan_status(organization_id: str) -> bool:
         return False
 
 
-# Security Hub control metadata caching
-# Caches control titles, descriptions, and remediation URLs since they rarely change
+# Security Hub control data caching
+# Caches FULL control response (including status) for fast back-to-back scans
+# On cache hit, ALL API calls are skipped - making second scan very fast
 SECURITYHUB_CONTROL_PREFIX = "dcv:securityhub:"
-SECURITYHUB_CONTROL_TTL = 86400  # 24 hours - control metadata rarely changes
+SECURITYHUB_CONTROL_TTL = 300  # 5 minutes - balances freshness with performance
 
 
 def securityhub_controls_key(account_id: str) -> str:
@@ -527,16 +528,19 @@ def securityhub_controls_key(account_id: str) -> str:
 async def cache_securityhub_controls(
     account_id: str, controls_data: dict[str, dict]
 ) -> bool:
-    """Cache Security Hub control metadata.
+    """Cache Security Hub FULL control response for fast back-to-back scans.
 
-    Caches control titles, descriptions, severity, and remediation URLs.
-    This data rarely changes, so using a long TTL saves significant API calls.
+    Caches the complete control data including status. On cache hit,
+    the scanner skips ALL API calls and returns cached data immediately.
+    This makes second+ scans within 5 minutes very fast.
 
     Args:
         account_id: AWS account ID
         controls_data: Dictionary of control_id -> {
+            "control_id": str,
             "title": str,
             "description": str,
+            "status": str (ENABLED/DISABLED),
             "severity": str,
             "remediation_url": str,
             ...
@@ -546,8 +550,9 @@ async def cache_securityhub_controls(
         True if cached successfully, False otherwise
 
     Security:
-        - Only caches public control metadata (no findings/compliance data)
+        - Caches control configuration, not compliance findings
         - Account ID is sanitized to prevent key injection
+        - 5-minute TTL limits staleness
     """
     if not _redis_cache:
         return False

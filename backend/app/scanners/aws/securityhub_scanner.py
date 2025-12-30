@@ -1306,26 +1306,35 @@ class SecurityHubScanner(BaseScanner):
         Returns a dict of control_id -> control data including status.
         Returns empty dict if CSPM API is not available.
 
-        Caching Strategy:
-        - Static metadata (title, description, severity, remediation_url) is cached
-          for 24 hours since it rarely changes
-        - Dynamic status is always fetched fresh
-        - Cached metadata is merged with fresh status on subsequent scans
+        Caching Strategy (Fixed December 2025):
+        - Cache the FULL control response (including status) for 5 minutes
+        - On cache hit, return cached data immediately (SKIP all API calls)
+        - This makes back-to-back scans very fast
+        - Status is 5 minutes stale at most, which is acceptable for most use cases
         """
         controls = {}
 
-        # Try to get cached control metadata (static fields only)
-        cached_metadata = None
+        # Try to get cached FULL control data (not just metadata)
+        # This skips ALL API calls on cache hit
         if account_id:
-            cached_metadata = await get_cached_securityhub_controls(account_id)
-            if cached_metadata:
+            cached_controls = await get_cached_securityhub_controls(account_id)
+            if cached_controls:
                 self.logger.info(
-                    "securityhub_using_cached_metadata",
+                    "securityhub_cache_hit_skipping_api",
                     account_id=account_id,
-                    cached_controls=len(cached_metadata),
+                    cached_controls=len(cached_controls),
                 )
+                # Return cached data immediately - no API calls needed!
+                return cached_controls
 
         try:
+            # Cache miss - fetch from AWS API
+            self.logger.info(
+                "securityhub_cache_miss_fetching",
+                account_id=account_id,
+                region=region,
+            )
+
             # Get control definitions (non-blocking)
             control_ids = []
             paginator = client.get_paginator("list_security_control_definitions")
@@ -1339,7 +1348,6 @@ class SecurityHubScanner(BaseScanner):
                 return {}
 
             # Batch get control details (non-blocking)
-            metadata_to_cache = {}
             for batch in _chunk_list(control_ids, 100):
                 try:
                     response = await self.run_sync(
@@ -1350,62 +1358,30 @@ class SecurityHubScanner(BaseScanner):
                     for control in response.get("SecurityControls", []):
                         control_id = control.get("SecurityControlId", "")
 
-                        # Get static metadata from cache if available
-                        cached = (
-                            cached_metadata.get(control_id) if cached_metadata else None
-                        )
-
-                        # Build control data - use cache for static fields if available
                         control_data = {
                             "control_id": control_id,
                             "control_arn": control.get("SecurityControlArn"),
-                            "title": (
-                                cached.get("title") if cached else control.get("Title")
-                            ),
-                            "description": (
-                                cached.get("description")
-                                if cached
-                                else control.get("Description")
-                            ),
-                            "status": control.get(
-                                "SecurityControlStatus"
-                            ),  # Always fresh
-                            "severity": (
-                                cached.get("severity")
-                                if cached
-                                else control.get("SeverityRating")
-                            ),
-                            "update_status": control.get(
-                                "UpdateStatus"
-                            ),  # Always fresh
-                            "parameters": control.get("Parameters", {}),  # Always fresh
-                            "remediation_url": (
-                                cached.get("remediation_url")
-                                if cached
-                                else control.get("RemediationUrl")
-                            ),
-                        }
-                        controls[control_id] = control_data
-
-                        # Collect static metadata for caching
-                        metadata_to_cache[control_id] = {
                             "title": control.get("Title"),
                             "description": control.get("Description"),
+                            "status": control.get("SecurityControlStatus"),
                             "severity": control.get("SeverityRating"),
+                            "update_status": control.get("UpdateStatus"),
+                            "parameters": control.get("Parameters", {}),
                             "remediation_url": control.get("RemediationUrl"),
                         }
+                        controls[control_id] = control_data
 
                 except ClientError:
                     # If batch fails, continue with next batch
                     pass
 
-            # Cache the static metadata for future scans (if not already cached)
-            if account_id and metadata_to_cache and not cached_metadata:
-                await cache_securityhub_controls(account_id, metadata_to_cache)
+            # Cache the FULL control data for future scans (5-minute TTL)
+            if account_id and controls:
+                await cache_securityhub_controls(account_id, controls)
                 self.logger.info(
-                    "securityhub_cached_metadata",
+                    "securityhub_cached_full_response",
                     account_id=account_id,
-                    controls_cached=len(metadata_to_cache),
+                    controls_cached=len(controls),
                 )
 
         except ClientError as e:
