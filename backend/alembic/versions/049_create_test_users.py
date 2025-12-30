@@ -62,9 +62,9 @@ def upgrade() -> None:
             VALUES (gen_random_uuid(), 'Test Org - Individual', 'test-org-individual', true, NOW(), NOW())
             RETURNING id INTO v_org_id;
 
-            -- Create membership
-            INSERT INTO organization_members (id, user_id, organization_id, role, created_at, updated_at)
-            VALUES (gen_random_uuid(), v_user_id, v_org_id, 'owner', NOW(), NOW());
+            -- Create membership (status='active' for immediate access, joined_at for active member)
+            INSERT INTO organization_members (id, user_id, organization_id, role, status, joined_at, created_at)
+            VALUES (gen_random_uuid(), v_user_id, v_org_id, 'owner', 'active', NOW(), NOW());
 
             -- Create subscription (INDIVIDUAL tier: 6 accounts)
             INSERT INTO subscriptions (id, organization_id, tier, status, included_accounts, max_accounts, max_team_members, org_features_enabled, history_retention_days, created_at, updated_at)
@@ -102,9 +102,9 @@ def upgrade() -> None:
             VALUES (gen_random_uuid(), 'Test Org - Pro', 'test-org-pro', true, NOW(), NOW())
             RETURNING id INTO v_org_id;
 
-            -- Create membership
-            INSERT INTO organization_members (id, user_id, organization_id, role, created_at, updated_at)
-            VALUES (gen_random_uuid(), v_user_id, v_org_id, 'owner', NOW(), NOW());
+            -- Create membership (status='active' for immediate access, joined_at for active member)
+            INSERT INTO organization_members (id, user_id, organization_id, role, status, joined_at, created_at)
+            VALUES (gen_random_uuid(), v_user_id, v_org_id, 'owner', 'active', NOW(), NOW());
 
             -- Create subscription (PRO tier: 500 accounts)
             INSERT INTO subscriptions (id, organization_id, tier, status, included_accounts, max_accounts, max_team_members, org_features_enabled, history_retention_days, created_at, updated_at)
