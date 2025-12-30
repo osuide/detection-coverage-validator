@@ -1119,8 +1119,13 @@ class SecurityHubScanner(BaseScanner):
                 lambda: list(paginator.paginate(Filters=filters, MaxResults=100))
             )
 
+            total_findings = 0
+            findings_with_standards = 0
+            findings_without_standards = 0
+
             for page in pages:
                 for finding in page.get("Findings", []):
+                    total_findings += 1
                     compliance = finding.get("Compliance", {})
                     compliance_status = compliance.get("Status", "NOT_AVAILABLE")
 
@@ -1142,12 +1147,48 @@ class SecurityHubScanner(BaseScanner):
                     title = finding.get("Title", "")
 
                     # Extract which standards this finding applies to
+                    # Try AssociatedStandards first (CSPM consolidated findings)
                     associated_standards = compliance.get("AssociatedStandards", [])
+
+                    # Fallback: Use ProductFields.StandardsArn for legacy findings
+                    if not associated_standards:
+                        product_fields = finding.get("ProductFields", {})
+                        standards_arn = product_fields.get("StandardsArn", "")
+                        if standards_arn:
+                            associated_standards = [{"StandardsId": standards_arn}]
+                        else:
+                            # Try StandardsGuideArn as another fallback
+                            guide_arn = product_fields.get("StandardsGuideArn", "")
+                            if guide_arn:
+                                associated_standards = [{"StandardsId": guide_arn}]
+
+                    if not associated_standards:
+                        findings_without_standards += 1
+                        # Log first few findings without standards for debugging
+                        if findings_without_standards <= 3:
+                            self.logger.warning(
+                                "securityhub_finding_no_standards",
+                                generator_id=generator_id,
+                                control_id=control_id,
+                                compliance_status=compliance_status,
+                                product_fields_keys=list(
+                                    finding.get("ProductFields", {}).keys()
+                                )[:10],
+                            )
+                        continue
+
+                    findings_with_standards += 1
 
                     for standard in associated_standards:
                         standards_id = standard.get("StandardsId", "")
                         standard_key = self._normalise_standard_id(standards_id)
                         if not standard_key:
+                            # Log unrecognised standard ARNs for debugging
+                            if standards_id:
+                                self.logger.debug(
+                                    "securityhub_unrecognised_standard",
+                                    standards_id=standards_id,
+                                )
                             continue
 
                         # Initialise standard dict if needed
@@ -1172,6 +1213,15 @@ class SecurityHubScanner(BaseScanner):
                             findings_by_standard[standard_key][control_id][
                                 "failed"
                             ] += 1
+
+            # Log summary for debugging
+            self.logger.info(
+                "securityhub_findings_processed",
+                total_findings=total_findings,
+                findings_with_standards=findings_with_standards,
+                findings_without_standards=findings_without_standards,
+                standards_found=list(findings_by_standard.keys()),
+            )
 
             # Aggregate into summary per standard
             return self._aggregate_findings_by_standard(findings_by_standard)
