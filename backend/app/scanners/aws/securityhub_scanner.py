@@ -1107,18 +1107,21 @@ class SecurityHubScanner(BaseScanner):
                 "ProductName": [{"Value": "Security Hub", "Comparison": "EQUALS"}],
             }
 
-            # Add UpdatedAt filter for incremental scanning
-            # Note: AWS doesn't allow combining Start/End with DateRange
-            # Use only Start for "updated since last scan"
-            if last_scan_at:
-                # Convert to ISO format with timezone
-                # Security Hub expects ISO 8601 format
-                updated_since = last_scan_at.isoformat()
-                filters["UpdatedAt"] = [{"Start": updated_since}]
-                self.logger.info(
-                    "securityhub_incremental_findings",
-                    updated_since=updated_since,
-                )
+            # NOTE: Incremental filtering (UpdatedAt) is DISABLED for findings
+            # because Security Posture needs ALL active findings to calculate
+            # accurate compliance percentages. Incremental filtering would only
+            # return findings updated since last scan, missing unchanged findings.
+            #
+            # The filters above (RecordState=ACTIVE, ProductName=Security Hub)
+            # are sufficient to get all compliance findings.
+            #
+            # If performance becomes an issue with large accounts, consider:
+            # 1. Caching findings data with appropriate TTL
+            # 2. Using DateRange filter with reasonable window (e.g., 90 days)
+            self.logger.info(
+                "securityhub_fetching_all_findings",
+                message="Fetching all active findings for accurate compliance data",
+            )
 
             # Non-blocking pagination using thread pool
             pages = await self.run_sync(
