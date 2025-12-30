@@ -186,7 +186,7 @@ class UserResponse(BaseModel):
     full_name: str
     avatar_url: Optional[str] = None
     timezone: Optional[str] = "UTC"  # Default to UTC if not set
-    email_verified: bool
+    email_verified: bool = False  # Default to False if NULL in database
     mfa_enabled: bool = False  # Default to False if NULL in database
     created_at: datetime
     role: Optional[str] = (
