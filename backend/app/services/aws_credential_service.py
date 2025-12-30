@@ -249,6 +249,7 @@ class AWSCredentialService:
                 "securityhub:DescribeHub",
                 "securityhub:GetEnabledStandards",
                 "securityhub:DescribeStandardsControls",
+                "securityhub:GetFindings",
                 "config:DescribeConfigRules",
                 "config:DescribeComplianceByConfigRule",
                 "cloudtrail:DescribeTrails",
@@ -411,6 +412,7 @@ class AWSCredentialService:
             "securityhub:DescribeHub",
             "securityhub:GetEnabledStandards",
             "securityhub:DescribeStandardsControls",
+            "securityhub:GetFindings",  # Required for compliance posture data
         ]
         try:
             client = session.client("securityhub", region_name="us-east-1")

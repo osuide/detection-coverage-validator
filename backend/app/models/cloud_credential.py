@@ -285,6 +285,7 @@ AWS_IAM_POLICY = {
                 "securityhub:DescribeHub",
                 "securityhub:GetEnabledStandards",
                 "securityhub:GetInsights",
+                "securityhub:GetFindings",  # Required for compliance posture data
                 # Legacy standards-based API (for backward compatibility)
                 "securityhub:DescribeStandardsControls",
                 # New CSPM consolidated controls APIs
@@ -413,6 +414,11 @@ AWS_REQUIRED_PERMISSIONS = [
         "action": "securityhub:GetInsights",
         "service": "Security Hub",
         "purpose": "List Security Hub insights",
+    },
+    {
+        "action": "securityhub:GetFindings",
+        "service": "Security Hub",
+        "purpose": "Get compliance findings for Security Posture data",
     },
     {
         "action": "securityhub:DescribeStandardsControls",

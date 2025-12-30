@@ -42,6 +42,10 @@ class TestAWSIAMPolicy:
         """Test that Security Hub has GetInsights permission."""
         assert '"securityhub:GetInsights"' in source_content
 
+    def test_security_hub_has_get_findings(self, source_content):
+        """Test that Security Hub has GetFindings permission for compliance posture."""
+        assert '"securityhub:GetFindings"' in source_content
+
     def test_security_hub_has_legacy_describe_standards_controls(self, source_content):
         """Test that Security Hub has legacy DescribeStandardsControls for backward compatibility."""
         assert '"securityhub:DescribeStandardsControls"' in source_content
@@ -113,6 +117,10 @@ class TestAWSRequiredPermissions:
     def test_security_hub_get_insights_in_list(self, source_content):
         """Test that securityhub:GetInsights is in the permissions list."""
         assert '"action": "securityhub:GetInsights"' in source_content
+
+    def test_security_hub_get_findings_in_list(self, source_content):
+        """Test that securityhub:GetFindings is in the permissions list."""
+        assert '"action": "securityhub:GetFindings"' in source_content
 
     def test_security_hub_describe_standards_controls_in_list(self, source_content):
         """Test that securityhub:DescribeStandardsControls is in the permissions list."""
