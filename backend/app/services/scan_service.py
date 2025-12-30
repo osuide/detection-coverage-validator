@@ -46,6 +46,8 @@ from app.core.cache import (
     cache_scan_status,
     delete_scan_status_cache,
     invalidate_billing_scan_status,
+    should_force_full_scan,
+    set_last_full_scan,
 )
 from app.core.database import get_db_session
 from app.models.cloud_account import RegionScanMode
@@ -232,11 +234,23 @@ class ScanService:
             await self.db.commit()
             await self._cache_scan_status(scan)
 
+            # Determine if this should be a full scan or incremental scan
+            # Full scan is forced weekly to ensure accurate compliance data
+            force_full_scan = await should_force_full_scan(str(account.id))
+            effective_last_scan_at = None if force_full_scan else account.last_scan_at
+
+            if force_full_scan:
+                self.logger.info(
+                    "forcing_full_scan",
+                    account_id=str(account.id),
+                    reason="weekly_fallback",
+                )
+
             raw_detections, scanner_errors = await self._scan_detections(
                 session,
                 region_config,
                 scan.detection_types,
-                last_scan_at=account.last_scan_at,
+                last_scan_at=effective_last_scan_at,
             )
 
             # Store any scanner errors in scan results
@@ -362,6 +376,14 @@ class ScanService:
             await self._cache_scan_status(scan)
             await delete_scan_status_cache(str(scan.id))
 
+            # Record full scan timestamp if this was a full scan
+            # This is used to determine when to force the next full scan
+            if force_full_scan:
+                await set_last_full_scan(
+                    str(account.id),
+                    datetime.now(timezone.utc).isoformat(),
+                )
+
             self.logger.info(
                 "scan_complete",
                 scan_id=str(scan_id),
@@ -369,6 +391,7 @@ class ScanService:
                 new=stats["new"],
                 updated=stats["updated"],
                 removed=stats.get("removed", 0),
+                full_scan=force_full_scan,
             )
 
         except Exception as e:

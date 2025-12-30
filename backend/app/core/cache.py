@@ -504,3 +504,210 @@ async def invalidate_billing_scan_status(organization_id: str) -> bool:
             error=str(e),
         )
         return False
+
+
+# Security Hub control metadata caching
+# Caches control titles, descriptions, and remediation URLs since they rarely change
+SECURITYHUB_CONTROL_PREFIX = "dcv:securityhub:"
+SECURITYHUB_CONTROL_TTL = 86400  # 24 hours - control metadata rarely changes
+
+
+def securityhub_controls_key(account_id: str) -> str:
+    """Cache key for Security Hub control metadata.
+
+    Args:
+        account_id: AWS account ID
+
+    Returns:
+        Cache key for the control metadata
+    """
+    return f"controls:{_sanitize_identifier(account_id)}"
+
+
+async def cache_securityhub_controls(
+    account_id: str, controls_data: dict[str, dict]
+) -> bool:
+    """Cache Security Hub control metadata.
+
+    Caches control titles, descriptions, severity, and remediation URLs.
+    This data rarely changes, so using a long TTL saves significant API calls.
+
+    Args:
+        account_id: AWS account ID
+        controls_data: Dictionary of control_id -> {
+            "title": str,
+            "description": str,
+            "severity": str,
+            "remediation_url": str,
+            ...
+        }
+
+    Returns:
+        True if cached successfully, False otherwise
+
+    Security:
+        - Only caches public control metadata (no findings/compliance data)
+        - Account ID is sanitized to prevent key injection
+    """
+    if not _redis_cache:
+        return False
+
+    if not account_id:
+        return False
+
+    try:
+        key = f"{SECURITYHUB_CONTROL_PREFIX}{securityhub_controls_key(account_id)}"
+        serialized = json.dumps(controls_data)
+
+        # Check size limit
+        if len(serialized) > MAX_VALUE_SIZE:
+            logger.warning(
+                "securityhub_controls_cache_too_large",
+                account_id=account_id,
+                size=len(serialized),
+            )
+            return False
+
+        await _redis_cache.setex(key, SECURITYHUB_CONTROL_TTL, serialized)
+        return True
+    except Exception as e:
+        logger.warning(
+            "securityhub_controls_cache_set_failed",
+            account_id=account_id,
+            error=str(e),
+        )
+        return False
+
+
+async def get_cached_securityhub_controls(account_id: str) -> Optional[dict[str, dict]]:
+    """Get cached Security Hub control metadata.
+
+    Args:
+        account_id: AWS account ID
+
+    Returns:
+        Cached control metadata dict or None if not found/cache unavailable
+    """
+    if not _redis_cache:
+        record_cache_miss()
+        return None
+
+    try:
+        key = f"{SECURITYHUB_CONTROL_PREFIX}{securityhub_controls_key(account_id)}"
+        value = await _redis_cache.get(key)
+        if value:
+            record_cache_hit()
+            return json.loads(value)
+        record_cache_miss()
+        return None
+    except Exception as e:
+        logger.warning(
+            "securityhub_controls_cache_get_failed",
+            account_id=account_id,
+            error=str(e),
+        )
+        record_cache_miss()
+        return None
+
+
+# Full scan tracking - for weekly full scan fallback
+FULL_SCAN_PREFIX = "dcv:full-scan:"
+FULL_SCAN_TTL = 604800  # 7 days - tracks when last full scan was done
+
+
+def full_scan_key(account_id: str) -> str:
+    """Cache key for last full scan timestamp.
+
+    Args:
+        account_id: Cloud account ID (UUID)
+
+    Returns:
+        Cache key for the full scan timestamp
+    """
+    return f"last:{_sanitize_identifier(account_id)}"
+
+
+async def set_last_full_scan(account_id: str, timestamp: str) -> bool:
+    """Record when a full scan was completed.
+
+    Used to determine if incremental scanning can be used or if a
+    full scan is needed for accurate compliance data.
+
+    Args:
+        account_id: Cloud account ID (UUID string)
+        timestamp: ISO format timestamp of scan completion
+
+    Returns:
+        True if set successfully, False otherwise
+    """
+    if not _redis_cache:
+        return False
+
+    if not account_id:
+        return False
+
+    try:
+        key = f"{FULL_SCAN_PREFIX}{full_scan_key(account_id)}"
+        await _redis_cache.setex(key, FULL_SCAN_TTL, timestamp)
+        return True
+    except Exception as e:
+        logger.warning(
+            "full_scan_timestamp_set_failed",
+            account_id=account_id,
+            error=str(e),
+        )
+        return False
+
+
+async def get_last_full_scan(account_id: str) -> Optional[str]:
+    """Get timestamp of last full scan.
+
+    Args:
+        account_id: Cloud account ID (UUID string)
+
+    Returns:
+        ISO format timestamp or None if never done/cache unavailable
+    """
+    if not _redis_cache:
+        return None
+
+    try:
+        key = f"{FULL_SCAN_PREFIX}{full_scan_key(account_id)}"
+        return await _redis_cache.get(key)
+    except Exception as e:
+        logger.warning(
+            "full_scan_timestamp_get_failed",
+            account_id=account_id,
+            error=str(e),
+        )
+        return None
+
+
+async def should_force_full_scan(account_id: str, days_threshold: int = 7) -> bool:
+    """Check if a full scan should be forced.
+
+    Returns True if:
+    - No full scan has ever been recorded
+    - Last full scan was more than days_threshold days ago
+
+    Args:
+        account_id: Cloud account ID (UUID string)
+        days_threshold: Number of days before forcing full scan (default 7)
+
+    Returns:
+        True if full scan should be forced, False otherwise
+    """
+    from datetime import datetime, timezone, timedelta
+
+    last_scan = await get_last_full_scan(account_id)
+    if not last_scan:
+        return True  # Never done a full scan
+
+    try:
+        last_dt = datetime.fromisoformat(last_scan.replace("Z", "+00:00"))
+        now = datetime.now(timezone.utc)
+        age = now - last_dt
+        return age > timedelta(days=days_threshold)
+    except (ValueError, TypeError):
+        # Invalid timestamp, force full scan
+        return True
