@@ -207,10 +207,15 @@ class SecurityHubScanner(BaseScanner):
                         # First region with CSPM - store full control data
                         first_cspm_region = region
                         for control_id, control_data in region_status.items():
+                            # Use .get() for defensive access - cached data might
+                            # have different structure
+                            control_status = control_data.get(
+                                "status", control_data.get("SecurityControlStatus")
+                            )
                             cspm_control_data[control_id] = {
                                 **control_data,
                                 "hub_arn": hub_arn,
-                                "status_by_region": {region: control_data["status"]},
+                                "status_by_region": {region: control_status},
                             }
                         cspm_scanned = True
                         self.logger.info(
@@ -222,9 +227,13 @@ class SecurityHubScanner(BaseScanner):
                         # Subsequent regions - just add status
                         for control_id, control_data in region_status.items():
                             if control_id in cspm_control_data:
+                                # Use .get() for defensive access
+                                control_status = control_data.get(
+                                    "status", control_data.get("SecurityControlStatus")
+                                )
                                 cspm_control_data[control_id]["status_by_region"][
                                     region
-                                ] = control_data["status"]
+                                ] = control_status
                         self.logger.info(
                             "securityhub_cspm_region_status",
                             region=region,
@@ -1680,10 +1689,18 @@ class SecurityHubScanner(BaseScanner):
                                 ),
                                 "status": status,
                                 "enabled_controls_count": len(
-                                    [c for c in controls if c["status"] == "ENABLED"]
+                                    [
+                                        c
+                                        for c in controls
+                                        if c.get("status") == "ENABLED"
+                                    ]
                                 ),
                                 "disabled_controls_count": len(
-                                    [c for c in controls if c["status"] == "DISABLED"]
+                                    [
+                                        c
+                                        for c in controls
+                                        if c.get("status") == "DISABLED"
+                                    ]
                                 ),
                                 "total_controls_count": len(controls),
                                 "controls": controls,
