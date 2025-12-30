@@ -50,17 +50,8 @@ class GuardDutyScanner(BaseScanner):
         regions: list[str],
         options: Optional[dict[str, Any]] = None,
     ) -> list[RawDetection]:
-        """Scan all regions for GuardDuty detectors."""
-        all_detections = []
-
-        for region in regions:
-            try:
-                region_detections = await self.scan_region(region, options)
-                all_detections.extend(region_detections)
-            except ClientError as e:
-                self.logger.warning("guardduty_scan_error", region=region, error=str(e))
-
-        return all_detections
+        """Scan all regions for GuardDuty detectors in parallel."""
+        return await self.scan_regions_parallel(regions, options)
 
     async def scan_region(
         self,

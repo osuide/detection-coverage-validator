@@ -27,17 +27,8 @@ class ConfigRulesScanner(BaseScanner):
         regions: list[str],
         options: Optional[dict[str, Any]] = None,
     ) -> list[RawDetection]:
-        """Scan all regions for AWS Config Rules."""
-        all_detections = []
-
-        for region in regions:
-            try:
-                region_detections = await self.scan_region(region, options)
-                all_detections.extend(region_detections)
-            except ClientError as e:
-                self.logger.warning("config_scan_error", region=region, error=str(e))
-
-        return all_detections
+        """Scan all regions for AWS Config Rules in parallel."""
+        return await self.scan_regions_parallel(regions, options)
 
     async def scan_region(
         self,

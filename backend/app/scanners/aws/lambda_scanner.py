@@ -71,27 +71,8 @@ class LambdaScanner(BaseScanner):
         regions: list[str],
         options: Optional[dict[str, Any]] = None,
     ) -> list[RawDetection]:
-        """Scan all regions for Lambda functions used as detections."""
-        all_detections = []
-
-        for region in regions:
-            self.logger.info("scanning_lambda_region", region=region)
-            try:
-                detections = await self.scan_region(region, options)
-                all_detections.extend(detections)
-                self.logger.info(
-                    "lambda_region_complete",
-                    region=region,
-                    count=len(detections),
-                )
-            except ClientError as e:
-                self.logger.error(
-                    "lambda_scan_error",
-                    region=region,
-                    error=str(e),
-                )
-
-        return all_detections
+        """Scan all regions for Lambda functions used as detections in parallel."""
+        return await self.scan_regions_parallel(regions, options)
 
     async def scan_region(
         self,

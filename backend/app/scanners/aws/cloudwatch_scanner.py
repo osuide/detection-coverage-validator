@@ -36,27 +36,8 @@ class CloudWatchLogsInsightsScanner(BaseScanner):
         regions: list[str],
         options: Optional[dict[str, Any]] = None,
     ) -> list[RawDetection]:
-        """Scan all regions for CloudWatch Logs Insights queries."""
-        all_detections = []
-
-        for region in regions:
-            self.logger.info("scanning_region", region=region)
-            try:
-                detections = await self.scan_region(region, options)
-                all_detections.extend(detections)
-                self.logger.info(
-                    "region_scan_complete",
-                    region=region,
-                    count=len(detections),
-                )
-            except ClientError as e:
-                self.logger.error(
-                    "region_scan_error",
-                    region=region,
-                    error=str(e),
-                )
-
-        return all_detections
+        """Scan all regions for CloudWatch Logs Insights queries in parallel."""
+        return await self.scan_regions_parallel(regions, options)
 
     async def scan_region(
         self,
@@ -158,20 +139,14 @@ class CloudWatchMetricAlarmScanner(BaseScanner):
         regions: list[str],
         options: Optional[dict[str, Any]] = None,
     ) -> list[RawDetection]:
-        """Scan all regions for CloudWatch alarms."""
-        all_detections = []
+        """Scan all regions for CloudWatch alarms in parallel."""
+        return await self.scan_regions_parallel(regions, options)
 
-        for region in regions:
-            self.logger.info("scanning_alarms", region=region)
-            try:
-                detections = await self._scan_alarms(region)
-                all_detections.extend(detections)
-            except ClientError as e:
-                self.logger.error("alarm_scan_error", region=region, error=str(e))
-
-        return all_detections
-
-    async def _scan_alarms(self, region: str) -> list[RawDetection]:
+    async def scan_region(
+        self,
+        region: str,
+        options: Optional[dict[str, Any]] = None,
+    ) -> list[RawDetection]:
         """Scan for metric alarms in a region."""
         detections = []
         skipped = 0

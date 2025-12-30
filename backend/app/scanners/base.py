@@ -10,12 +10,16 @@ from typing import Any, Callable, Optional, TypeVar
 import structlog
 
 from app.models.detection import DetectionType
+from app.scanners.rate_limiter import get_rate_limiter
 
 logger = structlog.get_logger()
 
 # Shared thread pool for boto3 calls across all scanners
 # This prevents blocking the async event loop during AWS API calls
 _boto3_executor = ThreadPoolExecutor(max_workers=8, thread_name_prefix="boto3-")
+
+# Maximum concurrent regions to scan in parallel (to prevent overwhelming AWS)
+MAX_CONCURRENT_REGIONS = 5
 
 T = TypeVar("T")
 
@@ -153,6 +157,71 @@ class BaseScanner(ABC):
     ) -> list[RawDetection]:
         """Scan a single region. Override for region-specific logic."""
         return []
+
+    async def scan_regions_parallel(
+        self,
+        regions: list[str],
+        options: Optional[dict[str, Any]] = None,
+    ) -> list[RawDetection]:
+        """Scan multiple regions in parallel with rate limiting.
+
+        This helper method allows scanners to easily parallelise region scanning
+        while respecting rate limits and concurrency constraints.
+
+        Usage in subclass scan() method:
+            async def scan(self, regions, options=None):
+                if self.is_global_service:
+                    return await self.scan_region(self.global_scan_region, options)
+                return await self.scan_regions_parallel(regions, options)
+
+        Args:
+            regions: List of AWS regions to scan
+            options: Optional scanner-specific options
+
+        Returns:
+            Combined list of RawDetection objects from all regions
+        """
+        if not regions:
+            return []
+
+        # Use semaphore to limit concurrent region scans
+        semaphore = asyncio.Semaphore(MAX_CONCURRENT_REGIONS)
+
+        # Get rate limiter for this scanner's service
+        rate_limiter = await get_rate_limiter(self.service_key)
+
+        async def scan_region_with_limits(region: str) -> list[RawDetection]:
+            """Scan a single region with rate limiting and concurrency control."""
+            async with semaphore:
+                async with rate_limiter:
+                    try:
+                        return await self.scan_region(region, options)
+                    except Exception as e:
+                        self.logger.warning(
+                            "region_scan_failed",
+                            region=region,
+                            error=str(e),
+                        )
+                        return []
+
+        # Run all region scans concurrently (semaphore limits actual concurrency)
+        results = await asyncio.gather(
+            *[scan_region_with_limits(region) for region in regions],
+            return_exceptions=False,
+        )
+
+        # Flatten results from all regions
+        all_detections: list[RawDetection] = []
+        for region_detections in results:
+            all_detections.extend(region_detections)
+
+        self.logger.info(
+            "parallel_region_scan_complete",
+            total_regions=len(regions),
+            total_detections=len(all_detections),
+        )
+
+        return all_detections
 
     def normalize_arn(self, arn: str) -> str:
         """Normalize ARN format."""

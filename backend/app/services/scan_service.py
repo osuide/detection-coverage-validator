@@ -638,10 +638,12 @@ class ScanService:
         region_config: RegionConfig,
         detection_types: list[str],
     ) -> tuple[list[RawDetection], list[str]]:
-        """Run all applicable scanners with proper global/regional handling.
+        """Run all applicable scanners in parallel with proper global/regional handling.
 
-        Global services (like IAM) are scanned once from the global_region.
-        Regional services (like GuardDuty) are scanned in each regional_region.
+        Scanners are executed concurrently using asyncio.gather for improved
+        performance. Global services (like IAM) are scanned once from the
+        global_region. Regional services (like GuardDuty) are scanned in each
+        regional_region.
 
         Args:
             session: boto3 session with credentials
@@ -652,9 +654,6 @@ class ScanService:
             Tuple of (detections, errors) where errors is a list of
             scanner failure messages to include in scan results.
         """
-        all_detections = []
-        scan_errors = []
-
         # Determine which scanners to use
         scanners: list[BaseScanner] = []
         if not detection_types or "cloudwatch_logs_insights" in detection_types:
@@ -670,12 +669,20 @@ class ScanService:
         if not detection_types or "security_hub" in detection_types:
             scanners.append(SecurityHubScanner(session))
 
-        # Run scanners with appropriate regions based on global/regional classification
-        for scanner in scanners:
+        async def run_scanner(
+            scanner: BaseScanner,
+        ) -> tuple[list[RawDetection], str | None]:
+            """Run a single scanner and return results or error.
+
+            Args:
+                scanner: The scanner instance to run
+
+            Returns:
+                Tuple of (detections, error_message or None)
+            """
             try:
                 # Determine which regions to use for this scanner
                 if scanner.is_global_service:
-                    # Global services scan once from the designated global region
                     scan_regions = [scanner.global_scan_region]
                     self.logger.debug(
                         "scanning_global_service",
@@ -683,7 +690,6 @@ class ScanService:
                         region=scanner.global_scan_region,
                     )
                 else:
-                    # Regional services scan all specified regions
                     scan_regions = region_config.regional_regions
                     self.logger.debug(
                         "scanning_regional_service",
@@ -692,21 +698,48 @@ class ScanService:
                     )
 
                 detections = await scanner.scan(scan_regions)
-                all_detections.extend(detections)
                 self.logger.info(
                     "scanner_complete",
                     scanner=scanner.__class__.__name__,
                     count=len(detections),
                     regions_scanned=len(scan_regions),
                 )
+                return detections, None
             except Exception as e:
                 error_msg = f"{scanner.__class__.__name__}: {str(e)}"
-                scan_errors.append(error_msg)
                 self.logger.error(
                     "scanner_error",
                     scanner=scanner.__class__.__name__,
                     error=str(e),
                 )
+                return [], error_msg
+
+        # Run all scanners in parallel using asyncio.gather
+        self.logger.info(
+            "starting_parallel_scan",
+            scanner_count=len(scanners),
+            scanners=[s.__class__.__name__ for s in scanners],
+        )
+
+        results = await asyncio.gather(
+            *[run_scanner(scanner) for scanner in scanners],
+            return_exceptions=False,  # Exceptions handled in run_scanner
+        )
+
+        # Aggregate results
+        all_detections: list[RawDetection] = []
+        scan_errors: list[str] = []
+
+        for detections, error in results:
+            all_detections.extend(detections)
+            if error:
+                scan_errors.append(error)
+
+        self.logger.info(
+            "parallel_scan_complete",
+            total_detections=len(all_detections),
+            scanner_errors=len(scan_errors),
+        )
 
         return all_detections, scan_errors
 
