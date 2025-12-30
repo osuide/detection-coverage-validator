@@ -38,6 +38,9 @@ export default function Organizations() {
   // Check if this is a 403 feature-not-available error
   const isFeatureRestricted = (error as { response?: { status?: number } })?.response?.status === 403
 
+  // Ensure organizations is always an array to prevent .map errors
+  const safeOrganizations = Array.isArray(organizations) ? organizations : []
+
   const syncMutation = useMutation({
     mutationFn: cloudOrganizationsApi.sync,
     onSuccess: () => {
@@ -130,7 +133,7 @@ export default function Organizations() {
       </div>
 
       {/* Info banner for org benefits */}
-      {!organizations?.length && (
+      {!safeOrganizations.length && (
         <div className="mb-6 p-4 bg-blue-900/30 border border-blue-700 rounded-lg">
           <h3 className="font-semibold text-blue-400 flex items-center">
             <Network className="h-5 w-5 mr-2" />
@@ -154,7 +157,7 @@ export default function Organizations() {
       )}
 
       {/* Organisations List */}
-      {!organizations?.length ? (
+      {!safeOrganizations.length ? (
         <div className="text-center py-12 card">
           <Building2 className="mx-auto h-12 w-12 text-gray-400" />
           <h3 className="mt-2 text-lg font-medium text-white">
@@ -173,7 +176,7 @@ export default function Organizations() {
         </div>
       ) : (
         <div className="space-y-4">
-          {organizations.map((org) => (
+          {safeOrganizations.map((org) => (
             <OrganizationCard
               key={org.id}
               organization={org}

@@ -270,10 +270,12 @@ export const authApi = {
 
   // WebAuthn/Passkeys
   getWebAuthnCredentials: async (token: string): Promise<WebAuthnCredential[]> => {
-    const response = await api.get<WebAuthnCredential[]>('/me/webauthn/credentials', {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    return response.data
+    const response = await api.get<{ credentials: WebAuthnCredential[]; has_totp: boolean }>(
+      '/me/webauthn/credentials',
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+    // Backend returns { credentials: [...], has_totp: bool }, extract just the array
+    return response.data.credentials || []
   },
 
   getWebAuthnRegisterOptions: async (
